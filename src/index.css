@@ -1,72 +1,177 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "primereact/resources/themes/lara-light-blue/theme.css";
+@import "primereact/resources/primereact.min.css";
+@import "primeicons/primeicons.css";
 
+/* Paleta corporativa Megui ERP */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Paleta corporativa Megui ERP basada en https://megui.com.pe/ */
+  --primary-color: #009fe3;         /* Azul corporativo Megui */
+  --primary-color-text: #ffffff;
+  --secondary-color: #003057;       /* Azul oscuro */
+  --secondary-color-text: #ffffff;
+  --accent-color: #03A832;          /* Verde agua/acento */
+  --background-color: #f4f6fb;      /* Fondo general */
+  --surface-color: #ffffff;         /* Tarjetas, paneles */
+  --error-color: #dc2626;
+  --success-color: #22c55e;
+  --warning-color: #facc15;
+
+  /* Sobrescribe variables principales de PrimeReact */
+  --primary-500: var(--primary-color);
+  --primary-color-text: var(--primary-color-text);
+  --surface-ground: var(--background-color);
+  --surface-card: var(--surface-color);
+  --text-color: #22223b;
+  --text-color-secondary: #808285;
+
+  /* Tipografía y estilos base */
+  font-family: 'Galano Grotesque', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+/* Declaración de todas las variantes de Galano Grotesque */
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueThin.otf') format('opentype');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
 }
-a:hover {
-  color: #535bf2;
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueThinItalic.otf') format('opentype');
+  font-weight: 100;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueExtraLight.otf') format('opentype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueExtraLightItalic.otf') format('opentype');
+  font-weight: 200;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueLight.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueLightItalic.otf') format('opentype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueRegular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueItalic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueMedium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueMediumItalic.otf') format('opentype');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueSemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueSemiBoldItalic.otf') format('opentype');
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueBold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueBoldItalic.otf') format('opentype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueExtraBold.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueExtraBoldItalic.otf') format('opentype');
+  font-weight: 800;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueBlack.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galano Grotesque';
+  src: url('./assets/fonts/GalanoGrotesqueBlackItalic.otf') format('opentype');
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+html, body {
+  font-family: 'Galano Grotesque', system-ui, Avenir, Helvetica, Arial, sans-serif !important;
+}
+
+* {
+  font-family: inherit;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
 }

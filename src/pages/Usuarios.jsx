@@ -1,0 +1,298 @@
+/**
+ * Página Usuarios
+ *
+ * Módulo de gestión de usuarios del ERP Megui.
+ * Protegido por autenticación.
+ */
+/**
+ * Pantalla de Gestión de Usuarios
+ *
+ * Utiliza PrimeReact DataTable para mostrar la lista de usuarios del sistema.
+ * Incluye botón para crear nuevo usuario y acciones de editar/eliminar.
+ * Esta versión utiliza datos simulados (mock) para la tabla.
+ *
+ * Documentación profesional en español técnico.
+ */
+import React, { useState, useEffect, useRef } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from 'primereact/button';
+import { Dialog } from 'primereact/dialog';
+import { Toast } from 'primereact/toast';
+import { InputText } from 'primereact/inputtext';
+import { Dropdown } from 'primereact/dropdown';
+import { Avatar } from 'primereact/avatar'; // Importación necesaria para mostrar avatares profesionales
+import UsuarioForm from "../components/usuarios/UsuarioForm";
+import { getUsuarios, crearUsuario, actualizarUsuario, eliminarUsuario } from "../api/usuarios";
+
+/**
+ * Pantalla profesional de gestión de usuarios del ERP Megui.
+ * - CRUD completo con integración API REST.
+ * - Tabla con filtros, búsqueda y paginación avanzada.
+ * - Formularios desacoplados con validación profesional.
+ * - Feedback visual con Toast y loaders.
+ * Documentado en español técnico.
+ */
+
+export default function Usuarios() {
+  // Referencia para Toast de notificaciones
+  const toast = useRef(null);
+
+  // Estado para la lista de usuarios
+  const [usuarios, setUsuarios] = useState([]);
+  // Estado para loading global de la tabla
+  const [loading, setLoading] = useState(false);
+  // Estado para paginación y filtros
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(7);
+  const [globalFilter, setGlobalFilter] = useState("");
+
+  // Estado para modal de alta/edición
+  const [mostrarDialogo, setMostrarDialogo] = useState(false);
+  const [modoEdicion, setModoEdicion] = useState(false);
+  const [usuarioEdit, setUsuarioEdit] = useState(null);
+  const [formLoading, setFormLoading] = useState(false);
+
+  // Carga inicial y búsqueda/paginación
+  useEffect(() => {
+    cargarUsuarios();
+    // eslint-disable-next-line
+  }, [first, rows, globalFilter]);
+
+  // Función para cargar usuarios del backend
+  async function cargarUsuarios() {
+    setLoading(true);
+    try {
+      const params = { skip: first, take: rows, search: globalFilter };
+      const data = await getUsuarios(params);
+      // Soporte para respuesta tipo array o tipo objeto
+      const lista = Array.isArray(data) ? data : (data.usuarios || []);
+      setUsuarios(lista);
+      setTotalRecords(Array.isArray(data) ? lista.length : (data.total || lista.length));
+    } catch (err) {
+      mostrarToast("error", "Error", "No se pudieron cargar los usuarios");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Muestra notificación Toast
+  function mostrarToast(severity, summary, detail) {
+    toast.current?.show({ severity, summary, detail, life: 3500 });
+  }
+
+  // Estado para el formulario de nuevo usuario
+  const [form, setForm] = useState({ nombre: '', usuario: '', email: '', password: '', rol: '', estado: 'Activo' });
+  const [errores, setErrores] = useState({});
+
+  // Validación simple (puedes luego migrar a Yup)
+  const validar = () => {
+    const errs = {};
+    if (!form.nombre) errs.nombre = 'El nombre es obligatorio';
+    if (!form.usuario) errs.usuario = 'El usuario es obligatorio';
+    if (!form.email) errs.email = 'El email es obligatorio';
+    if (!form.password) errs.password = 'La contraseña es obligatoria';
+    if (!form.rol) errs.rol = 'El rol es obligatorio';
+    return errs;
+  };
+
+  // Maneja el submit del formulario
+  const handleGuardar = (e) => {
+    e.preventDefault();
+    const errs = validar();
+    setErrores(errs);
+    if (Object.keys(errs).length === 0) {
+      // Agrega el usuario a la tabla mock
+      setUsuarios([...usuarios, { ...form, id: usuarios.length + 1 }]);
+      setMostrarDialogo(false);
+      setForm({ nombre: '', usuario: '', email: '', password: '', rol: '', estado: 'Activo' });
+      setErrores({});
+    }
+  };
+
+  // Maneja cambios en los campos del formulario
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+
+  // Acción: abrir modal para nuevo usuario
+  function handleNuevo() {
+    setModoEdicion(false);
+    setUsuarioEdit(null);
+    setMostrarDialogo(true);
+  }
+
+  // Acción: abrir modal para editar usuario
+  function handleEditar(usuario) {
+    setModoEdicion(true);
+    setUsuarioEdit(usuario);
+    setMostrarDialogo(true);
+  }
+
+  // Acción: eliminar usuario
+  async function handleEliminar(usuario) {
+    if (window.confirm(`¿Seguro que deseas eliminar a ${usuario.nombre}?`)) {
+      try {
+        setLoading(true);
+        await eliminarUsuario(usuario.id);
+        mostrarToast("success", "Usuario eliminado", `El usuario ${usuario.nombre} fue eliminado correctamente.`);
+        cargarUsuarios();
+      } catch (err) {
+        mostrarToast("error", "Error al eliminar", "No se pudo eliminar el usuario.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  }
+
+  // Renderiza los botones de acción en cada fila
+  const accionesTemplate = (rowData) => (
+    <span>
+      <Button icon="pi pi-pencil" className="p-button-rounded p-button-text p-button-info" style={{ marginRight: 8 }} onClick={() => handleEditar(rowData)} tooltip="Editar" />
+      <Button icon="pi pi-trash" className="p-button-rounded p-button-text p-button-danger" onClick={() => handleEliminar(rowData)} tooltip="Eliminar" />
+    </span>
+  );
+
+  // Submit del formulario (alta o edición)
+  async function onSubmitForm(data) {
+    setFormLoading(true);
+    try {
+      // Construye el payload limpio solo con los campos válidos para el backend
+      const usuarioPayload = {
+        username: data.username,
+        empresaId: Number(data.empresaId),
+        personalId: data.personalId ? Number(data.personalId) : null,
+        esSuperUsuario: !!data.esSuperUsuario,
+        esAdmin: !!data.esAdmin,
+        esUsuario: !!data.esUsuario,
+        cesado: !!data.cesado,
+        // password: data.password, // Solo si se permite cambiar
+      };
+      console.log("Payload limpio a enviar:", usuarioPayload);
+      if (modoEdicion && usuarioEdit) {
+        await actualizarUsuario(usuarioEdit.id, usuarioPayload);
+        mostrarToast("success", "Usuario actualizado", `El usuario ${data.username} fue actualizado correctamente.`);
+      } else {
+        await crearUsuario(usuarioPayload);
+        mostrarToast("success", "Usuario creado", `El usuario ${data.username} fue registrado correctamente.`);
+      }
+      setMostrarDialogo(false);
+      cargarUsuarios();
+    } catch (err) {
+      mostrarToast("error", "Error", "No se pudo guardar el usuario.");
+    } finally {
+      setFormLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 0" }}>
+      <Toast ref={toast} position="top-right" />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+        <h2 style={{ margin: 0 }}>Gestión de Usuarios</h2>
+        <Button label="Nuevo usuario" icon="pi pi-plus" className="p-button-success" onClick={handleNuevo}/>
+      </div>
+      {/* Tabla de usuarios con PrimeReact DataTable */}
+      <DataTable value={usuarios}
+        paginator
+        rows={rows}
+        first={first}
+        totalRecords={totalRecords}
+        loading={loading}
+        onPage={(e) => { setFirst(e.first); setRows(e.rows); }}
+        globalFilter={globalFilter}
+        onGlobalFilterChange={e => setGlobalFilter(e.target.value)}
+        responsiveLayout="scroll"
+        stripedRows
+        emptyMessage="No hay usuarios registrados."
+        header={
+          <span className="p-input-icon-left">
+            <i className="pi pi-search" />
+            <InputText type="search" onInput={e => setGlobalFilter(e.target.value)} placeholder="Buscar usuarios..." style={{ width: 240 }} />
+          </span>
+        }
+      >
+        {/* Columna: Avatar profesional del personal relacionado (foto o iniciales) */}
+        <Column
+          header="Foto"
+          body={rowData => {
+            // Si existe la relación personal
+            if (rowData.personal) {
+              const nombres = rowData.personal.nombres || '';
+              const apellidos = rowData.personal.apellidos || '';
+              const nombreCompleto = `${nombres} ${apellidos}`.trim();
+              // Si tiene foto, muestra la imagen con tooltip
+              if (rowData.personal.urlFotoPersona) {
+                return (
+                  <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
+                    <Avatar
+                      image={rowData.personal.urlFotoPersona}
+                      shape="circle"
+                      size="large"
+                      alt="Foto"
+                      style={{ width: 36, height: 36 }}
+                    />
+                  </span>
+                );
+              } else {
+                // Si no tiene foto, muestra las iniciales (nombres y apellidos) con tooltip
+                const iniciales = `${nombres.charAt(0)}${apellidos.charAt(0)}`.toUpperCase();
+                return (
+                  <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
+                    <Avatar
+                      label={iniciales}
+                      shape="circle"
+                      size="large"
+                      style={{ backgroundColor: '#2196F3', color: '#fff', width: 36, height: 36, fontWeight: 'bold', fontSize: 16 }}
+                    />
+                  </span>
+                );
+              }
+            }
+            // Si no hay personal relacionado, no muestra nada
+            return null;
+          }}
+          style={{ width: 60, textAlign: 'center' }}
+        />
+        {/* Columna: Nombre completo del personal relacionado */}
+        <Column
+          header="Nombre completo"
+          body={rowData =>
+            rowData.personal
+              ? `${rowData.personal.nombres} ${rowData.personal.apellidos}`
+              : ''
+          }
+        />
+        {/* Columnas alineadas con los campos reales del backend */}
+        <Column field="id" header="ID" style={{ width: 70 }} />
+        <Column field="username" header="Nombre de usuario" />
+        {/* Columna: Correo electrónico del personal relacionado */}
+        <Column
+          header="Correo"
+          body={rowData =>
+            rowData.personal && rowData.personal.correo
+              ? rowData.personal.correo
+              : ''
+          }
+        />
+        <Column field="esSuperUsuario" header="¿Superusuario?" body={rowData => rowData.esSuperUsuario ? 'Sí' : 'No'} />
+        <Column field="esAdmin" header="¿Administrador?" body={rowData => rowData.esAdmin ? 'Sí' : 'No'} />
+        {/* Puedes agregar más columnas según los campos de tu backend, por ejemplo activo, fechaCreacion, etc. */}
+        <Column header="Acciones" body={accionesTemplate} style={{ minWidth: 150, textAlign: 'center' }} />
+      </DataTable>
+      {/* Dialogo de alta/edición de usuario */}
+      <Dialog header={modoEdicion ? "Editar Usuario" : "Nuevo Usuario"} visible={mostrarDialogo} style={{ width: 500 }} modal onHide={() => setMostrarDialogo(false)}>
+        <UsuarioForm
+          isEdit={modoEdicion}
+          defaultValues={usuarioEdit || { nombre: '', usuario: '', email: '', password: '', rol: '', estado: 'Activo' }}
+          onSubmit={onSubmitForm}
+          onCancel={() => setMostrarDialogo(false)}
+          loading={formLoading}
+        />
+      </Dialog>
+    </div>
+  );
+}
+

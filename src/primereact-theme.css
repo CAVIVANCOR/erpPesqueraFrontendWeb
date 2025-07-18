@@ -1,0 +1,4 @@
+/* Importa el tema recomendado de PrimeReact y los estilos base necesarios para que los componentes se muestren correctamente. */
+@import "primereact/resources/themes/saga-blue/theme.css";
+@import "primereact/resources/primereact.min.css";
+@import "primeicons/primeicons.css";
