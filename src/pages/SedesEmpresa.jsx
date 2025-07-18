@@ -135,8 +135,6 @@ export default function SedesEmpresa() {
         loading={loading}
         paginator rows={10} rowsPerPageOptions={[5, 10, 20]}
         globalFilter={globalFilter}
-        onGlobalFilterChange={e => setGlobalFilter(e.target.value)}
-        responsiveLayout="scroll"
         stripedRows
         emptyMessage="No hay sedes registradas."
         header={
