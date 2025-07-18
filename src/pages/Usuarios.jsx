@@ -20,11 +20,9 @@ import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
 import { InputText } from 'primereact/inputtext';
-import { Dropdown } from 'primereact/dropdown';
 import { Avatar } from 'primereact/avatar'; // Importación necesaria para mostrar avatares profesionales
 import UsuarioForm from "../components/usuarios/UsuarioForm";
 import { getUsuarios, crearUsuario, actualizarUsuario, eliminarUsuario } from "../api/usuarios";
-
 /**
  * Pantalla profesional de gestión de usuarios del ERP Megui.
  * - CRUD completo con integración API REST.
@@ -168,6 +166,7 @@ export default function Usuarios() {
         esAdmin: !!data.esAdmin,
         esUsuario: !!data.esUsuario,
         cesado: !!data.cesado,
+        password: data.password,
         // password: data.password, // Solo si se permite cambiar
       };
       console.log("Payload limpio a enviar:", usuarioPayload);
@@ -216,43 +215,25 @@ export default function Usuarios() {
         <Column
           header="Foto"
           body={rowData => {
-            // Si existe la relación personal
-            if (rowData.personal) {
-              const nombres = rowData.personal.nombres || '';
-              const apellidos = rowData.personal.apellidos || '';
-              const nombreCompleto = `${nombres} ${apellidos}`.trim();
-              // Si tiene foto, muestra la imagen con tooltip
-              if (rowData.personal.urlFotoPersona) {
-                return (
-                  <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
-                    <Avatar
-                      image={rowData.personal.urlFotoPersona}
-                      shape="circle"
-                      size="large"
-                      alt="Foto"
-                      style={{ width: 36, height: 36 }}
-                    />
-                  </span>
-                );
-              } else {
-                // Si no tiene foto, muestra las iniciales (nombres y apellidos) con tooltip
-                const iniciales = `${nombres.charAt(0)}${apellidos.charAt(0)}`.toUpperCase();
-                return (
-                  <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
-                    <Avatar
-                      label={iniciales}
-                      shape="circle"
-                      size="large"
-                      style={{ backgroundColor: '#2196F3', color: '#fff', width: 36, height: 36, fontWeight: 'bold', fontSize: 16 }}
-                    />
-                  </span>
-                );
-              }
-            }
-            // Si no hay personal relacionado, no muestra nada
-            return null;
+            const nombres = rowData.personal?.nombres || '';
+            const apellidos = rowData.personal?.apellidos || '';
+            const nombreCompleto = `${nombres} ${apellidos}`.trim();
+            const urlFoto = rowData.personal?.urlFotoPersona
+              ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${rowData.personal.urlFotoPersona}`
+              : undefined;
+            return (
+              <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
+                <Avatar
+                  image={urlFoto}
+                  shape="circle"
+                  size="large"
+                  alt="Foto"
+                  style={{ width: 36, height: 36 }}
+                />
+              </span>
+            );
           }}
-          style={{ width: 60, textAlign: 'center' }}
+          style={{ minWidth: 80, textAlign: 'center' }}
         />
         {/* Columna: Nombre completo del personal relacionado */}
         <Column

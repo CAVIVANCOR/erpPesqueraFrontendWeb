@@ -14,6 +14,7 @@ import { Dialog } from 'primereact/dialog';
 import { getCargosPersonal } from '../api/cargosPersonal';
 import { getSedes } from '../api/sedes';
 import { getAreasFisicas } from '../api/areasFisicas';
+import { Avatar } from 'primereact/avatar';
 
 // Importar aquí funciones de alta, edición y borrado cuando se implementen
 
@@ -229,7 +230,45 @@ if (err?.response?.data) {
         <Button label="Nuevo Personal" icon="pi pi-plus" onClick={onNew} />
       </div>
       <DataTable value={personales} loading={loading} paginator rows={10} selectionMode="single" selection={selected} onSelectionChange={e => setSelected(e.value)}>
-        <Column field="nombres" header="Nombres" />
+        <Column
+  header="Foto"
+  body={row => {
+    const nombres = row.nombres || '';
+    const apellidos = row.apellidos || '';
+    const nombreCompleto = `${nombres} ${apellidos}`.trim();
+    const urlFoto = row.urlFotoPersona
+      ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${row.urlFotoPersona}`
+      : undefined;
+    // Si hay foto, muestra el avatar con imagen; si no, iniciales
+    if (urlFoto) {
+      return (
+        <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
+          <Avatar
+            image={urlFoto}
+            shape="circle"
+            size="large"
+            alt="Foto"
+            style={{ width: 36, height: 36 }}
+          />
+        </span>
+      );
+    } else {
+      const iniciales = `${nombres.charAt(0)}${apellidos.charAt(0)}`.toUpperCase();
+      return (
+        <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
+          <Avatar
+            label={iniciales}
+            shape="circle"
+            size="large"
+            style={{ backgroundColor: '#2196F3', color: '#fff', width: 36, height: 36, fontWeight: 'bold', fontSize: 16 }}
+          />
+        </span>
+      );
+    }
+  }}
+  style={{ minWidth: 80, textAlign: 'center' }}
+/>
+<Column field="nombres" header="Nombres" />
         <Column field="apellidos" header="Apellidos" />
         <Column
           header="Cargo"

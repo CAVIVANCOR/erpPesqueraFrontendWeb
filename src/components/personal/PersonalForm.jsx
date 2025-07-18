@@ -443,42 +443,45 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
             <small className="p-error">{errors.fechaIngreso?.message}</small>
           </div>
         </div>
-        {/* Sexo */}
-        <div className="p-field">
-          <Controller
-            name="sexo"
-            control={control}
-            render={({ field }) => (
-                      <Dropdown
-                        id="sexo"
-                        value={field.value ?? null}
-                        options={[
-                          { label: 'Masculino', value: true },
-                          { label: 'Femenino', value: false }
-                        ]}
-                        placeholder="Seleccione sexo"
-                        className={errors.sexo ? 'p-invalid' : ''}
-                        onChange={e => field.onChange(e.value)}
-                        required
-                      />
-            )}
-          />
-          <small className="p-error">{errors.sexo?.message}</small>
-        </div>
-        {/* Teléfono y Correo electrónico en una sola línea, con proporción 1:2 */}
+
+        {/* Teléfono y Sexo en una sola línea, con proporción 1:2 */}
         <div className="p-field p-grid" style={{ display: 'flex', gap: 16 }}>
+          {/* Sexo */}
           <div style={{ flex: 1 }}>
+            <label>Sexo</label>
+            <Controller
+              name="sexo"
+              control={control}
+              render={({ field }) => (
+                        <Dropdown
+                          id="sexo"
+                          value={field.value ?? null}
+                          options={[
+                            { label: 'Masculino', value: true },
+                            { label: 'Femenino', value: false }
+                          ]}
+                          placeholder="Seleccione sexo"
+                          className={errors.sexo ? 'p-invalid' : ''}
+                          onChange={e => field.onChange(e.value)}
+                          required
+                        />
+              )}
+            />
+            <small className="p-error">{errors.sexo?.message}</small>
+          </div>
+          <div style={{ flex: 2 }}>
             <label>Teléfono</label>
             <InputText {...register('telefono')} maxLength={20} className={errors.telefono ? 'p-invalid' : ''} />
             <small className="p-error">{errors.telefono?.message}</small>
           </div>
-          <div style={{ flex: 2 }}>
+
+        </div>
+        {/* Correo electrónico */}
+        <div className="p-field">
             <label>Correo electrónico</label>
             <InputText {...register('correo')} className={errors.correo ? 'p-invalid' : ''} />
             <small className="p-error">{errors.correo?.message}</small>
           </div>
-        </div>
-        
         {/* Tipo de Contrato */}
         <div className="p-field">
           <label>Tipo de Contrato</label>
