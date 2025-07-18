@@ -7,22 +7,26 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
+import { ConfirmDialog } from 'primereact/confirmdialog';
 import PersonalForm from '../components/personal/PersonalForm';
-import { getPersonal, crearPersonal, actualizarPersonal } from '../api/personal';
+import { getPersonal, crearPersonal, actualizarPersonal, eliminarPersonal } from '../api/personal';
 import { getEmpresas } from '../api/empresa';
 import { Dialog } from 'primereact/dialog';
 import { getCargosPersonal } from '../api/cargosPersonal';
 import { getSedes } from '../api/sedes';
 import { getAreasFisicas } from '../api/areasFisicas';
 import { Avatar } from 'primereact/avatar';
+import { useAuthStore } from '../shared/stores/useAuthStore';
 
-// Importar aquí funciones de alta, edición y borrado cuando se implementen
 
 /**
  * Página de gestión de personal.
  * Incluye DataTable, alta, edición y eliminación, con feedback visual profesional.
  */
 export default function PersonalPage() {
+  // Obtener usuario autenticado para control de permisos
+  const usuario = useAuthStore(state => state.usuario);
+
   const [personales, setPersonales] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -132,8 +136,27 @@ export default function PersonalPage() {
   // Renderizado de botones de acción
   const actionBodyTemplate = (rowData) => (
     <>
-      <Button icon="pi pi-pencil" className="p-button-text p-mr-2" onClick={() => onEdit(rowData)} />
-      <Button icon="pi pi-trash" className="p-button-text p-button-danger" onClick={() => onDelete(rowData)} />
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-text p-mr-2"
+        onClick={ev => {
+          ev.stopPropagation();
+          onEdit(rowData);
+        }}
+        tooltip="Editar"
+      />
+      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger"
+          onClick={ev => {
+            ev.stopPropagation();
+            onDelete(rowData);
+          }}
+          tooltip="Eliminar"
+        />
+      )}
+
     </>
   );
 
@@ -148,10 +171,36 @@ export default function PersonalPage() {
     setIsEdit(true);
     setShowForm(true);
   };
-  const onDelete = (row) => {
-    // Implementar lógica de borrado
-    alert('Eliminar: ' + row.nombres + ' ' + row.apellidos);
-  };
+  const [confirmState, setConfirmState] = useState({ visible: false, row: null });
+
+const onDelete = (row) => {
+  setConfirmState({ visible: true, row });
+};
+
+const handleConfirmDelete = async () => {
+  const row = confirmState.row;
+  if (!row) return;
+  const nombreCompleto = `${row.nombres} ${row.apellidos}`.trim();
+  setConfirmState({ visible: false, row: null });
+  setLoading(true);
+  try {
+    await eliminarPersonal(row.id);
+    toast?.show({ severity: 'success', summary: 'Personal eliminado', detail: `El personal ${nombreCompleto} fue eliminado correctamente.` });
+    await cargarPersonal();
+  } catch (err) {
+    if (err?.response?.data) {
+      console.error('[PersonalPage] Error backend al eliminar:', JSON.stringify(err.response.data));
+      toast?.show({ severity: 'error', summary: 'Error', detail: err.response.data?.message || 'No se pudo eliminar el personal.' });
+    } else {
+      console.error('[PersonalPage] Error inesperado:', err);
+      toast?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar el personal.' });
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
+
   const onCancel = () => setShowForm(false);
   
   /**
@@ -225,50 +274,75 @@ if (err?.response?.data) {
   return (
     <div className="p-m-4">
       <Toast ref={setToast} />
+        <ConfirmDialog
+          visible={confirmState.visible}
+          onHide={() => setConfirmState({ visible: false, row: null })}
+          message={<span style={{ color: '#b71c1c', fontWeight: 600 }}>
+            ¿Está seguro que desea <span style={{ color: '#b71c1c' }}>eliminar</span> a <b>{confirmState.row ? `${confirmState.row.nombres} ${confirmState.row.apellidos}` : ''}</b>?<br/>
+            <span style={{ fontWeight: 400, color: '#b71c1c' }}>Esta acción no se puede deshacer.</span>
+          </span>}
+          header={<span style={{ color: '#b71c1c' }}>Confirmar eliminación</span>}
+          icon="pi pi-exclamation-triangle"
+          acceptClassName="p-button-danger"
+          acceptLabel="Eliminar"
+          rejectLabel="Cancelar"
+          accept={handleConfirmDelete}
+          reject={() => setConfirmState({ visible: false, row: null })}
+          style={{ minWidth: 400 }}
+        />
       <div className="p-d-flex p-jc-between p-ai-center p-mb-3">
         <h2>Gestión de Personal</h2>
         <Button label="Nuevo Personal" icon="pi pi-plus" onClick={onNew} />
       </div>
-      <DataTable value={personales} loading={loading} paginator rows={10} selectionMode="single" selection={selected} onSelectionChange={e => setSelected(e.value)}>
+      <DataTable
+        value={personales}
+        loading={loading}
+        paginator
+        rows={10}
+        selectionMode="single"
+        selection={selected}
+        onSelectionChange={e => setSelected(e.value)}
+        onRowClick={e => onEdit(e.data)}
+      >
         <Column
-  header="Foto"
-  body={row => {
-    const nombres = row.nombres || '';
-    const apellidos = row.apellidos || '';
-    const nombreCompleto = `${nombres} ${apellidos}`.trim();
-    const urlFoto = row.urlFotoPersona
-      ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${row.urlFotoPersona}`
-      : undefined;
-    // Si hay foto, muestra el avatar con imagen; si no, iniciales
-    if (urlFoto) {
-      return (
-        <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
-          <Avatar
-            image={urlFoto}
-            shape="circle"
-            size="large"
-            alt="Foto"
-            style={{ width: 36, height: 36 }}
-          />
-        </span>
-      );
-    } else {
-      const iniciales = `${nombres.charAt(0)}${apellidos.charAt(0)}`.toUpperCase();
-      return (
-        <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
-          <Avatar
-            label={iniciales}
-            shape="circle"
-            size="large"
-            style={{ backgroundColor: '#2196F3', color: '#fff', width: 36, height: 36, fontWeight: 'bold', fontSize: 16 }}
-          />
-        </span>
-      );
-    }
-  }}
-  style={{ minWidth: 80, textAlign: 'center' }}
-/>
-<Column field="nombres" header="Nombres" />
+          header="Foto"
+          body={row => {
+            const nombres = row.nombres || '';
+            const apellidos = row.apellidos || '';
+            const nombreCompleto = `${nombres} ${apellidos}`.trim();
+            const urlFoto = row.urlFotoPersona
+              ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${row.urlFotoPersona}`
+              : undefined;
+            // Si hay foto, muestra el avatar con imagen; si no, iniciales
+            if (urlFoto) {
+              return (
+                <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
+                  <Avatar
+                    image={urlFoto}
+                    shape="circle"
+                    size="large"
+                    alt="Foto"
+                    style={{ width: 36, height: 36 }}
+                  />
+                </span>
+              );
+            } else {
+              const iniciales = `${nombres.charAt(0)}${apellidos.charAt(0)}`.toUpperCase();
+              return (
+                <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
+                  <Avatar
+                    label={iniciales}
+                    shape="circle"
+                    size="large"
+                    style={{ backgroundColor: '#2196F3', color: '#fff', width: 36, height: 36, fontWeight: 'bold', fontSize: 16 }}
+                  />
+                </span>
+              );
+            }
+          }}
+          style={{ minWidth: 80, textAlign: 'center' }}
+        />
+        <Column field="nombres" header="Nombres" />
         <Column field="apellidos" header="Apellidos" />
         <Column
           header="Cargo"

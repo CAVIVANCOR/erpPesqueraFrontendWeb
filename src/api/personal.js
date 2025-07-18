@@ -85,3 +85,18 @@ export const getPersonal = async (empresaId) => {
   const res = await axios.get(API_URL, { params, headers: getAuthHeader() });
   return res.data;
 };
+
+/**
+ * Elimina un registro de personal por ID.
+ * @param {number|string} id - ID del personal a eliminar
+ * @returns {Promise<void>}
+ *
+ * Esta función utiliza autenticación JWT obtenida desde useAuthStore (Zustand),
+ * cumpliendo la regla de seguridad y centralización de sesión del ERP Megui.
+ *
+ * Ejemplo de uso:
+ *   await eliminarPersonal(5);
+ */
+export const eliminarPersonal = async (id) => {
+  await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeader() });
+};
