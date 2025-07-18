@@ -163,7 +163,7 @@ export default function UsuarioForm({ isEdit = false, defaultValues = {}, onSubm
                 id="empresaId"
                 value={field.value}
                 options={empresas}
-                optionLabel="nombre"
+                optionLabel="razonSocial"
                 optionValue="id"
                 placeholder="Seleccione una empresa"
                 className={errors.empresaId ? 'p-invalid' : ''}

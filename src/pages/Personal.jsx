@@ -179,6 +179,7 @@ const onSubmit = async (data) => {
       cargoId: data.cargoId ? Number(data.cargoId) : null,
       sedeEmpresaId: data.sedeEmpresaId ? Number(data.sedeEmpresaId) : null,
       areaFisicaId: data.areaFisicaId ? Number(data.areaFisicaId) : null,
+      sexo: typeof data.sexo === 'boolean' ? data.sexo : false,
     };
     if (isEdit && selected) {
       // Edición de personal existente
@@ -216,6 +217,7 @@ if (err?.response?.data) {
         cargoId: selected.cargoId ? String(selected.cargoId) : '',
         areaFisicaId: selected.areaFisicaId ? String(selected.areaFisicaId) : '',
         sedeEmpresaId: selected.sedeEmpresaId ? String(selected.sedeEmpresaId) : '',
+        sexo: typeof selected.sexo === 'boolean' ? selected.sexo : false,
       }
     : { cesado: false };
 

@@ -30,12 +30,11 @@ const schema = Yup.object().shape({
   apellidos: Yup.string().required('Los apellidos son obligatorios'),
   tipoDocumentoId: Yup.number().required('El tipo de documento es obligatorio'),
   numeroDocumento: Yup.string().required('El número de documento es obligatorio'),
-  fechaNacimiento: Yup.date(),
-  sexo: Yup.boolean(),
+  fechaNacimiento: Yup.date().required('La fecha de nacimiento es obligatoria'),
+  sexo: Yup.boolean().required('El sexo es obligatorio'), // Campo obligatorio según modelo Prisma
   fechaIngreso: Yup.date(),
   telefono: Yup.string().nullable(),
   correo: Yup.string().nullable().email('Correo inválido'),
-  urlFotoPersona: Yup.string(),
   tipoContratoId: Yup.number(),
   cargoId: Yup.number(),
   areaFisicaId: Yup.number(),
@@ -67,6 +66,8 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
   cargoId: defaultValues.cargoId ? Number(defaultValues.cargoId) : null,
   areaFisicaId: defaultValues.areaFisicaId ? Number(defaultValues.areaFisicaId) : null,
   sedeEmpresaId: defaultValues.sedeEmpresaId ? Number(defaultValues.sedeEmpresaId) : null,
+  sexo: typeof defaultValues.sexo === 'boolean' ? defaultValues.sexo : null,
+
   // Agrega aquí cualquier otro id de combo que uses
 };
 
@@ -99,7 +100,9 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
 
   // Reset profesional y actualización de preview de foto al abrir en modo edición o alta
   useEffect(() => {
-    reset({ ...defaultValues });
+    reset({ ...defaultValues,
+      sexo: typeof defaultValues.sexo === 'boolean' ? defaultValues.sexo : null,
+     });
     // Actualiza el preview de la foto si cambia el registro
     /**
      * Construye la URL profesional de la foto usando la variable de entorno general para uploads.
@@ -286,6 +289,8 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
       telefono: data.telefono || null,
       correo: data.correo || null,
       urlFotoPersona: data.urlFotoPersona || null,
+      // Campo obligatorio según modelo Prisma: siempre enviar sexo booleano
+      sexo: typeof data.sexo === 'boolean' ? data.sexo : false,
     };
 // Fin construcción payload profesional
     onSubmit(payload);
@@ -444,12 +449,18 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
             name="sexo"
             control={control}
             render={({ field }) => (
-              <div>
-                <RadioButton inputId="masculino" value={true} checked={field.value === true} onChange={() => field.onChange(true)} />
-                <label htmlFor="masculino" style={{ marginRight: 16 }}>Masculino</label>
-                <RadioButton inputId="femenino" value={false} checked={field.value === false} onChange={() => field.onChange(false)} />
-                <label htmlFor="femenino">Femenino</label>
-              </div>
+                      <Dropdown
+                        id="sexo"
+                        value={field.value ?? null}
+                        options={[
+                          { label: 'Masculino', value: true },
+                          { label: 'Femenino', value: false }
+                        ]}
+                        placeholder="Seleccione sexo"
+                        className={errors.sexo ? 'p-invalid' : ''}
+                        onChange={e => field.onChange(e.value)}
+                        required
+                      />
             )}
           />
           <small className="p-error">{errors.sexo?.message}</small>

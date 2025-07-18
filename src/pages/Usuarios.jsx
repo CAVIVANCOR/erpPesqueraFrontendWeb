@@ -203,8 +203,6 @@ export default function Usuarios() {
         loading={loading}
         onPage={(e) => { setFirst(e.first); setRows(e.rows); }}
         globalFilter={globalFilter}
-        onGlobalFilterChange={e => setGlobalFilter(e.target.value)}
-        responsiveLayout="scroll"
         stripedRows
         emptyMessage="No hay usuarios registrados."
         header={
