@@ -95,6 +95,8 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
    const [areasFisicas, setAreasFisicas] = useState([]);
    const [sedesEmpresa, setSedesEmpresa] = useState([]);
 
+
+
   // Reset profesional y actualización de preview de foto al abrir en modo edición o alta
   useEffect(() => {
     reset({ ...defaultValues });
@@ -192,6 +194,16 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
         setAreasFisicas(areasFisicasData);
         const sedesEmpresaData = sedesRes.status === 'fulfilled' ? sedesRes.value.map(e => ({ ...e, id: Number(e.id), label: e.descripcion || e.nombre })) : [];
         setSedesEmpresa(sedesEmpresaData);
+
+
+
+        reset({ ...defaultValues });
+
+
+
+
+
+
       } catch (err) {
         setEmpresas([]);
         setTiposDocumento([]);
@@ -204,6 +216,33 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
     }
     cargarCombos();
   }, []);
+
+     // Estado local para las sedes filtradas según empresa seleccionada
+     const [sedesFiltradas, setSedesFiltradas] = useState([]);
+     // Efecto: Filtrar sedes por empresa seleccionada (combo dependiente)
+      // Cuando cambia la empresa, se filtran las sedes y se limpia la selección previa de sede
+useEffect(() => {
+  // Solo filtra si hay empresa seleccionada y sedes cargadas
+  const empresaId = watch('empresaId');
+  if (empresaId && sedesEmpresa.length > 0) {
+    const empresaIdNum = Number(empresaId);
+    const filtradas = sedesEmpresa.filter(s => Number(s.empresaId) === empresaIdNum);
+    setSedesFiltradas(filtradas);
+
+    // Si la sede seleccionada no pertenece a la empresa, límpiala
+    if (
+      watch('sedeEmpresaId') &&
+      !filtradas.some(s => Number(s.id) === Number(watch('sedeEmpresaId')))
+    ) {
+      setValue('sedeEmpresaId', null);
+    }
+  } else {
+    setSedesFiltradas([]);
+    setValue('sedeEmpresaId', null);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [watch('empresaId'), sedesEmpresa]);
+
 
   // --- Normalización profesional de opciones de combos para evitar errores de tipo ---
   // Se fuerza que todos los id de las opciones sean numéricos, para que coincidan con los valores del formulario (también numéricos).
@@ -471,7 +510,8 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
               <Dropdown
                 id="sedeEmpresaId"
                 value={field.value ? Number(field.value) : null}
-                options={sedesEmpresaNorm}
+                //options={sedesEmpresaNorm}
+                options={sedesFiltradas.map(e => ({ ...e, id: Number(e.id) }))}
                 optionLabel="label"
                 optionValue="id"
                 placeholder="Seleccione una sede empresa"
