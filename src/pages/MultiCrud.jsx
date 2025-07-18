@@ -23,6 +23,8 @@ import Personal from "./Personal";
 import TipoDocumento from "./TipoDocumento";
 import TipoContrato from "./TipoContrato";
 import CargosPersonal from "./CargosPersonal";
+import ModulosSistema from "./ModulosSistema";
+import SubmodulosSistema from "./SubmodulosSistema";
 
 
 /**
@@ -48,6 +50,8 @@ export default function MultiCrud() {
     tipoContrato: { label: "Tipo Contrato", componente: <TipoContrato /> },
     tipoDocumento: { label: "Tipo Documento", componente: <TipoDocumento /> },
     usuarios: { label: "Usuarios", componente: <Usuarios /> },
+    modulosSistema: { label: "Módulos Sistema", componente: <ModulosSistema /> },
+    SubmodulosSistema: { label: "Submódulos Sistema", componente: <SubmodulosSistema /> },
     empresas: { label: "Empresas", componente: <Empresas /> },
     sedesEmpresa: { label: "Sedes Empresa", componente: <SedesEmpresa /> },
     areasFisicas: { label: "Áreas Físicas", componente: <AreasFisicasSede /> },
@@ -89,7 +93,7 @@ export default function MultiCrud() {
       label: "Acceso Instalaciones",
       icon: "pi pi-shield",
       items: [
-        { label: "Inventario", icon: "pi pi-leaf", command: () => abrirModulo("inventarios", "Inventario") },
+        { label: "Registro de Acceso", icon: "pi pi-leaf", command: () => abrirModulo("AccesoInstalaciones", "Registro de Acceso") },
         { label: "Motivos", icon: "pi pi-ship", command: () => abrirModulo("motivos", "Motivos") },
         { label: "Tipo Acceso", icon: "pi pi-snowflake", command: () => abrirModulo("tipoAcceso", "Tipo Acceso") },
         { label: "Tipo Equipos", icon: "pi pi-snowflake", command: () => abrirModulo("tipoEquipos", "Tipo Equipos") },
@@ -188,8 +192,8 @@ export default function MultiCrud() {
         { label: "Departamento", icon: "pi pi-snowflake", command: () => abrirModulo("departamento", "Departamento") },
         { label: "Provincia", icon: "pi pi-snowflake", command: () => abrirModulo("provincia", "Provincia") },
         { label: "Distrito", icon: "pi pi-snowflake", command: () => abrirModulo("distrito", "Distrito") },
-        { label: "Modulos de ERP", icon: "pi pi-snowflake", command: () => abrirModulo("modulosERP", "Módulos de ERP") },
-        { label: "Submodulos ERP", icon: "pi pi-snowflake", command: () => abrirModulo("submodulosERP", "Submódulos ERP") },
+        { label: "Modulos Sistema", icon: "pi pi-snowflake", command: () => abrirModulo("modulosSistema", "Módulos Sistema") },
+        { label: "Submodulos Sistema", icon: "pi pi-snowflake", command: () => abrirModulo("SubmodulosSistema", "Submódulos Sistema") },
       ]
     },
     {

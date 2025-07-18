@@ -9,7 +9,11 @@ import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import PersonalForm from '../components/personal/PersonalForm';
 import { getPersonal, crearPersonal, actualizarPersonal } from '../api/personal';
+import { getEmpresas } from '../api/empresa';
 import { Dialog } from 'primereact/dialog';
+import { getCargosPersonal } from '../api/cargosPersonal';
+import { getSedes } from '../api/sedes';
+import { getAreasFisicas } from '../api/areasFisicas';
 
 // Importar aquí funciones de alta, edición y borrado cuando se implementen
 
@@ -24,6 +28,87 @@ export default function PersonalPage() {
   const [isEdit, setIsEdit] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+
+  /**
+   * Carga los cargos desde el backend.
+   * Utiliza la función getCargosPersonal para obtener los datos.
+   * Si hay un error, muestra un toast con el mensaje de error.
+   */
+  const [cargosLista, setCargosLista] = useState([]);
+  useEffect(() => {
+    cargarCargos();
+  }, []);
+  const cargarCargos = async () => {
+    try {
+      const data = await getCargosPersonal();
+      setCargosLista(data);
+    } catch (err) {
+      toast?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar los cargos' });
+    }
+  };
+  const getCargoDescripcion = (id) => {
+    const cargo = cargosLista.find(c => Number(c.id) === Number(id));
+    return cargo ? cargo.descripcion : '';
+  };
+
+  /**
+   * Carga las empresas desde el backend.
+   * Utiliza la función getEmpresas para obtener los datos.
+   * Si hay un error, muestra un toast con el mensaje de error.
+   */
+    // Cargar empresas
+    const [empresasLista, setEmpresasLista] = useState([]);
+    useEffect(() => {
+      cargarEmpresas();
+    }, []);
+  const cargarEmpresas = async () => {
+    try {
+      const data = await getEmpresas();
+      setEmpresasLista(data);
+    } catch (err) {
+      toast?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar las empresas' });
+    }
+  };
+
+  const getEmpresaRazonSocial = (id) => {
+    const empresa = empresasLista.find(e => Number(e.id) === Number(id));
+    return empresa ? empresa.razonSocial : '';
+  };
+
+  const [sedesLista, setSedesLista] = useState([]);
+  useEffect(() => {
+    cargarSedes();
+  }, []);
+  const cargarSedes = async () => {
+    try {
+      const data = await getSedes();
+      setSedesLista(data);
+    } catch (err) {
+      toast?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar las sedes' });
+    }
+  };
+  const getSedeNombre = (id) => {
+    const sede = sedesLista.find(s => Number(s.id) === Number(id));
+    return sede ? sede.nombre : '';
+  };
+
+  const [areasFisicasLista, setAreasFisicasLista] = useState([]);
+  useEffect(() => {
+    cargarAreasFisicas();
+  }, []);
+  const cargarAreasFisicas = async () => {
+    try {
+      const data = await getAreasFisicas();
+      setAreasFisicasLista(data);
+    } catch (err) {
+      toast?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar las áreas físicas' });
+    }
+  };
+  const getAreaFisicaNombre = (id) => {
+    const area = areasFisicasLista.find(a => Number(a.id) === Number(id));
+    return area ? area.nombre : '';
+  };
+
 
 
   // Carga inicial de personal
@@ -95,7 +180,6 @@ const onSubmit = async (data) => {
       sedeEmpresaId: data.sedeEmpresaId ? Number(data.sedeEmpresaId) : null,
       areaFisicaId: data.areaFisicaId ? Number(data.areaFisicaId) : null,
     };
-    console.log('[PersonalPage] Payload limpio a enviar:', personalPayload);
     if (isEdit && selected) {
       // Edición de personal existente
       await actualizarPersonal(selected.id, personalPayload);
@@ -107,7 +191,6 @@ const onSubmit = async (data) => {
     setShowForm(false);
     cargarPersonal();
   } catch (err) {
-    console.error('[PersonalPage] Error al guardar personal:', err, err?.response?.data);
 if (err?.response?.data) {
   console.error('[PersonalPage] Respuesta de error backend:', JSON.stringify(err.response.data));
 }
@@ -146,15 +229,22 @@ if (err?.response?.data) {
       <DataTable value={personales} loading={loading} paginator rows={10} selectionMode="single" selection={selected} onSelectionChange={e => setSelected(e.value)}>
         <Column field="nombres" header="Nombres" />
         <Column field="apellidos" header="Apellidos" />
-        <Column field="numeroDocumento" header="N° Documento" />
-        <Column field="telefono" header="Teléfono" />
-        <Column field="correo" header="Correo" />
-        <Column field="empresaId" header="Empresa" />
-        <Column field="tipoContratoId" header="Tipo Contrato" />
-        <Column field="cargoId" header="Cargo" />
-        <Column field="areaFisicaId" header="Área Física" />
-        <Column field="sedeEmpresaId" header="Sede Empresa" />
-        <Column field="fechaIngreso" header="Ingreso" />
+        <Column
+          header="Cargo"
+          body={row => getCargoDescripcion(row.cargoId)}
+        />
+        <Column
+          header="Empresa"
+          body={row => getEmpresaRazonSocial(row.empresaId)}
+        />
+        <Column
+          header="Sede Empresa"
+          body={row => getSedeNombre(row.sedeEmpresaId)}
+        />
+        <Column
+          header="Área Física"
+          body={row => getAreaFisicaNombre(row.areaFisicaId)}
+        />
         <Column field="cesado" header="Cesado" body={row => row.cesado ? 'Sí' : 'No'} />
         <Column body={actionBodyTemplate} header="Acciones" />
       </DataTable>

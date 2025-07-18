@@ -195,21 +195,12 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
         const sedesEmpresaData = sedesRes.status === 'fulfilled' ? sedesRes.value.map(e => ({ ...e, id: Number(e.id), label: e.descripcion || e.nombre })) : [];
         setSedesEmpresa(sedesEmpresaData);
 
-
-
         reset({ ...defaultValues });
-
-
-
-
-
-
       } catch (err) {
         setEmpresas([]);
         setTiposDocumento([]);
         setCargos([]);
         setTiposContrato([]);
-
         setAreasFisicas([]);
         setSedesEmpresa([]);
       }
@@ -221,28 +212,51 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
      const [sedesFiltradas, setSedesFiltradas] = useState([]);
      // Efecto: Filtrar sedes por empresa seleccionada (combo dependiente)
       // Cuando cambia la empresa, se filtran las sedes y se limpia la selección previa de sede
-useEffect(() => {
-  // Solo filtra si hay empresa seleccionada y sedes cargadas
-  const empresaId = watch('empresaId');
-  if (empresaId && sedesEmpresa.length > 0) {
-    const empresaIdNum = Number(empresaId);
-    const filtradas = sedesEmpresa.filter(s => Number(s.empresaId) === empresaIdNum);
-    setSedesFiltradas(filtradas);
+      useEffect(() => {
+        // Solo filtra si hay empresa seleccionada y sedes cargadas
+        const empresaId = watch('empresaId');
+        if (empresaId && sedesEmpresa.length > 0) {
+          const empresaIdNum = Number(empresaId);
+          const filtradas = sedesEmpresa.filter(s => Number(s.empresaId) === empresaIdNum);
+          setSedesFiltradas(filtradas);
 
-    // Si la sede seleccionada no pertenece a la empresa, límpiala
-    if (
-      watch('sedeEmpresaId') &&
-      !filtradas.some(s => Number(s.id) === Number(watch('sedeEmpresaId')))
-    ) {
-      setValue('sedeEmpresaId', null);
-    }
-  } else {
-    setSedesFiltradas([]);
-    setValue('sedeEmpresaId', null);
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [watch('empresaId'), sedesEmpresa]);
+          // Si la sede seleccionada no pertenece a la empresa, límpiala
+          if (
+            watch('sedeEmpresaId') &&
+            !filtradas.some(s => Number(s.id) === Number(watch('sedeEmpresaId')))
+          ) {
+            setValue('sedeEmpresaId', null);
+          }
+        } else {
+          setSedesFiltradas([]);
+          setValue('sedeEmpresaId', null);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [watch('empresaId'), sedesEmpresa]);
 
+      // Estado local para las áreas físicas filtradas según sede seleccionada
+      const [areasFisicasFiltradas, setAreasFisicasFiltradas] = useState([]);
+      useEffect(() => {
+        // Solo filtra si hay sede seleccionada y áreas físicas cargadas
+        const sedeId = watch('sedeEmpresaId');
+        if (sedeId && areasFisicas.length > 0) {
+          const sedeIdNum = Number(sedeId);
+          const filtradas = areasFisicas.filter(a => Number(a.sedeId) === sedeIdNum);
+          setAreasFisicasFiltradas(filtradas);
+      
+          // Si el área seleccionada no pertenece a la sede, límpiala
+          if (
+            watch('areaFisicaId') &&
+            !filtradas.some(a => Number(a.id) === Number(watch('areaFisicaId')))
+          ) {
+            setValue('areaFisicaId', null);
+          }
+        } else {
+          setAreasFisicasFiltradas([]);
+          setValue('areaFisicaId', null);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [watch('sedeEmpresaId'), areasFisicas]);
 
   // --- Normalización profesional de opciones de combos para evitar errores de tipo ---
   // Se fuerza que todos los id de las opciones sean numéricos, para que coincidan con los valores del formulario (también numéricos).
@@ -534,7 +548,7 @@ useEffect(() => {
               <Dropdown
                 id="areaFisicaId"
                 value={field.value ? Number(field.value) : null}
-                options={areasFisicasNorm}
+                options={areasFisicasFiltradas.map(e => ({ ...e, id: Number(e.id) }))}
                 optionLabel="label"
                 optionValue="id"
                 placeholder="Seleccione un área física"
