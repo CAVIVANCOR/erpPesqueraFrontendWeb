@@ -9,6 +9,8 @@ import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
+import { useAuthStore } from '../shared/stores/useAuthStore';
 import { InputText } from "primereact/inputtext";
 import { getSedes, crearSede, actualizarSede, eliminarSede } from "../api/sedes";
 import { getEmpresas } from "../api/empresa";
@@ -22,7 +24,16 @@ import SedeForm from "../components/sedes/SedeForm";
  * - Feedback visual con Toast y loaders.
  * Documentado en español técnico.
  */
+/**
+ * REGLA TRANSVERSAL ERP MEGUI:
+ * - Edición profesional con un solo clic en la fila.
+ * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin).
+ * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
+ * - El usuario autenticado se obtiene siempre desde useAuthStore.
+ */
 export default function SedesEmpresa() {
+  const usuario = useAuthStore(state => state.usuario);
+  const [confirmState, setConfirmState] = useState({ visible: false, row: null });
   const toast = useRef(null);
   const [sedes, setSedes] = useState([]);
   const [empresas, setEmpresas] = useState([]);
@@ -102,8 +113,19 @@ export default function SedesEmpresa() {
     setMostrarDialogo(true);
   }
 
-  async function handleEliminar(sede) {
-    if (!window.confirm("¿Está seguro que desea eliminar esta sede?")) return;
+  // Edición con un solo clic en la fila
+  const onRowClick = (e) => {
+    handleEditar(e.data);
+  }
+
+  function handleEliminar(sede) {
+    setConfirmState({ visible: true, row: sede });
+  }
+
+  const handleConfirmDelete = async () => {
+    const sede = confirmState.row;
+    if (!sede) return;
+    setConfirmState({ visible: false, row: null });
     setLoading(true);
     try {
       await eliminarSede(sede.id);
@@ -118,8 +140,10 @@ export default function SedesEmpresa() {
 
   const accionesTemplate = (rowData) => (
     <span>
-      <Button icon="pi pi-pencil" className="p-button-rounded p-button-text p-button-info" style={{ marginRight: 8 }} onClick={() => handleEditar(rowData)} tooltip="Editar" />
-      <Button icon="pi pi-trash" className="p-button-rounded p-button-text p-button-danger" onClick={() => handleEliminar(rowData)} tooltip="Eliminar" />
+      <Button icon="pi pi-pencil" className="p-button-rounded p-button-text p-button-info" style={{ marginRight: 8 }} onClick={e => { e.stopPropagation(); handleEditar(rowData); }} tooltip="Editar" />
+      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+        <Button icon="pi pi-trash" className="p-button-rounded p-button-text p-button-danger" onClick={e => { e.stopPropagation(); handleEliminar(rowData); }} tooltip="Eliminar" />
+      )}
     </span>
   );
 
@@ -130,6 +154,22 @@ export default function SedesEmpresa() {
         <h2>Sedes de Empresa</h2>
         <Button label="Nueva Sede" icon="pi pi-plus" onClick={() => { setSedeEdit(null); setModoEdicion(false); setMostrarDialogo(true); }} />
       </div>
+      <ConfirmDialog
+        visible={confirmState.visible}
+        onHide={() => setConfirmState({ visible: false, row: null })}
+        message={<span style={{ color: '#b71c1c', fontWeight: 600 }}>
+          ¿Está seguro que desea <span style={{ color: '#b71c1c' }}>eliminar</span> la sede <b>{confirmState.row ? confirmState.row.nombre : ''}</b>?<br/>
+          <span style={{ fontWeight: 400, color: '#b71c1c' }}>Esta acción no se puede deshacer.</span>
+        </span>}
+        header={<span style={{ color: '#b71c1c' }}>Confirmar eliminación</span>}
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        acceptLabel="Eliminar"
+        rejectLabel="Cancelar"
+        accept={handleConfirmDelete}
+        reject={() => setConfirmState({ visible: false, row: null })}
+        style={{ minWidth: 400 }}
+      />
       <DataTable
         value={sedes}
         loading={loading}
@@ -143,6 +183,7 @@ export default function SedesEmpresa() {
             <InputText type="search" onInput={e => setGlobalFilter(e.target.value)} placeholder="Buscar sedes..." style={{ width: 240 }} />
           </span>
         }
+        onRowClick={onRowClick}
       >
         <Column field="id" header="ID" style={{ width: 80 }} />
         <Column field="nombre" header="Nombre" />

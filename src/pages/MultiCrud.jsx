@@ -15,6 +15,7 @@ import { Sidebar } from "primereact/sidebar";
 import { useIsMobile } from "../shared/hooks/useIsMobile";
 
 // Importa tus módulos CRUD desacoplados
+import Producto from "./Producto";
 import Empresas from "./Empresas";
 import AreasFisicasSede from "./AreasFisicasSede";
 import SedesEmpresa from "./SedesEmpresa";
@@ -25,7 +26,143 @@ import TipoContrato from "./TipoContrato";
 import CargosPersonal from "./CargosPersonal";
 import ModulosSistema from "./ModulosSistema";
 import SubmodulosSistema from "./SubmodulosSistema";
-
+import DetalleDocTripulantes from "./DetalleDocTripulantes";
+import TripulanteFaena from "./TripulanteFaena";
+import DocumentacionPersonal from "./DocumentacionPersonal";
+import EntregaARendir from "./EntregaARendir";
+import DetMovsEntregaRendir from "./DetMovsEntregaRendir";
+import TipoMovEntregaRendir from "./TipoMovEntregaRendir";
+import DescargaFaenaConsumo from "./DescargaFaenaConsumo";
+import CuentaCorriente from "./CuentaCorriente";
+import Activo from "./Activo";
+import DetallePermisoActivo from "./DetallePermisoActivo";
+import Especie from "./Especie";
+import EstadoMultiFuncion from "./EstadoMultiFuncion";
+import PermisoAutorizacion from "./PermisoAutorizacion";
+import TipoActivo from "./TipoActivo";
+import TipoProvieneDe from "./TipoProvieneDe";
+import Moneda from "./Moneda";
+import ParametroAprobador from "./ParametroAprobador";
+import PuertoPesca from "./PuertoPesca";
+import TipoMantenimiento from "./TipoMantenimiento";
+import MotivoOriginoOT from "./MotivoOriginoOT";
+import Banco from "./Banco";
+import Incoterm from "./Incoterm";
+import MovimientoCaja from "./MovimientoCaja";
+import CalaFaenaConsumoProduce from "./CalaFaenaConsumoProduce";
+import DetCalaFaenaConsumoProduce from "./DetCalaFaenaConsumoProduce";
+import TipoCuentaCorriente from "./TipoCuentaCorriente";
+import TipoReferenciaMovimientoCaja from "./TipoReferenciaMovimientoCaja";
+import AsientoContableInterfaz from "./AsientoContableInterfaz";
+import TipoEmbarcacion from "./TipoEmbarcacion";
+import DocumentoPesca from "./DocumentoPesca";
+import DocumentacionEmbarcacion from "./DocumentacionEmbarcacion";
+import AccesosUsuario from "./AccesosUsuario";
+import DescargaFaenaPesca from "./DescargaFaenaPesca";
+import LiquidacionFaenaPesca from "./LiquidacionFaenaPesca";
+import CotizacionVentas from './CotizacionVentas';
+import TipoProducto from './TipoProducto';
+import TipoEstadoProducto from './TipoEstadoProducto';
+import DestinoProducto from './DestinoProducto';
+import FormaTransaccion from './FormaTransaccion';
+import ModoDespachoRecepcion from './ModoDespachoRecepcion';
+import DocRequeridaComprasVentas from './DocRequeridaComprasVentas';
+import EntregaARendirPVentas from './EntregaARendirPVentas';
+import DetMovsEntregaRendirPVentas from './DetMovsEntregaRendirPVentas';
+import TipoPersona from './TipoPersona';
+import MotivoAcceso from './MotivoAcceso';
+import TipoAccesoInstalacion from './TipoAccesoInstalacion';
+import TipoEntidad from "./TipoEntidad";
+import FormaPago from "./FormaPago";
+import AgrupacionEntidad from "./AgrupacionEntidad";
+import ContactoEntidad from "./ContactoEntidad";
+import EntidadComercial from "./EntidadComercial";
+import DireccionEntidad from "./DireccionEntidad";
+import PrecioEntidad from "./PrecioEntidad";
+import Pais from "./Pais";
+import Departamento from "./Departamento";
+import Provincia from "./Provincia";
+import Distrito from "./Distrito";
+import Ubigeo from "./Ubigeo";
+import TipoVehiculo from "./TipoVehiculo";
+import VehiculoEntidad from "./VehiculoEntidad";
+import LineaCreditoEntidad from "./LineaCreditoEntidad";
+import MovimientoAlmacen from "./MovimientoAlmacen";
+import DetalleMovimientoAlmacen from "./DetalleMovimientoAlmacen";
+import TipoConcepto from "./TipoConcepto";
+import ConceptoMovAlmacen from "./ConceptoMovAlmacen";
+import TipoMovimientoAlmacen from "./TipoMovimientoAlmacen";
+import TipoAlmacen from "./TipoAlmacen";
+import SerieDoc from "./SerieDoc";
+import FamiliaProducto from "./FamiliaProducto";
+import SubfamiliaProducto from "./SubfamiliaProducto";
+import UnidadMedida from "./UnidadMedida";
+import TipoMaterial from "./TipoMaterial";
+import Color from "./Color";
+import LiquidacionTemporadaPesca from "./LiquidacionTemporadaPesca";
+import KardexAlmacen from "./KardexAlmacen";
+import SaldosProductoCliente from "./SaldosProductoCliente";
+import SaldosDetProductoCliente from "./SaldosDetProductoCliente";
+import DetGastosComprasProd from "./DetGastosComprasProd";
+import LiquidacionProcesoComprasProd from "./LiquidacionProcesoComprasProd";
+import TemporadaPesca from "./TemporadaPesca";
+import Embarcacion from "./Embarcacion";
+import CalaProduce from "./CalaProduce";
+import DetalleEmbarcacion from "./DetalleEmbarcacion";
+import DetalleDocEmbarcacion from "./DetalleDocEmbarcacion";
+import BolicheRed from "./BolicheRed";
+import CentroCosto from "./CentroCosto";
+import CategoriaCCosto from "./CategoriaCCosto";
+import EmpresaCentroCosto from "./EmpresaCentroCosto";
+import DetalleDescargaFaena from "./DetalleDescargaFaena";
+import AccionesPreviasFaena from "./AccionesPreviasFaena";
+import DetAccionesPreviasFaena from "./DetAccionesPreviasFaena";
+import MovLiquidacionFaenaPesca from "./MovLiquidacionFaenaPesca";
+import MovLiquidacionTemporadaPesca from "./MovLiquidacionTemporadaPesca";
+import LiqNovedadPescaConsumo from "./LiqNovedadPescaConsumo";
+import MovLiqNovedadPescaConsumo from "./MovLiqNovedadPescaConsumo";
+import DetCotizacionVentas from "./DetCotizacionVentas";
+import DetProductoFinalCotizacionCompras from "./DetProductoFinalCotizacionCompras";
+import EntregaARendirPCompras from "./EntregaARendirPCompras";
+import DetMovsEntregaRendirPCompras from "./DetMovsEntregaRendirPCompras";
+import MovLiquidacionProcesoComprasProd from "./MovLiquidacionProcesoComprasProd";
+import DetalleCalaEspecieProduce from "./DetalleCalaEspecieProduce";
+import AccesoInstalacion from "./AccesoInstalacion";
+import TipoEquipo from "./TipoEquipo";
+import TipoMovimiento from "./TipoMovimiento"
+import NovedadPescaConsumo from "./NovedadPescaConsumo";
+import TripulanteFaenaConsumo from "./TripulanteFaenaConsumo";
+import DetDocTripulantesFaenaConsumo from "./DetDocTripulantesFaenaConsumo";
+import FaenaPesca from "./FaenaPesca";
+import FaenaPescaConsumo from "./FaenaPescaConsumo";
+import EntregaARendirPescaConsumo from "./EntregaARendirPescaConsumo";
+import DetDocEmbarcacionPescaConsumo from "./DetDocEmbarcacionPescaConsumo";
+import Cala from "./Cala";
+import DetalleCalaEspecie from "./DetalleCalaEspecie";
+import CalaFaenaConsumo from "./CalaFaenaConsumo";
+import DetCalaPescaConsumo from "./DetCalaPescaConsumo";
+import DetDescargaFaenaConsumo from "./DetDescargaFaenaConsumo";
+import DetAccionesPreviasFaenaConsumo from "./DetAccionesPreviasFaenaConsumo";
+import DetMovsEntRendirPescaConsumo from "./DetMovsEntRendirPescaConsumo";
+import LiquidacionFaenaConsumo from "./LiquidacionFaenaConsumo";
+import MovLiquidacionFaenaConsumo from "./MovLiquidacionFaenaConsumo";
+import CotizacionCompra from "./CotizacionCompra";
+import DetCotizacionCompras from "./DetCotizacionCompras";
+import RequerimientoCompra from "./RequerimientoCompra";
+import DetalleReqCompra from "./DetalleReqCompra";
+import OrdenCompra from "./OrdenCompra";
+import DetalleOrdenCompra from "./DetalleOrdenCompra";
+import PreFactura from "./PreFactura";
+import DetallePreFactura from "./DetallePreFactura";
+import OTMantenimiento from "./OTMantenimiento";
+import DetPermisoGestionadoOT from "./DetPermisoGestionadoOT";
+import DetTareasOT from "./DetTareasOT";
+import DetInsumosTareaOT from "./DetInsumosTareaOT";
+import TiposDocIdentidad from "./TiposDocIdentidad";
+import DetDocsReqCotizaVentas from "./DetDocsReqCotizaVentas";
+import AccesoInstalacionDetalle from "./AccesoInstalacionDetalle";
+import TipoMovimientoAcceso from "./TipoMovimientoAcceso";
+import DetDocsReqCotizaCompras from "./DetDocsReqCotizaCompras";
 
 /**
  * Componente MultiCrud
@@ -45,6 +182,41 @@ export default function MultiCrud() {
 
   // Catálogo de módulos disponibles (key -> componente)
   const modulos = {
+    parametroAprobador: { label: "Aprobadores", componente: <ParametroAprobador /> },
+    tiposDocIdentidad: { label: "Tipos de Documentos de Identidad", componente: <TiposDocIdentidad /> },
+    oTMantenimiento: { label: "Ordenes de Trabajo", componente: <OTMantenimiento /> },
+    detPermisoGestionadoOT: { label: "Detalle Permisos Gestionados OT", componente: <DetPermisoGestionadoOT /> },
+    detTareasOT: { label: "Detalle Tareas OT", componente: <DetTareasOT /> },
+    detInsumosTareaOT: { label: "Detalle Insumos de Tarea OT", componente: <DetInsumosTareaOT /> },
+    preFactura: { label: "Pre-Factura", componente: <PreFactura /> },
+    detallePreFactura: { label: "Detalle Pre-Factura", componente: <DetallePreFactura /> },
+    cotizacionCompra: { label: "Cotización Compra", componente: <CotizacionCompra /> },
+    detCotizacionCompras: { label: "Detalle Cotización Compra", componente: <DetCotizacionCompras /> },
+    ordenCompra: { label: "Orden Compra", componente: <OrdenCompra /> },
+    detalleOrdenCompra: { label: "Detalle Orden Compra", componente: <DetalleOrdenCompra /> },
+    requerimientoCompra: { label: "Requerimiento Compra", componente: <RequerimientoCompra /> },
+    detalleReqCompra: { label: "Detalle Requerimiento Compra", componente: <DetalleReqCompra /> },
+    movLiquidacionFaenaConsumo: { label: "Movimientos Liquidación Faena Novedad Pesca Consumo", componente: <MovLiquidacionFaenaConsumo /> },
+    liquidacionFaenaConsumo: { label: "Liquidación Faena Novedad Pesca Consumo", componente: <LiquidacionFaenaConsumo /> },
+    detMovsEntRendirPescaConsumo: { label: "Detalle Movimientos Entrega a Rendir Novedad Pesca Consumo", componente: <DetMovsEntRendirPescaConsumo /> },
+    detAccionesPreviasFaenaConsumo: { label: "Detalle Acciones Previas Faena Novedad Pesca Consumo", componente: <DetAccionesPreviasFaenaConsumo /> },
+    detDescargaFaenaConsumo: { label: "Detalle Descargas Faena Novedad Pesca Consumo", componente: <DetDescargaFaenaConsumo /> },
+    detCalaPescaConsumo: { label: "Detalle Cala Faena Novedad Pesca Consumo", componente: <DetCalaPescaConsumo /> },
+    calaFaenaConsumo: { label: "Cala Faena Novedad Pesca Consumo", componente: <CalaFaenaConsumo /> },
+    detalleCalaEspecie: { label: "Detalle Cala Faena Temporada Pesca", componente: <DetalleCalaEspecie /> },
+    cala: { label: "Cala Faena Temporada Pesca", componente: <Cala /> },
+    detDocEmbarcacionPescaConsumo: { label: "Documentación Embarcación Novedad Pesca Consumo", componente: <DetDocEmbarcacionPescaConsumo /> },
+    entregaARendirPescaConsumo: { label: "Entrega a Rendir Novedad Pesca Consumo", componente: <EntregaARendirPescaConsumo /> },
+    faenaPescaConsumo: { label: "Faena Novedad Pesca Consumo", componente: <FaenaPescaConsumo /> },
+    faenaPesca: { label: "Faena Temporada Pesca", componente: <FaenaPesca /> },
+    detDocTripulantesFaenaConsumo: { label: "Documentación Tripulantes Novedad Pesca Consumo", componente: <DetDocTripulantesFaenaConsumo /> },
+    tripulanteFaenaConsumo: { label: "Tripulante Faena Consumo", componente: <TripulanteFaenaConsumo /> },
+    novedadPescaConsumo: { label: "Novedad Pesca Consumo", componente: <NovedadPescaConsumo /> },
+    tipoMovimiento: { label: "Tipo Movimiento", componente: <TipoMovimiento /> },
+    accesoInstalacion: { label: "Acceso Instalaciones", componente: <AccesoInstalacion /> },
+    accesoInstalacionDetalle: { label: "Detalle Acceso Instalaciones", componente: <AccesoInstalacionDetalle /> },
+    tipoMovimientoAcceso: { label: "Tipos de Movimiento de Acceso", componente: <TipoMovimientoAcceso /> },
+    tipoEquipo: { label: "Tipo Equipo", componente: <TipoEquipo /> },
     personal: { label: "Personal", componente: <Personal /> },
     cargosPersonal: { label: "Cargos del Personal", componente: <CargosPersonal /> },
     tipoContrato: { label: "Tipo Contrato", componente: <TipoContrato /> },
@@ -54,7 +226,110 @@ export default function MultiCrud() {
     SubmodulosSistema: { label: "Submódulos Sistema", componente: <SubmodulosSistema /> },
     empresas: { label: "Empresas", componente: <Empresas /> },
     sedesEmpresa: { label: "Sedes Empresa", componente: <SedesEmpresa /> },
-    areasFisicas: { label: "Áreas Físicas", componente: <AreasFisicasSede /> },
+    areasFisicasSede: { label: "Áreas Físicas Sede Empresa", componente: <AreasFisicasSede /> },
+    activo: { label: "Activos", componente: <Activo /> },
+    detallePermisoActivo: { label: "Detalle Permisos Activo", componente: <DetallePermisoActivo /> },
+    especie: { label: "Especies", componente: <Especie /> },
+    estadoMultiFuncion: { label: "Estado Multifunción", componente: <EstadoMultiFuncion /> },
+    permisoAutorizacion: { label: "Permisos para Activos", componente: <PermisoAutorizacion /> },
+    tipoActivo: { label: "Tipos de Activo", componente: <TipoActivo /> },
+    tipoProvieneDe: { label: "Tipo Proviene De", componente: <TipoProvieneDe /> },
+    monedas: { label: "Monedas", componente: <Moneda /> },
+    puertoPesca: { label: "Puerto de Pesca", componente: <PuertoPesca /> },
+    tipoMantenimiento: { label: "Tipo de Mantenimiento", componente: <TipoMantenimiento /> },
+    motivoOriginoOT: { label: "Motivo Origino OT", componente: <MotivoOriginoOT /> },
+    banco: { label: "Bancos", componente: <Banco /> },
+    incoterm: { label: "Incoterms", componente: <Incoterm /> },
+    movimientoCaja: { label: "Movimientos de Caja", componente: <MovimientoCaja /> },
+    detalleEmbarcacion: { label: "Detalle Embarcación", componente: <DetalleEmbarcacion /> },
+    cuentaCorriente: { label: "Cuenta Corriente", componente: <CuentaCorriente /> },
+    tipoCuentaCorriente: { label: "Tipo Cuenta Corriente", componente: <TipoCuentaCorriente /> },
+    tipoReferenciaMovimientoCaja: { label: "Tipo Referencia Movimiento Caja", componente: <TipoReferenciaMovimientoCaja /> },
+    asientoContableInterfaz: { label: "Asientos Contable Generados", componente: <AsientoContableInterfaz /> },
+    tipoEmbarcacion: { label: "Tipo Embarcación", componente: <TipoEmbarcacion /> },
+    documentoPesca: { label: "Documento Pesca", componente: <DocumentoPesca /> },
+    documentacionEmbarcacion: { label: "Documentación Embarcación", componente: <DocumentacionEmbarcacion /> },
+    detalleDocEmbarcacion: { label: "Detalle Doc Embarcación", componente: <DetalleDocEmbarcacion /> },
+    bolicheRed: { label: "Boliche Red", componente: <BolicheRed /> },
+    accesosUsuario: { label: "Accesos Usuario", componente: <AccesosUsuario /> },
+    documentacionPersonal: { label: "Documentación Personal", componente: <DocumentacionPersonal /> },
+    entregaARendir: { label: "Entrega a Rendir", componente: <EntregaARendir /> },
+    detMovsEntregaRendir: { label: "Detalle Movimientos Entrega a Rendir Temporada Pesca", componente: <DetMovsEntregaRendir /> },
+    tipoMovEntregaRendir: { label: "Tipo Movimiento Entrega a Rendir", componente: <TipoMovEntregaRendir /> },
+    centroCosto: { label: "Centro de Costo", componente: <CentroCosto /> },
+    categoriaCCosto: { label: "Categoría Centro de Costo", componente: <CategoriaCCosto /> },
+    empresaCentroCosto: { label: "Empresa Centro de Costo", componente: <EmpresaCentroCosto /> },
+    descargaFaenaPesca: { label: "Descarga Faena Temporada Pesca", componente: <DescargaFaenaPesca /> },
+    detalleDescargaFaena: { label: "Detalle Descarga Faena Temporada Pesca", componente: <DetalleDescargaFaena /> },
+    accionesPreviasFaena: { label: "Acciones Previas Faena", componente: <AccionesPreviasFaena /> },
+    detAccionesPreviasFaena: { label: "Detalle Acciones Previas Faena Temporada Pesca", componente: <DetAccionesPreviasFaena /> },
+    liquidacionFaenaPesca: { label: "Liquidación Faena Pesca", componente: <LiquidacionFaenaPesca /> },
+    movLiquidacionFaenaPesca: { label: "Movimientos Liquidación Faena", componente: <MovLiquidacionFaenaPesca /> },
+    tipoEntidad: { label: "Tipos de Entidad", componente: <TipoEntidad /> },
+    formaPago: { label: "Formas de Pago", componente: <FormaPago /> },
+    agrupacionEntidad: { label: "Agrupaciones de Entidad Comercial", componente: <AgrupacionEntidad /> },
+    contactoEntidad: { label: "Contactos de Entidad Comercial", componente: <ContactoEntidad /> },
+    entidadComercial: { label: "Entidades Comerciales", componente: <EntidadComercial /> },
+    direccionEntidad: { label: "Direcciones de Entidad Comercial", componente: <DireccionEntidad /> },
+    precioEntidad: { label: "Precios Especiales Entidad Comercial", componente: <PrecioEntidad /> },
+    pais: { label: "Países", componente: <Pais /> },
+    departamento: { label: "Departamentos", componente: <Departamento /> },
+    provincia: { label: "Provincias", componente: <Provincia /> },
+    distrito: { label: "Distritos", componente: <Distrito /> },
+    ubigeo: { label: "Ubigeos", componente: <Ubigeo /> },
+    tipoVehiculo: { label: "Tipos de Vehículo", componente: <TipoVehiculo /> },
+    vehiculoEntidad: { label: "Vehículos Entidad Comercial", componente: <VehiculoEntidad /> },
+    lineaCreditoEntidad: { label: "Líneas Crédito Entidad Comercial", componente: <LineaCreditoEntidad /> },
+    movimientoAlmacen: { label: "Movimientos de Almacén", componente: <MovimientoAlmacen /> },
+    detalleMovimientoAlmacen: { label: "Detalles Movimientos de Almacén", componente: <DetalleMovimientoAlmacen /> },
+    tipoConcepto: { label: "Tipos de Concepto Movimientos Almacén", componente: <TipoConcepto /> },
+    conceptoMovAlmacen: { label: "Conceptos Movimientos Almacén", componente: <ConceptoMovAlmacen /> },
+    tipoMovimientoAlmacen: { label: "Tipos de Movimiento Almacén", componente: <TipoMovimientoAlmacen /> },
+    tipoAlmacen: { label: "Tipos de Almacén", componente: <TipoAlmacen /> },
+    serieDoc: { label: "Series de Documento", componente: <SerieDoc /> },
+    familiaProducto: { label: "Familias de Producto", componente: <FamiliaProducto /> },
+    subfamiliaProducto: { label: "Subfamilias de Producto", componente: <SubfamiliaProducto /> },
+    unidadMedida: { label: "Empaques Unidades de Medida", componente: <UnidadMedida /> },
+    tipoMaterial: { label: "Tipos de Material Producto", componente: <TipoMaterial /> },
+    color: { label: "Colores Producto", componente: <Color /> },
+    producto: { label: "Productos y Servicios", componente: <Producto /> },
+    liquidacionTemporadaPesca: { label: "Liquidaciones de Temporada", componente: <LiquidacionTemporadaPesca /> },
+    movLiquidacionTemporadaPesca: { label: "Movimientos de Liquidación", componente: <MovLiquidacionTemporadaPesca /> },
+    kardexAlmacen: { label: "Kardex de Almacén", componente: <KardexAlmacen /> },
+    saldosProductoCliente: { label: "Saldos de Productos-Cliente", componente: <SaldosProductoCliente /> },
+    saldosDetProductoCliente: { label: "Saldos de Productos-Cliente Variables Control", componente: <SaldosDetProductoCliente /> },
+    calaFaenaConsumoProduce: { label: "Producción de Calas", componente: <CalaFaenaConsumoProduce /> },
+    detCalaFaenaConsumoProduce: { label: "Detalles de Producción", componente: <DetCalaFaenaConsumoProduce /> },
+    descargaFaenaConsumo: { label: "Descargas de Faena", componente: <DescargaFaenaConsumo /> },
+    liqNovedadPescaConsumo: { label: "Liquidaciones de Novedad Consumo", componente: <LiqNovedadPescaConsumo /> },
+    movLiqNovedadPescaConsumo: { label: "Movimientos Liquidación Novedad", componente: <MovLiqNovedadPescaConsumo /> },
+    cotizacionVentas: { label: "Cotización de Ventas", componente: <CotizacionVentas /> },
+    detCotizacionVentas: { label: "Detalle Cotización Ventas", componente: <DetCotizacionVentas /> },
+    detDocsReqCotizaVentas: { label: "Documentos Requeridos Cotización Ventas", componente: <DetDocsReqCotizaVentas /> },
+    detDocsReqCotizaCompras: { label: "Documentos Requeridos Cotización Compras", componente: <DetDocsReqCotizaCompras /> },
+    tipoProducto: { label: "Tipos de Mercaderia", componente: <TipoProducto /> },
+    tipoEstadoProducto: { label: "Estado del Producto", componente: <TipoEstadoProducto /> },
+    destinoProducto: { label: "Destinos de Mercaderia", componente: <DestinoProducto /> },
+    formaTransaccion: { label: "Formas de Transacción Venta", componente: <FormaTransaccion /> },
+    modoDespachoRecepcion: { label: "Formas Entrega(Venta)/Recepción(Compra) de Mercaderia", componente: <ModoDespachoRecepcion /> },
+    docRequeridaComprasVentas: { label: "Documentación Requerida Compras y Ventas", componente: <DocRequeridaComprasVentas /> },
+    entregaARendirPVentas: { label: "Entregas a Rendir Cotización Ventas", componente: <EntregaARendirPVentas /> },
+    detMovsEntregaRendirPVentas: { label: "Movimientos Entregas a Rendir Cotización Ventas", componente: <DetMovsEntregaRendirPVentas /> },
+    tipoPersona: { label: "Tipos de Persona", componente: <TipoPersona /> },
+    motivoAcceso: { label: "Motivos de Acceso", componente: <MotivoAcceso /> },
+    tipoAccesoInstalacion: { label: "Tipos de Acceso Instalación", componente: <TipoAccesoInstalacion /> },
+    detGastosComprasProd: { label: "Detalle Gastos Cotización Compras", componente: <DetGastosComprasProd /> },
+    detProductoFinalCotizacionCompras: { label: "Detalle Productos Finales Cotización Compras", componente: <DetProductoFinalCotizacionCompras /> },
+    entregaARendirPCompras: { label: "Entregas a Rendir Cotización Compras", componente: <EntregaARendirPCompras /> },
+    detMovsEntregaRendirPCompras: { label: "Detalle Movimientos Entregas Rendir Cotización Compras", componente: <DetMovsEntregaRendirPCompras /> },
+    liquidacionProcesoComprasProd: { label: "Liquidación Cotización Compras", componente: <LiquidacionProcesoComprasProd /> },
+    movLiquidacionProcesoComprasProd: { label: "Movimientos Liquidación Cotización Compras", componente: <MovLiquidacionProcesoComprasProd /> },
+    temporadaPesca: { label: "Temporadas de Pesca", componente: <TemporadaPesca /> },
+    embarcacion: { label: "Embarcaciones", componente: <Embarcacion /> },
+    calaProduce: { label: "Calas de Producción", componente: <CalaProduce /> },
+    detalleCalaEspecieProduce: { label: "Detalles Especies Cala", componente: <DetalleCalaEspecieProduce /> },
+    detalleDocTripulantes: { label: "Detalle Documentos Tripulantes Faena Temporada Pesca", componente: <DetalleDocTripulantes /> },
+    tripulanteFaena: { label: "Tripulantes Faena Temporada Pesca", componente: <TripulanteFaena /> },
     // ...agrega aquí los componentes reales según los vayas creando
   };
 
@@ -93,121 +368,210 @@ export default function MultiCrud() {
       label: "Acceso Instalaciones",
       icon: "pi pi-shield",
       items: [
-        { label: "Registro de Acceso", icon: "pi pi-leaf", command: () => abrirModulo("AccesoInstalaciones", "Registro de Acceso") },
-        { label: "Motivos", icon: "pi pi-ship", command: () => abrirModulo("motivos", "Motivos") },
-        { label: "Tipo Acceso", icon: "pi pi-snowflake", command: () => abrirModulo("tipoAcceso", "Tipo Acceso") },
-        { label: "Tipo Equipos", icon: "pi pi-snowflake", command: () => abrirModulo("tipoEquipos", "Tipo Equipos") },
+        { label: "Movimientos Acceso Instalaciones", icon: "pi pi-leaf", command: () => abrirModulo("AccesoInstalacion", "Movimientos Acceso Instalaciones") },
+        { label: "Detalle Movimientos Acceso Instalaciones", icon: "pi pi-list", command: () => abrirModulo("accesoInstalacionDetalle", "Detalle Movimientos Acceso Instalaciones") },
+        { label: "Tipos de Movimiento de Acceso", icon: "pi pi-arrow-right-arrow-left", command: () => abrirModulo("tipoMovimientoAcceso", "Tipos de Movimiento de Acceso") },
+        { label: "Tipo Equipos", icon: "pi pi-snowflake", command: () => abrirModulo("tipoEquipo", "Tipo Equipos") },
         { label: "Tipo Movimiento", icon: "pi pi-snowflake", command: () => abrirModulo("tipoMovimiento", "Tipo Movimiento") },
-        { label: "Tipo Visitantes", icon: "pi pi-snowflake", command: () => abrirModulo("tipoVisitantes", "Tipo Visitantes") },
+        { label: "Tipos de Persona", icon: "pi pi-users", command: () => abrirModulo("tipoPersona", "Tipos de Persona") },
+        { label: "Motivos de Acceso", icon: "pi pi-question-circle", command: () => abrirModulo("motivoAcceso", "Motivos de Acceso") },
+        { label: "Tipos de Acceso a Instalaciones", icon: "pi pi-key", command: () => abrirModulo("tipoAccesoInstalacion", "Tipos de Acceso a Instalaciones") },
       ]
     },
     {
       label: "Pesca",
       icon: "pi pi-cog",
       items: [
-        { label: "Pesca Industrial", icon: "pi pi-leaf", command: () => abrirModulo("pescaIndustrial", "Pesca Industrial") },
-        { label: "Pesca Consumo", icon: "pi pi-ship", command: () => abrirModulo("pescaConsumo", "Pesca Consumo") },
-        { label: "Acciones previas", icon: "pi pi-archive", command: () => abrirModulo("accionesPrevias", "Acciones previas") },
-        { label: "Documentacion Embarcacion", icon: "pi pi-snowflake", command: () => abrirModulo("docEmbarcacion", "Documentación Embarcación") },
-        { label: "Documentacion Pesca", icon: "pi pi-snowflake", command: () => abrirModulo("docPesca", "Documentación Pesca") },
-        { label: "Embarcaciones", icon: "pi pi-snowflake", command: () => abrirModulo("embarcaciones", "Embarcaciones") },
-        { label: "Boliches de Red", icon: "pi pi-snowflake", command: () => abrirModulo("bolichesRed", "Boliches de Red") },
-        { label: "Puertos", icon: "pi pi-snowflake", command: () => abrirModulo("puertos", "Puertos") },
+        { label: "Temporada Pesca", icon: "pi pi-leaf", command: () => abrirModulo("temporadaPesca", "Temporada Pesca") },
+        { label: "Entregas a Rendir Temporada Pesca", icon: "pi pi-snowflake", command: () => abrirModulo("entregaARendir", "Entregas a Rendir Temporada Pesca") },
+        { label: "Detalle Entrega a Rendir Temporada Pesca", icon: "pi pi-send", command: () => abrirModulo("detMovsEntregaRendir", "Detalle Movimientos Entrega a Rendir Temporada Pesca") },
+        { label: "Tripulantes Faena Temporada Pesca", icon: "pi pi-users", command: () => abrirModulo("tripulanteFaena", "Tripulantes de Faena Temporada Pesca") },
+        { label: "Detalle Documentos Tripulantes Faena Temporada Pesca", icon: "pi pi-file-o", command: () => abrirModulo("detalleDocTripulantes", "Detalle Documentos Tripulantes Faena Temporada Pesca") },
+        { label: "Detalle Acciones Previas Faena Temporada Pesca", icon: "pi pi-archive", command: () => abrirModulo("detAccionesPreviasFaena", "Detalle Acciones Previas Faena Temporada Pesca") },
+        { label: "Faena Temporada Pesca", icon: "pi pi-leaf", command: () => abrirModulo("faenaPesca", "Faena Temporada Pesca") },
+        { label: "Cala Faena Temporada Pesca", icon: "pi pi-map", command: () => abrirModulo("cala", "Cala Faena Temporada Pesca") },
+        { label: "Detalle Cala Faena Temporada Pesca", icon: "pi pi-list", command: () => abrirModulo("detalleCalaEspecie", "Detalle Cala Faena Temporada Pesca") },
+        { label: "Cala Faena Temporada Pesca Produce", icon: "pi pi-map", command: () => abrirModulo("calaProduce", "Cala Faena Temporada Pesca Produce") },
+        { label: "Detalle Cala Faena Temporada Pesca Produce", icon: "pi pi-list", command: () => abrirModulo("detalleCalaEspecieProduce", "Detalle Cala Faena Temporada Pesca Produce") },
+        { label: "Descargas Faena Temporada Pesca", icon: "pi pi-download", command: () => abrirModulo("descargaFaenaPesca", "Descargas Faena Temporada Pesca") },
+        { label: "Detalle Descargas Faena Temporada Pesca", icon: "pi pi-file-o", command: () => abrirModulo("DetalleDescargaFaena", "Detalle Descargas Faena Temporada Pesca") },
+        { label: "Liquidación Faena Temporada Pesca", icon: "pi pi-leaf", command: () => abrirModulo("liquidacionFaenaPesca", "Liquidación Faena Temporada Pesca") },
+        { label: "Movimientos Liquidación Faena Temporada Pesca", icon: "pi pi-exclamation-circle", command: () => abrirModulo("movLiquidacionFaenaPesca", "Movimientos Liquidación Faena Temporada Pesca") },
+        { label: "Liquidaciones Temporada Pesca", icon: "pi pi-calendar", command: () => abrirModulo("liquidacionTemporadaPesca", "Liquidaciones Temporada Pesca") },
+        { label: "Movimientos Liquidación Temporada Pesca", icon: "pi pi-arrows-h", command: () => abrirModulo("movLiquidacionTemporadaPesca", "Movimientos Liquidación Temporada Pesca") },
+        { label: "Detalle Documentacion Embarcación Temporada Pesca", icon: "pi pi-file-edit", command: () => abrirModulo("detalleDocEmbarcacion", "Detalle Documentacion Embarcación Temporada Pesca") },
+
+        { label: "Novedad Pesca Consumo", icon: "pi pi-ship", command: () => abrirModulo("novedadPescaConsumo", "Novedad Pesca Consumo") },
+        { label: "Entrega a Rendir Novedad Pesca Consumo", icon: "pi pi-snowflake", command: () => abrirModulo("entregaARendirPescaConsumo", "Entrega a Rendir Novedad Pesca Consumo") },
+        { label: "Detalle Entrega a Rendir Novedad Pesca Consumo", icon: "pi pi-send", command: () => abrirModulo("detMovsEntRendirPescaConsumo", "Detalle Entrega a Rendir Novedad Pesca Consumo") },
+        { label: "Tripulantes Novedad Pesca Consumo", icon: "pi pi-users", command: () => abrirModulo("tripulanteFaenaConsumo", "Tripulantes Novedad Pesca Consumo") },
+        { label: "Detalle Documentos Tripulantes Novedad Pesca Consumo", icon: "pi pi-file-o", command: () => abrirModulo("detDocTripulantesFaenaConsumo", "Detalle Documentos Tripulantes Novedad Pesca Consumo") },
+        { label: "Detalle Acciones Previas Faena Novedad Pesca Consumo", icon: "pi pi-archive", command: () => abrirModulo("detAccionesPreviasFaenaConsumo", "Detalle Acciones Previas Faena Novedad Pesca Consumo") },
+        { label: "Faena Novedad Pesca Consumo", icon: "pi pi-leaf", command: () => abrirModulo("faenaPescaConsumo", "Faena Novedad Pesca Consumo") },
+        { label: "Cala Faena Novedad Pesca Consumo", icon: "pi pi-leaf", command: () => abrirModulo("calaFaenaConsumo", "Cala Faena Novedad Pesca Consumo") },
+        { label: "Detalle Cala Faena Novedad Pesca Consumo", icon: "pi pi-list", command: () => abrirModulo("detCalaPescaConsumo", "Detalle Cala Faena Novedad Pesca Consumo") },
+        { label: "Cala Faena Novedad Pesca Consumo Produce", icon: "pi pi-cog", command: () => abrirModulo("calaFaenaConsumoProduce", "Cala Faena Novedad Pesca Consumo Produce") },
+        { label: "Detalle Cala Faena Novedad Pesca Consumo Produce", icon: "pi pi-list", command: () => abrirModulo("detCalaFaenaConsumoProduce", "Detalle Cala Faena Novedad Pesca Consumo Produce") },
+        { label: "Descargas Faena Novedad Pesca Consumo", icon: "pi pi-download", command: () => abrirModulo("descargaFaenaConsumo", "Descargas Faena Novedad Pesca Consumo") },
+        { label: "Detalle Descargas Faena Novedad Pesca Consumo", icon: "pi pi-file-o", command: () => abrirModulo("detDescargaFaenaConsumo", "Detalle Descargas Faena Novedad Pesca Consumo") },
+        { label: "Liquidación Faena Novedad Pesca Consumo", icon: "pi pi-leaf", command: () => abrirModulo("liquidacionFaenaConsumo", "Liquidación Faena Novedad Pesca Consumo") },
+        { label: "Movimientos Liquidación Faena Novedad Pesca Consumo", icon: "pi pi-refresh", command: () => abrirModulo("movLiquidacionFaenaConsumo", "Movimientos Liquidación Faena Novedad Pesca Consumo") },
+        { label: "Liquidacion Novedad Pesca Consumo", icon: "pi pi-exclamation-circle", command: () => abrirModulo("liqNovedadPescaConsumo", "Liquidacion Novedad Pesca Consumo") },
+        { label: "Movimientos Liquidacion Novedad Pesca Consumo", icon: "pi pi-refresh", command: () => abrirModulo("movLiqNovedadPescaConsumo", "Movimientos Liquidacion Novedad Pesca Consumo") },
+        { label: "Detalle Documentación Embarcación Novedad Pesca Consumo", icon: "pi pi-file-o", command: () => abrirModulo("detDocEmbarcacionPescaConsumo", "Detalle Documentación Embarcación Novedad Pesca Consumo") },
+
+        { label: "Documentación Pesca", icon: "pi pi-file-o", command: () => abrirModulo("documentoPesca", "Documentación Pesca") },
+        { label: "Documentación Personal", icon: "pi pi-id-card", command: () => abrirModulo("documentacionPersonal", "Documentación Personal") },
+        { label: "Acciones previas Faena", icon: "pi pi-archive", command: () => abrirModulo("accionesPreviasFaena", "Acciones previas Faena") },
+        { label: "Embarcaciones", icon: "pi pi-snowflake", command: () => abrirModulo("embarcacion", "Embarcaciones") },
+        { label: "Detalle Documentación Embarcación", icon: "pi pi-folder", command: () => abrirModulo("documentacionEmbarcacion", "Detalle Documentación Embarcación") },
+        { label: "Tipo Embarcación", icon: "pi pi-compass", command: () => abrirModulo("tipoEmbarcacion", "Tipo Embarcación") },
+        { label: "Boliche de Red", icon: "pi pi-circle", command: () => abrirModulo("bolicheRed", "Boliche de Red") },
+        { label: "Puerto de Pesca", icon: "pi pi-anchor", command: () => abrirModulo("puertoPesca", "Puerto de Pesca") },
       ]
     },
     {
       label: "Compras",
       icon: "pi pi-cog",
       items: [
-        { label: "Cotizacion Compra", icon: "pi pi-leaf", command: () => abrirModulo("compras", "Cotización Compra") },
+        { label: "Cotizacion Compra", icon: "pi pi-leaf", command: () => abrirModulo("cotizacionCompra", "Cotización Compra") },
+        { label: "Detalle Gastos Cotizacion Compras", icon: "pi pi-dollar", command: () => abrirModulo("detGastosComprasProd", "Detalle Gastos Cotizacion Compras") },
+        { label: "Detalle Cotizacion Compras", icon: "pi pi-list", command: () => abrirModulo("detCotizacionCompras", "Detalle Cotizacion Compras") },
+        { label: "Documentos Requeridos Cotización Compras", icon: "pi pi-file-o", command: () => abrirModulo("detDocsReqCotizaCompras", "Documentos Requeridos Cotización Compras") },
+        { label: "Detalle Productos Finales Cotizacion Compras", icon: "pi pi-box", command: () => abrirModulo("detProductoFinalCotizacionCompras", "Detalle Productos Finales Cotizacion Compras") },
+        { label: "Entregas a Rendir Cotizacion Compras", icon: "pi pi-send", command: () => abrirModulo("entregaARendirPCompras", "Entregas a Rendir Cotizacion Compras") },
+        { label: "Detalle Movimientos Entregas a Rendir Cotizacion Compras", icon: "pi pi-arrows-h", command: () => abrirModulo("detMovsEntregaRendirPCompras", "Detalle Movimientos Entregas a Rendir Cotizacion Compras") },
+        { label: "Liquidacion Cotización Compras", icon: "pi pi-file-check", command: () => abrirModulo("liquidacionProcesoComprasProd", "Liquidacion Cotización Compras") },
+        { label: "Movimientos Liquidación Cotización Compras", icon: "pi pi-exchange", command: () => abrirModulo("movLiquidacionProcesoComprasProd", "Movimientos Liquidación Cotización Compras") },
         { label: "Requerimiento Compra", icon: "pi pi-ship", command: () => abrirModulo("requerimientoCompra", "Requerimiento Compra") },
+        { label: "Detalle Requerimiento Compra", icon: "pi pi-ship", command: () => abrirModulo("detalleReqCompra", "Detalle Requerimiento Compra") },
         { label: "Orden de Compra", icon: "pi pi-archive", command: () => abrirModulo("ordenCompra", "Orden de Compra") },
-        { label: "Entregas a Rendir", icon: "pi pi-snowflake", command: () => abrirModulo("entregasRendir", "Entregas a Rendir") },
-        { label: "Liquidacion", icon: "pi pi-snowflake", command: () => abrirModulo("liquidacion", "Liquidación") },
+        { label: "Detalle Orden Compra", icon: "pi pi-archive", command: () => abrirModulo("detalleOrdenCompra", "Detalle Orden Compra") },
       ]
     },
     {
       label: "Ventas",
       icon: "pi pi-cog",
       items: [
-        { label: "Cotizacion Venta", icon: "pi pi-leaf", command: () => abrirModulo("ventas", "Cotización Venta") },
-        { label: "Documentacion Requerida", icon: "pi pi-ship", command: () => abrirModulo("docRequerida", "Documentación Requerida") },
-        { label: "Pre Venta", icon: "pi pi-ship", command: () => abrirModulo("preVenta", "Pre Venta") },
-        { label: "Entrega a Rendir", icon: "pi pi-archive", command: () => abrirModulo("entregaRendir", "Entrega a Rendir") },
-        { label: "Destino Mercaderia", icon: "pi pi-snowflake", command: () => abrirModulo("destinoMercaderia", "Destino Mercadería") },
-        { label: "Forma Transaccion mercaderia", icon: "pi pi-snowflake", command: () => abrirModulo("formaTransaccion", "Forma Transacción Mercadería") },
-        { label: "Incoterms", icon: "pi pi-snowflake", command: () => abrirModulo("incoterms", "Incoterms") },
-        { label: "Modo Despacho Mercaderia", icon: "pi pi-snowflake", command: () => abrirModulo("modoDespacho", "Modo Despacho Mercadería") },
-        { label: "Tipo Estado Mercaderia", icon: "pi pi-snowflake", command: () => abrirModulo("tipoEstadoMercaderia", "Tipo Estado Mercadería") },
-        { label: "Tipo Mercaderia", icon: "pi pi-snowflake", command: () => abrirModulo("tipoMercaderia", "Tipo Mercadería") },
+        { label: "Cotización Ventas", icon: "pi pi-file-edit", command: () => abrirModulo("cotizacionVentas", "Cotización Ventas") },
+        { label: "Detalle Cotización Ventas", icon: "pi pi-list", command: () => abrirModulo("detCotizacionVentas", "Detalle Cotización Ventas") },
+        { label: "Documentos Requeridos Cotización Ventas", icon: "pi pi-file-check", command: () => abrirModulo("detDocsReqCotizaVentas", "Documentos Requeridos Cotización Ventas") },
+        { label: "Entregas a Rendir Cotización Ventas", icon: "pi pi-send", command: () => abrirModulo("entregaARendirPVentas", "Entregas a Rendir Cotización Ventas") },
+        { label: "Movimientos Entregas a Rendir Cotización Ventas", icon: "pi pi-arrows-h", command: () => abrirModulo("detMovsEntregaRendirPVentas", "Movimientos Entregas a Rendir Cotización Ventas") },
+        { label: "Pre-Factura", icon: "pi pi-ship", command: () => abrirModulo("preFactura", "Pre-Factura") },
+        { label: "Detalle Pre-Factura", icon: "pi pi-ship", command: () => abrirModulo("detallePreFactura", "Detalle Pre-Factura") },
+        { label: "Documentación Requerida Compras y Ventas", icon: "pi pi-ship", command: () => abrirModulo("docRequeridaComprasVentas", "Documentación Requerida Compras y Ventas") },
+        { label: "Formas de Transacción Venta", icon: "pi pi-snowflake", command: () => abrirModulo("formaTransaccion", "Formas de Transacción Venta") },
+        { label: "Incoterms", icon: "pi pi-snowflake", command: () => abrirModulo("incoterm", "Incoterms") },
+        { label: "Formas Entrega(Venta)/Recepción(Compra) de Mercaderia", icon: "pi pi-truck", command: () => abrirModulo("modoDespachoRecepcion", "Forma Entrega(Venta)/Recepción(Compra) de Mercaderia") },
+        { label: "Estado de la Mercaderia", icon: "pi pi-flag", command: () => abrirModulo("tipoEstadoProducto", "Estado de la Mercaderia") },
+        { label: "Tipos de Mercaderia", icon: "pi pi-tags", command: () => abrirModulo("tipoProducto", "Tipos de Mercaderia") },
+        { label: "Destinos de Mercaderia", icon: "pi pi-map-marker", command: () => abrirModulo("destinoProducto", "Destinos de Mercaderia") },
       ]
     },
     {
       label: "Inventarios",
       icon: "pi pi-warehouse",
       items: [
-        { label: "Registro Movimientos", icon: "pi pi-leaf", command: () => abrirModulo("registroMovimientos", "Registro Movimientos") },
-        { label: "Kardex Productos", icon: "pi pi-ship", command: () => abrirModulo("kardexProductos", "Kardex Productos") },
-        { label: "Saldos por Producto", icon: "pi pi-archive", command: () => abrirModulo("saldosProducto", "Saldos por Producto") },
-        { label: "Saldos por Producto y Variables Control", icon: "pi pi-snowflake", command: () => abrirModulo("saldosProductoVariables", "Saldos por Producto y Variables Control") },
-        { label: "Serie Documentos", icon: "pi pi-snowflake", command: () => abrirModulo("serieDocumentos", "Serie Documentos") },
-        { label: "Tipos de Almacen", icon: "pi pi-snowflake", command: () => abrirModulo("tiposAlmacen", "Tipos de Almacén") },
-        { label: "Tipos de Concepto Almacen", icon: "pi pi-snowflake", command: () => abrirModulo("tiposConceptoAlmacen", "Tipos de Concepto Almacén") },
-        { label: "Tipos de Documentos", icon: "pi pi-snowflake", command: () => abrirModulo("tipoDocumento", "Tipos de Documentos") },
-        { label: "Tipo de Movimientos Almacen", icon: "pi pi-snowflake", command: () => abrirModulo("tipoMovimientosAlmacen", "Tipo de Movimientos Almacén") },
-        { label: "Conceptos de Movimiento Almacen", icon: "pi pi-snowflake", command: () => abrirModulo("conceptosMovimientoAlmacen", "Conceptos de Movimiento Almacén") },
+        { label: "Movimientos Almacén", icon: "pi pi-arrow-right-arrow-left", command: () => abrirModulo("movimientoAlmacen", "Movimientos Almacén") },
+        { label: "Detalles Movimiento Almacén", icon: "pi pi-list", command: () => abrirModulo("detalleMovimientoAlmacen", "Detalles Movimiento Almacén") },
+        { label: "Kardex Almacén", icon: "pi pi-chart-line", command: () => abrirModulo("kardexAlmacen", "Kardex Almacén") },
+        { label: "Saldos Productos-Cliente", icon: "pi pi-chart-bar", command: () => abrirModulo("saldosProductoCliente", "Saldos Productos-Cliente") },
+        { label: "Saldos Productos-Cliente Variables Control", icon: "pi pi-table", command: () => abrirModulo("saldosDetProductoCliente", "Saldos Productos-Cliente Variables Control") },
+        { label: "Conceptos Movimientos Almacén", icon: "pi pi-bookmark", command: () => abrirModulo("conceptoMovAlmacen", "Conceptos Movimientos Almacén") },
+        { label: "Tipos de Concepto Movimientos Almacén", icon: "pi pi-tags", command: () => abrirModulo("tipoConcepto", "Tipos de Concepto Movimientos Almacén") },
+        { label: "Tipos de Movimiento Almacén", icon: "pi pi-sort", command: () => abrirModulo("tipoMovimientoAlmacen", "Tipos de Movimiento Almacén") },
+        { label: "Tipos de Almacén", icon: "pi pi-building", command: () => abrirModulo("tipoAlmacen", "Tipos de Almacén") },
       ]
     },
     {
       label: "Mantenimiento",
       icon: "pi pi-truck",
       items: [
-        { label: "Registro de Ordenes de Trabajo", icon: "pi pi-leaf", command: () => abrirModulo("ordenesTrabajo", "Órdenes de Trabajo") },
-        { label: "Motivo origino OT", icon: "pi pi-ship", command: () => abrirModulo("motivoOT", "Motivo origino OT") },
+        { label: "Ordenes de Trabajo", icon: "pi pi-leaf", command: () => abrirModulo("oTMantenimiento", "Ordenes de Trabajo") },
+        { label: "Detalle Permisos Gestionados OT", icon: "pi pi-leaf", command: () => abrirModulo("detPermisoGestionadoOT", "Detalle Permisos Gestionados OT") },
+        { label: "Detalle Tareas OT", icon: "pi pi-leaf", command: () => abrirModulo("detTareasOT", "Detalle Tareas OT") },
+        { label: "Detalle Insumos de Tareas OT", icon: "pi pi-leaf", command: () => abrirModulo("detInsumosTareasOT", "Detalle Insumos de Tareas OT") },
         { label: "Tipo de Mantenimiento", icon: "pi pi-archive", command: () => abrirModulo("tipoMantenimiento", "Tipo de Mantenimiento") },
+        { label: "Motivo Origino OT", icon: "pi pi-question-circle", command: () => abrirModulo("motivoOriginoOT", "Motivo Origino OT") },
       ]
     },
     {
       label: "Flujo Caja",
       icon: "pi pi-dollar",
       items: [
-        { label: "Registro de Transacciones", icon: "pi pi-leaf", command: () => abrirModulo("registroTransacciones", "Registro de Transacciones") },
-        { label: "Cuentas Corrientes", icon: "pi pi-ship", command: () => abrirModulo("cuentasCorrientes", "Cuentas Corrientes") },
-        { label: "Tipos de Cuenta Corriente", icon: "pi pi-archive", command: () => abrirModulo("tiposCuentaCorriente", "Tipos de Cuenta Corriente") },
-        { label: "Tipos de Referencia", icon: "pi pi-snowflake", command: () => abrirModulo("tiposReferencia", "Tipos de Referencia") },
-        { label: "Bancos", icon: "pi pi-snowflake", command: () => abrirModulo("bancos", "Bancos") },
+        { label: "Movimientos de Caja", icon: "pi pi-money-bill", command: () => abrirModulo("movimientoCaja", "Movimientos de Caja") },
+        { label: "Cuenta Corriente", icon: "pi pi-wallet", command: () => abrirModulo("cuentaCorriente", "Cuenta Corriente") },
+        { label: "Tipo Cuenta Corriente", icon: "pi pi-list", command: () => abrirModulo("tipoCuentaCorriente", "Tipo Cuenta Corriente") },
+        { label: "Tipo Referencia Movimiento Caja", icon: "pi pi-tag", command: () => abrirModulo("tipoReferenciaMovimientoCaja", "Tipo Referencia Movimiento Caja") },
+        { label: "Asientos Contables Generados", icon: "pi pi-book", command: () => abrirModulo("asientoContableInterfaz", "Asientos Contables Generados") },
+        { label: "Bancos", icon: "pi pi-credit-card", command: () => abrirModulo("banco", "Bancos") },
+        { label: "Tipos Movimiento Entrega a Rendir", icon: "pi pi-anchor", command: () => abrirModulo("tipoMovEntregaRendir", "Tipos Movimiento Entrega a Rendir") },
+        { label: "Centros de Costo", icon: "pi pi-anchor", command: () => abrirModulo("centroCosto", "Centros de Costo") },
+        { label: "Categorias de Centros de Costo", icon: "pi pi-anchor", command: () => abrirModulo("categoriaCCosto", "Categorias de Centros de Costo") },
+        { label: "Empresas Centros de Costo", icon: "pi pi-anchor", command: () => abrirModulo("empresaCentroCosto", "Empresas Centros de Costo") },
       ]
     },
     {
       label: "Usuarios",
       icon: "pi pi-users",
       items: [
-        { label: "Registro de Usuarios", icon: "pi pi-leaf", command: () => abrirModulo("usuarios", "Registro de Usuarios") },
-        { label: "Personal", icon: "pi pi-ship", command: () => abrirModulo("personal", "Personal") },
-        { label: "Cargos Personal", icon: "pi pi-sitemap", command: () => abrirModulo("cargosPersonal", "Cargos del Personal") },
-        { label: "Tipo Contrato", icon: "pi pi-ship", command: () => abrirModulo("tipoContrato", "Tipo Contrato") },
-        { label: "Documentacion Personal", icon: "pi pi-archive", command: () => abrirModulo("docPersonal", "Documentación Personal") },
-        { label: "Ubigeos", icon: "pi pi-snowflake", command: () => abrirModulo("ubigeos", "Ubigeos") },
-        { label: "Pais", icon: "pi pi-snowflake", command: () => abrirModulo("pais", "País") },
-        { label: "Departamento", icon: "pi pi-snowflake", command: () => abrirModulo("departamento", "Departamento") },
-        { label: "Provincia", icon: "pi pi-snowflake", command: () => abrirModulo("provincia", "Provincia") },
-        { label: "Distrito", icon: "pi pi-snowflake", command: () => abrirModulo("distrito", "Distrito") },
+        { label: "Usuarios del Sistema", icon: "pi pi-leaf", command: () => abrirModulo("usuarios", "Usuarios del Sistema") },
+        { label: "Accesos Usuario", icon: "pi pi-key", command: () => abrirModulo("accesosUsuario", "Accesos Usuario") },
         { label: "Modulos Sistema", icon: "pi pi-snowflake", command: () => abrirModulo("modulosSistema", "Módulos Sistema") },
         { label: "Submodulos Sistema", icon: "pi pi-snowflake", command: () => abrirModulo("SubmodulosSistema", "Submódulos Sistema") },
+        { label: "Personal", icon: "pi pi-ship", command: () => abrirModulo("personal", "Personal") },
+        { label: "Tipos Documento Identidad", icon: "pi pi-ship", command: () => abrirModulo("tiposDocIdentidad", "Tipos Documento Identidad") },
+        { label: "Tipo Contrato", icon: "pi pi-ship", command: () => abrirModulo("tipoContrato", "Tipo Contrato") },
+        { label: "Cargos Personal", icon: "pi pi-sitemap", command: () => abrirModulo("cargosPersonal", "Cargos del Personal") },
+        { label: "Aprobadores", icon: "pi pi-sitemap", command: () => abrirModulo("parametroAprobador", "Aprobadores") },
       ]
     },
     {
       label: "Maestros",
       icon: "pi pi-users",
       items: [
-        { label: "Clientes y/o Proveedores", icon: "pi pi-leaf", command: () => abrirModulo("maestros", "Clientes y/o Proveedores") },
+        { label: "Entidades Comerciales (Clientes/Proveedores)", icon: "pi pi-leaf", command: () => abrirModulo("entidadComercial", "Entidades Comerciales (Clientes/Proveedores)") },
+        { label: "Detalle Contactos Entidad Comercial", icon: "pi pi-leaf", command: () => abrirModulo("contactoEntidad", "Detalle Contactos Entidad Comercial") },
+        { label: "Detalle Vehículos Entidad", icon: "pi pi-car", command: () => abrirModulo("vehiculoEntidad", "Detalle Vehículos Entidad") },
+        { label: "Detalle Precios Especiales Entidad Comercial", icon: "pi pi-money-bill", command: () => abrirModulo("precioEntidad", "Detalle Precios Especiales Entidad Comercial") },
+        { label: "Detalle Direcciones Entidad Comercial", icon: "pi pi-snowflake", command: () => abrirModulo("direccionEntidad", "Detalle Direcciones Entidad Comercial") },
+        { label: "Detalle Líneas de Crédito Entidad Comercial", icon: "pi pi-money-bill", command: () => abrirModulo("lineaCreditoEntidad", "Detalle Líneas de Crédito Entidad Comercial") },
+
+
+        { label: "Ubigeos", icon: "pi pi-snowflake", command: () => abrirModulo("ubigeo", "Ubigeos") },
+        { label: "Países", icon: "pi pi-globe", command: () => abrirModulo("pais", "Países") },
+        { label: "Departamentos", icon: "pi pi-map-marker", command: () => abrirModulo("departamento", "Departamentos") },
+        { label: "Provincias", icon: "pi pi-compass", command: () => abrirModulo("provincia", "Provincias") },
+        { label: "Distritos", icon: "pi pi-building", command: () => abrirModulo("distrito", "Distritos") },
+        { label: "Tipos de Entidad Comercial", icon: "pi pi-snowflake", command: () => abrirModulo("TipoEntidad", "Tipos de Entidad Comercial") },
+        { label: "Formas de Pago", icon: "pi pi-snowflake", command: () => abrirModulo("formaPago", "Formas de Pago") },
+        { label: "Agrupaciones de Entidad Comercial", icon: "pi pi-snowflake", command: () => abrirModulo("agrupacionEntidad", "Agrupaciones de Entidad Comercial") },
+        { label: "Monedas", icon: "pi pi-snowflake", command: () => abrirModulo("moneda", "Monedas") },
+        { label: "Tipos de Vehículo", icon: "pi pi-tags", command: () => abrirModulo("tipoVehiculo", "Tipos de Vehículo") },
+
         { label: "Empresas", icon: "pi pi-ship", command: () => abrirModulo("empresas", "Empresas") },
         { label: "Sedes", icon: "pi pi-ship", command: () => abrirModulo("sedesEmpresa", "Sedes Empresa") },
-        { label: "Areas Fisicas", icon: "pi pi-ship", command: () => abrirModulo("areasFisicas", "Áreas Físicas") },
-        { label: "Especies", icon: "pi pi-archive", command: () => abrirModulo("especies", "Especies") },
-        { label: "Monedas", icon: "pi pi-snowflake", command: () => abrirModulo("monedas", "Monedas") },
-        { label: "Aprobadores", icon: "pi pi-snowflake", command: () => abrirModulo("aprobadores", "Aprobadores") },
-        { label: "Productos & Servicios", icon: "pi pi-snowflake", command: () => abrirModulo("productosServicios", "Productos & Servicios") },
+        { label: "Áreas Físicas Sede Empresa", icon: "pi pi-ship", command: () => abrirModulo("areasFisicasSede", "Áreas Físicas Sede Empresa") },
+        { label: "Especies", icon: "pi pi-archive", command: () => abrirModulo("especie", "Especies") },
+
+        { label: "Activos", icon: "pi pi-box", command: () => abrirModulo("activo", "Activos") },
+        { label: "Tipos de Activo", icon: "pi pi-tag", command: () => abrirModulo("tipoActivo", "Tipos de Activo") },
+        { label: "Detalle Permisos Activo", icon: "pi pi-list", command: () => abrirModulo("detallePermisoActivo", "Detalle Permisos Activo") },
+        { label: "Permisos para Activos", icon: "pi pi-check-square", command: () => abrirModulo("permisoAutorizacion", "Permisos para Activos") },
+
+        { label: "Estado Multifunción", icon: "pi pi-cog", command: () => abrirModulo("estadoMultiFuncion", "Estado Multifunción") },
+        { label: "Tipo Proviene De", icon: "pi pi-directions", command: () => abrirModulo("tipoProvieneDe", "Tipo Proviene De") },
+
+        { label: "Productos y Servicios", icon: "pi pi-box", command: () => abrirModulo("producto", "Productos y Servicios") },
+        { label: "Familias de Producto", icon: "pi pi-sitemap", command: () => abrirModulo("familiaProducto", "Familias de Producto") },
+        { label: "Subfamilias de Producto", icon: "pi pi-share-alt", command: () => abrirModulo("subfamiliaProducto", "Subfamilias de Producto") },
+        { label: "Empaques Unidades de Medida", icon: "pi pi-calculator", command: () => abrirModulo("unidadMedida", "Empaques Unidades de Medida") },
+        { label: "Tipos de Material Producto", icon: "pi pi-th-large", command: () => abrirModulo("tipoMaterial", "Tipos de Material Producto") },
+        { label: "Colores Producto", icon: "pi pi-palette", command: () => abrirModulo("color", "Colores Producto") },
+
+        { label: "Tipos de Documento", icon: "pi pi-snowflake", command: () => abrirModulo("tipoDocumento", "Tipos de Documento") },
+        { label: "Series de Documento", icon: "pi pi-file-o", command: () => abrirModulo("serieDoc", "Series de Documento") },
       ]
     }
   ];

@@ -19,6 +19,8 @@ import { Column } from "primereact/column";
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
+import { ConfirmDialog } from 'primereact/confirmdialog';
+import { useAuthStore } from '../shared/stores/useAuthStore';
 import { InputText } from 'primereact/inputtext';
 import { Avatar } from 'primereact/avatar'; // Importación necesaria para mostrar avatares profesionales
 import UsuarioForm from "../components/usuarios/UsuarioForm";
@@ -32,7 +34,16 @@ import { getUsuarios, crearUsuario, actualizarUsuario, eliminarUsuario } from ".
  * Documentado en español técnico.
  */
 
+/**
+ * REGLA TRANSVERSAL ERP MEGUI:
+ * - Edición profesional con un solo clic en la fila.
+ * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin).
+ * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
+ * - El usuario autenticado se obtiene siempre desde useAuthStore.
+ */
 export default function Usuarios() {
+  const usuario = useAuthStore(state => state.usuario);
+  const [confirmState, setConfirmState] = useState({ visible: false, row: null });
   // Referencia para Toast de notificaciones
   const toast = useRef(null);
 
@@ -124,34 +135,48 @@ export default function Usuarios() {
 
   // Acción: abrir modal para editar usuario
   function handleEditar(usuario) {
-    setModoEdicion(true);
     setUsuarioEdit(usuario);
+    setModoEdicion(true);
     setMostrarDialogo(true);
   }
 
+  // Edición con un solo clic en la fila
+  const onRowClick = (e) => {
+    handleEditar(e.data);
+  }
+
   // Acción: eliminar usuario
-  async function handleEliminar(usuario) {
-    if (window.confirm(`¿Seguro que deseas eliminar a ${usuario.nombre}?`)) {
-      try {
-        setLoading(true);
-        await eliminarUsuario(usuario.id);
-        mostrarToast("success", "Usuario eliminado", `El usuario ${usuario.nombre} fue eliminado correctamente.`);
-        cargarUsuarios();
-      } catch (err) {
-        mostrarToast("error", "Error al eliminar", "No se pudo eliminar el usuario.");
-      } finally {
-        setLoading(false);
-      }
+  function handleEliminar(usuario) {
+    setConfirmState({ visible: true, row: usuario });
+  }
+
+  const handleConfirmDelete = async () => {
+    const usuarioRow = confirmState.row;
+    if (!usuarioRow) return;
+    setConfirmState({ visible: false, row: null });
+    setLoading(true);
+    try {
+      await eliminarUsuario(usuarioRow.id);
+      mostrarToast("success", "Usuario eliminado", `El usuario fue eliminado correctamente.`);
+      cargarUsuarios();
+    } catch (err) {
+      mostrarToast("error", "Error", "No se pudo eliminar el usuario.");
+    } finally {
+      setLoading(false);
     }
   }
 
   // Renderiza los botones de acción en cada fila
-  const accionesTemplate = (rowData) => (
-    <span>
-      <Button icon="pi pi-pencil" className="p-button-rounded p-button-text p-button-info" style={{ marginRight: 8 }} onClick={() => handleEditar(rowData)} tooltip="Editar" />
-      <Button icon="pi pi-trash" className="p-button-rounded p-button-text p-button-danger" onClick={() => handleEliminar(rowData)} tooltip="Eliminar" />
-    </span>
-  );
+  function accionesTemplate(rowData) {
+    return (
+      <span>
+        <Button icon="pi pi-pencil" className="p-button-rounded p-button-text p-button-info" style={{ marginRight: 8 }} onClick={e => { e.stopPropagation(); handleEditar(rowData); }} tooltip="Editar" />
+        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+          <Button icon="pi pi-trash" className="p-button-rounded p-button-text p-button-danger" onClick={e => { e.stopPropagation(); handleEliminar(rowData); }} tooltip="Eliminar" />
+        )}
+      </span>
+    );
+  }
 
   // Submit del formulario (alta o edición)
   async function onSubmitForm(data) {
@@ -194,6 +219,22 @@ export default function Usuarios() {
         <Button label="Nuevo usuario" icon="pi pi-plus" className="p-button-success" onClick={handleNuevo}/>
       </div>
       {/* Tabla de usuarios con PrimeReact DataTable */}
+      <ConfirmDialog
+        visible={confirmState.visible}
+        onHide={() => setConfirmState({ visible: false, row: null })}
+        message={<span style={{ color: '#b71c1c', fontWeight: 600 }}>
+          ¿Está seguro que desea <span style={{ color: '#b71c1c' }}>eliminar</span> el usuario <b>{confirmState.row ? (confirmState.row.personal ? `${confirmState.row.personal.nombres} ${confirmState.row.personal.apellidos}` : confirmState.row.username) : ''}</b>?<br/>
+          <span style={{ fontWeight: 400, color: '#b71c1c' }}>Esta acción no se puede deshacer.</span>
+        </span>}
+        header={<span style={{ color: '#b71c1c' }}>Confirmar eliminación</span>}
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        acceptLabel="Eliminar"
+        rejectLabel="Cancelar"
+        accept={handleConfirmDelete}
+        reject={() => setConfirmState({ visible: false, row: null })}
+        style={{ minWidth: 400 }}
+      />
       <DataTable value={usuarios}
         paginator
         rows={rows}
@@ -210,6 +251,7 @@ export default function Usuarios() {
             <InputText type="search" onInput={e => setGlobalFilter(e.target.value)} placeholder="Buscar usuarios..." style={{ width: 240 }} />
           </span>
         }
+        onRowClick={onRowClick}
       >
         {/* Columna: Avatar profesional del personal relacionado (foto o iniciales) */}
         <Column

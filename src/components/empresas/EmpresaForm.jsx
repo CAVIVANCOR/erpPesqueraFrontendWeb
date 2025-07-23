@@ -12,7 +12,7 @@ import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
 import { useState } from 'react';
-import { listarPersonalEmpresa } from '../../api/empresa-personal';
+import { getPersonal } from '../../api/personal';
 import { Checkbox } from 'primereact/checkbox';
 import { Button } from 'primereact/button';
 import { FileUpload } from 'primereact/fileupload';
@@ -77,6 +77,16 @@ export default function EmpresaForm({ isEdit = false, defaultValues = {}, onSubm
   // Estado profesional para lista de personal
   const [personal, setPersonal] = useState([]);
   const [loadingPersonal, setLoadingPersonal] = useState(false);
+
+  const listarPersonalEmpresa = async (empresaId) => {
+    // Devuelve un array [{ id, nombreCompleto }]
+    const data = await getPersonal(empresaId);
+    // Mapea a formato profesional para combos
+    return data.map(p => ({
+      id: p.id,
+      nombreCompleto: `${p.nombres} ${p.apellidos}${p.cargo?.nombre || '' ? ' (' + p.cargo?.nombre + ')' : ''}`.trim()
+    }));
+  }
 
   // Carga el personal de la empresa al montar o cambiar empresaId
   useEffect(() => {

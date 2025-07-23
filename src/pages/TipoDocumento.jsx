@@ -8,6 +8,8 @@ import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Toast } from 'primereact/toast';
 import { Dialog } from 'primereact/dialog';
+import { ConfirmDialog } from 'primereact/confirmdialog';
+import { useAuthStore } from '../shared/stores/useAuthStore';
 import TipoDocumentoForm from '../components/tipoDocumento/TipoDocumentoForm';
 import { getTiposDocumento, crearTipoDocumento, actualizarTipoDocumento, eliminarTipoDocumento } from '../api/tipoDocumento';
 
@@ -15,7 +17,16 @@ import { getTiposDocumento, crearTipoDocumento, actualizarTipoDocumento, elimina
  * Página de gestión de tipos de documento.
  * Incluye DataTable, alta, edición y eliminación, con feedback visual profesional.
  */
+/**
+ * REGLA TRANSVERSAL ERP MEGUI:
+ * - Edición profesional con un solo clic en la fila.
+ * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin).
+ * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
+ * - El usuario autenticado se obtiene siempre desde useAuthStore.
+ */
 export default function TipoDocumentoPage() {
+  const usuario = useAuthStore(state => state.usuario);
+  const [confirmState, setConfirmState] = useState({ visible: false, row: null });
   const [tipos, setTipos] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -43,8 +54,10 @@ export default function TipoDocumentoPage() {
   // Renderizado de botones de acción
   const actionBodyTemplate = (rowData) => (
     <>
-      <Button icon="pi pi-pencil" className="p-button-text p-mr-2" onClick={() => onEdit(rowData)} />
-      <Button icon="pi pi-trash" className="p-button-text p-button-danger" onClick={() => onDelete(rowData)} />
+      <Button icon="pi pi-pencil" className="p-button-text p-mr-2" onClick={e => { e.stopPropagation(); onEdit(rowData); }} />
+      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+        <Button icon="pi pi-trash" className="p-button-text p-button-danger" onClick={e => { e.stopPropagation(); handleDelete(rowData); }} />
+      )}
     </>
   );
 
@@ -59,8 +72,19 @@ export default function TipoDocumentoPage() {
     setIsEdit(true);
     setShowForm(true);
   };
-  const onDelete = async (row) => {
-    if (!window.confirm('¿Está seguro de eliminar este tipo de documento?')) return;
+
+  // Edición con un solo clic en la fila
+  const onRowClick = (e) => {
+    onEdit(e.data);
+  }
+  const handleDelete = (row) => {
+    setConfirmState({ visible: true, row });
+  };
+
+  const handleConfirmDelete = async () => {
+    const row = confirmState.row;
+    if (!row) return;
+    setConfirmState({ visible: false, row: null });
     setLoading(true);
     try {
       await eliminarTipoDocumento(row.id);
@@ -76,11 +100,18 @@ export default function TipoDocumentoPage() {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
+      const payload = {
+        id: typeof data.id === "string" ? Number(data.id) : data.id,
+        codigo: data.codigo,
+        codigoSunat: data.codigoSunat,
+        descripcion: data.descripcion,
+        activo: data.activo
+      };
       if (isEdit && selected) {
-        await actualizarTipoDocumento(selected.id, data);
+        await actualizarTipoDocumento(selected.id, payload);
         toast.current?.show({ severity: 'success', summary: 'Actualizado', detail: 'Tipo de documento actualizado' });
       } else {
-        await crearTipoDocumento(data);
+        await crearTipoDocumento(payload);
         toast.current?.show({ severity: 'success', summary: 'Registrado', detail: 'Tipo de documento creado' });
       }
       setShowForm(false);
@@ -99,7 +130,23 @@ export default function TipoDocumentoPage() {
         <h2>Tipos de Documento</h2>
         <Button label="Nuevo Tipo" icon="pi pi-plus" onClick={onNew} />
       </div>
-      <DataTable value={tipos} loading={loading} paginator rows={10} selectionMode="single" selection={selected} onSelectionChange={e => setSelected(e.value)}>
+      <ConfirmDialog
+        visible={confirmState.visible}
+        onHide={() => setConfirmState({ visible: false, row: null })}
+        message={<span style={{ color: '#b71c1c', fontWeight: 600 }}>
+          ¿Está seguro que desea <span style={{ color: '#b71c1c' }}>eliminar</span> el tipo de documento <b>{confirmState.row ? confirmState.row.descripcion : ''}</b>?<br/>
+          <span style={{ fontWeight: 400, color: '#b71c1c' }}>Esta acción no se puede deshacer.</span>
+        </span>}
+        header={<span style={{ color: '#b71c1c' }}>Confirmar eliminación</span>}
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        acceptLabel="Eliminar"
+        rejectLabel="Cancelar"
+        accept={handleConfirmDelete}
+        reject={() => setConfirmState({ visible: false, row: null })}
+        style={{ minWidth: 400 }}
+      />
+      <DataTable value={tipos} loading={loading} paginator rows={10} selectionMode="single" selection={selected} onSelectionChange={e => setSelected(e.value)} onRowClick={onRowClick}>
         <Column field="codigo" header="Código" />
         <Column field="codigoSunat" header="Código Sunat" />
         <Column field="descripcion" header="Descripción" />

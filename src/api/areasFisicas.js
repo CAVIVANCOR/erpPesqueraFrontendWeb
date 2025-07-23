@@ -6,6 +6,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
+
 const API_URL = `${import.meta.env.VITE_API_URL}/areas-fisicas-sede`;
 
 function getAuthHeader() {

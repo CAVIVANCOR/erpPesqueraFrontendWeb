@@ -9,6 +9,8 @@ import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
+import { useAuthStore } from '../shared/stores/useAuthStore';
 import { InputText } from "primereact/inputtext";
 import { getEmpresas, crearEmpresa, actualizarEmpresa, eliminarEmpresa } from "../api/empresa";
 import EmpresaForm from "../components/empresas/EmpresaForm";
@@ -21,7 +23,16 @@ import EmpresaForm from "../components/empresas/EmpresaForm";
  * - Feedback visual con Toast y loaders.
  * Documentado en español técnico.
  */
+/**
+ * REGLA TRANSVERSAL ERP MEGUI:
+ * - Edición profesional con un solo clic en la fila.
+ * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin).
+ * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
+ * - El usuario autenticado se obtiene siempre desde useAuthStore.
+ */
 export default function Empresas() {
+  const usuario = useAuthStore(state => state.usuario);
+  const [confirmState, setConfirmState] = useState({ visible: false, row: null });
   // Referencia para Toast de notificaciones
   const toast = useRef(null);
 
@@ -107,9 +118,20 @@ export default function Empresas() {
     setMostrarDialogo(true);
   }
 
+  // Edición con un solo clic en la fila
+  const onRowClick = (e) => {
+    handleEditar(e.data);
+  }
+
   // Maneja la eliminación
-  async function handleEliminar(empresa) {
-    if (!window.confirm("¿Está seguro que desea eliminar esta empresa?")) return;
+  function handleEliminar(empresa) {
+    setConfirmState({ visible: true, row: empresa });
+  }
+
+  const handleConfirmDelete = async () => {
+    const empresa = confirmState.row;
+    if (!empresa) return;
+    setConfirmState({ visible: false, row: null });
     setLoading(true);
     try {
       await eliminarEmpresa(empresa.id);
@@ -125,8 +147,10 @@ export default function Empresas() {
   // Renderiza los botones de acción en cada fila
   const accionesTemplate = (rowData) => (
     <span>
-      <Button icon="pi pi-pencil" className="p-button-rounded p-button-text p-button-info" style={{ marginRight: 8 }} onClick={() => handleEditar(rowData)} tooltip="Editar" />
-      <Button icon="pi pi-trash" className="p-button-rounded p-button-text p-button-danger" onClick={() => handleEliminar(rowData)} tooltip="Eliminar" />
+      <Button icon="pi pi-pencil" className="p-button-rounded p-button-text p-button-info" style={{ marginRight: 8 }} onClick={e => { e.stopPropagation(); handleEditar(rowData); }} tooltip="Editar" />
+      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+        <Button icon="pi pi-trash" className="p-button-rounded p-button-text p-button-danger" onClick={e => { e.stopPropagation(); handleEliminar(rowData); }} tooltip="Eliminar" />
+      )}
     </span>
   );
 
@@ -137,6 +161,22 @@ export default function Empresas() {
         <h2>Empresas</h2>
         <Button label="Nueva Empresa" icon="pi pi-plus" onClick={() => { setEmpresaEdit(null); setModoEdicion(false); setMostrarDialogo(true); }} />
       </div>
+      <ConfirmDialog
+        visible={confirmState.visible}
+        onHide={() => setConfirmState({ visible: false, row: null })}
+        message={<span style={{ color: '#b71c1c', fontWeight: 600 }}>
+          ¿Está seguro que desea <span style={{ color: '#b71c1c' }}>eliminar</span> la empresa <b>{confirmState.row ? confirmState.row.razonSocial : ''}</b>?<br/>
+          <span style={{ fontWeight: 400, color: '#b71c1c' }}>Esta acción no se puede deshacer.</span>
+        </span>}
+        header={<span style={{ color: '#b71c1c' }}>Confirmar eliminación</span>}
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        acceptLabel="Eliminar"
+        rejectLabel="Cancelar"
+        accept={handleConfirmDelete}
+        reject={() => setConfirmState({ visible: false, row: null })}
+        style={{ minWidth: 400 }}
+      />
       <DataTable
         value={empresas}
         loading={loading}
@@ -150,6 +190,7 @@ export default function Empresas() {
             <InputText type="search" onInput={e => setGlobalFilter(e.target.value)} placeholder="Buscar empresas..." style={{ width: 240 }} />
           </span>
         }
+        onRowClick={onRowClick}
       >
         <Column field="id" header="ID" style={{ width: 80 }} />
         <Column field="razonSocial" header="Razón Social" />
