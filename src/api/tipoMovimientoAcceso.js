@@ -17,7 +17,12 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/tipos-movimiento-acceso`;
+
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /**
  * Obtiene el token de autenticación desde el store de Zustand
@@ -35,14 +40,7 @@ const obtenerTokenAuth = () => {
  */
 export const obtenerTiposMovimientoAcceso = async () => {
   try {
-    const token = obtenerTokenAuth();
-    const response = await axios.get(`${API_URL}/tipo-movimiento-acceso`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
+    const response = await axios.get(API_URL, {headers: getAuthHeader()});
     // Normalización de datos según regla ERP Megui
     const datosNormalizados = response.data.map(tipo => ({
       ...tipo,
@@ -51,7 +49,6 @@ export const obtenerTiposMovimientoAcceso = async () => {
       nombre: tipo.nombre?.trim() || '',
       activo: Boolean(tipo.activo)
     }));
-
     return datosNormalizados;
   } catch (error) {
     console.error('Error al obtener tipos de movimientos de acceso:', error);
@@ -66,14 +63,7 @@ export const obtenerTiposMovimientoAcceso = async () => {
  */
 export const obtenerTipoMovimientoAccesoPorId = async (id) => {
   try {
-    const token = obtenerTokenAuth();
-    const response = await axios.get(`${API_URL}/tipo-movimiento-acceso/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
+    const response = await axios.get(`${API_URL}/${id}`, {headers: getAuthHeader()});
     // Normalización de datos según regla ERP Megui
     const tipoNormalizado = {
       ...response.data,
@@ -97,24 +87,14 @@ export const obtenerTipoMovimientoAccesoPorId = async (id) => {
  */
 export const crearTipoMovimientoAcceso = async (datosTipo) => {
   try {
-    const token = obtenerTokenAuth();
-    
     // Normalización de datos antes del envío
     const datosNormalizados = {
       ...datosTipo,
-      codigo: datosTipo.codigo?.trim().toUpperCase() || '',
       nombre: datosTipo.nombre?.trim() || '',
       descripcion: datosTipo.descripcion?.trim() || null,
       activo: Boolean(datosTipo.activo)
     };
-
-    const response = await axios.post(`${API_URL}/tipo-movimiento-acceso`, datosNormalizados, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
+    const response = await axios.post(API_URL, datosNormalizados, {headers: getAuthHeader()});
     return response.data;
   } catch (error) {
     console.error('Error al crear tipo de movimiento de acceso:', error);
@@ -130,23 +110,16 @@ export const crearTipoMovimientoAcceso = async (datosTipo) => {
  */
 export const actualizarTipoMovimientoAcceso = async (id, datosTipo) => {
   try {
-    const token = obtenerTokenAuth();
     
     // Normalización de datos antes del envío
     const datosNormalizados = {
       ...datosTipo,
-      codigo: datosTipo.codigo?.trim().toUpperCase() || '',
       nombre: datosTipo.nombre?.trim() || '',
       descripcion: datosTipo.descripcion?.trim() || null,
       activo: Boolean(datosTipo.activo)
     };
 
-    const response = await axios.put(`${API_URL}/tipo-movimiento-acceso/${id}`, datosNormalizados, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    const response = await axios.put(`${API_URL}/${id}`, datosNormalizados, {headers: getAuthHeader()});
 
     return response.data;
   } catch (error) {
@@ -162,14 +135,7 @@ export const actualizarTipoMovimientoAcceso = async (id, datosTipo) => {
  */
 export const eliminarTipoMovimientoAcceso = async (id) => {
   try {
-    const token = obtenerTokenAuth();
-    const response = await axios.delete(`${API_URL}/tipo-movimiento-acceso/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
+    const response = await axios.delete(`${API_URL}/${id}`, {headers: getAuthHeader()});
     return response.data;
   } catch (error) {
     console.error('Error al eliminar tipo de movimiento de acceso:', error);
@@ -183,19 +149,11 @@ export const eliminarTipoMovimientoAcceso = async (id) => {
  */
 export const obtenerTiposMovimientoAccesoActivos = async () => {
   try {
-    const token = obtenerTokenAuth();
-    const response = await axios.get(`${API_URL}/tipo-movimiento-acceso/activos`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
+    const response = await axios.get(`${API_URL}/activos`, {headers: getAuthHeader()});
     // Normalización de datos según regla ERP Megui
     const datosNormalizados = response.data.map(tipo => ({
       ...tipo,
       id: Number(tipo.id),
-      codigo: tipo.codigo?.trim().toUpperCase() || '',
       nombre: tipo.nombre?.trim() || '',
       activo: Boolean(tipo.activo)
     }));
@@ -214,19 +172,11 @@ export const obtenerTiposMovimientoAccesoActivos = async () => {
  */
 export const obtenerTiposPorTipoMovimiento = async (tipoMovimiento) => {
   try {
-    const token = obtenerTokenAuth();
-    const response = await axios.get(`${API_URL}/tipo-movimiento-acceso/por-tipo/${tipoMovimiento}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
+    const response = await axios.get(`${API_URL}/por-tipo/${tipoMovimiento}`, {headers: getAuthHeader()});
     // Normalización de datos según regla ERP Megui
     const datosNormalizados = response.data.map(tipo => ({
       ...tipo,
       id: Number(tipo.id),
-      codigo: tipo.codigo?.trim().toUpperCase() || '',
       nombre: tipo.nombre?.trim() || '',
       activo: Boolean(tipo.activo)
     }));
@@ -238,67 +188,6 @@ export const obtenerTiposPorTipoMovimiento = async (tipoMovimiento) => {
   }
 };
 
-/**
- * Valida si un código de tipo de movimiento ya existe
- * @param {string} codigo - Código del tipo de movimiento
- * @param {number} excludeId - ID a excluir de la validación (para edición)
- * @returns {Promise<boolean>} true si el código está disponible
- */
-export const validarCodigoUnico = async (codigo, excludeId = null) => {
-  try {
-    const token = obtenerTokenAuth();
-    const params = new URLSearchParams({
-      codigo: codigo.trim().toUpperCase()
-    });
-    
-    if (excludeId) {
-      params.append('excludeId', excludeId.toString());
-    }
-
-    const response = await axios.get(`${API_URL}/tipo-movimiento-acceso/validar-codigo?${params}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    return response.data.disponible;
-  } catch (error) {
-    console.error('Error al validar código único:', error);
-    throw error;
-  }
-};
-
-/**
- * Valida si un nombre de tipo de movimiento ya existe
- * @param {string} nombre - Nombre del tipo de movimiento
- * @param {number} excludeId - ID a excluir de la validación (para edición)
- * @returns {Promise<boolean>} true si el nombre está disponible
- */
-export const validarNombreUnico = async (nombre, excludeId = null) => {
-  try {
-    const token = obtenerTokenAuth();
-    const params = new URLSearchParams({
-      nombre: nombre.trim()
-    });
-    
-    if (excludeId) {
-      params.append('excludeId', excludeId.toString());
-    }
-
-    const response = await axios.get(`${API_URL}/tipo-movimiento-acceso/validar-nombre?${params}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    return response.data.disponible;
-  } catch (error) {
-    console.error('Error al validar nombre único:', error);
-    throw error;
-  }
-};
 
 /**
  * Cambia el estado activo/inactivo de un tipo de movimiento
@@ -308,15 +197,9 @@ export const validarNombreUnico = async (nombre, excludeId = null) => {
  */
 export const cambiarEstadoTipoMovimiento = async (id, activo) => {
   try {
-    const token = obtenerTokenAuth();
-    const response = await axios.patch(`${API_URL}/tipo-movimiento-acceso/${id}/estado`, 
+    const response = await axios.patch(`${API_URL}/${id}/estado`, 
       { activo: Boolean(activo) }, 
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      }
+      {headers: getAuthHeader()}
     );
 
     return response.data;

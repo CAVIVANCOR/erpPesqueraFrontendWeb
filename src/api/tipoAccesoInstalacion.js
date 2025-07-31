@@ -1,7 +1,12 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/tipos-acceso-instalacion`;
+
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /**
  * API para gestión de Tipo Acceso Instalación
@@ -13,12 +18,7 @@ const API_URL = import.meta.env.VITE_API_URL;
  * @returns {Promise} Lista de tipos de acceso a instalaciones
  */
 export const getAllTipoAccesoInstalacion = async () => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/tipo-acceso-instalacion`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.get(API_URL, { headers: getAuthHeader() });
   return response.data;
 };
 
@@ -28,12 +28,7 @@ export const getAllTipoAccesoInstalacion = async () => {
  * @returns {Promise} Tipo de acceso a instalación creado
  */
 export const crearTipoAccesoInstalacion = async (tipoAccesoInstalacionData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/tipo-acceso-instalacion`, tipoAccesoInstalacionData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.post(API_URL, tipoAccesoInstalacionData, { headers: getAuthHeader() });
   return response.data;
 };
 
@@ -44,12 +39,7 @@ export const crearTipoAccesoInstalacion = async (tipoAccesoInstalacionData) => {
  * @returns {Promise} Tipo de acceso a instalación actualizado
  */
 export const actualizarTipoAccesoInstalacion = async (id, tipoAccesoInstalacionData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/tipo-acceso-instalacion/${id}`, tipoAccesoInstalacionData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.put(`${API_URL}/${id}`, tipoAccesoInstalacionData, { headers: getAuthHeader() });
   return response.data;
 };
 
@@ -59,16 +49,7 @@ export const actualizarTipoAccesoInstalacion = async (id, tipoAccesoInstalacionD
  * @returns {Promise} Confirmación de eliminación
  */
 export const deleteTipoAccesoInstalacion = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/tipo-acceso-instalacion/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeader() });
   return response.data;
 };
 
-// Aliases en inglés para compatibilidad
-export const createTipoAccesoInstalacion = crearTipoAccesoInstalacion;
-export const updateTipoAccesoInstalacion = actualizarTipoAccesoInstalacion;
-export const eliminarTipoAccesoInstalacion = deleteTipoAccesoInstalacion;

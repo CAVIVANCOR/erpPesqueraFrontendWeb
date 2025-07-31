@@ -1,14 +1,17 @@
 // src/components/tipoAccesoInstalacion/TipoAccesoInstalacionForm.jsx
 // Formulario profesional para TipoAccesoInstalacion con validaciones completas
 // Cumple regla transversal ERP Megui: normalización de IDs, documentación en español
-import React, { useState, useEffect, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { Checkbox } from 'primereact/checkbox';
-import { Button } from 'primereact/button';
-import { Toast } from 'primereact/toast';
-import { createTipoAccesoInstalacion, updateTipoAccesoInstalacion } from '../../api/tipoAccesoInstalacion';
+import React, { useState, useEffect, useRef } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { InputText } from "primereact/inputtext";
+import { InputTextarea } from "primereact/inputtextarea";
+import { Checkbox } from "primereact/checkbox";
+import { Button } from "primereact/button";
+import { Toast } from "primereact/toast";
+import {
+  crearTipoAccesoInstalacion,
+  actualizarTipoAccesoInstalacion,
+} from "../../api/tipoAccesoInstalacion";
 
 /**
  * Componente TipoAccesoInstalacionForm
@@ -16,12 +19,17 @@ import { createTipoAccesoInstalacion, updateTipoAccesoInstalacion } from '../../
  * Incluye validaciones según patrón ERP Megui
  */
 const TipoAccesoInstalacionForm = ({ tipoAcceso, onSave, onCancel }) => {
-  const { control, handleSubmit, formState: { errors }, reset } = useForm({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm({
     defaultValues: {
-      nombre: '',
-      descripcion: '',
-      activo: true
-    }
+      nombre: "",
+      descripcion: "",
+      activo: true,
+    },
   });
 
   const [loading, setLoading] = useState(false);
@@ -31,9 +39,9 @@ const TipoAccesoInstalacionForm = ({ tipoAcceso, onSave, onCancel }) => {
     if (tipoAcceso) {
       // Cargar datos del tipo de acceso para edición
       reset({
-        nombre: tipoAcceso.nombre || '',
-        descripcion: tipoAcceso.descripcion || '',
-        activo: Boolean(tipoAcceso.activo)
+        nombre: tipoAcceso.nombre || "",
+        descripcion: tipoAcceso.descripcion || "",
+        activo: Boolean(tipoAcceso.activo),
       });
     }
   }, [tipoAcceso, reset]);
@@ -46,34 +54,35 @@ const TipoAccesoInstalacionForm = ({ tipoAcceso, onSave, onCancel }) => {
       const payload = {
         nombre: data.nombre.trim(),
         descripcion: data.descripcion?.trim() || null,
-        activo: Boolean(data.activo)
+        activo: Boolean(data.activo),
       };
 
-      console.log('Payload TipoAccesoInstalacion:', payload);
+      console.log("Payload TipoAccesoInstalacion:", payload);
 
       if (tipoAcceso?.id) {
-        await updateTipoAccesoInstalacion(tipoAcceso.id, payload);
+        await actualizarTipoAccesoInstalacion(tipoAcceso.id, payload);
         toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Tipo de acceso actualizado correctamente'
+          severity: "success",
+          summary: "Éxito",
+          detail: "Tipo de acceso actualizado correctamente",
         });
       } else {
-        await createTipoAccesoInstalacion(payload);
+        await crearTipoAccesoInstalacion(payload);
         toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Tipo de acceso creado correctamente'
+          severity: "success",
+          summary: "Éxito",
+          detail: "Tipo de acceso creado correctamente",
         });
       }
 
       onSave();
     } catch (error) {
-      console.error('Error al guardar tipo de acceso:', error);
+      console.error("Error al guardar tipo de acceso:", error);
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: error.response?.data?.error || 'Error al guardar el tipo de acceso'
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.error || "Error al guardar el tipo de acceso",
       });
     } finally {
       setLoading(false);
@@ -83,7 +92,7 @@ const TipoAccesoInstalacionForm = ({ tipoAcceso, onSave, onCancel }) => {
   return (
     <div className="tipo-acceso-instalacion-form">
       <Toast ref={toast} />
-      
+
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="grid">
           <div className="col-12">
@@ -93,17 +102,17 @@ const TipoAccesoInstalacionForm = ({ tipoAcceso, onSave, onCancel }) => {
             <Controller
               name="nombre"
               control={control}
-              rules={{ 
-                required: 'El nombre es obligatorio',
-                minLength: { value: 2, message: 'Mínimo 2 caracteres' },
-                maxLength: { value: 100, message: 'Máximo 100 caracteres' }
+              rules={{
+                required: "El nombre es obligatorio",
+                minLength: { value: 2, message: "Mínimo 2 caracteres" },
+                maxLength: { value: 100, message: "Máximo 100 caracteres" },
               }}
               render={({ field }) => (
                 <InputText
                   id="nombre"
                   {...field}
                   placeholder="Ej: Entrada, Salida"
-                  className={`w-full ${errors.nombre ? 'p-invalid' : ''}`}
+                  className={`w-full ${errors.nombre ? "p-invalid" : ""}`}
                 />
               )}
             />
@@ -113,21 +122,24 @@ const TipoAccesoInstalacionForm = ({ tipoAcceso, onSave, onCancel }) => {
           </div>
 
           <div className="col-12">
-            <label htmlFor="descripcion" className="block text-900 font-medium mb-2">
+            <label
+              htmlFor="descripcion"
+              className="block text-900 font-medium mb-2"
+            >
               Descripción
             </label>
             <Controller
               name="descripcion"
               control={control}
-              rules={{ 
-                maxLength: { value: 500, message: 'Máximo 500 caracteres' }
+              rules={{
+                maxLength: { value: 500, message: "Máximo 500 caracteres" },
               }}
               render={({ field }) => (
                 <InputTextarea
                   id="descripcion"
                   {...field}
                   placeholder="Descripción del tipo de acceso (opcional)"
-                  className={`w-full ${errors.descripcion ? 'p-invalid' : ''}`}
+                  className={`w-full ${errors.descripcion ? "p-invalid" : ""}`}
                   rows={3}
                 />
               )}
@@ -156,21 +168,18 @@ const TipoAccesoInstalacionForm = ({ tipoAcceso, onSave, onCancel }) => {
             </div>
           </div>
         </div>
-
-        <div className="flex justify-content-end gap-2 mt-4">
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
           <Button
             type="button"
             label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-secondary"
+            className="p-button-text"
             onClick={onCancel}
             disabled={loading}
           />
           <Button
             type="submit"
-            label={tipoAcceso?.id ? 'Actualizar' : 'Crear'}
-            icon={tipoAcceso?.id ? 'pi pi-check' : 'pi pi-plus'}
-            className="p-button-primary"
+            label={tipoAcceso?.id ? "Actualizar" : "Crear"}
+            icon={tipoAcceso?.id ? "pi pi-check" : "pi pi-plus"}
             loading={loading}
           />
         </div>

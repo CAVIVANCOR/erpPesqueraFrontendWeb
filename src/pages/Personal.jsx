@@ -2,22 +2,28 @@
 // Página principal de gestión de personal en el ERP Megui.
 // Reutiliza patrones de Usuarios.jsx y documenta en español técnico.
 
-import React, { useEffect, useState } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Toast } from 'primereact/toast';
-import { ConfirmDialog } from 'primereact/confirmdialog';
-import PersonalForm from '../components/personal/PersonalForm';
-import { getPersonal, crearPersonal, actualizarPersonal, eliminarPersonal } from '../api/personal';
-import { getEmpresas } from '../api/empresa';
-import { Dialog } from 'primereact/dialog';
-import { getCargosPersonal } from '../api/cargosPersonal';
-import { getSedes } from '../api/sedes';
-import { getAreasFisicas } from '../api/areasFisicas';
-import { Avatar } from 'primereact/avatar';
-import { useAuthStore } from '../shared/stores/useAuthStore';
-
+import React, { useEffect, useState } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
+import { InputText } from "primereact/inputtext";
+import PersonalForm from "../components/personal/PersonalForm";
+import {
+  getPersonal,
+  crearPersonal,
+  actualizarPersonal,
+  eliminarPersonal,
+} from "../api/personal";
+import { getEmpresas } from "../api/empresa";
+import { Dialog } from "primereact/dialog";
+import { getCargosPersonal } from "../api/cargosPersonal";
+import { getSedes } from "../api/sedes";
+import { getAreasFisicas } from "../api/areasFisicas";
+import { Avatar } from "primereact/avatar";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Página de gestión de personal.
@@ -25,7 +31,7 @@ import { useAuthStore } from '../shared/stores/useAuthStore';
  */
 export default function PersonalPage() {
   // Obtener usuario autenticado para control de permisos
-  const usuario = useAuthStore(state => state.usuario);
+  const usuario = useAuthStore((state) => state.usuario);
 
   const [personales, setPersonales] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -33,6 +39,7 @@ export default function PersonalPage() {
   const [isEdit, setIsEdit] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [globalFilter, setGlobalFilter] = useState("");
 
   /**
    * Carga los cargos desde el backend.
@@ -43,17 +50,22 @@ export default function PersonalPage() {
   useEffect(() => {
     cargarCargos();
   }, []);
+
   const cargarCargos = async () => {
     try {
       const data = await getCargosPersonal();
       setCargosLista(data);
     } catch (err) {
-      toast?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar los cargos' });
+      toast?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar los cargos",
+      });
     }
   };
   const getCargoDescripcion = (id) => {
-    const cargo = cargosLista.find(c => Number(c.id) === Number(id));
-    return cargo ? cargo.descripcion : '';
+    const cargo = cargosLista.find((c) => Number(c.id) === Number(id));
+    return cargo ? cargo.descripcion : "";
   };
 
   /**
@@ -61,60 +73,73 @@ export default function PersonalPage() {
    * Utiliza la función getEmpresas para obtener los datos.
    * Si hay un error, muestra un toast con el mensaje de error.
    */
-    // Cargar empresas
-    const [empresasLista, setEmpresasLista] = useState([]);
-    useEffect(() => {
-      cargarEmpresas();
-    }, []);
+  // Cargar empresas
+  const [empresasLista, setEmpresasLista] = useState([]);
+  useEffect(() => {
+    cargarEmpresas();
+  }, []);
+
   const cargarEmpresas = async () => {
     try {
       const data = await getEmpresas();
       setEmpresasLista(data);
     } catch (err) {
-      toast?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar las empresas' });
+      toast?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar las empresas",
+      });
     }
   };
 
   const getEmpresaRazonSocial = (id) => {
-    const empresa = empresasLista.find(e => Number(e.id) === Number(id));
-    return empresa ? empresa.razonSocial : '';
+    const empresa = empresasLista.find((e) => Number(e.id) === Number(id));
+    return empresa ? empresa.razonSocial : "";
   };
 
   const [sedesLista, setSedesLista] = useState([]);
   useEffect(() => {
     cargarSedes();
   }, []);
+
   const cargarSedes = async () => {
     try {
       const data = await getSedes();
       setSedesLista(data);
     } catch (err) {
-      toast?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar las sedes' });
+      toast?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar las sedes",
+      });
     }
   };
   const getSedeNombre = (id) => {
-    const sede = sedesLista.find(s => Number(s.id) === Number(id));
-    return sede ? sede.nombre : '';
+    const sede = sedesLista.find((s) => Number(s.id) === Number(id));
+    return sede ? sede.nombre : "";
   };
 
   const [areasFisicasLista, setAreasFisicasLista] = useState([]);
   useEffect(() => {
     cargarAreasFisicas();
   }, []);
+
   const cargarAreasFisicas = async () => {
     try {
       const data = await getAreasFisicas();
       setAreasFisicasLista(data);
     } catch (err) {
-      toast?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar las áreas físicas' });
+      toast?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar las áreas físicas",
+      });
     }
   };
   const getAreaFisicaNombre = (id) => {
-    const area = areasFisicasLista.find(a => Number(a.id) === Number(id));
-    return area ? area.nombre : '';
+    const area = areasFisicasLista.find((a) => Number(a.id) === Number(id));
+    return area ? area.nombre : "";
   };
-
-
 
   // Carga inicial de personal
   useEffect(() => {
@@ -127,7 +152,11 @@ export default function PersonalPage() {
       const data = await getPersonal();
       setPersonales(data);
     } catch (err) {
-      toast?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar el personal' });
+      toast?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar el personal",
+      });
     } finally {
       setLoading(false);
     }
@@ -139,7 +168,7 @@ export default function PersonalPage() {
       <Button
         icon="pi pi-pencil"
         className="p-button-text p-mr-2"
-        onClick={ev => {
+        onClick={(ev) => {
           ev.stopPropagation();
           onEdit(rowData);
         }}
@@ -149,14 +178,13 @@ export default function PersonalPage() {
         <Button
           icon="pi pi-trash"
           className="p-button-text p-button-danger"
-          onClick={ev => {
+          onClick={(ev) => {
             ev.stopPropagation();
             onDelete(rowData);
           }}
           tooltip="Eliminar"
         />
       )}
-
     </>
   );
 
@@ -166,90 +194,139 @@ export default function PersonalPage() {
     setIsEdit(false);
     setShowForm(true);
   };
+
   const onEdit = (row) => {
     setSelected(row);
     setIsEdit(true);
     setShowForm(true);
   };
-  const [confirmState, setConfirmState] = useState({ visible: false, row: null });
 
-const onDelete = (row) => {
-  setConfirmState({ visible: true, row });
-};
+  const [confirmState, setConfirmState] = useState({
+    visible: false,
+    row: null,
+  });
 
-const handleConfirmDelete = async () => {
-  const row = confirmState.row;
-  if (!row) return;
-  const nombreCompleto = `${row.nombres} ${row.apellidos}`.trim();
-  setConfirmState({ visible: false, row: null });
-  setLoading(true);
-  try {
-    await eliminarPersonal(row.id);
-    toast?.show({ severity: 'success', summary: 'Personal eliminado', detail: `El personal ${nombreCompleto} fue eliminado correctamente.` });
-    await cargarPersonal();
-  } catch (err) {
-    if (err?.response?.data) {
-      console.error('[PersonalPage] Error backend al eliminar:', JSON.stringify(err.response.data));
-      toast?.show({ severity: 'error', summary: 'Error', detail: err.response.data?.message || 'No se pudo eliminar el personal.' });
-    } else {
-      console.error('[PersonalPage] Error inesperado:', err);
-      toast?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar el personal.' });
+  const onDelete = (row) => {
+    setConfirmState({ visible: true, row });
+  };
+
+  const handleConfirmDelete = async () => {
+    const row = confirmState.row;
+    if (!row) return;
+    const nombreCompleto = `${row.nombres} ${row.apellidos}`.trim();
+    setConfirmState({ visible: false, row: null });
+    setLoading(true);
+    try {
+      await eliminarPersonal(row.id);
+      toast?.show({
+        severity: "success",
+        summary: "Personal eliminado",
+        detail: `El personal ${nombreCompleto} fue eliminado correctamente.`,
+      });
+      await cargarPersonal();
+    } catch (err) {
+      if (err?.response?.data) {
+        console.error(
+          "[PersonalPage] Error backend al eliminar:",
+          JSON.stringify(err.response.data)
+        );
+        toast?.show({
+          severity: "error",
+          summary: "Error",
+          detail:
+            err.response.data?.message || "No se pudo eliminar el personal.",
+        });
+      } else {
+        console.error("[PersonalPage] Error inesperado:", err);
+        toast?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudo eliminar el personal.",
+        });
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-
-  const onCancel = () => setShowForm(false);
-  
-  /**
- * Maneja el alta o edición de personal.
- * Construye el payload profesional, registra logs y llama a la API según corresponda.
- * Cumple las reglas de logging y validación previas a producción.
- */
-const onSubmit = async (data) => {
-  setLoading(true);
-  try {
-    // Construir payload limpio solo con campos válidos para el backend
-    // Payload profesional con todos los campos requeridos por el backend
-    const personalPayload = {
-      nombres: data.nombres,
-      apellidos: data.apellidos,
-      empresaId: data.empresaId ? Number(data.empresaId) : null,
-      tipoDocumentoId: data.tipoDocumentoId ? Number(data.tipoDocumentoId) : null,
-      numeroDocumento: data.numeroDocumento,
-      fechaNacimiento: data.fechaNacimiento ? new Date(data.fechaNacimiento).toISOString() : null,
-      fechaIngreso: data.fechaIngreso ? new Date(data.fechaIngreso).toISOString() : null,
-      cesado: !!data.cesado,
-      telefono: data.telefono || null,
-      correo: data.correo || null,
-      urlFotoPersona: data.urlFotoPersona || null,
-      tipoContratoId: data.tipoContratoId ? Number(data.tipoContratoId) : null,
-      cargoId: data.cargoId ? Number(data.cargoId) : null,
-      sedeEmpresaId: data.sedeEmpresaId ? Number(data.sedeEmpresaId) : null,
-      areaFisicaId: data.areaFisicaId ? Number(data.areaFisicaId) : null,
-      sexo: typeof data.sexo === 'boolean' ? data.sexo : false,
-    };
-    if (isEdit && selected) {
-      // Edición de personal existente
-      await actualizarPersonal(selected.id, personalPayload);
-      toast?.show({ severity: 'success', summary: 'Personal actualizado', detail: `El personal ${data.nombres} fue actualizado correctamente.` });
-    } else {
-      await crearPersonal(personalPayload);
-      toast?.show({ severity: 'success', summary: 'Personal creado', detail: `El personal ${data.nombres} fue registrado correctamente.` });
-    }
+  const onCancel = () => {
     setShowForm(false);
-    cargarPersonal();
-  } catch (err) {
-if (err?.response?.data) {
-  console.error('[PersonalPage] Respuesta de error backend:', JSON.stringify(err.response.data));
-}
-    toast?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo guardar el personal.' });
-  } finally {
-    setLoading(false);
-  }
-};
+    setSelected(null); // Limpiar selección al cancelar
+    setIsEdit(false); // Resetear modo edición
+  };
+
+  /**
+   * Maneja el alta o edición de personal.
+   * Construye el payload profesional, registra logs y llama a la API según corresponda.
+   * Cumple las reglas de logging y validación previas a producción.
+   */
+  const onSubmit = async (data) => {
+    setLoading(true);
+    try {
+      // Construir payload limpio solo con campos válidos para el backend
+      // Payload profesional con todos los campos requeridos por el backend
+      const personalPayload = {
+        nombres: data.nombres,
+        apellidos: data.apellidos,
+        empresaId: data.empresaId ? Number(data.empresaId) : null,
+        tipoDocumentoId: data.tipoDocumentoId
+          ? Number(data.tipoDocumentoId)
+          : null,
+        numeroDocumento: data.numeroDocumento,
+        fechaNacimiento: data.fechaNacimiento
+          ? new Date(data.fechaNacimiento).toISOString()
+          : null,
+        fechaIngreso: data.fechaIngreso
+          ? new Date(data.fechaIngreso).toISOString()
+          : null,
+        cesado: !!data.cesado,
+        telefono: data.telefono || null,
+        correo: data.correo || null,
+        urlFotoPersona: data.urlFotoPersona || null,
+        tipoContratoId: data.tipoContratoId
+          ? Number(data.tipoContratoId)
+          : null,
+        cargoId: data.cargoId ? Number(data.cargoId) : null,
+        sedeEmpresaId: data.sedeEmpresaId ? Number(data.sedeEmpresaId) : null,
+        areaFisicaId: data.areaFisicaId ? Number(data.areaFisicaId) : null,
+        sexo: typeof data.sexo === "boolean" ? data.sexo : false,
+      };
+      if (isEdit && selected) {
+        // Edición de personal existente
+        await actualizarPersonal(selected.id, personalPayload);
+        toast?.show({
+          severity: "success",
+          summary: "Personal actualizado",
+          detail: `El personal ${data.nombres} fue actualizado correctamente.`,
+        });
+      } else {
+        await crearPersonal(personalPayload);
+        toast?.show({
+          severity: "success",
+          summary: "Personal creado",
+          detail: `El personal ${data.nombres} fue registrado correctamente.`,
+        });
+      }
+      setShowForm(false);
+      setSelected(null); // Limpiar selección después de guardar
+      setIsEdit(false); // Resetear modo edición
+      cargarPersonal();
+    } catch (err) {
+      if (err?.response?.data) {
+        console.error(
+          "[PersonalPage] Respuesta de error backend:",
+          JSON.stringify(err.response.data)
+        );
+      }
+      toast?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo guardar el personal.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Conversión profesional de fechas para edición, fuera del JSX
   // Esto asegura que PrimeReact Calendar reciba objetos Date y evita errores de referencia.
@@ -258,42 +335,59 @@ if (err?.response?.data) {
   const selectedPersonal = selected
     ? {
         ...selected,
-        fechaNacimiento: selected.fechaNacimiento ? new Date(selected.fechaNacimiento) : null,
-        fechaIngreso: selected.fechaIngreso ? new Date(selected.fechaIngreso) : null,
-        telefono: selected.telefono || '',
-        correo: selected.correo || '',
-        urlFotoPersona: selected.urlFotoPersona || '',
-        tipoContratoId: selected.tipoContratoId ? String(selected.tipoContratoId) : '',
-        cargoId: selected.cargoId ? String(selected.cargoId) : '',
-        areaFisicaId: selected.areaFisicaId ? String(selected.areaFisicaId) : '',
-        sedeEmpresaId: selected.sedeEmpresaId ? String(selected.sedeEmpresaId) : '',
-        sexo: typeof selected.sexo === 'boolean' ? selected.sexo : false,
+        fechaNacimiento: selected.fechaNacimiento
+          ? new Date(selected.fechaNacimiento)
+          : null,
+        fechaIngreso: selected.fechaIngreso
+          ? new Date(selected.fechaIngreso)
+          : null,
+        telefono: selected.telefono || "",
+        correo: selected.correo || "",
+        urlFotoPersona: selected.urlFotoPersona || "",
+        tipoContratoId: selected.tipoContratoId
+          ? String(selected.tipoContratoId)
+          : "",
+        cargoId: selected.cargoId ? String(selected.cargoId) : "",
+        areaFisicaId: selected.areaFisicaId
+          ? String(selected.areaFisicaId)
+          : "",
+        sedeEmpresaId: selected.sedeEmpresaId
+          ? String(selected.sedeEmpresaId)
+          : "",
+        sexo: typeof selected.sexo === "boolean" ? selected.sexo : false,
       }
     : { cesado: false };
 
   return (
     <div className="p-m-4">
       <Toast ref={setToast} />
-        <ConfirmDialog
-          visible={confirmState.visible}
-          onHide={() => setConfirmState({ visible: false, row: null })}
-          message={<span style={{ color: '#b71c1c', fontWeight: 600 }}>
-            ¿Está seguro que desea <span style={{ color: '#b71c1c' }}>eliminar</span> a <b>{confirmState.row ? `${confirmState.row.nombres} ${confirmState.row.apellidos}` : ''}</b>?<br/>
-            <span style={{ fontWeight: 400, color: '#b71c1c' }}>Esta acción no se puede deshacer.</span>
-          </span>}
-          header={<span style={{ color: '#b71c1c' }}>Confirmar eliminación</span>}
-          icon="pi pi-exclamation-triangle"
-          acceptClassName="p-button-danger"
-          acceptLabel="Eliminar"
-          rejectLabel="Cancelar"
-          accept={handleConfirmDelete}
-          reject={() => setConfirmState({ visible: false, row: null })}
-          style={{ minWidth: 400 }}
-        />
-      <div className="p-d-flex p-jc-between p-ai-center p-mb-3">
-        <h2>Gestión de Personal</h2>
-        <Button label="Nuevo Personal" icon="pi pi-plus" onClick={onNew} />
-      </div>
+      <ConfirmDialog
+        visible={confirmState.visible}
+        onHide={() => setConfirmState({ visible: false, row: null })}
+        message={
+          <span style={{ color: "#b71c1c", fontWeight: 600 }}>
+            ¿Está seguro que desea{" "}
+            <span style={{ color: "#b71c1c" }}>eliminar</span> a{" "}
+            <b>
+              {confirmState.row
+                ? `${confirmState.row.nombres} ${confirmState.row.apellidos}`
+                : ""}
+            </b>
+            ?<br />
+            <span style={{ fontWeight: 400, color: "#b71c1c" }}>
+              Esta acción no se puede deshacer.
+            </span>
+          </span>
+        }
+        header={<span style={{ color: "#b71c1c" }}>Confirmar eliminación</span>}
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        acceptLabel="Eliminar"
+        rejectLabel="Cancelar"
+        accept={handleConfirmDelete}
+        reject={() => setConfirmState({ visible: false, row: null })}
+        style={{ minWidth: 400 }}
+      />
       <DataTable
         value={personales}
         loading={loading}
@@ -301,17 +395,52 @@ if (err?.response?.data) {
         rows={10}
         selectionMode="single"
         selection={selected}
-        onSelectionChange={e => setSelected(e.value)}
-        onRowClick={e => onEdit(e.data)}
+        onSelectionChange={(e) => setSelected(e.value)}
+        header={
+          <div className="flex align-items-center gap-2">
+            <h2>Gestión de Personal</h2>
+            <Button
+              label="Nuevo"
+              icon="pi pi-plus"
+              className="p-button-success"
+              size="small"
+              raised
+              tooltip="Nuevo Personal"
+              outlined
+              onClick={onNew}
+            />
+            <span className="p-input-icon-left">
+              <InputText
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Buscar personal..."
+                style={{ width: "300px" }}
+              />
+            </span>
+          </div>
+        }
+        onRowClick={(e) => onEdit(e.data)}
+        globalFilter={globalFilter}
+        globalFilterFields={[
+          "nombres",
+          "apellidos",
+          "numeroDocumento",
+          "telefono",
+          "correo",
+        ]}
+        emptyMessage="No se encontraron registros que coincidan con la búsqueda."
+        style={{ cursor: 'pointer', fontSize: getResponsiveFontSize() }}
       >
         <Column
           header="Foto"
-          body={row => {
-            const nombres = row.nombres || '';
-            const apellidos = row.apellidos || '';
+          body={(row) => {
+            const nombres = row.nombres || "";
+            const apellidos = row.apellidos || "";
             const nombreCompleto = `${nombres} ${apellidos}`.trim();
             const urlFoto = row.urlFotoPersona
-              ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${row.urlFotoPersona}`
+              ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${
+                  row.urlFotoPersona
+                }`
               : undefined;
             // Si hay foto, muestra el avatar con imagen; si no, iniciales
             if (urlFoto) {
@@ -327,47 +456,69 @@ if (err?.response?.data) {
                 </span>
               );
             } else {
-              const iniciales = `${nombres.charAt(0)}${apellidos.charAt(0)}`.toUpperCase();
+              const iniciales = `${nombres.charAt(0)}${apellidos.charAt(
+                0
+              )}`.toUpperCase();
               return (
                 <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
                   <Avatar
                     label={iniciales}
                     shape="circle"
                     size="large"
-                    style={{ backgroundColor: '#2196F3', color: '#fff', width: 36, height: 36, fontWeight: 'bold', fontSize: 16 }}
+                    style={{
+                      backgroundColor: "#2196F3",
+                      color: "#fff",
+                      width: 36,
+                      height: 36,
+                      fontWeight: "bold",
+                      fontSize: 16,
+                    }}
                   />
                 </span>
               );
             }
           }}
-          style={{ minWidth: 80, textAlign: 'center' }}
+          style={{ minWidth: 80, textAlign: "center" }}
         />
         <Column field="nombres" header="Nombres" />
         <Column field="apellidos" header="Apellidos" />
         <Column
           header="Cargo"
-          body={row => getCargoDescripcion(row.cargoId)}
+          body={(row) => getCargoDescripcion(row.cargoId)}
         />
         <Column
           header="Empresa"
-          body={row => getEmpresaRazonSocial(row.empresaId)}
+          body={(row) => getEmpresaRazonSocial(row.empresaId)}
         />
         <Column
           header="Sede Empresa"
-          body={row => getSedeNombre(row.sedeEmpresaId)}
+          body={(row) => getSedeNombre(row.sedeEmpresaId)}
         />
         <Column
           header="Área Física"
-          body={row => getAreaFisicaNombre(row.areaFisicaId)}
+          body={(row) => getAreaFisicaNombre(row.areaFisicaId)}
         />
-        <Column field="cesado" header="Cesado" body={row => row.cesado ? 'Sí' : 'No'} />
+        <Column
+          field="cesado"
+          header="Cesado"
+          body={(row) => (row.cesado ? "Sí" : "No")}
+        />
         <Column body={actionBodyTemplate} header="Acciones" />
       </DataTable>
       {/*
         El formulario de alta/edición de personal se muestra en un modal profesional (Dialog),
         cumpliendo la regla de UX para no mostrarlo debajo de la lista.
       */}
-      <Dialog header={isEdit ? 'Editar Personal' : 'Nuevo Personal'} visible={showForm} style={{ width: '40vw', minWidth: 350 }} modal className="p-fluid" onHide={onCancel} closeOnEscape dismissableMask>
+      <Dialog
+        header={isEdit ? "Editar Personal" : "Nuevo Personal"}
+        visible={showForm}
+        style={{ width: "40vw", minWidth: 350 }}
+        modal
+        className="p-fluid"
+        onHide={onCancel}
+        closeOnEscape
+        dismissableMask
+      >
         <PersonalForm
           isEdit={isEdit}
           defaultValues={selectedPersonal}

@@ -1,6 +1,6 @@
 /**
  * Formulario para gestión de Tipos de Equipo
- * 
+ *
  * Características implementadas:
  * - React Hook Form con Controller para manejo de formularios
  * - Validaciones con Yup para campos obligatorios y longitudes
@@ -9,34 +9,34 @@
  * - Integración con API usando funciones en español
  * - Feedback visual y manejo de errores
  * - Cumple estándar ERP Megui completo
- * 
+ *
  * @author ERP Megui
  * @version 1.0.0
  */
 
-import React, { useState, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { Checkbox } from 'primereact/checkbox';
-import { Button } from 'primereact/button';
-import { classNames } from 'primereact/utils';
-import { crearTipoEquipo, actualizarTipoEquipo } from '../../api/tipoEquipo';
+import React, { useState, useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { InputText } from "primereact/inputtext";
+import { InputTextarea } from "primereact/inputtextarea";
+import { Checkbox } from "primereact/checkbox";
+import { Button } from "primereact/button";
+import { classNames } from "primereact/utils";
+import { crearTipoEquipo, actualizarTipoEquipo } from "../../api/tipoEquipo";
 
 // Esquema de validación con Yup
 const esquemaValidacion = yup.object().shape({
   nombre: yup
     .string()
-    .required('El nombre es obligatorio')
-    .max(100, 'El nombre no puede exceder 100 caracteres')
+    .required("El nombre es obligatorio")
+    .max(100, "El nombre no puede exceder 100 caracteres")
     .trim(),
   descripcion: yup
     .string()
-    .max(500, 'La descripción no puede exceder 500 caracteres')
+    .max(500, "La descripción no puede exceder 500 caracteres")
     .nullable(),
-  activo: yup.boolean().default(true)
+  activo: yup.boolean().default(true),
 });
 
 const TipoEquipoForm = ({ tipoEquipo, onGuardar, onCancelar }) => {
@@ -49,27 +49,30 @@ const TipoEquipoForm = ({ tipoEquipo, onGuardar, onCancelar }) => {
     handleSubmit,
     formState: { errors },
     reset,
-    setValue
+    setValue,
   } = useForm({
     resolver: yupResolver(esquemaValidacion),
     defaultValues: {
-      nombre: '',
-      descripcion: '',
-      activo: true
-    }
+      nombre: "",
+      descripcion: "",
+      activo: true,
+    },
   });
 
   // Efecto para cargar datos en modo edición
   useEffect(() => {
     if (tipoEquipo) {
-      setValue('nombre', tipoEquipo.nombre || '');
-      setValue('descripcion', tipoEquipo.descripcion || '');
-      setValue('activo', tipoEquipo.activo !== undefined ? tipoEquipo.activo : true);
+      setValue("nombre", tipoEquipo.nombre || "");
+      setValue("descripcion", tipoEquipo.descripcion || "");
+      setValue(
+        "activo",
+        tipoEquipo.activo !== undefined ? tipoEquipo.activo : true
+      );
     } else {
       reset({
-        nombre: '',
-        descripcion: '',
-        activo: true
+        nombre: "",
+        descripcion: "",
+        activo: true,
       });
     }
   }, [tipoEquipo, setValue, reset]);
@@ -86,7 +89,7 @@ const TipoEquipoForm = ({ tipoEquipo, onGuardar, onCancelar }) => {
       const datosNormalizados = {
         nombre: data.nombre.trim(),
         descripcion: data.descripcion?.trim() || null,
-        activo: Boolean(data.activo)
+        activo: Boolean(data.activo),
       };
 
       if (esEdicion) {
@@ -97,7 +100,7 @@ const TipoEquipoForm = ({ tipoEquipo, onGuardar, onCancelar }) => {
 
       onGuardar();
     } catch (error) {
-      console.error('Error al guardar tipo de equipo:', error);
+      console.error("Error al guardar tipo de equipo:", error);
       // El manejo de errores se realiza en el componente padre
     } finally {
       setLoading(false);
@@ -111,7 +114,7 @@ const TipoEquipoForm = ({ tipoEquipo, onGuardar, onCancelar }) => {
    */
   const getFieldClass = (fieldName) => {
     return classNames({
-      'p-invalid': errors[fieldName]
+      "p-invalid": errors[fieldName],
     });
   };
 
@@ -131,15 +134,13 @@ const TipoEquipoForm = ({ tipoEquipo, onGuardar, onCancelar }) => {
                 id="nombre"
                 {...field}
                 placeholder="Ingrese el nombre del tipo de equipo"
-                className={getFieldClass('nombre')}
+                className={getFieldClass("nombre")}
                 maxLength={100}
               />
             )}
           />
           {errors.nombre && (
-            <small className="p-error p-d-block">
-              {errors.nombre.message}
-            </small>
+            <small className="p-error p-d-block">{errors.nombre.message}</small>
           )}
         </div>
 
@@ -157,7 +158,7 @@ const TipoEquipoForm = ({ tipoEquipo, onGuardar, onCancelar }) => {
                 {...field}
                 placeholder="Ingrese una descripción opcional"
                 rows={3}
-                className={getFieldClass('descripcion')}
+                className={getFieldClass("descripcion")}
                 maxLength={500}
               />
             )}
@@ -180,7 +181,7 @@ const TipoEquipoForm = ({ tipoEquipo, onGuardar, onCancelar }) => {
                   id="activo"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.checked)}
-                  className={getFieldClass('activo')}
+                  className={getFieldClass("activo")}
                 />
               )}
             />
@@ -189,29 +190,23 @@ const TipoEquipoForm = ({ tipoEquipo, onGuardar, onCancelar }) => {
             </label>
           </div>
           {errors.activo && (
-            <small className="p-error p-d-block">
-              {errors.activo.message}
-            </small>
+            <small className="p-error p-d-block">{errors.activo.message}</small>
           )}
         </div>
       </div>
-
-      {/* Botones de acción */}
-      <div className="p-d-flex p-jc-end p-mt-3">
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
         <Button
           type="button"
           label="Cancelar"
-          icon="pi pi-times"
-          className="p-button-secondary p-mr-2"
+          className="p-button-text"
           onClick={onCancelar}
           disabled={loading}
         />
         <Button
           type="submit"
-          label={esEdicion ? 'Actualizar' : 'Crear'}
-          icon={esEdicion ? 'pi pi-check' : 'pi pi-plus'}
+          label={esEdicion ? "Actualizar" : "Crear"}
+          icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
           loading={loading}
-          disabled={loading}
         />
       </div>
     </form>

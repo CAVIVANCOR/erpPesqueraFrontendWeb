@@ -25,6 +25,7 @@ import { InputText } from 'primereact/inputtext';
 import { Avatar } from 'primereact/avatar'; // Importación necesaria para mostrar avatares profesionales
 import UsuarioForm from "../components/usuarios/UsuarioForm";
 import { getUsuarios, crearUsuario, actualizarUsuario, eliminarUsuario } from "../api/usuarios";
+import { getResponsiveFontSize } from "../utils/utils";
 /**
  * Pantalla profesional de gestión de usuarios del ERP Megui.
  * - CRUD completo con integración API REST.
@@ -214,10 +215,6 @@ export default function Usuarios() {
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 0" }}>
       <Toast ref={toast} position="top-right" />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h2 style={{ margin: 0 }}>Gestión de Usuarios</h2>
-        <Button label="Nuevo usuario" icon="pi pi-plus" className="p-button-success" onClick={handleNuevo}/>
-      </div>
       {/* Tabla de usuarios con PrimeReact DataTable */}
       <ConfirmDialog
         visible={confirmState.visible}
@@ -246,12 +243,14 @@ export default function Usuarios() {
         stripedRows
         emptyMessage="No hay usuarios registrados."
         header={
-          <span className="p-input-icon-left">
-            <i className="pi pi-search" />
+          <div className="flex align-items-center gap-2">
+            <h2 style={{ margin: 0 }}>Gestión de Usuarios</h2>
+            <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleNuevo} />
             <InputText type="search" onInput={e => setGlobalFilter(e.target.value)} placeholder="Buscar usuarios..." style={{ width: 240 }} />
-          </span>
+          </div>
         }
         onRowClick={onRowClick}
+        style={{cursor: 'pointer', fontSize: getResponsiveFontSize()}}
       >
         {/* Columna: Avatar profesional del personal relacionado (foto o iniciales) */}
         <Column

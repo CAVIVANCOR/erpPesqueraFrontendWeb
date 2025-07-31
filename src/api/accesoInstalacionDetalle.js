@@ -17,32 +17,25 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/accesos-instalacion-detalle`;
+
 
 /**
  * Obtiene el token de autenticación desde el store de Zustand
  * Implementa la regla ERP Megui de acceso centralizado al token JWT
  * @returns {string} Token JWT para autenticación
  */
-const obtenerTokenAuth = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
-
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 /**
  * Obtiene todos los detalles de accesos a instalaciones
  * @returns {Promise<Array>} Lista de detalles de accesos con datos normalizados
  */
 export const obtenerDetallesAccesoInstalacion = async () => {
   try {
-    const token = obtenerTokenAuth();
-    const response = await axios.get(`${API_URL}/acceso-instalacion-detalle`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
+    const response = await axios.get(API_URL, {headers: getAuthHeader()});
     // Normalización de datos según regla ERP Megui
     const datosNormalizados = response.data.map(detalle => ({
       ...detalle,
@@ -67,13 +60,8 @@ export const obtenerDetallesAccesoInstalacion = async () => {
  */
 export const obtenerDetalleAccesoInstalacionPorId = async (id) => {
   try {
-    const token = obtenerTokenAuth();
-    const response = await axios.get(`${API_URL}/acceso-instalacion-detalle/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    const params = id ? { id } : {};
+    const response = await axios.get(API_URL,{params, headers: getAuthHeader()});
 
     // Normalización de datos según regla ERP Megui
     const detalleNormalizado = {
@@ -99,7 +87,7 @@ export const obtenerDetalleAccesoInstalacionPorId = async (id) => {
  */
 export const crearDetalleAccesoInstalacion = async (datosDetalle) => {
   try {
-    const token = obtenerTokenAuth();
+    const params = datosDetalle ? { datosDetalle } : {};
     
     // Normalización de datos antes del envío
     const datosNormalizados = {
@@ -111,14 +99,7 @@ export const crearDetalleAccesoInstalacion = async (datosDetalle) => {
       numeroEquipo: datosDetalle.numeroEquipo?.trim() || null,
       observaciones: datosDetalle.observaciones?.trim() || null
     };
-
-    const response = await axios.post(`${API_URL}/acceso-instalacion-detalle`, datosNormalizados, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
+    const response = await axios.post(API_URL, datosNormalizados, {headers: getAuthHeader()});
     return response.data;
   } catch (error) {
     console.error('Error al crear detalle de acceso a instalación:', error);
@@ -134,8 +115,6 @@ export const crearDetalleAccesoInstalacion = async (datosDetalle) => {
  */
 export const actualizarDetalleAccesoInstalacion = async (id, datosDetalle) => {
   try {
-    const token = obtenerTokenAuth();
-    
     // Normalización de datos antes del envío
     const datosNormalizados = {
       ...datosDetalle,
@@ -146,14 +125,7 @@ export const actualizarDetalleAccesoInstalacion = async (id, datosDetalle) => {
       numeroEquipo: datosDetalle.numeroEquipo?.trim() || null,
       observaciones: datosDetalle.observaciones?.trim() || null
     };
-
-    const response = await axios.put(`${API_URL}/acceso-instalacion-detalle/${id}`, datosNormalizados, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
+    const response = await axios.put(API_URL, datosNormalizados, {headers: getAuthHeader()});
     return response.data;
   } catch (error) {
     console.error('Error al actualizar detalle de acceso a instalación:', error);
@@ -168,14 +140,8 @@ export const actualizarDetalleAccesoInstalacion = async (id, datosDetalle) => {
  */
 export const eliminarDetalleAccesoInstalacion = async (id) => {
   try {
-    const token = obtenerTokenAuth();
-    const response = await axios.delete(`${API_URL}/acceso-instalacion-detalle/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
+    const params = id ? { id } : {};
+    const response = await axios.delete(API_URL,  { headers: getAuthHeader(), params });
     return response.data;
   } catch (error) {
     console.error('Error al eliminar detalle de acceso a instalación:', error);
@@ -190,14 +156,8 @@ export const eliminarDetalleAccesoInstalacion = async (id) => {
  */
 export const obtenerDetallesPorAccesoInstalacion = async (accesoInstalacionId) => {
   try {
-    const token = obtenerTokenAuth();
-    const response = await axios.get(`${API_URL}/acceso-instalacion-detalle/por-acceso/${accesoInstalacionId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
+    const params = accesoInstalacionId ? { accesoInstalacionId } : {};
+    const response = await axios.get(API_URL, { headers: getAuthHeader(), params });
     // Normalización de datos según regla ERP Megui
     const datosNormalizados = response.data.map(detalle => ({
       ...detalle,
@@ -222,13 +182,8 @@ export const obtenerDetallesPorAccesoInstalacion = async (accesoInstalacionId) =
  */
 export const obtenerDetallesPorTipoEquipo = async (tipoEquipoId) => {
   try {
-    const token = obtenerTokenAuth();
-    const response = await axios.get(`${API_URL}/acceso-instalacion-detalle/por-tipo-equipo/${tipoEquipoId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    const params = tipoEquipoId ? { tipoEquipoId } : {};
+    const response = await axios.get(API_URL, { headers: getAuthHeader(), params });
 
     // Normalización de datos según regla ERP Megui
     const datosNormalizados = response.data.map(detalle => ({
@@ -256,23 +211,14 @@ export const obtenerDetallesPorTipoEquipo = async (tipoEquipoId) => {
  */
 export const validarNumeroEquipoUnico = async (numeroEquipo, tipoEquipoId, excludeId = null) => {
   try {
-    const token = obtenerTokenAuth();
     const params = new URLSearchParams({
       numeroEquipo: numeroEquipo.trim(),
       tipoEquipoId: tipoEquipoId.toString()
     });
-    
     if (excludeId) {
       params.append('excludeId', excludeId.toString());
     }
-
-    const response = await axios.get(`${API_URL}/acceso-instalacion-detalle/validar-numero-equipo?${params}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
+    const response = await axios.get(API_URL, {headers: getAuthHeader(), params});
     return response.data.disponible;
   } catch (error) {
     console.error('Error al validar número de equipo único:', error);

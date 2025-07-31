@@ -10,10 +10,16 @@ import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
-import { useAuthStore } from '../shared/stores/useAuthStore';
+import { useAuthStore } from "../shared/stores/useAuthStore";
 import { InputText } from "primereact/inputtext";
-import { getTiposContrato, crearTipoContrato, actualizarTipoContrato, eliminarTipoContrato } from "../api/tipoContrato";
+import {
+  getTiposContrato,
+  crearTipoContrato,
+  actualizarTipoContrato,
+  eliminarTipoContrato,
+} from "../api/tipoContrato";
 import TipoContratoForm from "../components/tipoContrato/TipoContratoForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Página de gestión de tipos de contrato.
@@ -31,8 +37,11 @@ import TipoContratoForm from "../components/tipoContrato/TipoContratoForm";
  * - El usuario autenticado se obtiene siempre desde useAuthStore.
  */
 export default function TipoContrato() {
-  const usuario = useAuthStore(state => state.usuario);
-  const [confirmState, setConfirmState] = useState({ visible: false, row: null });
+  const usuario = useAuthStore((state) => state.usuario);
+  const [confirmState, setConfirmState] = useState({
+    visible: false,
+    row: null,
+  });
   const toast = useRef(null);
   const [tipos, setTipos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -42,15 +51,21 @@ export default function TipoContrato() {
   const [formLoading, setFormLoading] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
 
-  useEffect(() => { cargarTipos(); }, []);
+  useEffect(() => {
+    cargarTipos();
+  }, []);
 
   async function cargarTipos() {
     setLoading(true);
     try {
       const data = await getTiposContrato();
-      setTipos(Array.isArray(data) ? data : (data.tipos || []));
+      setTipos(Array.isArray(data) ? data : data.tipos || []);
     } catch (err) {
-      mostrarToast("error", "Error", "No se pudieron cargar los tipos de contrato");
+      mostrarToast(
+        "error",
+        "Error",
+        "No se pudieron cargar los tipos de contrato"
+      );
     } finally {
       setLoading(false);
     }
@@ -67,20 +82,35 @@ export default function TipoContrato() {
       const payload = {
         codigo: data.codigo,
         nombre: data.nombre,
-        cesado: !!data.cesado
+        cesado: !!data.cesado,
       };
       if (modoEdicion && tipoEdit) {
-        console.log("[DEBUG] Payload limpio enviado a actualizarTipoContrato:", payload);
+        console.log(
+          "[DEBUG] Payload limpio enviado a actualizarTipoContrato:",
+          payload
+        );
         await actualizarTipoContrato(tipoEdit.id, payload);
-        mostrarToast("success", "Tipo de Contrato actualizado", `El tipo de contrato fue actualizado correctamente.`);
+        mostrarToast(
+          "success",
+          "Tipo de Contrato actualizado",
+          `El tipo de contrato fue actualizado correctamente.`
+        );
       } else {
         await crearTipoContrato(payload);
-        mostrarToast("success", "Tipo de Contrato creado", `El tipo de contrato fue registrado correctamente.`);
+        mostrarToast(
+          "success",
+          "Tipo de Contrato creado",
+          `El tipo de contrato fue registrado correctamente.`
+        );
       }
       setMostrarDialogo(false);
       cargarTipos();
     } catch (err) {
-      mostrarToast("error", "Error", err?.response?.data?.error || "No se pudo guardar el tipo de contrato.");
+      mostrarToast(
+        "error",
+        "Error",
+        err?.response?.data?.error || "No se pudo guardar el tipo de contrato."
+      );
     } finally {
       setFormLoading(false);
     }
@@ -95,7 +125,7 @@ export default function TipoContrato() {
   // Edición con un solo clic en la fila
   const onRowClick = (e) => {
     handleEditar(e.data);
-  }
+  };
 
   function handleEliminar(tipo) {
     setConfirmState({ visible: true, row: tipo });
@@ -108,20 +138,45 @@ export default function TipoContrato() {
     setLoading(true);
     try {
       await eliminarTipoContrato(tipo.id);
-      mostrarToast("success", "Tipo de Contrato eliminado", `El tipo de contrato fue eliminado correctamente.`);
+      mostrarToast(
+        "success",
+        "Tipo de Contrato eliminado",
+        `El tipo de contrato fue eliminado correctamente.`
+      );
       cargarTipos();
     } catch (err) {
-      mostrarToast("error", "Error", err?.response?.data?.error || "No se pudo eliminar el tipo de contrato.");
+      mostrarToast(
+        "error",
+        "Error",
+        err?.response?.data?.error || "No se pudo eliminar el tipo de contrato."
+      );
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   const accionesTemplate = (rowData) => (
     <span>
-      <Button icon="pi pi-pencil" className="p-button-rounded p-button-text p-button-info" style={{ marginRight: 8 }} onClick={e => { e.stopPropagation(); handleEditar(rowData); }} tooltip="Editar" />
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-rounded p-button-text p-button-info"
+        style={{ marginRight: 8 }}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleEditar(rowData);
+        }}
+        tooltip="Editar"
+      />
       {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-rounded p-button-text p-button-danger" onClick={e => { e.stopPropagation(); handleEliminar(rowData); }} tooltip="Eliminar" />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-text p-button-danger"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEliminar(rowData);
+          }}
+          tooltip="Eliminar"
+        />
       )}
     </span>
   );
@@ -129,18 +184,29 @@ export default function TipoContrato() {
   return (
     <div style={{ maxWidth: 700, margin: "0 auto", padding: "2rem 0" }}>
       <Toast ref={toast} position="top-right" />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h2>Tipos de Contrato</h2>
-        <Button label="Nuevo Tipo" icon="pi pi-plus" onClick={() => { setTipoEdit(null); setModoEdicion(false); setMostrarDialogo(true); }} />
-      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 24,
+        }}
+      ></div>
       <ConfirmDialog
         visible={confirmState.visible}
         onHide={() => setConfirmState({ visible: false, row: null })}
-        message={<span style={{ color: '#b71c1c', fontWeight: 600 }}>
-          ¿Está seguro que desea <span style={{ color: '#b71c1c' }}>eliminar</span> el tipo de contrato <b>{confirmState.row ? confirmState.row.nombre : ''}</b>?<br/>
-          <span style={{ fontWeight: 400, color: '#b71c1c' }}>Esta acción no se puede deshacer.</span>
-        </span>}
-        header={<span style={{ color: '#b71c1c' }}>Confirmar eliminación</span>}
+        message={
+          <span style={{ color: "#b71c1c", fontWeight: 600 }}>
+            ¿Está seguro que desea{" "}
+            <span style={{ color: "#b71c1c" }}>eliminar</span> el tipo de
+            contrato <b>{confirmState.row ? confirmState.row.nombre : ""}</b>?
+            <br />
+            <span style={{ fontWeight: 400, color: "#b71c1c" }}>
+              Esta acción no se puede deshacer.
+            </span>
+          </span>
+        }
+        header={<span style={{ color: "#b71c1c" }}>Confirmar eliminación</span>}
         icon="pi pi-exclamation-triangle"
         acceptClassName="p-button-danger"
         acceptLabel="Eliminar"
@@ -152,25 +218,63 @@ export default function TipoContrato() {
       <DataTable
         value={tipos}
         loading={loading}
-        paginator rows={10} rowsPerPageOptions={[5, 10, 20]}
+        paginator
+        rows={10}
+        rowsPerPageOptions={[5, 10, 20]}
         globalFilter={globalFilter}
         stripedRows
         emptyMessage="No hay tipos de contrato registrados."
         header={
-          <span className="p-input-icon-left">
-            <i className="pi pi-search" />
-            <InputText type="search" onInput={e => setGlobalFilter(e.target.value)} placeholder="Buscar tipos de contrato..." style={{ width: 240 }} />
-          </span>
+          <div className="flex align-items-center gap-2">
+            <h2>Tipos de Contrato</h2>
+            <Button
+              label="Nuevo"
+              size="small"
+              raised
+              outlined
+              tooltip="Nuevo Tipo de Contrato"
+              className="p-button-success"
+              icon="pi pi-plus"
+              onClick={() => {
+                setTipoEdit(null);
+                setModoEdicion(false);
+                setMostrarDialogo(true);
+              }}
+            />
+            <InputText
+              type="search"
+              onInput={(e) => setGlobalFilter(e.target.value)}
+              placeholder="Buscar tipos de contrato..."
+              style={{ width: 240 }}
+            />
+          </div>
         }
         onRowClick={onRowClick}
+        style={{ cursor: 'pointer', fontSize: getResponsiveFontSize() }}
       >
         <Column field="id" header="ID" style={{ width: 80 }} />
         <Column field="codigo" header="Código" />
         <Column field="nombre" header="Nombre" />
-        <Column field="cesado" header="¿Cesado?" body={rowData => rowData.cesado ? 'Sí' : 'No'} />
-        <Column header="Acciones" body={accionesTemplate} style={{ minWidth: 150, textAlign: 'center' }} />
+        <Column
+          field="cesado"
+          header="¿Cesado?"
+          body={(rowData) => (rowData.cesado ? "Sí" : "No")}
+        />
+        <Column
+          header="Acciones"
+          body={accionesTemplate}
+          style={{ minWidth: 150, textAlign: "center" }}
+        />
       </DataTable>
-      <Dialog header={modoEdicion ? "Editar Tipo de Contrato" : "Nuevo Tipo de Contrato"} visible={mostrarDialogo} style={{ width: 500 }} modal onHide={() => setMostrarDialogo(false)}>
+      <Dialog
+        header={
+          modoEdicion ? "Editar Tipo de Contrato" : "Nuevo Tipo de Contrato"
+        }
+        visible={mostrarDialogo}
+        style={{ width: 500 }}
+        modal
+        onHide={() => setMostrarDialogo(false)}
+      >
         <TipoContratoForm
           isEdit={modoEdicion}
           defaultValues={tipoEdit || {}}

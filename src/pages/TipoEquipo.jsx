@@ -1,28 +1,30 @@
 /**
  * Pantalla CRUD para gestión de Tipos de Equipo
- * 
+ *
  * Características implementadas:
  * - Edición profesional por clic en fila (abre modal de edición)
  * - Botón eliminar visible solo para superusuario/admin (usuario?.esSuperUsuario || usuario?.esAdmin)
  * - Confirmación de borrado con ConfirmDialog visual rojo y mensajes claros
  * - Feedback visual con Toast para éxito/error
  * - Cumple regla transversal ERP Megui completa
- * 
+ *
  * @author ERP Megui
  * @version 1.0.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Dialog } from 'primereact/dialog';
-import { Toast } from 'primereact/toast';
-import { ConfirmDialog } from 'primereact/confirmdialog';
-import { Tag } from 'primereact/tag';
-import { getTiposEquipo, eliminarTipoEquipo } from '../api/tipoEquipo';
-import { useAuthStore } from '../shared/stores/useAuthStore';
-import TipoEquipoForm from '../components/tipoEquipo/TipoEquipoForm';
+import React, { useState, useEffect, useRef } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
+import { Tag } from "primereact/tag";
+import { getTiposEquipo, eliminarTipoEquipo } from "../api/tipoEquipo";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import TipoEquipoForm from "../components/tipoEquipo/TipoEquipoForm";
+import { getResponsiveFontSize } from "../utils/utils";
+import { InputText } from "primereact/inputtext";
 
 const TipoEquipo = () => {
   const [tiposEquipo, setTiposEquipo] = useState([]);
@@ -33,6 +35,7 @@ const TipoEquipo = () => {
   const [tipoEquipoAEliminar, setTipoEquipoAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const [globalFilter, setGlobalFilter] = useState("");
 
   useEffect(() => {
     cargarTiposEquipo();
@@ -45,10 +48,10 @@ const TipoEquipo = () => {
       setTiposEquipo(data);
     } catch (error) {
       toast.current.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al cargar tipos de equipo',
-        life: 3000
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar tipos de equipo",
+        life: 3000,
       });
     } finally {
       setLoading(false);
@@ -74,10 +77,12 @@ const TipoEquipo = () => {
     cargarTiposEquipo();
     cerrarDialogo();
     toast.current.show({
-      severity: 'success',
-      summary: 'Éxito',
-      detail: tipoEquipoSeleccionado ? 'Tipo de equipo actualizado correctamente' : 'Tipo de equipo creado correctamente',
-      life: 3000
+      severity: "success",
+      summary: "Éxito",
+      detail: tipoEquipoSeleccionado
+        ? "Tipo de equipo actualizado correctamente"
+        : "Tipo de equipo creado correctamente",
+      life: 3000,
     });
   };
 
@@ -89,19 +94,21 @@ const TipoEquipo = () => {
   const eliminar = async () => {
     try {
       await eliminarTipoEquipo(tipoEquipoAEliminar.id);
-      setTiposEquipo(tiposEquipo.filter(t => t.id !== tipoEquipoAEliminar.id));
+      setTiposEquipo(
+        tiposEquipo.filter((t) => t.id !== tipoEquipoAEliminar.id)
+      );
       toast.current.show({
-        severity: 'success',
-        summary: 'Éxito',
-        detail: 'Tipo de equipo eliminado correctamente',
-        life: 3000
+        severity: "success",
+        summary: "Éxito",
+        detail: "Tipo de equipo eliminado correctamente",
+        life: 3000,
       });
     } catch (error) {
       toast.current.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al eliminar tipo de equipo',
-        life: 3000
+        severity: "error",
+        summary: "Error",
+        detail: "Error al eliminar tipo de equipo",
+        life: 3000,
       });
     } finally {
       setConfirmVisible(false);
@@ -111,9 +118,9 @@ const TipoEquipo = () => {
 
   const estadoTemplate = (rowData) => {
     return (
-      <Tag 
-        value={rowData.activo ? 'Activo' : 'Inactivo'} 
-        severity={rowData.activo ? 'success' : 'danger'} 
+      <Tag
+        value={rowData.activo ? "Activo" : "Inactivo"}
+        severity={rowData.activo ? "success" : "danger"}
       />
     );
   };
@@ -121,10 +128,20 @@ const TipoEquipo = () => {
   const accionesTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-mr-2"
+          onClick={(ev) => {
+            ev.stopPropagation();
+            abrirDialogoEdicion(rowData);
+          }}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+        />
         {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
           <Button
             icon="pi pi-trash"
-            className="p-button-rounded p-button-danger p-button-sm"
+            className="p-button-text p-button-danger"
             onClick={() => confirmarEliminacion(rowData)}
             tooltip="Eliminar"
           />
@@ -136,16 +153,6 @@ const TipoEquipo = () => {
   return (
     <div className="p-4">
       <Toast ref={toast} />
-      
-      <div className="flex justify-content-between align-items-center mb-4">
-        <h2>Gestión de Tipos de Equipo</h2>
-        <Button
-          label="Nuevo Tipo de Equipo"
-          icon="pi pi-plus"
-          onClick={abrirDialogoNuevo}
-        />
-      </div>
-
       <DataTable
         value={tiposEquipo}
         loading={loading}
@@ -156,20 +163,52 @@ const TipoEquipo = () => {
         selectionMode="single"
         className="p-datatable-hover cursor-pointer"
         emptyMessage="No se encontraron tipos de equipo"
+        header={
+          <div className="flex align-items-center gap-2">
+            <h2>Gestión de Tipos de Equipo</h2>
+            <Button
+              label="Nuevo"
+              icon="pi pi-plus"
+              size="small"
+              raised
+              tooltip="Nuevo Tipo de Equipo"
+              outlined
+              className="p-button-success"
+              onClick={abrirDialogoNuevo}
+            />
+            <span className="p-input-icon-left">
+              <InputText
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Buscar tipos de equipo..."
+                style={{ width: "300px" }}
+              />
+            </span>
+          </div>
+        }
         scrollable
         scrollHeight="600px"
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
         <Column field="nombre" header="Nombre" sortable />
         <Column field="descripcion" header="Descripción" sortable />
         <Column field="activo" header="Estado" body={estadoTemplate} sortable />
-        <Column body={accionesTemplate} header="Acciones" style={{ width: '8rem' }} />
+        <Column
+          body={accionesTemplate}
+          header="Acciones"
+          style={{ width: "8rem" }}
+        />
       </DataTable>
 
       <Dialog
-        header={tipoEquipoSeleccionado ? 'Editar Tipo de Equipo' : 'Nuevo Tipo de Equipo'}
+        header={
+          tipoEquipoSeleccionado
+            ? "Editar Tipo de Equipo"
+            : "Nuevo Tipo de Equipo"
+        }
         visible={dialogVisible}
         onHide={cerrarDialogo}
-        style={{ width: '600px' }}
+        style={{ width: "600px" }}
         modal
       >
         <TipoEquipoForm

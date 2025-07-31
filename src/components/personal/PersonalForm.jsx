@@ -16,7 +16,7 @@ import { Toast } from 'primereact/toast';
 import { FileUpload } from 'primereact/fileupload';
 
 import { getEmpresas } from '../../api/empresa'; // API profesional de empresas
-import { getTiposDocumento } from '../../api/tipoDocumento'; // API profesional de tipos de documento
+import { getTiposDocIdentidad } from '../../api/tiposDocIdentidad'; // API profesional de tipos de documento
 import { getCargosPersonal } from '../../api/cargosPersonal'; // API profesional de cargos de personal
 import { getTiposContrato } from '../../api/tiposContrato'; // API profesional de tipos de contrato
 import { getSedes } from '../../api/sedes'; // API profesional de sedes
@@ -163,7 +163,7 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
     async function cargarCombos() {
       try {
         const empresasPromise = getEmpresas();
-        const tiposDocPromise = getTiposDocumento();
+        const tiposDocPromise = getTiposDocIdentidad();
         // Carga profesional de cargos desde /cargos-personal para el combo de PersonalForm
         const cargosPromise = getCargosPersonal();
         const tiposContratoPromise = getTiposContrato();
@@ -182,6 +182,7 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
           sedesPromise
         ]);
         const [empresasRes, tiposDocRes, cargosRes, tiposContratoRes, areasFisicasRes, sedesRes] = resultados;
+        
         // Normalización profesional: ids de empresa como number para evitar bugs de selección en PrimeReact Dropdown
         const empresasData = empresasRes.status === 'fulfilled' ? empresasRes.value.map(e => ({ ...e, id: Number(e.id), label: e.razonSocial || e.nombre })) : [];
         setEmpresas(empresasData);
@@ -260,7 +261,6 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [watch('sedeEmpresaId'), areasFisicas]);
-
   // --- Normalización profesional de opciones de combos para evitar errores de tipo ---
   // Se fuerza que todos los id de las opciones sean numéricos, para que coincidan con los valores del formulario (también numéricos).
   const empresasNorm = (typeof empresas !== 'undefined' ? empresas : []).map(e => ({ ...e, id: Number(e.id) }));
@@ -269,13 +269,13 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
   const cargosNorm = (typeof cargos !== 'undefined' ? cargos : []).map(e => ({ ...e, id: Number(e.id) }));
   const areasFisicasNorm = (typeof areasFisicas !== 'undefined' ? areasFisicas : []).map(e => ({ ...e, id: Number(e.id) }));
   const sedesEmpresaNorm = (typeof sedesEmpresa !== 'undefined' ? sedesEmpresa : []).map(e => ({ ...e, id: Number(e.id) }));
-
   // Log de depuración profesional del payload antes de grabar
   // Transforma IDs a number y fechas a string ISO antes de enviar el payload
   // Log de depuración profesional del payload antes de grabar
   // Transforma IDs a number y fechas a string ISO antes de enviar el payload
   const onSubmitWithLog = (data) => {
     // Construcción profesional del payload: sedeId eliminado, solo se envía sedeEmpresaId
+    console.log('OJO data', data);
     const payload = {
       ...data,
       empresaId: data.empresaId ? Number(data.empresaId) : null,
@@ -324,7 +324,7 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
                   name="foto"
                   accept="image/*"
                   maxFileSize={2 * 1024 * 1024}
-                  chooseLabel="Seleccionar foto"
+                  chooseLabel="Elegir foto"
                   uploadLabel="Subir"
                   cancelLabel="Cancelar"
                   customUpload
@@ -427,7 +427,7 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
         {/* Fechas: nacimiento e ingreso en una sola línea */}
         <div className="p-field p-grid" style={{ display: 'flex', gap: 16 }}>
           <div style={{ flex: 1 }}>
-            <label>Fecha de nacimiento</label>
+            <label>Nacimiento</label>
             <Controller
               name="fechaNacimiento"
               control={control}
@@ -435,7 +435,7 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
             <small className="p-error">{errors.fechaNacimiento?.message}</small>
           </div>
           <div style={{ flex: 1 }}>
-            <label>Fecha de ingreso</label>
+            <label>Ingreso</label>
             <Controller
               name="fechaIngreso"
               control={control}

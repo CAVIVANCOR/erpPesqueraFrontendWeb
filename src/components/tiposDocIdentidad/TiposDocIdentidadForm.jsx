@@ -13,14 +13,13 @@
  * @version 1.0.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Checkbox } from 'primereact/checkbox';
-import { Toast } from 'primereact/toast';
 import { crearTipoDocIdentidad, actualizarTipoDocIdentidad } from '../../api/tiposDocIdentidad';
 
 /**
@@ -52,11 +51,13 @@ const esquemaValidacion = yup.object().shape({
 });
 
 /**
- * Componente TiposDocIdentidadForm
- * Formulario para crear y editar tipos de documentos de identidad
+ * Componente del formulario
+ * @param {Object} tipoDoc - Tipo de documento a editar (null para nuevo)
+ * @param {Function} onSave - Callback ejecutado al guardar exitosamente
+ * @param {Function} onCancel - Callback ejecutado al cancelar
+ * @param {Object} toast - Referencia al Toast del componente padre
  */
-const TiposDocIdentidadForm = ({ tipoDoc, onSave, onCancel }) => {
-  const toast = useRef(null);
+const TiposDocIdentidadForm = ({ tipoDoc, onSave, onCancel, toast }) => {
   const [loading, setLoading] = useState(false);
 
   // Configuración del formulario con react-hook-form y Yup
@@ -138,7 +139,7 @@ const TiposDocIdentidadForm = ({ tipoDoc, onSave, onCancel }) => {
         toast.current?.show({
           severity: 'success',
           summary: 'Éxito',
-          detail: 'Tipo de documento actualizado correctamente'
+          detail: `Tipo de documento "${datosNormalizados.nombre}" actualizado correctamente`
         });
       } else {
         // Crear nuevo tipo de documento
@@ -146,7 +147,7 @@ const TiposDocIdentidadForm = ({ tipoDoc, onSave, onCancel }) => {
         toast.current?.show({
           severity: 'success',
           summary: 'Éxito',
-          detail: 'Tipo de documento creado correctamente'
+          detail: `Tipo de documento "${datosNormalizados.nombre}" creado correctamente`
         });
       }
 
@@ -186,12 +187,10 @@ const TiposDocIdentidadForm = ({ tipoDoc, onSave, onCancel }) => {
 
   return (
     <div className="formgrid grid">
-      <Toast ref={toast} />
-      
       <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
         
         {/* Código del Tipo de Documento */}
-        <div className="field col-12 md:col-6">
+        <div className="p-field">
           <label htmlFor="codigo" className="font-bold">
             Código *
           </label>
@@ -215,7 +214,7 @@ const TiposDocIdentidadForm = ({ tipoDoc, onSave, onCancel }) => {
         </div>
 
         {/* Código SUNAT */}
-        <div className="field col-12 md:col-6">
+        <div className="p-field">
           <label htmlFor="codSunat" className="font-bold">
             Código SUNAT *
           </label>
@@ -238,7 +237,7 @@ const TiposDocIdentidadForm = ({ tipoDoc, onSave, onCancel }) => {
         </div>
 
         {/* Nombre del Tipo de Documento */}
-        <div className="field col-12">
+        <div className="p-field">
           <label htmlFor="nombre" className="font-bold">
             Nombre *
           </label>
@@ -261,7 +260,7 @@ const TiposDocIdentidadForm = ({ tipoDoc, onSave, onCancel }) => {
         </div>
 
         {/* Estado Cesado */}
-        <div className="field col-12">
+        <div className="p-field-checkbox">
           <div className="flex align-items-center">
             <Controller
               name="cesado"
@@ -276,7 +275,7 @@ const TiposDocIdentidadForm = ({ tipoDoc, onSave, onCancel }) => {
               )}
             />
             <label htmlFor="cesado" className="font-bold">
-              Tipo de documento cesado (inactivo)
+              CESADO
             </label>
           </div>
           <small className="text-600">
@@ -285,25 +284,27 @@ const TiposDocIdentidadForm = ({ tipoDoc, onSave, onCancel }) => {
         </div>
 
         {/* Botones de acción */}
-        <div className="field col-12">
-          <div className="flex justify-content-end gap-2 pt-4">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
             <Button
               type="button"
               label="Cancelar"
               icon="pi pi-times"
-              className="p-button-secondary"
+              className="p-button-text"
               onClick={handleCancel}
+              raised
+              size='small'
               disabled={loading}
             />
             <Button
               type="submit"
               label={tipoDoc?.id ? 'Actualizar' : 'Crear'}
               icon={tipoDoc?.id ? 'pi pi-check' : 'pi pi-plus'}
-              className="p-button-primary"
+              className="p-button-success"
+              raised
+              size='small'
               loading={loading}
             />
           </div>
-        </div>
       </form>
     </div>
   );

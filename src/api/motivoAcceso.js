@@ -1,7 +1,13 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/motivos-acceso`;
+
+
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /**
  * API para gestión de Motivo Acceso
@@ -13,12 +19,7 @@ const API_URL = import.meta.env.VITE_API_URL;
  * @returns {Promise} Lista de motivos de acceso
  */
 export const getAllMotivoAcceso = async () => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/motivo-acceso`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.get(API_URL, { headers: getAuthHeader() });
   return response.data;
 };
 
@@ -28,12 +29,7 @@ export const getAllMotivoAcceso = async () => {
  * @returns {Promise} Motivo de acceso creado
  */
 export const crearMotivoAcceso = async (motivoAccesoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/motivo-acceso`, motivoAccesoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.post(API_URL, motivoAccesoData, { headers: getAuthHeader() });
   return response.data;
 };
 
@@ -44,12 +40,7 @@ export const crearMotivoAcceso = async (motivoAccesoData) => {
  * @returns {Promise} Motivo de acceso actualizado
  */
 export const actualizarMotivoAcceso = async (id, motivoAccesoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/motivo-acceso/${id}`, motivoAccesoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.put(`${API_URL}/${id}`, motivoAccesoData, { headers: getAuthHeader() });
   return response.data;
 };
 
@@ -59,16 +50,6 @@ export const actualizarMotivoAcceso = async (id, motivoAccesoData) => {
  * @returns {Promise} Confirmación de eliminación
  */
 export const deleteMotivoAcceso = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/motivo-acceso/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeader() });
   return response.data;
 };
-
-// Aliases en inglés para compatibilidad
-export const createMotivoAcceso = crearMotivoAcceso;
-export const updateMotivoAcceso = actualizarMotivoAcceso;
-export const eliminarMotivoAcceso = deleteMotivoAcceso;

@@ -1,14 +1,14 @@
 // src/components/tipoPersona/TipoPersonaForm.jsx
 // Formulario profesional para TipoPersona con validaciones completas
 // Cumple regla transversal ERP Megui: normalización de IDs, documentación en español
-import React, { useState, useEffect, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { Checkbox } from 'primereact/checkbox';
-import { Button } from 'primereact/button';
-import { Toast } from 'primereact/toast';
-import { createTipoPersona, updateTipoPersona } from '../../api/tipoPersona';
+import React, { useState, useEffect, useRef } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { InputText } from "primereact/inputtext";
+import { InputTextarea } from "primereact/inputtextarea";
+import { Checkbox } from "primereact/checkbox";
+import { Button } from "primereact/button";
+import { Toast } from "primereact/toast";
+import { crearTipoPersona, actualizarTipoPersona } from "../../api/tipoPersona";
 
 /**
  * Componente TipoPersonaForm
@@ -16,12 +16,17 @@ import { createTipoPersona, updateTipoPersona } from '../../api/tipoPersona';
  * Incluye validaciones según patrón ERP Megui
  */
 const TipoPersonaForm = ({ tipoPersona, onSave, onCancel }) => {
-  const { control, handleSubmit, formState: { errors }, reset } = useForm({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm({
     defaultValues: {
-      nombre: '',
-      descripcion: '',
-      activo: true
-    }
+      nombre: "",
+      descripcion: "",
+      activo: true,
+    },
   });
 
   const [loading, setLoading] = useState(false);
@@ -31,9 +36,9 @@ const TipoPersonaForm = ({ tipoPersona, onSave, onCancel }) => {
     if (tipoPersona) {
       // Cargar datos del tipo de persona para edición
       reset({
-        nombre: tipoPersona.nombre || '',
-        descripcion: tipoPersona.descripcion || '',
-        activo: Boolean(tipoPersona.activo)
+        nombre: tipoPersona.nombre || "",
+        descripcion: tipoPersona.descripcion || "",
+        activo: Boolean(tipoPersona.activo),
       });
     }
   }, [tipoPersona, reset]);
@@ -46,34 +51,35 @@ const TipoPersonaForm = ({ tipoPersona, onSave, onCancel }) => {
       const payload = {
         nombre: data.nombre.trim(),
         descripcion: data.descripcion?.trim() || null,
-        activo: Boolean(data.activo)
+        activo: Boolean(data.activo),
       };
 
-      console.log('Payload TipoPersona:', payload);
+      console.log("Payload TipoPersona:", payload);
 
       if (tipoPersona?.id) {
-        await updateTipoPersona(tipoPersona.id, payload);
+        await actualizarTipoPersona(tipoPersona.id, payload);
         toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Tipo de persona actualizado correctamente'
+          severity: "success",
+          summary: "Éxito",
+          detail: "Tipo de persona actualizado correctamente",
         });
       } else {
-        await createTipoPersona(payload);
+        await crearTipoPersona(payload);
         toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Tipo de persona creado correctamente'
+          severity: "success",
+          summary: "Éxito",
+          detail: "Tipo de persona creado correctamente",
         });
       }
 
       onSave();
     } catch (error) {
-      console.error('Error al guardar tipo de persona:', error);
+      console.error("Error al guardar tipo de persona:", error);
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: error.response?.data?.error || 'Error al guardar el tipo de persona'
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.error || "Error al guardar el tipo de persona",
       });
     } finally {
       setLoading(false);
@@ -83,7 +89,7 @@ const TipoPersonaForm = ({ tipoPersona, onSave, onCancel }) => {
   return (
     <div className="tipo-persona-form">
       <Toast ref={toast} />
-      
+
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="grid">
           <div className="col-12">
@@ -93,17 +99,17 @@ const TipoPersonaForm = ({ tipoPersona, onSave, onCancel }) => {
             <Controller
               name="nombre"
               control={control}
-              rules={{ 
-                required: 'El nombre es obligatorio',
-                minLength: { value: 2, message: 'Mínimo 2 caracteres' },
-                maxLength: { value: 100, message: 'Máximo 100 caracteres' }
+              rules={{
+                required: "El nombre es obligatorio",
+                minLength: { value: 2, message: "Mínimo 2 caracteres" },
+                maxLength: { value: 100, message: "Máximo 100 caracteres" },
               }}
               render={({ field }) => (
                 <InputText
                   id="nombre"
                   {...field}
                   placeholder="Ej: Empleado, Visitante, Cliente, Proveedor, Fiscalizador"
-                  className={`w-full ${errors.nombre ? 'p-invalid' : ''}`}
+                  className={`w-full ${errors.nombre ? "p-invalid" : ""}`}
                 />
               )}
             />
@@ -113,21 +119,24 @@ const TipoPersonaForm = ({ tipoPersona, onSave, onCancel }) => {
           </div>
 
           <div className="col-12">
-            <label htmlFor="descripcion" className="block text-900 font-medium mb-2">
+            <label
+              htmlFor="descripcion"
+              className="block text-900 font-medium mb-2"
+            >
               Descripción
             </label>
             <Controller
               name="descripcion"
               control={control}
-              rules={{ 
-                maxLength: { value: 500, message: 'Máximo 500 caracteres' }
+              rules={{
+                maxLength: { value: 500, message: "Máximo 500 caracteres" },
               }}
               render={({ field }) => (
                 <InputTextarea
                   id="descripcion"
                   {...field}
                   placeholder="Descripción del tipo de persona (opcional)"
-                  className={`w-full ${errors.descripcion ? 'p-invalid' : ''}`}
+                  className={`w-full ${errors.descripcion ? "p-invalid" : ""}`}
                   rows={3}
                 />
               )}
@@ -156,20 +165,19 @@ const TipoPersonaForm = ({ tipoPersona, onSave, onCancel }) => {
             </div>
           </div>
         </div>
-
-        <div className="flex justify-content-end gap-2 mt-4">
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
           <Button
             type="button"
             label="Cancelar"
             icon="pi pi-times"
-            className="p-button-secondary"
+            className="p-button-text"
             onClick={onCancel}
             disabled={loading}
           />
           <Button
             type="submit"
-            label={tipoPersona?.id ? 'Actualizar' : 'Crear'}
-            icon={tipoPersona?.id ? 'pi pi-check' : 'pi pi-plus'}
+            label={tipoPersona?.id ? "Actualizar" : "Crear"}
+            icon={tipoPersona?.id ? "pi pi-check" : "pi pi-plus"}
             className="p-button-primary"
             loading={loading}
           />

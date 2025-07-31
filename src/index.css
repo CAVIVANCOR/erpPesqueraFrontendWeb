@@ -175,3 +175,107 @@ body {
   min-width: 320px;
   min-height: 100vh;
 }
+
+/* Solución para error aria-hidden en PrimeReact 10.9.6 */
+/* Corrige el problema de accesibilidad en menús */
+.p-menuitem-link[aria-hidden="true"]:focus {
+  outline: none !important;
+}
+
+.p-menuitem-link[aria-hidden="true"] {
+  pointer-events: none !important;
+}
+
+/* Asegurar que elementos con aria-hidden no reciban foco */
+[aria-hidden="true"] {
+  pointer-events: none !important;
+}
+
+[aria-hidden="true"] * {
+  pointer-events: none !important;
+}
+
+/* Estilos responsive para TabView en dispositivos móviles */
+@media (max-width: 768px) {
+  .tabview-responsive .p-tabview-nav {
+    flex-wrap: wrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .tabview-responsive .p-tabview-nav-link {
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+    min-width: auto !important;
+    white-space: nowrap !important;
+  }
+  
+  .tabview-responsive .p-tabview-nav-link .p-tabview-title {
+    font-size: 12px !important;
+  }
+  
+  .tabview-responsive .p-tabview-nav-link .pi {
+    font-size: 12px !important;
+    margin-right: 4px !important;
+  }
+  
+  .tabview-responsive .p-tabview-panels {
+    padding: 8px !important;
+  }
+  
+  /* Mejorar el espaciado en formularios móviles */
+  .tabview-responsive .formgrid.grid {
+    margin: 0 !important;
+  }
+  
+  .tabview-responsive .field {
+    margin-bottom: 12px !important;
+  }
+  
+  .tabview-responsive .field label {
+    font-size: 13px !important;
+    margin-bottom: 4px !important;
+  }
+  
+  .tabview-responsive .p-inputtext,
+  .tabview-responsive .p-dropdown,
+  .tabview-responsive .p-calendar {
+    font-size: 14px !important;
+    padding: 8px !important;
+  }
+  
+  .tabview-responsive h5 {
+    font-size: 14px !important;
+    margin-bottom: 8px !important;
+  }
+  
+  /* Estilos responsive para Dialog/Modal en móviles */
+  .dialog-responsive .p-dialog {
+    margin: 8px !important;
+    max-height: 95vh !important;
+  }
+  
+  .dialog-responsive .p-dialog-header {
+    padding: 12px 16px !important;
+    font-size: 16px !important;
+  }
+  
+  .dialog-responsive .p-dialog-content {
+    padding: 8px 16px !important;
+    max-height: calc(95vh - 120px) !important;
+    overflow-y: auto !important;
+  }
+  
+  .dialog-responsive .p-dialog-footer {
+    padding: 8px 16px !important;
+  }
+}
+
+/* Suprimir warnings de accesibilidad específicos de PrimeReact */
+.p-menu .p-menuitem-link[aria-hidden="true"],
+.p-tieredmenu .p-menuitem-link[aria-hidden="true"],
+.p-contextmenu .p-menuitem-link[aria-hidden="true"] {
+  visibility: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+}

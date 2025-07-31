@@ -1,7 +1,12 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/tipos-persona`;
+
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /**
  * API para gestión de Tipo Persona
@@ -13,12 +18,7 @@ const API_URL = import.meta.env.VITE_API_URL;
  * @returns {Promise} Lista de tipos de persona
  */
 export const getAllTipoPersona = async () => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/tipo-persona`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.get(API_URL, {headers: getAuthHeader()});
   return response.data;
 };
 
@@ -28,12 +28,7 @@ export const getAllTipoPersona = async () => {
  * @returns {Promise} Tipo de persona creado
  */
 export const crearTipoPersona = async (tipoPersonaData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/tipo-persona`, tipoPersonaData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.post(API_URL, tipoPersonaData, {headers: getAuthHeader()});
   return response.data;
 };
 
@@ -44,12 +39,7 @@ export const crearTipoPersona = async (tipoPersonaData) => {
  * @returns {Promise} Tipo de persona actualizado
  */
 export const actualizarTipoPersona = async (id, tipoPersonaData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/tipo-persona/${id}`, tipoPersonaData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.put(`${API_URL}/${id}`, tipoPersonaData, {headers: getAuthHeader()});
   return response.data;
 };
 
@@ -59,16 +49,6 @@ export const actualizarTipoPersona = async (id, tipoPersonaData) => {
  * @returns {Promise} Confirmación de eliminación
  */
 export const deleteTipoPersona = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/tipo-persona/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.delete(`${API_URL}/${id}`, {headers: getAuthHeader()});
   return response.data;
 };
-
-// Aliases en inglés para compatibilidad
-export const createTipoPersona = crearTipoPersona;
-export const updateTipoPersona = actualizarTipoPersona;
-export const eliminarTipoPersona = deleteTipoPersona;

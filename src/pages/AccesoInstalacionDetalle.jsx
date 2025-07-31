@@ -3,32 +3,36 @@
  * Implementa el patrón estándar ERP Megui con DataTable, modal, confirmación y feedback.
  * Incluye edición por clic en fila y eliminación con control de roles.
  * Gestiona detalles de accesos a instalaciones con equipos y movimientos.
- * 
+ *
  * Cumple la regla transversal ERP Megui:
  * - Edición profesional por clic en fila (abre modal)
  * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin)
  * - Confirmación de borrado con ConfirmDialog visual rojo
  * - Feedback visual con Toast
  * - Documentación de la regla en el encabezado
- * 
+ *
  * @author ERP Megui
  * @version 1.0.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Dialog } from 'primereact/dialog';
-import { Toast } from 'primereact/toast';
-import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
-import { Toolbar } from 'primereact/toolbar';
-import { InputText } from 'primereact/inputtext';
-import { Tag } from 'primereact/tag';
-import { FilterMatchMode } from 'primereact/api';
-import { obtenerDetallesAccesoInstalacion, eliminarDetalleAccesoInstalacion } from '../api/accesoInstalacionDetalle';
-import { useAuthStore } from '../shared/stores/useAuthStore';
-import AccesoInstalacionDetalleForm from '../components/accesoInstalacionDetalle/AccesoInstalacionDetalleForm';
+import React, { useState, useEffect, useRef } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { Toolbar } from "primereact/toolbar";
+import { InputText } from "primereact/inputtext";
+import { Tag } from "primereact/tag";
+import { FilterMatchMode } from "primereact/api";
+import {
+  obtenerDetallesAccesoInstalacion,
+  eliminarDetalleAccesoInstalacion,
+} from "../api/accesoInstalacionDetalle";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import AccesoInstalacionDetalleForm from "../components/accesoInstalacionDetalle/AccesoInstalacionDetalleForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Componente AccesoInstalacionDetalle
@@ -37,15 +41,15 @@ import AccesoInstalacionDetalleForm from '../components/accesoInstalacionDetalle
 const AccesoInstalacionDetalle = () => {
   const toast = useRef(null);
   const { usuario } = useAuthStore();
-  
+
   // Estados del componente
   const [detalles, setDetalles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogoVisible, setDialogoVisible] = useState(false);
   const [detalleSeleccionado, setDetalleSeleccionado] = useState(null);
-  const [globalFilter, setGlobalFilter] = useState('');
+  const [globalFilter, setGlobalFilter] = useState("");
   const [filters, setFilters] = useState({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
   });
 
   /**
@@ -55,24 +59,28 @@ const AccesoInstalacionDetalle = () => {
     try {
       setLoading(true);
       const data = await obtenerDetallesAccesoInstalacion();
-      
+
       // Normalizar IDs según regla ERP Megui
-      const detallesNormalizados = data.map(detalle => ({
+      const detallesNormalizados = data.map((detalle) => ({
         ...detalle,
         id: Number(detalle.id),
         accesoInstalacionId: Number(detalle.accesoInstalacionId),
-        tipoEquipoId: detalle.tipoEquipoId ? Number(detalle.tipoEquipoId) : null,
-        tipoMovimientoId: detalle.tipoMovimientoId ? Number(detalle.tipoMovimientoId) : null,
-        personalId: detalle.personalId ? Number(detalle.personalId) : null
+        tipoEquipoId: detalle.tipoEquipoId
+          ? Number(detalle.tipoEquipoId)
+          : null,
+        tipoMovimientoId: detalle.tipoMovimientoId
+          ? Number(detalle.tipoMovimientoId)
+          : null,
+        personalId: detalle.personalId ? Number(detalle.personalId) : null,
       }));
-      
+
       setDetalles(detallesNormalizados);
     } catch (error) {
-      console.error('Error al cargar detalles de accesos:', error);
+      console.error("Error al cargar detalles de accesos:", error);
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al cargar los detalles de accesos a instalaciones'
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar los detalles de accesos a instalaciones",
       });
     } finally {
       setLoading(false);
@@ -126,9 +134,9 @@ const AccesoInstalacionDetalle = () => {
     // Control de roles según regla transversal ERP Megui
     if (!usuario?.esSuperUsuario && !usuario?.esAdmin) {
       toast.current?.show({
-        severity: 'warn',
-        summary: 'Acceso Denegado',
-        detail: 'No tiene permisos para eliminar detalles de accesos'
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar detalles de accesos",
       });
       return;
     }
@@ -142,14 +150,16 @@ const AccesoInstalacionDetalle = () => {
     };
 
     confirmDialog({
-      message: `¿Está seguro de eliminar el detalle de acceso "${detalle.numeroEquipo || 'N/A'}" del equipo "${detalle.tipoEquipo?.nombre || 'N/A'}"?`,
-      header: 'Confirmar Eliminación',
-      icon: 'pi pi-exclamation-triangle',
-      acceptClassName: 'p-button-danger',
-      acceptLabel: 'Sí, Eliminar',
-      rejectLabel: 'Cancelar',
+      message: `¿Está seguro de eliminar el detalle de acceso "${
+        detalle.numeroEquipo || "N/A"
+      }" del equipo "${detalle.tipoEquipo?.nombre || "N/A"}"?`,
+      header: "Confirmar Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
+      acceptLabel: "Sí, Eliminar",
+      rejectLabel: "Cancelar",
       accept: confirmar,
-      reject: rechazar
+      reject: rechazar,
     });
   };
 
@@ -160,17 +170,19 @@ const AccesoInstalacionDetalle = () => {
     try {
       await eliminarDetalleAccesoInstalacion(id);
       toast.current?.show({
-        severity: 'success',
-        summary: 'Éxito',
-        detail: 'Detalle de acceso eliminado correctamente'
+        severity: "success",
+        summary: "Éxito",
+        detail: "Detalle de acceso eliminado correctamente",
       });
       await cargarDetalles();
     } catch (error) {
-      console.error('Error al eliminar detalle de acceso:', error);
+      console.error("Error al eliminar detalle de acceso:", error);
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: error.response?.data?.message || 'Error al eliminar el detalle de acceso'
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.message ||
+          "Error al eliminar el detalle de acceso",
       });
     }
   };
@@ -181,7 +193,7 @@ const AccesoInstalacionDetalle = () => {
   const onGlobalFilterChange = (e) => {
     const value = e.target.value;
     let _filters = { ...filters };
-    _filters['global'].value = value;
+    _filters["global"].value = value;
     setFilters(_filters);
     setGlobalFilter(value);
   };
@@ -194,7 +206,8 @@ const AccesoInstalacionDetalle = () => {
       <div className="flex align-items-center">
         <i className="pi pi-shield mr-2 text-blue-500"></i>
         <span className="font-medium">
-          {rowData.accesoInstalacion?.codigo || `ID: ${rowData.accesoInstalacionId}`}
+          {rowData.accesoInstalacion?.codigo ||
+            `ID: ${rowData.accesoInstalacionId}`}
         </span>
       </div>
     );
@@ -207,7 +220,9 @@ const AccesoInstalacionDetalle = () => {
     return (
       <div className="flex align-items-center">
         <i className="pi pi-cog mr-2 text-green-500"></i>
-        <span className="font-medium">{rowData.tipoEquipo?.nombre || 'N/A'}</span>
+        <span className="font-medium">
+          {rowData.tipoEquipo?.nombre || "N/A"}
+        </span>
       </div>
     );
   };
@@ -234,14 +249,15 @@ const AccesoInstalacionDetalle = () => {
       return <span className="text-500">-</span>;
     }
 
-    const esIngreso = rowData.tipoMovimiento.nombre?.toLowerCase().includes('ingreso') || 
-                      rowData.tipoMovimiento.nombre?.toLowerCase().includes('entrada');
-    
+    const esIngreso =
+      rowData.tipoMovimiento.nombre?.toLowerCase().includes("ingreso") ||
+      rowData.tipoMovimiento.nombre?.toLowerCase().includes("entrada");
+
     return (
-      <Tag 
-        value={rowData.tipoMovimiento.nombre} 
-        severity={esIngreso ? 'success' : 'info'}
-        icon={esIngreso ? 'pi pi-arrow-down' : 'pi pi-arrow-up'}
+      <Tag
+        value={rowData.tipoMovimiento.nombre}
+        severity={esIngreso ? "success" : "info"}
+        icon={esIngreso ? "pi pi-arrow-down" : "pi pi-arrow-up"}
       />
     );
   };
@@ -265,7 +281,7 @@ const AccesoInstalacionDetalle = () => {
    */
   const fechaTemplate = (rowData, field) => {
     const fecha = rowData[field];
-    return fecha ? new Date(fecha).toLocaleDateString('es-PE') : '-';
+    return fecha ? new Date(fecha).toLocaleDateString("es-PE") : "-";
   };
 
   /**
@@ -275,16 +291,14 @@ const AccesoInstalacionDetalle = () => {
     if (!rowData.observaciones) {
       return <span className="text-500">-</span>;
     }
-    
-    const texto = rowData.observaciones.length > 50 
-      ? `${rowData.observaciones.substring(0, 50)}...` 
-      : rowData.observaciones;
-    
+
+    const texto =
+      rowData.observaciones.length > 50
+        ? `${rowData.observaciones.substring(0, 50)}...`
+        : rowData.observaciones;
+
     return (
-      <span 
-        title={rowData.observaciones}
-        className="text-sm"
-      >
+      <span title={rowData.observaciones} className="text-sm">
         {texto}
       </span>
     );
@@ -303,45 +317,9 @@ const AccesoInstalacionDetalle = () => {
             className="p-button-rounded p-button-danger p-button-sm"
             onClick={() => confirmarEliminacion(rowData)}
             tooltip="Eliminar"
-            tooltipOptions={{ position: 'top' }}
+            tooltipOptions={{ position: "top" }}
           />
         )}
-      </div>
-    );
-  };
-
-  /**
-   * Header del toolbar
-   */
-  const leftToolbarTemplate = () => {
-    return (
-      <div className="flex flex-wrap gap-2">
-        <Button
-          label="Nuevo Detalle"
-          icon="pi pi-plus"
-          className="p-button-success"
-          onClick={abrirDialogoNuevo}
-        />
-      </div>
-    );
-  };
-
-  /**
-   * Filtro global del toolbar
-   */
-  const rightToolbarTemplate = () => {
-    return (
-      <div className="flex align-items-center gap-2">
-        <span className="p-input-icon-left">
-          <i className="pi pi-search" />
-          <InputText
-            type="search"
-            value={globalFilter}
-            onChange={onGlobalFilterChange}
-            placeholder="Buscar..."
-            className="w-full sm:w-auto"
-          />
-        </span>
       </div>
     );
   };
@@ -350,14 +328,7 @@ const AccesoInstalacionDetalle = () => {
     <div className="crud-demo">
       <Toast ref={toast} />
       <ConfirmDialog />
-      
       <div className="card">
-        <Toolbar 
-          className="mb-4" 
-          left={leftToolbarTemplate} 
-          right={rightToolbarTemplate}
-        />
-
         <DataTable
           value={detalles}
           loading={loading}
@@ -369,84 +340,112 @@ const AccesoInstalacionDetalle = () => {
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} detalles"
           filters={filters}
           filterDisplay="menu"
-          globalFilterFields={['numeroEquipo', 'tipoEquipo.nombre', 'tipoMovimiento.nombre', 'personal.nombres', 'observaciones']}
+          globalFilterFields={[
+            "numeroEquipo",
+            "tipoEquipo.nombre",
+            "tipoMovimiento.nombre",
+            "personal.nombres",
+            "observaciones",
+          ]}
           emptyMessage="No se encontraron detalles de accesos"
           onRowClick={(e) => editarDetalle(e.data)}
           className="datatable-responsive"
           scrollable
           scrollHeight="600px"
+          style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+          header={
+            <div className="flex align-items-center gap-2">
+              <h2>Registro de Detalles de Accesos a Instalaciones</h2>
+              <Button
+                label="Nuevo Detalle"
+                icon="pi pi-plus"
+                className="p-button-success"
+                size="small"
+                outlined
+                raised
+                onClick={abrirDialogoNuevo}
+              />
+              <InputText
+                type="search"
+                value={globalFilter}
+                onChange={onGlobalFilterChange}
+                placeholder="Buscar..."
+                className="w-full sm:w-auto"
+              />
+            </div>
+          }
         >
-          <Column 
-            field="accesoInstalacion.codigo" 
-            header="Acceso Instalación" 
+          <Column
+            field="accesoInstalacion.codigo"
+            header="Acceso Instalación"
             body={accesoInstalacionTemplate}
-            sortable 
+            sortable
             frozen
-            style={{ minWidth: '180px' }}
+            style={{ minWidth: "180px" }}
           />
-          
-          <Column 
-            field="tipoEquipo.nombre" 
-            header="Tipo Equipo" 
+
+          <Column
+            field="tipoEquipo.nombre"
+            header="Tipo Equipo"
             body={tipoEquipoTemplate}
-            sortable 
-            style={{ minWidth: '150px' }}
+            sortable
+            style={{ minWidth: "150px" }}
           />
-          
-          <Column 
-            field="numeroEquipo" 
-            header="Número Equipo" 
+
+          <Column
+            field="numeroEquipo"
+            header="Número Equipo"
             body={numeroEquipoTemplate}
-            sortable 
-            style={{ minWidth: '140px' }}
+            sortable
+            style={{ minWidth: "140px" }}
           />
-          
-          <Column 
-            field="tipoMovimiento.nombre" 
-            header="Tipo Movimiento" 
+
+          <Column
+            field="tipoMovimiento.nombre"
+            header="Tipo Movimiento"
             body={tipoMovimientoTemplate}
-            sortable 
-            style={{ minWidth: '150px' }}
+            sortable
+            style={{ minWidth: "150px" }}
           />
-          
-          <Column 
-            field="personal.nombres" 
-            header="Personal" 
+
+          <Column
+            field="personal.nombres"
+            header="Personal"
             body={personalTemplate}
-            sortable 
-            style={{ minWidth: '200px' }}
+            sortable
+            style={{ minWidth: "200px" }}
           />
-          
-          <Column 
-            field="fechaMovimiento" 
-            header="Fecha Movimiento" 
-            body={(rowData) => fechaTemplate(rowData, 'fechaMovimiento')}
-            sortable 
-            style={{ minWidth: '140px' }}
+
+          <Column
+            field="fechaMovimiento"
+            header="Fecha Movimiento"
+            body={(rowData) => fechaTemplate(rowData, "fechaMovimiento")}
+            sortable
+            style={{ minWidth: "140px" }}
           />
-          
-          <Column 
-            field="observaciones" 
-            header="Observaciones" 
+
+          <Column
+            field="observaciones"
+            header="Observaciones"
             body={observacionesTemplate}
-            sortable 
-            style={{ minWidth: '200px' }}
+            sortable
+            style={{ minWidth: "200px" }}
           />
-          
-          <Column 
-            field="createdAt" 
-            header="Fecha Creación" 
-            body={(rowData) => fechaTemplate(rowData, 'createdAt')}
-            sortable 
-            style={{ minWidth: '140px' }}
+
+          <Column
+            field="createdAt"
+            header="Fecha Creación"
+            body={(rowData) => fechaTemplate(rowData, "createdAt")}
+            sortable
+            style={{ minWidth: "140px" }}
           />
-          
-          <Column 
-            body={accionesTemplate} 
-            header="Acciones" 
-            frozen 
+
+          <Column
+            body={accionesTemplate}
+            header="Acciones"
+            frozen
             alignFrozen="right"
-            style={{ minWidth: '100px' }}
+            style={{ minWidth: "100px" }}
           />
         </DataTable>
       </div>
@@ -454,8 +453,12 @@ const AccesoInstalacionDetalle = () => {
       {/* Diálogo del formulario */}
       <Dialog
         visible={dialogoVisible}
-        style={{ width: '90vw', maxWidth: '800px' }}
-        header={detalleSeleccionado?.id ? 'Editar Detalle de Acceso' : 'Nuevo Detalle de Acceso'}
+        style={{ width: "90vw", maxWidth: "800px" }}
+        header={
+          detalleSeleccionado?.id
+            ? "Editar Detalle de Acceso"
+            : "Nuevo Detalle de Acceso"
+        }
         modal
         className="p-fluid"
         onHide={cerrarDialogo}

@@ -126,7 +126,7 @@ export default function ConceptoMovAlmacen() {
       <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar este concepto de movimiento?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
       <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
         <h2>Gestión de Conceptos de Movimiento de Almacén</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" onClick={handleAdd} disabled={loading} />
+        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
       </div>
       <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
         <Column field="id" header="ID" style={{ width: 80 }} />

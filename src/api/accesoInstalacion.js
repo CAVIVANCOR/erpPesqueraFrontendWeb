@@ -1,16 +1,17 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/accesos-instalacion`;
 
 /**
  * Obtiene el token de autenticación desde el store de Zustand
  * @returns {string} Token JWT para autenticación
  */
-const getAuthToken = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 
 /**
  * Obtiene todos los accesos a instalaciones del sistema
@@ -18,14 +19,8 @@ const getAuthToken = () => {
  */
 export const getAllAccesoInstalacion = async () => {
   try {
-    const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/acceso-instalacion`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return response.data;
+    const res = await axios.get(API_URL, { headers: getAuthHeader() });
+    return res.data;
   } catch (error) {
     console.error('Error al obtener accesos a instalaciones:', error);
     throw error;
@@ -39,14 +34,8 @@ export const getAllAccesoInstalacion = async () => {
  */
 export const crearAccesoInstalacion = async (accesoData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/acceso-instalacion`, accesoData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return response.data;
+    const res = await axios.post(API_URL, accesoData, { headers: getAuthHeader() });
+    return res.data;
   } catch (error) {
     console.error('Error al crear acceso a instalación:', error);
     throw error;
@@ -61,16 +50,51 @@ export const crearAccesoInstalacion = async (accesoData) => {
  */
 export const actualizarAccesoInstalacion = async (id, accesoData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/acceso-instalacion/${id}`, accesoData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return response.data;
+    const res = await axios.put(`${API_URL}/${id}`, accesoData, { headers: getAuthHeader() });
+    return res.data;
   } catch (error) {
     console.error('Error al actualizar acceso a instalación:', error);
+    throw error;
+  }
+};
+
+/**
+ * Busca una persona por número de documento en accesos previos
+ * @param {string} numeroDocumento - Número de documento a buscar
+ * @returns {Promise<Object|null>} Datos de la persona si existe, null si no existe
+ */
+export const buscarPersonaPorDocumento = async (numeroDocumento) => {
+  try {
+    const res = await axios.get(`${API_URL}/buscar-persona/${numeroDocumento}`, { 
+      headers: getAuthHeader() 
+    });
+    return res.data;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      return null; // Persona no encontrada
+    }
+    console.error('Error al buscar persona por documento:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtiene los datos completos de un acceso previo por número de documento
+ * Incluye datos de persona, vehículo, equipo, etc.
+ * @param {string} numeroDocumento - Número de documento
+ * @returns {Promise<Object|null>} Datos completos del último acceso si existe
+ */
+export const obtenerDatosAccesoPrevio = async (numeroDocumento) => {
+  try {
+    const res = await axios.get(`${API_URL}/datos-previos/${numeroDocumento}`, { 
+      headers: getAuthHeader() 
+    });
+    return res.data;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      return null; // No hay accesos previos
+    }
+    console.error('Error al obtener datos de acceso previo:', error);
     throw error;
   }
 };
@@ -82,22 +106,10 @@ export const actualizarAccesoInstalacion = async (id, accesoData) => {
  */
 export const eliminarAccesoInstalacion = async (id) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/acceso-instalacion/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    const response = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeader() });
     return response.data;
   } catch (error) {
     console.error('Error al eliminar acceso a instalación:', error);
     throw error;
   }
 };
-
-// Aliases en inglés para compatibilidad
-export const getAccesoInstalacion = getAllAccesoInstalacion;
-export const createAccesoInstalacion = crearAccesoInstalacion;
-export const updateAccesoInstalacion = actualizarAccesoInstalacion;
-export const deleteAccesoInstalacion = eliminarAccesoInstalacion;

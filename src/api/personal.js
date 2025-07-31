@@ -6,6 +6,10 @@ import { useAuthStore } from '../shared/stores/useAuthStore';
 
 const API_URL = `${import.meta.env.VITE_API_URL}/personal`;
 
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 /**
  * Crea un nuevo registro de personal en el sistema.
  * @param {Object} data - Datos del personal (solo campos válidos para el backend)
@@ -70,10 +74,7 @@ export const actualizarPersonal = async (id, data) => {
   return res.data;
 };
 
-function getAuthHeader() {
-  const token = useAuthStore.getState().token;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+
 
 /**
  * Obtiene el personal filtrado por empresaId (si se provee).
