@@ -28,6 +28,21 @@ export const getAllAccesoInstalacion = async () => {
 };
 
 /**
+ * Obtiene un acceso a instalación específico por ID
+ * @param {number} id - ID del acceso a instalación
+ * @returns {Promise<Object>} Acceso a instalación encontrado
+ */
+export const getAccesoInstalacionById = async (id) => {
+  try {
+    const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeader() });
+    return res.data;
+  } catch (error) {
+    console.error('Error al obtener acceso a instalación por ID:', error);
+    throw error;
+  }
+};
+
+/**
  * Crea un nuevo acceso a instalación
  * @param {Object} accesoData - Datos del acceso a instalación
  * @returns {Promise<Object>} Acceso a instalación creado
@@ -74,6 +89,26 @@ export const buscarPersonaPorDocumento = async (numeroDocumento) => {
       return null; // Persona no encontrada
     }
     console.error('Error al buscar persona por documento:', error);
+    throw error;
+  }
+};
+
+/**
+ * Busca un vehículo por número de placa en accesos previos
+ * @param {string} numeroPlaca - Número de placa a buscar
+ * @returns {Promise<Object|null>} Datos del vehículo si existe, null si no existe
+ */
+export const buscarVehiculoPorPlaca = async (numeroPlaca) => {
+  try {
+    const res = await axios.get(`${API_URL}/buscar-vehiculo/${numeroPlaca}`, { 
+      headers: getAuthHeader() 
+    });
+    return res.data;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      return null; // Vehículo no encontrado
+    }
+    console.error('Error al buscar vehículo por placa:', error);
     throw error;
   }
 };

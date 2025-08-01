@@ -6,15 +6,22 @@ import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { Button } from "primereact/button";
+import { ButtonGroup } from "primereact/buttongroup";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
-import { Calendar } from "primereact/calendar";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Checkbox } from "primereact/checkbox";
 import { Toast } from "primereact/toast";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { Message } from "primereact/message";
 import { TabView, TabPanel } from "primereact/tabview";
+import DocumentoVisitanteCapture from "./DocumentoVisitanteCapture";
+import PDFViewer from "./PDFViewer";
+import TicketPrinter from "./TicketPrinter";
+import { toUpperCaseSafe } from "../../utils/utils";
+
+// Store de autenticación
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 // APIs necesarias para el modelo Prisma AccesoInstalacion
 import { getAllTipoAccesoInstalacion } from "../../api/tipoAccesoInstalacion";
@@ -29,7 +36,7 @@ import { getEmpresas } from "../../api/empresa";
 import { getPersonal } from "../../api/personal"; // Para personaFirmaDestinoVisitaId
 import {
   buscarPersonaPorDocumento,
-  obtenerDatosAccesoPrevio,
+  buscarVehiculoPorPlaca,
 } from "../../api/accesoInstalacion";
 
 // Esquema de validación con Yup - Coincide exactamente con el modelo Prisma AccesoInstalacion
@@ -76,6 +83,8 @@ const schema = yup.object().shape({
   // Datos de vehículo del cliente
   vehiculoNroPlaca: yup.string().max(10, "Máximo 10 caracteres"),
   vehiculoMarca: yup.string().max(50, "Máximo 50 caracteres"),
+  vehiculoModelo: yup.string().max(50, "Máximo 50 caracteres"),
+  vehiculoColor: yup.string().max(30, "Máximo 30 caracteres"),
 
   // Datos de equipo del cliente
   equipoMarca: yup.string().max(50, "Máximo 50 caracteres"),
@@ -86,7 +95,6 @@ const schema = yup.object().shape({
     .number()
     .nullable()
     .typeError("Debe seleccionar una persona"),
-  nombreDestinoVisita: yup.string().max(255, "Máximo 255 caracteres"),
 
   // Otros campos
   observaciones: yup.string().max(500, "Máximo 500 caracteres"),
@@ -94,7 +102,20 @@ const schema = yup.object().shape({
   descripcionIncidente: yup.string().max(500, "Máximo 500 caracteres"),
   imprimeTicketIng: yup.boolean().required(),
   urlImpresionTicket: yup.string().url("URL inválida"),
-  urlDocumentoVisitante: yup.string().url("URL inválida"),
+  urlDocumentoVisitante: yup
+    .string()
+    .test("url-or-path", "URL o ruta inválida", function (value) {
+      if (!value) return true; // Campo opcional
+
+      // Permitir URLs completas (http:// o https://)
+      try {
+        new URL(value);
+        return true;
+      } catch {
+        // Si no es URL completa, verificar si es ruta relativa válida
+        return value.startsWith("/") && value.length > 1;
+      }
+    }),
 });
 
 /**
@@ -114,8 +135,6 @@ export default function AccesoInstalacionForm({
   empresaId,
   sedeId,
 }) {
-  console.log("Carga empresaId:", empresaId);
-  console.log("Carga sedeId:", sedeId);
   const toast = useRef(null);
 
   // Estados para combos según modelo Prisma AccesoInstalacion
@@ -130,6 +149,10 @@ export default function AccesoInstalacionForm({
   const [tiposDocIdentidad, setTiposDocIdentidad] = useState([]);
   const [personalDestino, setPersonalDestino] = useState([]);
 
+  // Estados para datos completos (necesarios para el ticket)
+  const [empresasCompletas, setEmpresasCompletas] = useState([]);
+  const [sedesCompletas, setSedesCompletas] = useState([]);
+
   // Estados para el flujo de búsqueda
   const [loading, setLoading] = useState(false);
   const [buscandoDocumento, setBuscandoDocumento] = useState(false);
@@ -137,6 +160,13 @@ export default function AccesoInstalacionForm({
   const [personaEncontrada, setPersonaEncontrada] = useState(null);
   const [datosAutocompletados, setDatosAutocompletados] = useState(false);
   const [busquedaHabilitada, setBusquedaHabilitada] = useState(true); // Búsqueda automática siempre activa
+  const [modalDocumentoVisible, setModalDocumentoVisible] = useState(false);
+
+  // Estados para búsqueda de vehículo por placa
+  const [buscandoVehiculo, setBuscandoVehiculo] = useState(false);
+  const [vehiculoEncontrado, setVehiculoEncontrado] = useState(null);
+  const [datosVehiculoAutocompletados, setDatosVehiculoAutocompletados] =
+    useState(false);
 
   const modoEdicion = !!item;
 
@@ -158,17 +188,17 @@ export default function AccesoInstalacionForm({
     resolver: yupResolver(schema),
     defaultValues: {
       // Campos obligatorios
-      sedeId: sedeId ? Number(sedeId) : null, // Precargar desde estado global
-      tipoAccesoId: null,
+      sedeId: sedeId ? Number(sedeId) : "", // Precargar desde estado global
+      tipoAccesoId: 1, // Valor por defecto (ID=1)
       fechaHora: new Date(), // Generar automáticamente fecha y hora actual
 
       // Campos opcionales
-      empresaId: empresaId ? Number(empresaId) : null, // Precargar desde estado global
-      areaDestinoVisitaId: null,
-      vehiculoId: null,
-      tipoPersonaId: null,
-      motivoId: null,
-      tipoEquipoId: null,
+      empresaId: empresaId ? Number(empresaId) : "", // Precargar desde estado global
+      areaDestinoVisitaId: "",
+      vehiculoId: "",
+      tipoPersonaId: "",
+      motivoId: "",
+      tipoEquipoId: "",
 
       // Datos de la persona
       nombrePersona: "",
@@ -178,29 +208,33 @@ export default function AccesoInstalacionForm({
       // Datos de vehículo del cliente
       vehiculoNroPlaca: "",
       vehiculoMarca: "",
+      vehiculoModelo: "",
+      vehiculoColor: "",
 
       // Datos de equipo del cliente
+      equipoTipo: "",
       equipoMarca: "",
+      equipoModelo: "",
       equipoSerie: "",
 
       // Persona destino de la visita
-      personaFirmaDestinoVisitaId: null,
-      nombreDestinoVisita: "",
+      personaFirmaDestinoVisitaId: "",
+      personaDestinoVisita: "",
 
       // Otros campos
       observaciones: "",
       incidenteResaltante: false,
       descripcionIncidente: "",
-      imprimeTicketIng: true,
+      imprimeTicketIng: false,
       urlImpresionTicket: "",
       urlDocumentoVisitante: "",
     },
   });
 
-  // Observar cambios en el número de documento para búsqueda automática
-  const numeroDocumento = watch("numeroDocumento");
+  // ELIMINADO: watch de numeroDocumento para evitar búsqueda automática mientras se escribe
+  // La búsqueda ahora se ejecuta solo en el evento onBlur del campo
 
-  // Función para buscar persona por documento
+  // Función para buscar persona por documento usando el endpoint implementado
   const buscarPersonaPorDoc = async (numDoc) => {
     if (!numDoc || numDoc.length < 8) return;
 
@@ -209,69 +243,37 @@ export default function AccesoInstalacionForm({
     setDatosAutocompletados(false);
 
     try {
-      console.log("Buscando persona con documento:", numDoc);
+      // Buscar persona usando el endpoint implementado
+      const respuesta = await buscarPersonaPorDocumento(numDoc);
 
-      // Intentar buscar la persona por documento
-      const personaEncontrada = await buscarPersonaPorDocumento(numDoc);
+      if (respuesta && respuesta.encontrada && respuesta.persona) {
+        const persona = respuesta.persona;
 
-      if (personaEncontrada) {
-        console.log("Persona encontrada:", personaEncontrada);
+        // Autocompletar ÚNICAMENTE los campos específicos del último registro:
+        // tipoPersonaId, nombrePersona, tipoDocIdentidadId, numeroDocumento
 
-        // Autocompletar datos encontrados
-        setValue(
-          "nombrePersona",
-          personaEncontrada.nombreCompleto || personaEncontrada.nombres || ""
-        );
+        setValue("nombrePersona", persona.nombrePersona || "");
         setValue(
           "tipoDocIdentidadId",
-          personaEncontrada.tipoDocIdentidadId
-            ? Number(personaEncontrada.tipoDocIdentidadId)
-            : 1
+          persona.tipoDocIdentidadId ? Number(persona.tipoDocIdentidadId) : 1
         );
+        setValue("numeroDocumento", persona.numeroDocumento || "");
 
-        // Obtener datos de acceso previo si existen
-        try {
-          const datosAccesoPrevio = await obtenerDatosAccesoPrevio(numDoc);
-          if (datosAccesoPrevio) {
-            console.log(
-              "Datos de acceso previo encontrados:",
-              datosAccesoPrevio
-            );
-
-            // Autocompletar con datos del último acceso
-            if (datosAccesoPrevio.tipoPersonaId) {
-              setValue(
-                "tipoPersonaId",
-                Number(datosAccesoPrevio.tipoPersonaId)
-              );
-            }
-            if (datosAccesoPrevio.empresaId) {
-              setValue("empresaId", Number(datosAccesoPrevio.empresaId));
-            }
-            if (datosAccesoPrevio.motivoId) {
-              setValue("motivoId", Number(datosAccesoPrevio.motivoId));
-            }
-          }
-        } catch (error) {
-          console.log(
-            "No se encontraron datos de acceso previo:",
-            error.message
-          );
+        // Autocompletar tipoPersonaId si existe en el último registro
+        if (persona.tipoPersonaId) {
+          setValue("tipoPersonaId", Number(persona.tipoPersonaId));
         }
 
-        setPersonaEncontrada(personaEncontrada);
+        setPersonaEncontrada(persona);
         setDatosAutocompletados(true);
 
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
-          detail: `Datos encontrados para: ${
-            personaEncontrada.nombreCompleto || personaEncontrada.nombres
-          }`,
+          detail: `Datos del último acceso encontrados para: ${persona.nombrePersona}`,
           life: 3000,
         });
       } else {
-        console.log("Persona no encontrada, permitir registro manual");
         setPersonaEncontrada(null);
         setDatosAutocompletados(false);
 
@@ -283,7 +285,6 @@ export default function AccesoInstalacionForm({
         });
       }
     } catch (error) {
-      console.error("Error en búsqueda de persona:", error);
       setPersonaEncontrada(null);
       setDatosAutocompletados(false);
 
@@ -298,22 +299,67 @@ export default function AccesoInstalacionForm({
     }
   };
 
-  // Efecto para búsqueda automática cuando cambia el número de documento
-  useEffect(() => {
-    if (
-      numeroDocumento &&
-      numeroDocumento.length >= 8 &&
-      !modoEdicion &&
-      busquedaHabilitada
-    ) {
-      // Debounce la búsqueda para evitar múltiples llamadas
-      const timeoutId = setTimeout(() => {
-        buscarPersonaPorDoc(numeroDocumento);
-      }, 500);
+  // ELIMINADO: watch de vehiculoNroPlaca para evitar búsqueda automática mientras se escribe
+  // La búsqueda ahora se ejecuta solo en el evento onBlur del campo
 
-      return () => clearTimeout(timeoutId);
+  // Función para buscar vehículo por número de placa usando el endpoint implementado
+  const buscarVehiculoPorPlacaFunc = async (numeroPlaca) => {
+    if (!numeroPlaca || numeroPlaca.length < 3) return;
+
+    setBuscandoVehiculo(true);
+    setVehiculoEncontrado(null);
+    setDatosVehiculoAutocompletados(false);
+
+    try {
+      // Buscar vehículo usando el endpoint implementado
+      const respuesta = await buscarVehiculoPorPlaca(numeroPlaca);
+
+      if (respuesta && respuesta.encontrado && respuesta.vehiculo) {
+        const vehiculo = respuesta.vehiculo;
+
+        // Autocompletar TODOS los campos de vehículo del registro más reciente:
+        // vehiculoNroPlaca, vehiculoMarca, vehiculoModelo, vehiculoColor
+        setValue("vehiculoNroPlaca", vehiculo.vehiculoNroPlaca || "");
+        setValue("vehiculoMarca", vehiculo.vehiculoMarca || "");
+        setValue("vehiculoModelo", vehiculo.vehiculoModelo || "");
+        setValue("vehiculoColor", vehiculo.vehiculoColor || "");
+
+        setVehiculoEncontrado(vehiculo);
+        setDatosVehiculoAutocompletados(true);
+
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: `Datos del vehículo encontrados: ${vehiculo.vehiculoMarca} ${vehiculo.vehiculoModelo} (${vehiculo.vehiculoColor})`,
+          life: 3000,
+        });
+      } else {
+        setVehiculoEncontrado(null);
+        setDatosVehiculoAutocompletados(false);
+
+        toast.current?.show({
+          severity: "info",
+          summary: "Información",
+          detail:
+            "Vehículo no encontrado o sin datos completos. Complete los datos manualmente.",
+          life: 3000,
+        });
+      }
+    } catch (error) {
+      setVehiculoEncontrado(null);
+      setDatosVehiculoAutocompletados(false);
+
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail:
+          "Error en la búsqueda de vehículo. Complete los datos manualmente.",
+        life: 3000,
+      });
+    } finally {
+      setBuscandoVehiculo(false);
     }
-  }, [numeroDocumento, modoEdicion, busquedaHabilitada]);
+  };
 
   useEffect(() => {
     cargarDatos();
@@ -324,30 +370,32 @@ export default function AccesoInstalacionForm({
       // Cargar datos del item para edición según modelo Prisma AccesoInstalacion
       const datosEdicion = {
         // Campos obligatorios
-        sedeId: item.sedeId ? Number(item.sedeId) : null,
-        tipoAccesoId: item.tipoAccesoId ? Number(item.tipoAccesoId) : null,
+        sedeId: item.sedeId ? Number(item.sedeId) : "",
+        tipoAccesoId: item.tipoAccesoId ? Number(item.tipoAccesoId) : "",
         fechaHora: item.fechaHora ? new Date(item.fechaHora) : new Date(),
 
         // Campos opcionales
-        empresaId: item.empresaId ? Number(item.empresaId) : null,
+        empresaId: item.empresaId ? Number(item.empresaId) : "",
         areaDestinoVisitaId: item.areaDestinoVisitaId
           ? Number(item.areaDestinoVisitaId)
-          : null,
-        vehiculoId: item.vehiculoId ? Number(item.vehiculoId) : null,
-        tipoPersonaId: item.tipoPersonaId ? Number(item.tipoPersonaId) : null,
-        motivoId: item.motivoId ? Number(item.motivoId) : null,
-        tipoEquipoId: item.tipoEquipoId ? Number(item.tipoEquipoId) : null,
+          : "",
+        vehiculoId: item.vehiculoId ? Number(item.vehiculoId) : "",
+        tipoPersonaId: item.tipoPersonaId ? Number(item.tipoPersonaId) : "",
+        motivoId: item.motivoId ? Number(item.motivoId) : "",
+        tipoEquipoId: item.tipoEquipoId ? Number(item.tipoEquipoId) : "",
 
         // Datos de la persona
         nombrePersona: item.nombrePersona || "",
         tipoDocIdentidadId: item.tipoDocIdentidadId
           ? Number(item.tipoDocIdentidadId)
-          : null,
+          : "",
         numeroDocumento: item.numeroDocumento || "",
 
         // Datos de vehículo del cliente
         vehiculoNroPlaca: item.vehiculoNroPlaca || "",
         vehiculoMarca: item.vehiculoMarca || "",
+        vehiculoModelo: item.vehiculoModelo || "",
+        vehiculoColor: item.vehiculoColor || "",
 
         // Datos de equipo del cliente
         equipoMarca: item.equipoMarca || "",
@@ -356,15 +404,14 @@ export default function AccesoInstalacionForm({
         // Persona destino de la visita
         personaFirmaDestinoVisitaId: item.personaFirmaDestinoVisitaId
           ? Number(item.personaFirmaDestinoVisitaId)
-          : null,
-        nombreDestinoVisita: item.nombreDestinoVisita || "",
+          : "",
 
         // Otros campos
         observaciones: item.observaciones || "",
         incidenteResaltante: item.incidenteResaltante || false,
         descripcionIncidente: item.descripcionIncidente || "",
         imprimeTicketIng:
-          item.imprimeTicketIng !== undefined ? item.imprimeTicketIng : true,
+          item.imprimeTicketIng !== undefined ? item.imprimeTicketIng : false,
         urlImpresionTicket: item.urlImpresionTicket || "",
         urlDocumentoVisitante: item.urlDocumentoVisitante || "",
       };
@@ -373,24 +420,10 @@ export default function AccesoInstalacionForm({
     } else {
       // Para nuevo registro: generar fecha y hora automáticamente
       const fechaHoraActual = new Date();
-      console.log(
-        "Generando fecha y hora automática para nuevo registro:",
-        fechaHoraActual
-      );
-
       // Mantener los valores por defecto pero asegurar fecha/hora actual
       setValue("fechaHora", fechaHoraActual);
     }
   }, [item, setValue, reset]);
-
-  useEffect(() => {
-    if (!modoEdicion && numeroDocumento && numeroDocumento.length >= 8) {
-      const timer = setTimeout(() => {
-        buscarPorDocumento(numeroDocumento);
-      }, 800); // Debounce de 800ms
-      return () => clearTimeout(timer);
-    }
-  }, [numeroDocumento, modoEdicion]);
 
   /**
    * Carga todos los datos necesarios para los combos según modelo Prisma AccesoInstalacion
@@ -492,8 +525,11 @@ export default function AccesoInstalacionForm({
           value: Number(p.id),
         }))
       );
+
+      // Guardar datos completos de empresas y sedes
+      setEmpresasCompletas(empresasData);
+      setSedesCompletas(sedesData);
     } catch (error) {
-      console.error("Error al cargar datos:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -504,65 +540,8 @@ export default function AccesoInstalacionForm({
     }
   };
 
-  /**
-   * Busca una persona por número de documento y autocompleta datos
-   * NOTA: Temporalmente deshabilitado hasta que el backend implemente las APIs
-   */
-  const buscarPorDocumento = async (documento) => {
-    if (buscandoDocumento) return;
 
-    setBuscandoDocumento(true);
-    try {
-      // TEMPORAL: Simular búsqueda mientras el backend no esté listo
-      console.log(`Buscando documento: ${documento}`);
 
-      // Simular delay de búsqueda
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Por ahora, siempre indicar que no se encontró para permitir registro manual
-      setPersonaEncontrada(null);
-      setDatosAutocompletados(false);
-
-      // Limpiar campos para registro manual
-      setValue("nombres", "");
-      setValue("apellidos", "");
-      setValue("tipoPersonaId", null);
-
-      toast.current?.show({
-        severity: "info",
-        summary: "Información",
-        detail:
-          "Función de búsqueda temporalmente deshabilitada. Complete los datos manualmente.",
-      });
-
-      // TODO: Implementar cuando el backend esté listo
-      /*
-      const datosAccesoPrevio = await obtenerDatosAccesoPrevio(documento);
-      
-      if (datosAccesoPrevio) {
-        // Persona encontrada con datos de acceso previo - autocompletar todo
-        setPersonaEncontrada(datosAccesoPrevio.persona);
-        setDatosAutocompletados(true);
-        
-        // Autocompletar todos los campos...
-      }
-      */
-    } catch (error) {
-      console.error("Error al buscar por documento:", error);
-
-      // No mostrar error, solo permitir registro manual
-      setPersonaEncontrada(null);
-      setDatosAutocompletados(false);
-
-      toast.current?.show({
-        severity: "info",
-        summary: "Información",
-        detail: "Complete los datos manualmente.",
-      });
-    } finally {
-      setBuscandoDocumento(false);
-    }
-  };
 
   /**
    * Función de envío del formulario con creación automática de detalle
@@ -573,55 +552,63 @@ export default function AccesoInstalacionForm({
     try {
       // Normalizar datos antes de enviar según regla ERP Megui
       const datosNormalizados = {
-        // Datos de persona (se crean/actualizan automáticamente en backend)
-        persona: {
-          numeroDocumento: data.numeroDocumento?.trim(),
-          nombres: data.nombres?.trim(),
-          apellidos: data.apellidos?.trim(),
-          tipoPersonaId: data.tipoPersonaId ? Number(data.tipoPersonaId) : null,
-        },
+        // Campos obligatorios según modelo Prisma AccesoInstalacion
+        // En modo edición usar valores del formulario, en modo nuevo usar estado global
+        sedeId: modoEdicion
+          ? data.sedeId
+            ? Number(data.sedeId)
+            : ""
+          : sedeId
+          ? Number(sedeId)
+          : "",
+        empresaId: modoEdicion
+          ? data.empresaId
+            ? Number(data.empresaId)
+            : ""
+          : empresaId
+          ? Number(empresaId)
+          : "",
+        tipoAccesoId: data.tipoAccesoId ? Number(data.tipoAccesoId) : "",
+        fechaHora: data.fechaHora || new Date(),
 
-        // Datos del acceso principal
-        tipoAccesoId: data.tipoAccesoId ? Number(data.tipoAccesoId) : null,
-        fechaAcceso: data.fechaAcceso,
-        horaAcceso: data.horaAcceso,
-        motivoAccesoId: data.motivoAccesoId
-          ? Number(data.motivoAccesoId)
-          : null,
+        // Campos opcionales según modelo Prisma
         areaDestinoVisitaId: data.areaDestinoVisitaId
           ? Number(data.areaDestinoVisitaId)
-          : null,
+          : "",
+        tipoPersonaId: data.tipoPersonaId ? Number(data.tipoPersonaId) : "",
+        motivoId: data.motivoId ? Number(data.motivoId) : "",
+        tipoEquipoId: data.tipoEquipoId ? Number(data.tipoEquipoId) : "",
 
-        // Datos opcionales
-        vehiculoId: data.vehiculoId ? Number(data.vehiculoId) : null,
-        equipoId: data.equipoId ? Number(data.equipoId) : null,
-        observaciones: data.observaciones?.trim() || null,
-        activo: Boolean(data.activo),
+        // Datos de la persona - TODOS EN MAYÚSCULAS
+        nombrePersona: toUpperCaseSafe(data.nombrePersona),
+        tipoDocIdentidadId: data.tipoDocIdentidadId
+          ? Number(data.tipoDocIdentidadId)
+          : "",
+        numeroDocumento: toUpperCaseSafe(data.numeroDocumento),
 
-        // Indicador para crear detalle automático (solo para nuevos registros)
-        crearDetalleAutomatico: !modoEdicion,
+        // Datos de vehículo - TODOS EN MAYÚSCULAS
+        vehiculoNroPlaca: toUpperCaseSafe(data.vehiculoNroPlaca),
+        vehiculoMarca: toUpperCaseSafe(data.vehiculoMarca),
+        vehiculoModelo: toUpperCaseSafe(data.vehiculoModelo),
+        vehiculoColor: toUpperCaseSafe(data.vehiculoColor),
 
-        // Datos para el detalle automático (solo si es nuevo registro)
-        ...(!modoEdicion && {
-          detalleAutomatico: {
-            tipoMovimientoId: 1, // Siempre 1 = "Entrada"
-            areaDestinoVisitaId: data.areaDestinoVisitaId
-              ? Number(data.areaDestinoVisitaId)
-              : null,
-            fechaMovimiento: data.fechaAcceso,
-            horaMovimiento: data.horaAcceso,
-            observaciones: "Registro automático de entrada",
-            activo: true,
-          },
-        }),
+        // Datos de equipo - TODOS EN MAYÚSCULAS
+        equipoMarca: toUpperCaseSafe(data.equipoMarca),
+        equipoSerie: toUpperCaseSafe(data.equipoSerie),
+
+        // Persona destino de la visita
+        personaFirmaDestinoVisitaId: data.personaFirmaDestinoVisitaId
+          ? Number(data.personaFirmaDestinoVisitaId)
+          : "",
+
+        // Otros campos - STRINGS EN MAYÚSCULAS
+        observaciones: toUpperCaseSafe(data.observaciones),
+        incidenteResaltante: Boolean(data.incidenteResaltante),
+        descripcionIncidente: toUpperCaseSafe(data.descripcionIncidente),
+        imprimeTicketIng: Boolean(data.imprimeTicketIng),
+        urlImpresionTicket: data.urlImpresionTicket?.trim() || "",
+        urlDocumentoVisitante: data.urlDocumentoVisitante?.trim() || "",
       };
-
-      // Log para debugging - mostrar datos que se envían
-      console.log(
-        "Datos normalizados a enviar:",
-        JSON.stringify(datosNormalizados, null, 2)
-      );
-
       // Llamar a la función de guardado del componente padre
       await onSave(datosNormalizados);
 
@@ -633,14 +620,11 @@ export default function AccesoInstalacionForm({
           : "Acceso registrado correctamente. Se creó el detalle de entrada automáticamente.",
       });
     } catch (error) {
-      console.error("Error al enviar formulario:", error);
-
       // Mostrar información más detallada del error
       let mensajeError = "Error al guardar el registro";
 
       if (error.response?.status === 400) {
         mensajeError = "Error de validación. Verifique los datos ingresados.";
-        console.error("Detalles del error 400:", error.response.data);
       } else if (error.response?.status === 404) {
         mensajeError =
           "Endpoint no encontrado. El backend no está implementado.";
@@ -656,6 +640,20 @@ export default function AccesoInstalacionForm({
     } finally {
       setLoading(false);
     }
+  };
+
+  // Función para manejar cuando se sube un documento de visitante
+  const handleDocumentoSubido = (urlDocumento) => {
+    // Actualizar el campo urlDocumentoVisitante en el formulario
+    setValue("urlDocumentoVisitante", urlDocumento);
+    setModalDocumentoVisible(false);
+
+    toast.current?.show({
+      severity: "success",
+      summary: "Documento Subido",
+      detail: "El documento del visitante se ha guardado correctamente",
+      life: 4000,
+    });
   };
 
   const getFormErrorMessage = (name) => {
@@ -707,15 +705,21 @@ export default function AccesoInstalacionForm({
                   <InputText
                     id="empresaTexto"
                     value={(() => {
-                      if (!empresaId) return "No hay empresa seleccionada";
+                      // En modo edición, usar el valor del formulario; en modo nuevo usar el estado global
+                      const empresaIdAUsar = modoEdicion
+                        ? watch("empresaId")
+                        : empresaId;
+
+                      if (!empresaIdAUsar) return "No hay empresa seleccionada";
                       if (empresas.length === 0) return "Cargando empresa...";
                       const empresa = empresas.find((e) => {
-                        const match = Number(e.value) === Number(empresaId);
+                        const match =
+                          Number(e.value) === Number(empresaIdAUsar);
                         return match;
                       });
                       return (
                         empresa?.label ||
-                        `Empresa ID: ${empresaId} (no encontrada en ${empresas.length} empresas)`
+                        `Empresa ID: ${empresaIdAUsar} (no encontrada en ${empresas.length} empresas)`
                       );
                     })()}
                     disabled
@@ -727,7 +731,11 @@ export default function AccesoInstalacionForm({
                     name="empresaId"
                     control={control}
                     render={({ field }) => (
-                      <input type="hidden" {...field} value={empresaId || ""} />
+                      <input
+                        type="hidden"
+                        {...field}
+                        value={modoEdicion ? field.value : empresaId || ""}
+                      />
                     )}
                   />
                 </div>
@@ -741,15 +749,20 @@ export default function AccesoInstalacionForm({
                   <InputText
                     id="sedeTexto"
                     value={(() => {
-                      if (!sedeId) return "No hay sede seleccionada";
+                      // En modo edición, usar el valor del formulario; en modo nuevo usar el estado global
+                      const sedeIdAUsar = modoEdicion
+                        ? watch("sedeId")
+                        : sedeId;
+
+                      if (!sedeIdAUsar) return "No hay sede seleccionada";
                       if (sedes.length === 0) return "Cargando sede...";
                       const sede = sedes.find((s) => {
-                        const match = Number(s.value) === Number(sedeId);
+                        const match = Number(s.value) === Number(sedeIdAUsar);
                         return match;
                       });
                       return (
                         sede?.label ||
-                        `Sede ID: ${sedeId} (no encontrada en ${sedes.length} sedes)`
+                        `Sede ID: ${sedeIdAUsar} (no encontrada en ${sedes.length} sedes)`
                       );
                     })()}
                     disabled
@@ -761,12 +774,17 @@ export default function AccesoInstalacionForm({
                     name="sedeId"
                     control={control}
                     render={({ field }) => (
-                      <input type="hidden" {...field} value={sedeId || ""} />
+                      <input
+                        type="hidden"
+                        {...field}
+                        value={modoEdicion ? field.value : sedeId || ""}
+                      />
                     )}
                   />
                 </div>
               </div>
-              <h5 className="mb-3 mt-4">2. Identificación del Visitante</h5>
+
+              <h5 className="mb-3">2. Identificación del Visitante</h5>
               <div
                 className="formgrid grid"
                 style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}
@@ -775,31 +793,36 @@ export default function AccesoInstalacionForm({
                   className="field"
                   style={{ flex: "1 1 30%", minWidth: "200px" }}
                 >
-                  <label
-                    htmlFor="fechaHora"
-                    className={`font-bold ${
-                      errors.fechaHora ? "text-red-500" : ""
-                    }`}
-                  >
+                  <label htmlFor="fechaHora" className="font-bold">
                     Fecha y Hora *
                   </label>
-                  <Controller
-                    name="fechaHora"
-                    control={control}
-                    render={({ field }) => (
-                      <Calendar
-                        id="fechaHora"
-                        {...field}
-                        showTime
-                        hourFormat="24"
-                        dateFormat="dd/mm/yy"
-                        placeholder="dd/mm/aaaa hh:mm"
-                        className={errors.fechaHora ? "p-invalid" : ""}
-                        disabled={!modoEdicion} // Solo editable en modo edición
-                        showIcon
-                      />
-                    )}
-                  />
+                  <div
+                    className="p-inputtext p-component p-inputtext-sm"
+                    style={{
+                      backgroundColor: "#f8f9fa",
+                      color: "#6c757d",
+                      cursor: "not-allowed",
+                      opacity: 0.7,
+                      border: "1px solid #dee2e6",
+                      padding: "0.5rem 0.75rem",
+                      borderRadius: "6px",
+                      minHeight: "2.357rem",
+                      display: "flex",
+                      alignItems: "center",
+                      userSelect: "none", // No seleccionable
+                      pointerEvents: "none", // No interactivo
+                    }}
+                  >
+                    {watch("fechaHora")
+                      ? new Date(watch("fechaHora")).toLocaleString("es-ES", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : ""}
+                  </div>
                   {getFormErrorMessage("fechaHora")}
                   {!modoEdicion && (
                     <small className="text-blue-500">
@@ -810,6 +833,42 @@ export default function AccesoInstalacionForm({
                 <div
                   className="field"
                   style={{ flex: "1 1 30%", minWidth: "200px" }}
+                >
+                  <label htmlFor="tipoAccesoId" className="font-bold">
+                    Tipo de Acceso *
+                  </label>
+                  <Controller
+                    name="tipoAccesoId"
+                    control={control}
+                    render={({ field }) => (
+                      <Dropdown
+                        id="tipoAccesoId"
+                        {...field}
+                        value={field.value ? Number(field.value) : 1}
+                        options={tiposAcceso.map((t) => ({
+                          ...t,
+                          id: Number(t.id),
+                        }))}
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Seleccione tipo de acceso"
+                        className={errors.tipoAccesoId ? "p-invalid" : ""}
+                        showClear={false}
+                      />
+                    )}
+                  />
+                  {getFormErrorMessage("tipoAccesoId")}
+                </div>
+              </div>
+
+              {/* Segunda línea: Tipo Documento y N° Documento */}
+              <div
+                className="formgrid grid"
+                style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}
+              >
+                <div
+                  className="field"
+                  style={{ flex: "1 1 45%", minWidth: "200px" }}
                 >
                   <label htmlFor="tipoDocIdentidadId" className="font-bold">
                     Tipo Documento *
@@ -838,7 +897,7 @@ export default function AccesoInstalacionForm({
                 </div>
                 <div
                   className="field"
-                  style={{ flex: "1 1 30%", minWidth: "200px" }}
+                  style={{ flex: "1 1 45%", minWidth: "200px" }}
                 >
                   <label
                     htmlFor="numeroDocumento"
@@ -863,6 +922,18 @@ export default function AccesoInstalacionForm({
                         disabled={buscandoPersona}
                         maxLength={20}
                         autoFocus={!modoEdicion} // Foco automático para escaneo
+                        onBlur={(e) => {
+                          // Ejecutar búsqueda cuando pierda el foco y contenga datos
+                          const valorDocumento = e.target.value?.trim();
+                          if (
+                            valorDocumento &&
+                            valorDocumento.length >= 8 &&
+                            !modoEdicion &&
+                            busquedaHabilitada
+                          ) {
+                            buscarPersonaPorDoc(valorDocumento);
+                          }
+                        }}
                       />
                     )}
                   />
@@ -872,7 +943,7 @@ export default function AccesoInstalacionForm({
                       ✓ Persona encontrada - datos autocompletados
                     </small>
                   )}
-                  {!personaEncontrada && numeroDocumento && (
+                  {!personaEncontrada && watch("numeroDocumento") && (
                     <small className="text-orange-600">
                       ⚠ Persona nueva - complete los datos manualmente
                     </small>
@@ -902,6 +973,7 @@ export default function AccesoInstalacionForm({
                         className={errors.nombrePersona ? "p-invalid" : ""}
                         maxLength={200}
                         disabled={buscandoPersona}
+                        style={{ textTransform: "uppercase" }}
                       />
                     )}
                   />
@@ -913,24 +985,16 @@ export default function AccesoInstalacionForm({
                   )}
                 </div>
               </div>
-            </div>
-          </TabPanel>
-          {/* PESTAÑA 2: DATOS DE LA PERSONA */}
-          <TabPanel header="Datos de la Persona" leftIcon="pi pi-user">
-            <div className="card">
-              <h5 className="mb-3">Información Personal del Visitante</h5>
 
-              {!busquedaHabilitada && (
-                <Message
-                  severity="info"
-                  text="La búsqueda automática por documento está temporalmente deshabilitada. Complete los datos manualmente."
-                  className="mb-3"
-                />
-              )}
-
-              <div className="formgrid grid">
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="tipoPersonaId">Tipo de Persona</label>
+              {/* Campo de Tipo de Persona */}
+              <div className="formgrid grid mt-3">
+                <div
+                  className="field"
+                  style={{ flex: "1 1 30%", minWidth: "200px" }}
+                >
+                  <label htmlFor="tipoPersonaId" className="font-bold">
+                    Tipo de Persona
+                  </label>
                   <Controller
                     name="tipoPersonaId"
                     control={control}
@@ -938,19 +1002,56 @@ export default function AccesoInstalacionForm({
                       <Dropdown
                         id="tipoPersonaId"
                         {...field}
-                        options={tiposPersona}
+                        value={field.value ? Number(field.value) : ""}
+                        options={tiposPersona.map((t) => ({
+                          ...t,
+                          id: Number(t.id),
+                        }))}
                         optionLabel="label"
                         optionValue="value"
                         placeholder="Seleccione tipo de persona"
+                        className={errors.tipoPersonaId ? "p-invalid" : ""}
                         showClear
+                        onChange={(e) => {
+                          field.onChange(e.value);
+
+                          // Autocompletar imprimeTicketIng desde TipoPersona
+                          if (e.value) {
+                            const tipoPersonaSeleccionado = tiposPersona.find(
+                              (tp) => tp.value === e.value
+                            );
+                            if (
+                              tipoPersonaSeleccionado &&
+                              tipoPersonaSeleccionado.imprimeTicketIng !==
+                                undefined
+                            ) {
+                              setValue(
+                                "imprimeTicketIng",
+                                tipoPersonaSeleccionado.imprimeTicketIng
+                              );
+                            }
+                          } else {
+                            // Si se limpia el tipo de persona, resetear a false
+                            setValue("imprimeTicketIng", false);
+                          }
+                        }}
                       />
                     )}
                   />
                   {getFormErrorMessage("tipoPersonaId")}
+                  {datosAutocompletados && (
+                    <small className="text-blue-500">
+                      ℹ Autocompletado desde registros previos
+                    </small>
+                  )}
                 </div>
-
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="motivoId">Motivo de Acceso</label>
+                <div
+                  className="field"
+                  style={{ flex: "1 1 30%", minWidth: "200px" }}
+                >
+                  <label htmlFor="motivoId" className="font-bold">
+                    Motivo de Acceso
+                  </label>
                   <Controller
                     name="motivoId"
                     control={control}
@@ -958,15 +1059,85 @@ export default function AccesoInstalacionForm({
                       <Dropdown
                         id="motivoId"
                         {...field}
-                        options={motivosAcceso}
+                        value={field.value ? Number(field.value) : ""}
+                        options={motivosAcceso.map((m) => ({
+                          ...m,
+                          id: Number(m.id),
+                        }))}
                         optionLabel="label"
                         optionValue="value"
                         placeholder="Seleccione motivo de acceso"
+                        className={errors.motivoId ? "p-invalid" : ""}
                         showClear
                       />
                     )}
                   />
                   {getFormErrorMessage("motivoId")}
+                  {datosAutocompletados && (
+                    <small className="text-blue-500">
+                      ℹ Autocompletado desde registros previos
+                    </small>
+                  )}
+                </div>
+              </div>
+
+              {/* Campos de Destino */}
+              <div className="formgrid grid mt-3">
+                <div className="field col-12 md:col-6">
+                  <label htmlFor="personaFirmaDestinoVisitaId">
+                    Persona Destino (Personal)
+                  </label>
+                  <Controller
+                    name="personaFirmaDestinoVisitaId"
+                    control={control}
+                    render={({ field }) => (
+                      <Dropdown
+                        id="personaFirmaDestinoVisitaId"
+                        {...field}
+                        value={field.value ? Number(field.value) : ""}
+                        options={personalDestino.map((p) => ({
+                          ...p,
+                          id: Number(p.id),
+                        }))}
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Seleccione persona del personal"
+                        showClear
+                        filter
+                        filterBy="label"
+                      />
+                    )}
+                  />
+                  {getFormErrorMessage("personaFirmaDestinoVisitaId")}
+                </div>
+
+                <div className="field col-12 md:col-6">
+                  <label htmlFor="areaDestinoVisitaId">Área de Destino *</label>
+                  <Controller
+                    name="areaDestinoVisitaId"
+                    control={control}
+                    render={({ field }) => (
+                      <Dropdown
+                        id="areaDestinoVisitaId"
+                        {...field}
+                        value={field.value ? Number(field.value) : ""}
+                        options={areasDestino.map((a) => ({
+                          ...a,
+                          id: Number(a.id),
+                        }))}
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Seleccione área de destino"
+                        showClear
+                        filter
+                        filterBy="label"
+                      />
+                    )}
+                  />
+                  {getFormErrorMessage("areaDestinoVisitaId")}
+                  <small className="text-500">
+                    Área física donde se dirige la visita
+                  </small>
                 </div>
               </div>
             </div>
@@ -981,75 +1152,125 @@ export default function AccesoInstalacionForm({
                 <div className="field col-12">
                   <h6 className="text-primary">Vehículos</h6>
                 </div>
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="vehiculoNroPlaca">Placa del Vehículo</label>
-                  <Controller
-                    name="vehiculoNroPlaca"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="vehiculoNroPlaca"
-                        {...field}
-                        placeholder="Ej: ABC-123"
-                        maxLength={10}
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("vehiculoNroPlaca")}
-                  <small className="text-500">
-                    Para vehículos no registrados
-                  </small>
-                </div>
 
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="vehiculoMarca">Marca del Vehículo</label>
-                  <Controller
-                    name="vehiculoMarca"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="vehiculoMarca"
-                        {...field}
-                        placeholder="Ej: Toyota, Nissan"
-                        maxLength={50}
+                {/* Campos de vehículo en una sola línea usando flexbox */}
+                <div className="field col-12">
+                  <div
+                    style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}
+                  >
+                    <div style={{ flex: "1", minWidth: "150px" }}>
+                      <label htmlFor="vehiculoNroPlaca" className="block mb-2">
+                        🚗 N° Placa{" "}
+                        {buscandoVehiculo && (
+                          <i className="pi pi-spin pi-spinner ml-2 text-blue-500"></i>
+                        )}
+                      </label>
+                      <Controller
+                        name="vehiculoNroPlaca"
+                        control={control}
+                        render={({ field }) => (
+                          <InputText
+                            id="vehiculoNroPlaca"
+                            {...field}
+                            placeholder="Ej: ABC-123"
+                            maxLength={10}
+                            className="w-full"
+                            style={{ textTransform: "uppercase" }}
+                            disabled={buscandoVehiculo}
+                            onBlur={(e) => {
+                              // Ejecutar búsqueda cuando pierda el foco y contenga datos
+                              const valorPlaca = e.target.value?.trim();
+                              if (valorPlaca && valorPlaca.length >= 3) {
+                                buscarVehiculoPorPlacaFunc(valorPlaca);
+                              }
+                            }}
+                          />
+                        )}
                       />
-                    )}
-                  />
-                  {getFormErrorMessage("vehiculoMarca")}
-                </div>
+                      {getFormErrorMessage("vehiculoNroPlaca")}
+                      {vehiculoEncontrado && (
+                        <small className="text-green-600">
+                          ✓ Vehículo encontrado - datos autocompletados
+                        </small>
+                      )}
+                      {!vehiculoEncontrado &&
+                        watch("vehiculoNroPlaca") &&
+                        watch("vehiculoNroPlaca").length >= 3 &&
+                        !buscandoVehiculo && (
+                          <small className="text-orange-600">
+                            ⚠ Vehículo nuevo - complete los datos manualmente
+                          </small>
+                        )}
+                      {datosVehiculoAutocompletados && (
+                        <small className="text-blue-500">
+                          ℹ Autocompletado desde registros previos
+                        </small>
+                      )}
+                    </div>
 
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="vehiculoModelo">Modelo del Vehículo</label>
-                  <Controller
-                    name="vehiculoModelo"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="vehiculoModelo"
-                        {...field}
-                        placeholder="Ej: Corolla, Sentra"
-                        maxLength={50}
+                    <div style={{ flex: "1", minWidth: "150px" }}>
+                      <label htmlFor="vehiculoMarca" className="block mb-2">
+                        Marca
+                      </label>
+                      <Controller
+                        name="vehiculoMarca"
+                        control={control}
+                        render={({ field }) => (
+                          <InputText
+                            id="vehiculoMarca"
+                            {...field}
+                            placeholder="Ej: Toyota, Nissan"
+                            maxLength={50}
+                            className="w-full"
+                            style={{ textTransform: "uppercase" }}
+                          />
+                        )}
                       />
-                    )}
-                  />
-                  {getFormErrorMessage("vehiculoModelo")}
-                </div>
+                      {getFormErrorMessage("vehiculoMarca")}
+                    </div>
 
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="vehiculoColor">Color del Vehículo</label>
-                  <Controller
-                    name="vehiculoColor"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="vehiculoColor"
-                        {...field}
-                        placeholder="Ej: Blanco, Negro"
-                        maxLength={30}
+                    <div style={{ flex: "1", minWidth: "150px" }}>
+                      <label htmlFor="vehiculoModelo" className="block mb-2">
+                        Modelo
+                      </label>
+                      <Controller
+                        name="vehiculoModelo"
+                        control={control}
+                        render={({ field }) => (
+                          <InputText
+                            id="vehiculoModelo"
+                            {...field}
+                            placeholder="Ej: Corolla, Sentra"
+                            maxLength={50}
+                            className="w-full"
+                            style={{ textTransform: "uppercase" }}
+                          />
+                        )}
                       />
-                    )}
-                  />
-                  {getFormErrorMessage("vehiculoColor")}
+                      {getFormErrorMessage("vehiculoModelo")}
+                    </div>
+
+                    <div style={{ flex: "1", minWidth: "150px" }}>
+                      <label htmlFor="vehiculoColor" className="block mb-2">
+                        Color
+                      </label>
+                      <Controller
+                        name="vehiculoColor"
+                        control={control}
+                        render={({ field }) => (
+                          <InputText
+                            id="vehiculoColor"
+                            {...field}
+                            placeholder="Ej: Blanco, Negro"
+                            maxLength={30}
+                            className="w-full"
+                            style={{ textTransform: "uppercase" }}
+                          />
+                        )}
+                      />
+                      {getFormErrorMessage("vehiculoColor")}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="field col-12">
@@ -1087,6 +1308,7 @@ export default function AccesoInstalacionForm({
                         {...field}
                         placeholder="Ej: Dell, HP, Lenovo"
                         maxLength={50}
+                        style={{ textTransform: "uppercase" }}
                       />
                     )}
                   />
@@ -1104,6 +1326,7 @@ export default function AccesoInstalacionForm({
                         {...field}
                         placeholder="Modelo específico"
                         maxLength={50}
+                        style={{ textTransform: "uppercase" }}
                       />
                     )}
                   />
@@ -1121,6 +1344,7 @@ export default function AccesoInstalacionForm({
                         {...field}
                         placeholder="Número de serie"
                         maxLength={50}
+                        style={{ textTransform: "uppercase" }}
                       />
                     )}
                   />
@@ -1132,67 +1356,11 @@ export default function AccesoInstalacionForm({
 
           {/* PESTAÑA 4: DESTINO Y OBSERVACIONES */}
           <TabPanel
-            header="Destino y Observaciones"
+            header="Observaciones e Incidentes"
             leftIcon="pi pi-map-marker"
           >
             <div className="card">
-              <h5 className="mb-3">Información de Destino y Observaciones</h5>
-
               <div className="formgrid grid">
-                <div className="field col-12">
-                  <h6 className="text-primary">Persona de Contacto</h6>
-                </div>
-
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="personaFirmaDestinoVisitaId">
-                    Persona Destino (Personal)
-                  </label>
-                  <Controller
-                    name="personaFirmaDestinoVisitaId"
-                    control={control}
-                    render={({ field }) => (
-                      <Dropdown
-                        id="personaFirmaDestinoVisitaId"
-                        {...field}
-                        options={personal}
-                        placeholder="Seleccione persona del personal"
-                        showClear
-                        filter
-                        filterBy="label"
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("personaFirmaDestinoVisitaId")}
-                </div>
-
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="nombreDestinoVisita">
-                    Nombre Destino Visita
-                  </label>
-                  <Controller
-                    name="nombreDestinoVisita"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="nombreDestinoVisita"
-                        {...field}
-                        placeholder="Nombre de la persona a visitar"
-                        maxLength={255}
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("nombreDestinoVisita")}
-                  <small className="text-500">
-                    Si no está en el personal registrado
-                  </small>
-                </div>
-
-                <div className="field col-12">
-                  <h6 className="text-primary mt-4">
-                    Observaciones e Incidentes
-                  </h6>
-                </div>
-
                 <div className="field col-12">
                   <label htmlFor="observaciones">Observaciones</label>
                   <Controller
@@ -1205,6 +1373,7 @@ export default function AccesoInstalacionForm({
                         placeholder="Observaciones adicionales (opcional)"
                         rows={3}
                         maxLength={500}
+                        style={{ textTransform: "uppercase" }}
                       />
                     )}
                   />
@@ -1279,6 +1448,11 @@ export default function AccesoInstalacionForm({
                       </div>
                     )}
                   />
+                  {getFormErrorMessage("imprimeTicketIng")}
+                  <small className="text-500">
+                    Marque si desea generar e imprimir un ticket para este
+                    acceso
+                  </small>
                 </div>
 
                 <div className="field col-12 md:col-6">
@@ -1298,43 +1472,239 @@ export default function AccesoInstalacionForm({
                   />
                   {getFormErrorMessage("urlImpresionTicket")}
                 </div>
+              </div>
+            </div>
+          </TabPanel>
 
-                <div className="field col-12 md:col-6">
+          {/* PESTAÑA 5: DOCUMENTOS ADJUNTOS */}
+          <TabPanel header="Documentos Adjuntos" leftIcon="pi pi-file-pdf">
+            <div className="card">
+              <h5 className="mb-3">Documentos del Visitante</h5>
+
+              <div className="formgrid grid">
+                <div className="field col-12">
                   <label htmlFor="urlDocumentoVisitante">
                     URL Documento Visitante
                   </label>
-                  <Controller
-                    name="urlDocumentoVisitante"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="urlDocumentoVisitante"
-                        {...field}
-                        placeholder="URL del documento del visitante"
-                      />
-                    )}
-                  />
+                  <div className="p-inputgroup">
+                    <Controller
+                      name="urlDocumentoVisitante"
+                      control={control}
+                      render={({ field }) => (
+                        <InputText
+                          id="urlDocumentoVisitante"
+                          {...field}
+                          placeholder="URL del documento del visitante"
+                          readOnly
+                        />
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      icon="pi pi-camera"
+                      className="p-button-success"
+                      onClick={() => setModalDocumentoVisible(true)}
+                      tooltip="Capturar fotos del documento"
+                      disabled={
+                        !watch("numeroDocumento") || !watch("nombrePersona")
+                      }
+                    />
+                  </div>
                   {getFormErrorMessage("urlDocumentoVisitante")}
+                  <small className="text-500">
+                    Capture fotos del documento para generar PDF automáticamente
+                  </small>
                 </div>
 
-                <div className="field col-12">
-                  <Controller
-                    name="activo"
-                    control={control}
-                    render={({ field }) => (
-                      <div className="flex align-items-center">
-                        <Checkbox
-                          id="activo"
-                          {...field}
-                          checked={field.value}
-                        />
-                        <label htmlFor="activo" className="ml-2 font-bold">
-                          Registro Activo
-                        </label>
+                {/* Visor de PDF */}
+                {watch("urlDocumentoVisitante") && (
+                  <div className="field col-12">
+                    <h6 className="text-primary mb-3">
+                      Vista Previa del Documento
+                    </h6>
+                    <div
+                      className="border-round p-3"
+                      style={{ backgroundColor: "#f8f9fa" }}
+                    >
+                      <PDFViewer
+                        urlDocumento={watch("urlDocumentoVisitante")}
+                      />
+
+                      {/* Botones de acción para el PDF */}
+                      <div className="flex justify-content-between align-items-center mt-3">
+                        <div className="flex align-items-center">
+                          <i className="pi pi-file-pdf text-red-500 mr-2"></i>
+                          <span className="text-sm text-600">
+                            Documento PDF generado automáticamente
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            gap: 8,
+                          }}
+                        >
+                          <Button
+                            type="button"
+                            label="Abrir"
+                            icon="pi pi-external-link"
+                            className="p-button-outlined p-button-sm"
+                            onClick={async () => {
+                              try {
+                                const urlDocumento = watch(
+                                  "urlDocumentoVisitante"
+                                );
+                                // Usar la misma lógica que PDFViewer para construir URL
+                                let urlCompleta;
+                                if (
+                                  urlDocumento.startsWith(
+                                    "/uploads/documentos-visitantes/"
+                                  )
+                                ) {
+                                  const rutaArchivo = urlDocumento.replace(
+                                    "/uploads/documentos-visitantes/",
+                                    ""
+                                  );
+                                  urlCompleta = `${
+                                    import.meta.env.VITE_API_URL
+                                  }/documentos-visitantes/archivo/${rutaArchivo}`;
+                                } else if (urlDocumento.startsWith("/api/")) {
+                                  const rutaSinApi = urlDocumento.substring(4);
+                                  urlCompleta = `${
+                                    import.meta.env.VITE_API_URL
+                                  }${rutaSinApi}`;
+                                } else if (urlDocumento.startsWith("/")) {
+                                  urlCompleta = `${
+                                    import.meta.env.VITE_API_URL
+                                  }${urlDocumento}`;
+                                } else {
+                                  urlCompleta = urlDocumento;
+                                }
+                                // Descargar con JWT y abrir en nueva ventana
+                                const token = useAuthStore.getState().token;
+                                const response = await fetch(urlCompleta, {
+                                  headers: {
+                                    Authorization: `Bearer ${token}`,
+                                  },
+                                });
+                                if (response.ok) {
+                                  const blob = await response.blob();
+                                  const blobUrl =
+                                    window.URL.createObjectURL(blob);
+                                  // Abrir en nueva ventana usando el blob URL
+                                  const newWindow = window.open(
+                                    blobUrl,
+                                    "_blank"
+                                  );
+                                  // Limpiar el blob URL después de un tiempo para liberar memoria
+                                  setTimeout(() => {
+                                    window.URL.revokeObjectURL(blobUrl);
+                                  }, 10000); // 10 segundos
+
+                                  if (!newWindow) {
+                                    toast.current?.show({
+                                      severity: "warn",
+                                      summary: "Aviso",
+                                      detail:
+                                        "El navegador bloqueó la ventana emergente. Por favor, permita ventanas emergentes para este sitio.",
+                                    });
+                                  }
+                                } else {
+                                  const errorText = await response.text();
+                                  toast.current?.show({
+                                    severity: "error",
+                                    summary: "Error",
+                                    detail: `No se pudo abrir el documento (${response.status})`,
+                                  });
+                                }
+                              } catch (error) {
+                                toast.current?.show({
+                                  severity: "error",
+                                  summary: "Error",
+                                  detail: `Error al abrir el documento: ${error.message}`,
+                                });
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            label="Descargar"
+                            icon="pi pi-download"
+                            className="p-button-outlined p-button-sm"
+                            onClick={async () => {
+                              try {
+                                const urlDocumento = watch(
+                                  "urlDocumentoVisitante"
+                                );
+
+                                // Usar la misma lógica que PDFViewer para construir URL
+                                let urlCompleta;
+                                if (
+                                  urlDocumento.startsWith(
+                                    "/uploads/documentos-visitantes/"
+                                  )
+                                ) {
+                                  const rutaArchivo = urlDocumento.replace(
+                                    "/uploads/documentos-visitantes/",
+                                    ""
+                                  );
+                                  urlCompleta = `${
+                                    import.meta.env.VITE_API_URL
+                                  }/documentos-visitantes/archivo/${rutaArchivo}`;
+                                } else if (urlDocumento.startsWith("/api/")) {
+                                  const rutaSinApi = urlDocumento.substring(4);
+                                  urlCompleta = `${
+                                    import.meta.env.VITE_API_URL
+                                  }${rutaSinApi}`;
+                                } else if (urlDocumento.startsWith("/")) {
+                                  urlCompleta = `${
+                                    import.meta.env.VITE_API_URL
+                                  }${urlDocumento}`;
+                                } else {
+                                  urlCompleta = urlDocumento;
+                                }
+
+                                const token = useAuthStore.getState().token;
+                                const response = await fetch(urlCompleta, {
+                                  headers: {
+                                    Authorization: `Bearer ${token}`,
+                                  },
+                                });
+
+                                if (response.ok) {
+                                  const blob = await response.blob();
+                                  const url = window.URL.createObjectURL(blob);
+                                  const link = document.createElement("a");
+                                  link.href = url;
+                                  link.download = `documento-visitante-${
+                                    watch("numeroDocumento") || "sin-documento"
+                                  }.pdf`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  window.URL.revokeObjectURL(url);
+                                } else {
+                                  toast.current?.show({
+                                    severity: "error",
+                                    summary: "Error",
+                                    detail: "No se pudo descargar el documento",
+                                  });
+                                }
+                              } catch (error) {
+                                toast.current?.show({
+                                  severity: "error",
+                                  summary: "Error",
+                                  detail: "Error al descargar el documento",
+                                });
+                              }
+                            }}
+                          />
+                        </div>
                       </div>
-                    )}
-                  />
-                </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </TabPanel>
@@ -1351,31 +1721,121 @@ export default function AccesoInstalacionForm({
           </div>
         )}
 
+        {/* Botones del formulario - ButtonGroup Responsive */}
         <div
           style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 8,
             marginTop: 18,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 8,
+            flexWrap: 'wrap'
           }}
         >
-          <Button
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-text"
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-          />
-          <Button
-            label={modoEdicion ? "Actualizar" : "Registrar Acceso"}
-            icon={modoEdicion ? "pi pi-check" : "pi pi-plus"}
-            className="p-button-success"
-            type="submit"
-            loading={loading}
-          />
+          {/* Grupo de botones principales */}
+          <ButtonGroup>
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              className="p-button-danger p-button-outlined"
+              type="button"
+              onClick={onCancel}
+              disabled={loading}
+              style={{ minWidth: "120px" }}
+            />
+            <Button
+              label={modoEdicion ? "Actualizar" : "Registrar"}
+              icon={modoEdicion ? "pi pi-check" : "pi pi-plus"}
+              className="p-button-success"
+              type="submit"
+              loading={loading}
+              style={{ minWidth: "120px" }}
+            />
+          </ButtonGroup>
+          
+          {/* Grupo de botones secundarios (solo en modo edición) */}
+          {modoEdicion && (
+            <ButtonGroup>
+              <Button
+                label="Salida"
+                icon="pi pi-sign-out"
+                className="p-button-warning"
+                type="button"
+                onClick={() => {
+                  // TODO: Implementar lógica de salida
+                  toast.current?.show({
+                    severity: "info",
+                    summary: "Funcionalidad pendiente",
+                    detail:
+                      "La lógica de salida se implementará en el siguiente paso",
+                  });
+                }}
+                disabled={loading}
+                style={{ minWidth: "120px" }}
+              />
+              
+              {/* Botón Ticket - Solo si imprimeTicketIng está marcado */}
+              {(() => {
+                const imprimeTicket = watch("imprimeTicketIng");
+                return (
+                  imprimeTicket && (
+                    <TicketPrinter
+                      datosAcceso={{
+                        id: item?.id || "NUEVO",
+                        fechaHora: watch("fechaHora"),
+                        nombrePersona: watch("nombrePersona"),
+                        numeroDocumento: watch("numeroDocumento"),
+                        tipoPersona: tiposPersona.find(
+                          (tp) => tp.value === watch("tipoPersonaId")
+                        ),
+                        motivoAcceso: motivosAcceso.find(
+                          (ma) => ma.value === watch("motivoAccesoId")
+                        ),
+                        empresa: empresasCompletas.find(
+                          (e) => Number(e.id) === Number(watch("empresaId"))
+                        ),
+                        sede: sedesCompletas.find(
+                          (s) => Number(s.id) === Number(watch("sedeId"))
+                        ),
+                        vehiculoNroPlaca: watch("vehiculoNroPlaca"),
+                        vehiculoMarca: watch("vehiculoMarca"),
+                        vehiculoModelo: watch("vehiculoModelo"),
+                        vehiculoColor: watch("vehiculoColor"),
+                        equipoTipo: watch("equipoTipo"),
+                        equipoMarca: watch("equipoMarca"),
+                        equipoModelo: watch("equipoModelo"),
+                        equipoSerie: watch("equipoSerie"),
+                        areaDestino: areasDestino.find(
+                          (af) => af.value === watch("areaDestinoVisitaId")
+                        ),
+                        personaDestino:
+                          personalDestino.find(
+                            (p) =>
+                              p.value === watch("personaFirmaDestinoVisitaId")
+                          )?.label || "",
+                      }}
+                      toast={toast}
+                      buttonStyle={{
+                        style: { minWidth: "120px" },
+                        className: "p-button-info",
+                      }}
+                      buttonLabel="Ticket"
+                    />
+                  )
+                );
+              })()}
+            </ButtonGroup>
+          )}
         </div>
       </form>
+
+      {/* Modal para captura de documentos */}
+      <DocumentoVisitanteCapture
+        visible={modalDocumentoVisible}
+        onHide={() => setModalDocumentoVisible(false)}
+        onDocumentoSubido={handleDocumentoSubido}
+        numeroDocumento={watch("numeroDocumento")}
+        nombrePersona={watch("nombrePersona")}
+      />
     </div>
   );
 }

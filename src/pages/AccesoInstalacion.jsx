@@ -8,8 +8,8 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
-import { Card } from "primereact/card";
 import AccesoInstalacionForm from "../components/accesoInstalacion/AccesoInstalacionForm";
+import SalidaDialog from "../components/accesoInstalacion/SalidaDialog";
 import {
   getAllAccesoInstalacion,
   crearAccesoInstalacion,
@@ -48,18 +48,19 @@ export default function AccesoInstalacion() {
   const [empresas, setEmpresas] = useState([]);
   const [sedes, setSedes] = useState([]);
   const [sedesFiltradas, setSedesFiltradas] = useState([]);
+  const [showSalidaDialog, setShowSalidaDialog] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
-    
+
     const cargarDatos = async () => {
       if (isMounted) {
         await cargarDatosIniciales();
       }
     };
-    
+
     cargarDatos();
-    
+
     // Cleanup function
     return () => {
       isMounted = false;
@@ -72,15 +73,13 @@ export default function AccesoInstalacion() {
     try {
       // Cargar empresas
       const empresasData = await getEmpresas();
-      console.log("empresasData", empresasData);
-      
       if (empresasData && Array.isArray(empresasData)) {
         setEmpresas(empresasData.map((e) => ({ ...e, id: Number(e.id) })));
       }
 
       // Cargar todas las sedes
       const sedesData = await getSedes();
-      
+
       if (sedesData && Array.isArray(sedesData)) {
         setSedes(
           sedesData.map((s) => ({
@@ -94,7 +93,6 @@ export default function AccesoInstalacion() {
       // Cargar items
       await cargarItems();
     } catch (err) {
-      console.error('Error al cargar datos iniciales:', err);
       if (toast.current) {
         toast.current.show({
           severity: "error",
@@ -128,17 +126,30 @@ export default function AccesoInstalacion() {
     }
   }, [empresaSeleccionada, sedes, sedeSeleccionada]);
 
+  // Efecto para recargar datos cuando cambien los filtros
+  useEffect(() => {
+    // Solo recargar si ya se han cargado los datos iniciales
+    if (empresas.length > 0 && sedes.length > 0) {
+      cargarItems();
+    }
+  }, [empresaSeleccionada, sedeSeleccionada]);
+
   const cargarItems = async () => {
     setLoading(true);
     try {
       let data = await getAllAccesoInstalacion();
-      
       // Verificar que data sea un array válido
       if (!data || !Array.isArray(data)) {
-        console.warn('Los datos de accesos no son válidos:', data);
         setItems([]);
         return;
       }
+
+      // Ordenar por fecha más reciente primero (fechaHora descendente)
+      data = data.sort((a, b) => {
+        const fechaA = new Date(a.fechaHora || a.createdAt);
+        const fechaB = new Date(b.fechaHora || b.createdAt);
+        return fechaB - fechaA; // Orden descendente (más reciente primero)
+      });
 
       // Aplicar filtros por empresa y sede si están seleccionados
       if (empresaSeleccionada) {
@@ -149,12 +160,10 @@ export default function AccesoInstalacion() {
       if (sedeSeleccionada) {
         data = data.filter((item) => item.sedeId === Number(sedeSeleccionada));
       }
-
       setItems(data);
     } catch (err) {
-      console.error('Error al cargar accesos:', err);
       setItems([]); // Establecer array vacío en caso de error
-      
+
       if (toast.current) {
         toast.current.show({
           severity: "error",
@@ -175,6 +184,15 @@ export default function AccesoInstalacion() {
   const handleDelete = (rowData) => {
     setToDelete(rowData);
     setShowConfirm(true);
+  };
+
+  /**
+   * Manejar registro encontrado desde SalidaDialog
+   * Abre el formulario de edición con el registro encontrado
+   */
+  const handleRegistroEncontrado = (registro) => {
+    setEditing(registro);
+    setShowDialog(true);
   };
 
   const confirmDelete = async () => {
@@ -234,36 +252,39 @@ export default function AccesoInstalacion() {
   const actionBodyTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-button-rounded"
+          onClick={(ev) => {
+            ev.stopPropagation();
+            handleEdit(rowData);
+          }}
+          tooltip="Editar"
+        />
         {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
           <Button
             icon="pi pi-trash"
-            className="p-button-rounded p-button-danger p-button-sm"
-            onClick={() => handleDelete(rowData)}
-            tooltip="Eliminar"
+            className="p-button-text p-button-danger p-button-rounded"
+            onClick={(ev) => {
+              ev.stopPropagation();
+              handleDelete(rowData);
+            }}
+            tooltip="Eliminar Registro"
           />
         )}
       </div>
     );
   };
 
-  const fechaBodyTemplate = (rowData) => {
-    if (!rowData.fechaAcceso) return "";
-    return new Date(rowData.fechaAcceso).toLocaleDateString("es-ES");
-  };
-
-  const horaBodyTemplate = (rowData) => {
-    if (!rowData.horaAcceso) return "";
-    return rowData.horaAcceso;
-  };
-
-  const estadoBodyTemplate = (rowData) => {
-    return (
-      <span
-        className={`p-tag ${rowData.activo ? "p-tag-success" : "p-tag-danger"}`}
-      >
-        {rowData.activo ? "Activo" : "Inactivo"}
-      </span>
-    );
+  const fechaHoraBodyTemplate = (rowData) => {
+    if (!rowData.fechaHora) return "";
+    const fecha = new Date(rowData.fechaHora);
+    const fechaFormateada = fecha.toLocaleDateString("es-ES");
+    const horaFormateada = fecha.toLocaleTimeString("es-ES", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return `${fechaFormateada} ${horaFormateada}`;
   };
 
   // Efecto para recargar items cuando cambien los filtros
@@ -286,18 +307,71 @@ export default function AccesoInstalacion() {
         className="p-datatable-gridlines"
         showGridlines
         size="small"
-        emptyMessage="No se encontraron registros"
+        emptyMessage={
+          empresaSeleccionada || sedeSeleccionada
+            ? `No se encontraron registros para los filtros aplicados${
+                empresaSeleccionada
+                  ? ` (Empresa: ${
+                      empresas.find((e) => e.id === empresaSeleccionada)
+                        ?.razonSocial || "N/A"
+                    })`
+                  : ""
+              }${
+                sedeSeleccionada
+                  ? ` (Sede: ${
+                      sedesFiltradas.find((s) => s.id === sedeSeleccionada)
+                        ?.nombre || "N/A"
+                    })`
+                  : ""
+              }`
+            : "No se encontraron registros. Seleccione empresa y sede para ver los accesos."
+        }
         onRowClick={(e) => handleEdit(e.data)}
         header={
           <div className="flex align-items-center gap-2">
-            <h2>Registro de Accesos a Instalaciones</h2>
+            <div>
+              <h2>Registro de Accesos a Instalaciones</h2>
+              <small className="text-500">
+                {items.length} registro{items.length !== 1 ? "s" : ""}
+                {(empresaSeleccionada || sedeSeleccionada) && (
+                  <span className="text-primary">
+                    {empresaSeleccionada &&
+                      ` | Empresa: ${
+                        empresas.find((e) => e.id === empresaSeleccionada)
+                          ?.razonSocial || "N/A"
+                      }`}
+                    {sedeSeleccionada &&
+                      ` | Sede: ${
+                        sedesFiltradas.find((s) => s.id === sedeSeleccionada)
+                          ?.nombre || "N/A"
+                      }`}
+                  </span>
+                )}
+              </small>
+            </div>
             <Button
               label="Nuevo"
               icon="pi pi-plus"
-              className="p-button-success"
+              className={
+                !empresaSeleccionada || !sedeSeleccionada
+                  ? "p-button-secondary p-button-outlined"
+                  : "p-button-success p-button-outlined"
+              }
               size="small"
-              outlined
               disabled={!empresaSeleccionada || !sedeSeleccionada}
+              style={{
+                opacity: !empresaSeleccionada || !sedeSeleccionada ? 0.5 : 1,
+                cursor:
+                  !empresaSeleccionada || !sedeSeleccionada
+                    ? "not-allowed"
+                    : "pointer",
+                backgroundColor:
+                  !empresaSeleccionada || !sedeSeleccionada ? "#f8f9fa" : "",
+                borderColor:
+                  !empresaSeleccionada || !sedeSeleccionada ? "#dee2e6" : "",
+                color:
+                  !empresaSeleccionada || !sedeSeleccionada ? "#6c757d" : "",
+              }}
               onClick={() => {
                 setEditing(null);
                 setShowDialog(true);
@@ -307,6 +381,16 @@ export default function AccesoInstalacion() {
                   ? "Seleccione empresa y sede para crear un nuevo acceso"
                   : "Crear nuevo acceso"
               }
+            />
+            <Button
+              label="Salida"
+              icon="pi pi-sign-out"
+              className="p-button-warning p-button-outlined"
+              size="small"
+              onClick={() => {
+                setShowSalidaDialog(true);
+              }}
+              tooltip="Procesar salida de visitante"
             />
             <InputText
               value={globalFilter}
@@ -350,29 +434,18 @@ export default function AccesoInstalacion() {
         scrollable
         scrollHeight="600px"
       >
-        <Column field="id" header="ID" sortable style={{ width: "80px" }} />
-        <Column field="persona.nombres" header="Persona" sortable />
-        <Column field="tipoAcceso.descripcion" header="Tipo Acceso" sortable />
+        <Column field="nombrePersona" header="Persona" sortable />
+        <Column field="tipoAcceso.nombre" header="Tipo Acceso" sortable />
         <Column
-          field="fechaAcceso"
-          header="Fecha"
+          field="fechaHora"
+          header="Fecha y Hora"
           sortable
-          body={fechaBodyTemplate}
+          body={fechaHoraBodyTemplate}
         />
-        <Column
-          field="horaAcceso"
-          header="Hora"
-          sortable
-          body={horaBodyTemplate}
-        />
+        <Column field="numeroDocumento" header="Documento" sortable />
+        <Column field="vehiculoNroPlaca" header="Placa" sortable />
         <Column field="motivoAcceso.descripcion" header="Motivo" sortable />
-        <Column field="observaciones" header="Observaciones" sortable />
-        <Column
-          field="activo"
-          header="Estado"
-          sortable
-          body={estadoBodyTemplate}
-        />
+        <Column field="tipoPersona.nombre" header="Tipo Persona" sortable />
         <Column
           body={actionBodyTemplate}
           header="Acciones"
@@ -382,10 +455,10 @@ export default function AccesoInstalacion() {
 
       <Dialog
         visible={showDialog}
-        style={{ 
-          width: "90vw", 
+        style={{
+          width: "90vw",
           maxWidth: "800px",
-          margin: "0 auto"
+          margin: "0 auto",
         }}
         header={
           editing ? "Editar Acceso a Instalación" : "Nuevo Acceso a Instalación"
@@ -396,7 +469,7 @@ export default function AccesoInstalacion() {
           setShowDialog(false);
           setEditing(null);
         }}
-        breakpoints={{ '960px': '90vw', '640px': '95vw' }}
+        breakpoints={{ "960px": "90vw", "640px": "95vw" }}
         draggable={false}
         resizable={false}
       >
@@ -409,6 +482,30 @@ export default function AccesoInstalacion() {
           }}
           empresaId={empresaSeleccionada}
           sedeId={sedeSeleccionada}
+        />
+      </Dialog>
+
+      <Dialog
+        visible={showSalidaDialog}
+        style={{
+          width: "90vw",
+          maxWidth: "800px",
+          margin: "0 auto",
+        }}
+        header="Procesar Salida de Visitante"
+        modal
+        className="p-fluid dialog-responsive"
+        onHide={() => {
+          setShowSalidaDialog(false);
+        }}
+        breakpoints={{ "960px": "90vw", "640px": "95vw" }}
+        draggable={false}
+        resizable={false}
+      >
+        <SalidaDialog 
+          onClose={() => setShowSalidaDialog(false)}
+          onRegistroEncontrado={handleRegistroEncontrado}
+          toast={toast}
         />
       </Dialog>
 

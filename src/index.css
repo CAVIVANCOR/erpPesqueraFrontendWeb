@@ -279,3 +279,7 @@ body {
   position: absolute !important;
   left: -9999px !important;
 }
+
+.chrome-extension-warning {
+  display: none !important;
+}
