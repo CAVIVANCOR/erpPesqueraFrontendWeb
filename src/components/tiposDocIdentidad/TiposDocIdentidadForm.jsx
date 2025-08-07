@@ -149,10 +149,7 @@ const TiposDocIdentidadForm = ({ tipoDoc, onSave, onCancel, toast }) => {
           summary: 'Éxito',
           detail: `Tipo de documento "${datosNormalizados.nombre}" creado correctamente`
         });
-      }
-
-      console.log('Tipo de documento guardado:', resultado);
-      
+      }      
       // Llamar callback de éxito
       if (onSave) {
         onSave(resultado);

@@ -2,39 +2,41 @@
 // Formulario modular para alta y edición de personal en el ERP Megui.
 // Utiliza PrimeReact, react-hook-form y Yup. Documentado en español técnico.
 
-import React, { useEffect, useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { InputText } from 'primereact/inputtext';
-import { Dropdown } from 'primereact/dropdown';
-import { Calendar } from 'primereact/calendar';
-import { InputSwitch } from 'primereact/inputswitch';
-import { Button } from 'primereact/button';
-import { RadioButton } from 'primereact/radiobutton';
-import * as Yup from 'yup';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { Toast } from 'primereact/toast';
-import { FileUpload } from 'primereact/fileupload';
+import React, { useEffect, useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { InputText } from "primereact/inputtext";
+import { Dropdown } from "primereact/dropdown";
+import { Calendar } from "primereact/calendar";
+import { Button } from "primereact/button";
+import { ToggleButton } from "primereact/togglebutton";
+import * as Yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { Toast } from "primereact/toast";
+import { FileUpload } from "primereact/fileupload";
+import { ButtonGroup } from "primereact/buttongroup";
 
-import { getEmpresas } from '../../api/empresa'; // API profesional de empresas
-import { getTiposDocIdentidad } from '../../api/tiposDocIdentidad'; // API profesional de tipos de documento
-import { getCargosPersonal } from '../../api/cargosPersonal'; // API profesional de cargos de personal
-import { getTiposContrato } from '../../api/tiposContrato'; // API profesional de tipos de contrato
-import { getSedes } from '../../api/sedes'; // API profesional de sedes
-import { getAreasFisicas } from '../../api/areasFisicas'; // API profesional de áreas físicas
-import { subirFotoPersonal } from '../../api/personal'; // API profesional de subida de foto personal
+import { getEmpresas } from "../../api/empresa"; // API profesional de empresas
+import { getTiposDocIdentidad } from "../../api/tiposDocIdentidad"; // API profesional de tipos de documento
+import { getCargosPersonal } from "../../api/cargosPersonal"; // API profesional de cargos de personal
+import { getTiposContrato } from "../../api/tiposContrato"; // API profesional de tipos de contrato
+import { getSedes } from "../../api/sedes"; // API profesional de sedes
+import { getAreasFisicas } from "../../api/areasFisicas"; // API profesional de áreas físicas
+import { subirFotoPersonal } from "../../api/personal"; // API profesional de subida de foto personal
 
 // Esquema de validación profesional con Yup
 const schema = Yup.object().shape({
-  empresaId: Yup.number().required('La empresa es obligatoria'),
-  nombres: Yup.string().required('Los nombres son obligatorios'),
-  apellidos: Yup.string().required('Los apellidos son obligatorios'),
-  tipoDocumentoId: Yup.number().required('El tipo de documento es obligatorio'),
-  numeroDocumento: Yup.string().required('El número de documento es obligatorio'),
-  fechaNacimiento: Yup.date().required('La fecha de nacimiento es obligatoria'),
-  sexo: Yup.boolean().required('El sexo es obligatorio'), // Campo obligatorio según modelo Prisma
+  empresaId: Yup.number().required("La empresa es obligatoria"),
+  nombres: Yup.string().required("Los nombres son obligatorios"),
+  apellidos: Yup.string().required("Los apellidos son obligatorios"),
+  tipoDocumentoId: Yup.number().required("El tipo de documento es obligatorio"),
+  numeroDocumento: Yup.string().required(
+    "El número de documento es obligatorio"
+  ),
+  fechaNacimiento: Yup.date().required("La fecha de nacimiento es obligatoria"),
+  sexo: Yup.boolean().required("El sexo es obligatorio"), // Campo obligatorio según modelo Prisma
   fechaIngreso: Yup.date(),
   telefono: Yup.string().nullable(),
-  correo: Yup.string().nullable().email('Correo inválido'),
+  correo: Yup.string().nullable().email("Correo inválido"),
   tipoContratoId: Yup.number(),
   cargoId: Yup.number(),
   areaFisicaId: Yup.number(),
@@ -54,68 +56,89 @@ const schema = Yup.object().shape({
  * @param {Array} props.cargos Opciones de cargo
  */
 
-export default function PersonalForm({ isEdit = false, defaultValues = {}, onSubmit, onCancel, loading }) {
+export default function PersonalForm({
+  isEdit = false,
+  defaultValues = {},
+  onSubmit,
+  onCancel,
+  loading,
+}) {
+  // Normalización profesional: forzar empresaId y combos a number para evitar errores de tipo
+  const normalizedDefaults = {
+    ...defaultValues,
+    empresaId: defaultValues.empresaId ? Number(defaultValues.empresaId) : null,
+    tipoDocumentoId: defaultValues.tipoDocumentoId
+      ? Number(defaultValues.tipoDocumentoId)
+      : null,
+    tipoContratoId: defaultValues.tipoContratoId
+      ? Number(defaultValues.tipoContratoId)
+      : null,
+    cargoId: defaultValues.cargoId ? Number(defaultValues.cargoId) : null,
+    areaFisicaId: defaultValues.areaFisicaId
+      ? Number(defaultValues.areaFisicaId)
+      : null,
+    sedeEmpresaId: defaultValues.sedeEmpresaId
+      ? Number(defaultValues.sedeEmpresaId)
+      : null,
+    sexo: typeof defaultValues.sexo === "boolean" ? defaultValues.sexo : null,
 
+    // Agrega aquí cualquier otro id de combo que uses
+  };
 
- // Normalización profesional: forzar empresaId y combos a number para evitar errores de tipo
- const normalizedDefaults = {
-  ...defaultValues,
-  empresaId: defaultValues.empresaId ? Number(defaultValues.empresaId) : null,
-  tipoDocumentoId: defaultValues.tipoDocumentoId ? Number(defaultValues.tipoDocumentoId) : null,
-  tipoContratoId: defaultValues.tipoContratoId ? Number(defaultValues.tipoContratoId) : null,
-  cargoId: defaultValues.cargoId ? Number(defaultValues.cargoId) : null,
-  areaFisicaId: defaultValues.areaFisicaId ? Number(defaultValues.areaFisicaId) : null,
-  sedeEmpresaId: defaultValues.sedeEmpresaId ? Number(defaultValues.sedeEmpresaId) : null,
-  sexo: typeof defaultValues.sexo === 'boolean' ? defaultValues.sexo : null,
-
-  // Agrega aquí cualquier otro id de combo que uses
-};
-
-  const { register,control, setValue, formState: { errors }, handleSubmit, reset, watch } = useForm({
+  const {
+    register,
+    control,
+    setValue,
+    formState: { errors },
+    handleSubmit,
+    reset,
+    watch,
+  } = useForm({
     resolver: yupResolver(schema),
     defaultValues: normalizedDefaults,
-    mode: 'onTouched',
+    mode: "onTouched",
   });
 
   const [fotoPreview, setFotoPreview] = useState(
-      defaultValues.urlFotoPersona
-        ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${defaultValues.urlFotoPersona}`
-        : null
+    defaultValues.urlFotoPersona
+      ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${
+          defaultValues.urlFotoPersona
+        }`
+      : null
   );
 
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const toastFoto = React.useRef(null);
   // --- Fin gestión foto de persona ---
 
-   // Estados locales para combos dinámicos
-   const [empresas, setEmpresas] = useState([]);
-   const [tiposDocumento, setTiposDocumento] = useState([]);
-   const [cargos, setCargos] = useState([]);
-   const [tiposContrato, setTiposContrato] = useState([]);
- 
-   const [areasFisicas, setAreasFisicas] = useState([]);
-   const [sedesEmpresa, setSedesEmpresa] = useState([]);
+  // Estados locales para combos dinámicos
+  const [empresas, setEmpresas] = useState([]);
+  const [tiposDocumento, setTiposDocumento] = useState([]);
+  const [cargos, setCargos] = useState([]);
+  const [tiposContrato, setTiposContrato] = useState([]);
 
-
+  const [areasFisicas, setAreasFisicas] = useState([]);
+  const [sedesEmpresa, setSedesEmpresa] = useState([]);
 
   // Reset profesional y actualización de preview de foto al abrir en modo edición o alta
   useEffect(() => {
-    reset({ ...defaultValues,
-      sexo: typeof defaultValues.sexo === 'boolean' ? defaultValues.sexo : null,
-     });
+    reset({
+      ...defaultValues,
+      sexo: typeof defaultValues.sexo === "boolean" ? defaultValues.sexo : null,
+    });
     // Actualiza el preview de la foto si cambia el registro
     /**
      * Construye la URL profesional de la foto usando la variable de entorno general para uploads.
      */
     const urlFoto = defaultValues.urlFotoPersona
-      ? (defaultValues.urlFotoPersona.startsWith('http')
-          ? defaultValues.urlFotoPersona
-          : `${import.meta.env.VITE_UPLOADS_URL}/personal/${defaultValues.urlFotoPersona}`)
+      ? defaultValues.urlFotoPersona.startsWith("http")
+        ? defaultValues.urlFotoPersona
+        : `${import.meta.env.VITE_UPLOADS_URL}/personal/${
+            defaultValues.urlFotoPersona
+          }`
       : null;
     setFotoPreview(urlFoto);
   }, [defaultValues, isEdit, reset]);
-
-
 
   /**
    * Maneja la subida profesional de la foto de persona.
@@ -129,12 +152,22 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
     const file = files[0];
     if (!file) return;
     // Validación profesional: solo imágenes y máx 2MB
-    if (!file.type.startsWith('image/')) {
-      toastFoto.current?.show({ severity: 'error', summary: 'Error', detail: 'Solo se permiten archivos de imagen', life: 4000 });
+    if (!file.type.startsWith("image/")) {
+      toastFoto.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Solo se permiten archivos de imagen",
+        life: 4000,
+      });
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      toastFoto.current?.show({ severity: 'error', summary: 'Error', detail: 'El archivo supera el tamaño máximo de 2MB', life: 4000 });
+      toastFoto.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "El archivo supera el tamaño máximo de 2MB",
+        life: 4000,
+      });
       return;
     }
     // Muestra el preview inmediato usando URL local
@@ -144,19 +177,29 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
     try {
       // Sube la foto usando el endpoint profesional
       const res = await subirFotoPersonal(defaultValues.id, file);
-      setValue('urlFotoPersona', res.foto, { shouldValidate: true });
+      setValue("urlFotoPersona", res.foto, { shouldValidate: true });
       // Construye la URL profesional de la foto subida usando la variable general de uploads.
-      const urlBackend = `${import.meta.env.VITE_UPLOADS_URL}/personal/${res.foto}`;
+      const urlBackend = `${import.meta.env.VITE_UPLOADS_URL}/personal/${
+        res.foto
+      }`;
       setFotoPreview(urlBackend);
-      toastFoto.current?.show({ severity: 'success', summary: 'Foto actualizada', detail: 'La foto se subió correctamente', life: 3000 });
+      toastFoto.current?.show({
+        severity: "success",
+        summary: "Foto actualizada",
+        detail: "La foto se subió correctamente",
+        life: 3000,
+      });
     } catch (err) {
-      toastFoto.current?.show({ severity: 'error', summary: 'Error', detail: err?.response?.data?.error || 'Error al subir la foto', life: 4000 });
+      toastFoto.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: err?.response?.data?.error || "Error al subir la foto",
+        life: 4000,
+      });
     } finally {
       setUploadingFoto(false);
     }
   };
-
- 
 
   // Carga profesional de combos al montar el formulario
   useEffect(() => {
@@ -179,24 +222,73 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
           cargosPromise,
           tiposContratoPromise,
           areasFisicasPromise,
-          sedesPromise
+          sedesPromise,
         ]);
-        const [empresasRes, tiposDocRes, cargosRes, tiposContratoRes, areasFisicasRes, sedesRes] = resultados;
-        
+        const [
+          empresasRes,
+          tiposDocRes,
+          cargosRes,
+          tiposContratoRes,
+          areasFisicasRes,
+          sedesRes,
+        ] = resultados;
+
         // Normalización profesional: ids de empresa como number para evitar bugs de selección en PrimeReact Dropdown
-        const empresasData = empresasRes.status === 'fulfilled' ? empresasRes.value.map(e => ({ ...e, id: Number(e.id), label: e.razonSocial || e.nombre })) : [];
+        const empresasData =
+          empresasRes.status === "fulfilled"
+            ? empresasRes.value.map((e) => ({
+                ...e,
+                id: Number(e.id),
+                label: e.razonSocial,
+              }))
+            : [];
         setEmpresas(empresasData);
         // Normalización profesional: todos los ids de combos a number para evitar bugs de selección
-        const tiposDocumentoData = tiposDocRes.status === 'fulfilled' ? tiposDocRes.value.map(e => ({ ...e, id: Number(e.id), label: e.descripcion || e.nombre })) : [];
+        const tiposDocumentoData =
+          tiposDocRes.status === "fulfilled"
+            ? tiposDocRes.value.map((e) => ({
+                ...e,
+                id: Number(e.id),
+                label: e.codigo,
+              }))
+            : [];
         setTiposDocumento(tiposDocumentoData);
         // Normalización profesional para combo: id numérico y label descriptivo
-        const cargosData = cargosRes.status === 'fulfilled' ? cargosRes.value.map(e => ({ ...e, id: Number(e.id), label: e.descripcion || e.nombre })) : [];
+        const cargosData =
+          cargosRes.status === "fulfilled"
+            ? cargosRes.value.map((e) => ({
+                ...e,
+                id: Number(e.id),
+                label: e.descripcion,
+              }))
+            : [];
         setCargos(cargosData);
-        const tiposContratoData = tiposContratoRes.status === 'fulfilled' ? tiposContratoRes.value.map(e => ({ ...e, id: Number(e.id), label: e.descripcion || e.nombre })) : [];
+        const tiposContratoData =
+          tiposContratoRes.status === "fulfilled"
+            ? tiposContratoRes.value.map((e) => ({
+                ...e,
+                id: Number(e.id),
+                label: e.nombre,
+              }))
+            : [];
         setTiposContrato(tiposContratoData);
-        const areasFisicasData = areasFisicasRes.status === 'fulfilled' ? areasFisicasRes.value.map(e => ({ ...e, id: Number(e.id), label: e.descripcion || e.nombre })) : [];
+        const areasFisicasData =
+          areasFisicasRes.status === "fulfilled"
+            ? areasFisicasRes.value.map((e) => ({
+                ...e,
+                id: Number(e.id),
+                label: e.descripcion,
+              }))
+            : [];
         setAreasFisicas(areasFisicasData);
-        const sedesEmpresaData = sedesRes.status === 'fulfilled' ? sedesRes.value.map(e => ({ ...e, id: Number(e.id), label: e.descripcion || e.nombre })) : [];
+        const sedesEmpresaData =
+          sedesRes.status === "fulfilled"
+            ? sedesRes.value.map((e) => ({
+                ...e,
+                id: Number(e.id),
+                label: e.nombre,
+              }))
+            : [];
         setSedesEmpresa(sedesEmpresaData);
 
         reset({ ...defaultValues });
@@ -212,87 +304,111 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
     cargarCombos();
   }, []);
 
-     // Estado local para las sedes filtradas según empresa seleccionada
-     const [sedesFiltradas, setSedesFiltradas] = useState([]);
-     // Efecto: Filtrar sedes por empresa seleccionada (combo dependiente)
-      // Cuando cambia la empresa, se filtran las sedes y se limpia la selección previa de sede
-      useEffect(() => {
-        // Solo filtra si hay empresa seleccionada y sedes cargadas
-        const empresaId = watch('empresaId');
-        if (empresaId && sedesEmpresa.length > 0) {
-          const empresaIdNum = Number(empresaId);
-          const filtradas = sedesEmpresa.filter(s => Number(s.empresaId) === empresaIdNum);
-          setSedesFiltradas(filtradas);
+  // Estado local para las sedes filtradas según empresa seleccionada
+  const [sedesFiltradas, setSedesFiltradas] = useState([]);
+  // Efecto: Filtrar sedes por empresa seleccionada (combo dependiente)
+  // Cuando cambia la empresa, se filtran las sedes y se limpia la selección previa de sede
+  useEffect(() => {
+    // Solo filtra si hay empresa seleccionada y sedes cargadas
+    const empresaId = watch("empresaId");
+    if (empresaId && sedesEmpresa.length > 0) {
+      const empresaIdNum = Number(empresaId);
+      const filtradas = sedesEmpresa.filter(
+        (s) => Number(s.empresaId) === empresaIdNum
+      );
+      setSedesFiltradas(filtradas);
 
-          // Si la sede seleccionada no pertenece a la empresa, límpiala
-          if (
-            watch('sedeEmpresaId') &&
-            !filtradas.some(s => Number(s.id) === Number(watch('sedeEmpresaId')))
-          ) {
-            setValue('sedeEmpresaId', null);
-          }
-        } else {
-          setSedesFiltradas([]);
-          setValue('sedeEmpresaId', null);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, [watch('empresaId'), sedesEmpresa]);
+      // Si la sede seleccionada no pertenece a la empresa, límpiala
+      if (
+        watch("sedeEmpresaId") &&
+        !filtradas.some((s) => Number(s.id) === Number(watch("sedeEmpresaId")))
+      ) {
+        setValue("sedeEmpresaId", null);
+      }
+    } else {
+      setSedesFiltradas([]);
+      setValue("sedeEmpresaId", null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watch("empresaId"), sedesEmpresa]);
 
-      // Estado local para las áreas físicas filtradas según sede seleccionada
-      const [areasFisicasFiltradas, setAreasFisicasFiltradas] = useState([]);
-      useEffect(() => {
-        // Solo filtra si hay sede seleccionada y áreas físicas cargadas
-        const sedeId = watch('sedeEmpresaId');
-        if (sedeId && areasFisicas.length > 0) {
-          const sedeIdNum = Number(sedeId);
-          const filtradas = areasFisicas.filter(a => Number(a.sedeId) === sedeIdNum);
-          setAreasFisicasFiltradas(filtradas);
-      
-          // Si el área seleccionada no pertenece a la sede, límpiala
-          if (
-            watch('areaFisicaId') &&
-            !filtradas.some(a => Number(a.id) === Number(watch('areaFisicaId')))
-          ) {
-            setValue('areaFisicaId', null);
-          }
-        } else {
-          setAreasFisicasFiltradas([]);
-          setValue('areaFisicaId', null);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, [watch('sedeEmpresaId'), areasFisicas]);
+  // Estado local para las áreas físicas filtradas según sede seleccionada
+  const [areasFisicasFiltradas, setAreasFisicasFiltradas] = useState([]);
+  useEffect(() => {
+    // Solo filtra si hay sede seleccionada y áreas físicas cargadas
+    const sedeId = watch("sedeEmpresaId");
+    if (sedeId && areasFisicas.length > 0) {
+      const sedeIdNum = Number(sedeId);
+      const filtradas = areasFisicas.filter(
+        (a) => Number(a.sedeId) === sedeIdNum
+      );
+      setAreasFisicasFiltradas(filtradas);
+
+      // Si el área seleccionada no pertenece a la sede, límpiala
+      if (
+        watch("areaFisicaId") &&
+        !filtradas.some((a) => Number(a.id) === Number(watch("areaFisicaId")))
+      ) {
+        setValue("areaFisicaId", null);
+      }
+    } else {
+      setAreasFisicasFiltradas([]);
+      setValue("areaFisicaId", null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watch("sedeEmpresaId"), areasFisicas]);
   // --- Normalización profesional de opciones de combos para evitar errores de tipo ---
   // Se fuerza que todos los id de las opciones sean numéricos, para que coincidan con los valores del formulario (también numéricos).
-  const empresasNorm = (typeof empresas !== 'undefined' ? empresas : []).map(e => ({ ...e, id: Number(e.id) }));
-  const tiposDocumentoNorm = (typeof tiposDocumento !== 'undefined' ? tiposDocumento : []).map(e => ({ ...e, id: Number(e.id) }));
-  const tiposContratoNorm = (typeof tiposContrato !== 'undefined' ? tiposContrato : []).map(e => ({ ...e, id: Number(e.id) }));
-  const cargosNorm = (typeof cargos !== 'undefined' ? cargos : []).map(e => ({ ...e, id: Number(e.id) }));
-  const areasFisicasNorm = (typeof areasFisicas !== 'undefined' ? areasFisicas : []).map(e => ({ ...e, id: Number(e.id) }));
-  const sedesEmpresaNorm = (typeof sedesEmpresa !== 'undefined' ? sedesEmpresa : []).map(e => ({ ...e, id: Number(e.id) }));
-  // Log de depuración profesional del payload antes de grabar
-  // Transforma IDs a number y fechas a string ISO antes de enviar el payload
-  // Log de depuración profesional del payload antes de grabar
+  const empresasNorm = (typeof empresas !== "undefined" ? empresas : []).map(
+    (e) => ({ ...e, id: Number(e.id) })
+  );
+  const tiposDocumentoNorm = (
+    typeof tiposDocumento !== "undefined" ? tiposDocumento : []
+  ).map((e) => ({ ...e, id: Number(e.id) }));
+  const tiposContratoNorm = (
+    typeof tiposContrato !== "undefined" ? tiposContrato : []
+  ).map((e) => ({ ...e, id: Number(e.id) }));
+  const cargosNorm = (typeof cargos !== "undefined" ? cargos : []).map((e) => ({
+    ...e,
+    id: Number(e.id),
+  }));
+  const areasFisicasNorm = (
+    typeof areasFisicas !== "undefined" ? areasFisicas : []
+  ).map((e) => ({ ...e, id: Number(e.id) }));
+  const sedesEmpresaNorm = (
+    typeof sedesEmpresa !== "undefined" ? sedesEmpresa : []
+  ).map((e) => ({ ...e, id: Number(e.id) }));
   // Transforma IDs a number y fechas a string ISO antes de enviar el payload
   const onSubmitWithLog = (data) => {
+    console.log("Personal onSubmit data", data);
     // Construcción profesional del payload: sedeId eliminado, solo se envía sedeEmpresaId
-    console.log('OJO data', data);
     const payload = {
       ...data,
       empresaId: data.empresaId ? Number(data.empresaId) : null,
-      tipoDocumentoId: data.tipoDocumentoId ? Number(data.tipoDocumentoId) : null,
+      tipoDocumentoId: data.tipoDocumentoId
+        ? Number(data.tipoDocumentoId)
+        : null,
       tipoContratoId: data.tipoContratoId ? Number(data.tipoContratoId) : null,
       cargoId: data.cargoId ? Number(data.cargoId) : null,
       areaFisicaId: data.areaFisicaId ? Number(data.areaFisicaId) : null,
       sedeEmpresaId: data.sedeEmpresaId ? Number(data.sedeEmpresaId) : null,
-      fechaNacimiento: data.fechaNacimiento ? new Date(data.fechaNacimiento).toISOString() : null,
-      fechaIngreso: data.fechaIngreso ? new Date(data.fechaIngreso).toISOString() : null,
+      fechaNacimiento: data.fechaNacimiento
+        ? new Date(data.fechaNacimiento).toISOString()
+        : null,
+      fechaIngreso: data.fechaIngreso
+        ? new Date(data.fechaIngreso).toISOString()
+        : null,
       telefono: data.telefono || null,
       correo: data.correo || null,
       urlFotoPersona: data.urlFotoPersona || null,
       // Campo obligatorio según modelo Prisma: siempre enviar sexo booleano
-      sexo: typeof data.sexo === 'boolean' ? data.sexo : false,
+      sexo: typeof data.sexo === "boolean" ? data.sexo : false,
+      esVendedor:
+        typeof data.esVendedor === "boolean" ? data.esVendedor : false,
+      cesado: typeof data.cesado === "boolean" ? data.cesado : false,
     };
-// Fin construcción payload profesional
+    // Fin construcción payload profesional
+    console.log("Personal onSubmit payload", payload);
     onSubmit(payload);
   };
 
@@ -305,21 +421,72 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
           {/* Gestión profesional de foto de persona */}
           <div className="p-field">
             {/* Layout profesional: imagen a la izquierda, controles a la derecha */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginTop: 8 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 24,
+                marginTop: 8,
+              }}
+            >
               {/* Bloque izquierdo: título y preview de la foto */}
-              <div style={{ minWidth: 180, minHeight: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' }}>
+              <div
+                style={{
+                  minWidth: 180,
+                  minHeight: 120,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "flex-start",
+                }}
+              >
                 {/* Título pegado a la imagen */}
-                <label htmlFor="foto" style={{ marginBottom: 6, fontWeight: 500 }}>Foto de la persona</label>
+                <label
+                  htmlFor="foto"
+                  style={{ marginBottom: 6, fontWeight: 500 }}
+                >
+                  Foto de la persona
+                </label>
                 {fotoPreview ? (
-                  <img src={fotoPreview} alt="Foto actual" style={{ maxWidth: 180, maxHeight: 120, borderRadius: 6, border: '1px solid #ccc', background: '#fff' }} />
+                  <img
+                    src={fotoPreview}
+                    alt="Foto actual"
+                    style={{
+                      maxWidth: 180,
+                      maxHeight: 120,
+                      borderRadius: 6,
+                      border: "1px solid #ccc",
+                      background: "#fff",
+                    }}
+                  />
                 ) : (
-                  <div style={{ width: 180, height: 120, borderRadius: 6, border: '1px solid #ccc', background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', fontSize: 14 }}>
+                  <div
+                    style={{
+                      width: 180,
+                      height: 120,
+                      borderRadius: 6,
+                      border: "1px solid #ccc",
+                      background: "#f8f9fa",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#bbb",
+                      fontSize: 14,
+                    }}
+                  >
                     Sin foto
                   </div>
                 )}
               </div>
               {/* Controles de carga y mensaje */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
                 <FileUpload
                   name="foto"
                   accept="image/*"
@@ -334,275 +501,388 @@ export default function PersonalForm({ isEdit = false, defaultValues = {}, onSub
                   mode="basic"
                   className="p-mb-2"
                 />
-                <small className="p-d-block" style={{ color: '#888' }}>Solo PNG/JPG. Máx 2MB.</small>
+                <small className="p-d-block" style={{ color: "#888" }}>
+                  Solo PNG/JPG. Máx 2MB.
+                </small>
                 {/* Input profesional para URL de la foto (solo input text, editable/deshabilitado según lógica) */}
-                <InputText {...register('urlFotoPersona')} className={errors.urlFotoPersona ? 'p-invalid' : ''} placeholder="URL de la foto (opcional)" />
-                <small className="p-error">{errors.urlFotoPersona?.message}</small>
+                <InputText
+                  {...register("urlFotoPersona")}
+                  className={errors.urlFotoPersona ? "p-invalid" : ""}
+                  placeholder="URL de la foto (opcional)"
+                />
+                <small className="p-error">
+                  {errors.urlFotoPersona?.message}
+                </small>
                 {/* Mensaje profesional si no hay id disponible */}
                 {!defaultValues.id && (
-                  <small className="p-error p-d-block">Guarda primero el registro para habilitar la subida de foto.</small>
+                  <small className="p-error p-d-block">
+                    Guarda primero el registro para habilitar la subida de foto.
+                  </small>
                 )}
               </div>
             </div>
           </div>
-        {/* Combo profesional de empresa con carga dinámica desde el backend.
-          Se usa el mismo patrón que UsuarioForm.jsx para coherencia y mantenibilidad.
-        */}
-        <div className="p-field">
-          <label>Empresa</label>
-          <Controller
-            name="empresaId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="empresaId"
-                value={field.value ? Number(field.value) : null}
-                options={empresasNorm}
-                optionLabel="label"
-                optionValue="id"
-                placeholder="Seleccione una empresa"
-                className={errors.empresaId ? 'p-invalid' : ''}
-                filter
-                showClear
-                onChange={e => field.onChange(e.value)}
+          {/* Empresa */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label>Empresa</label>
+              <Controller
+                name="empresaId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="empresaId"
+                    value={field.value ? Number(field.value) : null}
+                    options={empresasNorm}
+                    optionLabel="label"
+                    optionValue="id"
+                    placeholder="Seleccione una empresa"
+                    className={errors.empresaId ? "p-invalid" : ""}
+                    filter
+                    showClear
+                    onChange={(e) => field.onChange(e.value)}
+                  />
+                )}
               />
-            )}
-          />
-          <small className="p-error">{errors.empresaId?.message}</small>
-        </div>
-        {/* Nombres y Apellidos en una sola línea */}
-        <div className="p-field p-grid" style={{ display: 'flex', gap: 16 }}>
-          <div style={{ flex: 1 }}>
-            <label>Nombres</label>
-            <Controller
-              name="nombres"
-              control={control}
-              render={({ field }) => <InputText {...field} autoFocus />}
-            />
-            <small className="p-error">{errors.nombres?.message}</small>
+              <small className="p-error">{errors.empresaId?.message}</small>
+            </div>
           </div>
-          <div style={{ flex: 1 }}>
-            <label>Apellidos</label>
-            <Controller
-              name="apellidos"
-              control={control}
-              render={({ field }) => <InputText {...field} />}
-            />
-            <small className="p-error">{errors.apellidos?.message}</small>
+          {/* Nombres y Apellidos en una sola línea */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label>Nombres</label>
+              <Controller
+                name="nombres"
+                control={control}
+                render={({ field }) => <InputText {...field} autoFocus />}
+              />
+              <small className="p-error">{errors.nombres?.message}</small>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label>Apellidos</label>
+              <Controller
+                name="apellidos"
+                control={control}
+                render={({ field }) => <InputText {...field} />}
+              />
+              <small className="p-error">{errors.apellidos?.message}</small>
+            </div>
           </div>
-        </div>
-        {/* Tipo de documento y Número de documento en una sola línea */}
-        <div className="p-field p-grid" style={{ display: 'flex', gap: 16 }}>
-          <div style={{ flex: 1 }}>
-            <label>Tipo de documento</label>
+          {/* Tipo de documento y Número de documento en una sola línea */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label>Tipo documento</label>
+              <Controller
+                name="tipoDocumentoId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="tipoDocumentoId"
+                    value={field.value ? Number(field.value) : null}
+                    options={tiposDocumentoNorm}
+                    optionLabel="label"
+                    optionValue="id"
+                    placeholder="Seleccione un tipo de documento"
+                    className={errors.tipoDocumentoId ? "p-invalid" : ""}
+                    filter
+                    showClear
+                    onChange={(e) => field.onChange(e.value)}
+                  />
+                )}
+              />
+              <small className="p-error">
+                {errors.tipoDocumentoId?.message}
+              </small>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label>N° Documento</label>
+              <Controller
+                name="numeroDocumento"
+                control={control}
+                render={({ field }) => <InputText {...field} />}
+              />
+              <small className="p-error">
+                {errors.numeroDocumento?.message}
+              </small>
+            </div>
+          </div>
+          {/* Fechas: nacimiento e ingreso en una sola línea */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label>Nacimiento</label>
+              <Controller
+                name="fechaNacimiento"
+                control={control}
+                render={({ field }) => (
+                  <Calendar
+                    {...field}
+                    showIcon
+                    dateFormat="dd/mm/yy"
+                    style={{ width: "100%" }}
+                  />
+                )}
+              />
+              <small className="p-error">
+                {errors.fechaNacimiento?.message}
+              </small>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label>Ingreso</label>
+              <Controller
+                name="fechaIngreso"
+                control={control}
+                render={({ field }) => (
+                  <Calendar
+                    {...field}
+                    showIcon
+                    dateFormat="dd/mm/yy"
+                    style={{ width: "100%" }}
+                  />
+                )}
+              />
+              <small className="p-error">{errors.fechaIngreso?.message}</small>
+            </div>
+          </div>
+
+          {/* Teléfono yCorreo Electronico en una sola línea, con proporción 1:2 */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label>Teléfono</label>
+              <InputText
+                {...register("telefono")}
+                maxLength={20}
+                className={errors.telefono ? "p-invalid" : ""}
+              />
+              <small className="p-error">{errors.telefono?.message}</small>
+            </div>
+            {/* Correo electrónico */}
+            <div style={{ flex: 2 }}>
+              <label>Correo electrónico</label>
+              <InputText
+                {...register("correo")}
+                className={errors.correo ? "p-invalid" : ""}
+              />
+              <small className="p-error">{errors.correo?.message}</small>
+            </div>
+          </div>
+
+          {/* Tipo de Contrato */}
+          <div className="p-field">
+            <label>Tipo de Contrato</label>
             <Controller
-              name="tipoDocumentoId"
+              name="tipoContratoId"
               control={control}
               render={({ field }) => (
                 <Dropdown
-                  id="tipoDocumentoId"
+                  id="tipoContratoId"
                   value={field.value ? Number(field.value) : null}
-                  options={tiposDocumentoNorm}
+                  options={tiposContratoNorm}
                   optionLabel="label"
                   optionValue="id"
-                  placeholder="Seleccione un tipo de documento"
-                  className={errors.tipoDocumentoId ? 'p-invalid' : ''}
+                  placeholder="Seleccione un tipo de contrato"
+                  className={errors.tipoContratoId ? "p-invalid" : ""}
                   filter
                   showClear
-                  onChange={e => field.onChange(e.value)}
+                  onChange={(e) => field.onChange(e.value)}
                 />
               )}
             />
-            <small className="p-error">{errors.tipoDocumentoId?.message}</small>
+            <small className="p-error">{errors.tipoContratoId?.message}</small>
           </div>
-          <div style={{ flex: 1 }}>
-            <label>Número de documento</label>
+          {/* Cargo */}
+          <div className="p-field">
+            <label>Cargo</label>
             <Controller
-              name="numeroDocumento"
-              control={control}
-              render={({ field }) => <InputText {...field} />} />
-            <small className="p-error">{errors.numeroDocumento?.message}</small>
-          </div>
-        </div>
-        {/* Fechas: nacimiento e ingreso en una sola línea */}
-        <div className="p-field p-grid" style={{ display: 'flex', gap: 16 }}>
-          <div style={{ flex: 1 }}>
-            <label>Nacimiento</label>
-            <Controller
-              name="fechaNacimiento"
-              control={control}
-              render={({ field }) => <Calendar {...field} showIcon dateFormat="dd/mm/yy" style={{ width: '100%' }} />} />
-            <small className="p-error">{errors.fechaNacimiento?.message}</small>
-          </div>
-          <div style={{ flex: 1 }}>
-            <label>Ingreso</label>
-            <Controller
-              name="fechaIngreso"
-              control={control}
-              render={({ field }) => <Calendar {...field} showIcon dateFormat="dd/mm/yy" style={{ width: '100%' }} />} />
-            <small className="p-error">{errors.fechaIngreso?.message}</small>
-          </div>
-        </div>
-
-        {/* Teléfono y Sexo en una sola línea, con proporción 1:2 */}
-        <div className="p-field p-grid" style={{ display: 'flex', gap: 16 }}>
-          {/* Sexo */}
-          <div style={{ flex: 1 }}>
-            <label>Sexo</label>
-            <Controller
-              name="sexo"
+              name="cargoId"
               control={control}
               render={({ field }) => (
-                        <Dropdown
-                          id="sexo"
-                          value={field.value ?? null}
-                          options={[
-                            { label: 'Masculino', value: true },
-                            { label: 'Femenino', value: false }
-                          ]}
-                          placeholder="Seleccione sexo"
-                          className={errors.sexo ? 'p-invalid' : ''}
-                          onChange={e => field.onChange(e.value)}
-                          required
-                        />
+                <Dropdown
+                  id="cargoId"
+                  value={field.value ? Number(field.value) : null}
+                  options={cargosNorm}
+                  optionLabel="label"
+                  optionValue="id"
+                  placeholder="Seleccione un cargo"
+                  className={errors.cargoId ? "p-invalid" : ""}
+                  filter
+                  showClear
+                  onChange={(e) => field.onChange(e.value)}
+                />
               )}
             />
-            <small className="p-error">{errors.sexo?.message}</small>
+            <small className="p-error">{errors.cargoId?.message}</small>
           </div>
-          <div style={{ flex: 2 }}>
-            <label>Teléfono</label>
-            <InputText {...register('telefono')} maxLength={20} className={errors.telefono ? 'p-invalid' : ''} />
-            <small className="p-error">{errors.telefono?.message}</small>
+          {/* Sede Empresa */}
+          <div className="p-field">
+            <label>Sede Empresa</label>
+            <Controller
+              name="sedeEmpresaId"
+              control={control}
+              render={({ field }) => (
+                <Dropdown
+                  id="sedeEmpresaId"
+                  value={field.value ? Number(field.value) : null}
+                  //options={sedesEmpresaNorm}
+                  options={sedesFiltradas.map((e) => ({
+                    ...e,
+                    id: Number(e.id),
+                  }))}
+                  optionLabel="label"
+                  optionValue="id"
+                  placeholder="Seleccione una sede empresa"
+                  className={errors.sedeEmpresaId ? "p-invalid" : ""}
+                  filter
+                  showClear
+                  onChange={(e) => field.onChange(e.value)}
+                />
+              )}
+            />
+            <small className="p-error">{errors.sedeEmpresaId?.message}</small>
           </div>
-
-        </div>
-        {/* Correo electrónico */}
-        <div className="p-field">
-            <label>Correo electrónico</label>
-            <InputText {...register('correo')} className={errors.correo ? 'p-invalid' : ''} />
-            <small className="p-error">{errors.correo?.message}</small>
+          {/* Área Física */}
+          <div className="p-field">
+            <label>Área Física</label>
+            <Controller
+              name="areaFisicaId"
+              control={control}
+              render={({ field }) => (
+                <Dropdown
+                  id="areaFisicaId"
+                  value={field.value ? Number(field.value) : null}
+                  options={areasFisicasFiltradas.map((e) => ({
+                    ...e,
+                    id: Number(e.id),
+                  }))}
+                  optionLabel="label"
+                  optionValue="id"
+                  placeholder="Seleccione un área física"
+                  className={errors.areaFisicaId ? "p-invalid" : ""}
+                  filter
+                  showClear
+                  onChange={(e) => field.onChange(e.value)}
+                />
+              )}
+            />
+            <small className="p-error">{errors.areaFisicaId?.message}</small>
           </div>
-        {/* Tipo de Contrato */}
-        <div className="p-field">
-          <label>Tipo de Contrato</label>
-          <Controller
-            name="tipoContratoId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="tipoContratoId"
-                value={field.value ? Number(field.value) : null}
-                options={tiposContratoNorm}
-                optionLabel="label"
-                optionValue="id"
-                placeholder="Seleccione un tipo de contrato"
-                className={errors.tipoContratoId ? 'p-invalid' : ''}
-                filter
-                showClear
-                onChange={e => field.onChange(e.value)}
-              />
-            )}
-          />
-          <small className="p-error">{errors.tipoContratoId?.message}</small>
+          {/* Botones de Cesado y Sexo */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginTop: 10,
+              gap: 5,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <ButtonGroup>
+              <div style={{ flex: 1 }}>
+                <Controller
+                  name="cesado"
+                  control={control}
+                  render={({ field }) => (
+                    <ToggleButton
+                      id="cesado"
+                      onLabel="CESADO"
+                      offLabel="ACTIVO"
+                      onIcon="pi pi-check"
+                      offIcon="pi pi-times"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                    />
+                  )}
+                />
+                <Controller
+                  name="sexo"
+                  control={control}
+                  render={({ field }) => (
+                    <ToggleButton
+                      id="sexo"
+                      onLabel="Masculino"
+                      offLabel="Femenino"
+                      onIcon="pi pi-check"
+                      offIcon="pi pi-times"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                    />
+                  )}
+                />
+                <Controller
+                  name="esVendedor"
+                  control={control}
+                  render={({ field }) => (
+                    <ToggleButton
+                      id="esVendedor"
+                      onLabel="Vendedor"
+                      offLabel="No Vendedor"
+                      onIcon="pi pi-check"
+                      offIcon="pi pi-times"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                    />
+                  )}
+                />
+              </div>
+            </ButtonGroup>
+          </div>
+          {/* Botones de acción */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 18,
+            }}
+          >
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              className="p-button-text"
+              type="button"
+              onClick={onCancel}
+              disabled={loading}
+            />
+            <Button
+              label={isEdit ? "Actualizar" : "Guardar"}
+              icon="pi pi-check"
+              className="p-button-success"
+              type="submit"
+              loading={loading}
+            />
+          </div>
         </div>
-        {/* Cargo */}
-        <div className="p-field">
-          <label>Cargo</label>
-          <Controller
-            name="cargoId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="cargoId"
-                value={field.value ? Number(field.value) : null}
-                options={cargosNorm}
-                optionLabel="label"
-                optionValue="id"
-                placeholder="Seleccione un cargo"
-                className={errors.cargoId ? 'p-invalid' : ''}
-                filter
-                showClear
-                onChange={e => field.onChange(e.value)}
-              />
-            )}
-          />
-          <small className="p-error">{errors.cargoId?.message}</small>
-        </div>
-        {/* Sede Empresa */}
-        <div className="p-field">
-          <label>Sede Empresa</label>
-          <Controller
-            name="sedeEmpresaId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="sedeEmpresaId"
-                value={field.value ? Number(field.value) : null}
-                //options={sedesEmpresaNorm}
-                options={sedesFiltradas.map(e => ({ ...e, id: Number(e.id) }))}
-                optionLabel="label"
-                optionValue="id"
-                placeholder="Seleccione una sede empresa"
-                className={errors.sedeEmpresaId ? 'p-invalid' : ''}
-                filter
-                showClear
-                onChange={e => field.onChange(e.value)}
-              />
-            )}
-          />
-          <small className="p-error">{errors.sedeEmpresaId?.message}</small>
-        </div>
-        {/* Área Física */}
-        <div className="p-field">
-          <label>Área Física</label>
-          <Controller
-            name="areaFisicaId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="areaFisicaId"
-                value={field.value ? Number(field.value) : null}
-                options={areasFisicasFiltradas.map(e => ({ ...e, id: Number(e.id) }))}
-                optionLabel="label"
-                optionValue="id"
-                placeholder="Seleccione un área física"
-                className={errors.areaFisicaId ? 'p-invalid' : ''}
-                filter
-                showClear
-                onChange={e => field.onChange(e.value)}
-              />
-            )}
-          />
-          <small className="p-error">{errors.areaFisicaId?.message}</small>
-        </div>
-        {/* Cesado */}
-        <div className="p-field-checkbox">
-          <Controller
-            name="cesado"
-            control={control}
-            render={({ field }) => <InputSwitch checked={field.value} onChange={e => field.onChange(e.value)} />}
-          />
-          <label style={{ marginLeft: 8 }}>Cesado</label>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
-          <Button
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-text"
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-          />
-          <Button
-            label={isEdit ? 'Actualizar' : 'Guardar'}
-            icon="pi pi-check"
-            className="p-button-success"
-            type="submit"
-            loading={loading}
-          />
-        </div>
-      </div>
-    </form>
-  </>
-); 
+      </form>
+    </>
+  );
 }

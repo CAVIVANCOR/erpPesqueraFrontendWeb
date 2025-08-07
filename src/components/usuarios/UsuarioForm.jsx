@@ -49,15 +49,6 @@ function esFechaValida(fecha) {
 }
 
 export default function UsuarioForm({ isEdit = false, defaultValues = {}, onSubmit, onCancel, loading }) {
-  // Logs de depuración para diagnóstico de fechas y props
-  //console.log('[UsuarioForm] defaultValues:', defaultValues);
-  //console.log('[UsuarioForm] defaultValues.fechaCreacion:', defaultValues.fechaCreacion, typeof defaultValues.fechaCreacion);
-  //console.log('[UsuarioForm] defaultValues.fechaUltimoAcceso:', defaultValues.fechaUltimoAcceso, typeof defaultValues.fechaUltimoAcceso);
-
-  // Si los campos llegan en snake_case, también los logueamos
-  //console.log('[UsuarioForm] defaultValues.fecha_creacion:', defaultValues.fecha_creacion, typeof defaultValues.fecha_creacion);
-  //console.log('[UsuarioForm] defaultValues.fecha_ultimo_acceso:', defaultValues.fecha_ultimo_acceso, typeof defaultValues.fecha_ultimo_acceso);
-
   // Importa y usa watch y setValue de react-hook-form
   // Agrega 'control' de useForm para uso con Controller (formularios controlados)
   const { register, handleSubmit, reset, formState: { errors, isSubmitting }, watch, setValue, control } = useForm({

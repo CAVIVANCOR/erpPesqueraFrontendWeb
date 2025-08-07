@@ -121,9 +121,6 @@ const EntregaARendirPVentasForm = ({ entrega, onSave, onCancel }) => {
         fechaLiquidacion: data.fechaLiquidacion ? data.fechaLiquidacion.toISOString() : null,
         centroCostoId: Number(data.centroCostoId)
       };
-
-      console.log('Payload EntregaARendirPVentas:', payload);
-
       if (entrega?.id) {
         await actualizarEntregaARendirPVentas(entrega.id, payload);
         toast.current?.show({

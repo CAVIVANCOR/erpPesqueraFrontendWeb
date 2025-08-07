@@ -184,9 +184,6 @@ const DetCalaFaenaConsumoProduceForm = ({ detalle, onSave, onCancel }) => {
           payload.porcentajeProducto = Number(porcentajeCalculado.toFixed(2));
         }
       }
-
-      console.log('Payload DetCalaFaenaConsumoProduce:', payload); // Log para depuración
-
       if (detalle?.id) {
         await updateDetCalaFaenaConsumoProduce(detalle.id, payload);
         toast.current?.show({

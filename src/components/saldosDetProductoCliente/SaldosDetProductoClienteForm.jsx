@@ -150,9 +150,6 @@ const SaldosDetProductoClienteForm = ({ saldo, onSave, onCancel }) => {
         saldoCantidad: Number(data.saldoCantidad),
         saldoPeso: data.saldoPeso ? Number(data.saldoPeso) : null
       };
-
-      console.log('Payload SaldosDetProductoCliente:', payload); // Log para depuración
-
       if (saldo?.id) {
         await actualizarSaldosDetProductoCliente(saldo.id, payload);
         toast.current?.show({

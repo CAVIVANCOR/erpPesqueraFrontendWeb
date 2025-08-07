@@ -135,9 +135,6 @@ const DocRequeridaComprasVentasForm = ({ documento, onSave, onCancel }) => {
         paraCompras: Boolean(data.paraCompras),
         paraVentas: Boolean(data.paraVentas)
       };
-
-      console.log('Payload DocRequeridaComprasVentas:', payload);
-
       if (documento?.id) {
         await updateDocRequeridaComprasVentas(documento.id, payload);
         toast.current?.show({

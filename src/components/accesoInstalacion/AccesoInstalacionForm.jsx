@@ -2,26 +2,25 @@
 // Formulario profesional para AccesoInstalacion. Cumple la regla transversal ERP Megui.
 // FLUJO ESPECIAL: Auto-genera fecha/hora, busca por documento, autocompleta datos y crea detalle automático.
 import React, { useState, useEffect, useRef } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { Button } from "primereact/button";
 import { ButtonGroup } from "primereact/buttongroup";
-import { InputText } from "primereact/inputtext";
-import { Dropdown } from "primereact/dropdown";
-import { InputTextarea } from "primereact/inputtextarea";
-import { Checkbox } from "primereact/checkbox";
 import { Toast } from "primereact/toast";
 import { ProgressSpinner } from "primereact/progressspinner";
-import { Message } from "primereact/message";
-import { TabView, TabPanel } from "primereact/tabview";
+import { Toolbar } from "primereact/toolbar"; // Importar Toolbar
 import DocumentoVisitanteCapture from "./DocumentoVisitanteCapture";
-import PDFViewer from "./PDFViewer";
 import TicketPrinter from "./TicketPrinter";
 import { toUpperCaseSafe } from "../../utils/utils";
 
-// Store de autenticación
-import { useAuthStore } from "../../shared/stores/useAuthStore";
+
+// Importar los nuevos componentes Card
+import DatosAccesoCard from "./cards/DatosAccesoCard";
+import VehiculoEquiposCard from "./cards/VehiculoEquiposCard";
+import ObservacionesIncidentesCard from "./cards/ObservacionesIncidentesCard";
+import DocumentosAdjuntosCard from "./cards/DocumentosAdjuntosCard";
+import MovimientosCard from "./cards/MovimientosCard";
 
 // APIs necesarias para el modelo Prisma AccesoInstalacion
 import { getAllTipoAccesoInstalacion } from "../../api/tipoAccesoInstalacion";
@@ -34,6 +33,8 @@ import { getTiposDocIdentidad } from "../../api/tiposDocIdentidad";
 import { getSedes } from "../../api/sedes";
 import { getEmpresas } from "../../api/empresa";
 import { getPersonal } from "../../api/personal"; // Para personaFirmaDestinoVisitaId
+import { obtenerTiposMovimientoAcceso } from "../../api/tipoMovimientoAcceso"; // Para tipos de movimiento
+import { crearDetalleAccesoInstalacion, obtenerDetallesPorAccesoInstalacion } from "../../api/accesoInstalacionDetalle"; // Para crear y cargar movimientos
 import {
   buscarPersonaPorDocumento,
   buscarVehiculoPorPlaca,
@@ -61,7 +62,6 @@ const schema = yup.object().shape({
     .number()
     .nullable()
     .typeError("Debe seleccionar un área de destino"),
-  vehiculoId: yup.number().nullable().typeError("Debe seleccionar un vehículo"),
   tipoPersonaId: yup
     .number()
     .nullable()
@@ -70,7 +70,11 @@ const schema = yup.object().shape({
   tipoEquipoId: yup
     .number()
     .nullable()
-    .typeError("Debe seleccionar un tipo de equipo"),
+    .transform((value, originalValue) => {
+      // Convertir string vacío a null para evitar NaN
+      return originalValue === "" ? null : value;
+    })
+    .typeError("Debe seleccionar un tipo de equipo válido"),
 
   // Datos de la persona
   nombrePersona: yup.string().max(255, "Máximo 255 caracteres"),
@@ -95,27 +99,6 @@ const schema = yup.object().shape({
     .number()
     .nullable()
     .typeError("Debe seleccionar una persona"),
-
-  // Otros campos
-  observaciones: yup.string().max(500, "Máximo 500 caracteres"),
-  incidenteResaltante: yup.boolean().required(),
-  descripcionIncidente: yup.string().max(500, "Máximo 500 caracteres"),
-  imprimeTicketIng: yup.boolean().required(),
-  urlImpresionTicket: yup.string().url("URL inválida"),
-  urlDocumentoVisitante: yup
-    .string()
-    .test("url-or-path", "URL o ruta inválida", function (value) {
-      if (!value) return true; // Campo opcional
-
-      // Permitir URLs completas (http:// o https://)
-      try {
-        new URL(value);
-        return true;
-      } catch {
-        // Si no es URL completa, verificar si es ruta relativa válida
-        return value.startsWith("/") && value.length > 1;
-      }
-    }),
 });
 
 /**
@@ -148,6 +131,7 @@ export default function AccesoInstalacionForm({
   const [vehiculos, setVehiculos] = useState([]);
   const [tiposDocIdentidad, setTiposDocIdentidad] = useState([]);
   const [personalDestino, setPersonalDestino] = useState([]);
+  const [tiposMovimientoAcceso, setTiposMovimientoAcceso] = useState([]); // Estado para tipos de movimiento
 
   // Estados para datos completos (necesarios para el ticket)
   const [empresasCompletas, setEmpresasCompletas] = useState([]);
@@ -169,6 +153,16 @@ export default function AccesoInstalacionForm({
     useState(false);
 
   const modoEdicion = !!item;
+
+  // Estado para la navegación por secciones
+  const [activeCard, setActiveCard] = useState("datos");
+
+  // Estado para movimientos
+  const [movimientos, setMovimientos] = useState([]);
+
+  // Estado para detectar si el acceso está sellado
+  const accesoSellado = item?.accesoSellado || false;
+  const tieneSalidaDefinitiva = item?.fechaHoraSalidaDefinitiva ? true : false;
 
   // Función para generar hora actual en formato HH:MM:SS
   const generarHoraActual = () => {
@@ -416,12 +410,39 @@ export default function AccesoInstalacionForm({
         urlDocumentoVisitante: item.urlDocumentoVisitante || "",
       };
 
+      // Función async para cargar movimientos existentes
+      const cargarMovimientos = async () => {
+        if (item.id) {
+          try {
+            const movimientosExistentes = await obtenerDetallesPorAccesoInstalacion(Number(item.id));
+            setMovimientos(movimientosExistentes);
+          } catch (error) {
+            // Inicializar con array vacío si hay error
+            setMovimientos([]);
+            toast.current?.show({
+              severity: 'warn',
+              summary: 'Error de Carga',
+              detail: 'No se pudieron cargar los movimientos existentes',
+              life: 3000
+            });
+          }
+        } else {
+          // Nuevo registro - inicializar con array vacío
+          setMovimientos([]);
+        }
+      };
+
+      // Cargar movimientos
+      cargarMovimientos();
+
       reset(datosEdicion);
     } else {
       // Para nuevo registro: generar fecha y hora automáticamente
       const fechaHoraActual = new Date();
       // Mantener los valores por defecto pero asegurar fecha/hora actual
       setValue("fechaHora", fechaHoraActual);
+      // Inicializar movimientos vacío para nuevo registro
+      setMovimientos([]);
     }
   }, [item, setValue, reset]);
 
@@ -442,6 +463,7 @@ export default function AccesoInstalacionForm({
         vehiculosData,
         tiposDocIdentidadData,
         personalDestinoData,
+        tiposMovimientoAccesoData, // Cargar tipos de movimiento
       ] = await Promise.all([
         getSedes(),
         getEmpresas(),
@@ -453,6 +475,7 @@ export default function AccesoInstalacionForm({
         getVehiculosEntidad(),
         getTiposDocIdentidad(),
         getPersonal(),
+        obtenerTiposMovimientoAcceso(), // Cargar tipos de movimiento
       ]);
 
       // Normalizar datos según regla ERP Megui
@@ -472,7 +495,7 @@ export default function AccesoInstalacionForm({
 
       setTiposAcceso(
         tiposAccesoData.map((t) => ({
-          label: t.descripcion || t.nombre || "",
+          label: t.nombre || "",
           value: Number(t.id),
         }))
       );
@@ -500,7 +523,7 @@ export default function AccesoInstalacionForm({
 
       setAreasDestino(
         areasDestinoData.map((a) => ({
-          label: a.descripcion || a.nombre || "",
+          label: a.nombre || "",
           value: Number(a.id),
         }))
       );
@@ -514,7 +537,7 @@ export default function AccesoInstalacionForm({
 
       setTiposDocIdentidad(
         tiposDocIdentidadData.map((t) => ({
-          label: `${t.codigo} - ${t.nombre}`,
+          label: t.codigo,
           value: Number(t.id),
         }))
       );
@@ -523,6 +546,13 @@ export default function AccesoInstalacionForm({
         personalDestinoData.map((p) => ({
           label: `${p.nombres || ""} ${p.apellidos || ""}`.trim(),
           value: Number(p.id),
+        }))
+      );
+
+      setTiposMovimientoAcceso(
+        tiposMovimientoAccesoData.map((t) => ({
+          label: t.nombre || "",
+          value: Number(t.id),
         }))
       );
 
@@ -540,14 +570,11 @@ export default function AccesoInstalacionForm({
     }
   };
 
-
-
-
   /**
    * Función de envío del formulario con creación automática de detalle
    * FLUJO ESPECIAL: Al guardar, crea automáticamente el registro en AccesoInstalacionDetalle
    */
-  const onSubmit = async (data) => {
+  const onSubmit = async (data) => {    
     setLoading(true);
     try {
       // Normalizar datos antes de enviar según regla ERP Megui
@@ -577,7 +604,7 @@ export default function AccesoInstalacionForm({
           : "",
         tipoPersonaId: data.tipoPersonaId ? Number(data.tipoPersonaId) : "",
         motivoId: data.motivoId ? Number(data.motivoId) : "",
-        tipoEquipoId: data.tipoEquipoId ? Number(data.tipoEquipoId) : "",
+        tipoEquipoId: data.tipoEquipoId ? Number(data.tipoEquipoId) : null,
 
         // Datos de la persona - TODOS EN MAYÚSCULAS
         nombrePersona: toUpperCaseSafe(data.nombrePersona),
@@ -620,25 +647,105 @@ export default function AccesoInstalacionForm({
           : "Acceso registrado correctamente. Se creó el detalle de entrada automáticamente.",
       });
     } catch (error) {
-      // Mostrar información más detallada del error
-      let mensajeError = "Error al guardar el registro";
+      console.error('❌ Error al guardar:', error);
+      
+      // Manejo detallado de errores para mostrar mensajes específicos al usuario
+      let mensajeError = "Error desconocido al guardar el registro";
+      let detalleError = "";
 
-      if (error.response?.status === 400) {
-        mensajeError = "Error de validación. Verifique los datos ingresados.";
-      } else if (error.response?.status === 404) {
-        mensajeError =
-          "Endpoint no encontrado. El backend no está implementado.";
-      } else if (error.response?.status === 500) {
-        mensajeError = "Error interno del servidor. Contacte al administrador.";
+      if (error.response) {
+        // Errores del backend (con respuesta HTTP)
+        const { status, data } = error.response;
+        
+        switch (status) {
+          case 400:
+            // Error de validación del backend
+            mensajeError = "Error de Validación";
+            detalleError = data?.message || data?.error || "Los datos ingresados no son válidos. Verifique los campos requeridos.";
+            break;
+            
+          case 404:
+            mensajeError = "Recurso No Encontrado";
+            detalleError = data?.message || "El endpoint solicitado no existe en el servidor.";
+            break;
+            
+          case 409:
+            // Error de conflicto (duplicados, etc.)
+            mensajeError = "Conflicto de Datos";
+            detalleError = data?.message || "Ya existe un registro con estos datos.";
+            break;
+            
+          case 422:
+            // Error de validación específica
+            mensajeError = "Datos Inválidos";
+            detalleError = data?.message || "Los datos proporcionados no cumplen con las reglas de validación.";
+            break;
+            
+          case 500:
+            mensajeError = "Error Interno del Servidor";
+            detalleError = data?.message || "Error interno del servidor. Contacte al administrador del sistema.";
+            break;
+            
+          default:
+            mensajeError = `Error HTTP ${status}`;
+            detalleError = data?.message || `Error del servidor con código ${status}.`;
+        }
+      } else if (error.request) {
+        // Error de red (sin respuesta del servidor)
+        mensajeError = "Error de Conexión";
+        detalleError = "No se pudo conectar con el servidor. Verifique su conexión a internet.";
+      } else if (error.name === 'ValidationError') {
+        // Errores de validación del frontend (YUP/React Hook Form)
+        mensajeError = "Error de Validación del Formulario";
+        detalleError = error.message || "Hay campos con errores de validación. Revise el formulario.";
+      } else {
+        // Otros errores (JavaScript, lógica, etc.)
+        mensajeError = "Error Inesperado";
+        detalleError = error.message || "Ha ocurrido un error inesperado. Intente nuevamente.";
       }
 
+      // Mostrar toast de error con mensaje específico
       toast.current?.show({
         severity: "error",
-        summary: "Error",
-        detail: mensajeError,
+        summary: mensajeError,
+        detail: detalleError,
+        life: 6000, // 6 segundos para que el usuario pueda leer el mensaje completo
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Función para buscar persona por documento
+   * Se ejecuta cuando el usuario ingresa un número de documento
+   */
+  const handleBuscarPersona = async (numeroDoc) => {
+    if (!numeroDoc || numeroDoc.length < 8 || modoEdicion || !busquedaHabilitada) {
+      return;
+    }
+
+    setBuscandoPersona(true);
+    try {
+      // Aquí iría la lógica de búsqueda por documento
+      // Por ahora, solo mostramos que la función existe
+      
+      // TODO: Implementar búsqueda real cuando esté disponible en el backend
+      // const persona = await buscarPersonaPorDocumento(numeroDoc);
+      // if (persona) {
+      //   setValue('nombrePersona', persona.nombres);
+      //   setValue('tipoDocIdentidadId', persona.tipoDocIdentidadId);
+      // }
+      
+    } catch (error) {
+      console.error('Error buscando persona:', error);
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Búsqueda',
+        detail: 'No se pudo buscar la persona. Ingrese los datos manualmente.'
+      });
+    } finally {
+      setBuscandoPersona(false);
     }
   };
 
@@ -656,10 +763,198 @@ export default function AccesoInstalacionForm({
     });
   };
 
+  // Función para mostrar mensajes de error de validación YUP
   const getFormErrorMessage = (name) => {
     return (
       errors[name] && <small className="p-error">{errors[name]?.message}</small>
     );
+  };
+
+  const handleMovimientoAgregado = async (movimiento) => {
+    try {
+      // Validar que estemos en modo edición (necesitamos el ID del acceso)
+      if (!modoEdicion || !item?.id) {
+        toast.current.show({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'No se puede agregar movimiento a un registro no guardado. Guarde primero el acceso.',
+          life: 3000
+        });
+        return;
+      }
+
+      // Preparar datos para la API según modelo Prisma AccesoInstalacionDetalle
+      const datosMovimiento = {
+        accesoInstalacionId: Number(item.id),
+        fechaHora: movimiento.fechaHora,
+        tipoMovimientoId: Number(movimiento.tipoMovimientoId),
+        areaDestinoVisitaId: movimiento.areaDestinoVisitaId ? Number(movimiento.areaDestinoVisitaId) : null,
+        observaciones: toUpperCaseSafe(movimiento.observaciones)
+      };
+
+      // Llamar a la API para crear el movimiento real
+      const nuevoMovimiento = await crearDetalleAccesoInstalacion(datosMovimiento);
+
+      // Actualizar el estado local con el movimiento creado (incluye ID generado)
+      setMovimientos([...movimientos, nuevoMovimiento]);
+
+      // Mostrar mensaje de éxito
+      toast.current.show({
+        severity: 'success',
+        summary: 'Movimiento Creado',
+        detail: 'El movimiento se ha registrado correctamente',
+        life: 3000
+      });
+    } catch (error) {
+      console.error('❌ Error al crear movimiento:', error);
+
+      // Manejo de errores profesional
+      let mensajeError = 'Error al crear movimiento';
+      let detalleError = '';
+
+      if (error.response) {
+        const { status, data } = error.response;
+        switch (status) {
+          case 400:
+            // Error de validación del backend
+            mensajeError = 'Error de Validación';
+            detalleError = data?.message || 'Los datos del movimiento no son válidos';
+            break;
+            
+          case 404:
+            mensajeError = 'Recurso No Encontrado';
+            detalleError = 'El acceso a instalación no existe';
+            break;
+            
+          case 422:
+            // Error de validación específica
+            mensajeError = 'Error de Validación';
+            detalleError = data?.message || 'Datos del movimiento incorrectos';
+            break;
+            
+          case 500:
+            mensajeError = 'Error del Servidor';
+            detalleError = 'Error interno del servidor. Contacte al administrador.';
+            break;
+            
+          default:
+            mensajeError = `Error HTTP ${status}`;
+            detalleError = data?.message || `Error del servidor con código ${status}`;
+        }
+      } else if (error.request) {
+        mensajeError = 'Error de Conexión';
+        detalleError = 'No se pudo conectar con el servidor. Verifique su conexión a internet.';
+      }
+
+      // Mostrar mensaje de error
+      toast.current.show({
+        severity: 'error',
+        summary: mensajeError,
+        detail: detalleError,
+        life: 5000
+      });
+    }
+  };
+
+  // Función para manejar la Salida Definitiva
+  const handleSalidaDefinitiva = async () => {
+    try {
+      // Validar que estemos en modo edición (necesitamos el ID del acceso)
+      if (!modoEdicion || !item?.id) {
+        toast.current.show({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'No se puede procesar la salida definitiva en un registro no guardado',
+          life: 3000
+        });
+        return;
+      }
+
+      // Validar que no haya ya una salida definitiva
+      const yaHaySalidaDefinitiva = movimientos.some(m => m.tipoMovimientoId === 4);
+      if (yaHaySalidaDefinitiva) {
+        toast.current.show({
+          severity: 'warn',
+          summary: 'Advertencia',
+          detail: 'Este registro ya tiene una salida definitiva registrada',
+          life: 3000
+        });
+        return;
+      }
+
+
+      // Llamar a la API para procesar salida definitiva (actualiza campos Y crea movimiento automáticamente)
+      const { procesarSalidaDefinitiva } = await import('../../api/accesoInstalacion');
+      const accesoActualizado = await procesarSalidaDefinitiva(Number(item.id));
+
+      // Actualizar los valores del formulario con los datos actualizados
+      setValue('fechaHoraSalidaDefinitiva', accesoActualizado.fechaHoraSalidaDefinitiva);
+      setValue('accesoSellado', accesoActualizado.accesoSellado);
+
+      // Recargar movimientos desde la base de datos para incluir el nuevo movimiento de salida
+      await recargarMovimientos();
+
+      // Mostrar mensaje de éxito
+      toast.current.show({
+        severity: 'success',
+        summary: 'Salida Procesada',
+        detail: 'Salida definitiva registrada correctamente. El acceso ha sido sellado.',
+        life: 4000
+      });
+
+      // Cerrar el formulario automáticamente después de procesar la salida definitiva
+      // y notificar al componente padre para que actualice la lista
+      setTimeout(() => {
+        if (onCancel) {
+          onCancel(true); // Pasar true para indicar que debe recargar la lista
+        }
+      }, 1500); // Esperar 1.5 segundos para que el usuario vea el mensaje de éxito
+
+    } catch (error) {
+      console.error('❌ Error al procesar salida definitiva:', error);
+      
+      // Mostrar mensaje de error
+      toast.current.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: error.response?.data?.message || 'Error al procesar la salida definitiva',
+        life: 5000
+      });
+    }
+  };
+
+  // Función para recargar movimientos desde la base de datos
+  const recargarMovimientos = async () => {
+    if (!modoEdicion || !item?.id) {
+      return;
+    }
+
+    try {
+      const movimientosActualizados = await obtenerDetallesPorAccesoInstalacion(Number(item.id));
+      setMovimientos(movimientosActualizados);
+      
+      toast.current?.show({
+        severity: 'info',
+        summary: 'Movimientos Actualizados',
+        detail: 'La lista de movimientos se ha actualizado correctamente',
+        life: 2000
+      });
+    } catch (error) {
+      console.error('❌ Error al recargar movimientos:', error);
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Error de Actualización',
+        detail: 'No se pudieron actualizar los movimientos',
+        life: 3000
+      });
+    }
+  };
+
+  // Función para manejar el clic en el card de movimientos
+  const handleMovimientosCardClick = () => {
+    setActiveCard('movimientos');
+    // Recargar movimientos automáticamente al hacer clic en el card
+    recargarMovimientos();
   };
 
   if (loading) {
@@ -672,1071 +967,168 @@ export default function AccesoInstalacionForm({
       </div>
     );
   }
-
   return (
     <div>
       <Toast ref={toast} />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
-        <TabView
-          scrollable
-          className="tabview-responsive"
-          style={{
-            fontSize: "14px",
-          }}
-        >
-          {/* PESTAÑA 1: DATOS PRINCIPALES DEL ACCESO */}
-          <TabPanel header="Datos del Acceso" leftIcon="pi pi-calendar">
-            <div className="card">
-              <h5 className="mb-3">1. Empresa y Sede</h5>
+      <form 
+        onSubmit={(e) => {          
+          // Llamar a handleSubmit y capturar cualquier error
+          const submitHandler = handleSubmit(
+            (data) => {
+              onSubmit(data);
+            },
+            (errors) => {
+              console.error('❌ [DEBUG] Errores de validación en handleSubmit:', errors);
+              console.error('❌ [DEBUG] Errores detallados:', JSON.stringify(errors, null, 2));
+            }
+          );
+          
+          submitHandler(e);
+        }} 
+        className="p-fluid"
+      >
+        {/* Navegación elegante por secciones con Toolbar nativo */}
+        <Toolbar
+          className="mb-4"
+          center={
+            <ButtonGroup>
+              <Button
+                icon="pi pi-user"
+                tooltip="Datos de la Persona, Tipo de Persona, Motivo, Area y Persona Destino"
+                tooltipOptions={{ position: 'bottom' }}
+                className={activeCard === 'datos' ? 'p-button-primary' : 'p-button-outlined'}
+                onClick={() => setActiveCard('datos')}
+                type="button"
+              />
+              <Button
+                icon="pi pi-car"
+                tooltip="Datos delVehículo y/o Equipos"
+                tooltipOptions={{ position: 'bottom' }}
+                className={activeCard === 'vehiculo' ? 'p-button-primary' : 'p-button-outlined'}
+                onClick={() => setActiveCard('vehiculo')}
+                type="button"
+              />
+              <Button
+                icon="pi pi-file-edit"
+                tooltip="Observaciones e Incidentes Resaltantes"
+                tooltipOptions={{ position: 'bottom' }}
+                className={activeCard === 'observaciones' ? 'p-button-primary' : 'p-button-outlined'}
+                onClick={() => setActiveCard('observaciones')}
+                type="button"
+              />
+              <Button
+                icon="pi pi-file-pdf"
+                tooltip="Documentacion del visitante"
+                tooltipOptions={{ position: 'bottom' }}
+                className={activeCard === 'documentos' ? 'p-button-primary' : 'p-button-outlined'}
+                onClick={() => setActiveCard('documentos')}
+                type="button"
+              />
+              {modoEdicion && (
+                <Button
+                  icon="pi pi-chart-line"
+                  tooltip="Movimientos"
+                  tooltipOptions={{ position: 'bottom' }}
+                  className={activeCard === 'movimientos' ? 'p-button-primary' : 'p-button-outlined'}
+                  onClick={handleMovimientosCardClick}
+                  type="button"
+                />
+              )}
+            </ButtonGroup>
+          }
+        />
 
-              {/* Empresa y Sede (mostrados como texto desde estado global) */}
-              <div
-                className="formgrid grid"
-                style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}
-              >
-                <div
-                  className="field"
-                  style={{ flex: "1 1 45%", minWidth: "250px" }}
-                >
-                  <label htmlFor="empresaTexto" className="font-bold">
-                    Empresa *
-                  </label>
-                  <InputText
-                    id="empresaTexto"
-                    value={(() => {
-                      // En modo edición, usar el valor del formulario; en modo nuevo usar el estado global
-                      const empresaIdAUsar = modoEdicion
-                        ? watch("empresaId")
-                        : empresaId;
-
-                      if (!empresaIdAUsar) return "No hay empresa seleccionada";
-                      if (empresas.length === 0) return "Cargando empresa...";
-                      const empresa = empresas.find((e) => {
-                        const match =
-                          Number(e.value) === Number(empresaIdAUsar);
-                        return match;
-                      });
-                      return (
-                        empresa?.label ||
-                        `Empresa ID: ${empresaIdAUsar} (no encontrada en ${empresas.length} empresas)`
-                      );
-                    })()}
-                    disabled
-                    className="p-inputtext-sm"
-                    style={{ backgroundColor: "#f8f9fa", color: "#495057" }}
-                  />
-                  {/* Campo oculto para mantener el valor en el formulario */}
-                  <Controller
-                    name="empresaId"
-                    control={control}
-                    render={({ field }) => (
-                      <input
-                        type="hidden"
-                        {...field}
-                        value={modoEdicion ? field.value : empresaId || ""}
-                      />
-                    )}
-                  />
-                </div>
-                <div
-                  className="field"
-                  style={{ flex: "1 1 45%", minWidth: "250px" }}
-                >
-                  <label htmlFor="sedeTexto" className="font-bold">
-                    Sede *
-                  </label>
-                  <InputText
-                    id="sedeTexto"
-                    value={(() => {
-                      // En modo edición, usar el valor del formulario; en modo nuevo usar el estado global
-                      const sedeIdAUsar = modoEdicion
-                        ? watch("sedeId")
-                        : sedeId;
-
-                      if (!sedeIdAUsar) return "No hay sede seleccionada";
-                      if (sedes.length === 0) return "Cargando sede...";
-                      const sede = sedes.find((s) => {
-                        const match = Number(s.value) === Number(sedeIdAUsar);
-                        return match;
-                      });
-                      return (
-                        sede?.label ||
-                        `Sede ID: ${sedeIdAUsar} (no encontrada en ${sedes.length} sedes)`
-                      );
-                    })()}
-                    disabled
-                    className="p-inputtext-sm"
-                    style={{ backgroundColor: "#f8f9fa", color: "#495057" }}
-                  />
-                  {/* Campo oculto para mantener el valor en el formulario */}
-                  <Controller
-                    name="sedeId"
-                    control={control}
-                    render={({ field }) => (
-                      <input
-                        type="hidden"
-                        {...field}
-                        value={modoEdicion ? field.value : sedeId || ""}
-                      />
-                    )}
-                  />
-                </div>
-              </div>
-
-              <h5 className="mb-3">2. Identificación del Visitante</h5>
-              <div
-                className="formgrid grid"
-                style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}
-              >
-                <div
-                  className="field"
-                  style={{ flex: "1 1 30%", minWidth: "200px" }}
-                >
-                  <label htmlFor="fechaHora" className="font-bold">
-                    Fecha y Hora *
-                  </label>
-                  <div
-                    className="p-inputtext p-component p-inputtext-sm"
-                    style={{
-                      backgroundColor: "#f8f9fa",
-                      color: "#6c757d",
-                      cursor: "not-allowed",
-                      opacity: 0.7,
-                      border: "1px solid #dee2e6",
-                      padding: "0.5rem 0.75rem",
-                      borderRadius: "6px",
-                      minHeight: "2.357rem",
-                      display: "flex",
-                      alignItems: "center",
-                      userSelect: "none", // No seleccionable
-                      pointerEvents: "none", // No interactivo
-                    }}
-                  >
-                    {watch("fechaHora")
-                      ? new Date(watch("fechaHora")).toLocaleString("es-ES", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : ""}
-                  </div>
-                  {getFormErrorMessage("fechaHora")}
-                  {!modoEdicion && (
-                    <small className="text-blue-500">
-                      Generada automáticamente
-                    </small>
-                  )}
-                </div>
-                <div
-                  className="field"
-                  style={{ flex: "1 1 30%", minWidth: "200px" }}
-                >
-                  <label htmlFor="tipoAccesoId" className="font-bold">
-                    Tipo de Acceso *
-                  </label>
-                  <Controller
-                    name="tipoAccesoId"
-                    control={control}
-                    render={({ field }) => (
-                      <Dropdown
-                        id="tipoAccesoId"
-                        {...field}
-                        value={field.value ? Number(field.value) : 1}
-                        options={tiposAcceso.map((t) => ({
-                          ...t,
-                          id: Number(t.id),
-                        }))}
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Seleccione tipo de acceso"
-                        className={errors.tipoAccesoId ? "p-invalid" : ""}
-                        showClear={false}
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("tipoAccesoId")}
-                </div>
-              </div>
-
-              {/* Segunda línea: Tipo Documento y N° Documento */}
-              <div
-                className="formgrid grid"
-                style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}
-              >
-                <div
-                  className="field"
-                  style={{ flex: "1 1 45%", minWidth: "200px" }}
-                >
-                  <label htmlFor="tipoDocIdentidadId" className="font-bold">
-                    Tipo Documento *
-                  </label>
-                  <Controller
-                    name="tipoDocIdentidadId"
-                    control={control}
-                    render={({ field }) => (
-                      <Dropdown
-                        id="tipoDocIdentidadId"
-                        {...field}
-                        value={field.value ? Number(field.value) : 1} // DNI por defecto (ID=1)
-                        options={tiposDocIdentidad.map((t) => ({
-                          ...t,
-                          id: Number(t.id),
-                        }))}
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Tipo de documento"
-                        className={errors.tipoDocIdentidadId ? "p-invalid" : ""}
-                        showClear={false} // No permitir limpiar, DNI por defecto
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("tipoDocIdentidadId")}
-                </div>
-                <div
-                  className="field"
-                  style={{ flex: "1 1 45%", minWidth: "200px" }}
-                >
-                  <label
-                    htmlFor="numeroDocumento"
-                    className={`font-bold ${
-                      errors.numeroDocumento ? "text-red-500" : ""
-                    }`}
-                  >
-                    📱 N° Documento{" "}
-                    {buscandoPersona && (
-                      <i className="pi pi-spin pi-spinner ml-2 text-blue-500"></i>
-                    )}
-                  </label>
-                  <Controller
-                    name="numeroDocumento"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="numeroDocumento"
-                        {...field}
-                        placeholder="Escanee código de barras o ingrese DNI"
-                        className={errors.numeroDocumento ? "p-invalid" : ""}
-                        disabled={buscandoPersona}
-                        maxLength={20}
-                        autoFocus={!modoEdicion} // Foco automático para escaneo
-                        onBlur={(e) => {
-                          // Ejecutar búsqueda cuando pierda el foco y contenga datos
-                          const valorDocumento = e.target.value?.trim();
-                          if (
-                            valorDocumento &&
-                            valorDocumento.length >= 8 &&
-                            !modoEdicion &&
-                            busquedaHabilitada
-                          ) {
-                            buscarPersonaPorDoc(valorDocumento);
-                          }
-                        }}
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("numeroDocumento")}
-                  {personaEncontrada && (
-                    <small className="text-green-600">
-                      ✓ Persona encontrada - datos autocompletados
-                    </small>
-                  )}
-                  {!personaEncontrada && watch("numeroDocumento") && (
-                    <small className="text-orange-600">
-                      ⚠ Persona nueva - complete los datos manualmente
-                    </small>
-                  )}
-                </div>
-              </div>
-
-              {/* Campo de Nombre de Persona */}
-              <div className="formgrid grid mt-3">
-                <div className="field col-12">
-                  <label
-                    htmlFor="nombrePersona"
-                    className={`font-bold ${
-                      errors.nombrePersona ? "text-red-500" : ""
-                    }`}
-                  >
-                    Nombre Completo
-                  </label>
-                  <Controller
-                    name="nombrePersona"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="nombrePersona"
-                        {...field}
-                        placeholder="Nombre completo del visitante"
-                        className={errors.nombrePersona ? "p-invalid" : ""}
-                        maxLength={200}
-                        disabled={buscandoPersona}
-                        style={{ textTransform: "uppercase" }}
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("nombrePersona")}
-                  {datosAutocompletados && (
-                    <small className="text-blue-500">
-                      ℹ Autocompletado desde registros previos
-                    </small>
-                  )}
-                </div>
-              </div>
-
-              {/* Campo de Tipo de Persona */}
-              <div className="formgrid grid mt-3">
-                <div
-                  className="field"
-                  style={{ flex: "1 1 30%", minWidth: "200px" }}
-                >
-                  <label htmlFor="tipoPersonaId" className="font-bold">
-                    Tipo de Persona
-                  </label>
-                  <Controller
-                    name="tipoPersonaId"
-                    control={control}
-                    render={({ field }) => (
-                      <Dropdown
-                        id="tipoPersonaId"
-                        {...field}
-                        value={field.value ? Number(field.value) : ""}
-                        options={tiposPersona.map((t) => ({
-                          ...t,
-                          id: Number(t.id),
-                        }))}
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Seleccione tipo de persona"
-                        className={errors.tipoPersonaId ? "p-invalid" : ""}
-                        showClear
-                        onChange={(e) => {
-                          field.onChange(e.value);
-
-                          // Autocompletar imprimeTicketIng desde TipoPersona
-                          if (e.value) {
-                            const tipoPersonaSeleccionado = tiposPersona.find(
-                              (tp) => tp.value === e.value
-                            );
-                            if (
-                              tipoPersonaSeleccionado &&
-                              tipoPersonaSeleccionado.imprimeTicketIng !==
-                                undefined
-                            ) {
-                              setValue(
-                                "imprimeTicketIng",
-                                tipoPersonaSeleccionado.imprimeTicketIng
-                              );
-                            }
-                          } else {
-                            // Si se limpia el tipo de persona, resetear a false
-                            setValue("imprimeTicketIng", false);
-                          }
-                        }}
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("tipoPersonaId")}
-                  {datosAutocompletados && (
-                    <small className="text-blue-500">
-                      ℹ Autocompletado desde registros previos
-                    </small>
-                  )}
-                </div>
-                <div
-                  className="field"
-                  style={{ flex: "1 1 30%", minWidth: "200px" }}
-                >
-                  <label htmlFor="motivoId" className="font-bold">
-                    Motivo de Acceso
-                  </label>
-                  <Controller
-                    name="motivoId"
-                    control={control}
-                    render={({ field }) => (
-                      <Dropdown
-                        id="motivoId"
-                        {...field}
-                        value={field.value ? Number(field.value) : ""}
-                        options={motivosAcceso.map((m) => ({
-                          ...m,
-                          id: Number(m.id),
-                        }))}
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Seleccione motivo de acceso"
-                        className={errors.motivoId ? "p-invalid" : ""}
-                        showClear
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("motivoId")}
-                  {datosAutocompletados && (
-                    <small className="text-blue-500">
-                      ℹ Autocompletado desde registros previos
-                    </small>
-                  )}
-                </div>
-              </div>
-
-              {/* Campos de Destino */}
-              <div className="formgrid grid mt-3">
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="personaFirmaDestinoVisitaId">
-                    Persona Destino (Personal)
-                  </label>
-                  <Controller
-                    name="personaFirmaDestinoVisitaId"
-                    control={control}
-                    render={({ field }) => (
-                      <Dropdown
-                        id="personaFirmaDestinoVisitaId"
-                        {...field}
-                        value={field.value ? Number(field.value) : ""}
-                        options={personalDestino.map((p) => ({
-                          ...p,
-                          id: Number(p.id),
-                        }))}
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Seleccione persona del personal"
-                        showClear
-                        filter
-                        filterBy="label"
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("personaFirmaDestinoVisitaId")}
-                </div>
-
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="areaDestinoVisitaId">Área de Destino *</label>
-                  <Controller
-                    name="areaDestinoVisitaId"
-                    control={control}
-                    render={({ field }) => (
-                      <Dropdown
-                        id="areaDestinoVisitaId"
-                        {...field}
-                        value={field.value ? Number(field.value) : ""}
-                        options={areasDestino.map((a) => ({
-                          ...a,
-                          id: Number(a.id),
-                        }))}
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Seleccione área de destino"
-                        showClear
-                        filter
-                        filterBy="label"
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("areaDestinoVisitaId")}
-                  <small className="text-500">
-                    Área física donde se dirige la visita
-                  </small>
-                </div>
-              </div>
-            </div>
-          </TabPanel>
-
-          {/* PESTAÑA 3: VEHÍCULOS Y EQUIPOS */}
-          <TabPanel header="Vehículos y Equipos" leftIcon="pi pi-car">
-            <div className="card">
-              <h5 className="mb-3">Información de Vehículos y Equipos</h5>
-
-              <div className="formgrid grid">
-                <div className="field col-12">
-                  <h6 className="text-primary">Vehículos</h6>
-                </div>
-
-                {/* Campos de vehículo en una sola línea usando flexbox */}
-                <div className="field col-12">
-                  <div
-                    style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}
-                  >
-                    <div style={{ flex: "1", minWidth: "150px" }}>
-                      <label htmlFor="vehiculoNroPlaca" className="block mb-2">
-                        🚗 N° Placa{" "}
-                        {buscandoVehiculo && (
-                          <i className="pi pi-spin pi-spinner ml-2 text-blue-500"></i>
-                        )}
-                      </label>
-                      <Controller
-                        name="vehiculoNroPlaca"
-                        control={control}
-                        render={({ field }) => (
-                          <InputText
-                            id="vehiculoNroPlaca"
-                            {...field}
-                            placeholder="Ej: ABC-123"
-                            maxLength={10}
-                            className="w-full"
-                            style={{ textTransform: "uppercase" }}
-                            disabled={buscandoVehiculo}
-                            onBlur={(e) => {
-                              // Ejecutar búsqueda cuando pierda el foco y contenga datos
-                              const valorPlaca = e.target.value?.trim();
-                              if (valorPlaca && valorPlaca.length >= 3) {
-                                buscarVehiculoPorPlacaFunc(valorPlaca);
-                              }
-                            }}
-                          />
-                        )}
-                      />
-                      {getFormErrorMessage("vehiculoNroPlaca")}
-                      {vehiculoEncontrado && (
-                        <small className="text-green-600">
-                          ✓ Vehículo encontrado - datos autocompletados
-                        </small>
-                      )}
-                      {!vehiculoEncontrado &&
-                        watch("vehiculoNroPlaca") &&
-                        watch("vehiculoNroPlaca").length >= 3 &&
-                        !buscandoVehiculo && (
-                          <small className="text-orange-600">
-                            ⚠ Vehículo nuevo - complete los datos manualmente
-                          </small>
-                        )}
-                      {datosVehiculoAutocompletados && (
-                        <small className="text-blue-500">
-                          ℹ Autocompletado desde registros previos
-                        </small>
-                      )}
-                    </div>
-
-                    <div style={{ flex: "1", minWidth: "150px" }}>
-                      <label htmlFor="vehiculoMarca" className="block mb-2">
-                        Marca
-                      </label>
-                      <Controller
-                        name="vehiculoMarca"
-                        control={control}
-                        render={({ field }) => (
-                          <InputText
-                            id="vehiculoMarca"
-                            {...field}
-                            placeholder="Ej: Toyota, Nissan"
-                            maxLength={50}
-                            className="w-full"
-                            style={{ textTransform: "uppercase" }}
-                          />
-                        )}
-                      />
-                      {getFormErrorMessage("vehiculoMarca")}
-                    </div>
-
-                    <div style={{ flex: "1", minWidth: "150px" }}>
-                      <label htmlFor="vehiculoModelo" className="block mb-2">
-                        Modelo
-                      </label>
-                      <Controller
-                        name="vehiculoModelo"
-                        control={control}
-                        render={({ field }) => (
-                          <InputText
-                            id="vehiculoModelo"
-                            {...field}
-                            placeholder="Ej: Corolla, Sentra"
-                            maxLength={50}
-                            className="w-full"
-                            style={{ textTransform: "uppercase" }}
-                          />
-                        )}
-                      />
-                      {getFormErrorMessage("vehiculoModelo")}
-                    </div>
-
-                    <div style={{ flex: "1", minWidth: "150px" }}>
-                      <label htmlFor="vehiculoColor" className="block mb-2">
-                        Color
-                      </label>
-                      <Controller
-                        name="vehiculoColor"
-                        control={control}
-                        render={({ field }) => (
-                          <InputText
-                            id="vehiculoColor"
-                            {...field}
-                            placeholder="Ej: Blanco, Negro"
-                            maxLength={30}
-                            className="w-full"
-                            style={{ textTransform: "uppercase" }}
-                          />
-                        )}
-                      />
-                      {getFormErrorMessage("vehiculoColor")}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="field col-12">
-                  <h6 className="text-primary mt-4">Equipos</h6>
-                </div>
-
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="tipoEquipoId">Tipo de Equipo</label>
-                  <Controller
-                    name="tipoEquipoId"
-                    control={control}
-                    render={({ field }) => (
-                      <Dropdown
-                        id="tipoEquipoId"
-                        {...field}
-                        options={tiposEquipo}
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Seleccione tipo de equipo"
-                        showClear
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("tipoEquipoId")}
-                </div>
-
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="equipoMarca">Marca del Equipo</label>
-                  <Controller
-                    name="equipoMarca"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="equipoMarca"
-                        {...field}
-                        placeholder="Ej: Dell, HP, Lenovo"
-                        maxLength={50}
-                        style={{ textTransform: "uppercase" }}
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("equipoMarca")}
-                </div>
-
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="equipoModelo">Modelo del Equipo</label>
-                  <Controller
-                    name="equipoModelo"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="equipoModelo"
-                        {...field}
-                        placeholder="Modelo específico"
-                        maxLength={50}
-                        style={{ textTransform: "uppercase" }}
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("equipoModelo")}
-                </div>
-
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="equipoSerie">Serie del Equipo</label>
-                  <Controller
-                    name="equipoSerie"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="equipoSerie"
-                        {...field}
-                        placeholder="Número de serie"
-                        maxLength={50}
-                        style={{ textTransform: "uppercase" }}
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("equipoSerie")}
-                </div>
-              </div>
-            </div>
-          </TabPanel>
-
-          {/* PESTAÑA 4: DESTINO Y OBSERVACIONES */}
-          <TabPanel
-            header="Observaciones e Incidentes"
-            leftIcon="pi pi-map-marker"
-          >
-            <div className="card">
-              <div className="formgrid grid">
-                <div className="field col-12">
-                  <label htmlFor="observaciones">Observaciones</label>
-                  <Controller
-                    name="observaciones"
-                    control={control}
-                    render={({ field }) => (
-                      <InputTextarea
-                        id="observaciones"
-                        {...field}
-                        placeholder="Observaciones adicionales (opcional)"
-                        rows={3}
-                        maxLength={500}
-                        style={{ textTransform: "uppercase" }}
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("observaciones")}
-                </div>
-
-                <div className="field col-12">
-                  <Controller
-                    name="incidenteResaltante"
-                    control={control}
-                    render={({ field }) => (
-                      <div className="flex align-items-center">
-                        <Checkbox
-                          id="incidenteResaltante"
-                          {...field}
-                          checked={field.value}
-                        />
-                        <label
-                          htmlFor="incidenteResaltante"
-                          className="ml-2 font-bold"
-                        >
-                          ¿Hubo algún incidente resaltante?
-                        </label>
-                      </div>
-                    )}
-                  />
-                </div>
-
-                <div className="field col-12">
-                  <label htmlFor="descripcionIncidente">
-                    Descripción del Incidente
-                  </label>
-                  <Controller
-                    name="descripcionIncidente"
-                    control={control}
-                    render={({ field }) => (
-                      <InputTextarea
-                        id="descripcionIncidente"
-                        {...field}
-                        placeholder="Describa el incidente si lo hubo"
-                        rows={3}
-                        maxLength={500}
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("descripcionIncidente")}
-                </div>
-
-                <div className="field col-12">
-                  <h6 className="text-primary mt-4">
-                    Configuración de Impresión
-                  </h6>
-                </div>
-
-                <div className="field col-12">
-                  <Controller
-                    name="imprimeTicketIng"
-                    control={control}
-                    render={({ field }) => (
-                      <div className="flex align-items-center">
-                        <Checkbox
-                          id="imprimeTicketIng"
-                          {...field}
-                          checked={field.value}
-                        />
-                        <label
-                          htmlFor="imprimeTicketIng"
-                          className="ml-2 font-bold"
-                        >
-                          Imprimir ticket de ingreso
-                        </label>
-                      </div>
-                    )}
-                  />
-                  {getFormErrorMessage("imprimeTicketIng")}
-                  <small className="text-500">
-                    Marque si desea generar e imprimir un ticket para este
-                    acceso
-                  </small>
-                </div>
-
-                <div className="field col-12 md:col-6">
-                  <label htmlFor="urlImpresionTicket">
-                    URL Impresión Ticket
-                  </label>
-                  <Controller
-                    name="urlImpresionTicket"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="urlImpresionTicket"
-                        {...field}
-                        placeholder="URL para impresión del ticket"
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("urlImpresionTicket")}
-                </div>
-              </div>
-            </div>
-          </TabPanel>
-
-          {/* PESTAÑA 5: DOCUMENTOS ADJUNTOS */}
-          <TabPanel header="Documentos Adjuntos" leftIcon="pi pi-file-pdf">
-            <div className="card">
-              <h5 className="mb-3">Documentos del Visitante</h5>
-
-              <div className="formgrid grid">
-                <div className="field col-12">
-                  <label htmlFor="urlDocumentoVisitante">
-                    URL Documento Visitante
-                  </label>
-                  <div className="p-inputgroup">
-                    <Controller
-                      name="urlDocumentoVisitante"
-                      control={control}
-                      render={({ field }) => (
-                        <InputText
-                          id="urlDocumentoVisitante"
-                          {...field}
-                          placeholder="URL del documento del visitante"
-                          readOnly
-                        />
-                      )}
-                    />
-                    <Button
-                      type="button"
-                      icon="pi pi-camera"
-                      className="p-button-success"
-                      onClick={() => setModalDocumentoVisible(true)}
-                      tooltip="Capturar fotos del documento"
-                      disabled={
-                        !watch("numeroDocumento") || !watch("nombrePersona")
-                      }
-                    />
-                  </div>
-                  {getFormErrorMessage("urlDocumentoVisitante")}
-                  <small className="text-500">
-                    Capture fotos del documento para generar PDF automáticamente
-                  </small>
-                </div>
-
-                {/* Visor de PDF */}
-                {watch("urlDocumentoVisitante") && (
-                  <div className="field col-12">
-                    <h6 className="text-primary mb-3">
-                      Vista Previa del Documento
-                    </h6>
-                    <div
-                      className="border-round p-3"
-                      style={{ backgroundColor: "#f8f9fa" }}
-                    >
-                      <PDFViewer
-                        urlDocumento={watch("urlDocumentoVisitante")}
-                      />
-
-                      {/* Botones de acción para el PDF */}
-                      <div className="flex justify-content-between align-items-center mt-3">
-                        <div className="flex align-items-center">
-                          <i className="pi pi-file-pdf text-red-500 mr-2"></i>
-                          <span className="text-sm text-600">
-                            Documento PDF generado automáticamente
-                          </span>
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "flex-end",
-                            gap: 8,
-                          }}
-                        >
-                          <Button
-                            type="button"
-                            label="Abrir"
-                            icon="pi pi-external-link"
-                            className="p-button-outlined p-button-sm"
-                            onClick={async () => {
-                              try {
-                                const urlDocumento = watch(
-                                  "urlDocumentoVisitante"
-                                );
-                                // Usar la misma lógica que PDFViewer para construir URL
-                                let urlCompleta;
-                                if (
-                                  urlDocumento.startsWith(
-                                    "/uploads/documentos-visitantes/"
-                                  )
-                                ) {
-                                  const rutaArchivo = urlDocumento.replace(
-                                    "/uploads/documentos-visitantes/",
-                                    ""
-                                  );
-                                  urlCompleta = `${
-                                    import.meta.env.VITE_API_URL
-                                  }/documentos-visitantes/archivo/${rutaArchivo}`;
-                                } else if (urlDocumento.startsWith("/api/")) {
-                                  const rutaSinApi = urlDocumento.substring(4);
-                                  urlCompleta = `${
-                                    import.meta.env.VITE_API_URL
-                                  }${rutaSinApi}`;
-                                } else if (urlDocumento.startsWith("/")) {
-                                  urlCompleta = `${
-                                    import.meta.env.VITE_API_URL
-                                  }${urlDocumento}`;
-                                } else {
-                                  urlCompleta = urlDocumento;
-                                }
-                                // Descargar con JWT y abrir en nueva ventana
-                                const token = useAuthStore.getState().token;
-                                const response = await fetch(urlCompleta, {
-                                  headers: {
-                                    Authorization: `Bearer ${token}`,
-                                  },
-                                });
-                                if (response.ok) {
-                                  const blob = await response.blob();
-                                  const blobUrl =
-                                    window.URL.createObjectURL(blob);
-                                  // Abrir en nueva ventana usando el blob URL
-                                  const newWindow = window.open(
-                                    blobUrl,
-                                    "_blank"
-                                  );
-                                  // Limpiar el blob URL después de un tiempo para liberar memoria
-                                  setTimeout(() => {
-                                    window.URL.revokeObjectURL(blobUrl);
-                                  }, 10000); // 10 segundos
-
-                                  if (!newWindow) {
-                                    toast.current?.show({
-                                      severity: "warn",
-                                      summary: "Aviso",
-                                      detail:
-                                        "El navegador bloqueó la ventana emergente. Por favor, permita ventanas emergentes para este sitio.",
-                                    });
-                                  }
-                                } else {
-                                  const errorText = await response.text();
-                                  toast.current?.show({
-                                    severity: "error",
-                                    summary: "Error",
-                                    detail: `No se pudo abrir el documento (${response.status})`,
-                                  });
-                                }
-                              } catch (error) {
-                                toast.current?.show({
-                                  severity: "error",
-                                  summary: "Error",
-                                  detail: `Error al abrir el documento: ${error.message}`,
-                                });
-                              }
-                            }}
-                          />
-                          <Button
-                            type="button"
-                            label="Descargar"
-                            icon="pi pi-download"
-                            className="p-button-outlined p-button-sm"
-                            onClick={async () => {
-                              try {
-                                const urlDocumento = watch(
-                                  "urlDocumentoVisitante"
-                                );
-
-                                // Usar la misma lógica que PDFViewer para construir URL
-                                let urlCompleta;
-                                if (
-                                  urlDocumento.startsWith(
-                                    "/uploads/documentos-visitantes/"
-                                  )
-                                ) {
-                                  const rutaArchivo = urlDocumento.replace(
-                                    "/uploads/documentos-visitantes/",
-                                    ""
-                                  );
-                                  urlCompleta = `${
-                                    import.meta.env.VITE_API_URL
-                                  }/documentos-visitantes/archivo/${rutaArchivo}`;
-                                } else if (urlDocumento.startsWith("/api/")) {
-                                  const rutaSinApi = urlDocumento.substring(4);
-                                  urlCompleta = `${
-                                    import.meta.env.VITE_API_URL
-                                  }${rutaSinApi}`;
-                                } else if (urlDocumento.startsWith("/")) {
-                                  urlCompleta = `${
-                                    import.meta.env.VITE_API_URL
-                                  }${urlDocumento}`;
-                                } else {
-                                  urlCompleta = urlDocumento;
-                                }
-
-                                const token = useAuthStore.getState().token;
-                                const response = await fetch(urlCompleta, {
-                                  headers: {
-                                    Authorization: `Bearer ${token}`,
-                                  },
-                                });
-
-                                if (response.ok) {
-                                  const blob = await response.blob();
-                                  const url = window.URL.createObjectURL(blob);
-                                  const link = document.createElement("a");
-                                  link.href = url;
-                                  link.download = `documento-visitante-${
-                                    watch("numeroDocumento") || "sin-documento"
-                                  }.pdf`;
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
-                                  window.URL.revokeObjectURL(url);
-                                } else {
-                                  toast.current?.show({
-                                    severity: "error",
-                                    summary: "Error",
-                                    detail: "No se pudo descargar el documento",
-                                  });
-                                }
-                              } catch (error) {
-                                toast.current?.show({
-                                  severity: "error",
-                                  summary: "Error",
-                                  detail: "Error al descargar el documento",
-                                });
-                              }
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </TabPanel>
-        </TabView>
-
-        {/* INFORMACIÓN DEL FLUJO ESPECIAL */}
-        {!modoEdicion && (
-          <div className="col-12 mt-3">
-            <Message
-              severity="info"
-              text="Al guardar este registro se creará automáticamente un detalle de 'Entrada' en el sistema."
-              className="w-full"
+        {/* Contenido de la Card activa */}
+        <div className="card-content">
+          {activeCard === 'datos' && (
+            <DatosAccesoCard
+              control={control}
+              watch={watch}
+              getFormErrorMessage={getFormErrorMessage}
+              tiposDocumento={tiposDocIdentidad}
+              tiposPersona={tiposPersona}
+              tiposAcceso={tiposAcceso}
+              motivosAcceso={motivosAcceso}
+              personalDestino={personalDestino}
+              areasDestino={areasDestino}
+              modoEdicion={modoEdicion}
+              buscandoPersona={buscandoPersona}
+              onDocumentBlur={buscarPersonaPorDoc}
+              accesoSellado={accesoSellado}
             />
-          </div>
-        )}
+          )}
 
-        {/* Botones del formulario - ButtonGroup Responsive */}
-        <div
-          style={{
-            marginTop: 18,
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: 8,
-            flexWrap: 'wrap'
-          }}
-        >
+          {activeCard === 'vehiculo' && (
+            <VehiculoEquiposCard
+              control={control}
+              watch={watch}
+              getFormErrorMessage={getFormErrorMessage}
+              tiposEquipo={tiposEquipo}
+              buscandoVehiculo={buscandoVehiculo}
+              onPlacaBlur={buscarVehiculoPorPlacaFunc}
+              accesoSellado={accesoSellado}
+            />
+          )}
+
+          {activeCard === 'observaciones' && (
+            <ObservacionesIncidentesCard
+              control={control}
+              watch={watch}
+              setValue={setValue}
+              getFormErrorMessage={getFormErrorMessage}
+              accesoSellado={accesoSellado}
+            />
+          )}
+
+          {activeCard === 'documentos' && (
+            <DocumentosAdjuntosCard
+              control={control}
+              watch={watch}
+              getFormErrorMessage={getFormErrorMessage}
+              setValue={setValue}
+              toast={toast}
+              accesoSellado={accesoSellado}
+            />
+          )}
+
+          {activeCard === 'movimientos' && (
+            <MovimientosCard
+              movimientos={movimientos}
+              onMovimientoAgregado={handleMovimientoAgregado}
+              areasDestino={areasDestino}
+              tiposMovimientoAcceso={tiposMovimientoAcceso} // Pasar tipos de movimiento
+              modoEdicion={modoEdicion}
+              accesoSellado={accesoSellado}
+            />
+          )}
+        </div>
+
+        {/* SECCIÓN DE BOTONES - Actualizada para manejar sellado */}
+        <div className="flex flex-column gap-3 mt-4">
+          {/* Mensaje informativo si el acceso está sellado */}
+          {accesoSellado && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-3">
+              <div className="flex items-center">
+                <i className="pi pi-lock text-yellow-600 mr-2"></i>
+                <div>
+                  <p className="text-sm font-medium text-yellow-800">
+                    🔒 Acceso Sellado
+                  </p>
+                  <p className="text-xs text-yellow-600">
+                    Este acceso tiene salida definitiva y no puede ser modificado. Solo se permite imprimir ticket.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Grupo de botones principales */}
           <ButtonGroup>
             <Button
               label="Cancelar"
               icon="pi pi-times"
-              className="p-button-danger p-button-outlined"
+              className="p-button-secondary"
               type="button"
               onClick={onCancel}
               disabled={loading}
@@ -1748,6 +1140,7 @@ export default function AccesoInstalacionForm({
               className="p-button-success"
               type="submit"
               loading={loading}
+              disabled={accesoSellado}
               style={{ minWidth: "120px" }}
             />
           </ButtonGroup>
@@ -1756,24 +1149,16 @@ export default function AccesoInstalacionForm({
           {modoEdicion && (
             <ButtonGroup>
               <Button
-                label="Salida"
+                label="Salida Definitiva"
                 icon="pi pi-sign-out"
                 className="p-button-warning"
                 type="button"
-                onClick={() => {
-                  // TODO: Implementar lógica de salida
-                  toast.current?.show({
-                    severity: "info",
-                    summary: "Funcionalidad pendiente",
-                    detail:
-                      "La lógica de salida se implementará en el siguiente paso",
-                  });
-                }}
-                disabled={loading}
+                onClick={handleSalidaDefinitiva}
+                disabled={loading || accesoSellado || tieneSalidaDefinitiva}
                 style={{ minWidth: "120px" }}
               />
               
-              {/* Botón Ticket - Solo si imprimeTicketIng está marcado */}
+              {/* Botón Ticket - Solo si imprimeTicketIng está marcado - SIEMPRE HABILITADO */}
               {(() => {
                 const imprimeTicket = watch("imprimeTicketIng");
                 return (
@@ -1826,16 +1211,16 @@ export default function AccesoInstalacionForm({
             </ButtonGroup>
           )}
         </div>
-      </form>
 
-      {/* Modal para captura de documentos */}
-      <DocumentoVisitanteCapture
-        visible={modalDocumentoVisible}
-        onHide={() => setModalDocumentoVisible(false)}
-        onDocumentoSubido={handleDocumentoSubido}
-        numeroDocumento={watch("numeroDocumento")}
-        nombrePersona={watch("nombrePersona")}
-      />
+        {/* Modal para captura de documentos */}
+        <DocumentoVisitanteCapture
+          visible={modalDocumentoVisible}
+          onHide={() => setModalDocumentoVisible(false)}
+          onDocumentoSubido={handleDocumentoSubido}
+          numeroDocumento={watch("numeroDocumento")}
+          nombrePersona={watch("nombrePersona")}
+        />
+      </form>
     </div>
   );
 }

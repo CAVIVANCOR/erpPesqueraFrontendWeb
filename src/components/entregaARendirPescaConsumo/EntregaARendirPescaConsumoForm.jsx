@@ -121,9 +121,6 @@ const EntregaARendirPescaConsumoForm = ({ entrega, onSave, onCancel }) => {
       if (!payload.entregaLiquidada) {
         payload.fechaLiquidacion = null;
       }
-
-      console.log('Payload EntregaARendirPescaConsumo:', payload); // Log para depuración
-
       if (entrega?.id) {
         await updateEntregaARendirPescaConsumo(entrega.id, payload);
         toast.current?.show({

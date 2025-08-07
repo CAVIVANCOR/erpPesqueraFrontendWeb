@@ -92,7 +92,6 @@ const DetPermisoGestionadoOTForm = ({ permiso, onSave, onCancel }) => {
         observaciones: data.observaciones || null
       };
 
-      console.log('Payload DetPermisoGestionadoOT:', payload); // Log para depuración
 
       if (permiso?.id) {
         await updateDetPermisoGestionadoOT(permiso.id, payload);

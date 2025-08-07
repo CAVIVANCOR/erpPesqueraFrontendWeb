@@ -152,9 +152,6 @@ const DetGastosComprasProdForm = ({ gasto, onSave, onCancel }) => {
         monto: Number(data.monto),
         fechaRegistro: data.fechaRegistro ? data.fechaRegistro.toISOString() : new Date().toISOString()
       };
-
-      console.log('Payload DetGastosComprasProd:', payload);
-
       if (gasto?.id) {
         await updateDetGastosComprasProd(gasto.id, payload);
         toast.current?.show({

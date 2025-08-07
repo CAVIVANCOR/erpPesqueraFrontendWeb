@@ -155,10 +155,6 @@ const LiqNovedadPescaConsumoForm = ({ liquidacion, onSave, onCancel }) => {
         urlExcelDetalle: data.urlExcelDetalle?.trim() || null,
         observaciones: data.observaciones?.trim() || null
       };
-
-      // Log para depuración según regla profesional ERP Megui
-      console.log('Payload LiqNovedadPescaConsumo:', payload);
-
       if (liquidacion) {
         await updateLiqNovedadPescaConsumo(liquidacion.id, payload);
         toast.current?.show({

@@ -178,9 +178,6 @@ const FaenaPescaConsumoForm = ({ faena, onSave, onCancel }) => {
         bolicheRedId: data.bolicheRedId ? Number(data.bolicheRedId) : null,
         urlInformeFaena: data.urlInformeFaena?.trim() || null
       };
-
-      console.log('Payload FaenaPescaConsumo:', payload); // Log para depuración
-
       if (faena?.id) {
         await updateFaenaPescaConsumo(faena.id, payload);
         toast.current?.show({

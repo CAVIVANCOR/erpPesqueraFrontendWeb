@@ -87,16 +87,12 @@ export const obtenerDetalleAccesoInstalacionPorId = async (id) => {
  */
 export const crearDetalleAccesoInstalacion = async (datosDetalle) => {
   try {
-    const params = datosDetalle ? { datosDetalle } : {};
-    
-    // Normalización de datos antes del envío
+    // Normalización de datos antes del envío según modelo Prisma AccesoInstalacionDetalle
     const datosNormalizados = {
-      ...datosDetalle,
       accesoInstalacionId: Number(datosDetalle.accesoInstalacionId),
-      tipoEquipoId: datosDetalle.tipoEquipoId ? Number(datosDetalle.tipoEquipoId) : null,
-      tipoMovimientoId: datosDetalle.tipoMovimientoId ? Number(datosDetalle.tipoMovimientoId) : null,
-      personalId: datosDetalle.personalId ? Number(datosDetalle.personalId) : null,
-      numeroEquipo: datosDetalle.numeroEquipo?.trim() || null,
+      fechaHora: datosDetalle.fechaHora,
+      tipoMovimientoId: Number(datosDetalle.tipoMovimientoId),
+      areaDestinoVisitaId: datosDetalle.areaDestinoVisitaId ? Number(datosDetalle.areaDestinoVisitaId) : null,
       observaciones: datosDetalle.observaciones?.trim() || null
     };
     const response = await axios.post(API_URL, datosNormalizados, {headers: getAuthHeader()});

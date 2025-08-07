@@ -247,10 +247,7 @@ const DetDocsReqCotizaVentasForm = ({ documento, onSave, onCancel }) => {
           summary: 'Éxito',
           detail: 'Documento requerido creado correctamente'
         });
-      }
-
-      console.log('Documento requerido guardado:', resultado);
-      
+      }      
       // Llamar callback de éxito
       if (onSave) {
         onSave(resultado);

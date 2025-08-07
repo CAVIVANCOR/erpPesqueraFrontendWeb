@@ -126,7 +126,6 @@ const DetTareasOTForm = ({ tarea, onSave, onCancel }) => {
         fechaValidaTerminoTarea: data.fechaValidaTerminoTarea || null
       };
 
-      console.log('Payload DetTareasOT:', payload); // Log para depuración
 
       if (tarea?.id) {
         await updateDetTareasOT(tarea.id, payload);

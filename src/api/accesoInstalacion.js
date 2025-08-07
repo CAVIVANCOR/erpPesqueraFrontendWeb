@@ -135,6 +135,24 @@ export const obtenerDatosAccesoPrevio = async (numeroDocumento) => {
 };
 
 /**
+ * Procesa la salida definitiva de un acceso a instalación
+ * Actualiza fechaHoraSalidaDefinitiva y marca accesoSellado como true
+ * @param {number} id - ID del acceso a instalación
+ * @returns {Promise<Object>} Acceso a instalación actualizado
+ */
+export const procesarSalidaDefinitiva = async (id) => {
+  try {
+    const res = await axios.put(`${API_URL}/${id}/salida-definitiva`, {}, { 
+      headers: getAuthHeader() 
+    });
+    return res.data;
+  } catch (error) {
+    console.error('Error al procesar salida definitiva:', error);
+    throw error;
+  }
+};
+
+/**
  * Elimina un acceso a instalación
  * @param {number} id - ID del acceso a instalación a eliminar
  * @returns {Promise<Object>} Confirmación de eliminación

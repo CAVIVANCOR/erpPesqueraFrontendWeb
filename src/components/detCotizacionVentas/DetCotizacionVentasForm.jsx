@@ -156,9 +156,6 @@ const DetCotizacionVentasForm = ({ detalle, onSave, onCancel }) => {
         observaciones: data.observaciones?.trim() || null,
         centroCostoId: Number(data.centroCostoId)
       };
-
-      console.log('Payload DetCotizacionVentas:', payload);
-
       if (detalle?.id) {
         await updateDetCotizacionVentas(detalle.id, payload);
         toast.current?.show({

@@ -1,87 +1,226 @@
-// src/components/pais/PaisForm.jsx
-// Formulario profesional para Pais. Cumple la regla transversal ERP Megui.
-import React from 'react';
-import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
-import { Checkbox } from 'primereact/checkbox';
+/**
+ * Formulario para gestión de Países
+ *
+ * Características implementadas:
+ * - React Hook Form con Controller para manejo de formularios
+ * - Validaciones con Yup para campos obligatorios y longitudes
+ * - Normalización de datos antes del envío
+ * - Campos: codSUNAT (obligatorio), nombre (obligatorio), activo (checkbox)
+ * - Integración con API usando funciones en español
+ * - Feedback visual y manejo de errores
+ * - Cumple estándar ERP Megui completo
+ *
+ * @author ERP Megui
+ * @version 1.0.0
+ */
 
-export default function PaisForm({ isEdit, defaultValues, onSubmit, onCancel, loading }) {
-  const [codSUNAT, setCodSUNAT] = React.useState(defaultValues.codSUNAT || '');
-  const [nombre, setNombre] = React.useState(defaultValues.nombre || '');
-  const [gentilicio, setGentilicio] = React.useState(defaultValues.gentilicio || '');
-  const [activo, setActivo] = React.useState(defaultValues.activo !== undefined ? defaultValues.activo : true);
+import React, { useState, useEffect, useRef } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { InputText } from "primereact/inputtext";
+import { Checkbox } from "primereact/checkbox";
+import { Button } from "primereact/button";
+import { Toast } from "primereact/toast";
+import { classNames } from "primereact/utils";
+import { crearPais, actualizarPais } from "../../api/pais";
 
-  React.useEffect(() => {
-    setCodSUNAT(defaultValues.codSUNAT || '');
-    setNombre(defaultValues.nombre || '');
-    setGentilicio(defaultValues.gentilicio || '');
-    setActivo(defaultValues.activo !== undefined ? defaultValues.activo : true);
-  }, [defaultValues]);
+// Esquema de validación con Yup
+const esquemaValidacion = yup.object().shape({
+  codSUNAT: yup
+    .string()
+    .required("El código SUNAT es obligatorio")
+    .max(10, "El código SUNAT no puede exceder 10 caracteres")
+    .trim(),
+  nombre: yup
+    .string()
+    .required("El nombre es obligatorio")
+    .max(100, "El nombre no puede exceder 100 caracteres")
+    .trim(),
+  activo: yup.boolean().default(true),
+});
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit({
-      codSUNAT,
-      nombre,
-      gentilicio,
-      activo
+const PaisForm = ({ pais, onGuardar, onCancelar }) => {
+  const [loading, setLoading] = useState(false);
+  const toast = useRef(null);
+  const esEdicion = !!pais;
+
+  // Configuración del formulario con React Hook Form
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    setValue,
+  } = useForm({
+    resolver: yupResolver(esquemaValidacion),
+    defaultValues: {
+      codSUNAT: "",
+      nombre: "",
+      activo: true,
+    },
+  });
+
+  // Efecto para cargar datos en modo edición
+  useEffect(() => {
+    if (pais) {
+      setValue("codSUNAT", pais.codSUNAT || "");
+      setValue("nombre", pais.nombre || "");
+      setValue("activo", pais.activo !== undefined ? pais.activo : true);
+    } else {
+      reset({
+        codSUNAT: "",
+        nombre: "",
+        activo: true,
+      });
+    }
+  }, [pais, setValue, reset]);
+
+  /**
+   * Maneja el envío del formulario
+   * @param {Object} data - Datos del formulario
+   */
+  const onSubmit = async (data) => {
+    try {
+      setLoading(true);
+
+      // Normalización de datos antes del envío
+      const datosNormalizados = {
+        codSUNAT: data.codSUNAT.trim().toUpperCase(),
+        nombre: data.nombre.trim().toUpperCase(),
+        activo: Boolean(data.activo),
+      };
+
+      if (esEdicion) {
+        await actualizarPais(pais.id, datosNormalizados);
+      } else {
+        await crearPais(datosNormalizados);
+      }
+
+      onGuardar();
+    } catch (error) {
+      console.error("Error al guardar país:", error);
+      
+      // Mostrar mensaje de error específico del backend
+      const mensajeError = error.response?.data?.message || error.message || "Error al guardar país";
+      
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: mensajeError,
+        life: 5000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Obtiene la clase CSS para campos con errores
+   * @param {string} fieldName - Nombre del campo
+   * @returns {string} Clase CSS
+   */
+  const getFieldClass = (fieldName) => {
+    return classNames({
+      "p-invalid": errors[fieldName],
     });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-fluid">
-      <div className="p-grid">
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="codSUNAT">Código SUNAT*</label>
-            <InputText 
-              id="codSUNAT" 
-              value={codSUNAT} 
-              onChange={e => setCodSUNAT(e.target.value)} 
-              required 
-              disabled={loading}
+    <>
+      <Toast ref={toast} />
+      <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
+        <div className="p-grid p-formgrid">
+          {/* Campo Código SUNAT */}
+          <div className="p-col-12 p-md-6 p-field">
+            <label htmlFor="codSUNAT" className="p-d-block">
+              Código SUNAT <span className="p-error">*</span>
+            </label>
+            <Controller
+              name="codSUNAT"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  id="codSUNAT"
+                  {...field}
+                  placeholder="Ingrese el código SUNAT"
+                  className={getFieldClass("codSUNAT")}
+                  maxLength={10}
+                  style={{ textTransform: 'uppercase' }}
+                />
+              )}
             />
+            {errors.codSUNAT && (
+              <small className="p-error p-d-block">{errors.codSUNAT.message}</small>
+            )}
+          </div>
+
+          {/* Campo Nombre */}
+          <div className="p-col-12 p-md-6 p-field">
+            <label htmlFor="nombre" className="p-d-block">
+              Nombre <span className="p-error">*</span>
+            </label>
+            <Controller
+              name="nombre"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  id="nombre"
+                  {...field}
+                  placeholder="Ingrese el nombre del país"
+                  className={getFieldClass("nombre")}
+                  maxLength={100}
+                  style={{ textTransform: 'uppercase' }}
+                />
+              )}
+            />
+            {errors.nombre && (
+              <small className="p-error p-d-block">{errors.nombre.message}</small>
+            )}
+          </div>
+
+          {/* Campo Activo */}
+          <div className="p-col-12 p-field">
+            <div className="p-field-checkbox">
+              <Controller
+                name="activo"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    id="activo"
+                    checked={field.value}
+                    onChange={(e) => field.onChange(e.checked)}
+                    className={getFieldClass("activo")}
+                  />
+                )}
+              />
+              <label htmlFor="activo" className="p-checkbox-label">
+                Activo
+              </label>
+            </div>
+            {errors.activo && (
+              <small className="p-error p-d-block">{errors.activo.message}</small>
+            )}
           </div>
         </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="nombre">Nombre*</label>
-            <InputText 
-              id="nombre" 
-              value={nombre} 
-              onChange={e => setNombre(e.target.value)} 
-              required 
-              disabled={loading}
-            />
-          </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+          <Button
+            type="button"
+            label="Cancelar"
+            className="p-button-text"
+            onClick={onCancelar}
+            disabled={loading}
+          />
+          <Button
+            type="submit"
+            label={esEdicion ? "Actualizar" : "Crear"}
+            icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
+            loading={loading}
+          />
         </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="gentilicio">Gentilicio</label>
-            <InputText 
-              id="gentilicio" 
-              value={gentilicio} 
-              onChange={e => setGentilicio(e.target.value)} 
-              disabled={loading}
-            />
-          </div>
-        </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field-checkbox">
-            <Checkbox 
-              id="activo" 
-              checked={activo} 
-              onChange={e => setActivo(e.checked)} 
-              disabled={loading} 
-            />
-            <label htmlFor="activo">Activo</label>
-          </div>
-        </div>
-      </div>
-      <div className="p-d-flex p-jc-end" style={{ gap: 8, marginTop: 16 }}>
-        <Button type="button" label="Cancelar" className="p-button-text" onClick={onCancel} disabled={loading} />
-        <Button type="submit" label={isEdit ? "Actualizar" : "Crear"} icon="pi pi-save" loading={loading} />
-      </div>
-    </form>
+      </form>
+    </>
   );
-}
+};
+
+export default PaisForm;

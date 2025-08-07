@@ -58,13 +58,6 @@ export default function AreaFisicaForm({ isEdit = false, defaultValues = {}, onS
   // Estado local para combos dependientes
   const empresaId = watch('empresaId');
   const sedeId = watch('sedeId');
-
-  // LOG de depuración: muestra el valor actual de empresaId y el array de empresas
-  console.log('[AreaFisicaForm] Valor actual empresaId:', empresaId);
-  console.log('[AreaFisicaForm] Array de empresas:', empresas);
-  console.log('[AreaFisicaForm] defaultValues:', defaultValues);
-
-
   // Reset al abrir en modo edición o alta
   useEffect(() => {
     reset({ ...defaultValues, cesado: defaultValues.cesado ?? false });

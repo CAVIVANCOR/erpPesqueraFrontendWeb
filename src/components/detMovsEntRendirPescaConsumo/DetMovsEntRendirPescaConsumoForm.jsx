@@ -133,7 +133,6 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
         observaciones: data.observaciones?.trim() || null
       };
 
-      console.log('Payload DetMovsEntRendirPescaConsumo:', payload); // Log para depuración
 
       if (movimiento?.id) {
         await updateDetMovsEntRendirPescaConsumo(movimiento.id, payload);

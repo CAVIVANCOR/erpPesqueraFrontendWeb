@@ -120,9 +120,6 @@ const DetalleOrdenCompraForm = ({ detalle, onSave, onCancel }) => {
         fechaEntregaReal: data.fechaEntregaReal || null,
         observaciones: data.observaciones || null
       };
-
-      console.log('Payload DetalleOrdenCompra:', payload); // Log para depuración
-
       if (detalle?.id) {
         await updateDetalleOrdenCompra(detalle.id, payload);
         toast.current?.show({

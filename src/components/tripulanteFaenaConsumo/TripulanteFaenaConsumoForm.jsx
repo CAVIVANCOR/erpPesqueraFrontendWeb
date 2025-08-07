@@ -120,8 +120,6 @@ const TripulanteFaenaConsumoForm = ({ tripulante, onSave, onCancel }) => {
         observaciones: data.observaciones?.trim() || null
       };
 
-      console.log('Payload TripulanteFaenaConsumo:', payload); // Log para depuración
-
       if (tripulante?.id) {
         await updateTripulanteFaenaConsumo(tripulante.id, payload);
         toast.current?.show({

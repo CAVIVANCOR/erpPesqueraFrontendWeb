@@ -260,9 +260,6 @@ const OTMantenimientoForm = ({ ordenTrabajo, onSave, onCancel }) => {
         solucion: data.solucion?.trim() || null,
         observaciones: data.observaciones?.trim() || null
       };
-
-      console.log('Payload OTMantenimiento:', payload); // Log para depuración
-
       if (ordenTrabajo?.id) {
         await actualizarOrdenTrabajo(ordenTrabajo.id, payload);
         toast.current?.show({

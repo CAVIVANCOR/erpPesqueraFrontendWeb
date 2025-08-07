@@ -102,7 +102,6 @@ const DetInsumosTareaOTForm = ({ insumo, onSave, onCancel }) => {
         observaciones: data.observaciones || null
       };
 
-      console.log('Payload DetInsumosTareaOT:', payload); // Log para depuración
 
       if (insumo?.id) {
         await updateDetInsumosTareaOT(insumo.id, payload);

@@ -54,9 +54,6 @@ const DestinoProductoForm = ({ destino, onSave, onCancel }) => {
         paraCompras: Boolean(data.paraCompras),
         paraVentas: Boolean(data.paraVentas)
       };
-
-      console.log('Payload DestinoProducto:', payload);
-
       if (destino?.id) {
         await actualizarDestinoProducto(destino.id, payload);
         toast.current?.show({

@@ -195,7 +195,6 @@ export default function Usuarios() {
         password: data.password,
         // password: data.password, // Solo si se permite cambiar
       };
-      console.log("Payload limpio a enviar:", usuarioPayload);
       if (modoEdicion && usuarioEdit) {
         await actualizarUsuario(usuarioEdit.id, usuarioPayload);
         mostrarToast("success", "Usuario actualizado", `El usuario ${data.username} fue actualizado correctamente.`);

@@ -149,10 +149,6 @@ const LiquidacionFaenaConsumoForm = ({ liquidacion, onSave, onCancel }) => {
         urlExcelDetalle: data.urlExcelDetalle?.trim() || null,
         observaciones: data.observaciones?.trim() || null
       };
-
-      // Log para depuración según regla profesional ERP Megui
-      console.log('Payload LiquidacionFaenaConsumo:', payload);
-
       if (liquidacion) {
         await updateLiquidacionFaenaConsumo(liquidacion.id, payload);
         toast.current?.show({

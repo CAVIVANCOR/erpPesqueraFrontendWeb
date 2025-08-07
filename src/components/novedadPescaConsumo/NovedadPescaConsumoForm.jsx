@@ -119,9 +119,6 @@ const NovedadPescaConsumoForm = ({ novedad, onSave, onCancel }) => {
         fechaInicio: data.fechaInicio.toISOString(),
         fechaFin: data.fechaFin.toISOString()
       };
-
-      console.log('Payload NovedadPescaConsumo:', payload); // Log para depuración
-
       if (novedad?.id) {
         await updateNovedadPescaConsumo(novedad.id, payload);
         toast.current?.show({

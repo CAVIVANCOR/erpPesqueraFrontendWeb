@@ -119,9 +119,6 @@ const DetAccionesPreviasFaenaConsumoForm = ({ accion, onSave, onCancel }) => {
         observaciones: data.observaciones?.trim() || null,
         verificado: Boolean(data.verificado)
       };
-
-      console.log('Payload DetAccionesPreviasFaenaConsumo:', payload); // Log para depuración
-
       if (accion?.id) {
         await updateDetAccionesPreviasFaenaConsumo(accion.id, payload);
         toast.current?.show({

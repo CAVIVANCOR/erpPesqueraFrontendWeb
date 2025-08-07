@@ -209,6 +209,7 @@ const TipoAccesoInstalacion = () => {
           onRowClick={(e) => abrirDialogo(e.data)}
           selectionMode="single"
         >
+          <Column field="id" header="ID" sortable />
           <Column
             field="nombre"
             header="Nombre"

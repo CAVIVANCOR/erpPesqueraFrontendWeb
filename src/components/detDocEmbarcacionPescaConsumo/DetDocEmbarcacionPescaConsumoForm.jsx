@@ -141,9 +141,6 @@ const DetDocEmbarcacionPescaConsumoForm = ({ documento, onSave, onCancel }) => {
         observaciones: data.observaciones?.trim() || null,
         verificado: Boolean(data.verificado)
       };
-
-      console.log('Payload DetDocEmbarcacionPescaConsumo:', payload); // Log para depuración
-
       if (documento?.id) {
         await updateDetDocEmbarcacionPescaConsumo(documento.id, payload);
         toast.current?.show({

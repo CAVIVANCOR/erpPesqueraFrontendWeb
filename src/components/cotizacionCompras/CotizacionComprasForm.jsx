@@ -222,7 +222,7 @@ const CotizacionComprasForm = ({ cotizacion, onSave, onCancel }) => {
         .map(d => ({
           ...d,
           id: Number(d.id),
-          label: `${d.direccion} - ${d.distrito || 'Sin distrito'}`,
+          label: `${d.direccion} - ${d.provincia || 'Sin provincia'}`,
           value: Number(d.id)
         }));
 
@@ -266,9 +266,6 @@ const CotizacionComprasForm = ({ cotizacion, onSave, onCancel }) => {
         proveedorMateriaPrimaId: data.proveedorMateriaPrimaId ? Number(data.proveedorMateriaPrimaId) : null,
         bancoId: data.bancoId ? Number(data.bancoId) : null
       };
-
-      console.log('Payload CotizacionCompras:', payload);
-
       if (cotizacion?.id) {
         await actualizarCotizacionCompras(cotizacion.id, payload);
         toast.current?.show({

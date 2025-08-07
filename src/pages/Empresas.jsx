@@ -55,7 +55,6 @@ export default function Empresas() {
     setLoading(true);
     try {
       const data = await getEmpresas();
-      //console.log("[DEBUG] Empresas cargadas:", data,"Verifica Forma:", Array.isArray(data), "retorna:", data.empresas);
       setEmpresas(Array.isArray(data) ? data : (data.empresas || []));
     } catch (err) {
       mostrarToast("error", "Error", "No se pudieron cargar las empresas");
@@ -94,8 +93,6 @@ export default function Empresas() {
         logo: data.logo,
       };
       if (modoEdicion && empresaEdit) {
-        // Log profesional para depuración: muestra el objeto limpio enviado al backend
-        console.log("[DEBUG] Payload limpio enviado a actualizarEmpresa:", payload);
         await actualizarEmpresa(empresaEdit.id, payload);
         mostrarToast("success", "Empresa actualizada", `La empresa fue actualizada correctamente.`);
       } else {

@@ -140,7 +140,6 @@ const DetMovsEntregaRendirPVentasForm = ({ movimiento, onSave, onCancel }) => {
         descripcion: data.descripcion?.trim() || null
       };
 
-      console.log('Payload DetMovsEntregaRendirPVentas:', payload);
 
       if (movimiento?.id) {
         await actualizarDetMovsEntregaRendirPVentas(movimiento.id, payload);

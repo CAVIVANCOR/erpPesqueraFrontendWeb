@@ -1,140 +1,268 @@
-// src/pages/FormaPago.jsx
-// Pantalla CRUD profesional para FormaPago. Cumple la regla transversal ERP Megui.
-import React, { useRef, useState, useEffect } from "react";
+/**
+ * Pantalla CRUD para gestión de Formas de Pago
+ *
+ * Características implementadas:
+ * - Edición profesional por clic en fila (abre modal de edición)
+ * - Botón eliminar visible solo para superusuario/admin (usuario?.esSuperUsuario || usuario?.esAdmin)
+ * - Confirmación de borrado con ConfirmDialog visual rojo y mensajes claros
+ * - Feedback visual con Toast para éxito/error
+ * - Cumple regla transversal ERP Megui completa
+ * - REGLA CRÍTICA: Solo el formulario graba, el componente padre solo maneja UI
+ *
+ * @author ERP Megui
+ * @version 1.0.0
+ */
+
+import React, { useState, useEffect, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
-import { Dialog } from "primereact/dialog";
-import FormaPagoForm from "../components/formaPago/FormaPagoForm";
-import { getFormasPago, crearFormaPago, actualizarFormaPago, eliminarFormaPago } from "../api/formaPago";
+import { Tag } from "primereact/tag";
+import { InputText } from "primereact/inputtext";
+import { getFormasPago, eliminarFormaPago } from "../api/formaPago";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import FormaPagoForm from "../components/formaPago/FormaPagoForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
-/**
- * Pantalla profesional para gestión de Formas de Pago.
- * Cumple la regla transversal ERP Megui:
- * - Edición profesional por clic en fila (abre modal).
- * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin), usando useAuthStore.
- * - Confirmación de borrado con ConfirmDialog visual rojo.
- * - Feedback visual con Toast.
- * - Documentación de la regla en el encabezado.
- */
-export default function FormaPago() {
+const FormaPago = () => {
+  const [formasPago, setFormasPago] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [formaPagoSeleccionada, setFormaPagoSeleccionada] = useState(null);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [formaPagoAEliminar, setFormaPagoAEliminar] = useState(null);
   const toast = useRef(null);
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showDialog, setShowDialog] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore(state => state.usuario);
+  const { usuario } = useAuthStore();
+  const [globalFilter, setGlobalFilter] = useState("");
 
   useEffect(() => {
-    cargarDatos();
+    cargarFormasPago();
   }, []);
 
-  const cargarDatos = async () => {
-    setLoading(true);
+  const cargarFormasPago = async () => {
     try {
+      setLoading(true);
       const data = await getFormasPago();
-      setItems(data);
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar los datos." });
+      setFormasPago(data);
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar las formas de pago",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleEdit = (rowData) => {
-    setEditing(rowData);
-    setShowDialog(true);
+  const abrirDialogoNuevo = () => {
+    setFormaPagoSeleccionada(null);
+    setDialogVisible(true);
   };
 
-  const handleDelete = (rowData) => {
-    setToDelete(rowData);
-    setShowConfirm(true);
+  const abrirDialogoEdicion = (formaPago) => {
+    setFormaPagoSeleccionada(formaPago);
+    setDialogVisible(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    setShowConfirm(false);
-    if (!toDelete) return;
-    setLoading(true);
+  const cerrarDialogo = () => {
+    setDialogVisible(false);
+    setFormaPagoSeleccionada(null);
+  };
+
+  const onGuardarExitoso = () => {
+    toast.current.show({
+      severity: "success",
+      summary: "Éxito",
+      detail: formaPagoSeleccionada 
+        ? "Forma de pago actualizada correctamente"
+        : "Forma de pago creada correctamente",
+      life: 3000,
+    });
+    
+    cargarFormasPago();
+    cerrarDialogo();
+  };
+
+  const confirmarEliminacion = (formaPago) => {
+    setFormaPagoAEliminar(formaPago);
+    setConfirmVisible(true);
+  };
+
+  const eliminarFormaPagoConfirmado = async () => {
     try {
-      await eliminarFormaPago(toDelete.id);
-      toast.current.show({ severity: "success", summary: "Eliminado", detail: "Forma de pago eliminada correctamente." });
-      cargarDatos();
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo eliminar." });
+      setLoading(true);
+      await eliminarFormaPago(formaPagoAEliminar.id);
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Forma de pago eliminada correctamente",
+        life: 3000,
+      });
+      cargarFormasPago();
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al eliminar la forma de pago",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+      setConfirmVisible(false);
+      setFormaPagoAEliminar(null);
     }
-    setLoading(false);
-    setToDelete(null);
   };
 
-  const handleFormSubmit = async (data) => {
-    setLoading(true);
-    try {
-      if (editing && editing.id) {
-        await actualizarFormaPago(editing.id, data);
-        toast.current.show({ severity: "success", summary: "Actualizado", detail: "Forma de pago actualizada." });
-      } else {
-        await crearFormaPago(data);
-        toast.current.show({ severity: "success", summary: "Creado", detail: "Forma de pago creada." });
-      }
-      setShowDialog(false);
-      setEditing(null);
-      cargarDatos();
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo guardar." });
-    }
-    setLoading(false);
+  // Template para mostrar estado activo/inactivo
+  const estadoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.activo ? "Activo" : "Inactivo"}
+        severity={rowData.activo ? "success" : "danger"}
+      />
+    );
   };
 
-  const handleAdd = () => {
-    setEditing(null);
-    setShowDialog(true);
+  // Template para mostrar si aplica para clientes
+  const clienteTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.esCliente ? "Sí" : "No"}
+        severity={rowData.esCliente ? "info" : "secondary"}
+      />
+    );
   };
 
-  const booleanTemplate = (rowData, field) => (
-    <span className={rowData[field] ? "text-green-600" : "text-red-600"}>
-      {rowData[field] ? "Sí" : "No"}
-    </span>
-  );
+  // Template para mostrar si aplica para proveedores
+  const proveedorTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.esProveedor ? "Sí" : "No"}
+        severity={rowData.esProveedor ? "warning" : "secondary"}
+      />
+    );
+  };
 
-  const actionBody = (rowData) => (
-    <>
-      <Button icon="pi pi-pencil" className="p-button-text p-button-sm" onClick={() => handleEdit(rowData)} aria-label="Editar" />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger p-button-sm" onClick={() => handleDelete(rowData)} aria-label="Eliminar" />
-      )}
-    </>
-  );
+  // Template para acciones (editar/eliminar)
+  const accionesTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-button-info"
+          onClick={(e) => {
+            e.stopPropagation();
+            abrirDialogoEdicion(rowData);
+          }}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+        />
+        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-text p-button-danger"
+            onClick={(e) => {
+              e.stopPropagation();
+              confirmarEliminacion(rowData);
+            }}
+            tooltip="Eliminar"
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="p-fluid">
+    <div className="p-4">
       <Toast ref={toast} />
-      <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar esta forma de pago?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
-      <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
-        <h2>Gestión de Formas de Pago</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
-      </div>
-      <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="nombre" header="Nombre" />
-        <Column field="descripcion" header="Descripción" />
-        <Column field="esCliente" header="Es Cliente" body={rowData => booleanTemplate(rowData, 'esCliente')} />
-        <Column field="esProveedor" header="Es Proveedor" body={rowData => booleanTemplate(rowData, 'esProveedor')} />
-        <Column field="activo" header="Activo" body={rowData => booleanTemplate(rowData, 'activo')} />
-        <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
+      <DataTable
+        value={formasPago}
+        loading={loading}
+        paginator
+        rows={10}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        selectionMode="single"
+        className="p-datatable-hover cursor-pointer"
+        emptyMessage="No se encontraron formas de pago"
+        globalFilter={globalFilter}
+        header={
+          <div className="flex align-items-center gap-2">
+            <h2>Gestión de Formas de Pago</h2>
+            <Button
+              label="Nuevo"
+              icon="pi pi-plus"
+              size="small"
+              raised
+              tooltip="Nueva Forma de Pago"
+              outlined
+              className="p-button-success"
+              onClick={abrirDialogoNuevo}
+            />
+            <span className="p-input-icon-left">
+              <InputText
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Buscar formas de pago..."
+                style={{ width: "300px" }}
+              />
+            </span>
+          </div>
+        }
+        scrollable
+        scrollHeight="600px"
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+      >
+        <Column field="id" header="ID" sortable />
+        <Column field="nombre" header="Nombre" sortable />
+        <Column field="descripcion" header="Descripción" sortable />
+        <Column field="esCliente" header="Para Clientes" body={clienteTemplate} sortable />
+        <Column field="esProveedor" header="Para Proveedores" body={proveedorTemplate} sortable />
+        <Column field="activo" header="Estado" body={estadoTemplate} sortable />
+        <Column
+          body={accionesTemplate}
+          header="Acciones"
+          style={{ width: "8rem" }}
+        />
       </DataTable>
-      <Dialog header={editing ? "Editar Forma de Pago" : "Nueva Forma de Pago"} visible={showDialog} style={{ width: 600 }} onHide={() => setShowDialog(false)} modal>
+
+      {/* Dialog para crear/editar forma de pago */}
+      <Dialog
+        visible={dialogVisible}
+        style={{ width: "600px" }}
+        header={formaPagoSeleccionada ? "Editar Forma de Pago" : "Nueva Forma de Pago"}
+        modal
+        className="p-fluid"
+        onHide={cerrarDialogo}
+      >
         <FormaPagoForm
-          isEdit={!!editing}
-          defaultValues={editing || {}}
-          onSubmit={handleFormSubmit}
-          onCancel={() => setShowDialog(false)}
-          loading={loading}
+          formaPago={formaPagoSeleccionada}
+          onGuardar={onGuardarExitoso}
+          onCancelar={cerrarDialogo}
         />
       </Dialog>
+
+      {/* ConfirmDialog para eliminación */}
+      <ConfirmDialog
+        visible={confirmVisible}
+        onHide={() => setConfirmVisible(false)}
+        message={`¿Está seguro de eliminar la forma de pago "${formaPagoAEliminar?.nombre}"?`}
+        header="Confirmar Eliminación"
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        accept={eliminarFormaPagoConfirmado}
+        reject={() => {
+          setConfirmVisible(false);
+          setFormaPagoAEliminar(null);
+        }}
+      />
     </div>
   );
-}
+};
+
+export default FormaPago;

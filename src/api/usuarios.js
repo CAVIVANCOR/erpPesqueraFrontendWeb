@@ -20,7 +20,6 @@ function getAuthHeader() {
  */
 export const getUsuarios = async (params) => {
   const res = await axios.get(API_URL, { params, headers: getAuthHeader() });
-  console.log("Llamada a getUsuarios",res.data);
   return res.data;
 };
 

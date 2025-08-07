@@ -10,6 +10,7 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { InputText } from "primereact/inputtext";
 import PersonalForm from "../components/personal/PersonalForm";
+import { Tag } from "primereact/tag";
 import {
   getPersonal,
   crearPersonal,
@@ -188,6 +189,23 @@ export default function PersonalPage() {
     </>
   );
 
+  const cesadoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.cesado ? "Sí" : "No"}
+        severity={rowData.cesado ? "danger" : "secondary"}
+      />
+    );
+  };
+  const esVendedorTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.esVendedor ? "Si" : "No"}
+        severity={rowData.esVendedor ? "success" : "secondary"}
+      />
+    );
+  };
+
   // Lógica para alta y edición
   const onNew = () => {
     setSelected(null);
@@ -290,6 +308,8 @@ export default function PersonalPage() {
         sedeEmpresaId: data.sedeEmpresaId ? Number(data.sedeEmpresaId) : null,
         areaFisicaId: data.areaFisicaId ? Number(data.areaFisicaId) : null,
         sexo: typeof data.sexo === "boolean" ? data.sexo : false,
+        esVendedor:
+          typeof data.esVendedor === "boolean" ? data.esVendedor : false,
       };
       if (isEdit && selected) {
         // Edición de personal existente
@@ -429,7 +449,7 @@ export default function PersonalPage() {
           "correo",
         ]}
         emptyMessage="No se encontraron registros que coincidan con la búsqueda."
-        style={{ cursor: 'pointer', fontSize: getResponsiveFontSize() }}
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
         <Column
           header="Foto"
@@ -498,11 +518,8 @@ export default function PersonalPage() {
           header="Área Física"
           body={(row) => getAreaFisicaNombre(row.areaFisicaId)}
         />
-        <Column
-          field="cesado"
-          header="Cesado"
-          body={(row) => (row.cesado ? "Sí" : "No")}
-        />
+        <Column field="esVendedor" header="Vendedor" body={esVendedorTemplate} />
+        <Column field="cesado" header="Cesado" body={cesadoTemplate} />
         <Column body={actionBodyTemplate} header="Acciones" />
       </DataTable>
       {/*

@@ -96,9 +96,6 @@ const MovLiquidacionTemporadaPescaForm = ({ movimiento, onSave, onCancel }) => {
         centroCostoId: data.centroCostoId ? Number(data.centroCostoId) : null,
         fechaMovimiento: data.fechaMovimiento
       };
-
-      console.log('Payload MovLiquidacionTemporadaPesca:', payload); // Log para depuración
-
       if (movimiento?.id) {
         await actualizarMovLiquidacionTemporadaPesca(movimiento.id, payload);
         toast.current?.show({

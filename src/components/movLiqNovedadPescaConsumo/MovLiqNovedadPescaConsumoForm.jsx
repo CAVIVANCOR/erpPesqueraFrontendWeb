@@ -187,9 +187,6 @@ const MovLiqNovedadPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
         motivoRechazo: data.motivoRechazo?.trim() || null,
         urlDocumento: data.urlDocumento?.trim() || null
       };
-
-      console.log('Payload MovLiqNovedadPescaConsumo:', payload);
-
       if (movimiento?.id) {
         await updateMovLiqNovedadPescaConsumo(movimiento.id, payload);
         toast.current?.show({

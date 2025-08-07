@@ -1,180 +1,319 @@
-// src/pages/EntidadComercial.jsx
-// Pantalla CRUD profesional para EntidadComercial. Cumple la regla transversal ERP Megui.
-import React, { useRef, useState, useEffect } from "react";
+/**
+ * Pantalla CRUD para gestión de Entidades Comerciales
+ *
+ * Características implementadas:
+ * - Edición profesional por clic en fila (abre modal de edición)
+ * - Botón eliminar visible solo para superusuario/admin (usuario?.esSuperUsuario || usuario?.esAdmin)
+ * - Confirmación de borrado con ConfirmDialog visual rojo y mensajes claros
+ * - Feedback visual con Toast para éxito/error
+ * - Cumple regla transversal ERP Megui completa
+ *
+ * @author ERP Megui
+ * @version 1.0.0
+ */
+
+import React, { useState, useEffect, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
-import { Dialog } from "primereact/dialog";
-import EntidadComercialForm from "../components/entidadComercial/EntidadComercialForm";
-import { getEntidadesComerciales, crearEntidadComercial, actualizarEntidadComercial, eliminarEntidadComercial } from "../api/entidadComercial";
-import { getEmpresas } from "../api/empresa";
-import { getTiposDocumento } from "../api/tipoDocumento";
-import { getTiposEntidad } from "../api/tipoEntidad";
-import { getFormasPago } from "../api/formaPago";
-import { getAgrupacionesEntidad } from "../api/agrupacionEntidad";
+import { Tag } from "primereact/tag";
+import { getEntidadesComerciales, eliminarEntidadComercial } from "../api/entidadComercial";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import EntidadComercialForm from "../components/entidadComercial/EntidadComercialForm";
+import { getResponsiveFontSize } from "../utils/utils";
+import { InputText } from "primereact/inputtext";
 
-/**
- * Pantalla profesional para gestión de Entidades Comerciales.
- * Cumple la regla transversal ERP Megui:
- * - Edición profesional por clic en fila (abre modal).
- * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin), usando useAuthStore.
- * - Confirmación de borrado con ConfirmDialog visual rojo.
- * - Feedback visual con Toast.
- * - Documentación de la regla en el encabezado.
- */
-export default function EntidadComercial() {
+const EntidadComercial = () => {
+  const [entidadesComerciales, setEntidadesComerciales] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [entidadSeleccionada, setEntidadSeleccionada] = useState(null);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [entidadAEliminar, setEntidadAEliminar] = useState(null);
   const toast = useRef(null);
-  const [items, setItems] = useState([]);
-  const [empresas, setEmpresas] = useState([]);
-  const [tiposDocumento, setTiposDocumento] = useState([]);
-  const [tiposEntidad, setTiposEntidad] = useState([]);
-  const [formasPago, setFormasPago] = useState([]);
-  const [agrupaciones, setAgrupaciones] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showDialog, setShowDialog] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore(state => state.usuario);
+  const { usuario } = useAuthStore();
 
   useEffect(() => {
-    cargarDatos();
+    cargarEntidadesComerciales();
   }, []);
 
-  const cargarDatos = async () => {
-    setLoading(true);
+  const cargarEntidadesComerciales = async () => {
     try {
-      const [entidadesData, empresasData, tiposDocData, tiposEntData, formasPagoData, agrupacionesData] = await Promise.all([
-        getEntidadesComerciales(),
-        getEmpresas(),
-        getTiposDocumento(),
-        getTiposEntidad(),
-        getFormasPago(),
-        getAgrupacionesEntidad()
-      ]);
-      setItems(entidadesData);
-      setEmpresas(empresasData);
-      setTiposDocumento(tiposDocData);
-      setTiposEntidad(tiposEntData);
-      setFormasPago(formasPagoData);
-      setAgrupaciones(agrupacionesData);
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar los datos." });
+      setLoading(true);
+      const data = await getEntidadesComerciales();
+      setEntidadesComerciales(data);
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar entidades comerciales",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleEdit = (rowData) => {
-    setEditing(rowData);
-    setShowDialog(true);
+  const abrirDialogoNuevo = () => {
+    setEntidadSeleccionada(null);
+    setDialogVisible(true);
   };
 
-  const handleDelete = (rowData) => {
-    setToDelete(rowData);
-    setShowConfirm(true);
+  const abrirDialogoEdicion = (entidad) => {
+    setEntidadSeleccionada(entidad);
+    setDialogVisible(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    setShowConfirm(false);
-    if (!toDelete) return;
-    setLoading(true);
+  const cerrarDialogo = () => {
+    setDialogVisible(false);
+    setEntidadSeleccionada(null);
+  };
+
+  const onGuardarExitoso = () => {
+    cargarEntidadesComerciales();
+    cerrarDialogo();
+    toast.current.show({
+      severity: "success",
+      summary: "Éxito",
+      detail: entidadSeleccionada
+        ? "Entidad comercial actualizada correctamente"
+        : "Entidad comercial creada correctamente",
+      life: 3000,
+    });
+  };
+
+  const confirmarEliminacion = (entidad) => {
+    setEntidadAEliminar(entidad);
+    setConfirmVisible(true);
+  };
+
+  const eliminar = async () => {
     try {
-      await eliminarEntidadComercial(toDelete.id);
-      toast.current.show({ severity: "success", summary: "Eliminado", detail: "Entidad comercial eliminada correctamente." });
-      cargarDatos();
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo eliminar." });
+      await eliminarEntidadComercial(entidadAEliminar.id);
+      setEntidadesComerciales(
+        entidadesComerciales.filter((e) => Number(e.id) !== Number(entidadAEliminar.id))
+      );
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Entidad comercial eliminada correctamente",
+        life: 3000,
+      });
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al eliminar entidad comercial",
+        life: 3000,
+      });
+    } finally {
+      setConfirmVisible(false);
+      setEntidadAEliminar(null);
     }
-    setLoading(false);
-    setToDelete(null);
   };
 
-  const handleFormSubmit = async (data) => {
-    setLoading(true);
-    try {
-      if (editing && editing.id) {
-        await actualizarEntidadComercial(editing.id, data);
-        toast.current.show({ severity: "success", summary: "Actualizado", detail: "Entidad comercial actualizada." });
-      } else {
-        await crearEntidadComercial(data);
-        toast.current.show({ severity: "success", summary: "Creado", detail: "Entidad comercial creada." });
-      }
-      setShowDialog(false);
-      setEditing(null);
-      cargarDatos();
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo guardar." });
-    }
-    setLoading(false);
+  const numeroDocumentoTemplate = (rowData) => {
+    return (
+      <span style={{ fontWeight: "bold", color: "#2563eb" }}>
+        {rowData.numeroDocumento}
+      </span>
+    );
   };
 
-  const handleAdd = () => {
-    setEditing(null);
-    setShowDialog(true);
+  const razonSocialTemplate = (rowData) => {
+    return (
+      <span style={{ fontWeight: "500" }}>
+        {rowData.razonSocial}
+      </span>
+    );
   };
 
-  const empresaNombre = (rowData) => {
-    const empresa = empresas.find(e => Number(e.id) === Number(rowData.empresaId));
-    return empresa ? empresa.nombre : '';
+  const tipoTemplate = (rowData) => {
+    const tipos = [];
+    if (rowData.esCliente) tipos.push("Cliente");
+    if (rowData.esProveedor) tipos.push("Proveedor");
+    if (rowData.esCorporativo) tipos.push("Corporativo");
+    
+    return tipos.length > 0 ? tipos.join(", ") : "N/A";
   };
 
-  const tipoDocNombre = (rowData) => {
-    const tipoDoc = tiposDocumento.find(t => Number(t.id) === Number(rowData.tipoDocumentoId));
-    return tipoDoc ? tipoDoc.nombre : '';
+  const estadoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.estado ? "Activo" : "Inactivo"}
+        severity={rowData.estado ? "success" : "danger"}
+      />
+    );
   };
 
-  const booleanTemplate = (rowData, field) => (
-    <span className={rowData[field] ? "text-green-600" : "text-red-600"}>
-      {rowData[field] ? "Sí" : "No"}
-    </span>
-  );
+  const estadoActivoSUNATTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.estadoActivoSUNAT ? "Activo" : "Inactivo"}
+        severity={rowData.estadoActivoSUNAT ? "success" : "danger"}
+      />
+    );
+  };
 
-  const actionBody = (rowData) => (
-    <>
-      <Button icon="pi pi-pencil" className="p-button-text p-button-sm" onClick={() => handleEdit(rowData)} aria-label="Editar" />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger p-button-sm" onClick={() => handleDelete(rowData)} aria-label="Eliminar" />
-      )}
-    </>
-  );
+  const condicionHabidoSUNATTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.condicionHabidoSUNAT ? "Habido" : "No Habido"}
+        severity={rowData.condicionHabidoSUNAT ? "success" : "warning"}
+      />
+    );
+  };
+
+  const esAgenteRetencionTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.esAgenteRetencion ? "Sí" : "No"}
+        severity={rowData.esAgenteRetencion ? "info" : "secondary"}
+      />
+    );
+  };
+
+  const accionesTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-mr-2"
+          onClick={(ev) => {
+            ev.stopPropagation();
+            abrirDialogoEdicion(rowData);
+          }}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+        />
+        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-text p-button-danger"
+            onClick={() => confirmarEliminacion(rowData)}
+            tooltip="Eliminar"
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="p-fluid">
+    <div className="p-4">
       <Toast ref={toast} />
-      <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar esta entidad comercial?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
-      <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
-        <h2>Gestión de Entidades Comerciales</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
-      </div>
-      <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="empresaId" header="Empresa" body={empresaNombre} />
-        <Column field="tipoDocumentoId" header="Tipo Doc" body={tipoDocNombre} />
-        <Column field="numeroDocumento" header="Nro. Documento" />
-        <Column field="razonSocial" header="Razón Social" />
-        <Column field="nombreComercial" header="Nombre Comercial" />
-        <Column field="esCliente" header="Cliente" body={rowData => booleanTemplate(rowData, 'esCliente')} />
-        <Column field="esProveedor" header="Proveedor" body={rowData => booleanTemplate(rowData, 'esProveedor')} />
-        <Column field="estado" header="Estado" body={rowData => booleanTemplate(rowData, 'estado')} />
-        <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
+      <DataTable
+        value={entidadesComerciales}
+        loading={loading}
+        paginator
+        rows={10}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        selectionMode="single"
+        className="p-datatable-hover cursor-pointer"
+        emptyMessage="No se encontraron entidades comerciales"
+        header={
+          <div className="flex align-items-center gap-2">
+            <h2>Gestión de Entidades Comerciales</h2>
+            <Button
+              label="Nuevo"
+              icon="pi pi-plus"
+              size="small"
+              raised
+              tooltip="Nueva Entidad Comercial"
+              outlined
+              className="p-button-success"
+              onClick={abrirDialogoNuevo}
+            />
+          </div>
+        }
+        scrollable
+        scrollHeight="600px"
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+      >
+        <Column field="id" header="ID" sortable />
+        <Column 
+          field="numeroDocumento" 
+          header="N° Documento" 
+          body={numeroDocumentoTemplate}
+          sortable 
+        />
+        <Column 
+          field="razonSocial" 
+          header="Razón Social" 
+          body={razonSocialTemplate}
+          sortable 
+        />
+        <Column 
+          header="Tipo" 
+          body={tipoTemplate}
+          sortable 
+        />
+        <Column 
+          field="estado" 
+          header="Estado" 
+          body={estadoTemplate} 
+          sortable 
+        />
+        <Column 
+          field="estadoActivoSUNAT" 
+          header="Estado Activo SUNAT" 
+          body={estadoActivoSUNATTemplate} 
+          sortable 
+        />
+        <Column 
+          field="condicionHabidoSUNAT" 
+          header="Condición Habido SUNAT" 
+          body={condicionHabidoSUNATTemplate} 
+          sortable 
+        />
+        <Column 
+          field="esAgenteRetencion" 
+          header="Es Agente de Retención" 
+          body={esAgenteRetencionTemplate} 
+          sortable 
+        />
+        <Column
+          body={accionesTemplate}
+          header="Acciones"
+          style={{ width: "8rem" }}
+        />
       </DataTable>
-      <Dialog header={editing ? "Editar Entidad Comercial" : "Nueva Entidad Comercial"} visible={showDialog} style={{ width: 1000 }} onHide={() => setShowDialog(false)} modal>
+
+      <Dialog
+        header={
+          entidadSeleccionada
+            ? `Editar Entidad Comercial - ID: ${entidadSeleccionada.id}`
+            : "Nueva Entidad Comercial"
+        }
+        visible={dialogVisible}
+        onHide={cerrarDialogo}
+        style={{ width: "90vw", maxWidth: "1300px" }}
+        modal
+      >
         <EntidadComercialForm
-          isEdit={!!editing}
-          defaultValues={editing || {}}
-          empresas={empresas}
-          tiposDocumento={tiposDocumento}
-          tiposEntidad={tiposEntidad}
-          formasPago={formasPago}
-          agrupaciones={agrupaciones}
-          onSubmit={handleFormSubmit}
-          onCancel={() => setShowDialog(false)}
-          loading={loading}
+          entidadComercial={entidadSeleccionada}
+          onGuardar={onGuardarExitoso}
+          onCancelar={cerrarDialogo}
         />
       </Dialog>
+
+      <ConfirmDialog
+        visible={confirmVisible}
+        onHide={() => setConfirmVisible(false)}
+        message={`¿Está seguro de eliminar la entidad comercial "${entidadAEliminar?.razonSocial}"?`}
+        header="Confirmar Eliminación"
+        icon="pi pi-exclamation-triangle"
+        accept={eliminar}
+        reject={() => setConfirmVisible(false)}
+        acceptLabel="Sí, Eliminar"
+        rejectLabel="Cancelar"
+        acceptClassName="p-button-danger"
+      />
     </div>
   );
-}
+};
+
+export default EntidadComercial;

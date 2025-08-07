@@ -1,135 +1,303 @@
-// src/pages/TipoEmbarcacion.jsx
-// Pantalla CRUD profesional para TipoEmbarcacion. Cumple la regla transversal ERP Megui.
-import React, { useRef, useState, useEffect } from "react";
+/**
+ * Pantalla CRUD para gestión de Tipos de Embarcación
+ *
+ * Características implementadas:
+ * - Edición profesional por clic en fila (abre modal de edición)
+ * - Botón eliminar visible solo para superusuario/admin (usuario?.esSuperUsuario || usuario?.esAdmin)
+ * - Confirmación de borrado con ConfirmDialog visual rojo y mensajes claros
+ * - Feedback visual con Toast para éxito/error
+ * - Búsqueda global por código, nombre, descripción
+ * - Cumple regla transversal ERP Megui completa
+ *
+ * @author ERP Megui
+ * @version 1.0.0
+ */
+
+import React, { useState, useEffect, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
-import { Dialog } from "primereact/dialog";
-import TipoEmbarcacionForm from "../components/tipoEmbarcacion/TipoEmbarcacionForm";
-import { getTiposEmbarcacion, crearTipoEmbarcacion, actualizarTipoEmbarcacion, eliminarTipoEmbarcacion } from "../api/tipoEmbarcacion";
+import { Tag } from "primereact/tag";
+import { InputText } from "primereact/inputtext";
+import { getTiposEmbarcacion, eliminarTipoEmbarcacion, crearTipoEmbarcacion, actualizarTipoEmbarcacion } from "../api/tipoEmbarcacion";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import TipoEmbarcacionForm from "../components/tipoEmbarcacion/TipoEmbarcacionForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
-/**
- * Pantalla profesional para gestión de Tipos de Embarcación.
- * Cumple la regla transversal ERP Megui:
- * - Edición profesional por clic en fila (abre modal).
- * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin), usando useAuthStore.
- * - Confirmación de borrado con ConfirmDialog visual rojo.
- * - Feedback visual con Toast.
- * - Documentación de la regla en el encabezado.
- */
-export default function TipoEmbarcacion() {
+const TipoEmbarcacion = () => {
+  const [tiposEmbarcacion, setTiposEmbarcacion] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [tipoSeleccionado, setTipoSeleccionado] = useState(null);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [tipoAEliminar, setTipoAEliminar] = useState(null);
   const toast = useRef(null);
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showDialog, setShowDialog] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore(state => state.usuario);
+  const { usuario } = useAuthStore();
+  const [globalFilter, setGlobalFilter] = useState("");
 
   useEffect(() => {
-    cargarItems();
+    cargarTiposEmbarcacion();
   }, []);
 
-  const cargarItems = async () => {
-    setLoading(true);
+  const cargarTiposEmbarcacion = async () => {
     try {
+      setLoading(true);
       const data = await getTiposEmbarcacion();
-      setItems(data);
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar la lista." });
+      setTiposEmbarcacion(data);
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar tipos de embarcación",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleEdit = (rowData) => {
-    setEditing(rowData);
-    setShowDialog(true);
+  const abrirDialogoNuevo = () => {
+    setTipoSeleccionado(null);
+    setDialogVisible(true);
   };
 
-  const handleDelete = (rowData) => {
-    setToDelete(rowData);
-    setShowConfirm(true);
+  const abrirDialogoEdicion = (tipo) => {
+    setTipoSeleccionado(tipo);
+    setDialogVisible(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    setShowConfirm(false);
-    if (!toDelete) return;
-    setLoading(true);
-    try {
-      await eliminarTipoEmbarcacion(toDelete.id);
-      toast.current.show({ severity: "success", summary: "Eliminado", detail: "Registro eliminado correctamente." });
-      cargarItems();
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo eliminar." });
-    }
-    setLoading(false);
-    setToDelete(null);
+  const cerrarDialogo = () => {
+    setDialogVisible(false);
+    setTipoSeleccionado(null);
   };
 
-  const handleFormSubmit = async (data) => {
-    setLoading(true);
-    try {
-      if (editing && editing.id) {
-        await actualizarTipoEmbarcacion(editing.id, data);
-        toast.current.show({ severity: "success", summary: "Actualizado", detail: "Registro actualizado." });
-      } else {
-        await crearTipoEmbarcacion(data);
-        toast.current.show({ severity: "success", summary: "Creado", detail: "Registro creado." });
+  const onGuardarExitoso = async (data) => {
+    if (tipoSeleccionado) {
+      try {
+        await actualizarTipoEmbarcacion(tipoSeleccionado.id, data);
+        toast.current.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Tipo de embarcación actualizado correctamente",
+          life: 3000,
+        });
+      } catch (error) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al actualizar tipo de embarcación",
+          life: 3000,
+        });
       }
-      setShowDialog(false);
-      setEditing(null);
-      cargarItems();
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo guardar." });
+    } else {
+      try {
+        await crearTipoEmbarcacion(data);
+        toast.current.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Tipo de embarcación creado correctamente",
+          life: 3000,
+        });
+      } catch (error) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al crear tipo de embarcación",
+          life: 3000,
+        });
+      }
     }
-    setLoading(false);
+    cargarTiposEmbarcacion();
+    cerrarDialogo();
   };
 
-  const handleAdd = () => {
-    setEditing(null);
-    setShowDialog(true);
+  const confirmarEliminacion = (tipo) => {
+    setTipoAEliminar(tipo);
+    setConfirmVisible(true);
   };
 
-  const actionBody = (rowData) => (
-    <>
-      <Button icon="pi pi-pencil" className="p-button-text p-button-sm" onClick={() => handleEdit(rowData)} aria-label="Editar" />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger p-button-sm" onClick={() => handleDelete(rowData)} aria-label="Eliminar" />
-      )}
-    </>
-  );
+  const eliminar = async () => {
+    try {
+      await eliminarTipoEmbarcacion(tipoAEliminar.id);
+      setTiposEmbarcacion(
+        tiposEmbarcacion.filter((t) => Number(t.id) !== Number(tipoAEliminar.id))
+      );
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Tipo de embarcación eliminado correctamente",
+        life: 3000,
+      });
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al eliminar tipo de embarcación",
+        life: 3000,
+      });
+    } finally {
+      setConfirmVisible(false);
+      setTipoAEliminar(null);
+    }
+  };
+
+  const codigoTemplate = (rowData) => {
+    return (
+      <span style={{ fontWeight: "bold", color: "#2563eb" }}>
+        {rowData.codigo}
+      </span>
+    );
+  };
+
+  const nombreTemplate = (rowData) => {
+    return (
+      <span style={{ fontWeight: "500" }}>
+        {rowData.nombre}
+      </span>
+    );
+  };
+
+  const cesadoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.cesado ? "CESADO" : "ACTIVO"}
+        severity={rowData.cesado ? "danger" : "success"}
+        style={{ fontSize: "10px", padding: "2px 8px" }}
+      />
+    );
+  };
+
+  const accionesTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-mr-2"
+          onClick={(ev) => {
+            ev.stopPropagation();
+            abrirDialogoEdicion(rowData);
+          }}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+        />
+        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-text p-button-danger"
+            onClick={() => confirmarEliminacion(rowData)}
+            tooltip="Eliminar"
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="p-fluid">
+    <div className="p-4">
       <Toast ref={toast} />
-      <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar este registro?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
-      <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
-        <h2>Gestión de Tipos de Embarcación</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
-      </div>
-      <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="codigo" header="Código" />
-        <Column field="nombre" header="Nombre" />
-        <Column field="descripcion" header="Descripción" />
-        <Column field="cesado" header="Cesado" body={rowData => rowData.cesado ? "Sí" : "No"} />
-        <Column field="createdAt" header="Creado" body={rowData => new Date(rowData.createdAt).toLocaleDateString()} />
-        <Column field="updatedAt" header="Actualizado" body={rowData => new Date(rowData.updatedAt).toLocaleDateString()} />
-        <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
+      <DataTable
+        value={tiposEmbarcacion}
+        loading={loading}
+        paginator
+        rows={10}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        selectionMode="single"
+        className="p-datatable-hover cursor-pointer"
+        emptyMessage="No se encontraron tipos de embarcación"
+        globalFilter={globalFilter}
+        globalFilterFields={['codigo', 'nombre', 'descripcion']}
+        header={
+          <div className="flex align-items-center gap-2">
+            <h2>Gestión de Tipos de Embarcación</h2>
+            <Button
+              label="Nuevo"
+              icon="pi pi-plus"
+              size="small"
+              raised
+              tooltip="Nuevo Tipo de Embarcación"
+              outlined
+              className="p-button-success"
+              onClick={abrirDialogoNuevo}
+            />
+            <span className="p-input-icon-left">
+              <InputText
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Buscar tipos de embarcación..."
+                style={{ width: "300px" }}
+              />
+            </span>
+          </div>
+        }
+        scrollable
+        scrollHeight="600px"
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+      >
+        <Column 
+          field="codigo" 
+          header="Código" 
+          body={codigoTemplate}
+          sortable 
+        />
+        <Column 
+          field="nombre" 
+          header="Nombre" 
+          body={nombreTemplate}
+          sortable 
+        />
+        <Column 
+          field="descripcion" 
+          header="Descripción" 
+          sortable 
+        />
+        <Column 
+          header="Estado" 
+          body={cesadoTemplate}
+          sortable 
+        />
+        <Column
+          body={accionesTemplate}
+          header="Acciones"
+          style={{ width: "8rem" }}
+        />
       </DataTable>
-      <Dialog header={editing ? "Editar Tipo de Embarcación" : "Nuevo Tipo de Embarcación"} visible={showDialog} style={{ width: 500 }} onHide={() => setShowDialog(false)} modal>
+
+      <Dialog
+        header={
+          tipoSeleccionado
+            ? "Editar Tipo de Embarcación"
+            : "Nuevo Tipo de Embarcación"
+        }
+        visible={dialogVisible}
+        onHide={cerrarDialogo}
+        style={{ width: "600px" }}
+        modal
+      >
         <TipoEmbarcacionForm
-          isEdit={!!editing}
-          defaultValues={editing || {}}
-          onSubmit={handleFormSubmit}
-          onCancel={() => setShowDialog(false)}
-          loading={loading}
+          tipoEmbarcacion={tipoSeleccionado}
+          onGuardar={onGuardarExitoso}
+          onCancelar={cerrarDialogo}
         />
       </Dialog>
+
+      <ConfirmDialog
+        visible={confirmVisible}
+        onHide={() => setConfirmVisible(false)}
+        message={`¿Está seguro de eliminar el tipo de embarcación "${tipoAEliminar?.nombre}"?`}
+        header="Confirmar Eliminación"
+        icon="pi pi-exclamation-triangle"
+        accept={eliminar}
+        reject={() => setConfirmVisible(false)}
+        acceptLabel="Sí, Eliminar"
+        rejectLabel="Cancelar"
+        acceptClassName="p-button-danger"
+      />
     </div>
   );
-}
+};
+
+export default TipoEmbarcacion;

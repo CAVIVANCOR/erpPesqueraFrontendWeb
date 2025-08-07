@@ -1,142 +1,286 @@
-// src/pages/EstadoMultiFuncion.jsx
-// Gestión profesional de EstadoMultiFuncion. CRUD completo con patrón ERP Megui.
-import React, { useEffect, useState, useRef } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Dialog } from 'primereact/dialog';
-import { Toast } from 'primereact/toast';
-import { ConfirmDialog } from 'primereact/confirmdialog';
-import { useAuthStore } from '../shared/stores/useAuthStore';
-import EstadoMultiFuncionForm from '../components/estadoMultiFuncion/EstadoMultiFuncionForm';
-import { getEstadosMultiFuncion, crearEstadoMultiFuncion, actualizarEstadoMultiFuncion, eliminarEstadoMultiFuncion } from '../api/estadoMultiFuncion';
-
 /**
- * REGLA TRANSVERSAL ERP MEGUI:
- * - Edición profesional con un solo clic en la fila.
- * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin).
- * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
- * - El usuario autenticado se obtiene siempre desde useAuthStore.
+ * Pantalla CRUD para gestión de Estados Multifunción
+ *
+ * Características implementadas:
+ * - Edición profesional por clic en fila (abre modal de edición)
+ * - Botón eliminar visible solo para superusuario/admin (usuario?.esSuperUsuario || usuario?.esAdmin)
+ * - Confirmación de borrado con ConfirmDialog visual rojo y mensajes claros
+ * - Feedback visual con Toast para éxito/error
+ * - Búsqueda global por descripción, tipo proviene de
+ * - Cumple regla transversal ERP Megui completa
+ *
+ * @author ERP Megui
+ * @version 1.0.0
  */
-export default function EstadoMultiFuncionPage() {
-  const usuario = useAuthStore(state => state.usuario);
-  const [estados, setEstados] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [selected, setSelected] = useState(null);
-  const [isEdit, setIsEdit] = useState(false);
-  const [loading, setLoading] = useState(false);
+
+import React, { useState, useEffect, useRef } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
+import { Tag } from "primereact/tag";
+import { InputText } from "primereact/inputtext";
+import { getEstadosMultiFuncion, eliminarEstadoMultiFuncion } from "../api/estadoMultiFuncion";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import EstadoMultiFuncionForm from "../components/estadoMultiFuncion/EstadoMultiFuncionForm";
+import { getResponsiveFontSize } from "../utils/utils";
+
+const EstadoMultiFuncion = () => {
+  const [estadosMultiFuncion, setEstadosMultiFuncion] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [estadoAEliminar, setEstadoAEliminar] = useState(null);
   const toast = useRef(null);
-  const [confirmState, setConfirmState] = useState({ visible: false, row: null });
+  const { usuario } = useAuthStore();
+  const [globalFilter, setGlobalFilter] = useState("");
 
-  useEffect(() => { cargarEstados(); }, []);
-  const cargarEstados = async () => {
-    setLoading(true);
+  useEffect(() => {
+    cargarEstadosMultiFuncion();
+  }, []);
+
+  const cargarEstadosMultiFuncion = async () => {
     try {
+      setLoading(true);
       const data = await getEstadosMultiFuncion();
-      setEstados(data);
-    } catch (err) {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar los estados' });
+      setEstadosMultiFuncion(data);
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar estados multifunción",
+        life: 3000,
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEdit = (row) => {
-    setSelected(row);
-    setIsEdit(true);
-    setShowForm(true);
+  const abrirDialogoNuevo = () => {
+    setEstadoSeleccionado(null);
+    setDialogVisible(true);
   };
-  const onRowClick = (e) => { handleEdit(e.data); };
 
-  const handleDelete = (row) => { setConfirmState({ visible: true, row }); };
-  const handleConfirmDelete = async () => {
-    const row = confirmState.row;
-    if (!row) return;
-    setConfirmState({ visible: false, row: null });
-    setLoading(true);
+  const abrirDialogoEdicion = (estado) => {
+    setEstadoSeleccionado(estado);
+    setDialogVisible(true);
+  };
+
+  const cerrarDialogo = () => {
+    setDialogVisible(false);
+    setEstadoSeleccionado(null);
+  };
+
+  const onGuardarExitoso = () => {
+    toast.current.show({
+      severity: "success",
+      summary: "Éxito",
+      detail: "Estado multifunción guardado correctamente",
+      life: 3000,
+    });
+    cargarEstadosMultiFuncion();
+    cerrarDialogo();
+  };
+
+  const confirmarEliminacion = (estado) => {
+    setEstadoAEliminar(estado);
+    setConfirmVisible(true);
+  };
+
+  const eliminar = async () => {
     try {
-      await eliminarEstadoMultiFuncion(row.id);
-      toast.current?.show({ severity: 'success', summary: 'Eliminado', detail: 'Estado eliminado correctamente' });
-      cargarEstados();
-    } catch (err) {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar' });
+      await eliminarEstadoMultiFuncion(estadoAEliminar.id);
+      setEstadosMultiFuncion(
+        estadosMultiFuncion.filter((e) => Number(e.id) !== Number(estadoAEliminar.id))
+      );
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Estado multifunción eliminado correctamente",
+        life: 3000,
+      });
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al eliminar estado multifunción",
+        life: 3000,
+      });
     } finally {
-      setLoading(false);
+      setConfirmVisible(false);
+      setEstadoAEliminar(null);
     }
   };
 
-  const actionBodyTemplate = (row) => (
-    <span>
-      <Button icon="pi pi-pencil" className="p-button-text p-mr-2" onClick={e => { e.stopPropagation(); handleEdit(row); }} tooltip="Editar" />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger" onClick={e => { e.stopPropagation(); handleDelete(row); }} tooltip="Eliminar" />
-      )}
-    </span>
-  );
+  const idTemplate = (rowData) => {
+    return (
+      <span style={{ fontWeight: "bold", color: "#1976d2" }}>
+        {rowData.id}
+      </span>
+    );
+  };
 
-  const onNew = () => { setSelected(null); setIsEdit(false); setShowForm(true); };
-  const onCancel = () => setShowForm(false);
-  const onSubmit = async (data) => {
-    setLoading(true);
-    try {
-      const payload = {
-        nombre: data.nombre,
-        descripcion: data.descripcion
-      };
-      if (isEdit && selected) {
-        await actualizarEstadoMultiFuncion(selected.id, payload);
-        toast.current?.show({ severity: 'success', summary: 'Actualizado', detail: 'Estado actualizado' });
-      } else {
-        await crearEstadoMultiFuncion(payload);
-        toast.current?.show({ severity: 'success', summary: 'Registrado', detail: 'Estado creado' });
-      }
-      setShowForm(false);
-      cargarEstados();
-    } catch (err) {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo guardar' });
-    } finally {
-      setLoading(false);
-    }
+  const descripcionTemplate = (rowData) => {
+    return (
+      <span style={{ fontWeight: "500" }}>
+        {rowData.descripcion || <em style={{ color: "#999" }}>Sin descripción</em>}
+      </span>
+    );
+  };
+
+  const tipoProvieneDeTemplate = (rowData) => {
+    return (
+      <span>
+        {rowData.tipoProvieneDe?.nombre || rowData.tipoProvieneDe?.descripcion || 
+         <em style={{ color: "#999" }}>No especificado</em>}
+      </span>
+    );
+  };
+
+  const cesadoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.cesado ? "CESADO" : "ACTIVO"}
+        severity={rowData.cesado ? "danger" : "success"}
+        style={{ fontSize: "10px", padding: "2px 8px" }}
+      />
+    );
+  };
+
+  const accionesTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-mr-2"
+          onClick={(ev) => {
+            ev.stopPropagation();
+            abrirDialogoEdicion(rowData);
+          }}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+        />
+        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-text p-button-danger"
+            onClick={() => confirmarEliminacion(rowData)}
+            tooltip="Eliminar"
+          />
+        )}
+      </div>
+    );
   };
 
   return (
-    <div className="p-m-4">
+    <div className="p-4">
       <Toast ref={toast} />
-      <div className="p-d-flex p-jc-between p-ai-center p-mb-3">
-        <h2>Estados Multifunción</h2>
-        <Button label="Nuevo Estado" icon="pi pi-plus" onClick={onNew} />
-      </div>
-      <ConfirmDialog
-        visible={confirmState.visible}
-        onHide={() => setConfirmState({ visible: false, row: null })}
-        message={<span style={{ color: '#b71c1c', fontWeight: 600 }}>
-          ¿Está seguro que desea <span style={{ color: '#b71c1c' }}>eliminar</span> el estado <b>{confirmState.row ? confirmState.row.nombre : ''}</b>?<br/>
-          <span style={{ fontWeight: 400, color: '#b71c1c' }}>Esta acción no se puede deshacer.</span>
-        </span>}
-        header={<span style={{ color: '#b71c1c' }}>Confirmar eliminación</span>}
-        icon="pi pi-exclamation-triangle"
-        acceptClassName="p-button-danger"
-        acceptLabel="Eliminar"
-        rejectLabel="Cancelar"
-        accept={handleConfirmDelete}
-        reject={() => setConfirmState({ visible: false, row: null })}
-        style={{ minWidth: 400 }}
-      />
-      <DataTable value={estados} loading={loading} paginator rows={10} selectionMode="single" selection={selected} onSelectionChange={e => setSelected(e.value)} onRowClick={onRowClick}>
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="nombre" header="Nombre" />
-        <Column field="descripcion" header="Descripción" />
-        <Column header="Acciones" body={actionBodyTemplate} style={{ minWidth: 120 }} />
+      <DataTable
+        value={estadosMultiFuncion}
+        loading={loading}
+        paginator
+        rows={10}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        selectionMode="single"
+        className="p-datatable-hover cursor-pointer"
+        emptyMessage="No se encontraron estados multifunción"
+        globalFilter={globalFilter}
+        globalFilterFields={['descripcion', 'tipoProvieneDe.nombre', 'tipoProvieneDe.descripcion']}
+        header={
+          <div className="flex align-items-center gap-2">
+            <h2>Gestión de Estados Multifunción</h2>
+            <Button
+              label="Nuevo"
+              icon="pi pi-plus"
+              size="small"
+              raised
+              tooltip="Nuevo Estado Multifunción"
+              outlined
+              className="p-button-success"
+              onClick={abrirDialogoNuevo}
+            />
+            <span className="p-input-icon-left">
+              <InputText
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Buscar estados multifunción..."
+                style={{ width: "300px" }}
+              />
+            </span>
+          </div>
+        }
+        scrollable
+        scrollHeight="600px"
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+      >
+        <Column 
+          field="id" 
+          header="ID" 
+          body={idTemplate}
+          sortable 
+          style={{ width: "80px" }}
+        />
+        <Column 
+          field="descripcion" 
+          header="Descripción" 
+          body={descripcionTemplate}
+          sortable 
+        />
+        <Column 
+          field="tipoProvieneDe" 
+          header="Tipo Proviene De" 
+          body={tipoProvieneDeTemplate}
+          sortable 
+        />
+        <Column 
+          header="Estado" 
+          body={cesadoTemplate}
+          sortable 
+          style={{ width: "120px" }}
+        />
+        <Column
+          body={accionesTemplate}
+          header="Acciones"
+          style={{ width: "8rem" }}
+        />
       </DataTable>
-      <Dialog header={isEdit ? 'Editar Estado' : 'Nuevo Estado'} visible={showForm} style={{ width: 400 }} modal onHide={onCancel}>
+
+      <Dialog
+        header={
+          estadoSeleccionado
+            ? "Editar Estado Multifunción"
+            : "Nuevo Estado Multifunción"
+        }
+        visible={dialogVisible}
+        onHide={cerrarDialogo}
+        style={{ width: "600px" }}
+        modal
+      >
         <EstadoMultiFuncionForm
-          isEdit={isEdit}
-          defaultValues={selected || {}}
-          onSubmit={onSubmit}
-          onCancel={onCancel}
-          loading={loading}
+          estadoMultiFuncion={estadoSeleccionado}
+          onGuardar={onGuardarExitoso}
+          onCancelar={cerrarDialogo}
         />
       </Dialog>
+
+      <ConfirmDialog
+        visible={confirmVisible}
+        onHide={() => setConfirmVisible(false)}
+        message={`¿Está seguro de eliminar el estado multifunción "${estadoAEliminar?.descripcion || `ID: ${estadoAEliminar?.id}`}"?`}
+        header="Confirmar Eliminación"
+        icon="pi pi-exclamation-triangle"
+        accept={eliminar}
+        reject={() => setConfirmVisible(false)}
+        acceptLabel="Sí, Eliminar"
+        rejectLabel="Cancelar"
+        acceptClassName="p-button-danger"
+      />
     </div>
   );
-}
+};
+
+export default EstadoMultiFuncion;

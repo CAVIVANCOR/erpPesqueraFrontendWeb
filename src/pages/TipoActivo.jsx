@@ -1,146 +1,276 @@
-// src/pages/TipoActivo.jsx
-// Gestión profesional de Tipos de Activo. CRUD completo con patrón ERP Megui.
-import React, { useEffect, useState, useRef } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Dialog } from 'primereact/dialog';
-import { Toast } from 'primereact/toast';
-import { ConfirmDialog } from 'primereact/confirmdialog';
-import { useAuthStore } from '../shared/stores/useAuthStore';
-import TipoActivoForm from '../components/tipoActivo/TipoActivoForm';
-import { getTiposActivo, crearTipoActivo, actualizarTipoActivo, eliminarTipoActivo } from '../api/tipoActivo';
-
 /**
- * REGLA TRANSVERSAL ERP MEGUI:
- * - Edición profesional con un solo clic en la fila.
- * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin).
- * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
- * - El usuario autenticado se obtiene siempre desde useAuthStore.
+ * Pantalla CRUD para gestión de Tipos de Activo
+ *
+ * Características implementadas:
+ * - Edición profesional por clic en fila (abre modal de edición)
+ * - Botón eliminar visible solo para superusuario/admin (usuario?.esSuperUsuario || usuario?.esAdmin)
+ * - Confirmación de borrado con ConfirmDialog visual rojo y mensajes claros
+ * - Feedback visual con Toast para éxito/error
+ * - Búsqueda global por código, nombre, descripción
+ * - Cumple regla transversal ERP Megui completa
+ *
+ * @author ERP Megui
+ * @version 1.0.0
  */
-export default function TipoActivoPage() {
-  const usuario = useAuthStore(state => state.usuario);
-  const [tipos, setTipos] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [selected, setSelected] = useState(null);
-  const [isEdit, setIsEdit] = useState(false);
-  const [loading, setLoading] = useState(false);
+
+import React, { useState, useEffect, useRef } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
+import { Tag } from "primereact/tag";
+import { InputText } from "primereact/inputtext";
+import { getTiposActivo, eliminarTipoActivo } from "../api/tipoActivo";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import TipoActivoForm from "../components/tipoActivo/TipoActivoForm";
+import { getResponsiveFontSize } from "../utils/utils";
+
+const TipoActivo = () => {
+  const [tiposActivo, setTiposActivo] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [tipoActivoSeleccionado, setTipoActivoSeleccionado] = useState(null);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [tipoActivoAEliminar, setTipoActivoAEliminar] = useState(null);
   const toast = useRef(null);
-  const [confirmState, setConfirmState] = useState({ visible: false, row: null });
+  const { usuario } = useAuthStore();
+  const [globalFilter, setGlobalFilter] = useState("");
 
-  useEffect(() => { cargarTipos(); }, []);
-  const cargarTipos = async () => {
-    setLoading(true);
+  useEffect(() => {
+    cargarTiposActivo();
+  }, []);
+
+  const cargarTiposActivo = async () => {
     try {
+      setLoading(true);
       const data = await getTiposActivo();
-      setTipos(data);
-    } catch (err) {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo cargar los tipos de activo' });
+      setTiposActivo(data);
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar tipos de activo",
+        life: 3000,
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEdit = (row) => {
-    setSelected(row);
-    setIsEdit(true);
-    setShowForm(true);
+  const abrirDialogoNuevo = () => {
+    setTipoActivoSeleccionado(null);
+    setDialogVisible(true);
   };
-  const onRowClick = (e) => { handleEdit(e.data); };
 
-  const handleDelete = (row) => { setConfirmState({ visible: true, row }); };
-  const handleConfirmDelete = async () => {
-    const row = confirmState.row;
-    if (!row) return;
-    setConfirmState({ visible: false, row: null });
-    setLoading(true);
+  const abrirDialogoEdicion = (tipoActivo) => {
+    setTipoActivoSeleccionado(tipoActivo);
+    setDialogVisible(true);
+  };
+
+  const cerrarDialogo = () => {
+    setDialogVisible(false);
+    setTipoActivoSeleccionado(null);
+  };
+
+  const onGuardarExitoso = () => {
+    cargarTiposActivo();
+    cerrarDialogo();
+    toast.current.show({
+      severity: "success",
+      summary: "Éxito",
+      detail: tipoActivoSeleccionado
+        ? "Tipo de activo actualizado correctamente"
+        : "Tipo de activo creado correctamente",
+      life: 3000,
+    });
+  };
+
+  const confirmarEliminacion = (tipoActivo) => {
+    setTipoActivoAEliminar(tipoActivo);
+    setConfirmVisible(true);
+  };
+
+  const eliminar = async () => {
     try {
-      await eliminarTipoActivo(row.id);
-      toast.current?.show({ severity: 'success', summary: 'Eliminado', detail: 'Tipo de activo eliminado correctamente' });
-      cargarTipos();
-    } catch (err) {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo eliminar' });
+      await eliminarTipoActivo(tipoActivoAEliminar.id);
+      setTiposActivo(
+        tiposActivo.filter((t) => Number(t.id) !== Number(tipoActivoAEliminar.id))
+      );
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Tipo de activo eliminado correctamente",
+        life: 3000,
+      });
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al eliminar tipo de activo",
+        life: 3000,
+      });
     } finally {
-      setLoading(false);
+      setConfirmVisible(false);
+      setTipoActivoAEliminar(null);
     }
   };
 
-  const actionBodyTemplate = (row) => (
-    <span>
-      <Button icon="pi pi-pencil" className="p-button-text p-mr-2" onClick={e => { e.stopPropagation(); handleEdit(row); }} tooltip="Editar" />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger" onClick={e => { e.stopPropagation(); handleDelete(row); }} tooltip="Eliminar" />
-      )}
-    </span>
-  );
+  const codigoTemplate = (rowData) => {
+    return (
+      <span style={{ fontWeight: "bold", color: "#2563eb" }}>
+        {rowData.codigo}
+      </span>
+    );
+  };
 
-  const onNew = () => { setSelected(null); setIsEdit(false); setShowForm(true); };
-  const onCancel = () => setShowForm(false);
-  const onSubmit = async (data) => {
-    setLoading(true);
-    try {
-      const payload = {
-        codigo: data.codigo,
-        nombre: data.nombre,
-        descripcion: data.descripcion,
-        cesado: !!data.cesado
-      };
-      if (isEdit && selected) {
-        await actualizarTipoActivo(selected.id, payload);
-        toast.current?.show({ severity: 'success', summary: 'Actualizado', detail: 'Tipo de activo actualizado' });
-      } else {
-        await crearTipoActivo(payload);
-        toast.current?.show({ severity: 'success', summary: 'Registrado', detail: 'Tipo de activo creado' });
-      }
-      setShowForm(false);
-      cargarTipos();
-    } catch (err) {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No se pudo guardar' });
-    } finally {
-      setLoading(false);
-    }
+  const nombreTemplate = (rowData) => {
+    return (
+      <span style={{ fontWeight: "500" }}>
+        {rowData.nombre}
+      </span>
+    );
+  };
+
+  const cesadoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.cesado ? "CESADO" : "ACTIVO"}
+        severity={rowData.cesado ? "danger" : "success"}
+        style={{ fontSize: "10px", padding: "2px 8px" }}
+      />
+    );
+  };
+
+  const accionesTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-mr-2"
+          onClick={(ev) => {
+            ev.stopPropagation();
+            abrirDialogoEdicion(rowData);
+          }}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+        />
+        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-text p-button-danger"
+            onClick={() => confirmarEliminacion(rowData)}
+            tooltip="Eliminar"
+          />
+        )}
+      </div>
+    );
   };
 
   return (
-    <div className="p-m-4">
+    <div className="p-4">
       <Toast ref={toast} />
-      <div className="p-d-flex p-jc-between p-ai-center p-mb-3">
-        <h2>Tipos de Activo</h2>
-        <Button label="Nuevo Tipo" icon="pi pi-plus" onClick={onNew} />
-      </div>
-      <ConfirmDialog
-        visible={confirmState.visible}
-        onHide={() => setConfirmState({ visible: false, row: null })}
-        message={<span style={{ color: '#b71c1c', fontWeight: 600 }}>
-          ¿Está seguro que desea <span style={{ color: '#b71c1c' }}>eliminar</span> el tipo de activo <b>{confirmState.row ? confirmState.row.nombre : ''}</b>?<br/>
-          <span style={{ fontWeight: 400, color: '#b71c1c' }}>Esta acción no se puede deshacer.</span>
-        </span>}
-        header={<span style={{ color: '#b71c1c' }}>Confirmar eliminación</span>}
-        icon="pi pi-exclamation-triangle"
-        acceptClassName="p-button-danger"
-        acceptLabel="Eliminar"
-        rejectLabel="Cancelar"
-        accept={handleConfirmDelete}
-        reject={() => setConfirmState({ visible: false, row: null })}
-        style={{ minWidth: 400 }}
-      />
-      <DataTable value={tipos} loading={loading} paginator rows={10} selectionMode="single" selection={selected} onSelectionChange={e => setSelected(e.value)} onRowClick={onRowClick}>
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="codigo" header="Código" />
-        <Column field="nombre" header="Nombre" />
-        <Column field="descripcion" header="Descripción" />
-        <Column field="cesado" header="¿Cesado?" body={row => row.cesado ? 'Sí' : 'No'} />
-        <Column header="Acciones" body={actionBodyTemplate} style={{ minWidth: 120 }} />
+      <DataTable
+        value={tiposActivo}
+        loading={loading}
+        paginator
+        rows={10}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        selectionMode="single"
+        className="p-datatable-hover cursor-pointer"
+        emptyMessage="No se encontraron tipos de activo"
+        globalFilter={globalFilter}
+        globalFilterFields={['codigo', 'nombre', 'descripcion']}
+        header={
+          <div className="flex align-items-center gap-2">
+            <h2>Gestión de Tipos de Activo</h2>
+            <Button
+              label="Nuevo"
+              icon="pi pi-plus"
+              size="small"
+              raised
+              tooltip="Nuevo Tipo de Activo"
+              outlined
+              className="p-button-success"
+              onClick={abrirDialogoNuevo}
+            />
+            <span className="p-input-icon-left">
+              <InputText
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Buscar tipos de activo..."
+                style={{ width: "300px" }}
+              />
+            </span>
+          </div>
+        }
+        scrollable
+        scrollHeight="600px"
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+      >
+        <Column 
+          field="codigo" 
+          header="Código" 
+          body={codigoTemplate}
+          sortable 
+        />
+        <Column 
+          field="nombre" 
+          header="Nombre" 
+          body={nombreTemplate}
+          sortable 
+        />
+        <Column 
+          field="descripcion" 
+          header="Descripción" 
+          sortable 
+        />
+        <Column 
+          header="Estado" 
+          body={cesadoTemplate}
+          sortable 
+        />
+        <Column
+          body={accionesTemplate}
+          header="Acciones"
+          style={{ width: "8rem" }}
+        />
       </DataTable>
-      <Dialog header={isEdit ? 'Editar Tipo de Activo' : 'Nuevo Tipo de Activo'} visible={showForm} style={{ width: 400 }} modal onHide={onCancel}>
+
+      <Dialog
+        header={
+          tipoActivoSeleccionado
+            ? "Editar Tipo de Activo"
+            : "Nuevo Tipo de Activo"
+        }
+        visible={dialogVisible}
+        onHide={cerrarDialogo}
+        style={{ width: "600px" }}
+        modal
+      >
         <TipoActivoForm
-          isEdit={isEdit}
-          defaultValues={selected || {}}
-          onSubmit={onSubmit}
-          onCancel={onCancel}
-          loading={loading}
+          tipoActivo={tipoActivoSeleccionado}
+          onGuardar={onGuardarExitoso}
+          onCancelar={cerrarDialogo}
         />
       </Dialog>
+
+      <ConfirmDialog
+        visible={confirmVisible}
+        onHide={() => setConfirmVisible(false)}
+        message={`¿Está seguro de eliminar el tipo de activo "${tipoActivoAEliminar?.nombre}"?`}
+        header="Confirmar Eliminación"
+        icon="pi pi-exclamation-triangle"
+        accept={eliminar}
+        reject={() => setConfirmVisible(false)}
+        acceptLabel="Sí, Eliminar"
+        rejectLabel="Cancelar"
+        acceptClassName="p-button-danger"
+      />
     </div>
   );
-}
+};
+
+export default TipoActivo;

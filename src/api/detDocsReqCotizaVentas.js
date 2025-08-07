@@ -41,7 +41,6 @@ const getAuthHeaders = () => {
 export const getDetallesDocsReqCotizaVentas = async () => {
   try {
     const response = await axios.get(API_URL, getAuthHeaders());
-    console.log('Detalles de documentos requeridos obtenidos:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al obtener detalles de documentos requeridos:', error);
@@ -57,7 +56,6 @@ export const getDetallesDocsReqCotizaVentas = async () => {
 export const getDetalleDocReqPorId = async (id) => {
   try {
     const response = await axios.get(`${API_URL}/${id}`, getAuthHeaders());
-    console.log(`Detalle de documento requerido ${id} obtenido:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al obtener detalle de documento requerido ${id}:`, error);
@@ -90,7 +88,6 @@ export const crearDetalleDocReqCotizaVentas = async (detalleDoc) => {
     };
 
     const response = await axios.post(API_URL, datosNormalizados, getAuthHeaders());
-    console.log('Detalle de documento requerido creado:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al crear detalle de documento requerido:', error);
@@ -124,7 +121,6 @@ export const actualizarDetalleDocReqCotizaVentas = async (id, detalleDoc) => {
     };
 
     const response = await axios.put(`${API_URL}/${id}`, datosNormalizados, getAuthHeaders());
-    console.log(`Detalle de documento requerido ${id} actualizado:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al actualizar detalle de documento requerido ${id}:`, error);
@@ -140,7 +136,6 @@ export const actualizarDetalleDocReqCotizaVentas = async (id, detalleDoc) => {
 export const eliminarDetalleDocReqCotizaVentas = async (id) => {
   try {
     const response = await axios.delete(`${API_URL}/${id}`, getAuthHeaders());
-    console.log(`Detalle de documento requerido ${id} eliminado`);
     return response.data;
   } catch (error) {
     console.error(`Error al eliminar detalle de documento requerido ${id}:`, error);
@@ -156,7 +151,6 @@ export const eliminarDetalleDocReqCotizaVentas = async (id) => {
 export const getDocumentosPorCotizacion = async (cotizacionVentaId) => {
   try {
     const response = await axios.get(`${API_URL}/cotizacion/${cotizacionVentaId}`, getAuthHeaders());
-    console.log(`Documentos para cotización ${cotizacionVentaId}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al obtener documentos por cotización ${cotizacionVentaId}:`, error);
@@ -172,7 +166,6 @@ export const getDocumentosPorCotizacion = async (cotizacionVentaId) => {
 export const getDocumentosPorTipo = async (tipoDocumentoId) => {
   try {
     const response = await axios.get(`${API_URL}/tipo-documento/${tipoDocumentoId}`, getAuthHeaders());
-    console.log(`Documentos para tipo ${tipoDocumentoId}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al obtener documentos por tipo ${tipoDocumentoId}:`, error);
@@ -188,7 +181,6 @@ export const getDocumentosPorTipo = async (tipoDocumentoId) => {
 export const getDocumentosPorEstadoEntrega = async (entregado) => {
   try {
     const response = await axios.get(`${API_URL}/estado-entrega/${entregado}`, getAuthHeaders());
-    console.log(`Documentos con estado entregado ${entregado}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al obtener documentos por estado de entrega ${entregado}:`, error);
@@ -203,7 +195,6 @@ export const getDocumentosPorEstadoEntrega = async (entregado) => {
 export const getDocumentosObligatoriosPendientes = async () => {
   try {
     const response = await axios.get(`${API_URL}/obligatorios-pendientes`, getAuthHeaders());
-    console.log('Documentos obligatorios pendientes obtenidos:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al obtener documentos obligatorios pendientes:', error);
@@ -226,9 +217,7 @@ export const marcarDocumentoEntregado = async (id, urlArchivo = '', observacione
       urlArchivo: urlArchivo.trim(),
       observaciones: observaciones.trim()
     };
-
     const response = await axios.patch(`${API_URL}/${id}/entregar`, datosActualizacion, getAuthHeaders());
-    console.log(`Documento ${id} marcado como entregado:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al marcar documento ${id} como entregado:`, error);
@@ -251,9 +240,7 @@ export const validarDocumento = async (id, validadorId, observaciones = '') => {
       validadoPorId: Number(validadorId),
       observaciones: observaciones.trim()
     };
-
     const response = await axios.patch(`${API_URL}/${id}/validar`, datosValidacion, getAuthHeaders());
-    console.log(`Documento ${id} validado:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al validar documento ${id}:`, error);
@@ -278,8 +265,6 @@ export const subirArchivoDocumento = async (id, archivo) => {
         'Content-Type': 'multipart/form-data'
       }
     });
-
-    console.log(`Archivo subido para documento ${id}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al subir archivo para documento ${id}:`, error);
@@ -294,7 +279,6 @@ export const subirArchivoDocumento = async (id, archivo) => {
 export const getEstadisticasDocumentos = async () => {
   try {
     const response = await axios.get(`${API_URL}/estadisticas`, getAuthHeaders());
-    console.log('Estadísticas de documentos obtenidas:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al obtener estadísticas de documentos:', error);
@@ -313,8 +297,6 @@ export const getDocumentosProximosVencer = async (diasAnticipacion = 7) => {
       ...getAuthHeaders(),
       params: { diasAnticipacion }
     });
-    
-    console.log('Documentos próximos a vencer obtenidos:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al obtener documentos próximos a vencer:', error);

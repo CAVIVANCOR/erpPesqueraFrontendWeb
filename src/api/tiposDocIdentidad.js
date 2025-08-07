@@ -40,7 +40,6 @@ const getAuthHeaders = () => {
 export const getTiposDocIdentidad = async () => {
   try {
     const response = await axios.get(API_URL, getAuthHeaders());
-    console.log('Tipos de documentos de identidad obtenidos:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al obtener tipos de documentos de identidad:', error);
@@ -56,7 +55,6 @@ export const getTiposDocIdentidad = async () => {
 export const getTipoDocIdentidadPorId = async (id) => {
   try {
     const response = await axios.get(`${API_URL}/${id}`, getAuthHeaders());
-    console.log(`Tipo de documento de identidad ${id} obtenido:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al obtener tipo de documento de identidad ${id}:`, error);
@@ -80,7 +78,6 @@ export const crearTipoDocIdentidad = async (tipoDoc) => {
     };
 
     const response = await axios.post(API_URL, datosNormalizados, getAuthHeaders());
-    console.log('Tipo de documento de identidad creado:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al crear tipo de documento de identidad:', error);
@@ -105,7 +102,6 @@ export const actualizarTipoDocIdentidad = async (id, tipoDoc) => {
     };
 
     const response = await axios.put(`${API_URL}/${id}`, datosNormalizados, getAuthHeaders());
-    console.log(`Tipo de documento de identidad ${id} actualizado:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al actualizar tipo de documento de identidad ${id}:`, error);
@@ -121,7 +117,6 @@ export const actualizarTipoDocIdentidad = async (id, tipoDoc) => {
 export const eliminarTipoDocIdentidad = async (id) => {
   try {
     const response = await axios.delete(`${API_URL}/${id}`, getAuthHeaders());
-    console.log(`Tipo de documento de identidad ${id} eliminado`);
     return response.data;
   } catch (error) {
     console.error(`Error al eliminar tipo de documento de identidad ${id}:`, error);
@@ -136,7 +131,6 @@ export const eliminarTipoDocIdentidad = async (id) => {
 export const getTiposDocIdentidadActivos = async () => {
   try {
     const response = await axios.get(`${API_URL}/activos`, getAuthHeaders());
-    console.log('Tipos de documentos de identidad activos obtenidos:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al obtener tipos de documentos activos:', error);
@@ -152,7 +146,6 @@ export const getTiposDocIdentidadActivos = async () => {
 export const getTiposDocPorPais = async (paisId) => {
   try {
     const response = await axios.get(`${API_URL}/pais/${paisId}`, getAuthHeaders());
-    console.log(`Tipos de documentos para país ${paisId}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al obtener tipos de documentos por país ${paisId}:`, error);
@@ -167,7 +160,6 @@ export const getTiposDocPorPais = async (paisId) => {
 export const getTiposDocParaMenores = async () => {
   try {
     const response = await axios.get(`${API_URL}/menores`, getAuthHeaders());
-    console.log('Tipos de documentos para menores obtenidos:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al obtener tipos de documentos para menores:', error);
@@ -191,7 +183,6 @@ export const validarCodigoUnico = async (codigo, excludeId = null) => {
       params
     });
     
-    console.log('Validación de código único:', response.data);
     return response.data.esUnico;
   } catch (error) {
     console.error('Error al validar código único:', error);
@@ -215,7 +206,6 @@ export const validarNombreUnico = async (nombre, excludeId = null) => {
       params
     });
     
-    console.log('Validación de nombre único:', response.data);
     return response.data.esUnico;
   } catch (error) {
     console.error('Error al validar nombre único:', error);
@@ -237,7 +227,6 @@ export const validarNumeroDocumento = async (tipoDocId, numeroDocumento) => {
     };
 
     const response = await axios.post(`${API_URL}/validar-numero`, datosValidacion, getAuthHeaders());
-    console.log('Validación de número de documento:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al validar número de documento:', error);
@@ -252,7 +241,6 @@ export const validarNumeroDocumento = async (tipoDocId, numeroDocumento) => {
 export const getEstadisticasUso = async () => {
   try {
     const response = await axios.get(`${API_URL}/estadisticas`, getAuthHeaders());
-    console.log('Estadísticas de uso obtenidas:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al obtener estadísticas de uso:', error);
@@ -269,7 +257,6 @@ export const getEstadisticasUso = async () => {
 export const cambiarEstadoTipoDoc = async (id, activo) => {
   try {
     const response = await axios.patch(`${API_URL}/${id}/estado`, { activo: Boolean(activo) }, getAuthHeaders());
-    console.log(`Estado del tipo de documento ${id} cambiado a ${activo}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al cambiar estado del tipo de documento ${id}:`, error);
@@ -289,7 +276,6 @@ export const getTiposDocPorConfiguracion = async (filtros = {}) => {
       params: filtros
     });
     
-    console.log('Tipos de documentos por configuración obtenidos:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al obtener tipos de documentos por configuración:', error);

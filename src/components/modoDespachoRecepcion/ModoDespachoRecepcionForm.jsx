@@ -48,9 +48,6 @@ const ModoDespachoRecepcionForm = ({ modo, onSave, onCancel }) => {
         descripcion: data.descripcion?.trim() || null,
         activo: Boolean(data.activo)
       };
-
-      console.log('Payload ModoDespachoRecepcion:', payload);
-
       if (modo?.id) {
         await updateModoDespachoRecepcion(modo.id, payload);
         toast.current?.show({

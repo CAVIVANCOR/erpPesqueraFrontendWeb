@@ -84,10 +84,6 @@ export default function CargosPersonal() {
         cesado: !!data.cesado,
       };
       if (modoEdicion && cargoEdit) {
-        console.log(
-          "[DEBUG] Payload limpio enviado a actualizarCargoPersonal:",
-          payload
-        );
         await actualizarCargoPersonal(cargoEdit.id, payload);
         mostrarToast(
           "success",

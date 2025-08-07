@@ -56,9 +56,6 @@ const MotivoAccesoForm = ({ motivoAcceso, onSave, onCancel }) => {
         descripcion: data.descripcion?.trim() || null,
         activo: Boolean(data.activo),
       };
-
-      console.log("Payload MotivoAcceso:", payload);
-
       if (motivoAcceso?.id) {
         await actualizarMotivoAcceso(motivoAcceso.id, payload);
         toast.current?.show({

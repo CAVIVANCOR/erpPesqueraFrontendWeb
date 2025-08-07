@@ -111,8 +111,6 @@ const SaldosProductoClienteForm = ({ saldo, onSave, onCancel }) => {
         costoUnitarioPromedio: data.costoUnitarioPromedio ? Number(data.costoUnitarioPromedio) : null
       };
 
-      console.log('Payload SaldosProductoCliente:', payload); // Log para depuración
-
       if (saldo?.id) {
         await actualizarSaldosProductoCliente(saldo.id, payload);
         toast.current?.show({

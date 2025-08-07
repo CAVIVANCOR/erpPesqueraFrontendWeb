@@ -108,8 +108,6 @@ const TipoMovimientoAccesoForm = ({ tipo, onSave, onCancel }) => {
         descripcion: data.descripcion?.trim() || null,
         activo: Boolean(data.activo),
       };
-
-      console.log("Datos normalizados:", datosNormalizados);
       let resultado;
       if (tipo?.id) {
         // Actualizar tipo existente
@@ -131,9 +129,6 @@ const TipoMovimientoAccesoForm = ({ tipo, onSave, onCancel }) => {
           detail: "Tipo de movimiento creado correctamente",
         });
       }
-
-      console.log("Tipo de movimiento guardado:", resultado);
-
       // Llamar callback de éxito
       if (onSave) {
         onSave(resultado);

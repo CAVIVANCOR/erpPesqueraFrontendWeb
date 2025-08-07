@@ -1,115 +1,139 @@
-// src/pages/Ubigeo.jsx
-// Pantalla CRUD profesional para Ubigeo. Cumple la regla transversal ERP Megui.
-import React, { useRef, useState, useEffect } from "react";
+/**
+ * Pantalla CRUD para gestión de Ubigeos
+ *
+ * Características implementadas:
+ * - Edición profesional por clic en fila (abre modal de edición)
+ * - Botón eliminar visible solo para superusuario/admin (usuario?.esSuperUsuario || usuario?.esAdmin)
+ * - Confirmación de borrado con ConfirmDialog visual rojo y mensajes claros
+ * - Feedback visual con Toast para éxito/error
+ * - Búsqueda global con filtro en tiempo real
+ * - Cumple regla transversal ERP Megui completa
+ *
+ * @author ERP Megui
+ * @version 1.0.0
+ */
+
+import React, { useState, useEffect, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
-import { Dialog } from "primereact/dialog";
-import UbigeoForm from "../components/ubigeo/UbigeoForm";
-import { getUbigeos, crearUbigeo, actualizarUbigeo, eliminarUbigeo } from "../api/ubigeo";
+import { Tag } from "primereact/tag";
+import { InputText } from "primereact/inputtext";
+import { getUbigeos, eliminarUbigeo, crearUbigeo, actualizarUbigeo } from "../api/ubigeo";
 import { getPaises } from "../api/pais";
 import { getDepartamentos } from "../api/departamento";
 import { getProvincias } from "../api/provincia";
-import { getDistritos } from "../api/distrito";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import UbigeoForm from "../components/ubigeo/UbigeoForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
-/**
- * Pantalla profesional para gestión de Ubigeos.
- * Cumple la regla transversal ERP Megui:
- * - Edición profesional por clic en fila (abre modal).
- * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin), usando useAuthStore.
- * - Confirmación de borrado con ConfirmDialog visual rojo.
- * - Feedback visual con Toast.
- * - Documentación de la regla en el encabezado.
- */
-export default function Ubigeo() {
-  const toast = useRef(null);
-  const [items, setItems] = useState([]);
+const Ubigeo = () => {
+  const [ubigeos, setUbigeos] = useState([]);
   const [paises, setPaises] = useState([]);
   const [departamentos, setDepartamentos] = useState([]);
   const [provincias, setProvincias] = useState([]);
-  const [distritos, setDistritos] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showDialog, setShowDialog] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore(state => state.usuario);
+  const [loading, setLoading] = useState(true);
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [ubigeoSeleccionado, setUbigeoSeleccionado] = useState(null);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [ubigeoAEliminar, setUbigeoAEliminar] = useState(null);
+  const toast = useRef(null);
+  const { usuario } = useAuthStore();
+  const [globalFilter, setGlobalFilter] = useState("");
 
   useEffect(() => {
-    cargarDatos();
+    cargarUbigeos();
   }, []);
 
-  const cargarDatos = async () => {
-    setLoading(true);
+  const cargarUbigeos = async () => {
     try {
-      const [ubigeosData, paisesData, departamentosData, provinciasData, distritosData] = await Promise.all([
+      setLoading(true);
+      const [ubigeosData, paisesData, departamentosData, provinciasData] = await Promise.all([
         getUbigeos(),
         getPaises(),
         getDepartamentos(),
         getProvincias(),
-        getDistritos()
       ]);
-      setItems(ubigeosData);
+      setUbigeos(ubigeosData);
       setPaises(paisesData);
       setDepartamentos(departamentosData);
       setProvincias(provinciasData);
-      setDistritos(distritosData);
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar los datos." });
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar ubigeos",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleEdit = (rowData) => {
-    setEditing(rowData);
-    setShowDialog(true);
+  const abrirDialogoNuevo = () => {
+    setUbigeoSeleccionado(null);
+    setDialogVisible(true);
   };
 
-  const handleDelete = (rowData) => {
-    setToDelete(rowData);
-    setShowConfirm(true);
+  const abrirDialogoEdicion = (ubigeo) => {
+    setUbigeoSeleccionado(ubigeo);
+    setDialogVisible(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    setShowConfirm(false);
-    if (!toDelete) return;
-    setLoading(true);
+  const cerrarDialogo = () => {
+    setDialogVisible(false);
+    setUbigeoSeleccionado(null);
+  };
+
+  const onGuardarExitoso = async (data) => {
+    if (ubigeoSeleccionado) {
+      await actualizarUbigeo(ubigeoSeleccionado.id, data);
+    } else {
+      await crearUbigeo(data);
+    }
+    cargarUbigeos();
+    cerrarDialogo();
+    toast.current.show({
+      severity: "success",
+      summary: "Éxito",
+      detail: ubigeoSeleccionado
+        ? "Ubigeo actualizado correctamente"
+        : "Ubigeo creado correctamente",
+      life: 3000,
+    });
+  };
+
+  const confirmarEliminacion = (ubigeo) => {
+    setUbigeoAEliminar(ubigeo);
+    setConfirmVisible(true);
+  };
+
+  const eliminar = async () => {
     try {
-      await eliminarUbigeo(toDelete.id);
-      toast.current.show({ severity: "success", summary: "Eliminado", detail: "Ubigeo eliminado correctamente." });
-      cargarDatos();
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo eliminar." });
+      await eliminarUbigeo(ubigeoAEliminar.id);
+      setUbigeos(
+        ubigeos.filter((u) => u.id !== ubigeoAEliminar.id)
+      );
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Ubigeo eliminado correctamente",
+        life: 3000,
+      });
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al eliminar ubigeo",
+        life: 3000,
+      });
+    } finally {
+      setConfirmVisible(false);
+      setUbigeoAEliminar(null);
     }
-    setLoading(false);
-    setToDelete(null);
-  };
-
-  const handleFormSubmit = async (data) => {
-    setLoading(true);
-    try {
-      if (editing && editing.id) {
-        await actualizarUbigeo(editing.id, data);
-        toast.current.show({ severity: "success", summary: "Actualizado", detail: "Ubigeo actualizado." });
-      } else {
-        await crearUbigeo(data);
-        toast.current.show({ severity: "success", summary: "Creado", detail: "Ubigeo creado." });
-      }
-      setShowDialog(false);
-      setEditing(null);
-      cargarDatos();
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo guardar." });
-    }
-    setLoading(false);
-  };
-
-  const handleAdd = () => {
-    setEditing(null);
-    setShowDialog(true);
   };
 
   const paisNombre = (rowData) => {
@@ -132,52 +156,130 @@ export default function Ubigeo() {
     return distrito ? distrito.nombre : '';
   };
 
-  const booleanTemplate = (rowData, field) => (
-    <span className={rowData[field] ? "text-green-600" : "text-red-600"}>
-      {rowData[field] ? "Sí" : "No"}
-    </span>
-  );
+  const estadoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.activo ? "Activo" : "Inactivo"}
+        severity={rowData.activo ? "success" : "danger"}
+      />
+    );
+  };
 
-  const actionBody = (rowData) => (
-    <>
-      <Button icon="pi pi-pencil" className="p-button-text p-button-sm" onClick={() => handleEdit(rowData)} aria-label="Editar" />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger p-button-sm" onClick={() => handleDelete(rowData)} aria-label="Eliminar" />
-      )}
-    </>
-  );
+  const accionesTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-mr-2"
+          onClick={(ev) => {
+            ev.stopPropagation();
+            abrirDialogoEdicion(rowData);
+          }}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+        />
+        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-text p-button-danger"
+            onClick={() => confirmarEliminacion(rowData)}
+            tooltip="Eliminar"
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="p-fluid">
+    <div className="p-4">
       <Toast ref={toast} />
-      <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar este ubigeo?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
-      <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
-        <h2>Gestión de Ubigeos</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
-      </div>
-      <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="codigo" header="Código" />
-        <Column field="paisId" header="País" body={paisNombre} />
-        <Column field="departamentoId" header="Departamento" body={departamentoNombre} />
-        <Column field="provinciaId" header="Provincia" body={provinciaNombre} />
-        <Column field="distritoId" header="Distrito" body={distritoNombre} />
-        <Column field="activo" header="Activo" body={rowData => booleanTemplate(rowData, 'activo')} />
-        <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
+      <DataTable
+        value={ubigeos}
+        loading={loading}
+        paginator
+        rows={10}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        selectionMode="single"
+        className="p-datatable-hover cursor-pointer"
+        emptyMessage="No se encontraron ubigeos"
+        globalFilter={globalFilter}
+        header={
+          <div className="flex align-items-center gap-2">
+            <h2>Gestión de Ubigeos</h2>
+            <Button
+              label="Nuevo"
+              icon="pi pi-plus"
+              size="small"
+              raised
+              tooltip="Nuevo Ubigeo"
+              outlined
+              className="p-button-success"
+              onClick={abrirDialogoNuevo}
+            />
+            <span className="p-input-icon-left">
+              <InputText
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Buscar ubigeos..."
+                style={{ width: "300px" }}
+              />
+            </span>
+          </div>
+        }
+        scrollable
+        scrollHeight="600px"
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+      >
+        <Column field="id" header="ID" sortable />
+        <Column field="codigo" header="Código" sortable />
+        <Column field="paisId" header="País" body={paisNombre} sortable />
+        <Column field="departamentoId" header="Departamento" body={departamentoNombre} sortable />
+        <Column field="provinciaId" header="Provincia" body={provinciaNombre} sortable />
+        <Column field="nombreDistrito" header="Distrito" sortable />
+        <Column field="activo" header="Estado" body={estadoTemplate} sortable />
+        <Column
+          body={accionesTemplate}
+          header="Acciones"
+          style={{ width: "8rem" }}
+        />
       </DataTable>
-      <Dialog header={editing ? "Editar Ubigeo" : "Nuevo Ubigeo"} visible={showDialog} style={{ width: 800 }} onHide={() => setShowDialog(false)} modal>
+
+      <Dialog
+        header={
+          ubigeoSeleccionado
+            ? "Editar Ubigeo"
+            : "Nuevo Ubigeo"
+        }
+        visible={dialogVisible}
+        onHide={cerrarDialogo}
+        style={{ width: "800px" }}
+        modal
+      >
         <UbigeoForm
-          isEdit={!!editing}
-          defaultValues={editing || {}}
+          ubigeo={ubigeoSeleccionado}
           paises={paises}
           departamentos={departamentos}
           provincias={provincias}
-          distritos={distritos}
-          onSubmit={handleFormSubmit}
-          onCancel={() => setShowDialog(false)}
-          loading={loading}
+          onGuardar={onGuardarExitoso}
+          onCancelar={cerrarDialogo}
         />
       </Dialog>
+
+      <ConfirmDialog
+        visible={confirmVisible}
+        onHide={() => setConfirmVisible(false)}
+        message={`¿Está seguro de eliminar el ubigeo "${ubigeoAEliminar?.codigo}"?`}
+        header="Confirmar Eliminación"
+        icon="pi pi-exclamation-triangle"
+        accept={eliminar}
+        reject={() => setConfirmVisible(false)}
+        acceptLabel="Sí, Eliminar"
+        rejectLabel="Cancelar"
+        acceptClassName="p-button-danger"
+      />
     </div>
   );
-}
+};
+
+export default Ubigeo;

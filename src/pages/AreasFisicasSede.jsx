@@ -105,14 +105,12 @@ export default function AreasFisicasSede() {
         cesado,
       };
       // Log profesional para depuración: muestra el payload limpio enviado al backend
-      console.log("[DEBUG] Payload limpio actualización área física:", payload);
       await actualizarAreaFisica(areaEdit.id, payload);
         mostrarToast("success", "Área actualizada", `El área física fue actualizada correctamente.`);
       } else {
         // Elimina empresaId del payload porque no existe en el modelo Prisma
       const { empresaId, ...dataSinEmpresa } = data;
       // Log profesional para depuración: muestra el objeto enviado al backend en alta
-      console.log("[DEBUG] Payload creación área física:", dataSinEmpresa);
       await crearAreaFisica(dataSinEmpresa);
         mostrarToast("success", "Área creada", `El área física fue registrada correctamente.`);
       }

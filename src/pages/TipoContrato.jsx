@@ -85,10 +85,6 @@ export default function TipoContrato() {
         cesado: !!data.cesado,
       };
       if (modoEdicion && tipoEdit) {
-        console.log(
-          "[DEBUG] Payload limpio enviado a actualizarTipoContrato:",
-          payload
-        );
         await actualizarTipoContrato(tipoEdit.id, payload);
         mostrarToast(
           "success",

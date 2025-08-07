@@ -57,8 +57,6 @@ const TipoAccesoInstalacionForm = ({ tipoAcceso, onSave, onCancel }) => {
         activo: Boolean(data.activo),
       };
 
-      console.log("Payload TipoAccesoInstalacion:", payload);
-
       if (tipoAcceso?.id) {
         await actualizarTipoAccesoInstalacion(tipoAcceso.id, payload);
         toast.current?.show({

@@ -25,6 +25,11 @@ export async function getEstadoMultiFuncionPorId(id) {
   return res.data;
 }
 
+export async function getEstadosMultiFuncionPorTipoProvieneDe(tipoProvieneDeId) {
+  const res = await axios.get(`${API_URL}?tipoProvieneDeId=${tipoProvieneDeId}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function crearEstadoMultiFuncion(data) {
   const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
   return res.data;

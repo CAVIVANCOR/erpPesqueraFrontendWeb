@@ -48,9 +48,6 @@ const FormaTransaccionForm = ({ forma, onSave, onCancel }) => {
         descripcion: data.descripcion?.trim() || null,
         activo: Boolean(data.activo)
       };
-
-      console.log('Payload FormaTransaccion:', payload);
-
       if (forma?.id) {
         await updateFormaTransaccion(forma.id, payload);
         toast.current?.show({

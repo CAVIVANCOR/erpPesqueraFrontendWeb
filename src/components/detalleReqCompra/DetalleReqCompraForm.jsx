@@ -106,9 +106,6 @@ const DetalleReqCompraForm = ({ detalle, onSave, onCancel }) => {
         precioUnitario: Number(data.precioUnitario),
         observaciones: data.observaciones || null
       };
-
-      console.log('Payload DetalleReqCompra:', payload); // Log para depuración
-
       if (detalle?.id) {
         await actualizarDetalleReqCompra(detalle.id, payload);
         toast.current?.show({

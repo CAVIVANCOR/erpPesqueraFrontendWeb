@@ -122,9 +122,6 @@ const DetallePreFacturaForm = ({ detalle, onSave, onCancel }) => {
         total: total,
         observaciones: data.observaciones || null
       };
-
-      console.log('Payload DetallePreFactura:', payload); // Log para depuración
-
       if (detalle?.id) {
         await updateDetallePreFactura(detalle.id, payload);
         toast.current?.show({

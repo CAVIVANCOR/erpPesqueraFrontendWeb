@@ -115,9 +115,6 @@ const LiquidacionTemporadaPescaForm = ({ liquidacion, onSave, onCancel }) => {
         saldoFinal: Number(data.saldoFinal),
         observaciones: data.observaciones || null
       };
-
-      console.log('Payload LiquidacionTemporadaPesca:', payload); // Log para depuración
-
       if (liquidacion?.id) {
         await actualizarLiquidacionTemporadaPesca(liquidacion.id, payload);
         toast.current?.show({

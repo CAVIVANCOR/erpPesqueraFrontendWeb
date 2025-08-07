@@ -41,7 +41,6 @@ const getAuthHeaders = () => {
 export const getDetallesTareasOT = async () => {
   try {
     const response = await axios.get(API_URL, getAuthHeaders());
-    console.log('Detalles de tareas OT obtenidos:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al obtener detalles de tareas OT:', error);
@@ -57,7 +56,6 @@ export const getDetallesTareasOT = async () => {
 export const getDetalleTareaPorId = async (id) => {
   try {
     const response = await axios.get(`${API_URL}/${id}`, getAuthHeaders());
-    console.log(`Detalle de tarea ${id} obtenido:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al obtener detalle de tarea ${id}:`, error);
@@ -93,7 +91,6 @@ export const createDetTareasOT = async (detalleTarea) => {
     };
 
     const response = await axios.post(API_URL, datosNormalizados, getAuthHeaders());
-    console.log('Detalle de tarea OT creado:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al crear detalle de tarea OT:', error);
@@ -130,7 +127,6 @@ export const updateDetTareasOT = async (id, detalleTarea) => {
     };
 
     const response = await axios.put(`${API_URL}/${id}`, datosNormalizados, getAuthHeaders());
-    console.log(`Detalle de tarea OT ${id} actualizado:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al actualizar detalle de tarea OT ${id}:`, error);
@@ -146,7 +142,6 @@ export const updateDetTareasOT = async (id, detalleTarea) => {
 export const eliminarDetalleTareaOT = async (id) => {
   try {
     const response = await axios.delete(`${API_URL}/${id}`, getAuthHeaders());
-    console.log(`Detalle de tarea OT ${id} eliminado`);
     return response.data;
   } catch (error) {
     console.error(`Error al eliminar detalle de tarea OT ${id}:`, error);
@@ -162,7 +157,6 @@ export const eliminarDetalleTareaOT = async (id) => {
 export const getTareasPorOrdenTrabajo = async (otMantenimientoId) => {
   try {
     const response = await axios.get(`${API_URL}/orden-trabajo/${otMantenimientoId}`, getAuthHeaders());
-    console.log(`Tareas para OT ${otMantenimientoId}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al obtener tareas por orden de trabajo ${otMantenimientoId}:`, error);
@@ -178,7 +172,6 @@ export const getTareasPorOrdenTrabajo = async (otMantenimientoId) => {
 export const getTareasPorResponsable = async (responsableId) => {
   try {
     const response = await axios.get(`${API_URL}/responsable/${responsableId}`, getAuthHeaders());
-    console.log(`Tareas para responsable ${responsableId}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al obtener tareas por responsable ${responsableId}:`, error);
@@ -194,7 +187,6 @@ export const getTareasPorResponsable = async (responsableId) => {
 export const getTareasPorEstado = async (realizado) => {
   try {
     const response = await axios.get(`${API_URL}/estado/${realizado}`, getAuthHeaders());
-    console.log(`Tareas con estado realizado ${realizado}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al obtener tareas por estado ${realizado}:`, error);
@@ -209,7 +201,6 @@ export const getTareasPorEstado = async (realizado) => {
 export const getTareasPendientes = async () => {
   try {
     const response = await axios.get(`${API_URL}/pendientes`, getAuthHeaders());
-    console.log('Tareas pendientes obtenidas:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al obtener tareas pendientes:', error);
@@ -232,7 +223,6 @@ export const marcarTareaRealizada = async (id, observaciones = '') => {
     };
 
     const response = await axios.patch(`${API_URL}/${id}/realizar`, datosActualizacion, getAuthHeaders());
-    console.log(`Tarea ${id} marcada como realizada:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al marcar tarea ${id} como realizada:`, error);
@@ -256,7 +246,6 @@ export const validarTerminoTarea = async (id, validadorId, observaciones = '') =
     };
 
     const response = await axios.patch(`${API_URL}/${id}/validar`, datosValidacion, getAuthHeaders());
-    console.log(`Tarea ${id} validada:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al validar tarea ${id}:`, error);
@@ -282,7 +271,6 @@ export const subirFotosAntes = async (id, archivo) => {
       }
     });
 
-    console.log(`Fotos antes subidas para tarea ${id}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al subir fotos antes para tarea ${id}:`, error);
@@ -310,7 +298,6 @@ export const subirCotizacion = async (id, archivo, numeroCotizacion) => {
       }
     });
 
-    console.log(`Cotización ${numeroCotizacion} subida para tarea ${id}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error al subir cotización ${numeroCotizacion} para tarea ${id}:`, error);
@@ -325,7 +312,6 @@ export const subirCotizacion = async (id, archivo, numeroCotizacion) => {
 export const getEstadisticasTareas = async () => {
   try {
     const response = await axios.get(`${API_URL}/estadisticas`, getAuthHeaders());
-    console.log('Estadísticas de tareas obtenidas:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al obtener estadísticas de tareas:', error);
@@ -341,7 +327,6 @@ export const getEstadisticasTareas = async () => {
 export const validarFechasTarea = async (fechas) => {
   try {
     const response = await axios.post(`${API_URL}/validar-fechas`, fechas, getAuthHeaders());
-    console.log('Validación de fechas:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error al validar fechas:', error);

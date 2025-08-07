@@ -9,20 +9,22 @@ import { Card } from 'primereact/card';
 import { Divider } from 'primereact/divider';
 import { Message } from 'primereact/message';
 import { ProgressSpinner } from 'primereact/progressspinner';
-import { getAccesoInstalacionById } from '../../api/accesoInstalacion';
+import { getAccesoInstalacionById, procesarSalidaDefinitiva } from '../../api/accesoInstalacion';
 
 /**
  * Componente para procesar salida de visitantes
  * Permite búsqueda por ID manual o escaneo de código QR
  * @param {Function} onClose - Callback para cerrar el diálogo
- * @param {Function} onRegistroEncontrado - Callback cuando se encuentra un registro
+ * @param {Function} onSalidaProcesada - Callback cuando se procesa la salida exitosamente
  * @param {Object} toast - Referencia al componente Toast para notificaciones
  */
-const SalidaDialog = ({ onClose, onRegistroEncontrado, toast }) => {
+const SalidaDialog = ({ onClose, onSalidaProcesada, toast }) => {
   const [idBusqueda, setIdBusqueda] = useState('');
   const [buscando, setBuscando] = useState(false);
+  const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState('');
   const [modoEscaneo, setModoEscaneo] = useState(false);
+  const [registroEncontrado, setRegistroEncontrado] = useState(null);
 
   /**
    * Buscar registro por ID
@@ -35,19 +37,28 @@ const SalidaDialog = ({ onClose, onRegistroEncontrado, toast }) => {
 
     setBuscando(true);
     setError('');
+    setRegistroEncontrado(null);
 
     try {
       const registro = await getAccesoInstalacionById(parseInt(id));
       if (registro) {
+        // Verificar si ya tiene salida definitiva
+        if (registro.fechaHoraSalidaDefinitiva) {
+          setError('Este acceso ya tiene salida definitiva procesada');
+          toast.current?.show({
+            severity: 'warn',
+            summary: 'Acceso ya procesado',
+            detail: `Salida definitiva: ${formatearFechaHora(registro.fechaHoraSalidaDefinitiva)}`,
+          });
+          return;
+        }
+
+        setRegistroEncontrado(registro);
         toast.current?.show({
           severity: 'success',
           summary: 'Registro encontrado',
           detail: `Visitante: ${registro.nombrePersona}`,
         });
-        
-        // Cerrar diálogo y abrir formulario de edición
-        onClose();
-        onRegistroEncontrado(registro);
       } else {
         setError('No se encontró ningún registro con ese ID');
       }
@@ -62,6 +73,42 @@ const SalidaDialog = ({ onClose, onRegistroEncontrado, toast }) => {
     }
 
     setBuscando(false);
+  };
+
+  /**
+   * Procesar salida definitiva del registro encontrado
+   */
+  const procesarSalida = async () => {
+    if (!registroEncontrado) return;
+
+    setProcesando(true);
+    setError('');
+
+    try {
+      const registroActualizado = await procesarSalidaDefinitiva(registroEncontrado.id);
+      
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Salida Procesada',
+        detail: `Salida definitiva registrada para ${registroEncontrado.nombrePersona}`,
+        life: 4000
+      });
+
+      // Cerrar diálogo y notificar al componente padre
+      onClose();
+      onSalidaProcesada(registroActualizado);
+      
+    } catch (err) {
+      console.error('Error procesando salida:', err);
+      setError('Error al procesar la salida definitiva');
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo procesar la salida definitiva',
+      });
+    }
+
+    setProcesando(false);
   };
 
   /**
@@ -175,6 +222,15 @@ const SalidaDialog = ({ onClose, onRegistroEncontrado, toast }) => {
 
       {/* Botones de acción */}
       <div className="flex justify-end gap-2 mt-4">
+        {registroEncontrado && (
+          <Button
+            label="Procesar Salida"
+            icon="pi pi-check"
+            onClick={procesarSalida}
+            disabled={procesando}
+            className="p-button-success"
+          />
+        )}
         <Button
           label="Cerrar"
           icon="pi pi-times"

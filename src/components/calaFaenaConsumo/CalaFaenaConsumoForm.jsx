@@ -167,9 +167,6 @@ const CalaFaenaConsumoForm = ({ cala, onSave, onCancel }) => {
         pesoTotal: data.pesoTotal ? Number(data.pesoTotal) : null,
         observaciones: data.observaciones?.trim() || null
       };
-
-      console.log('Payload CalaFaenaConsumo:', payload); // Log para depuración
-
       if (cala?.id) {
         await updateCalaFaenaConsumo(cala.id, payload);
         toast.current?.show({

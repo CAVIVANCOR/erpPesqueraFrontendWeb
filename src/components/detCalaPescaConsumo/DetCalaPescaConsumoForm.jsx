@@ -152,9 +152,6 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
           payload.porcentajeEspecie = Number(porcentajeCalculado.toFixed(2));
         }
       }
-
-      console.log('Payload DetCalaPescaConsumo:', payload); // Log para depuración
-
       if (detalle?.id) {
         await updateDetCalaPescaConsumo(detalle.id, payload);
         toast.current?.show({

@@ -45,8 +45,8 @@ export const obtenerTiposMovimientoAcceso = async () => {
     const datosNormalizados = response.data.map(tipo => ({
       ...tipo,
       id: Number(tipo.id),
-      codigo: tipo.codigo?.trim().toUpperCase() || '',
-      nombre: tipo.nombre?.trim() || '',
+      nombre: tipo.nombre?.trim().toUpperCase() || '',
+      descripcion: tipo.descripcion?.trim() || '',
       activo: Boolean(tipo.activo)
     }));
     return datosNormalizados;
@@ -68,8 +68,8 @@ export const obtenerTipoMovimientoAccesoPorId = async (id) => {
     const tipoNormalizado = {
       ...response.data,
       id: Number(response.data.id),
-      codigo: response.data.codigo?.trim().toUpperCase() || '',
-      nombre: response.data.nombre?.trim() || '',
+      nombre: response.data.nombre?.trim().toUpperCase() || '',
+      descripcion: response.data.descripcion?.trim() || '',
       activo: Boolean(response.data.activo)
     };
 
@@ -155,6 +155,7 @@ export const obtenerTiposMovimientoAccesoActivos = async () => {
       ...tipo,
       id: Number(tipo.id),
       nombre: tipo.nombre?.trim() || '',
+      descripcion: tipo.descripcion?.trim() || '',
       activo: Boolean(tipo.activo)
     }));
 
@@ -178,6 +179,7 @@ export const obtenerTiposPorTipoMovimiento = async (tipoMovimiento) => {
       ...tipo,
       id: Number(tipo.id),
       nombre: tipo.nombre?.trim() || '',
+      descripcion: tipo.descripcion?.trim() || '',
       activo: Boolean(tipo.activo)
     }));
 

@@ -88,13 +88,9 @@ export default function SedesEmpresa() {
         cesado: !!data.cesado,
       };
       if (modoEdicion && sedeEdit) {
-        // Log profesional para depuración: muestra el objeto limpio enviado al backend
-        console.log("[DEBUG] Payload limpio enviado a actualizarSede:", payload);
         await actualizarSede(sedeEdit.id, payload);
         mostrarToast("success", "Sede actualizada", `La sede fue actualizada correctamente.`);
       } else {
-        // Log profesional para depuración en alta
-        console.log("[DEBUG] Payload limpio enviado a crearSede:", payload);
         await crearSede(payload);
         mostrarToast("success", "Sede creada", `La sede fue registrada correctamente.`);
       }

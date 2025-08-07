@@ -134,9 +134,6 @@ const RequerimientoCompraForm = ({ requerimiento, onSave, onCancel }) => {
         fechaAprobacion: data.fechaAprobacion || null,
         observacionesAprobacion: data.observacionesAprobacion || null
       };
-
-      console.log('Payload RequerimientoCompra:', payload); // Log para depuración
-
       if (requerimiento?.id) {
         await actualizarRequerimientoCompra(requerimiento.id, payload);
         toast.current?.show({

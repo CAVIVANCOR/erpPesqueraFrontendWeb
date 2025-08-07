@@ -176,9 +176,6 @@ const CalaFaenaConsumoProduceForm = ({ produccion, onSave, onCancel }) => {
         calidad: data.calidad || null,
         observaciones: data.observaciones?.trim() || null
       };
-
-      console.log('Payload CalaFaenaConsumoProduce:', payload); // Log para depuración
-
       if (produccion?.id) {
         await updateCalaFaenaConsumoProduce(produccion.id, payload);
         toast.current?.show({

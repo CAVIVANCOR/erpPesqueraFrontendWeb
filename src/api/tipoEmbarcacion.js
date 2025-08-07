@@ -5,7 +5,7 @@
 import axios from "axios";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
-const API_URL = `${import.meta.env.VITE_API_URL}/tipos-embarcacion`;
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/tipos-embarcacion`;
 
 /**
  * Obtiene el token JWT profesionalmente desde Zustand

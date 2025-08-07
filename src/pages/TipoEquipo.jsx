@@ -190,6 +190,7 @@ const TipoEquipo = () => {
         scrollHeight="600px"
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
+        <Column field="id" header="ID" sortable />
         <Column field="nombre" header="Nombre" sortable />
         <Column field="descripcion" header="Descripción" sortable />
         <Column field="activo" header="Estado" body={estadoTemplate} sortable />

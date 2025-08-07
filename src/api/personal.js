@@ -39,7 +39,6 @@ export const crearPersonal = async (data) => {
  *   await subirFotoPersonal(5, archivo);
  */
 export const subirFotoPersonal = async (id, archivoFoto) => {
-  console.log('subirFotoPersonal: Subiendo foto para ID:', id, archivoFoto);
   const formData = new FormData();
   formData.append('foto', archivoFoto);
   const token = useAuthStore.getState().token;
@@ -53,7 +52,6 @@ export const subirFotoPersonal = async (id, archivoFoto) => {
       },
     }
   );
-  console.log('subirFotoPersonal: Subida exitosa:', res.data);
   return res.data;
 };
 

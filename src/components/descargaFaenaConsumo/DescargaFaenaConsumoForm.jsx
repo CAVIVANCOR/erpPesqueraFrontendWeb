@@ -159,9 +159,6 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
       if (payload.pesoTotalDeclarado) {
         payload.diferenciaPeso = payload.pesoTotalDescargado - payload.pesoTotalDeclarado;
       }
-
-      console.log('Payload DescargaFaenaConsumo:', payload);
-
       if (descarga?.id) {
         await updateDescargaFaenaConsumo(descarga.id, payload);
         toast.current?.show({

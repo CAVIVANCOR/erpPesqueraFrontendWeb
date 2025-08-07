@@ -152,9 +152,6 @@ const DetDocTripulantesFaenaConsumoForm = ({ documento, onSave, onCancel }) => {
         observaciones: data.observaciones?.trim() || null,
         verificado: Boolean(data.verificado)
       };
-
-      console.log('Payload DetDocTripulantesFaenaConsumo:', payload); // Log para depuración
-
       if (documento?.id) {
         await updateDetDocTripulantesFaenaConsumo(documento.id, payload);
         toast.current?.show({

@@ -36,7 +36,6 @@ export default function TipoDocumentoForm({ isEdit = false, defaultValues = {}, 
 
   // Log de depuración profesional del payload antes de grabar
   const onSubmitWithLog = (data) => {
-    console.log('[TipoDocumentoForm] Payload a enviar:', data);
     onSubmit(data);
   };
 

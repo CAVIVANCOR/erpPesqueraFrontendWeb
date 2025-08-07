@@ -136,10 +136,6 @@ const MovLiquidacionFaenaConsumoForm = ({ movimiento, onSave, onCancel }) => {
         fechaValidacion: data.fechaValidacion || null,
         observaciones: data.observaciones?.trim() || null
       };
-
-      // Log para depuración según regla profesional ERP Megui
-      console.log('Payload MovLiquidacionFaenaConsumo:', payload);
-
       if (movimiento) {
         await updateMovLiquidacionFaenaConsumo(movimiento.id, payload);
         toast.current?.show({

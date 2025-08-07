@@ -148,9 +148,6 @@ const CotizacionVentasForm = ({ cotizacion, onSave, onCancel }) => {
         centroCostoId: Number(data.centroCostoId),
         observaciones: data.observaciones?.trim() || null
       };
-
-      console.log('Payload CotizacionVentas:', payload);
-
       if (cotizacion?.id) {
         await actualizarCotizacionVentas(cotizacion.id, payload);
         toast.current?.show({

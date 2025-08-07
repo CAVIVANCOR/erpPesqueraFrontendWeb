@@ -38,8 +38,6 @@ export const useAuthStore = create(
        * @param {string} refreshToken - Refresh token seguro para renovar sesión.
        */
       login: (usuario, token, refreshToken) => {
-        // Log de diagnóstico: mostrando los valores recibidos y calculados
-        console.log('[useAuthStore] Ejecutando login. Valores recibidos:', { usuario, token, refreshToken });
         // Decodifica el JWT para extraer la fecha de expiración (campo exp, en segundos UTC)
         let tokenExpiresAt = null;
         try {
@@ -51,8 +49,6 @@ export const useAuthStore = create(
           tokenExpiresAt = null;
         }
         set({ usuario, token, refreshToken, tokenExpiresAt, isAuth: true });
-        // Log de diagnóstico: mostrando el nuevo estado tras login
-        console.log('[useAuthStore] Estado tras login:', { usuario, token, refreshToken, tokenExpiresAt, isAuth: true });
       },
 
       /**
@@ -60,8 +56,6 @@ export const useAuthStore = create(
        * Borra también el storage persistido automáticamente.
        */
       logout: () => {
-        // Log de diagnóstico: limpieza de estado y storage
-        console.log('[useAuthStore] Ejecutando logout. Limpiando estado y storage de sesión.');
         set({ usuario: null, token: null, refreshToken: null, tokenExpiresAt: null, isAuth: false });
       },
     }),

@@ -191,9 +191,6 @@ const DetDescargaFaenaConsumoForm = ({ detalle, onSave, onCancel }) => {
         valorTotal: calcularValorTotal() ? Number(calcularValorTotal().toFixed(2)) : null,
         observaciones: data.observaciones?.trim() || null
       };
-
-      console.log('Payload DetDescargaFaenaConsumo:', payload);
-
       if (detalle?.id) {
         await updateDetDescargaFaenaConsumo(detalle.id, payload);
         toast.current?.show({

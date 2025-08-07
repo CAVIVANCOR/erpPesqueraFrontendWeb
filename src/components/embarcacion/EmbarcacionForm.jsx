@@ -1,709 +1,669 @@
 /**
  * Formulario para gestión de Embarcaciones
- * 
- * Características:
- * - Formulario con validaciones usando React Hook Form
- * - Combos relacionales con activos, tipos de embarcación y estados
- * - Gestión de medidas técnicas con formato decimal
- * - Control de características del motor y equipos
- * - Validación de unicidad en matrícula y activoId
- * - Normalización de IDs numéricos según regla ERP Megui
- * - Validaciones de negocio específicas para embarcaciones pesqueras
- * 
+ *
+ * Características implementadas:
+ * - React Hook Form con Controller para manejo de formularios
+ * - Validaciones con Yup para campos obligatorios y tipos de datos
+ * - Normalización de datos antes del envío
+ * - Campos: activoId, matricula, tipoEmbarcacionId, capacidadBodegaTon, esloraM, mangaM, puntalM, motorMarca, motorPotenciaHp, anioFabricacion, proveedorGpsId, tabletMarca, tabletModelo, estadoActivoId
+ * - Integración con API usando funciones en español
+ * - Feedback visual y manejo de errores
+ * - Cumple estándar ERP Megui completo
+ *
  * @author ERP Megui
  * @version 1.0.0
  */
 
-import React, { useEffect, useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { Dialog } from 'primereact/dialog';
-import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
-import { InputNumber } from 'primereact/inputnumber';
-import { Dropdown } from 'primereact/dropdown';
-import { Message } from 'primereact/message';
-import { Divider } from 'primereact/divider';
-import { Panel } from 'primereact/panel';
-import { classNames } from 'primereact/utils';
-import { getEmbarcaciones, getEmbarcacionPorId, crearEmbarcacion, actualizarEmbarcacion, eliminarEmbarcacion } from '../../api/embarcacion';
-import { getEntidadesComerciales } from '../../api/entidadComercial';
+import React, { useState, useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { InputText } from "primereact/inputtext";
+import { InputNumber } from "primereact/inputnumber";
+import { Dropdown } from "primereact/dropdown";
+import { Button } from "primereact/button";
+import { classNames } from "primereact/utils";
+import { crearEmbarcacion, actualizarEmbarcacion } from "../../api/embarcacion";
+import { getTiposEmbarcacion } from "../../api/tipoEmbarcacion";
+import { getEstadosMultiFuncionPorTipoProvieneDe } from "../../api/estadoMultiFuncion";
+import { getActivos } from "../../api/activo";
+import { getEntidadesComerciales } from "../../api/entidadComercial";
 
-/**
- * Componente de formulario para embarcaciones
- * Implementa las reglas de validación y normalización del ERP Megui
- */
-const EmbarcacionForm = ({
-  visible,
-  onHide,
-  onSave,
-  editingItem,
-  tiposEmbarcacion = [],
-  estadosActivo = [],
-  activos = []
-}) => {
-  // Estados locales
+// Esquema de validación con Yup
+const esquemaValidacion = yup.object().shape({
+  activoId: yup
+    .number()
+    .required("El activo es obligatorio")
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  matricula: yup
+    .string()
+    .required("La matrícula es obligatoria")
+    .trim(),
+  tipoEmbarcacionId: yup
+    .number()
+    .required("El tipo de embarcación es obligatorio")
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  capacidadBodegaTon: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  esloraM: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  mangaM: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  puntalM: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  motorMarca: yup
+    .string()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  motorPotenciaHp: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  anioFabricacion: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  proveedorGpsId: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  tabletMarca: yup
+    .string()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  tabletModelo: yup
+    .string()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  estadoActivoId: yup
+    .number()
+    .required("El estado activo es obligatorio")
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+});
+
+const EmbarcacionForm = ({ embarcacion, onGuardar, onCancelar }) => {
+  const [loading, setLoading] = useState(false);
+  const [tiposEmbarcacion, setTiposEmbarcacion] = useState([]);
+  const [estadosActivo, setEstadosActivo] = useState([]);
+  const [activos, setActivos] = useState([]);
   const [proveedoresGps, setProveedoresGps] = useState([]);
-  const [validandoMatricula, setValidandoMatricula] = useState(false);
-  const [validandoActivo, setValidandoActivo] = useState(false);
+  const esEdicion = !!embarcacion;
 
   // Configuración del formulario con React Hook Form
   const {
     control,
     handleSubmit,
+    formState: { errors },
     reset,
-    watch,
     setValue,
-    formState: { errors }
   } = useForm({
+    resolver: yupResolver(esquemaValidacion),
     defaultValues: {
       activoId: null,
-      matricula: '',
+      matricula: "",
       tipoEmbarcacionId: null,
-      estadoActivoId: null,
       capacidadBodegaTon: null,
       esloraM: null,
       mangaM: null,
       puntalM: null,
-      motorMarca: '',
+      motorMarca: "",
       motorPotenciaHp: null,
       anioFabricacion: null,
       proveedorGpsId: null,
-      tabletMarca: '',
-      tabletModelo: ''
-    }
+      tabletMarca: "",
+      tabletModelo: "",
+      estadoActivoId: null,
+    },
   });
 
-  // Observar cambios en matrícula y activo para validaciones
-  const matricula = watch('matricula');
-  const activoId = watch('activoId');
-
-  /**
-   * Cargar proveedores GPS al montar el componente
-   */
+  // Cargar datos de combos al montar
   useEffect(() => {
-    cargarProveedoresGps();
+    cargarCombos();
   }, []);
 
-  /**
-   * Validar matrícula cuando cambie
-   */
+  // Efecto para cargar datos en modo edición
   useEffect(() => {
-    if (matricula && matricula.length >= 3) {
-      validarMatricula();
-    }
-  }, [matricula]);
-
-  /**
-   * Validar activoId cuando cambie
-   */
-  useEffect(() => {
-    if (activoId) {
-      validarActivoId();
-    }
-  }, [activoId]);
-
-  /**
-   * Efecto para cargar datos cuando se edita un elemento
-   */
-  useEffect(() => {
-    if (editingItem) {
-      reset({
-        activoId: Number(editingItem.activoId),
-        matricula: editingItem.matricula,
-        tipoEmbarcacionId: Number(editingItem.tipoEmbarcacionId),
-        estadoActivoId: Number(editingItem.estadoActivoId),
-        capacidadBodegaTon: editingItem.capacidadBodegaTon ? Number(editingItem.capacidadBodegaTon) : null,
-        esloraM: editingItem.esloraM ? Number(editingItem.esloraM) : null,
-        mangaM: editingItem.mangaM ? Number(editingItem.mangaM) : null,
-        puntalM: editingItem.puntalM ? Number(editingItem.puntalM) : null,
-        motorMarca: editingItem.motorMarca || '',
-        motorPotenciaHp: editingItem.motorPotenciaHp ? Number(editingItem.motorPotenciaHp) : null,
-        anioFabricacion: editingItem.anioFabricacion ? Number(editingItem.anioFabricacion) : null,
-        proveedorGpsId: editingItem.proveedorGpsId ? Number(editingItem.proveedorGpsId) : null,
-        tabletMarca: editingItem.tabletMarca || '',
-        tabletModelo: editingItem.tabletModelo || ''
-      });
+    if (embarcacion) {
+      setValue("activoId", embarcacion.activoId || null);
+      setValue("matricula", embarcacion.matricula || "");
+      setValue("tipoEmbarcacionId", embarcacion.tipoEmbarcacionId || null);
+      setValue("capacidadBodegaTon", embarcacion.capacidadBodegaTon || null);
+      setValue("esloraM", embarcacion.esloraM || null);
+      setValue("mangaM", embarcacion.mangaM || null);
+      setValue("puntalM", embarcacion.puntalM || null);
+      setValue("motorMarca", embarcacion.motorMarca || "");
+      setValue("motorPotenciaHp", embarcacion.motorPotenciaHp || null);
+      setValue("anioFabricacion", embarcacion.anioFabricacion || null);
+      setValue("proveedorGpsId", embarcacion.proveedorGpsId || null);
+      setValue("tabletMarca", embarcacion.tabletMarca || "");
+      setValue("tabletModelo", embarcacion.tabletModelo || "");
+      setValue("estadoActivoId", embarcacion.estadoActivoId || null);
     } else {
       reset({
         activoId: null,
-        matricula: '',
+        matricula: "",
         tipoEmbarcacionId: null,
-        estadoActivoId: null,
         capacidadBodegaTon: null,
         esloraM: null,
         mangaM: null,
         puntalM: null,
-        motorMarca: '',
+        motorMarca: "",
         motorPotenciaHp: null,
         anioFabricacion: null,
         proveedorGpsId: null,
-        tabletMarca: '',
-        tabletModelo: ''
+        tabletMarca: "",
+        tabletModelo: "",
+        estadoActivoId: null,
       });
     }
-  }, [editingItem, reset]);
+  }, [embarcacion, setValue, reset]);
 
   /**
-   * Cargar proveedores GPS
+   * Cargar datos para combos
    */
-  const cargarProveedoresGps = async () => {
+  const cargarCombos = async () => {
     try {
-      // Asumiendo que los proveedores GPS son entidades comerciales
-      const data = await entidadComercialApi.getAll({ tipoProveedor: 'GPS' });
-      setProveedoresGps(data);
-    } catch (error) {
-      console.error('Error al cargar proveedores GPS:', error);
-    }
-  };
-
-  /**
-   * Validar unicidad de matrícula
-   */
-  const validarMatricula = async () => {
-    try {
-      setValidandoMatricula(true);
+      const [tiposData, estadosData, activosData, proveedoresData] = await Promise.all([
+        getTiposEmbarcacion(),
+        getEstadosMultiFuncionPorTipoProvieneDe(1),
+        getActivos(),
+        getEntidadesComerciales()
+      ]);
       
-      const resultado = await embarcacionApi.validarMatricula(
-        matricula,
-        editingItem?.id
-      );
-
-      if (!resultado.esUnica) {
-        console.warn('Matrícula ya existe:', resultado.embarcacionExistente);
-      }
+      setTiposEmbarcacion(tiposData);
+      setEstadosActivo(estadosData);
+      setActivos(activosData);
+      setProveedoresGps(proveedoresData);
     } catch (error) {
-      console.error('Error al validar matrícula:', error);
-    } finally {
-      setValidandoMatricula(false);
+      console.error("Error al cargar combos:", error);
     }
   };
 
   /**
-   * Validar unicidad de activoId
+   * Maneja el envío del formulario
+   * @param {Object} data - Datos del formulario
    */
-  const validarActivoId = async () => {
+  const onSubmit = async (data) => {
     try {
-      setValidandoActivo(true);
-      
-      const resultado = await embarcacionApi.validarActivoId(
-        activoId,
-        editingItem?.id
-      );
+      setLoading(true);
 
-      if (!resultado.esUnico) {
-        console.warn('Activo ya asignado:', resultado.embarcacionExistente);
+      // Normalización de datos antes del envío
+      const datosNormalizados = {
+        activoId: Number(data.activoId),
+        matricula: data.matricula.trim().toUpperCase(),
+        tipoEmbarcacionId: Number(data.tipoEmbarcacionId),
+        capacidadBodegaTon: data.capacidadBodegaTon,
+        esloraM: data.esloraM,
+        mangaM: data.mangaM,
+        puntalM: data.puntalM,
+        motorMarca: data.motorMarca?.trim().toUpperCase() || null,
+        motorPotenciaHp: data.motorPotenciaHp,
+        anioFabricacion: data.anioFabricacion,
+        proveedorGpsId: Number(data.proveedorGpsId),
+        tabletMarca: data.tabletMarca?.trim().toUpperCase() || null,
+        tabletModelo: data.tabletModelo?.trim().toUpperCase() || null,
+        estadoActivoId: Number(data.estadoActivoId),
+      };
+
+      if (esEdicion) {
+        await actualizarEmbarcacion(embarcacion.id, datosNormalizados);
+      } else {
+        await crearEmbarcacion(datosNormalizados);
       }
+
+      onGuardar();
     } catch (error) {
-      console.error('Error al validar activo:', error);
+      console.error("Error al guardar embarcación:", error);
+      // El manejo de errores se realiza en el componente padre
     } finally {
-      setValidandoActivo(false);
+      setLoading(false);
     }
   };
 
   /**
-   * Manejar envío del formulario
+   * Obtiene la clase CSS para campos con errores
+   * @param {string} fieldName - Nombre del campo
+   * @returns {string} Clase CSS
    */
-  const onSubmit = (data) => {
-    // Preparar datos con normalización de IDs
-    const formData = {
-      activoId: Number(data.activoId),
-      matricula: data.matricula.trim().toUpperCase(),
-      tipoEmbarcacionId: Number(data.tipoEmbarcacionId),
-      estadoActivoId: Number(data.estadoActivoId),
-      capacidadBodegaTon: data.capacidadBodegaTon ? Number(data.capacidadBodegaTon) : null,
-      esloraM: data.esloraM ? Number(data.esloraM) : null,
-      mangaM: data.mangaM ? Number(data.mangaM) : null,
-      puntalM: data.puntalM ? Number(data.puntalM) : null,
-      motorMarca: data.motorMarca?.trim() || null,
-      motorPotenciaHp: data.motorPotenciaHp ? Number(data.motorPotenciaHp) : null,
-      anioFabricacion: data.anioFabricacion ? Number(data.anioFabricacion) : null,
-      proveedorGpsId: data.proveedorGpsId ? Number(data.proveedorGpsId) : null,
-      tabletMarca: data.tabletMarca?.trim() || null,
-      tabletModelo: data.tabletModelo?.trim() || null
-    };
-
-    onSave(formData);
+  const getFieldClass = (fieldName) => {
+    return classNames({
+      "p-invalid": errors[fieldName],
+    });
   };
 
-  /**
-   * Manejar cierre del diálogo
-   */
-  const handleHide = () => {
-    reset();
-    onHide();
-  };
-
-  /**
-   * Preparar opciones de activos para el dropdown
-   */
-  const activosOptions = activos.map(activo => ({
-    label: `${activo.nombre} - ${activo.descripcion || 'Sin descripción'}`,
-    value: Number(activo.id)
-  }));
-
-  /**
-   * Preparar opciones de tipos de embarcación para el dropdown
-   */
+  // Opciones para combos
   const tiposEmbarcacionOptions = tiposEmbarcacion.map(tipo => ({
     label: tipo.nombre,
     value: Number(tipo.id)
   }));
 
-  /**
-   * Preparar opciones de estados activo para el dropdown
-   */
   const estadosActivoOptions = estadosActivo.map(estado => ({
-    label: estado.nombre,
+    label: estado.descripcion,
     value: Number(estado.id)
   }));
 
-  /**
-   * Preparar opciones de proveedores GPS para el dropdown
-   */
+  const activosOptions = activos.map(activo => ({
+    label: activo.nombre,
+    value: Number(activo.id)
+  }));
+
   const proveedoresGpsOptions = proveedoresGps.map(proveedor => ({
     label: proveedor.nombre,
     value: Number(proveedor.id)
   }));
 
-  /**
-   * Footer del diálogo con botones de acción
-   */
-  const dialogFooter = (
-    <div className="flex justify-content-end gap-2">
-      <Button
-        label="Cancelar"
-        icon="pi pi-times"
-        outlined
-        onClick={handleHide}
-      />
-      <Button
-        label={editingItem ? "Actualizar" : "Crear"}
-        icon="pi pi-check"
-        onClick={handleSubmit(onSubmit)}
-        loading={validandoMatricula || validandoActivo}
-      />
-    </div>
-  );
-
   return (
-    <Dialog
-      visible={visible}
-      style={{ width: '1000px' }}
-      header={editingItem ? "Editar Embarcación" : "Nueva Embarcación"}
-      modal
-      footer={dialogFooter}
-      onHide={handleHide}
-      className="p-fluid"
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
-        {/* Información Básica */}
-        <Panel header="Información Básica" className="mb-4">
-          <div className="grid">
-            {/* Activo */}
-            <div className="col-6">
-              <label htmlFor="activoId" className="font-semibold">
-                Activo *
-              </label>
-              <Controller
-                name="activoId"
-                control={control}
-                rules={{ required: 'El activo es obligatorio' }}
-                render={({ field }) => (
-                  <Dropdown
-                    id="activoId"
-                    {...field}
-                    value={field.value ? Number(field.value) : null}
-                    options={activosOptions}
-                    placeholder="Seleccione un activo"
-                    filter
-                    showClear
-                    className={classNames({ 'p-invalid': errors.activoId })}
-                  />
-                )}
+    <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
+      <div className="p-grid p-formgrid">
+        {/* Campo Activo */}
+        <div className="p-col-12 p-md-6 p-field">
+          <label htmlFor="activoId" className="p-d-block">
+            Activo <span className="p-error">*</span>
+          </label>
+          <Controller
+            name="activoId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="activoId"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={activosOptions}
+                placeholder="Seleccione un activo"
+                className={getFieldClass("activoId")}
+                filter
+                showClear
               />
-              {errors.activoId && (
-                <Message severity="error" text={errors.activoId.message} />
-              )}
-              {validandoActivo && (
-                <Message severity="info" text="Validando unicidad del activo..." />
-              )}
-            </div>
+            )}
+          />
+          {errors.activoId && (
+            <small className="p-error p-d-block">{errors.activoId.message}</small>
+          )}
+        </div>
 
-            {/* Matrícula */}
-            <div className="col-6">
-              <label htmlFor="matricula" className="font-semibold">
-                Matrícula *
-              </label>
-              <Controller
-                name="matricula"
-                control={control}
-                rules={{ 
-                  required: 'La matrícula es obligatoria',
-                  minLength: { value: 3, message: 'Mínimo 3 caracteres' },
-                  pattern: {
-                    value: /^[A-Z0-9-]+$/i,
-                    message: 'Solo letras, números y guiones'
-                  }
-                }}
-                render={({ field }) => (
-                  <InputText
-                    id="matricula"
-                    {...field}
-                    value={field.value.toUpperCase()}
-                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                    placeholder="Ej: ABC-123"
-                    className={classNames({ 'p-invalid': errors.matricula })}
-                  />
-                )}
+        {/* Campo Matrícula */}
+        <div className="p-col-12 p-md-6 p-field">
+          <label htmlFor="matricula" className="p-d-block">
+            Matrícula <span className="p-error">*</span>
+          </label>
+          <Controller
+            name="matricula"
+            control={control}
+            render={({ field }) => (
+              <InputText
+                id="matricula"
+                {...field}
+                placeholder="Ingrese la matrícula"
+                className={getFieldClass("matricula")}
+                style={{ textTransform: 'uppercase' }}
               />
-              {errors.matricula && (
-                <Message severity="error" text={errors.matricula.message} />
-              )}
-              {validandoMatricula && (
-                <Message severity="info" text="Validando unicidad de matrícula..." />
-              )}
-            </div>
+            )}
+          />
+          {errors.matricula && (
+            <small className="p-error p-d-block">{errors.matricula.message}</small>
+          )}
+        </div>
 
-            {/* Tipo de Embarcación */}
-            <div className="col-6">
-              <label htmlFor="tipoEmbarcacionId" className="font-semibold">
-                Tipo de Embarcación *
-              </label>
-              <Controller
-                name="tipoEmbarcacionId"
-                control={control}
-                rules={{ required: 'El tipo de embarcación es obligatorio' }}
-                render={({ field }) => (
-                  <Dropdown
-                    id="tipoEmbarcacionId"
-                    {...field}
-                    value={field.value ? Number(field.value) : null}
-                    options={tiposEmbarcacionOptions}
-                    placeholder="Seleccione un tipo"
-                    filter
-                    showClear
-                    className={classNames({ 'p-invalid': errors.tipoEmbarcacionId })}
-                  />
-                )}
+        {/* Campo Tipo Embarcación */}
+        <div className="p-col-12 p-md-6 p-field">
+          <label htmlFor="tipoEmbarcacionId" className="p-d-block">
+            Tipo de Embarcación <span className="p-error">*</span>
+          </label>
+          <Controller
+            name="tipoEmbarcacionId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="tipoEmbarcacionId"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={tiposEmbarcacionOptions}
+                placeholder="Seleccione tipo de embarcación"
+                className={getFieldClass("tipoEmbarcacionId")}
+                filter
+                showClear
               />
-              {errors.tipoEmbarcacionId && (
-                <Message severity="error" text={errors.tipoEmbarcacionId.message} />
-              )}
-            </div>
+            )}
+          />
+          {errors.tipoEmbarcacionId && (
+            <small className="p-error p-d-block">{errors.tipoEmbarcacionId.message}</small>
+          )}
+        </div>
 
-            {/* Estado Activo */}
-            <div className="col-6">
-              <label htmlFor="estadoActivoId" className="font-semibold">
-                Estado *
-              </label>
-              <Controller
-                name="estadoActivoId"
-                control={control}
-                rules={{ required: 'El estado es obligatorio' }}
-                render={({ field }) => (
-                  <Dropdown
-                    id="estadoActivoId"
-                    {...field}
-                    value={field.value ? Number(field.value) : null}
-                    options={estadosActivoOptions}
-                    placeholder="Seleccione un estado"
-                    filter
-                    showClear
-                    className={classNames({ 'p-invalid': errors.estadoActivoId })}
-                  />
-                )}
+        {/* Campo Estado Activo */}
+        <div className="p-col-12 p-md-6 p-field">
+          <label htmlFor="estadoActivoId" className="p-d-block">
+            Estado Activo <span className="p-error">*</span>
+          </label>
+          <Controller
+            name="estadoActivoId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="estadoActivoId"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={estadosActivoOptions}
+                placeholder="Seleccione estado activo"
+                className={getFieldClass("estadoActivoId")}
+                filter
+                showClear
               />
-              {errors.estadoActivoId && (
-                <Message severity="error" text={errors.estadoActivoId.message} />
-              )}
-            </div>
-          </div>
-        </Panel>
+            )}
+          />
+          {errors.estadoActivoId && (
+            <small className="p-error p-d-block">{errors.estadoActivoId.message}</small>
+          )}
+        </div>
 
-        {/* Características Técnicas */}
-        <Panel header="Características Técnicas" className="mb-4">
-          <div className="grid">
-            {/* Capacidad de Bodega */}
-            <div className="col-6">
-              <label htmlFor="capacidadBodegaTon" className="font-semibold">
-                Capacidad de Bodega (Toneladas)
-              </label>
-              <Controller
-                name="capacidadBodegaTon"
-                control={control}
-                rules={{
-                  min: { value: 0.01, message: 'Debe ser mayor a 0' }
-                }}
-                render={({ field }) => (
-                  <InputNumber
-                    id="capacidadBodegaTon"
-                    {...field}
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    suffix=" Ton"
-                    className={classNames({ 'p-invalid': errors.capacidadBodegaTon })}
-                  />
-                )}
+        {/* Campo Capacidad Bodega */}
+        <div className="p-col-12 p-md-6 p-field">
+          <label htmlFor="capacidadBodegaTon" className="p-d-block">
+            Capacidad Bodega (Ton)
+          </label>
+          <Controller
+            name="capacidadBodegaTon"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="capacidadBodegaTon"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                placeholder="Capacidad en toneladas"
+                className={getFieldClass("capacidadBodegaTon")}
+                mode="decimal"
+                minFractionDigits={0}
+                maxFractionDigits={2}
+                min={0}
+                suffix=" Ton"
               />
-              {errors.capacidadBodegaTon && (
-                <Message severity="error" text={errors.capacidadBodegaTon.message} />
-              )}
-            </div>
+            )}
+          />
+          {errors.capacidadBodegaTon && (
+            <small className="p-error p-d-block">{errors.capacidadBodegaTon.message}</small>
+          )}
+        </div>
 
-            {/* Año de Fabricación */}
-            <div className="col-6">
-              <label htmlFor="anioFabricacion" className="font-semibold">
-                Año de Fabricación
-              </label>
-              <Controller
-                name="anioFabricacion"
-                control={control}
-                rules={{
-                  min: { value: 1900, message: 'Año mínimo: 1900' },
-                  max: { value: new Date().getFullYear(), message: `Año máximo: ${new Date().getFullYear()}` }
-                }}
-                render={({ field }) => (
-                  <InputNumber
-                    id="anioFabricacion"
-                    {...field}
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    useGrouping={false}
-                    min={1900}
-                    max={new Date().getFullYear()}
-                    placeholder="YYYY"
-                    className={classNames({ 'p-invalid': errors.anioFabricacion })}
-                  />
-                )}
+        {/* Campo Eslora */}
+        <div className="p-col-12 p-md-4 p-field">
+          <label htmlFor="esloraM" className="p-d-block">
+            Eslora (m)
+          </label>
+          <Controller
+            name="esloraM"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="esloraM"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                placeholder="Eslora en metros"
+                className={getFieldClass("esloraM")}
+                mode="decimal"
+                minFractionDigits={0}
+                maxFractionDigits={2}
+                min={0}
+                suffix=" m"
               />
-              {errors.anioFabricacion && (
-                <Message severity="error" text={errors.anioFabricacion.message} />
-              )}
-            </div>
+            )}
+          />
+          {errors.esloraM && (
+            <small className="p-error p-d-block">{errors.esloraM.message}</small>
+          )}
+        </div>
 
-            {/* Eslora */}
-            <div className="col-4">
-              <label htmlFor="esloraM" className="font-semibold">
-                Eslora (metros)
-              </label>
-              <Controller
-                name="esloraM"
-                control={control}
-                rules={{
-                  min: { value: 0.01, message: 'Debe ser mayor a 0' }
-                }}
-                render={({ field }) => (
-                  <InputNumber
-                    id="esloraM"
-                    {...field}
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    suffix=" m"
-                    className={classNames({ 'p-invalid': errors.esloraM })}
-                  />
-                )}
+        {/* Campo Manga */}
+        <div className="p-col-12 p-md-4 p-field">
+          <label htmlFor="mangaM" className="p-d-block">
+            Manga (m)
+          </label>
+          <Controller
+            name="mangaM"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="mangaM"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                placeholder="Manga en metros"
+                className={getFieldClass("mangaM")}
+                mode="decimal"
+                minFractionDigits={0}
+                maxFractionDigits={2}
+                min={0}
+                suffix=" m"
               />
-              {errors.esloraM && (
-                <Message severity="error" text={errors.esloraM.message} />
-              )}
-            </div>
+            )}
+          />
+          {errors.mangaM && (
+            <small className="p-error p-d-block">{errors.mangaM.message}</small>
+          )}
+        </div>
 
-            {/* Manga */}
-            <div className="col-4">
-              <label htmlFor="mangaM" className="font-semibold">
-                Manga (metros)
-              </label>
-              <Controller
-                name="mangaM"
-                control={control}
-                rules={{
-                  min: { value: 0.01, message: 'Debe ser mayor a 0' }
-                }}
-                render={({ field }) => (
-                  <InputNumber
-                    id="mangaM"
-                    {...field}
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    suffix=" m"
-                    className={classNames({ 'p-invalid': errors.mangaM })}
-                  />
-                )}
+        {/* Campo Puntal */}
+        <div className="p-col-12 p-md-4 p-field">
+          <label htmlFor="puntalM" className="p-d-block">
+            Puntal (m)
+          </label>
+          <Controller
+            name="puntalM"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="puntalM"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                placeholder="Puntal en metros"
+                className={getFieldClass("puntalM")}
+                mode="decimal"
+                minFractionDigits={0}
+                maxFractionDigits={2}
+                min={0}
+                suffix=" m"
               />
-              {errors.mangaM && (
-                <Message severity="error" text={errors.mangaM.message} />
-              )}
-            </div>
+            )}
+          />
+          {errors.puntalM && (
+            <small className="p-error p-d-block">{errors.puntalM.message}</small>
+          )}
+        </div>
 
-            {/* Puntal */}
-            <div className="col-4">
-              <label htmlFor="puntalM" className="font-semibold">
-                Puntal (metros)
-              </label>
-              <Controller
-                name="puntalM"
-                control={control}
-                rules={{
-                  min: { value: 0.01, message: 'Debe ser mayor a 0' }
-                }}
-                render={({ field }) => (
-                  <InputNumber
-                    id="puntalM"
-                    {...field}
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    suffix=" m"
-                    className={classNames({ 'p-invalid': errors.puntalM })}
-                  />
-                )}
+        {/* Campo Motor Marca */}
+        <div className="p-col-12 p-md-6 p-field">
+          <label htmlFor="motorMarca" className="p-d-block">
+            Marca del Motor
+          </label>
+          <Controller
+            name="motorMarca"
+            control={control}
+            render={({ field }) => (
+              <InputText
+                id="motorMarca"
+                {...field}
+                placeholder="Marca del motor"
+                className={getFieldClass("motorMarca")}
+                style={{ textTransform: 'uppercase' }}
               />
-              {errors.puntalM && (
-                <Message severity="error" text={errors.puntalM.message} />
-              )}
-            </div>
-          </div>
-        </Panel>
+            )}
+          />
+          {errors.motorMarca && (
+            <small className="p-error p-d-block">{errors.motorMarca.message}</small>
+          )}
+        </div>
 
-        {/* Motor */}
-        <Panel header="Información del Motor" className="mb-4">
-          <div className="grid">
-            {/* Marca del Motor */}
-            <div className="col-6">
-              <label htmlFor="motorMarca" className="font-semibold">
-                Marca del Motor
-              </label>
-              <Controller
-                name="motorMarca"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="motorMarca"
-                    {...field}
-                    placeholder="Ej: Caterpillar, Volvo, etc."
-                    className={classNames({ 'p-invalid': errors.motorMarca })}
-                  />
-                )}
+        {/* Campo Motor Potencia */}
+        <div className="p-col-12 p-md-6 p-field">
+          <label htmlFor="motorPotenciaHp" className="p-d-block">
+            Potencia Motor (HP)
+          </label>
+          <Controller
+            name="motorPotenciaHp"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="motorPotenciaHp"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                placeholder="Potencia en HP"
+                className={getFieldClass("motorPotenciaHp")}
+                min={0}
+                suffix=" HP"
               />
-            </div>
+            )}
+          />
+          {errors.motorPotenciaHp && (
+            <small className="p-error p-d-block">{errors.motorPotenciaHp.message}</small>
+          )}
+        </div>
 
-            {/* Potencia del Motor */}
-            <div className="col-6">
-              <label htmlFor="motorPotenciaHp" className="font-semibold">
-                Potencia (HP)
-              </label>
-              <Controller
-                name="motorPotenciaHp"
-                control={control}
-                rules={{
-                  min: { value: 1, message: 'Debe ser mayor a 0' }
-                }}
-                render={({ field }) => (
-                  <InputNumber
-                    id="motorPotenciaHp"
-                    {...field}
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    min={0}
-                    placeholder="0"
-                    suffix=" HP"
-                    className={classNames({ 'p-invalid': errors.motorPotenciaHp })}
-                  />
-                )}
+        {/* Campo Año Fabricación */}
+        <div className="p-col-12 p-md-6 p-field">
+          <label htmlFor="anioFabricacion" className="p-d-block">
+            Año de Fabricación
+          </label>
+          <Controller
+            name="anioFabricacion"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="anioFabricacion"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                placeholder="Año de fabricación"
+                className={getFieldClass("anioFabricacion")}
+                min={1900}
+                max={new Date().getFullYear() + 1}
+                useGrouping={false}
               />
-              {errors.motorPotenciaHp && (
-                <Message severity="error" text={errors.motorPotenciaHp.message} />
-              )}
-            </div>
-          </div>
-        </Panel>
+            )}
+          />
+          {errors.anioFabricacion && (
+            <small className="p-error p-d-block">{errors.anioFabricacion.message}</small>
+          )}
+        </div>
 
-        {/* Equipos */}
-        <Panel header="Equipos y Tecnología" className="mb-4">
-          <div className="grid">
-            {/* Proveedor GPS */}
-            <div className="col-12">
-              <label htmlFor="proveedorGpsId" className="font-semibold">
-                Proveedor GPS
-              </label>
-              <Controller
-                name="proveedorGpsId"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    id="proveedorGpsId"
-                    {...field}
-                    value={field.value ? Number(field.value) : null}
-                    options={proveedoresGpsOptions}
-                    placeholder="Seleccione proveedor GPS (opcional)"
-                    filter
-                    showClear
-                    className={classNames({ 'p-invalid': errors.proveedorGpsId })}
-                  />
-                )}
+        {/* Campo Proveedor GPS */}
+        <div className="p-col-12 p-md-6 p-field">
+          <label htmlFor="proveedorGpsId" className="p-d-block">
+            Proveedor GPS
+          </label>
+          <Controller
+            name="proveedorGpsId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="proveedorGpsId"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={proveedoresGpsOptions}
+                placeholder="Seleccione proveedor GPS"
+                className={getFieldClass("proveedorGpsId")}
+                filter
+                showClear
               />
-            </div>
+            )}
+          />
+          {errors.proveedorGpsId && (
+            <small className="p-error p-d-block">{errors.proveedorGpsId.message}</small>
+          )}
+        </div>
 
-            {/* Marca de Tablet */}
-            <div className="col-6">
-              <label htmlFor="tabletMarca" className="font-semibold">
-                Marca de Tablet
-              </label>
-              <Controller
-                name="tabletMarca"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="tabletMarca"
-                    {...field}
-                    placeholder="Ej: Samsung, iPad, etc."
-                    className={classNames({ 'p-invalid': errors.tabletMarca })}
-                  />
-                )}
+        {/* Campo Tablet Marca */}
+        <div className="p-col-12 p-md-6 p-field">
+          <label htmlFor="tabletMarca" className="p-d-block">
+            Marca de Tablet
+          </label>
+          <Controller
+            name="tabletMarca"
+            control={control}
+            render={({ field }) => (
+              <InputText
+                id="tabletMarca"
+                {...field}
+                placeholder="Marca de la tablet"
+                className={getFieldClass("tabletMarca")}
+                style={{ textTransform: 'uppercase' }}
               />
-            </div>
+            )}
+          />
+          {errors.tabletMarca && (
+            <small className="p-error p-d-block">{errors.tabletMarca.message}</small>
+          )}
+        </div>
 
-            {/* Modelo de Tablet */}
-            <div className="col-6">
-              <label htmlFor="tabletModelo" className="font-semibold">
-                Modelo de Tablet
-              </label>
-              <Controller
-                name="tabletModelo"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="tabletModelo"
-                    {...field}
-                    placeholder="Ej: Galaxy Tab A, iPad Air, etc."
-                    className={classNames({ 'p-invalid': errors.tabletModelo })}
-                  />
-                )}
+        {/* Campo Tablet Modelo */}
+        <div className="p-col-12 p-md-6 p-field">
+          <label htmlFor="tabletModelo" className="p-d-block">
+            Modelo de Tablet
+          </label>
+          <Controller
+            name="tabletModelo"
+            control={control}
+            render={({ field }) => (
+              <InputText
+                id="tabletModelo"
+                {...field}
+                placeholder="Modelo de la tablet"
+                className={getFieldClass("tabletModelo")}
+                style={{ textTransform: 'uppercase' }}
               />
-            </div>
-          </div>
-        </Panel>
-      </form>
-    </Dialog>
+            )}
+          />
+          {errors.tabletModelo && (
+            <small className="p-error p-d-block">{errors.tabletModelo.message}</small>
+          )}
+        </div>
+      </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+        <Button
+          type="button"
+          label="Cancelar"
+          className="p-button-text"
+          onClick={onCancelar}
+          disabled={loading}
+        />
+        <Button
+          type="submit"
+          label={esEdicion ? "Actualizar" : "Crear"}
+          icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
+          loading={loading}
+        />
+      </div>
+    </form>
   );
 };
 

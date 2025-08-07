@@ -18,7 +18,6 @@ import { useIsMobile } from "../shared/hooks/useIsMobile";
 import Producto from "./Producto";
 import Empresas from "./Empresas";
 import AreasFisicasSede from "./AreasFisicasSede";
-import SedesEmpresa from "./SedesEmpresa";
 import Usuarios from "./Usuarios";
 import Personal from "./Personal";
 import TipoDocumento from "./TipoDocumento";
@@ -82,7 +81,6 @@ import PrecioEntidad from "./PrecioEntidad";
 import Pais from "./Pais";
 import Departamento from "./Departamento";
 import Provincia from "./Provincia";
-import Distrito from "./Distrito";
 import Ubigeo from "./Ubigeo";
 import TipoVehiculo from "./TipoVehiculo";
 import VehiculoEntidad from "./VehiculoEntidad";
@@ -163,6 +161,7 @@ import DetDocsReqCotizaVentas from "./DetDocsReqCotizaVentas";
 import AccesoInstalacionDetalle from "./AccesoInstalacionDetalle";
 import TipoMovimientoAcceso from "./TipoMovimientoAcceso";
 import DetDocsReqCotizaCompras from "./DetDocsReqCotizaCompras";
+import SedesEmpresa from "./SedesEmpresa";
 
 /**
  * Componente MultiCrud
@@ -275,7 +274,6 @@ export default function MultiCrud() {
     pais: { label: "Países", componente: <Pais /> },
     departamento: { label: "Departamentos", componente: <Departamento /> },
     provincia: { label: "Provincias", componente: <Provincia /> },
-    distrito: { label: "Distritos", componente: <Distrito /> },
     ubigeo: { label: "Ubigeos", componente: <Ubigeo /> },
     tipoVehiculo: { label: "Tipos de Vehículo", componente: <TipoVehiculo /> },
     vehiculoEntidad: { label: "Vehículos Entidad Comercial", componente: <VehiculoEntidad /> },
@@ -373,7 +371,6 @@ export default function MultiCrud() {
             label: "Movimientos",
             items: [
               { label: "Movimientos Acceso", icon: "pi pi-leaf", command: () => abrirModulo("accesoInstalacion", "Movimientos Acceso Instalaciones") },
-              { label: "Detalle Movimientos", icon: "pi pi-list", command: () => abrirModulo("accesoInstalacionDetalle", "Detalle Movimientos Acceso Instalaciones") },
               { label: "Tipos de Movimiento", icon: "pi pi-arrow-right-arrow-left", command: () => abrirModulo("tipoMovimientoAcceso", "Tipos de Movimiento de Acceso") }
             ]
           },
@@ -649,9 +646,16 @@ export default function MultiCrud() {
             label: "Organización",
             items: [
               { label: "Empresas", icon: "pi pi-building", command: () => abrirModulo("empresas", "Empresas") },
-              { label: "Sedes", icon: "pi pi-map-marker", command: () => abrirModulo("sedes", "Sedes") },
-              { label: "Areas Físicas", icon: "pi pi-map", command: () => abrirModulo("areasFisicas", "Areas Fisicas") },
-              { label: "Cargos", icon: "pi pi-briefcase", command: () => abrirModulo("cargos", "Cargos") }
+              { label: "Sedes Empresa", icon: "pi pi-map-marker", command: () => abrirModulo("sedesEmpresa", "Sedes Empresa") },
+              { label: "Areas Físicas Sede", icon: "pi pi-map", command: () => abrirModulo("areasFisicasSede", "Areas Fisicas Sede") },
+              { label: "Entidad Comercial", icon: "pi pi-briefcase", command: () => abrirModulo("entidadComercial", "Entidad Comercial") },
+              { label: "Tipo Entidad", icon: "pi pi-briefcase", command: () => abrirModulo("tipoEntidad", "Tipo Entidad") },
+              { label: "Agrupaciones Entidad", icon: "pi pi-briefcase", command: () => abrirModulo("agrupacionEntidad", "Agrupaciones Entidad") },
+              { label: "Forma Pago", icon: "pi pi-briefcase", command: () => abrirModulo("formaPago", "Forma Pago") },
+              { label: "Pais", icon: "pi pi-briefcase", command: () => abrirModulo("pais", "Pais") },
+              { label: "Departamento", icon: "pi pi-briefcase", command: () => abrirModulo("departamento", "Departamento") },
+              { label: "Provincia", icon: "pi pi-briefcase", command: () => abrirModulo("provincia", "Provincia") },
+              { label: "Ubigeo", icon: "pi pi-briefcase", command: () => abrirModulo("ubigeo", "Ubigeo") },
             ]
           },
           {
@@ -663,14 +667,6 @@ export default function MultiCrud() {
               { label: "Puertos Pesca", icon: "pi pi-ship", command: () => abrirModulo("puertoPesca", "Puertos Pesca") }
             ]
           },
-          {
-            label: "Embarcaciones",
-            items: [
-              { label: "Embarcaciones", icon: "pi pi-ship", command: () => abrirModulo("embarcaciones", "Embarcaciones") },
-              { label: "Tipo Embarcación", icon: "pi pi-ship", command: () => abrirModulo("tipoEmbarcacion", "Tipo Embarcacion") },
-              { label: "Boliche Red", icon: "pi pi-ship", command: () => abrirModulo("bolicheRed", "Boliche Red") }
-            ]
-          }
         ],
         [
           {

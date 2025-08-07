@@ -53,9 +53,6 @@ const TipoPersonaForm = ({ tipoPersona, onSave, onCancel }) => {
         descripcion: data.descripcion?.trim() || null,
         activo: Boolean(data.activo),
       };
-
-      console.log("Payload TipoPersona:", payload);
-
       if (tipoPersona?.id) {
         await actualizarTipoPersona(tipoPersona.id, payload);
         toast.current?.show({

@@ -32,11 +32,9 @@ import apiBackend from "./api/axios";
  * - Está preparado para integrar protección de rutas avanzada usando Zustand (isAuth) en futuras versiones.
  */
 export default function AppRoutes() {
-  console.log("[AppRoutes] Montando AppRoutes...");
   const [checking, setChecking] = useState(true);
   const [noUsers, setNoUsers] = useState(false);
   const isAuth = useAuthStore(state => state.isAuth);
-  console.log("[AppRoutes] Estado inicial:", { checking, noUsers, isAuth });
 
   // Efecto de inicialización: consulta al backend si existen usuarios para decidir el flujo inicial.
   useEffect(() => {
@@ -55,14 +53,12 @@ export default function AppRoutes() {
 
   // Mientras se consulta al backend, no muestra nada para evitar parpadeos en la UI.
   if (checking) {
-    console.log("[AppRoutes] checking=true, renderizando null (pantalla en blanco mientras consulta usuarios)");
     return null;
   }
 
   // Acceso al estado global de autenticación (única fuente de verdad)
   // Si no existen usuarios, fuerza el flujo de SetupSuperUser
   if (noUsers) {
-    console.log("[AppRoutes] No existen usuarios, mostrando SetupSuperUser");
     return (
       <Router>
         <Routes>

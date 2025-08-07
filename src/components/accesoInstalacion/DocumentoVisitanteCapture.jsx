@@ -19,7 +19,7 @@ const DocumentoVisitanteCapture = ({
   onHide, 
   onDocumentoSubido,
   numeroDocumento,
-  nombrePersona 
+  nombrePersona
 }) => {
   const [archivosSeleccionados, setArchivosSeleccionados] = useState([]);
   const [procesando, setProcesando] = useState(false);
@@ -30,32 +30,7 @@ const DocumentoVisitanteCapture = ({
   const toast = useRef(null);
   const fileUploadRef = useRef(null);
 
-  // Iniciar cámara
-  const iniciarCamara = useCallback(async () => {
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        setStream(mediaStream);
-        setCamaraActiva(true);
-      }
-    } catch (error) {
-      console.error('Error al acceder a la cámara:', error);
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error de Cámara',
-        detail: 'No se pudo acceder a la cámara. Verifique los permisos.',
-        life: 5000
-      });
-    }
-  }, []);
+
 
   // Detener cámara
   const detenerCamara = useCallback(() => {
@@ -65,31 +40,6 @@ const DocumentoVisitanteCapture = ({
       setCamaraActiva(false);
     }
   }, [stream]);
-
-  // Capturar foto desde cámara
-  const capturarFoto = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    canvas.toBlob((blob) => {
-      const archivo = new File([blob], `foto-${Date.now()}.jpg`, { type: 'image/jpeg' });
-      setArchivosSeleccionados(prev => [...prev, archivo]);
-      
-      toast.current?.show({
-        severity: 'success',
-        summary: 'Foto Capturada',
-        detail: `Foto agregada (${archivosSeleccionados.length + 1} total)`,
-        life: 3000
-      });
-    }, 'image/jpeg', 0.8);
-  }, [archivosSeleccionados.length]);
 
   // Manejar selección de archivos
   const onFileSelect = (e) => {
@@ -117,15 +67,9 @@ const DocumentoVisitanteCapture = ({
     setProcesando(true);
 
     try {
-      let archivoParaSubir;
-
-      if (archivosSeleccionados.length === 1) {
-        // Si es solo una imagen, usar directamente
-        archivoParaSubir = archivosSeleccionados[0];
-      } else {
-        // Si son múltiples imágenes, generar archivo combinado
-        archivoParaSubir = await generarArchivoCombinadoDesdeImagenes(archivosSeleccionados);
-      }
+      // SIEMPRE generar PDF, independientemente del número de imágenes
+      // Esto garantiza que el documento final sea consistentemente un PDF
+      const archivoParaSubir = await generarArchivoCombinadoDesdeImagenes(archivosSeleccionados);
       
       const formData = new FormData();
       formData.append('documento', archivoParaSubir);
@@ -315,57 +259,6 @@ const DocumentoVisitanteCapture = ({
               className="mb-3"
             />
           </div>
-
-          {/* Sección de Cámara */}
-          <div className="col-12 md:col-6">
-            <Card title="Capturar con Cámara" className="h-full">
-              {!camaraActiva ? (
-                <div className="text-center p-4">
-                  <i className="pi pi-camera text-6xl text-300 mb-3"></i>
-                  <p className="text-500 mb-4">
-                    Active la cámara para tomar fotos
-                  </p>
-                  <Button
-                    label="Activar Cámara"
-                    icon="pi pi-camera"
-                    onClick={iniciarCamara}
-                    className="p-button-success"
-                  />
-                </div>
-              ) : (
-                <div className="text-center">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    style={{
-                      width: '100%',
-                      maxWidth: '300px',
-                      height: 'auto',
-                      borderRadius: '8px',
-                      border: '2px solid var(--primary-color)'
-                    }}
-                  />
-                  <div className="mt-3">
-                    <Button
-                      label="Capturar"
-                      icon="pi pi-camera"
-                      onClick={capturarFoto}
-                      className="p-button-primary mr-2"
-                    />
-                    <Button
-                      label="Detener"
-                      icon="pi pi-stop"
-                      onClick={detenerCamara}
-                      className="p-button-secondary"
-                    />
-                  </div>
-                </div>
-              )}
-            </Card>
-          </div>
-
           {/* Sección de Selección de Archivos */}
           <div className="col-12 md:col-6">
             <Card title="Seleccionar Archivos" className="h-full">

@@ -251,10 +251,7 @@ const AccesoInstalacionDetalleForm = ({ detalle, onSave, onCancel }) => {
           summary: 'Éxito',
           detail: 'Detalle de acceso creado correctamente'
         });
-      }
-
-      console.log('Detalle de acceso guardado:', resultado);
-      
+      }      
       // Llamar callback de éxito
       if (onSave) {
         onSave(resultado);

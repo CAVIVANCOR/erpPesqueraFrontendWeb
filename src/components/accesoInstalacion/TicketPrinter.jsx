@@ -46,7 +46,7 @@ const TicketPrinter = ({
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
       const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
       
-      let yPosition = height - 50; // Punto medio: no muy arriba ni muy abajo
+      let yPosition = height - 10; // Punto medio: no muy arriba ni muy abajo
       const leftMargin = 10;
       const centerX = width / 2;
             
@@ -203,7 +203,7 @@ const TicketPrinter = ({
           const qrImage = await pdfDoc.embedPng(qrImageBytes);
           
           // Dimensiones del QR más grandes para mejor legibilidad
-          const qrSize = 80; // Aumentar tamaño del QR
+          const qrSize = 100; // Aumentar tamaño del QR
           const qrX = centerX - (qrSize / 2); // Centrado
           
           page.drawImage(qrImage, {

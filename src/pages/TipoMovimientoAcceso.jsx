@@ -316,6 +316,12 @@ const TipoMovimientoAcceso = () => {
           style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         >
           <Column
+            field="id"
+            header="ID"
+            sortable
+            style={{ minWidth: "100px" }}
+          />
+          <Column
             field="nombre"
             header="Nombre"
             body={nombreTemplate}

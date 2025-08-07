@@ -55,8 +55,6 @@ const TipoProductoForm = ({ tipo, onSave, onCancel }) => {
         paraVentas: Boolean(data.paraVentas)
       };
 
-      console.log('Payload TipoProducto:', payload);
-
       if (tipo?.id) {
         await actualizarTipoProducto(tipo.id, payload);
         toast.current?.show({

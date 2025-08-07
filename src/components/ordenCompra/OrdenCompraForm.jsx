@@ -176,9 +176,6 @@ const OrdenCompraForm = ({ orden, onSave, onCancel }) => {
         direccionEntrega: data.direccionEntrega || null,
         contactoProveedor: data.contactoProveedor || null
       };
-
-      console.log('Payload OrdenCompra:', payload); // Log para depuración
-
       if (orden?.id) {
         await updateOrdenCompra(orden.id, payload);
         toast.current?.show({

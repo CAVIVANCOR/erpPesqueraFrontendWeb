@@ -180,9 +180,6 @@ const PreFacturaForm = ({ preFactura, onSave, onCancel }) => {
         movSalidaAlmacenId: data.movSalidaAlmacenId ? Number(data.movSalidaAlmacenId) : null,
         incotermId: data.incotermId ? Number(data.incotermId) : null
       };
-
-      console.log('Payload PreFactura:', payload); // Log para depuración
-
       if (preFactura?.id) {
         await updatePreFactura(preFactura.id, payload);
         toast.current?.show({

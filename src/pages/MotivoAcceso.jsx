@@ -209,6 +209,7 @@ const MotivoAcceso = () => {
           selectionMode="single"
           style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         >
+          <Column field="id" header="ID" sortable />
           <Column
             field="nombre"
             header="Nombre"

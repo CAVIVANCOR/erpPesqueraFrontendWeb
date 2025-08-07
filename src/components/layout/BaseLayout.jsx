@@ -65,8 +65,6 @@ export default function BaseLayout({ children, onLogout }) {
 
   // Log detallado del estado de autenticación justo antes de usar el hook
   const authState = useAuthStore.getState();
-  console.log('[BaseLayout] Estado de autenticación al montar:', authState);
-
   // Hook de navegación de React Router
   const navigate = useNavigate();
 
@@ -213,7 +211,6 @@ export default function BaseLayout({ children, onLogout }) {
         { label: "Pais", icon: "pi pi-snowflake" },
         { label: "Departamento", icon: "pi pi-snowflake" },
         { label: "Provincia", icon: "pi pi-snowflake" },
-        { label: "Distrito", icon: "pi pi-snowflake" },
         { label: "Modulos de ERP", icon: "pi pi-snowflake" },
         { label: "Submodulos ERP", icon: "pi pi-snowflake" },
       ]

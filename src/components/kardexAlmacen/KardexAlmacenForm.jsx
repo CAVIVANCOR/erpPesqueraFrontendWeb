@@ -187,9 +187,6 @@ const KardexAlmacenForm = ({ movimiento, onSave, onCancel }) => {
         costoUnitario: data.costoUnitario ? Number(data.costoUnitario) : null,
         observaciones: data.observaciones || null
       };
-
-      console.log('Payload KardexAlmacen:', payload); // Log para depuración
-
       if (movimiento?.id) {
         await actualizarKardexAlmacen(movimiento.id, payload);
         toast.current?.show({

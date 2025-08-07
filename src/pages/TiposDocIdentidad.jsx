@@ -307,14 +307,14 @@ const TiposDocIdentidad = () => {
         className="datatable-responsive"
         scrollable
         scrollHeight="600px"
-        style={{cursor: 'pointer', fontSize: getResponsiveFontSize()}}
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
+        <Column field="id" header="ID" sortable style={{ minWidth: "60px" }} />
         <Column
           field="codigo"
           header="Código"
           body={codigoTemplate}
           sortable
-          frozen
           style={{ minWidth: "120px" }}
         />
 
