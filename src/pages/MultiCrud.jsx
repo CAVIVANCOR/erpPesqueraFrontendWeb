@@ -162,6 +162,9 @@ import AccesoInstalacionDetalle from "./AccesoInstalacionDetalle";
 import TipoMovimientoAcceso from "./TipoMovimientoAcceso";
 import DetDocsReqCotizaCompras from "./DetDocsReqCotizaCompras";
 import SedesEmpresa from "./SedesEmpresa";
+import TipoAlmacenamiento from "./TipoAlmacenamiento";
+import Marca from "./Marca";
+
 
 /**
  * Componente MultiCrud
@@ -181,6 +184,8 @@ export default function MultiCrud() {
 
   // Catálogo de módulos disponibles (key -> componente)
   const modulos = {
+    tipoAlmacenamiento: { label: "Tipo Almacenamiento", componente: <TipoAlmacenamiento /> },
+    marca: { label: "Marca", componente: <Marca /> },
     parametroAprobador: { label: "Aprobadores", componente: <ParametroAprobador /> },
     tiposDocIdentidad: { label: "Tipos de Documentos de Identidad", componente: <TiposDocIdentidad /> },
     oTMantenimiento: { label: "Ordenes de Trabajo", componente: <OTMantenimiento /> },
@@ -656,6 +661,15 @@ export default function MultiCrud() {
               { label: "Departamento", icon: "pi pi-briefcase", command: () => abrirModulo("departamento", "Departamento") },
               { label: "Provincia", icon: "pi pi-briefcase", command: () => abrirModulo("provincia", "Provincia") },
               { label: "Ubigeo", icon: "pi pi-briefcase", command: () => abrirModulo("ubigeo", "Ubigeo") },
+              { label: "Productos y Servicios", icon: "pi pi-briefcase", command: () => abrirModulo("producto", "Productos y Servicios") },
+              { label: "Familia Producto", icon: "pi pi-briefcase", command: () => abrirModulo("familiaProducto", "Familia Producto") },
+              { label: "Subfamilia Producto", icon: "pi pi-briefcase", command: () => abrirModulo("subfamiliaProducto", "Subfamilia Producto") },
+              { label: "Tipo Almacenamiento", icon: "pi pi-briefcase", command: () => abrirModulo("tipoAlmacenamiento", "Tipo Almacenamiento") },
+              { label: "Marca", icon: "pi pi-briefcase", command: () => abrirModulo("marca", "Marca") },
+              { label: "Unidad Medida", icon: "pi pi-briefcase", command: () => abrirModulo("unidadMedida", "Unidad Medida") },
+              { label: "Tipo Material", icon: "pi pi-briefcase", command: () => abrirModulo("tipoMaterial", "Tipo Material") },
+              { label: "Color", icon: "pi pi-briefcase", command: () => abrirModulo("color", "Color") },
+              { label: "Estado Multi Función", icon: "pi pi-cog", command: () => abrirModulo("estadoMultiFuncion", "Estado Multi Funcion") }
             ]
           },
           {
@@ -683,7 +697,6 @@ export default function MultiCrud() {
               { label: "Activos", icon: "pi pi-cog", command: () => abrirModulo("activo", "Activos") },
               { label: "Tipo Activo", icon: "pi pi-cog", command: () => abrirModulo("tipoActivo", "Tipo Activo") },
               { label: "Detalle Permiso Activo", icon: "pi pi-key", command: () => abrirModulo("detallePermisoActivo", "Detalle Permiso Activo") },
-              { label: "Estado Multi Función", icon: "pi pi-cog", command: () => abrirModulo("estadoMultiFuncion", "Estado Multi Funcion") }
             ]
           },
           {

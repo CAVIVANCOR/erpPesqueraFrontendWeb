@@ -573,25 +573,40 @@ export default function AccesoInstalacion() {
         onRowClick={(e) => handleEdit(e.data)}
         header={
           <div className="flex align-items-center gap-2">
-            <div>
-              <h2>Control Acceso Instalaciones</h2>
-              <small className="text-500">
-                {items.length} registro{items.length !== 1 ? "s" : ""}
-                {(empresaSeleccionada || sedeSeleccionada) && (
-                  <span className="text-primary">
-                    {empresaSeleccionada &&
-                      ` | Empresa: ${
-                        empresas.find((e) => e.id === empresaSeleccionada)
-                          ?.razonSocial || "N/A"
-                      }`}
-                    {sedeSeleccionada &&
-                      ` | Sede: ${
-                        sedesFiltradas.find((s) => s.id === sedeSeleccionada)
-                          ?.nombre || "N/A"
-                      }`}
-                  </span>
-                )}
-              </small>
+            <div
+              style={{
+                alignItems: "center",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div
+                style={{ flex: 1, display: "flex", flexDirection: "column" }}
+              >
+                <h2>Control Acceso Instalaciones</h2>
+              </div>
+              <div
+                style={{ flex: 1, display: "flex", flexDirection: "column" }}
+              >
+                <small className="text-500">
+                  {items.length} registro{items.length !== 1 ? "s" : ""}
+                  {(empresaSeleccionada || sedeSeleccionada) && (
+                    <span className="text-primary">
+                      {empresaSeleccionada &&
+                        ` | Empresa: ${
+                          empresas.find((e) => e.id === empresaSeleccionada)
+                            ?.razonSocial || "N/A"
+                        }`}
+                      {sedeSeleccionada &&
+                        ` | Sede: ${
+                          sedesFiltradas.find((s) => s.id === sedeSeleccionada)
+                            ?.nombre || "N/A"
+                        }`}
+                    </span>
+                  )}
+                </small>
+              </div>
             </div>
             {/* Primera Linea */}
             <div

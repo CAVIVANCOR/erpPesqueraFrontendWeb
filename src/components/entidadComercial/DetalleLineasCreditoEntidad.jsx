@@ -9,7 +9,7 @@
  * @version 1.0.0
  */
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -30,7 +30,7 @@ import { classNames } from "primereact/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../../utils/utils";
 import { 
-  getLineasCreditoEntidad,
+  obtenerLineasCreditoPorEntidad,
   crearLineaCreditoEntidad,
   actualizarLineaCreditoEntidad,
   eliminarLineaCreditoEntidad
@@ -65,12 +65,12 @@ const esquemaValidacionLineaCredito = yup.object().shape({
  * @param {Function} props.onLineasCreditoChange - Callback cuando cambian las líneas de crédito
  * @param {Array} props.monedas - Lista de monedas
  */
-const DetalleLineasCreditoEntidad = ({
+const DetalleLineasCreditoEntidad = forwardRef(({
   entidadComercialId,
   lineasCredito = [],
   onLineasCreditoChange,
   monedas = []
-}) => {
+}, ref) => {
   // Estados del componente
   const [lineasCreditoData, setLineasCreditoData] = useState(lineasCredito);
   const [loading, setLoading] = useState(false);
@@ -114,10 +114,6 @@ const DetalleLineasCreditoEntidad = ({
     }
   }, [entidadComercialId]);
 
-  // Sincronizar líneas de crédito cuando cambien las props
-  useEffect(() => {
-    setLineasCreditoData(lineasCredito);
-  }, [lineasCredito]);
 
   /**
    * Carga las monedas disponibles
@@ -143,13 +139,9 @@ const DetalleLineasCreditoEntidad = ({
   const cargarLineasCredito = async () => {
     try {
       setLoading(true);
-      const data = await getLineasCreditoEntidad();
-      // Filtrar por entidad comercial si es necesario
-      const lineasFiltradas = entidadComercialId 
-        ? data.filter(linea => Number(linea.entidadComercialId) === Number(entidadComercialId))
-        : data;
-      setLineasCreditoData(lineasFiltradas);
-      onLineasCreditoChange?.(lineasFiltradas);
+      const data = await obtenerLineasCreditoPorEntidad(entidadComercialId);
+      setLineasCreditoData(data);
+      onLineasCreditoChange?.(data);
     } catch (error) {
       console.error("Error al cargar líneas de crédito:", error);
       toast.current?.show({
@@ -375,6 +367,7 @@ const DetalleLineasCreditoEntidad = ({
           }}
           tooltip="Editar"
           tooltipOptions={{ position: "top" }}
+          type="button"
         />
         {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
           <Button
@@ -382,11 +375,16 @@ const DetalleLineasCreditoEntidad = ({
             className="p-button-text p-button-danger"
             onClick={() => confirmarEliminacion(rowData)}
             tooltip="Eliminar"
+            type="button"
           />
         )}
       </div>
     );
   };
+
+  useImperativeHandle(ref, () => ({
+    recargar:cargarLineasCredito,
+  }));
 
   return (
     <div className="p-4">
@@ -414,6 +412,7 @@ const DetalleLineasCreditoEntidad = ({
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              type="button"
             />
             <span className="p-input-icon-left">
               <InputText
@@ -647,6 +646,6 @@ const DetalleLineasCreditoEntidad = ({
       />
     </div>
   );
-};
+});
 
 export default DetalleLineasCreditoEntidad;

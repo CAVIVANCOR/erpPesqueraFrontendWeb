@@ -1,8 +1,8 @@
 /**
- * Pantalla CRUD profesional para UnidadMedida
+ * Pantalla CRUD profesional para TipoAlmacenamiento
  * Implementa el patrón estándar ERP Megui con DataTable, modal, confirmación y feedback.
  * Incluye edición por clic en fila y eliminación con control de roles.
- * Modelo Prisma: id, nombre (VarChar 60), simbolo (VarChar 20), factorConversion, esMedidaMetrica, productos[]
+ * Modelo Prisma: id, nombre (VarChar 80), productos[]
  * Patrón aplicado: Botón eliminar visible solo para superusuario/admin, confirmación visual profesional, búsqueda global por cualquier campo.
  *
  * @author ERP Megui
@@ -17,29 +17,28 @@ import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { InputText } from "primereact/inputtext";
-import { Tag } from "primereact/tag";
 import {
-  getUnidadesMedida,
-  eliminarUnidadMedida,
-} from "../api/unidadMedida";
+  getTiposAlmacenamiento,
+  eliminarTipoAlmacenamiento,
+} from "../api/tipoAlmacenamiento";
 import { useAuthStore } from "../shared/stores/useAuthStore";
-import UnidadMedidaForm from "../components/unidadMedida/UnidadMedidaForm";
+import TipoAlmacenamientoForm from "../components/tipoAlmacenamiento/TipoAlmacenamientoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
 /**
- * Componente UnidadMedida
- * Pantalla principal para gestión de unidades de medida
+ * Componente TipoAlmacenamiento
+ * Pantalla principal para gestión de tipos de almacenamiento
  * Patrón aplicado: Edición por clic en fila, eliminación profesional con confirmación, búsqueda global.
  */
-const UnidadMedida = () => {
+const TipoAlmacenamiento = () => {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
 
   // Estados del componente
-  const [unidadesMedida, setUnidadesMedida] = useState([]);
+  const [tiposAlmacenamiento, setTiposAlmacenamiento] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogoVisible, setDialogoVisible] = useState(false);
-  const [unidadMedidaSeleccionada, setUnidadMedidaSeleccionada] = useState(null);
+  const [tipoAlmacenamientoSeleccionado, setTipoAlmacenamientoSeleccionado] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const [confirmState, setConfirmState] = useState({
     visible: false,
@@ -47,26 +46,26 @@ const UnidadMedida = () => {
   });
 
   /**
-   * Carga las unidades de medida desde la API
+   * Carga los tipos de almacenamiento desde la API
    */
-  const cargarUnidadesMedida = async () => {
+  const cargarTiposAlmacenamiento = async () => {
     try {
       setLoading(true);
-      const data = await getUnidadesMedida();
+      const data = await getTiposAlmacenamiento();
 
       // Normalizar IDs según regla ERP Megui
-      const unidadesNormalizadas = data.map((unidad) => ({
-        ...unidad,
-        id: Number(unidad.id),
+      const tiposNormalizados = data.map((tipo) => ({
+        ...tipo,
+        id: Number(tipo.id),
       }));
 
-      setUnidadesMedida(unidadesNormalizadas);
+      setTiposAlmacenamiento(tiposNormalizados);
     } catch (error) {
-      console.error("Error al cargar unidades de medida:", error);
+      console.error("Error al cargar tipos de almacenamiento:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar las unidades de medida",
+        detail: "Error al cargar los tipos de almacenamiento",
       });
     } finally {
       setLoading(false);
@@ -77,22 +76,22 @@ const UnidadMedida = () => {
    * Efecto para cargar datos al montar el componente
    */
   useEffect(() => {
-    cargarUnidadesMedida();
+    cargarTiposAlmacenamiento();
   }, []);
 
   /**
-   * Abre el diálogo para crear nueva unidad de medida
+   * Abre el diálogo para crear nuevo tipo de almacenamiento
    */
   const abrirDialogoNuevo = () => {
-    setUnidadMedidaSeleccionada(null);
+    setTipoAlmacenamientoSeleccionado(null);
     setDialogoVisible(true);
   };
 
   /**
-   * Abre el diálogo para editar unidad de medida (clic en fila)
+   * Abre el diálogo para editar tipo de almacenamiento (clic en fila)
    */
-  const editarUnidadMedida = (unidadMedida) => {
-    setUnidadMedidaSeleccionada(unidadMedida);
+  const editarTipoAlmacenamiento = (tipoAlmacenamiento) => {
+    setTipoAlmacenamientoSeleccionado(tipoAlmacenamiento);
     setDialogoVisible(true);
   };
 
@@ -101,7 +100,7 @@ const UnidadMedida = () => {
    */
   const cerrarDialogo = () => {
     setDialogoVisible(false);
-    setUnidadMedidaSeleccionada(null);
+    setTipoAlmacenamientoSeleccionado(null);
   };
 
   /**
@@ -109,15 +108,15 @@ const UnidadMedida = () => {
    */
   const onGuardar = async () => {
     cerrarDialogo();
-    await cargarUnidadesMedida();
+    await cargarTiposAlmacenamiento();
   };
 
   /**
-   * Confirma la eliminación de una unidad de medida
+   * Confirma la eliminación de un tipo de almacenamiento
    * Solo visible para superusuario o admin (regla transversal ERP Megui)
    */
-  const confirmarEliminacion = (unidadMedida) => {
-    setConfirmState({ visible: true, row: unidadMedida });
+  const confirmarEliminacion = (tipoAlmacenamiento) => {
+    setConfirmState({ visible: true, row: tipoAlmacenamiento });
   };
 
   /**
@@ -128,21 +127,21 @@ const UnidadMedida = () => {
 
     try {
       setLoading(true);
-      await eliminarUnidadMedida(confirmState.row.id);
+      await eliminarTipoAlmacenamiento(confirmState.row.id);
 
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: `Unidad de medida "${confirmState.row.nombre}" eliminada correctamente`,
+        detail: `Tipo de almacenamiento "${confirmState.row.nombre}" eliminado correctamente`,
       });
 
-      await cargarUnidadesMedida();
+      await cargarTiposAlmacenamiento();
     } catch (error) {
-      console.error("Error al eliminar unidad de medida:", error);
+      console.error("Error al eliminar tipo de almacenamiento:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al eliminar la unidad de medida",
+        detail: "Error al eliminar el tipo de almacenamiento",
       });
     } finally {
       setLoading(false);
@@ -151,42 +150,31 @@ const UnidadMedida = () => {
   };
 
   /**
-   * Template para el nombre de la unidad de medida
+   * Elimina un tipo de almacenamiento
+   */
+  const eliminarTipoAlmacenamientoLocal = async (id) => {
+    try {
+      await eliminarTipoAlmacenamiento(id);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  /**
+   * Maneja el filtro global - búsqueda por cualquier campo
+   */
+  const onGlobalFilterChange = (e) => {
+    setGlobalFilter(e.target.value);
+  };
+
+  /**
+   * Template para el nombre del tipo de almacenamiento
    */
   const nombreTemplate = (rowData) => {
     return (
       <span style={{ fontWeight: "bold", textTransform: "uppercase" }}>
         {rowData.nombre}
       </span>
-    );
-  };
-
-  /**
-   * Template para el símbolo de la unidad de medida
-   */
-  const simboloTemplate = (rowData) => {
-    return (
-      <Tag value={rowData.simbolo} severity="info" style={{ fontSize: "0.8rem" }} />
-    );
-  };
-
-  /**
-   * Template para el factor de conversión
-   */
-  const factorConversionTemplate = (rowData) => {
-    return rowData.factorConversion 
-      ? Number(rowData.factorConversion).toFixed(6)
-      : "N/A";
-  };
-
-  /**
-   * Template para medida métrica
-   */
-  const medidaMetricaTemplate = (rowData) => {
-    return rowData.esMedidaMetrica ? (
-      <Tag value="MÉTRICA" severity="success" />
-    ) : (
-      <Tag value="NO MÉTRICA" severity="warning" />
     );
   };
 
@@ -215,7 +203,7 @@ const UnidadMedida = () => {
           tooltipOptions={{ position: "top" }}
           onClick={(e) => {
             e.stopPropagation();
-            editarUnidadMedida(rowData);
+            editarTipoAlmacenamiento(rowData);
           }}
         />
         {esAdmin && (
@@ -244,7 +232,8 @@ const UnidadMedida = () => {
         message={
           <span>
             ¿Está seguro de que desea{" "}
-            <span style={{ color: "#b71c1c" }}>eliminar</span> la unidad de medida{" "}
+            <span style={{ color: "#b71c1c" }}>eliminar</span> el tipo de
+            almacenamiento{" "}
             <b>{confirmState.row ? `"${confirmState.row.nombre}"` : ""}</b>?
             <br />
             <span style={{ fontWeight: 400, color: "#b71c1c" }}>
@@ -263,20 +252,20 @@ const UnidadMedida = () => {
       />
 
       <DataTable
-        value={unidadesMedida}
+        value={tiposAlmacenamiento}
         loading={loading}
         dataKey="id"
         paginator
         rows={10}
         rowsPerPageOptions={[5, 10, 25, 50]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} unidades de medida"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} tipos de almacenamiento"
         globalFilter={globalFilter}
-        globalFilterFields={["nombre", "simbolo"]}
-        emptyMessage="No se encontraron unidades de medida"
+        globalFilterFields={["nombre"]}
+        emptyMessage="No se encontraron tipos de almacenamiento"
         header={
           <div className="flex align-items-center gap-2">
-            <h2>Gestión de Unidades de Medida</h2>
+            <h2>Gestión de Tipos de Almacenamiento</h2>
             <Button
               type="button"
               label="Nuevo"
@@ -290,12 +279,12 @@ const UnidadMedida = () => {
             <InputText
               type="search"
               onInput={(e) => setGlobalFilter(e.target.value)}
-              placeholder="Buscar unidades de medida..."
+              placeholder="Buscar tipos de almacenamiento..."
               style={{ width: 240 }}
             />
           </div>
         }
-        onRowClick={(e) => editarUnidadMedida(e.data)}
+        onRowClick={(e) => editarTipoAlmacenamiento(e.data)}
         className="datatable-responsive"
         scrollable
         scrollHeight="600px"
@@ -307,28 +296,7 @@ const UnidadMedida = () => {
           header="Nombre"
           body={nombreTemplate}
           sortable
-          style={{ minWidth: "150px" }}
-        />
-        <Column
-          field="simbolo"
-          header="Símbolo"
-          body={simboloTemplate}
-          sortable
-          style={{ minWidth: "100px" }}
-        />
-        <Column
-          field="factorConversion"
-          header="Factor Conversión"
-          body={factorConversionTemplate}
-          sortable
-          style={{ minWidth: "130px" }}
-        />
-        <Column
-          field="esMedidaMetrica"
-          header="Tipo"
-          body={medidaMetricaTemplate}
-          sortable
-          style={{ minWidth: "120px" }}
+          style={{ minWidth: "200px" }}
         />
         <Column
           body={accionesTemplate}
@@ -341,18 +309,18 @@ const UnidadMedida = () => {
 
       <Dialog
         visible={dialogoVisible}
-        style={{ width: "600px" }}
+        style={{ width: "500px" }}
         header={
-          unidadMedidaSeleccionada?.id
-            ? "Editar Unidad de Medida"
-            : "Nueva Unidad de Medida"
+          tipoAlmacenamientoSeleccionado?.id
+            ? "Editar Tipo de Almacenamiento"
+            : "Nuevo Tipo de Almacenamiento"
         }
         modal
         className="p-fluid"
         onHide={cerrarDialogo}
       >
-        <UnidadMedidaForm
-          unidadMedida={unidadMedidaSeleccionada}
+        <TipoAlmacenamientoForm
+          tipoAlmacenamiento={tipoAlmacenamientoSeleccionado}
           onSave={onGuardar}
           onCancel={cerrarDialogo}
           toast={toast}
@@ -362,4 +330,4 @@ const UnidadMedida = () => {
   );
 };
 
-export default UnidadMedida;
+export default TipoAlmacenamiento;

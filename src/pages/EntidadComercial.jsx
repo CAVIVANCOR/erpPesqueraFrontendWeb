@@ -227,6 +227,7 @@ const EntidadComercial = () => {
               className="p-button-success"
               onClick={abrirDialogoNuevo}
             />
+            
           </div>
         }
         scrollable
@@ -259,19 +260,19 @@ const EntidadComercial = () => {
         />
         <Column 
           field="estadoActivoSUNAT" 
-          header="Estado Activo SUNAT" 
+          header="Activo SUNAT" 
           body={estadoActivoSUNATTemplate} 
           sortable 
         />
         <Column 
           field="condicionHabidoSUNAT" 
-          header="Condición Habido SUNAT" 
+          header="Habido SUNAT" 
           body={condicionHabidoSUNATTemplate} 
           sortable 
         />
         <Column 
           field="esAgenteRetencion" 
-          header="Es Agente de Retención" 
+          header="Agente Retención" 
           body={esAgenteRetencionTemplate} 
           sortable 
         />

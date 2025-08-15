@@ -1,20 +1,30 @@
+/**
+ * PDFViewer.jsx - Componente específico para productos
+ *
+ * Componente para visualizar PDFs de fichas técnicas de productos con autenticación JWT.
+ * Maneja únicamente URLs de fichas técnicas sin mezclar lógica de otros módulos.
+ *
+ * @author ERP Megui
+ * @version 1.0.0
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../shared/stores/useAuthStore';
-import { ProgressSpinner } from 'primereact/progressspinner';
-import { Button } from 'primereact/button';
 
 /**
- * Componente para visualizar PDFs protegidos con autenticación JWT
+ * Componente para visualizar PDFs de fichas técnicas protegidos con autenticación JWT
  * @param {string} urlDocumento - URL del documento PDF a mostrar
  */
 const PDFViewer = ({ urlDocumento }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!urlDocumento) {
       setLoading(false);
+      setPdfUrl(null);
       return;
     }
 
@@ -22,19 +32,24 @@ const PDFViewer = ({ urlDocumento }) => {
       try {
         setLoading(true);
         setError(null);
+        
+        // Limpiar PDF anterior para forzar actualización
+        if (pdfUrl) {
+          URL.revokeObjectURL(pdfUrl);
+          setPdfUrl(null);
+        }
 
-        // Construir URL completa si es relativa
+        // Construir URL completa para fichas técnicas
         let urlCompleta;
 
-        // Convertir URLs antiguas al formato correcto
-        if (urlDocumento.startsWith('/uploads/documentos-visitantes/')) {
-          // Formato antiguo: /uploads/documentos-visitantes/2025/07/archivo.pdf
-          // Convertir a: /documentos-visitantes/archivo/2025/07/archivo.pdf (sin /api/ porque VITE_API_URL ya lo incluye)
-          const rutaArchivo = urlDocumento.replace('/uploads/documentos-visitantes/', '');
-          urlCompleta = `${import.meta.env.VITE_API_URL}/documentos-visitantes/archivo/${rutaArchivo}`;
+        if (urlDocumento.startsWith('/uploads/fichas-tecnicas/')) {
+          // Formato fichas técnicas: /uploads/fichas-tecnicas/ficha-tecnica-123.pdf
+          // Convertir a: /producto-ficha-tecnica/archivo/ficha-tecnica-123.pdf
+          const rutaArchivo = urlDocumento.replace('/uploads/fichas-tecnicas/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/producto-ficha-tecnica/archivo/${rutaArchivo}`;
         } else if (urlDocumento.startsWith('/api/')) {
           // Remover /api/ del inicio porque VITE_API_URL ya lo incluye
-          const rutaSinApi = urlDocumento.substring(4); // Quitar '/api'
+          const rutaSinApi = urlDocumento.substring(4);
           urlCompleta = `${import.meta.env.VITE_API_URL}${rutaSinApi}`;
         } else if (urlDocumento.startsWith('/')) {
           // Ruta relativa sin /api/
@@ -52,7 +67,7 @@ const PDFViewer = ({ urlDocumento }) => {
         }
 
         // Realizar petición con autenticación
-        const response = await fetch(urlCompleta, {
+        const response = await fetch(`${urlCompleta}?t=${Date.now()}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -81,59 +96,44 @@ const PDFViewer = ({ urlDocumento }) => {
 
     cargarPDF();
 
-    // Cleanup: liberar URL del blob cuando el componente se desmonte
+    // Cleanup: revocar URL del blob cuando el componente se desmonte
     return () => {
       if (pdfUrl) {
         URL.revokeObjectURL(pdfUrl);
       }
     };
-  }, [urlDocumento]);
-
-  // Cleanup adicional cuando cambia pdfUrl
-  useEffect(() => {
-    return () => {
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
-      }
-    };
-  }, [pdfUrl]);
+  }, [urlDocumento, refreshKey]);
 
   if (loading) {
     return (
-      <div className="flex justify-content-center align-items-center" style={{ height: '600px' }}>
-        <div className="text-center">
-          <ProgressSpinner size="50" strokeWidth="4" />
-          <p className="mt-3 text-600">Cargando documento...</p>
-        </div>
+      <div className="flex justify-content-center align-items-center p-4">
+        <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>
+        <span className="ml-2">Cargando ficha técnica...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex justify-content-center align-items-center" style={{ height: '600px' }}>
-        <div className="text-center">
-          <i className="pi pi-exclamation-triangle text-red-500" style={{ fontSize: '3rem' }}></i>
-          <p className="mt-3 text-600">Error al cargar el documento</p>
-          <p className="text-sm text-500">{error}</p>
-        </div>
+      <div className="text-center p-4" style={{ backgroundColor: '#fee', borderRadius: '6px' }}>
+        <i className="pi pi-exclamation-triangle text-red-500" style={{ fontSize: '2rem' }}></i>
+        <p className="text-red-600 mt-2 mb-0">Error al cargar la ficha técnica</p>
+        <small className="text-red-500">{error}</small>
       </div>
     );
   }
 
   if (!pdfUrl) {
     return (
-      <div className="flex justify-content-center align-items-center" style={{ height: '600px' }}>
-        <div className="text-center">
-          <i className="pi pi-file-pdf text-gray-400" style={{ fontSize: '3rem' }}></i>
-          <p className="mt-3 text-600">No hay documento para mostrar</p>
-        </div>
+      <div className="text-center p-4" style={{ backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+        <i className="pi pi-file-pdf text-gray-400" style={{ fontSize: '2rem' }}></i>
+        <p className="text-600 mt-2 mb-0">No hay ficha técnica disponible</p>
       </div>
     );
   }
 
   return (
-    <div>
+    <div key={refreshKey}>
       <iframe
         src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
         width="100%"
@@ -143,7 +143,7 @@ const PDFViewer = ({ urlDocumento }) => {
           borderRadius: "6px",
           boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
         }}
-        title="Documento del Visitante"
+        title="Ficha Técnica PDF"
         onLoad={() => {
         }}
         onError={() => {

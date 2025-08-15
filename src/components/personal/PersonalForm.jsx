@@ -380,7 +380,6 @@ export default function PersonalForm({
   ).map((e) => ({ ...e, id: Number(e.id) }));
   // Transforma IDs a number y fechas a string ISO antes de enviar el payload
   const onSubmitWithLog = (data) => {
-    console.log("Personal onSubmit data", data);
     // Construcción profesional del payload: sedeId eliminado, solo se envía sedeEmpresaId
     const payload = {
       ...data,
@@ -408,7 +407,6 @@ export default function PersonalForm({
       cesado: typeof data.cesado === "boolean" ? data.cesado : false,
     };
     // Fin construcción payload profesional
-    console.log("Personal onSubmit payload", payload);
     onSubmit(payload);
   };
 

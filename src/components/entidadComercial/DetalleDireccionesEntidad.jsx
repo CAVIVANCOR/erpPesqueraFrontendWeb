@@ -9,15 +9,13 @@
  * @version 1.0.0
  */
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
-import { Dropdown } from "primereact/dropdown";
-import { Checkbox } from "primereact/checkbox";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
@@ -33,8 +31,12 @@ import UbigeoSelector from './UbigeoSelector'; // Importar componente UbigeoSele
 import { 
   crearDireccionEntidad, 
   actualizarDireccionEntidad, 
-  eliminarDireccionEntidad 
+  eliminarDireccionEntidad,
+  obtenerDireccionesPorEntidad
 } from '../../api/direccionEntidad';
+import { getUbigeos } from '../../api/ubigeo';
+import { getDepartamentos } from '../../api/departamento';
+import { getProvincias } from '../../api/provincia';
 
 // Esquema de validación para direcciones
 const esquemaValidacionDireccion = yup.object().shape({
@@ -60,18 +62,12 @@ const esquemaValidacionDireccion = yup.object().shape({
  * Componente DetalleDireccionesEntidad
  * @param {Object} props - Props del componente
  * @param {number} props.entidadComercialId - ID de la entidad comercial
- * @param {Array} props.direcciones - Lista de direcciones
- * @param {Function} props.onDireccionesChange - Callback cuando cambian las direcciones
- * @param {Array} props.tiposDireccion - Lista de tipos de dirección
  */
-const DetalleDireccionesEntidad = ({
+const DetalleDireccionesEntidad = forwardRef(({
   entidadComercialId,
-  direcciones = [],
-  onDireccionesChange,
-  tiposDireccion = [],
-}) => {
+}, ref) => {
   // Estados del componente
-  const [direccionesData, setDireccionesData] = useState(direcciones);
+  const [direccionesData, setDireccionesData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [direccionSeleccionada, setDireccionSeleccionada] = useState(null);
@@ -79,6 +75,7 @@ const DetalleDireccionesEntidad = ({
   const [direccionAEliminar, setDireccionAEliminar] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const [ubigeoModalVisible, setUbigeoModalVisible] = useState(false);
+  const [ubigeoTextoSeleccionado, setUbigeoTextoSeleccionado] = useState("Seleccione un ubigeo"); // Estado global para texto del ubigeo
 
   // Referencias
   const toast = useRef(null);
@@ -108,10 +105,35 @@ const DetalleDireccionesEntidad = ({
     },
   });
 
-  // Sincronizar direcciones cuando cambien las props
+  // Función para cargar direcciones desde la API
+  const cargarDirecciones = async () => {
+    if (!entidadComercialId) return;
+    try {
+      setLoading(true);
+      const response = await obtenerDireccionesPorEntidad(entidadComercialId);
+      setDireccionesData(response || []);
+    } catch (error) {
+      console.error("Error al cargar direcciones:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar las direcciones",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Exponer función recargar mediante ref
+  useImperativeHandle(ref, () => ({
+    recargar: cargarDirecciones
+  }));
+
+  // Cargar direcciones al montar el componente o cambiar entidadComercialId
   useEffect(() => {
-    setDireccionesData(direcciones);
-  }, [direcciones]);
+    cargarDirecciones();
+  }, [entidadComercialId]);
 
   /**
    * Abre el diálogo para crear una nueva dirección
@@ -137,6 +159,14 @@ const DetalleDireccionesEntidad = ({
     setValue("telefono", direccion.telefono || "");
     setValue("correo", direccion.correo || "");
     setValue("activo", Boolean(direccion.activo));
+    
+    // Establecer texto del ubigeo para edición
+    if (direccion.ubigeo) {
+      setUbigeoTextoSeleccionado(`${direccion.ubigeo.codigo} - ${direccion.ubigeo.nombreDistrito || 'N/A'}`);
+    } else {
+      setUbigeoTextoSeleccionado("Seleccione un ubigeo");
+    }
+    
     setDialogVisible(true);
   };
 
@@ -162,12 +192,14 @@ const DetalleDireccionesEntidad = ({
    */
   const eliminar = async () => {
     try {
-      const nuevasDirecciones = direccionesData.filter(
-        (d) => d.tempId !== direccionAEliminar.tempId
-      );
-      setDireccionesData(nuevasDirecciones);
-      onDireccionesChange?.(nuevasDirecciones);
-
+      setLoading(true);
+      
+      // Recargar datos desde la API
+      await eliminarDireccionEntidad(direccionAEliminar.id);
+      
+      // Recargar datos desde la API
+      await cargarDirecciones();
+      
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
@@ -175,31 +207,69 @@ const DetalleDireccionesEntidad = ({
         life: 3000,
       });
     } catch (error) {
+      console.error("Error al eliminar dirección:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al eliminar dirección",
+        detail: error.response?.data?.message || "Error al eliminar la dirección",
         life: 3000,
       });
     } finally {
-      setConfirmVisible(false);
-      setDireccionAEliminar(null);
+      setLoading(false)
     }
   };
+
+
+
+
+   /**
+   * Construye automáticamente la direccionArmada combinando:
+   * direccion + nombreDistrito + departamento.nombre + provincia.nombre
+   * @param {string} direccion - Dirección base
+   * @param {number} ubigeoId - ID del ubigeo seleccionado
+   * @returns {Promise<string>} Dirección armada completa
+   */
+   const construirDireccionArmada = async (direccion, ubigeoId) => {
+    try {      
+      // 1. Obtener datos del ubigeo
+      const ubigeos = await getUbigeos();
+      const ubigeoEncontrado = ubigeos.find(u => Number(u.id) === Number(ubigeoId));
+      
+      if (!ubigeoEncontrado) {
+        console.warn('⚠️ [FRONTEND] Ubigeo no encontrado:', ubigeoId);
+        return direccion; // Retornar solo la dirección base
+      }
+
+      // 2. Obtener departamento y provincia
+      const departamentos = await getDepartamentos();
+      const provincias = await getProvincias();
+      
+      const departamento = departamentos.find(d => Number(d.id) === Number(ubigeoEncontrado.departamentoId));
+      const provincia = provincias.find(p => Number(p.id) === Number(ubigeoEncontrado.provinciaId));
+
+      // 3. Construir direccionArmada
+      const direccionArmada = [
+        direccion,
+        ubigeoEncontrado.nombreDistrito || "",
+        departamento?.nombre || "",
+        provincia?.nombre || ""
+      ].filter(Boolean).join(", ");
+      return direccionArmada;
+
+    } catch (error) {
+      console.error('❌ [FRONTEND] Error construyendo direccionArmada:', error);
+      return direccion; // Fallback: retornar solo la dirección base
+    }
+  };
+
 
   /**
    * Callback de guardado exitoso
    */
   const onGuardarExitoso = () => {
     cerrarDialogo();
-    toast.current?.show({
-      severity: "success",
-      summary: "Éxito",
-      detail: direccionSeleccionada
-        ? "Dirección actualizada correctamente"
-        : "Dirección creada correctamente",
-      life: 3000,
-    });
+    // Recargar datos desde la API
+    cargarDirecciones();
   };
 
   /**
@@ -208,18 +278,21 @@ const DetalleDireccionesEntidad = ({
    * @param {Event} event - Evento del formulario
    */
   const onSubmitDireccion = async (data, event) => {
-    // Prevenir propagación del submit al formulario padre
-    event?.preventDefault();
-    event?.stopPropagation();
-
+    if (event) event.preventDefault();
+    
     try {
       setLoading(true);
-
-      // Normalizar datos a mayúsculas
+            
+      // Construir direccionArmada automáticamente
+      const direccionArmada = await construirDireccionArmada(
+        data.direccion?.trim().toUpperCase(),
+        data.ubigeoId
+      );
+      // Normalizar datos
       const direccionNormalizada = {
         entidadComercialId: Number(entidadComercialId),
         direccion: data.direccion?.trim().toUpperCase(),
-        direccionArmada: data.direccionArmada?.trim().toUpperCase() || null,
+        direccionArmada: direccionArmada || null,
         ubigeoId: Number(data.ubigeoId),
         fiscal: Boolean(data.fiscal),
         almacenPrincipal: Boolean(data.almacenPrincipal),
@@ -230,19 +303,9 @@ const DetalleDireccionesEntidad = ({
       };
 
       let resultado;
-      if (direccionSeleccionada && direccionSeleccionada.id) {
-        // Actualizar dirección existente en la base de datos
+      if (direccionSeleccionada) {
+        // Actualizar dirección existente
         resultado = await actualizarDireccionEntidad(direccionSeleccionada.id, direccionNormalizada);
-        
-        // Actualizar en el estado local preservando la relación ubigeo
-        const nuevasDirecciones = direccionesData.map((d) =>
-          Number(d.id) === Number(direccionSeleccionada.id) ? {
-            ...resultado,
-            ubigeo: direccionSeleccionada.ubigeo // Preservar la relación ubigeo existente
-          } : d
-        );
-        setDireccionesData(nuevasDirecciones);
-        onDireccionesChange?.(nuevasDirecciones);
         
         toast.current?.show({
           severity: "success",
@@ -251,13 +314,8 @@ const DetalleDireccionesEntidad = ({
           life: 3000,
         });
       } else {
-        // Crear nueva dirección en la base de datos
+        // Crear nueva dirección
         resultado = await crearDireccionEntidad(direccionNormalizada);
-        
-        // Agregar al estado local
-        const nuevasDirecciones = [...direccionesData, resultado];
-        setDireccionesData(nuevasDirecciones);
-        onDireccionesChange?.(nuevasDirecciones);
         
         toast.current?.show({
           severity: "success",
@@ -273,11 +331,11 @@ const DetalleDireccionesEntidad = ({
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.message || "Error al guardar dirección",
+        detail: error.response?.data?.message || "Error al guardar la dirección",
         life: 3000,
       });
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   };
 
@@ -341,6 +399,7 @@ const DetalleDireccionesEntidad = ({
           }}
           tooltip="Editar"
           tooltipOptions={{ position: "top" }}
+          type="button"
         />
         {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
           <Button
@@ -348,6 +407,7 @@ const DetalleDireccionesEntidad = ({
             className="p-button-text p-button-danger"
             onClick={() => confirmarEliminacion(rowData)}
             tooltip="Eliminar"
+            type="button"
           />
         )}
       </div>
@@ -380,6 +440,7 @@ const DetalleDireccionesEntidad = ({
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              type="button"
             />
             <span className="p-input-icon-left">
               <InputText
@@ -475,7 +536,7 @@ const DetalleDireccionesEntidad = ({
                   id="ubigeoId"
                   value={direccionSeleccionada?.ubigeo ? 
                     `${direccionSeleccionada.ubigeo.codigo} - ${direccionSeleccionada.ubigeo.nombreDistrito || 'N/A'}` : 
-                    'Seleccione un ubigeo'
+                    ubigeoTextoSeleccionado
                   }
                   className={getFieldClass("ubigeoId")}
                   disabled
@@ -658,7 +719,6 @@ const DetalleDireccionesEntidad = ({
           </div>
         </form>
       </Dialog>
-
       {/* Modal de selección de Ubigeo */}
       <Dialog
         header={`Seleccionar Ubigeo ${direccionSeleccionada?.ubigeo ? 
@@ -671,11 +731,8 @@ const DetalleDireccionesEntidad = ({
       >
         <UbigeoSelector
           onUbigeoSelect={(ubigeo) => {
-            console.log('Ubigeo seleccionado:', ubigeo);
-            
             // Actualizar el campo ubigeoId con el ID seleccionado
             setValue("ubigeoId", ubigeo.id);
-            
             // Actualizar la dirección seleccionada para mostrar la info
             if (direccionSeleccionada) {
               setDireccionSeleccionada({
@@ -684,10 +741,10 @@ const DetalleDireccionesEntidad = ({
                 ubigeo: ubigeo
               });
             }
-            
+            // Actualizar texto seleccionado
+            setUbigeoTextoSeleccionado(`${ubigeo.codigo} - ${ubigeo.nombreDistrito}`);
             // Cerrar modal
             setUbigeoModalVisible(false);
-            
             // Mostrar confirmación
             toast.current?.show({
               severity: "success",
@@ -699,7 +756,6 @@ const DetalleDireccionesEntidad = ({
           onCancel={() => setUbigeoModalVisible(false)}
         />
       </Dialog>
-
       <ConfirmDialog
         visible={confirmVisible}
         onHide={() => setConfirmVisible(false)}
@@ -714,6 +770,6 @@ const DetalleDireccionesEntidad = ({
       />
     </div>
   );
-};
+});
 
 export default DetalleDireccionesEntidad;

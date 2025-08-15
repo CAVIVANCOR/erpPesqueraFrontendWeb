@@ -9,7 +9,7 @@
  * @version 1.0.0
  */
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -28,6 +28,12 @@ import * as yup from "yup";
 import { classNames } from "primereact/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../../utils/utils";
+import { 
+  obtenerVehiculosPorEntidad,
+  crearVehiculoEntidad, 
+  actualizarVehiculoEntidad, 
+  eliminarVehiculoEntidad 
+} from "../../api/vehiculoEntidad";
 
 // Esquema de validación para vehículos
 const esquemaValidacionVehiculo = yup.object().shape({
@@ -54,12 +60,12 @@ const esquemaValidacionVehiculo = yup.object().shape({
  * @param {Function} props.onVehiculosChange - Callback cuando cambian los vehículos
  * @param {Array} props.tiposVehiculo - Lista de tipos de vehículo
  */
-const DetalleVehiculosEntidad = ({
+const DetalleVehiculosEntidad = forwardRef(({
   entidadComercialId,
   vehiculos = [],
   onVehiculosChange,
   tiposVehiculo = []
-}) => {
+}, ref) => {
   // Estados del componente
   const [vehiculosData, setVehiculosData] = useState(vehiculos);
   const [loading, setLoading] = useState(false);
@@ -98,11 +104,6 @@ const DetalleVehiculosEntidad = ({
       estado: true,
     },
   });
-
-  // Sincronizar vehículos cuando cambien las props
-  useEffect(() => {
-    setVehiculosData(vehiculos);
-  }, [vehiculos]);
 
   /**
    * Abre el diálogo para crear un nuevo vehículo
@@ -303,6 +304,7 @@ const DetalleVehiculosEntidad = ({
           }}
           tooltip="Editar"
           tooltipOptions={{ position: "top" }}
+          type="button"
         />
         {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
           <Button
@@ -310,11 +312,32 @@ const DetalleVehiculosEntidad = ({
             className="p-button-text p-button-danger"
             onClick={() => confirmarEliminacion(rowData)}
             tooltip="Eliminar"
+            type="button"
           />
         )}
       </div>
     );
   };
+
+  const cargarVehiculos = async () => {
+    try {
+      const vehiculos = await obtenerVehiculosPorEntidad(entidadComercialId);
+      setVehiculosData(vehiculos);
+      onVehiculosChange?.(vehiculos);
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar vehículos",
+        life: 3000,
+      });
+    }
+  };
+
+  // Exponer función recargar mediante ref
+  useImperativeHandle(ref, () => ({
+    recargar: cargarVehiculos
+  }));
 
   return (
     <div className="p-4">
@@ -342,6 +365,7 @@ const DetalleVehiculosEntidad = ({
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              type="button"
             />
             <span className="p-input-icon-left">
               <InputText
@@ -668,6 +692,6 @@ const DetalleVehiculosEntidad = ({
       />
     </div>
   );
-};
+});
 
 export default DetalleVehiculosEntidad;

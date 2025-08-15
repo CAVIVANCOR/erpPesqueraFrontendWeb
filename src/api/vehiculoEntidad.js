@@ -20,6 +20,11 @@ export async function getVehiculosEntidad() {
   return res.data;
 }
 
+export async function obtenerVehiculosPorEntidad(entidadComercialId) {
+  const res = await axios.get(`${API_URL}/entidad/${entidadComercialId}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function getVehiculoEntidadPorId(id) {
   const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;

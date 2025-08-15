@@ -1,41 +1,115 @@
-// src/api/color.js
-// Funciones de integración API REST para Color. Usa JWT desde Zustand.
-// Documentado en español técnico.
+/**
+ * API para gestión de Colores
+ * Implementa todas las operaciones CRUD con manejo de errores y autenticación JWT.
+ * Endpoints: GET /api/colores, POST /api/colores, PUT /api/colores/:id, DELETE /api/colores/:id
+ * Patrón aplicado: Axios con interceptores, manejo de errores HTTP, normalización de datos.
+ *
+ * @author ERP Megui
+ * @version 1.0.0
+ */
 
-import axios from "axios";
-import { useAuthStore } from "../shared/stores/useAuthStore";
+import axios from 'axios';
+import { useAuthStore } from '../shared/stores/useAuthStore';
 
+// URL base de la API desde variables de entorno
 const API_URL = `${import.meta.env.VITE_API_URL}/colores`;
 
 /**
- * Obtiene el token JWT profesionalmente desde Zustand
+ * Configuración de headers con autenticación JWT
+ * Obtiene el token desde el store global de autenticación
  */
-function getAuthHeaders() {
+const getAuthHeaders = () => {
   const token = useAuthStore.getState().token;
-  return { Authorization: `Bearer ${token}` };
-}
+  return {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  };
+};
 
-export async function getColores() {
-  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
-  return res.data;
-}
+/**
+ * Obtiene todos los colores
+ * @returns {Promise<Array>} Lista de colores
+ */
+export const getColores = async () => {
+  try {
+    const response = await axios.get(API_URL, getAuthHeaders());
+    return response.data;
+  } catch (error) {
+    console.error("Error al obtener colores:", error);
+    throw error;
+  }
+};
 
-export async function getColorPorId(id) {
-  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
-  return res.data;
-}
+/**
+ * Obtiene un color por ID
+ * @param {number} id - ID del color
+ * @returns {Promise<Object>} Datos del color
+ */
+export const getColorPorId = async (id) => {
+  try {
+    const response = await axios.get(`${API_URL}/${id}`, getAuthHeaders());
+    return response.data;
+  } catch (error) {
+    console.error(`Error al obtener color ${id}:`, error);
+    throw error;
+  }
+};
 
-export async function crearColor(data) {
-  const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
-  return res.data;
-}
+/**
+ * Crea un nuevo color
+ * @param {Object} color - Datos del color
+ * @param {string} color.nombre - Nombre del color (máximo 80 caracteres)
+ * @returns {Promise<Object>} Color creado
+ */
+export const crearColor = async (color) => {
+  try {
+    // Normalización de datos según reglas ERP Megui
+    const datosNormalizados = {
+      nombre: color.nombre?.toUpperCase().trim(),
+    };
 
-export async function actualizarColor(id, data) {
-  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
-  return res.data;
-}
+    const response = await axios.post(API_URL, datosNormalizados, getAuthHeaders());
+    return response.data;
+  } catch (error) {
+    console.error("Error al crear color:", error);
+    throw error;
+  }
+};
 
-export async function eliminarColor(id) {
-  const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
-  return res.data;
-}
+/**
+ * Actualiza un color existente
+ * @param {number} id - ID del color
+ * @param {Object} color - Datos actualizados del color
+ * @param {string} color.nombre - Nombre del color (máximo 80 caracteres)
+ * @returns {Promise<Object>} Color actualizado
+ */
+export const actualizarColor = async (id, color) => {
+  try {
+    // Normalización de datos según reglas ERP Megui
+    const datosNormalizados = {
+      nombre: color.nombre?.toUpperCase().trim(),
+    };
+
+    const response = await axios.put(`${API_URL}/${id}`, datosNormalizados, getAuthHeaders());
+    return response.data;
+  } catch (error) {
+    console.error(`Error al actualizar color ${id}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Elimina un color
+ * @param {number} id - ID del color a eliminar
+ * @returns {Promise<void>}
+ */
+export const eliminarColor = async (id) => {
+  try {
+    await axios.delete(`${API_URL}/${id}`, getAuthHeaders());
+  } catch (error) {
+    console.error(`Error al eliminar color ${id}:`, error);
+    throw error;
+  }
+};

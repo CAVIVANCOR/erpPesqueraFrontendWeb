@@ -21,16 +21,20 @@ import { ButtonGroup } from "primereact/buttongroup";
 import { Card } from "primereact/card";
 
 import {
+  getEntidadesComerciales,
+  getEntidadComercialPorId,
   crearEntidadComercial,
   actualizarEntidadComercial,
+  getAgenciasEnvio,
 } from "../../api/entidadComercial";
+import { crearDireccionEntidad, obtenerDireccionFiscalPorEntidad, actualizarDireccionEntidad } from "../../api/direccionEntidad";
 import { getEmpresas } from "../../api/empresa";
 import { getTiposDocIdentidad } from "../../api/tiposDocIdentidad";
 import { getTiposEntidad } from "../../api/tipoEntidad";
 import { getFormasPago } from "../../api/formaPago";
 import { getAgrupacionesEntidad } from "../../api/agrupacionEntidad";
-import { getVendedores } from "../../api/vendedor";
-import { getAgenciasEnvio } from "../../api/agenciaEnvio";
+import { getVendedoresPorEmpresa } from "../../api/personal";
+import { getTiposVehiculo } from "../../api/tipoVehiculo";
 
 // Importar componentes de cards
 import DatosGeneralesEntidad from "./DatosGeneralesEntidad";
@@ -76,11 +80,6 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
   const [activeCard, setActiveCard] = useState("datos-generales");
   const [datosGenerales, setDatosGenerales] = useState({});
   const [datosOperativos, setDatosOperativos] = useState({});
-  const [contactos, setContactos] = useState([]);
-  const [direcciones, setDirecciones] = useState([]);
-  const [precios, setPrecios] = useState([]);
-  const [vehiculos, setVehiculos] = useState([]);
-  const [lineasCredito, setLineasCredito] = useState([]);
 
   // Estados para catálogos
   const [empresas, setEmpresas] = useState([]);
@@ -92,6 +91,11 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
   const [agenciasEnvio, setAgenciasEnvio] = useState([]);
 
   const toast = useRef(null);
+  const direccionesRef = useRef(null);
+  const contactosRef = useRef(null);
+  const vehiculosRef = useRef(null);
+  const lineasCreditoRef = useRef(null);
+  const preciosRef = useRef(null);
   const esEdicion = !!entidadComercial;
 
   // Configuración del formulario principal (solo para datos básicos)
@@ -216,12 +220,17 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
       };
       setDatosOperativos(operativos);
 
-      // Cargar datos relacionados (si existen en la entidad)
-      setContactos(entidadComercial.contactos || []);
-      setDirecciones(entidadComercial.direcciones || []);
-      setPrecios(entidadComercial.precios || []);
-      setVehiculos(entidadComercial.vehiculos || []);
-      setLineasCredito(entidadComercial.lineasCredito || []);
+      // Cargar vendedores filtrados por empresa en modo edición
+      if (entidadComercial.empresaId) {
+        getVendedoresPorEmpresa(Number(entidadComercial.empresaId))
+          .then((vendedoresData) => {
+            setVendedores(vendedoresData || []);
+          })
+          .catch((error) => {
+            console.error("Error al cargar vendedores en modo edición:", error);
+            setVendedores([]);
+          });
+      }
 
       // IMPORTANTE: Convertir a números para que coincidan con las opciones
       setValue("empresaId", Number(entidadComercial.empresaId));
@@ -302,30 +311,49 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
     setValue("condicionHabidoSUNAT", datos.condicionHabidoSUNAT);
     setValue("esAgenteRetencion", datos.esAgenteRetencion);
 
-    // Manejar dirección fiscal automática de SUNAT (código legacy - mantener por compatibilidad)
+    // Manejar dirección fiscal automática de SUNAT
     if (datos.direccionFiscalAutomatica) {
-      console.log(
-        "Dirección fiscal automática recibida:",
-        datos.direccionFiscalAutomatica
-      );
+      try {
+        // Buscar si existe una dirección fiscal para la entidad comercial
+        const direccionFiscalExistente = await obtenerDireccionFiscalPorEntidad(
+          Number(entidadComercial.id)
+        );
 
-      // Agregar la dirección fiscal a las direcciones existentes
-      // Si ya existe una dirección fiscal, la reemplazamos
-      const direccionesSinFiscal = direcciones.filter((dir) => !dir.fiscal);
-      const nuevasDirecciones = [
-        ...direccionesSinFiscal,
-        datos.direccionFiscalAutomatica,
-      ];
+        if (direccionFiscalExistente) {
+          // Actualizar la dirección fiscal existente
+          const resultadoActualizacion = await actualizarDireccionEntidad(
+            direccionFiscalExistente.id,
+            datos.direccionFiscalAutomatica
+          );
+        } else {
+          const datosNuevaDireccion = {
+            ...datos.direccionFiscalAutomatica,
+            entidadComercialId: Number(entidadComercial.id),
+          };
+          
+          // Crear la dirección fiscal directamente en la base de datos
+          const resultadoCreacion = await crearDireccionEntidad(datosNuevaDireccion);
+        }
 
-      setDirecciones(nuevasDirecciones);
+        // Notificar al componente de direcciones que recargue
+        direccionesRef.current?.recargar();
 
-      // Mostrar notificación al usuario
-      toast.current?.show({
-        severity: "info",
-        summary: "Dirección Fiscal",
-        detail: "Dirección fiscal agregada automáticamente desde datos SUNAT",
-        life: 4000,
-      });
+        // Mostrar notificación al usuario
+        toast.current?.show({
+          severity: "info",
+          summary: "Dirección Fiscal",
+          detail: "Dirección fiscal agregada automáticamente desde datos SUNAT",
+          life: 4000,
+        });
+      } catch (error) {
+        console.error('❌ [FRONTEND] Error al procesar dirección fiscal automática:', error);
+        toast.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "No se pudo crear la dirección fiscal automáticamente",
+          life: 4000,
+        });
+      }
     }
   };
 
@@ -337,136 +365,83 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
   };
 
   /**
+   * Maneja el cambio de card activo y carga los datos correspondientes
+   */
+  const handleCardChange = (cardName) => {
+    setActiveCard(cardName);
+    
+    // No intentamos cargar datos aquí porque los componentes no están montados aún
+    // Los datos se cargarán en useEffect después del montaje
+  };
+
+  // Efecto para recargar datos cuando cambia el card activo
+  useEffect(() => {
+    // Cargar datos del componente correspondiente después de que se monte
+    switch (activeCard) {
+      case "contactos":
+        contactosRef.current?.recargar();
+        break;
+      case "direcciones":
+        direccionesRef.current?.recargar();
+        break;
+      case "precios":
+        preciosRef.current?.recargar();
+        break;
+      case "vehiculos":
+        vehiculosRef.current?.recargar();
+        break;
+      case "lineas-credito":
+        lineasCreditoRef.current?.recargar();
+        break;
+      default:
+        // Para datos-generales y datos-operativos no necesitamos cargar datos adicionales
+        break;
+    }
+  }, [activeCard]); // Se ejecuta cada vez que cambia activeCard
+
+  /**
    * Maneja el guardado de la entidad comercial
    */
   const onSubmit = async (data) => {
     try {
       setLoading(true);
 
-      // Consolidar todos los datos
-      const entidadCompleta = {
-        ...datosGenerales,
-        ...datosOperativos,
-      };
-
-      // Normalización de datos principales
+      // Normalización de datos nativos de EntidadComercial únicamente
       const entidadNormalizada = {
-        empresaId: Number(entidadCompleta.empresaId),
-        tipoDocumentoId: Number(entidadCompleta.tipoDocumentoId),
-        tipoEntidadId: Number(entidadCompleta.tipoEntidadId),
-        formaPagoId: entidadCompleta.formaPagoId
-          ? Number(entidadCompleta.formaPagoId)
-          : null,
-        agrupacionEntidadId: entidadCompleta.agrupacionEntidadId
-          ? Number(entidadCompleta.agrupacionEntidadId)
-          : null,
-        vendedorId: entidadCompleta.vendedorId
-          ? Number(entidadCompleta.vendedorId)
-          : null,
-        agenciaEnvioId: entidadCompleta.agenciaEnvioId
-          ? Number(entidadCompleta.agenciaEnvioId)
-          : null,
-        numeroDocumento: entidadCompleta.numeroDocumento?.trim().toUpperCase(),
-        razonSocial: entidadCompleta.razonSocial?.trim().toUpperCase(),
-        nombreComercial:
-          entidadCompleta.nombreComercial?.trim().toUpperCase() || null,
-        codigoErpFinanciero:
-          entidadCompleta.codigoErpFinanciero?.trim().toUpperCase() || null,
-        observaciones:
-          entidadCompleta.observaciones?.trim().toUpperCase() || null,
-        esCliente: Boolean(entidadCompleta.esCliente),
-        esProveedor: Boolean(entidadCompleta.esProveedor),
-        esCorporativo: Boolean(entidadCompleta.esCorporativo),
-        estado: Boolean(entidadCompleta.estado),
-        estadoActivoSUNAT: Boolean(entidadCompleta.estadoActivoSUNAT),
-        condicionHabidoSUNAT: Boolean(entidadCompleta.condicionHabidoSUNAT),
-        esAgenteRetencion: Boolean(entidadCompleta.esAgenteRetencion),
-        custodiaStock: Boolean(entidadCompleta.custodiaStock),
-        controlLote: Boolean(entidadCompleta.controlLote),
-        controlFechaVenc: Boolean(entidadCompleta.controlFechaVenc),
-        controlFechaProd: Boolean(entidadCompleta.controlFechaProd),
-        controlFechaIngreso: Boolean(entidadCompleta.controlFechaIngreso),
-        controlSerie: Boolean(entidadCompleta.controlSerie),
-        controlEnvase: Boolean(entidadCompleta.controlEnvase),
-        sujetoRetencion: Boolean(entidadCompleta.sujetoRetencion),
-        sujetoPercepcion: Boolean(entidadCompleta.sujetoPercepcion),
+        empresaId: Number(data.empresaId),
+        tipoDocumentoId: Number(data.tipoDocumentoId),
+        tipoEntidadId: Number(data.tipoEntidadId),
+        formaPagoId: data.formaPagoId ? Number(data.formaPagoId) : null,
+        agrupacionEntidadId: data.agrupacionEntidadId ? Number(data.agrupacionEntidadId) : null,
+        vendedorId: data.vendedorId ? Number(data.vendedorId) : null,
+        agenciaEnvioId: data.agenciaEnvioId ? Number(data.agenciaEnvioId) : null,
+        numeroDocumento: data.numeroDocumento?.trim().toUpperCase(),
+        razonSocial: data.razonSocial?.trim().toUpperCase(),
+        nombreComercial: data.nombreComercial?.trim().toUpperCase() || null,
+        codigoErpFinanciero: data.codigoErpFinanciero?.trim().toUpperCase() || null,
+        observaciones: data.observaciones?.trim().toUpperCase() || null,
+        esCliente: Boolean(data.esCliente),
+        esProveedor: Boolean(data.esProveedor),
+        esCorporativo: Boolean(data.esCorporativo),
+        estado: Boolean(data.estado),
+        estadoActivoSUNAT: Boolean(data.estadoActivoSUNAT),
+        condicionHabidoSUNAT: Boolean(data.condicionHabidoSUNAT),
+        esAgenteRetencion: Boolean(data.esAgenteRetencion),
+        custodiaStock: Boolean(data.custodiaStock),
+        controlLote: Boolean(data.controlLote),
+        controlFechaVenc: Boolean(data.controlFechaVenc),
+        controlFechaProd: Boolean(data.controlFechaProd),
+        controlFechaIngreso: Boolean(data.controlFechaIngreso),
+        controlSerie: Boolean(data.controlSerie),
+        controlEnvase: Boolean(data.controlEnvase),
+        sujetoRetencion: Boolean(data.sujetoRetencion),
+        sujetoPercepcion: Boolean(data.sujetoPercepcion),
       };
-
-      // Solo agregar relaciones si tienen datos válidos
-      if (contactos && contactos.length > 0) {
-        entidadNormalizada.contactos = {
-          create: contactos.map((contacto) => ({
-            tipoContactoId: Number(contacto.tipoContactoId),
-            nombres: contacto.nombres?.trim().toUpperCase(),
-            apellidos: contacto.apellidos?.trim().toUpperCase(),
-            cargo: contacto.cargo?.trim().toUpperCase() || null,
-            telefono: contacto.telefono?.trim().toUpperCase() || null,
-            email: contacto.email?.trim().toLowerCase() || null,
-            esPrincipal: Boolean(contacto.esPrincipal),
-            estado: Boolean(contacto.estado),
-          })),
-        };
-      }
-
-      if (precios && precios.length > 0) {
-        entidadNormalizada.precios = {
-          create: precios.map((precio) => ({
-            productoId: Number(precio.productoId),
-            tipoListaPrecioId: Number(precio.tipoListaPrecioId),
-            precio: Number(precio.precio),
-            descuento: precio.descuento ? Number(precio.descuento) : 0,
-            fechaInicio: precio.fechaInicio
-              ? new Date(precio.fechaInicio)
-              : null,
-            fechaFin: precio.fechaFin ? new Date(precio.fechaFin) : null,
-            cantidadMinima: precio.cantidadMinima
-              ? Number(precio.cantidadMinima)
-              : null,
-            estado: Boolean(precio.estado),
-          })),
-        };
-      }
-
-      if (vehiculos && vehiculos.length > 0) {
-        entidadNormalizada.vehiculos = {
-          create: vehiculos.map((vehiculo) => ({
-            tipoVehiculoId: Number(vehiculo.tipoVehiculoId),
-            placa: vehiculo.placa?.trim().toUpperCase(),
-            marca: vehiculo.marca?.trim().toUpperCase(),
-            modelo: vehiculo.modelo?.trim().toUpperCase(),
-            color: vehiculo.color?.trim().toUpperCase(),
-            anio: Number(vehiculo.anio),
-            numeroMotor: vehiculo.numeroMotor?.trim().toUpperCase() || null,
-            numeroChasis: vehiculo.numeroChasis?.trim().toUpperCase() || null,
-            capacidadCarga: vehiculo.capacidadCarga
-              ? Number(vehiculo.capacidadCarga)
-              : null,
-            esPrincipal: Boolean(vehiculo.esPrincipal),
-            estado: Boolean(vehiculo.estado),
-          })),
-        };
-      }
-
-      if (lineasCredito && lineasCredito.length > 0) {
-        entidadNormalizada.lineasCredito = {
-          create: lineasCredito.map((lineaCredito) => ({
-            tipoCreditoId: Number(lineaCredito.tipoCreditoId),
-            monto: Number(lineaCredito.monto),
-            plazo: Number(lineaCredito.plazo),
-            tasaInteres: Number(lineaCredito.tasaInteres),
-            estado: Boolean(lineaCredito.estado),
-          })),
-        };
-      }
 
       let resultado;
       if (esEdicion) {
-        resultado = await actualizarEntidadComercial(
-          entidadComercial.id,
-          entidadNormalizada
-        );
+        resultado = await actualizarEntidadComercial(entidadComercial.id, entidadNormalizada);
       } else {
-        // Solo en modo creación procesamos algunas relaciones básicas si las hay
         resultado = await crearEntidadComercial(entidadNormalizada);
       }
 
@@ -485,9 +460,7 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail:
-          error.response?.data?.message ||
-          "Error al guardar la entidad comercial",
+        detail: error.response?.data?.message || "Error al guardar la entidad comercial",
         life: 3000,
       });
     } finally {
@@ -497,16 +470,11 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
 
   /**
    * Valida si se puede navegar a la siguiente pestaña
+   * REGLA CRÍTICA: NUNCA deshabilitar botones en EntidadComercial
    */
   const puedeNavegar = () => {
-    // Validar que al menos los datos básicos estén completos
-    return (
-      datosGenerales.empresaId &&
-      datosGenerales.tipoDocumentoId &&
-      datosGenerales.tipoEntidadId &&
-      datosGenerales.numeroDocumento &&
-      datosGenerales.razonSocial
-    );
+    // SIEMPRE permitir navegación - sin validaciones absurdas
+    return true;
   };
 
   if (loading && !esEdicion) {
@@ -538,7 +506,7 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
                     ? "p-button-primary"
                     : "p-button-outlined"
                 }
-                onClick={() => setActiveCard("datos-generales")}
+                onClick={() => handleCardChange("datos-generales")}
                 type="button"
               />
               <Button
@@ -550,9 +518,8 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
                     ? "p-button-success"
                     : "p-button-outlined"
                 }
-                onClick={() => setActiveCard("datos-operativos")}
+                onClick={() => handleCardChange("datos-operativos")}
                 type="button"
-                disabled={!puedeNavegar()}
               />
               <Button
                 icon="pi pi-map-marker"
@@ -563,9 +530,8 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
                     ? "p-button-warning"
                     : "p-button-outlined"
                 }
-                onClick={() => setActiveCard("direcciones")}
+                onClick={() => handleCardChange("direcciones")}
                 type="button"
-                disabled={!puedeNavegar()}
               />
               <Button
                 icon="pi pi-phone"
@@ -576,9 +542,8 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
                     ? "p-button-info"
                     : "p-button-outlined"
                 }
-                onClick={() => setActiveCard("contactos")}
+                onClick={() => handleCardChange("contactos")}
                 type="button"
-                disabled={!puedeNavegar()}
               />
 
               <Button
@@ -590,9 +555,8 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
                     ? "p-button-help"
                     : "p-button-outlined"
                 }
-                onClick={() => setActiveCard("precios")}
+                onClick={() => handleCardChange("precios")}
                 type="button"
-                disabled={!puedeNavegar()}
               />
               <Button
                 icon="pi pi-car"
@@ -603,9 +567,8 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
                     ? "p-button-secondary"
                     : "p-button-outlined"
                 }
-                onClick={() => setActiveCard("vehiculos")}
+                onClick={() => handleCardChange("vehiculos")}
                 type="button"
-                disabled={!puedeNavegar()}
               />
               <Button
                 icon="pi pi-credit-card"
@@ -616,9 +579,8 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
                     ? "p-button-danger"
                     : "p-button-outlined"
                 }
-                onClick={() => setActiveCard("lineas-credito")}
+                onClick={() => handleCardChange("lineas-credito")}
                 type="button"
-                disabled={!puedeNavegar()}
               />
             </ButtonGroup>
           }
@@ -633,11 +595,10 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
             tiposEntidad={tiposEntidad}
             formasPago={formasPago}
             agrupaciones={agrupaciones}
-            esEdicion={esEdicion}
             entidadComercialId={entidadComercial?.id}
-            datosGenerales={datosGenerales}
             onDatosGeneralesChange={handleDatosGeneralesChange}
             setValue={setValue}
+            getValues={getValues}
             toast={toast}
           />
         )}
@@ -657,46 +618,48 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
         {activeCard === "contactos" && (
           <DetalleContactosEntidad
             entidadComercialId={entidadComercial?.id}
-            contactos={contactos}
-            onContactosChange={setContactos}
+            // contactos={contactos}
+            // onContactosChange={setContactos}
             tiposContacto={[]} // Se cargarán desde el componente
+            ref={contactosRef}
           />
         )}
 
         {activeCard === "direcciones" && (
           <DetalleDireccionesEntidad
             entidadComercialId={entidadComercial?.id}
-            direcciones={direcciones}
-            onDireccionesChange={setDirecciones}
-            tiposDireccion={[]} // Se cargarán desde el componente
+            ref={direccionesRef}
           />
         )}
 
         {activeCard === "precios" && (
           <DetallePreciosEntidad
             entidadComercialId={entidadComercial?.id}
-            precios={precios}
-            onPreciosChange={setPrecios}
+            // precios={precios}
+            // onPreciosChange={setPrecios}
             productos={[]} // Se cargarán desde el componente
             monedas={[]} // Se cargarán desde el componente
+            ref={preciosRef}
           />
         )}
 
         {activeCard === "vehiculos" && (
           <DetalleVehiculosEntidad
             entidadComercialId={entidadComercial?.id}
-            vehiculos={vehiculos}
-            onVehiculosChange={setVehiculos}
+            // vehiculos={vehiculos}
+            // onVehiculosChange={setVehiculos}
             tiposVehiculo={[]} // Se cargarán desde el componente
+            ref={vehiculosRef}
           />
         )}
 
         {activeCard === "lineas-credito" && (
           <DetalleLineasCreditoEntidad
             entidadComercialId={entidadComercial?.id}
-            lineasCredito={lineasCredito}
-            onLineasCreditoChange={setLineasCredito}
+            // lineasCredito={lineasCredito}
+            // onLineasCreditoChange={setLineasCredito}
             monedas={[]} // Se cargarán desde el componente
+            ref={lineasCreditoRef}
           />
         )}
 
@@ -716,7 +679,6 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
             className="p-button-success"
             onClick={handleSubmit(onSubmit)}
             loading={loading}
-            disabled={!puedeNavegar()}
           />
         </div>
       </form>
@@ -742,9 +704,6 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
             de 7
           </span>
           <span>
-            {!puedeNavegar() && activeCard !== "datos-generales" && (
-              <i className="pi pi-exclamation-triangle text-orange-500 mr-1"></i>
-            )}
             {puedeNavegar()
               ? "Datos básicos completos"
               : "Complete los datos generales"}

@@ -60,7 +60,6 @@ const UbigeoSelector = ({ onUbigeoSelect, onCancel }) => {
       setSelectedProvincia(null); // Reset provincia
     } else {
       // Si no hay departamento seleccionado, mostrar todas las provincias
-      console.log('🔄 Sin departamento seleccionado, cargando todas las provincias');
       cargarProvincias(); // Sin parámetro = todas las provincias
       setSelectedProvincia(null);
     }
@@ -235,7 +234,6 @@ const UbigeoSelector = ({ onUbigeoSelect, onCancel }) => {
    * Template para acciones (seleccionar)
    */
   const accionesTemplate = (rowData) => {
-    console.log("Selecciona Opcion Ubigeo",rowData);
     return (
       <Button
         icon="pi pi-check"

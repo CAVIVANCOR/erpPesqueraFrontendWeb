@@ -47,6 +47,7 @@ import {
  * @param {Function} props.onDatosGeneralesChange - Callback para notificar cambios
  * @param {Function} props.setValue - Función setValue de React Hook Form
  * @param {Object} props.toast - Referencia al componente Toast
+ * @param {Function} props.getValues - Función getValues de React Hook Form
  */
 const DatosGeneralesEntidad = ({
   control,
@@ -61,11 +62,11 @@ const DatosGeneralesEntidad = ({
   onDatosGeneralesChange,
   setValue,
   toast,
+  getValues,
 }) => {
-  // Estados para la búsqueda
+  // Referencias y estado
+  const toastRef = useRef(null);
   const [buscandoDocumento, setBuscandoDocumento] = useState(false);
-
-  // Referencia para evitar llamadas duplicadas
   const lastDataRef = useRef(null);
 
   // Observar cambios en los campos principales
@@ -94,8 +95,8 @@ const DatosGeneralesEntidad = ({
   });
 
   // Observar cambios específicos en tipoDocumentoId y numeroDocumento
-  const tipoDocumentoId = useWatch({ control, name: "tipoDocumentoId" });
-  const numeroDocumento = useWatch({ control, name: "numeroDocumento" });
+  const tipoDocumentoId = watchedFields?.tipoDocumentoId || useWatch({ control, name: "tipoDocumentoId" });
+  const numeroDocumento = watchedFields?.numeroDocumento || useWatch({ control, name: "numeroDocumento" });
 
   /**
    * Buscar datos por DNI en RENIEC
@@ -137,7 +138,6 @@ const DatosGeneralesEntidad = ({
     try {
       // Si no hay ID de entidad comercial, solo retornamos null (no creamos dirección)
       if (!entidadComercialId) {
-        console.log("Sin ID de entidad comercial - no se creará dirección fiscal");
         return null;
       }
 
@@ -206,73 +206,64 @@ const DatosGeneralesEntidad = ({
       setValue("condicionHabidoSUNAT", datos.condicion === "HABIDO");
       setValue("esAgenteRetencion", Boolean(datos.es_agente_retencion));
 
-      // Crear/actualizar dirección fiscal automáticamente (solo si hay ID de entidad)
+      // Preparar dirección fiscal automática (solo si hay datos de dirección)
+      let direccionFiscalAutomatica = null;
       if (datos.direccion && datos.ubigeo) {
         try {
-          const datosDireccionFiscal = await crearActualizarDireccionFiscal(datos);
-          
-          if (datosDireccionFiscal) {
-            // Verificar si ya existe una dirección fiscal para esta entidad
-            const direccionesExistentes = await getDireccionesEntidad(entidadComercialId);
-            const direccionFiscalExistente = direccionesExistentes.find(dir => dir.fiscal === true);
-            
-            let direccionFiscalCreada;
-            if (direccionFiscalExistente) {
-              // Actualizar dirección fiscal existente
-              direccionFiscalCreada = await actualizarDireccionEntidad(direccionFiscalExistente.id, datosDireccionFiscal);
-            } else {
-              // Crear nueva dirección fiscal
-              direccionFiscalCreada = await crearDireccionEntidad(datosDireccionFiscal);
-            }
-            
-            // Con ID de entidad - dirección fiscal creada/actualizada
-            toast?.current?.show({
-              severity: "success",
-              summary: "Consulta SUNAT Completa",
-              detail: `${datos.razon_social}\nEstado: ${
-                datos.estado === "ACTIVO" ? "✅ Activo" : "❌ Inactivo"
-              }\nDirección fiscal ${direccionFiscalExistente ? 'actualizada' : 'creada'} automáticamente`,
-              life: 6000,
-            });
-          } else {
-            // Sin ID de entidad - solo datos principales
-            toast?.current?.show({
-              severity: "success",
-              summary: "Consulta SUNAT",
-              detail: `${datos.razon_social}\nEstado: ${
-                datos.estado === "ACTIVO" ? "✅ Activo" : "❌ Inactivo"
-              }\nDatos principales autocompletados. Guarde la entidad para crear la dirección fiscal.`,
-              life: 6000,
-            });
-          }
+          direccionFiscalAutomatica = await crearActualizarDireccionFiscal(datos);
         } catch (errorDireccion) {
           console.error("Error preparando dirección fiscal:", errorDireccion);
           toast?.current?.show({
             severity: "warn",
             summary: "Dirección Fiscal",
-            detail: `Datos SUNAT obtenidos correctamente, pero hubo un problema preparando la dirección fiscal: ${errorDireccion.message}. ¿Desea continuar?`,
+            detail: `Datos SUNAT obtenidos correctamente, pero hubo un problema preparando la dirección fiscal: ${errorDireccion.message}`,
             life: 8000,
           });
         }
-      } else {
-        // Mostrar información básica si no hay datos de dirección
-        const estadoInfo =
-          datos.estado === "ACTIVO" ? "✅ Activo" : "❌ Inactivo";
-
-        toast?.current?.show({
-          severity: "success",
-          summary: "Consulta SUNAT",
-          detail: `${datos.razon_social}\nEstado: ${estadoInfo}`,
-          life: 5000,
-        });
       }
+
+      // Notificar al componente padre con todos los datos (incluyendo dirección fiscal automática)
+      const valoresActuales = getValues();
+      
+      const datosCompletos = {
+        empresaId: valoresActuales.empresaId || watchedFields?.empresaId,
+        tipoDocumentoId: valoresActuales.tipoDocumentoId || watchedFields?.tipoDocumentoId,
+        tipoEntidadId: valoresActuales.tipoEntidadId || watchedFields?.tipoEntidadId,
+        numeroDocumento: ruc,
+        razonSocial: datos.razon_social || "",
+        nombreComercial: datos.razon_social || "",
+        formaPagoId: valoresActuales.formaPagoId || watchedFields?.formaPagoId,
+        agrupacionEntidadId: valoresActuales.agrupacionEntidadId || watchedFields?.agrupacionEntidadId,
+        esCliente: valoresActuales.esCliente ?? watchedFields?.esCliente ?? false,
+        esProveedor: valoresActuales.esProveedor ?? watchedFields?.esProveedor ?? false,
+        esCorporativo: valoresActuales.esCorporativo ?? watchedFields?.esCorporativo ?? false,
+        estado: valoresActuales.estado ?? watchedFields?.estado ?? true,
+        codigoErpFinanciero: valoresActuales.codigoErpFinanciero || watchedFields?.codigoErpFinanciero || "",
+        sujetoRetencion: valoresActuales.sujetoRetencion ?? watchedFields?.sujetoRetencion ?? false,
+        sujetoPercepcion: valoresActuales.sujetoPercepcion ?? watchedFields?.sujetoPercepcion ?? false,
+        estadoActivoSUNAT: datos.estado === "ACTIVO",
+        condicionHabidoSUNAT: datos.condicion === "HABIDO",
+        esAgenteRetencion: Boolean(datos.es_agente_retencion),
+        direccionFiscalAutomatica: direccionFiscalAutomatica // ← CLAVE: Pasar dirección fiscal al padre
+      };
+
+      onDatosGeneralesChange?.(datosCompletos);
+
+      // Mostrar notificación de éxito
+      const estadoInfo = datos.estado === "ACTIVO" ? "✅ Activo" : "❌ Inactivo";
+      toast?.current?.show({
+        severity: "success",
+        summary: "Consulta SUNAT",
+        detail: `${datos.razon_social}\nEstado: ${estadoInfo}${direccionFiscalAutomatica ? '\nDirección fiscal preparada automáticamente' : ''}`,
+        life: 5000,
+      });
+
     } catch (error) {
       console.error("Error consultando SUNAT:", error);
       toast?.current?.show({
         severity: "warn",
         summary: "Consulta SUNAT",
-        detail:
-          error.message || "No se encontraron datos para el RUC ingresado",
+        detail: error.message || "No se encontraron datos para el RUC ingresado",
         life: 4000,
       });
     } finally {
@@ -281,10 +272,18 @@ const DatosGeneralesEntidad = ({
   };
 
   /**
-   * Manejar búsqueda automática cuando cambia el número de documento
+   * Manejar búsqueda manual cuando el usuario hace clic en el botón
    */
-  const manejarBusquedaAutomatica = useCallback(async () => {
-    if (!numeroDocumento || !tipoDocumentoId || esEdicion) return;
+  const manejarBusquedaManual = async () => {
+    if (!numeroDocumento || !tipoDocumentoId) {
+      toast?.current?.show({
+        severity: "warn",
+        summary: "Búsqueda",
+        detail: "Seleccione el tipo de documento e ingrese el número",
+        life: 3000,
+      });
+      return;
+    }
 
     // DNI (tipo documento = 1) - debe tener 8 dígitos
     if (
@@ -296,23 +295,21 @@ const DatosGeneralesEntidad = ({
     }
 
     // RUC (tipo documento = 2) - debe tener 11 dígitos
-    if (
+    else if (
       Number(tipoDocumentoId) === 2 &&
       numeroDocumento.length === 11 &&
       /^\d+$/.test(numeroDocumento)
     ) {
       await buscarPorRUC(numeroDocumento);
+    } else {
+      toast?.current?.show({
+        severity: "warn",
+        summary: "Búsqueda",
+        detail: "Formato de documento inválido",
+        life: 3000,
+      });
     }
-  }, [numeroDocumento, tipoDocumentoId, esEdicion]);
-
-  // Efecto para ejecutar búsqueda automática
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      manejarBusquedaAutomatica();
-    }, 500); // Debounce de 500ms
-
-    return () => clearTimeout(timeoutId);
-  }, [manejarBusquedaAutomatica]);
+  };
 
   // Función estable para notificar cambios
   const notificarCambios = useCallback(
@@ -331,51 +328,28 @@ const DatosGeneralesEntidad = ({
 
   // Efecto para notificar cambios cuando los campos cambien
   useEffect(() => {
-    if (watchedFields && Array.isArray(watchedFields)) {
-      const [
-        empresaId,
-        tipoDocumentoId,
-        tipoEntidadId,
-        numeroDocumento,
-        razonSocial,
-        nombreComercial,
-        formaPagoId,
-        agrupacionEntidadId,
-        esCliente,
-        esProveedor,
-        esCorporativo,
-        estado,
-        codigoErpFinanciero,
-        sujetoRetencion,
-        sujetoPercepcion,
-        estadoActivoSUNAT,
-        condicionHabidoSUNAT,
-        esAgenteRetencion,
-      ] = watchedFields;
+    const datos = {
+      empresaId: watchedFields?.empresaId ?? getValues("empresaId"),
+      tipoDocumentoId: watchedFields?.tipoDocumentoId ?? getValues("tipoDocumentoId"),
+      tipoEntidadId: watchedFields?.tipoEntidadId ?? getValues("tipoEntidadId"),
+      numeroDocumento: watchedFields?.numeroDocumento ?? getValues("numeroDocumento"),
+      razonSocial: watchedFields?.razonSocial ?? getValues("razonSocial"),
+      nombreComercial: watchedFields?.nombreComercial ?? getValues("nombreComercial"),
+      formaPagoId: watchedFields?.formaPagoId ?? getValues("formaPagoId"),
+      agrupacionEntidadId: watchedFields?.agrupacionEntidadId ?? getValues("agrupacionEntidadId"),
+      esCliente: watchedFields?.esCliente ?? getValues("esCliente"),
+      esProveedor: watchedFields?.esProveedor ?? getValues("esProveedor"),
+      esCorporativo: watchedFields?.esCorporativo ?? getValues("esCorporativo"),
+      estado: watchedFields?.estado ?? getValues("estado"),
+      codigoErpFinanciero: watchedFields?.codigoErpFinanciero ?? getValues("codigoErpFinanciero"),
+      sujetoRetencion: watchedFields?.sujetoRetencion ?? getValues("sujetoRetencion"),
+      sujetoPercepcion: watchedFields?.sujetoPercepcion ?? getValues("sujetoPercepcion"),
+      estadoActivoSUNAT: watchedFields?.estadoActivoSUNAT ?? getValues("estadoActivoSUNAT"),
+      condicionHabidoSUNAT: watchedFields?.condicionHabidoSUNAT ?? getValues("condicionHabidoSUNAT"),
+      esAgenteRetencion: watchedFields?.esAgenteRetencion ?? getValues("esAgenteRetencion"),
+    };
 
-      const datos = {
-        empresaId,
-        tipoDocumentoId,
-        tipoEntidadId,
-        numeroDocumento,
-        razonSocial,
-        nombreComercial,
-        formaPagoId,
-        agrupacionEntidadId,
-        esCliente,
-        esProveedor,
-        esCorporativo,
-        estado,
-        codigoErpFinanciero,
-        sujetoRetencion,
-        sujetoPercepcion,
-        estadoActivoSUNAT,
-        condicionHabidoSUNAT,
-        esAgenteRetencion,
-      };
-
-      notificarCambios(datos);
-    }
+    notificarCambios(datos);
   }, [watchedFields, notificarCambios]);
 
   /**
@@ -594,50 +568,7 @@ const DatosGeneralesEntidad = ({
                   e.preventDefault();
                   e.stopPropagation();
 
-                  if (!numeroDocumento || !tipoDocumentoId) {
-                    toast?.current?.show({
-                      severity: "warn",
-                      summary: "Búsqueda",
-                      detail: "Debe ingresar el tipo y número de documento",
-                      life: 3000,
-                    });
-                    return;
-                  }
-
-                  // Ejecutar búsqueda según el tipo de documento
-                  if (Number(tipoDocumentoId) === 1) {
-                    if (
-                      numeroDocumento.length !== 8 ||
-                      !/^\d+$/.test(numeroDocumento)
-                    ) {
-                      toast?.current?.show({
-                        severity: "warn",
-                        summary: "DNI Inválido",
-                        detail:
-                          "El DNI debe tener exactamente 8 dígitos numéricos",
-                        life: 3000,
-                      });
-                      return;
-                    }
-                    buscarPorDNI(numeroDocumento);
-                  }
-
-                  if (Number(tipoDocumentoId) === 2) {
-                    if (
-                      numeroDocumento.length !== 11 ||
-                      !/^\d+$/.test(numeroDocumento)
-                    ) {
-                      toast?.current?.show({
-                        severity: "warn",
-                        summary: "RUC Inválido",
-                        detail:
-                          "El RUC debe tener exactamente 11 dígitos numéricos",
-                        life: 3000,
-                      });
-                      return;
-                    }
-                    buscarPorRUC(numeroDocumento);
-                  }
+                  manejarBusquedaManual();
                 }}
                 disabled={
                   buscandoDocumento || 
@@ -748,8 +679,8 @@ const DatosGeneralesEntidad = ({
               render={({ field }) => (
                 <ToggleButton
                   id="esCliente"
-                  onLabel="CLIENTE SI"
-                  offLabel="CLIENTE NO"
+                  onLabel="CLIENTE"
+                  offLabel="CLIENTE"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
@@ -764,8 +695,8 @@ const DatosGeneralesEntidad = ({
               render={({ field }) => (
                 <ToggleButton
                   id="esProveedor"
-                  onLabel="PROVEEDOR SI"
-                  offLabel="PROVEEDOR NO"
+                  onLabel="PROVEEDOR"
+                  offLabel="PROVEEDOR"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
@@ -780,8 +711,8 @@ const DatosGeneralesEntidad = ({
               render={({ field }) => (
                 <ToggleButton
                   id="esCorporativo"
-                  onLabel="CORPORATIVO SI"
-                  offLabel="CORPORATIVO NO"
+                  onLabel="CORPORATIVO"
+                  offLabel="CORPORATIVO"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
@@ -811,8 +742,8 @@ const DatosGeneralesEntidad = ({
               render={({ field }) => (
                 <ToggleButton
                   id="sujetoRetencion"
-                  onLabel="RETENCION SI"
-                  offLabel="RETENCION NO"
+                  onLabel="RETENCION"
+                  offLabel="RETENCION"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
@@ -827,8 +758,8 @@ const DatosGeneralesEntidad = ({
               render={({ field }) => (
                 <ToggleButton
                   id="sujetoPercepcion"
-                  onLabel="PERCEPCION SI"
-                  offLabel="PERCEPCION NO"
+                  onLabel="PERCEPCION"
+                  offLabel="PERCEPCION"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
@@ -875,8 +806,8 @@ const DatosGeneralesEntidad = ({
               render={({ field }) => (
                 <ToggleButton
                   id="esAgenteRetencion"
-                  onLabel="AGENTE RETENCION SI"
-                  offLabel="AGENTE RETENCION NO"
+                  onLabel="AGENTE RETENCION"
+                  offLabel="AGENTE RETENCION"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}

@@ -20,6 +20,24 @@ export async function getUnidadesMedida() {
   return res.data;
 }
 
+/**
+ * Obtiene unidades de medida filtradas por esMedidaMetrica = true
+ * Para uso en dropdowns de medidas específicas (diámetro, ancho, alto, largo, espesor, ángulo)
+ */
+export async function getUnidadesMedidaMetricas() {
+  const res = await axios.get(`${API_URL}/metricas`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Obtiene la unidad de medida por defecto para métricas (nombre="S/UM" y esMedidaMetrica=true)
+ * Para establecer valores por defecto en campos de dimensiones
+ */
+export async function getUnidadMetricaDefault() {
+  const res = await axios.get(`${API_URL}/default-metrica`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function getUnidadMedidaPorId(id) {
   const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;

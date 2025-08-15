@@ -20,6 +20,11 @@ export async function getPreciosEntidad() {
   return res.data;
 }
 
+export async function obtenerPreciosPorEntidad(entidadComercialId) {
+  const res = await axios.get(`${API_URL}/entidad/${entidadComercialId}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function getPrecioEntidadPorId(id) {
   const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;

@@ -18,6 +18,7 @@ import { Card } from "primereact/card";
 import { classNames } from "primereact/utils";
 import { ButtonGroup } from "primereact/buttongroup";
 import { ToggleButton } from "primereact/togglebutton";
+import { Button } from "primereact/button";
 
 /**
  * Componente DatosOperativosEntidad
@@ -57,12 +58,12 @@ const DatosOperativosEntidad = ({
 
   // Preparar opciones para dropdowns
   const vendedoresOptions = vendedores.map((vendedor) => ({
-    label: vendedor.nombre,
+    label: vendedor.nombreCompleto || `${vendedor.nombres || ''} ${vendedor.apellidos || ''}`.trim() || 'Sin nombre',
     value: Number(vendedor.id),
   }));
 
   const agenciasEnvioOptions = agenciasEnvio.map((agencia) => ({
-    label: agencia.nombre,
+    label: agencia.razonSocial || agencia.nombreComercial || 'Sin nombre',
     value: Number(agencia.id),
   }));
 
@@ -78,22 +79,38 @@ const DatosOperativosEntidad = ({
         >
           <div style={{ flex: 1 }}>
             <label htmlFor="vendedorId">Vendedor</label>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
             <Controller
-              name="vendedorId"
-              control={control}
-              render={({ field }) => (
-                <Dropdown
-                  id="vendedorId"
-                  value={field.value}
-                  onChange={(e) => field.onChange(e.value)}
-                  options={vendedoresOptions}
-                  placeholder="Seleccione un vendedor"
-                  className={getFieldClass("vendedorId")}
-                  style={{ fontWeight: "bold" }}
-                  showClear
-                />
-              )}
-            />
+                name="vendedorId"
+                control={control}
+                render={({ field }) => (
+                  <Button
+                    type="button"
+                    icon="pi pi-times"
+                    className="p-button-outlined p-button-secondary"
+                    tooltip="Quitar vendedor"
+                    tooltipOptions={{ position: "top" }}
+                    onClick={() => field.onChange(null)}
+                  />
+                )}
+              />
+              <Controller
+                name="vendedorId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="vendedorId"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.value)}
+                    options={vendedoresOptions}
+                    placeholder="Seleccione un vendedor"
+                    className={getFieldClass("vendedorId")}
+                    style={{ fontWeight: "bold", flex: 1 }}
+                    showClear
+                  />
+                )}
+              />
+            </div>
             {getFormErrorMessage("vendedorId")}
           </div>
           <div style={{ flex: 1 }}>

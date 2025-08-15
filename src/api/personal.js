@@ -86,6 +86,20 @@ export const getPersonal = async (empresaId) => {
 };
 
 /**
+ * Obtiene solo los vendedores (personal con esVendedor=true) filtrados por empresa.
+ * @param {number} empresaId - ID de la empresa para filtrar
+ * @returns {Promise<Array>} Lista de vendedores con nombres completos
+ */
+export const getVendedoresPorEmpresa = async (empresaId) => {
+  const params = { empresaId, esVendedor: true };
+  const res = await axios.get(API_URL, { params, headers: getAuthHeader() });
+  return res.data.map(vendedor => ({
+    ...vendedor,
+    nombreCompleto: `${vendedor.nombres} ${vendedor.apellidos}`.trim()
+  }));
+};
+
+/**
  * Elimina un registro de personal por ID.
  * @param {number|string} id - ID del personal a eliminar
  * @returns {Promise<void>}

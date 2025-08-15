@@ -37,6 +37,7 @@ const esquemaValidacion = yup.object().shape({
     .required("El nombre es obligatorio")
     .max(100, "El nombre no puede exceder 100 caracteres")
     .trim(),
+  gentilicio: yup.string().max(100, "El gentilicio no puede exceder 100 caracteres").trim(),
   activo: yup.boolean().default(true),
 });
 
@@ -57,6 +58,7 @@ const PaisForm = ({ pais, onGuardar, onCancelar }) => {
     defaultValues: {
       codSUNAT: "",
       nombre: "",
+      gentilicio: "",
       activo: true,
     },
   });
@@ -66,11 +68,13 @@ const PaisForm = ({ pais, onGuardar, onCancelar }) => {
     if (pais) {
       setValue("codSUNAT", pais.codSUNAT || "");
       setValue("nombre", pais.nombre || "");
+      setValue("gentilicio", pais.gentilicio || "");
       setValue("activo", pais.activo !== undefined ? pais.activo : true);
     } else {
       reset({
         codSUNAT: "",
         nombre: "",
+        gentilicio: "",
         activo: true,
       });
     }
@@ -88,6 +92,7 @@ const PaisForm = ({ pais, onGuardar, onCancelar }) => {
       const datosNormalizados = {
         codSUNAT: data.codSUNAT.trim().toUpperCase(),
         nombre: data.nombre.trim().toUpperCase(),
+        gentilicio: data.gentilicio.trim().toUpperCase(),
         activo: Boolean(data.activo),
       };
 
@@ -176,6 +181,30 @@ const PaisForm = ({ pais, onGuardar, onCancelar }) => {
             />
             {errors.nombre && (
               <small className="p-error p-d-block">{errors.nombre.message}</small>
+            )}
+          </div>
+
+          {/* Campo Gentilicio */}
+          <div className="p-col-12 p-md-6 p-field">
+            <label htmlFor="gentilicio" className="p-d-block">
+              Gentilicio <span className="p-error">*</span>
+            </label>
+            <Controller
+              name="gentilicio"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  id="gentilicio"
+                  {...field}
+                  placeholder="Ingrese el gentilicio del país"
+                  className={getFieldClass("gentilicio")}
+                  maxLength={100}
+                  style={{ textTransform: 'uppercase' }}
+                />
+              )}
+            />
+            {errors.gentilicio && (
+              <small className="p-error p-d-block">{errors.gentilicio.message}</small>
             )}
           </div>
 

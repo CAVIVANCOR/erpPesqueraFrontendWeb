@@ -20,6 +20,16 @@ export async function getDireccionesEntidad() {
   return res.data;
 }
 
+export async function obtenerDireccionesPorEntidad(entidadComercialId) {
+  const res = await axios.get(`${API_URL}/entidad/${entidadComercialId}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function obtenerDireccionFiscalPorEntidad(entidadComercialId) {
+  const res = await axios.get(`${API_URL}/fiscal/${entidadComercialId}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function getDireccionEntidadPorId(id) {
   const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;

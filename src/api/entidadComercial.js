@@ -39,3 +39,12 @@ export async function eliminarEntidadComercial(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Obtiene las agencias de envío (entidades comerciales del tipo "AGENCIA DE ENVIO")
+ * @returns {Promise<Array>} Lista de agencias de envío con estructura {id, razonSocial}
+ */
+export async function getAgenciasEnvio() {
+  const res = await axios.get(`${API_URL}/agencias-envio`, { headers: getAuthHeaders() });
+  return res.data;
+}

@@ -30,6 +30,15 @@ export async function getEstadosMultiFuncionPorTipoProvieneDe(tipoProvieneDeId) 
   return res.data;
 }
 
+/**
+ * Obtiene estados multifunción específicamente para productos
+ * Filtra por TipoProvieneDe con descripción "PRODUCTOS"
+ */
+export async function getEstadosMultiFuncionParaProductos() {
+  const res = await axios.get(`${API_URL}/productos`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function crearEstadoMultiFuncion(data) {
   const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
   return res.data;

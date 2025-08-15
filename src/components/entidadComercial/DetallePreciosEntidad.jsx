@@ -9,7 +9,7 @@
  * @version 1.0.0
  */
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -28,54 +28,68 @@ import * as yup from "yup";
 import { classNames } from "primereact/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../../utils/utils";
+import { 
+  obtenerPreciosPorEntidad,
+  crearPrecioEntidad, 
+  actualizarPrecioEntidad, 
+  eliminarPrecioEntidad 
+} from "../../api/precioEntidad";
+import { getMonedas } from "../../api/moneda";
+import { getProductosPorEntidadYEmpresa } from "../../api/producto";
 
-// Esquema de validación para precios especiales
+// Esquema de validación para precios especiales - ALINEADO AL MODELO PRISMA
 const esquemaValidacionPrecio = yup.object().shape({
-  productoId: yup.number().required("El producto es requerido"),
-  tipoListaPrecioId: yup.number().required("El tipo de lista de precio es requerido"),
-  precio: yup.number().required("El precio es requerido").min(0, "El precio debe ser mayor a 0"),
-  descuento: yup.number().min(0, "El descuento debe ser mayor o igual a 0").max(100, "El descuento no puede ser mayor a 100%").nullable(),
-  fechaInicio: yup.date().required("La fecha de inicio es requerida"),
-  fechaFin: yup.date().nullable().test(
-    "fecha-fin-mayor",
-    "La fecha fin debe ser mayor a la fecha de inicio",
-    function(value) {
-      const { fechaInicio } = this.parent;
-      if (!value || !fechaInicio) return true;
-      return new Date(value) > new Date(fechaInicio);
-    }
-  ),
-  cantidadMinima: yup.number().min(0, "La cantidad mínima debe ser mayor o igual a 0").nullable(),
-  cantidadMaxima: yup.number().nullable().test(
-    "cantidad-maxima-mayor",
-    "La cantidad máxima debe ser mayor a la cantidad mínima",
-    function(value) {
-      const { cantidadMinima } = this.parent;
-      if (!value || !cantidadMinima) return true;
-      return Number(value) > Number(cantidadMinima);
-    }
-  ),
-  estado: yup.boolean(),
+  productoId: yup
+    .number()
+    .required("El producto es requerido")
+    .integer("Debe ser un número entero"),
+  monedaId: yup
+    .number()
+    .required("La moneda es requerida")
+    .integer("Debe ser un número entero"),
+  precioUnitario: yup
+    .number()
+    .required("El precio unitario es requerido")
+    .min(0.01, "El precio debe ser mayor a 0"),
+  vigenteDesde: yup
+    .date()
+    .required("La fecha de vigencia desde es requerida"),
+  vigenteHasta: yup
+    .date()
+    .nullable()
+    .test(
+      "fecha-vigencia-mayor",
+      "La fecha vigente hasta debe ser mayor a la fecha vigente desde",
+      function(value) {
+        const { vigenteDesde } = this.parent;
+        if (!value || !vigenteDesde) return true;
+        return new Date(value) > new Date(vigenteDesde);
+      }
+    ),
+  observaciones: yup
+    .string()
+    .nullable()
+    .max(500, "Máximo 500 caracteres")
+    .trim(),
+  activo: yup.boolean(),
 });
 
 /**
  * Componente DetallePreciosEntidad
  * @param {Object} props - Props del componente
  * @param {number} props.entidadComercialId - ID de la entidad comercial
- * @param {Array} props.precios - Lista de precios especiales
- * @param {Function} props.onPreciosChange - Callback cuando cambian los precios
- * @param {Array} props.productos - Lista de productos
- * @param {Array} props.tiposListaPrecio - Lista de tipos de lista de precio
+ * @param {number} props.empresaId - ID de la empresa
+ * @param {Array} props.productos - Lista de productos disponibles
  */
-const DetallePreciosEntidad = ({
+const DetallePreciosEntidad = forwardRef(({
   entidadComercialId,
-  precios = [],
-  onPreciosChange,
-  productos = [],
-  tiposListaPrecio = []
-}) => {
+  empresaId,
+  productos = []
+}, ref) => {
   // Estados del componente
-  const [preciosData, setPreciosData] = useState(precios);
+  const [preciosData, setPreciosData] = useState([]);
+  const [monedasData, setMonedasData] = useState([]);
+  const [productosData, setProductosData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [precioSeleccionado, setPrecioSeleccionado] = useState(null);
@@ -93,27 +107,57 @@ const DetallePreciosEntidad = ({
     handleSubmit,
     formState: { errors },
     reset,
+    trigger,
+    getValues,
     setValue,
-    watch,
   } = useForm({
     resolver: yupResolver(esquemaValidacionPrecio),
     defaultValues: {
       productoId: null,
-      tipoListaPrecioId: null,
-      precio: 0,
-      descuento: 0,
-      fechaInicio: new Date(),
-      fechaFin: null,
-      cantidadMinima: 1,
-      cantidadMaxima: null,
-      estado: true,
+      monedaId: null,
+      precioUnitario: 0,
+      vigenteDesde: new Date(),
+      vigenteHasta: null,
+      observaciones: "",
+      activo: true,
     },
   });
 
-  // Sincronizar precios cuando cambien las props
+  // Normalizar opciones para dropdowns
+  const productosOptions = productosData.map((producto) => ({
+    label: `${producto.codigo} - ${producto.descripcionBase}`,
+    value: Number(producto.id),
+  }));
+
+  const monedasOptions = monedasData.map((moneda) => ({
+    label: `${moneda.codigoSunat} - ${moneda.nombreLargo || moneda.simbolo}`,
+    value: Number(moneda.id),
+  }));
+
   useEffect(() => {
-    setPreciosData(precios);
-  }, [precios]);
+    const cargarMonedas = async () => {
+      try {
+        const response = await getMonedas();
+        setMonedasData(response);
+      } catch (error) {
+        console.error("Error al cargar monedas:", error);
+      }
+    };
+    cargarMonedas();
+  }, []);
+
+  useEffect(() => {
+    const cargarProductos = async () => {
+      if (!entidadComercialId || !empresaId) return;
+      try {
+        const response = await getProductosPorEntidadYEmpresa(entidadComercialId, empresaId);
+        setProductosData(response);
+      } catch (error) {
+        console.error("Error al cargar productos:", error);
+      }
+    };
+    cargarProductos();
+  }, [entidadComercialId, empresaId]);
 
   /**
    * Abre el diálogo para crear un nuevo precio especial
@@ -131,14 +175,12 @@ const DetallePreciosEntidad = ({
   const abrirDialogoEdicion = (precio) => {
     setPrecioSeleccionado(precio);
     setValue("productoId", Number(precio.productoId));
-    setValue("tipoListaPrecioId", Number(precio.tipoListaPrecioId));
-    setValue("precio", Number(precio.precio));
-    setValue("descuento", Number(precio.descuento) || 0);
-    setValue("fechaInicio", new Date(precio.fechaInicio));
-    setValue("fechaFin", precio.fechaFin ? new Date(precio.fechaFin) : null);
-    setValue("cantidadMinima", Number(precio.cantidadMinima) || 1);
-    setValue("cantidadMaxima", Number(precio.cantidadMaxima) || null);
-    setValue("estado", Boolean(precio.estado));
+    setValue("monedaId", Number(precio.monedaId));
+    setValue("precioUnitario", Number(precio.precioUnitario));
+    setValue("vigenteDesde", new Date(precio.vigenteDesde));
+    setValue("vigenteHasta", precio.vigenteHasta ? new Date(precio.vigenteHasta) : null);
+    setValue("observaciones", precio.observaciones || "");
+    setValue("activo", Boolean(precio.activo));
     setDialogVisible(true);
   };
 
@@ -148,6 +190,16 @@ const DetallePreciosEntidad = ({
   const cerrarDialogo = () => {
     setDialogVisible(false);
     setPrecioSeleccionado(null);
+  };
+
+  /**
+   * Función ejecutada después de guardar exitosamente
+   * Recarga la lista y cierra el diálogo
+   */
+  const onGuardarExitoso = () => {
+    cargarPrecios(); // Recargar la lista
+    cerrarDialogo(); // Cerrar el diálogo
+    reset(); // Limpiar el formulario
   };
 
   /**
@@ -166,7 +218,6 @@ const DetallePreciosEntidad = ({
     try {
       const nuevosPrecios = preciosData.filter(p => p.tempId !== precioAEliminar.tempId);
       setPreciosData(nuevosPrecios);
-      onPreciosChange?.(nuevosPrecios);
       
       toast.current?.show({
         severity: "success",
@@ -190,17 +241,7 @@ const DetallePreciosEntidad = ({
   /**
    * Callback de guardado exitoso
    */
-  const onGuardarExitoso = () => {
-    cerrarDialogo();
-    toast.current?.show({
-      severity: "success",
-      summary: "Éxito",
-      detail: precioSeleccionado
-        ? "Precio especial actualizado correctamente"
-        : "Precio especial creado correctamente",
-      life: 3000,
-    });
-  };
+  
 
   /**
    * Guarda un precio especial (crear o actualizar)
@@ -210,31 +251,47 @@ const DetallePreciosEntidad = ({
     try {
       setLoading(true);
 
-      // Normalizar datos
+      // Normalizar datos según modelo PrecioEntidad
       const precioNormalizado = {
-        ...data,
-        tempId: precioSeleccionado?.tempId || Date.now(),
+        entidadComercialId: Number(entidadComercialId),
+        empresaId: Number(empresaId),
+        productoId: Number(data.productoId),
+        monedaId: Number(data.monedaId),
+        precioUnitario: Number(data.precioUnitario),
+        vigenteDesde: data.vigenteDesde,
+        vigenteHasta: data.vigenteHasta || null,
+        observaciones: data.observaciones?.trim().toUpperCase() || null,
+        activo: Boolean(data.activo),
       };
 
-      let nuevosPrecios;
+      let resultado;
       if (precioSeleccionado) {
         // Actualizar precio existente
-        nuevosPrecios = preciosData.map(p => 
-          p.tempId === precioSeleccionado.tempId ? precioNormalizado : p
-        );
+        resultado = await actualizarPrecioEntidad(precioSeleccionado.id, precioNormalizado);
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Precio actualizado correctamente",
+          life: 3000,
+        });
       } else {
-        // Agregar nuevo precio
-        nuevosPrecios = [...preciosData, precioNormalizado];
+        // Crear nuevo precio
+        resultado = await crearPrecioEntidad(precioNormalizado);
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Precio creado correctamente",
+          life: 3000,
+        });
       }
 
-      setPreciosData(nuevosPrecios);
-      onPreciosChange?.(nuevosPrecios);
       onGuardarExitoso();
     } catch (error) {
+      console.error("Error al guardar precio:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al guardar precio especial",
+        detail: error.response?.data?.message || "Error al guardar el precio",
         life: 3000,
       });
     } finally {
@@ -256,26 +313,87 @@ const DetallePreciosEntidad = ({
     return errors[name] && <small className="p-error">{errors[name]?.message}</small>;
   };
 
+  // Función para cargar precios especiales desde la API
+  const cargarPrecios = async () => {
+    try {
+      setLoading(true);
+      const response = await obtenerPreciosPorEntidad(entidadComercialId);
+      
+      // REGLA CRÍTICA: Validar estructura de respuesta antes de usar
+      if (!response) {
+        setPreciosData([]);
+        toast.current?.show({
+          severity: "warn",
+          summary: "Sin Precios Especiales",
+          detail: "No se encontraron precios especiales para esta entidad",
+          life: 3000,
+        });
+        return;
+      }
+
+      // Validar que sea un array
+      if (!Array.isArray(response)) {
+        setPreciosData([]);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error de Datos",
+          detail: "Formato de respuesta inesperado del servidor",
+          life: 4000,
+        });
+        return;
+      }
+
+      // Actualizar estado con datos validados
+      setPreciosData(response);
+      
+      // Feedback UX positivo
+      toast.current?.show({
+        severity: "success",
+        summary: "Precios Especiales Cargados",
+        detail: `${response.length} precio${response.length !== 1 ? 's' : ''} especial${response.length !== 1 ? 'es' : ''} encontrado${response.length !== 1 ? 's' : ''}`,
+        life: 2000,
+      });
+
+    } catch (error) {
+      console.error("❌ [FRONTEND] Error al cargar precios especiales:", error);
+      setPreciosData([]);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error al Cargar",
+        detail: error.response?.data?.message || "Error al cargar los precios especiales desde el servidor",
+        life: 4000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Exponer función recargar mediante ref
+  useImperativeHandle(ref, () => ({
+    recargar: cargarPrecios
+  }));
+
+  // Cargar precios especiales al montar el componente o cambiar entidadComercialId
+  useEffect(() => {
+    cargarPrecios();
+  }, [entidadComercialId]);
+
   // Templates para las columnas
   const productoTemplate = (rowData) => {
-    const producto = productos.find(p => Number(p.value) === Number(rowData.productoId));
+    const producto = productosOptions.find(p => Number(p.value) === Number(rowData.productoId));
     return producto?.label || rowData.productoId;
   };
 
-  const tipoListaPrecioTemplate = (rowData) => {
-    const tipo = tiposListaPrecio.find(t => Number(t.value) === Number(rowData.tipoListaPrecioId));
-    return tipo?.label || rowData.tipoListaPrecioId;
+  const monedaTemplate = (rowData) => {
+    const moneda = monedasOptions.find(m => Number(m.value) === Number(rowData.monedaId));
+    return moneda?.label || rowData.monedaId;
   };
 
   const precioTemplate = (rowData) => {
     return new Intl.NumberFormat('es-PE', {
       style: 'currency',
       currency: 'PEN'
-    }).format(rowData.precio);
-  };
-
-  const descuentoTemplate = (rowData) => {
-    return rowData.descuento ? `${rowData.descuento}%` : "0%";
+    }).format(rowData.precioUnitario);
   };
 
   const fechaTemplate = (rowData, field) => {
@@ -283,15 +401,11 @@ const DetallePreciosEntidad = ({
     return fecha ? new Date(fecha).toLocaleDateString('es-PE') : "N/A";
   };
 
-  const cantidadTemplate = (rowData, field) => {
-    return rowData[field] || "N/A";
-  };
-
   const estadoTemplate = (rowData) => {
     return (
       <Tag
-        value={rowData.estado ? "Activo" : "Inactivo"}
-        severity={rowData.estado ? "success" : "danger"}
+        value={rowData.activo ? "Activo" : "Inactivo"}
+        severity={rowData.activo ? "success" : "danger"}
       />
     );
   };
@@ -308,6 +422,7 @@ const DetallePreciosEntidad = ({
           }}
           tooltip="Editar"
           tooltipOptions={{ position: "top" }}
+          type="button"
         />
         {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
           <Button
@@ -315,6 +430,7 @@ const DetallePreciosEntidad = ({
             className="p-button-text p-button-danger"
             onClick={() => confirmarEliminacion(rowData)}
             tooltip="Eliminar"
+            type="button"
           />
         )}
       </div>
@@ -347,6 +463,7 @@ const DetallePreciosEntidad = ({
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              type="button"
             />
             <span className="p-input-icon-left">
               <InputText
@@ -363,13 +480,11 @@ const DetallePreciosEntidad = ({
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
         <Column field="productoId" header="Producto" body={productoTemplate} sortable />
-        <Column field="tipoListaPrecioId" header="Tipo Lista" body={tipoListaPrecioTemplate} sortable />
-        <Column field="precio" header="Precio" body={precioTemplate} sortable />
-        <Column field="descuento" header="Descuento" body={descuentoTemplate} sortable />
-        <Column field="fechaInicio" header="Fecha Inicio" body={(rowData) => fechaTemplate(rowData, 'fechaInicio')} sortable />
-        <Column field="fechaFin" header="Fecha Fin" body={(rowData) => fechaTemplate(rowData, 'fechaFin')} sortable />
-        <Column field="cantidadMinima" header="Cant. Mín." body={(rowData) => cantidadTemplate(rowData, 'cantidadMinima')} sortable />
-        <Column field="estado" header="Estado" body={estadoTemplate} sortable />
+        <Column field="monedaId" header="Moneda" body={monedaTemplate} sortable />
+        <Column field="precioUnitario" header="Precio" body={precioTemplate} sortable />
+        <Column field="vigenteDesde" header="Fecha Vigencia Desde" body={(rowData) => fechaTemplate(rowData, 'vigenteDesde')} sortable />
+        <Column field="vigenteHasta" header="Fecha Vigencia Hasta" body={(rowData) => fechaTemplate(rowData, 'vigenteHasta')} sortable />
+        <Column field="activo" header="Estado" body={estadoTemplate} sortable />
         <Column
           body={accionesTemplate}
           header="Acciones"
@@ -396,7 +511,7 @@ const DetallePreciosEntidad = ({
                     id="productoId"
                     value={field.value}
                     onChange={(e) => field.onChange(e.value)}
-                    options={productos}
+                    options={productosOptions}
                     placeholder="Seleccione producto"
                     className={getFieldClass("productoId")}
                     filter
@@ -408,32 +523,32 @@ const DetallePreciosEntidad = ({
             </div>
 
             <div className="field col-12 md:col-6">
-              <label htmlFor="tipoListaPrecioId">Tipo de Lista de Precio *</label>
+              <label htmlFor="monedaId">Moneda *</label>
               <Controller
-                name="tipoListaPrecioId"
+                name="monedaId"
                 control={control}
                 render={({ field }) => (
                   <Dropdown
-                    id="tipoListaPrecioId"
+                    id="monedaId"
                     value={field.value}
                     onChange={(e) => field.onChange(e.value)}
-                    options={tiposListaPrecio}
-                    placeholder="Seleccione tipo de lista"
-                    className={getFieldClass("tipoListaPrecioId")}
+                    options={monedasOptions}
+                    placeholder="Seleccione moneda"
+                    className={getFieldClass("monedaId")}
                   />
                 )}
               />
-              {getFormErrorMessage("tipoListaPrecioId")}
+              {getFormErrorMessage("monedaId")}
             </div>
 
             <div className="field col-12 md:col-6">
-              <label htmlFor="precio">Precio *</label>
+              <label htmlFor="precioUnitario">Precio Unitario *</label>
               <Controller
-                name="precio"
+                name="precioUnitario"
                 control={control}
                 render={({ field }) => (
                   <InputNumber
-                    id="precio"
+                    id="precioUnitario"
                     value={field.value}
                     onValueChange={(e) => field.onChange(e.value)}
                     mode="currency"
@@ -441,128 +556,87 @@ const DetallePreciosEntidad = ({
                     locale="es-PE"
                     minFractionDigits={2}
                     maxFractionDigits={4}
-                    className={getFieldClass("precio")}
+                    className={getFieldClass("precioUnitario")}
                   />
                 )}
               />
-              {getFormErrorMessage("precio")}
+              {getFormErrorMessage("precioUnitario")}
             </div>
 
             <div className="field col-12 md:col-6">
-              <label htmlFor="descuento">Descuento (%)</label>
+              <label htmlFor="vigenteDesde">Fecha Vigencia Desde *</label>
               <Controller
-                name="descuento"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="descuento"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    min={0}
-                    max={100}
-                    suffix="%"
-                    maxFractionDigits={2}
-                    className={getFieldClass("descuento")}
-                  />
-                )}
-              />
-              {getFormErrorMessage("descuento")}
-            </div>
-
-            <div className="field col-12 md:col-6">
-              <label htmlFor="fechaInicio">Fecha de Inicio *</label>
-              <Controller
-                name="fechaInicio"
+                name="vigenteDesde"
                 control={control}
                 render={({ field }) => (
                   <Calendar
-                    id="fechaInicio"
+                    id="vigenteDesde"
                     value={field.value}
                     onChange={(e) => field.onChange(e.value)}
                     dateFormat="dd/mm/yy"
-                    placeholder="Seleccione fecha de inicio"
-                    className={getFieldClass("fechaInicio")}
+                    placeholder="Seleccione fecha vigencia desde"
+                    className={getFieldClass("vigenteDesde")}
                     showIcon
                   />
                 )}
               />
-              {getFormErrorMessage("fechaInicio")}
+              {getFormErrorMessage("vigenteDesde")}
             </div>
 
             <div className="field col-12 md:col-6">
-              <label htmlFor="fechaFin">Fecha de Fin</label>
+              <label htmlFor="vigenteHasta">Fecha Vigencia Hasta</label>
               <Controller
-                name="fechaFin"
+                name="vigenteHasta"
                 control={control}
                 render={({ field }) => (
                   <Calendar
-                    id="fechaFin"
+                    id="vigenteHasta"
                     value={field.value}
                     onChange={(e) => field.onChange(e.value)}
                     dateFormat="dd/mm/yy"
-                    placeholder="Seleccione fecha de fin"
-                    className={getFieldClass("fechaFin")}
+                    placeholder="Seleccione fecha vigencia hasta"
+                    className={getFieldClass("vigenteHasta")}
                     showIcon
                     showClear
                   />
                 )}
               />
-              {getFormErrorMessage("fechaFin")}
+              {getFormErrorMessage("vigenteHasta")}
             </div>
 
-            <div className="field col-12 md:col-4">
-              <label htmlFor="cantidadMinima">Cantidad Mínima</label>
+            <div className="field col-12 md:col-12">
+              <label htmlFor="observaciones">Observaciones</label>
               <Controller
-                name="cantidadMinima"
+                name="observaciones"
                 control={control}
                 render={({ field }) => (
-                  <InputNumber
-                    id="cantidadMinima"
+                  <InputText
+                    id="observaciones"
                     value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    min={0}
-                    useGrouping={false}
-                    className={getFieldClass("cantidadMinima")}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    placeholder="Ingrese observaciones"
+                    className={getFieldClass("observaciones")}
                   />
                 )}
               />
-              {getFormErrorMessage("cantidadMinima")}
-            </div>
-
-            <div className="field col-12 md:col-4">
-              <label htmlFor="cantidadMaxima">Cantidad Máxima</label>
-              <Controller
-                name="cantidadMaxima"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="cantidadMaxima"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    min={0}
-                    useGrouping={false}
-                    className={getFieldClass("cantidadMaxima")}
-                  />
-                )}
-              />
-              {getFormErrorMessage("cantidadMaxima")}
+              {getFormErrorMessage("observaciones")}
             </div>
 
             <div className="field col-12 md:col-4">
               <div className="field-checkbox mt-4">
                 <Controller
-                  name="estado"
+                  name="activo"
                   control={control}
                   render={({ field }) => (
                     <Checkbox
-                      id="estado"
+                      id="activo"
                       checked={field.value}
                       onChange={(e) => field.onChange(e.checked)}
-                      className={getFieldClass("estado")}
+                      className={getFieldClass("activo")}
                     />
                   )}
                 />
-                <label htmlFor="estado">Activo</label>
+                <label htmlFor="activo">Activo</label>
               </div>
             </div>
           </div>
@@ -579,7 +653,16 @@ const DetallePreciosEntidad = ({
               label={precioSeleccionado ? "Actualizar" : "Crear"}
               icon={precioSeleccionado ? "pi pi-check" : "pi pi-plus"}
               className="p-button-success"
-              type="submit"
+              type="button"
+              onClick={async () => {
+                // Validar formulario manualmente
+                const isValid = await trigger();
+                if (isValid) {
+                  // Obtener datos del formulario y guardar
+                  const formData = getValues();
+                  await onSubmitPrecio(formData);
+                }
+              }}
               loading={loading}
             />
           </div>
@@ -600,6 +683,6 @@ const DetallePreciosEntidad = ({
       />
     </div>
   );
-};
+});
 
 export default DetallePreciosEntidad;

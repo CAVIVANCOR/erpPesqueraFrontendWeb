@@ -195,6 +195,7 @@ const Pais = () => {
         <Column field="id" header="ID" sortable />
         <Column field="codSUNAT" header="Código SUNAT" sortable />
         <Column field="nombre" header="Nombre" sortable />
+        <Column field="gentilicio" header="Gentilicio" sortable />
         <Column field="activo" header="Estado" body={estadoTemplate} sortable />
         <Column
           body={accionesTemplate}

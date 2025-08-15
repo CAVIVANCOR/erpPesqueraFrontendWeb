@@ -45,7 +45,6 @@ const Provincia = () => {
     try {
       setLoading(true);
       const data = await getProvincias();
-      console.log("Cargar provincias:", data);
       setProvincias(data);
     } catch (error) {
       toast.current.show({

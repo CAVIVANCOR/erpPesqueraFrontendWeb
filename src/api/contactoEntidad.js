@@ -20,6 +20,11 @@ export async function getContactosEntidad() {
   return res.data;
 }
 
+export async function obtenerContactosPorEntidad(entidadComercialId) {
+  const res = await axios.get(`${API_URL}/entidad/${entidadComercialId}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function getContactoEntidadPorId(id) {
   const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
