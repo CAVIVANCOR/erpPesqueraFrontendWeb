@@ -39,3 +39,27 @@ export async function eliminarEmbarcacion(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Sube una foto de embarcación al servidor.
+ * @param {number} id - ID de la embarcación.
+ * @param {File} archivoFoto - Archivo de la foto a subir.
+ * @returns {Promise<object>} - Objeto con la respuesta del servidor.
+ */
+export const subirFotoEmbarcacion = async (id, archivoFoto) => {
+  console.log("subirFotoEmbarcacion", id, archivoFoto);
+  const formData = new FormData();
+  formData.append('foto', archivoFoto);
+  const token = useAuthStore.getState().token;
+  const res = await axios.post(
+    `${import.meta.env.VITE_API_URL}/embarcacion-foto/${id}/foto`,
+    formData,
+    {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return res.data;
+};

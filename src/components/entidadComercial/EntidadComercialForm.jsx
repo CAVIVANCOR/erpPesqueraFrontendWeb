@@ -9,7 +9,7 @@
  * @version 2.0.0
  */
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -18,7 +18,7 @@ import { ProgressSpinner } from "primereact/progressspinner";
 import { Toolbar } from "primereact/toolbar";
 import { Button } from "primereact/button";
 import { ButtonGroup } from "primereact/buttongroup";
-import { Card } from "primereact/card";
+import { Tag } from "primereact/tag";
 
 import {
   getEntidadesComerciales,
@@ -27,14 +27,17 @@ import {
   actualizarEntidadComercial,
   getAgenciasEnvio,
 } from "../../api/entidadComercial";
-import { crearDireccionEntidad, obtenerDireccionFiscalPorEntidad, actualizarDireccionEntidad } from "../../api/direccionEntidad";
+import {
+  crearDireccionEntidad,
+  obtenerDireccionFiscalPorEntidad,
+  actualizarDireccionEntidad,
+} from "../../api/direccionEntidad";
 import { getEmpresas } from "../../api/empresa";
 import { getTiposDocIdentidad } from "../../api/tiposDocIdentidad";
 import { getTiposEntidad } from "../../api/tipoEntidad";
 import { getFormasPago } from "../../api/formaPago";
 import { getAgrupacionesEntidad } from "../../api/agrupacionEntidad";
 import { getVendedoresPorEmpresa } from "../../api/personal";
-import { getTiposVehiculo } from "../../api/tipoVehiculo";
 
 // Importar componentes de cards
 import DatosGeneralesEntidad from "./DatosGeneralesEntidad";
@@ -176,7 +179,27 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
 
   // Cargar catálogos al montar el componente
   useEffect(() => {
-    cargarCatalogos();
+    const cargarDatosIniciales = async () => {
+      try {
+        // Cargar catálogos básicos
+        await cargarCatalogos();
+        
+        // Cargar agencias de envío
+        const agencias = await getAgenciasEnvio();
+        setAgenciasEnvio(agencias || []);
+        
+      } catch (error) {
+        console.error('Error al cargar datos iniciales:', error);
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Error al cargar los datos iniciales',
+          life: 3000,
+        });
+      }
+    };
+    
+    cargarDatosIniciales();
   }, []);
 
   // Cargar datos si es edición
@@ -330,9 +353,11 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
             ...datos.direccionFiscalAutomatica,
             entidadComercialId: Number(entidadComercial.id),
           };
-          
+
           // Crear la dirección fiscal directamente en la base de datos
-          const resultadoCreacion = await crearDireccionEntidad(datosNuevaDireccion);
+          const resultadoCreacion = await crearDireccionEntidad(
+            datosNuevaDireccion
+          );
         }
 
         // Notificar al componente de direcciones que recargue
@@ -346,7 +371,10 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
           life: 4000,
         });
       } catch (error) {
-        console.error('❌ [FRONTEND] Error al procesar dirección fiscal automática:', error);
+        console.error(
+          "❌ [FRONTEND] Error al procesar dirección fiscal automática:",
+          error
+        );
         toast.current?.show({
           severity: "warn",
           summary: "Advertencia",
@@ -369,7 +397,7 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
    */
   const handleCardChange = (cardName) => {
     setActiveCard(cardName);
-    
+
     // No intentamos cargar datos aquí porque los componentes no están montados aún
     // Los datos se cargarán en useEffect después del montaje
   };
@@ -412,13 +440,18 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
         tipoDocumentoId: Number(data.tipoDocumentoId),
         tipoEntidadId: Number(data.tipoEntidadId),
         formaPagoId: data.formaPagoId ? Number(data.formaPagoId) : null,
-        agrupacionEntidadId: data.agrupacionEntidadId ? Number(data.agrupacionEntidadId) : null,
+        agrupacionEntidadId: data.agrupacionEntidadId
+          ? Number(data.agrupacionEntidadId)
+          : null,
         vendedorId: data.vendedorId ? Number(data.vendedorId) : null,
-        agenciaEnvioId: data.agenciaEnvioId ? Number(data.agenciaEnvioId) : null,
+        agenciaEnvioId: data.agenciaEnvioId
+          ? Number(data.agenciaEnvioId)
+          : null,
         numeroDocumento: data.numeroDocumento?.trim().toUpperCase(),
         razonSocial: data.razonSocial?.trim().toUpperCase(),
         nombreComercial: data.nombreComercial?.trim().toUpperCase() || null,
-        codigoErpFinanciero: data.codigoErpFinanciero?.trim().toUpperCase() || null,
+        codigoErpFinanciero:
+          data.codigoErpFinanciero?.trim().toUpperCase() || null,
         observaciones: data.observaciones?.trim().toUpperCase() || null,
         esCliente: Boolean(data.esCliente),
         esProveedor: Boolean(data.esProveedor),
@@ -440,7 +473,10 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
 
       let resultado;
       if (esEdicion) {
-        resultado = await actualizarEntidadComercial(entidadComercial.id, entidadNormalizada);
+        resultado = await actualizarEntidadComercial(
+          entidadComercial.id,
+          entidadNormalizada
+        );
       } else {
         resultado = await crearEntidadComercial(entidadNormalizada);
       }
@@ -460,21 +496,14 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.message || "Error al guardar la entidad comercial",
+        detail:
+          error.response?.data?.message ||
+          "Error al guardar la entidad comercial",
         life: 3000,
       });
     } finally {
       setLoading(false);
     }
-  };
-
-  /**
-   * Valida si se puede navegar a la siguiente pestaña
-   * REGLA CRÍTICA: NUNCA deshabilitar botones en EntidadComercial
-   */
-  const puedeNavegar = () => {
-    // SIEMPRE permitir navegación - sin validaciones absurdas
-    return true;
   };
 
   if (loading && !esEdicion) {
@@ -491,100 +520,115 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
   return (
     <div className="entidad-comercial-form">
       <Toast ref={toast} />
-      <form onSubmit={handleSubmit(onSubmit)}>
-        {/* Sistema de navegación con botones de iconos */}
-        <Toolbar
-          className="mb-4"
-          center={
-            <ButtonGroup>
-              <Button
-                icon="pi pi-user"
-                tooltip="Datos Generales - Información básica de la entidad"
-                tooltipOptions={{ position: "bottom" }}
-                className={
-                  activeCard === "datos-generales"
-                    ? "p-button-primary"
-                    : "p-button-outlined"
-                }
-                onClick={() => handleCardChange("datos-generales")}
-                type="button"
-              />
-              <Button
-                icon="pi pi-cog"
-                tooltip="Datos Operativos - Vendedores, agencias y controles"
-                tooltipOptions={{ position: "bottom" }}
-                className={
-                  activeCard === "datos-operativos"
-                    ? "p-button-success"
-                    : "p-button-outlined"
-                }
-                onClick={() => handleCardChange("datos-operativos")}
-                type="button"
-              />
-              <Button
-                icon="pi pi-map-marker"
-                tooltip="Direcciones - Ubicaciones y direcciones"
-                tooltipOptions={{ position: "bottom" }}
-                className={
-                  activeCard === "direcciones"
-                    ? "p-button-warning"
-                    : "p-button-outlined"
-                }
-                onClick={() => handleCardChange("direcciones")}
-                type="button"
-              />
-              <Button
-                icon="pi pi-phone"
-                tooltip="Contactos - Personas de contacto de la entidad"
-                tooltipOptions={{ position: "bottom" }}
-                className={
-                  activeCard === "contactos"
-                    ? "p-button-info"
-                    : "p-button-outlined"
-                }
-                onClick={() => handleCardChange("contactos")}
-                type="button"
-              />
 
-              <Button
-                icon="pi pi-dollar"
-                tooltip="Precios - Lista de precios especiales"
-                tooltipOptions={{ position: "bottom" }}
-                className={
-                  activeCard === "precios"
-                    ? "p-button-help"
-                    : "p-button-outlined"
-                }
-                onClick={() => handleCardChange("precios")}
-                type="button"
-              />
-              <Button
-                icon="pi pi-car"
-                tooltip="Vehículos - Flota de vehículos de la entidad"
-                tooltipOptions={{ position: "bottom" }}
-                className={
-                  activeCard === "vehiculos"
-                    ? "p-button-secondary"
-                    : "p-button-outlined"
-                }
-                onClick={() => handleCardChange("vehiculos")}
-                type="button"
-              />
-              <Button
-                icon="pi pi-credit-card"
-                tooltip="Líneas de Crédito - Líneas de crédito de la entidad"
-                tooltipOptions={{ position: "bottom" }}
-                className={
-                  activeCard === "lineas-credito"
-                    ? "p-button-danger"
-                    : "p-button-outlined"
-                }
-                onClick={() => handleCardChange("lineas-credito")}
-                type="button"
-              />
-            </ButtonGroup>
-          }
+      {/* Mostrar Razón Social con Tag de PrimeReact */}
+      <div className="flex justify-content-center mb-4">
+        <Tag
+          value={datosGenerales.razonSocial || "Nueva Entidad Comercial"}
+          severity={esEdicion ? "info" : "success"}
+          style={{
+            fontSize: "1.1rem",
+            padding: "0.75rem 1.25rem",
+            textTransform: "uppercase",
+            fontWeight: "bold",
+            textAlign: "center",
+            width: "100%",
+          }}
         />
+      </div>
+
+      {/* Sistema de navegación con botones de iconos */}
+      <Toolbar
+        className="mb-4"
+        center={
+          <ButtonGroup>
+            <Button
+              icon="pi pi-user"
+              tooltip="Datos Generales - Información básica de la entidad"
+              tooltipOptions={{ position: "bottom" }}
+              className={
+                activeCard === "datos-generales"
+                  ? "p-button-primary"
+                  : "p-button-outlined"
+              }
+              onClick={() => handleCardChange("datos-generales")}
+              type="button"
+            />
+            <Button
+              icon="pi pi-cog"
+              tooltip="Datos Operativos - Vendedores, agencias y controles"
+              tooltipOptions={{ position: "bottom" }}
+              className={
+                activeCard === "datos-operativos"
+                  ? "p-button-success"
+                  : "p-button-outlined"
+              }
+              onClick={() => handleCardChange("datos-operativos")}
+              type="button"
+            />
+            <Button
+              icon="pi pi-map-marker"
+              tooltip="Direcciones - Ubicaciones y direcciones"
+              tooltipOptions={{ position: "bottom" }}
+              className={
+                activeCard === "direcciones"
+                  ? "p-button-warning"
+                  : "p-button-outlined"
+              }
+              onClick={() => handleCardChange("direcciones")}
+              type="button"
+            />
+            <Button
+              icon="pi pi-phone"
+              tooltip="Contactos - Personas de contacto de la entidad"
+              tooltipOptions={{ position: "bottom" }}
+              className={
+                activeCard === "contactos"
+                  ? "p-button-info"
+                  : "p-button-outlined"
+              }
+              onClick={() => handleCardChange("contactos")}
+              type="button"
+            />
+
+            <Button
+              icon="pi pi-dollar"
+              tooltip="Precios - Lista de precios especiales"
+              tooltipOptions={{ position: "bottom" }}
+              className={
+                activeCard === "precios" ? "p-button-help" : "p-button-outlined"
+              }
+              onClick={() => handleCardChange("precios")}
+              type="button"
+            />
+            <Button
+              icon="pi pi-car"
+              tooltip="Vehículos - Flota de vehículos de la entidad"
+              tooltipOptions={{ position: "bottom" }}
+              className={
+                activeCard === "vehiculos"
+                  ? "p-button-secondary"
+                  : "p-button-outlined"
+              }
+              onClick={() => handleCardChange("vehiculos")}
+              type="button"
+            />
+            <Button
+              icon="pi pi-credit-card"
+              tooltip="Líneas de Crédito - Líneas de crédito de la entidad"
+              tooltipOptions={{ position: "bottom" }}
+              className={
+                activeCard === "lineas-credito"
+                  ? "p-button-danger"
+                  : "p-button-outlined"
+              }
+              onClick={() => handleCardChange("lineas-credito")}
+              type="button"
+            />
+          </ButtonGroup>
+        }
+      />
+      <form onSubmit={handleSubmit(onSubmit)}>
         {/* Contenido de los cards */}
         {activeCard === "datos-generales" && (
           <DatosGeneralesEntidad
@@ -611,7 +655,7 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
             datosOperativos={datosOperativos}
             onDatosOperativosChange={handleDatosOperativosChange}
             vendedores={vendedores}
-            agenciasEnvio={agenciasEnvio}
+            agenciasEnvio={agenciasEnvio} // Pasar agencias de envío
           />
         )}
 
@@ -635,6 +679,7 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
         {activeCard === "precios" && (
           <DetallePreciosEntidad
             entidadComercialId={entidadComercial?.id}
+            empresaId={entidadComercial?.empresaId}
             // precios={precios}
             // onPreciosChange={setPrecios}
             productos={[]} // Se cargarán desde el componente
@@ -646,8 +691,9 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
         {activeCard === "vehiculos" && (
           <DetalleVehiculosEntidad
             entidadComercialId={entidadComercial?.id}
-            // vehiculos={vehiculos}
-            // onVehiculosChange={setVehiculos}
+            entidadComercial={entidadComercial}
+            //vehiculos={vehiculos}
+            //onVehiculosChange={setVehiculos}
             tiposVehiculo={[]} // Se cargarán desde el componente
             ref={vehiculosRef}
           />
@@ -662,9 +708,17 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
             ref={lineasCreditoRef}
           />
         )}
-
         {/* Botones de acción */}
-        <div className="flex justify-content-end mt-4">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+            marginBottom: 10,
+            marginTop: 10,
+          }}
+        >
           <Button
             type="button"
             label="Cancelar"
@@ -672,68 +726,23 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
             className="p-button-secondary"
             onClick={onCancelar}
             disabled={loading}
+            raised
+            size="small"
+            outlined
           />
           <Button
+            type="button"
             label={esEdicion ? "Actualizar" : "Crear"}
             icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
             className="p-button-success"
             onClick={handleSubmit(onSubmit)}
             loading={loading}
+            raised
+            size="small"
+            outlined
           />
         </div>
       </form>
-
-      {/* Indicador de progreso */}
-      <div className="mt-4">
-        <div className="flex justify-content-between align-items-center text-sm text-500">
-          <span>
-            Paso{" "}
-            {activeCard === "datos-generales"
-              ? 1
-              : activeCard === "datos-operativos"
-              ? 2
-              : activeCard === "contactos"
-              ? 3
-              : activeCard === "direcciones"
-              ? 4
-              : activeCard === "precios"
-              ? 5
-              : activeCard === "vehiculos"
-              ? 6
-              : 7}{" "}
-            de 7
-          </span>
-          <span>
-            {puedeNavegar()
-              ? "Datos básicos completos"
-              : "Complete los datos generales"}
-          </span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-          <div
-            className="bg-primary h-2 rounded-full transition-all duration-300"
-            style={{
-              width: `${
-                ((activeCard === "datos-generales"
-                  ? 1
-                  : activeCard === "datos-operativos"
-                  ? 2
-                  : activeCard === "contactos"
-                  ? 3
-                  : activeCard === "direcciones"
-                  ? 4
-                  : activeCard === "precios"
-                  ? 5
-                  : activeCard === "vehiculos"
-                  ? 6
-                  : 7) /
-                  7) *
-                100
-              }%`,
-            }}
-          ></div>
-        </div>
-      </div>
     </div>
   );
 };

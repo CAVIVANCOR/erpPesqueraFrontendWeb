@@ -23,12 +23,18 @@ import { ConfirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
 import { getEmbarcaciones, eliminarEmbarcacion } from "../api/embarcacion";
+import { getActivos } from "../api/activo";
+import { getTiposEmbarcacion } from "../api/tipoEmbarcacion";
+import { getEstadosMultiFuncionParaEmbarcaciones } from "../api/estadoMultiFuncion";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import EmbarcacionForm from "../components/embarcacion/EmbarcacionForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
 const Embarcacion = () => {
   const [embarcaciones, setEmbarcaciones] = useState([]);
+  const [activos, setActivos] = useState([]);
+  const [tiposEmbarcacion, setTiposEmbarcacion] = useState([]);
+  const [estadosActivo, setEstadosActivo] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [embarcacionSeleccionada, setEmbarcacionSeleccionada] = useState(null);
@@ -39,19 +45,28 @@ const Embarcacion = () => {
   const [globalFilter, setGlobalFilter] = useState("");
 
   useEffect(() => {
-    cargarEmbarcaciones();
+    cargarDatos();
   }, []);
 
-  const cargarEmbarcaciones = async () => {
+  const cargarDatos = async () => {
     try {
       setLoading(true);
-      const data = await getEmbarcaciones();
-      setEmbarcaciones(data);
+      const [embarcacionesData, activosData, tiposData, estadosData] = await Promise.all([
+        getEmbarcaciones(),
+        getActivos(),
+        getTiposEmbarcacion(),
+        getEstadosMultiFuncionParaEmbarcaciones()
+      ]);
+      
+      setEmbarcaciones(embarcacionesData);
+      setActivos(activosData);
+      setTiposEmbarcacion(tiposData);
+      setEstadosActivo(estadosData);
     } catch (error) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar embarcaciones",
+        detail: "Error al cargar los datos",
         life: 3000,
       });
     } finally {
@@ -75,7 +90,7 @@ const Embarcacion = () => {
   };
 
   const onGuardarExitoso = () => {
-    cargarEmbarcaciones();
+    cargarDatos();
     cerrarDialogo();
     toast.current.show({
       severity: "success",
@@ -117,6 +132,11 @@ const Embarcacion = () => {
     }
   };
 
+  const activoTemplate = (rowData) => {
+    const activo = activos.find((a) => a.id === rowData.activoId);
+    return activo?.nombre || "N/A";
+  };
+
   const matriculaTemplate = (rowData) => {
     return (
       <span style={{ fontWeight: "bold", color: "#2563eb" }}>
@@ -126,7 +146,13 @@ const Embarcacion = () => {
   };
 
   const tipoEmbarcacionTemplate = (rowData) => {
-    return rowData.tipoEmbarcacion?.nombre || "N/A";
+    const tipo = tiposEmbarcacion.find((t) => t.id === rowData.tipoEmbarcacionId);
+    return tipo?.nombre || "N/A";
+  };
+
+  const estadoTemplate = (rowData) => {
+    const estado = estadosActivo.find((e) => e.id === rowData.estadoActivoId);
+    return estado?.descripcion || "Sin Estado";
   };
 
   const capacidadTemplate = (rowData) => {
@@ -135,32 +161,12 @@ const Embarcacion = () => {
       : "N/A";
   };
 
-  const medidaTemplate = (rowData, field) => {
-    return rowData[field] 
-      ? `${rowData[field]} m`
-      : "N/A";
-  };
-
   const motorTemplate = (rowData) => {
-    if (rowData.motorMarca && rowData.motorPotenciaHp) {
-      return `${rowData.motorMarca} (${rowData.motorPotenciaHp} HP)`;
-    } else if (rowData.motorMarca) {
-      return rowData.motorMarca;
-    } else if (rowData.motorPotenciaHp) {
-      return `${rowData.motorPotenciaHp} HP`;
-    }
-    return "N/A";
+    return rowData.motorMarca || "N/A";
   };
 
-  const estadoTemplate = (rowData) => {
-    // Aquí puedes mapear el estadoActivoId a un estado legible
-    // Por ahora mostramos el ID, pero idealmente debería mostrar el nombre del estado
-    return (
-      <Tag
-        value={rowData.estadoActivoId ? `Estado ${rowData.estadoActivoId}` : "Sin Estado"}
-        severity="info"
-      />
-    );
+  const anioTemplate = (rowData) => {
+    return rowData.anioFabricacion || "N/A";
   };
 
   const accionesTemplate = (rowData) => {
@@ -231,6 +237,17 @@ const Embarcacion = () => {
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
         <Column 
+          field="id"
+          header="ID"
+          sortable 
+        />
+        <Column 
+          field="activo" 
+          header="Activo" 
+          body={activoTemplate}
+          sortable 
+        />
+        <Column 
           field="matricula" 
           header="Matrícula" 
           body={matriculaTemplate}
@@ -248,12 +265,7 @@ const Embarcacion = () => {
           sortable 
         />
         <Column 
-          field="esloraM" 
-          header="Eslora" 
-          body={(rowData) => medidaTemplate(rowData, 'esloraM')}
-          sortable 
-        />
-        <Column 
+          field="motorMarca" 
           header="Motor" 
           body={motorTemplate}
           sortable 
@@ -261,6 +273,7 @@ const Embarcacion = () => {
         <Column 
           field="anioFabricacion" 
           header="Año Fab." 
+          body={anioTemplate}
           sortable 
         />
         <Column 
@@ -283,7 +296,8 @@ const Embarcacion = () => {
         }
         visible={dialogVisible}
         onHide={cerrarDialogo}
-        style={{ width: "800px" }}
+        style={{ width: "90vw", maxWidth: "1300px" }}
+
         modal
       >
         <EmbarcacionForm

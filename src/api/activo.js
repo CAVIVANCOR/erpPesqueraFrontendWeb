@@ -39,3 +39,8 @@ export async function eliminarActivo(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+export async function getVehiculosPorRuc(ruc) {
+  const res = await axios.get(`${API_URL}/vehiculos-por-ruc/${ruc}`, { headers: getAuthHeaders() });
+  return res.data;
+}

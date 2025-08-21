@@ -19,7 +19,7 @@ const getAuthToken = () => {
 export const getAllBolicheRed = async () => {
   try {
     const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/boliche-red`, {
+    const response = await axios.get(`${API_URL}/pesca/boliches-red`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -40,7 +40,7 @@ export const getAllBolicheRed = async () => {
 export const crearBolicheRed = async (bolicheData) => {
   try {
     const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/boliche-red`, bolicheData, {
+    const response = await axios.post(`${API_URL}/pesca/boliches-red`, bolicheData, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -62,7 +62,7 @@ export const crearBolicheRed = async (bolicheData) => {
 export const actualizarBolicheRed = async (id, bolicheData) => {
   try {
     const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/boliche-red/${id}`, bolicheData, {
+    const response = await axios.put(`${API_URL}/pesca/boliches-red/${id}`, bolicheData, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -83,7 +83,7 @@ export const actualizarBolicheRed = async (id, bolicheData) => {
 export const eliminarBolicheRed = async (id) => {
   try {
     const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/boliche-red/${id}`, {
+    const response = await axios.delete(`${API_URL}/pesca/boliches-red/${id}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'

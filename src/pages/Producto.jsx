@@ -445,14 +445,6 @@ const Producto = () => {
     );
   };
 
-  const clienteTemplate = (rowData) => {
-    return (
-      <span style={{ fontWeight: "400", color: "#6b7280" }}>
-        {rowData.clienteId || "N/A"}
-      </span>
-    );
-  };
-
   const accionesTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
@@ -670,7 +662,7 @@ const Producto = () => {
           header="Código"
           sortable
           body={codigoTemplate}
-          style={{ minWidth: "120px" }}
+          style={{ minWidth: "80px" }}
         />
         <Column
           field="descripcionArmada"
@@ -695,24 +687,17 @@ const Producto = () => {
         />
         <Column
           field="tipoAlmacenamiento.nombre"
-          header="Tipo Almacenamiento"
+          header="Almacenamiento"
           sortable
           body={tipoAlmacenamientoTemplate}
-          style={{ minWidth: "180px" }}
+          style={{ minWidth: "80px" }}
         />
         <Column
           field="unidadMedida.nombre"
           header="Unidad Medida"
           sortable
           body={unidadMedidaTemplate}
-          style={{ minWidth: "150px" }}
-        />
-        <Column
-          field="clienteId"
-          header="Cliente"
-          sortable
-          body={clienteTemplate}
-          style={{ minWidth: "150px" }}
+          style={{ minWidth: "120px" }}
         />
         <Column
           body={accionesTemplate}

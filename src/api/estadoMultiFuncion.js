@@ -39,6 +39,15 @@ export async function getEstadosMultiFuncionParaProductos() {
   return res.data;
 }
 
+/**
+ * Obtiene estados multifunción específicamente para embarcaciones
+ * Filtra por TipoProvieneDe con descripción "EMBARCACIONES"
+ */
+export async function getEstadosMultiFuncionParaEmbarcaciones() {
+  const res = await axios.get(`${API_URL}/embarcaciones`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function crearEstadoMultiFuncion(data) {
   const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
   return res.data;

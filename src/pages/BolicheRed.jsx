@@ -1,125 +1,263 @@
-// src/pages/BolicheRed.jsx
-// Pantalla CRUD profesional para BolicheRed. Cumple la regla transversal ERP Megui.
-import React, { useRef, useState, useEffect } from "react";
+/**
+ * Página de gestión de Boliche Red
+ *
+ * Características implementadas:
+ * - Edición profesional por clic en fila (abre modal de edición)
+ * - Botón eliminar visible solo para superusuario/admin (usuario?.esSuperUsuario || usuario?.esAdmin)
+ * - Confirmación de borrado con ConfirmDialog visual rojo y mensajes claros
+ * - Feedback visual con Toast para éxito/error
+ * - Búsqueda global por descripción
+ * - Cumple regla transversal ERP Megui completa
+ *
+ * @author ERP Megui
+ * @version 1.0.0
+ */
+
+import React, { useState, useEffect, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
-import { Dialog } from "primereact/dialog";
-import BolicheRedForm from "../components/bolicheRed/BolicheRedForm";
-import { getAllBolicheRed, createBolicheRed, updateBolicheRed, deleteBolicheRed } from "../api/bolicheRed";
+import { Tag } from "primereact/tag";
+import { InputText } from "primereact/inputtext";
+import { getAllBolicheRed, eliminarBolicheRed } from "../api/bolicheRed";
+import { getActivos } from "../api/activo";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import BolicheRedForm from "../components/bolicheRed/BolicheRedForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
-export default function BolicheRed() {
+const BolicheRed = () => {
+  const [bolicheReds, setBolicheReds] = useState([]);
+  const [activos, setActivos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [bolicheRedSeleccionado, setBolicheRedSeleccionado] = useState(null);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [bolicheRedAEliminar, setBolicheRedAEliminar] = useState(null);
   const toast = useRef(null);
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showDialog, setShowDialog] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore(state => state.usuario);
+  const { usuario } = useAuthStore();
+  const [globalFilter, setGlobalFilter] = useState("");
 
   useEffect(() => {
-    cargarItems();
+    cargarDatos();
   }, []);
 
-  const cargarItems = async () => {
-    setLoading(true);
+  const cargarDatos = async () => {
     try {
-      const data = await getAllBolicheRed();
-      setItems(data);
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar la lista." });
+      setLoading(true);
+      const [bolicheRedData, activosData] = await Promise.all([
+        getAllBolicheRed(),
+        getActivos()
+      ]);
+      setBolicheReds(bolicheRedData);
+      setActivos(activosData);
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar los datos",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleEdit = (rowData) => {
-    setEditing(rowData);
-    setShowDialog(true);
+  const abrirDialogoNuevo = () => {
+    setBolicheRedSeleccionado(null);
+    setDialogVisible(true);
   };
 
-  const handleDelete = (rowData) => {
-    setToDelete(rowData);
-    setShowConfirm(true);
+  const abrirDialogoEdicion = (bolicheRed) => {
+    setBolicheRedSeleccionado(bolicheRed);
+    setDialogVisible(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    setShowConfirm(false);
-    if (!toDelete) return;
-    setLoading(true);
+  const cerrarDialogo = () => {
+    setDialogVisible(false);
+    setBolicheRedSeleccionado(null);
+  };
+
+  const confirmarEliminacion = (bolicheRed) => {
+    setBolicheRedAEliminar(bolicheRed);
+    setConfirmVisible(true);
+  };
+
+  const eliminar = async () => {
     try {
-      await deleteBolicheRed(toDelete.id);
-      toast.current.show({ severity: "success", summary: "Eliminado", detail: "Registro eliminado correctamente." });
-      cargarItems();
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo eliminar." });
+      setLoading(true);
+      await eliminarBolicheRed(bolicheRedAEliminar.id);
+      toast.current?.show({
+        severity: "success",
+        summary: "Eliminado",
+        detail: "Boliche Red eliminado correctamente",
+        life: 3000,
+      });
+      cargarDatos();
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al eliminar el Boliche Red",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+      setConfirmVisible(false);
+      setBolicheRedAEliminar(null);
     }
-    setLoading(false);
-    setToDelete(null);
   };
 
-  const handleFormSubmit = async (data) => {
-    setLoading(true);
-    try {
-      if (editing && editing.id) {
-        await updateBolicheRed(editing.id, data);
-        toast.current.show({ severity: "success", summary: "Actualizado", detail: "Registro actualizado." });
-      } else {
-        await createBolicheRed(data);
-        toast.current.show({ severity: "success", summary: "Creado", detail: "Registro creado." });
-      }
-      setShowDialog(false);
-      setEditing(null);
-      cargarItems();
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo guardar." });
-    }
-    setLoading(false);
+  const onGuardar = () => {
+    toast.current?.show({
+      severity: "success",
+      summary: "Guardado",
+      detail: bolicheRedSeleccionado ? "Boliche Red actualizado correctamente" : "Boliche Red creado correctamente",
+      life: 3000,
+    });
+    cerrarDialogo();
+    cargarDatos();
   };
 
-  const handleAdd = () => {
-    setEditing(null);
-    setShowDialog(true);
+  const onError = (mensaje) => {
+    toast.current?.show({
+      severity: "error",
+      summary: "Error",
+      detail: mensaje || "Error al guardar el Boliche Red",
+      life: 3000,
+    });
   };
 
-  const actionBody = (rowData) => (
-    <>
-      <Button icon="pi pi-pencil" className="p-button-text p-button-sm" onClick={() => handleEdit(rowData)} aria-label="Editar" />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger p-button-sm" onClick={() => handleDelete(rowData)} aria-label="Eliminar" />
-      )}
-    </>
-  );
+  const activoTemplate = (rowData) => {
+    const activo = activos.find((a) => a.id === rowData.activoId);
+    return activo?.descripcion || "N/A";
+  };
+
+  const cesadoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.cesado ? "Cesado" : "Activo"}
+        severity={rowData.cesado ? "danger" : "success"}
+      />
+    );
+  };
+
+  const numeroTemplate = (rowData, field) => {
+    const valor = rowData[field];
+    return valor ? Number(valor).toLocaleString() : 'N/A';
+  };
+
+  const accionesTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-button-info"
+          onClick={(e) => {
+            e.stopPropagation();
+            abrirDialogoEdicion(rowData);
+          }}
+          tooltip="Editar"
+        />
+        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-text p-button-danger"
+            onClick={(e) => {
+              e.stopPropagation();
+              confirmarEliminacion(rowData);
+            }}
+            tooltip="Eliminar"
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="p-fluid">
+    <div className="p-4">
       <Toast ref={toast} />
-      <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar este registro?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
-      <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
-        <h2>Gestión de Boliche Red</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
-      </div>
-      <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="activoId" header="Activo" />
-        <Column field="descripcion" header="Descripción" />
-        <Column field="cesado" header="Cesado" body={rowData => rowData.cesado ? "Sí" : "No"} />
-        <Column field="createdAt" header="Creado" body={rowData => new Date(rowData.createdAt).toLocaleDateString()} />
-        <Column field="updatedAt" header="Actualizado" body={rowData => new Date(rowData.updatedAt).toLocaleDateString()} />
-        <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
+      
+      <ConfirmDialog
+        visible={confirmVisible}
+        onHide={() => setConfirmVisible(false)}
+        message="¿Está seguro que desea eliminar este Boliche Red?"
+        header="Confirmar eliminación"
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        accept={eliminar}
+        reject={() => setConfirmVisible(false)}
+        acceptLabel="Eliminar"
+        rejectLabel="Cancelar"
+      />
+
+      <DataTable
+        value={bolicheReds}
+        loading={loading}
+        dataKey="id"
+        paginator
+        rows={10}
+        rowsPerPageOptions={[5, 10, 25]}
+        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        globalFilter={globalFilter}
+        emptyMessage="No se encontraron registros"
+        header={
+          <div className="flex justify-content-between align-items-center">
+            <h2 className="m-0">Gestión de Boliche Red</h2>
+            <Button
+              label="Nuevo"
+              icon="pi pi-plus"
+              size="small"
+              raised
+              tooltip="Nuevo Boliche Red"
+              outlined
+              className="p-button-success"
+              onClick={abrirDialogoNuevo}
+            />
+            <span className="p-input-icon-left">
+              <InputText
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Buscar boliche red..."
+                style={{ width: "300px" }}
+              />
+            </span>
+          </div>
+        }
+        scrollable
+        scrollHeight="600px"
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+      >
+        <Column field="id" header="ID" sortable body={(rowData) => Number(rowData.id)} />
+        <Column field="activoId" header="Activo" sortable body={activoTemplate} />
+        <Column field="descripcion" header="Descripción" sortable />
+        <Column field="largoContraido" header="Longitud de Armado" sortable body={(rowData) => numeroTemplate(rowData, 'largoContraido')} />
+        <Column field="largoExpandido" header="Longitud de Paño" sortable body={(rowData) => numeroTemplate(rowData, 'largoExpandido')} />
+        <Column field="altoM" header="Alto (m)" sortable body={(rowData) => numeroTemplate(rowData, 'altoM')} />
+        <Column field="nroFlotadores" header="Nº Flotadores" sortable body={(rowData) => numeroTemplate(rowData, 'nroFlotadores')} />
+        <Column field="nroPlomos" header="Nº Plomos" sortable body={(rowData) => numeroTemplate(rowData, 'nroPlomos')} />
+        <Column field="cesado" header="Estado" sortable body={cesadoTemplate} />
+        <Column body={accionesTemplate} header="Acciones" style={{ width: "120px", textAlign: "center" }} />
       </DataTable>
-      <Dialog header={editing ? "Editar Boliche Red" : "Nuevo Boliche Red"} visible={showDialog} style={{ width: 500 }} onHide={() => setShowDialog(false)} modal>
+
+      <Dialog
+        header={bolicheRedSeleccionado ? "Editar Boliche Red" : "Nuevo Boliche Red"}
+        visible={dialogVisible}
+        style={{ width: "1300px" }}
+        onHide={cerrarDialogo}
+        modal
+        className="p-fluid"
+      >
         <BolicheRedForm
-          isEdit={!!editing}
-          defaultValues={editing || {}}
-          onSubmit={handleFormSubmit}
-          onCancel={() => setShowDialog(false)}
-          loading={loading}
+          bolicheRed={bolicheRedSeleccionado}
+          onGuardar={onGuardar}
+          onCancelar={cerrarDialogo}
         />
       </Dialog>
     </div>
   );
-}
+};
+
+export default BolicheRed;

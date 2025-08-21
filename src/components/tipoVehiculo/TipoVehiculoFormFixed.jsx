@@ -2,7 +2,7 @@
 /**
  * Formulario profesional para TipoVehiculo
  * Implementa el patrón estándar ERP Megui con validaciones, normalización y feedback.
- * Modelo: id, nombre, activo, createdAt, updatedAt
+ * Modelo: id, nombre, descripcion, activo, createdAt, updatedAt
  * 
  * Funcionalidades:
  * - Validaciones con Yup y react-hook-form
@@ -20,6 +20,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
+import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 import { classNames } from 'primereact/utils';
 
@@ -35,6 +36,12 @@ const esquemaValidacion = yup.object().shape({
     .min(3, 'El nombre debe tener al menos 3 caracteres')
     .max(50, 'El nombre no puede exceder 50 caracteres'),
   
+  descripcion: yup
+    .string()
+    .trim()
+    .nullable()
+    .max(500, 'La descripción no puede exceder 500 caracteres'),
+    
   activo: yup.boolean()
 });
 
@@ -58,6 +65,7 @@ const TipoVehiculoForm = ({ tipoVehiculo, onSave, onCancel, toast }) => {
     resolver: yupResolver(esquemaValidacion),
     defaultValues: {
       nombre: '',
+      descripcion: '',
       activo: true
     }
   });
@@ -67,6 +75,7 @@ const TipoVehiculoForm = ({ tipoVehiculo, onSave, onCancel, toast }) => {
     if (tipoVehiculo) {
       reset({
         nombre: tipoVehiculo.nombre || '',
+        descripcion: tipoVehiculo.descripcion || '',
         activo: tipoVehiculo.activo !== undefined ? tipoVehiculo.activo : true
       });
     }
@@ -85,6 +94,7 @@ const TipoVehiculoForm = ({ tipoVehiculo, onSave, onCancel, toast }) => {
       // Normalización final de datos según regla ERP Megui
       const datosNormalizados = {
         nombre: data.nombre.trim(),
+        descripcion: data.descripcion?.trim() || null,
         activo: Boolean(data.activo)
       };
 
@@ -171,6 +181,33 @@ const TipoVehiculoForm = ({ tipoVehiculo, onSave, onCancel, toast }) => {
                     Activo
                   </label>
                 </div>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Campo Descripción */}
+        <div className="p-col-12">
+          <div className="p-field">
+            <label htmlFor="descripcion" className="font-bold">
+              Descripción
+            </label>
+            <Controller
+              name="descripcion"
+              control={control}
+              render={({ field, fieldState }) => (
+                <>
+                  <InputTextarea
+                    id={field.name}
+                    value={field.value || ''}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    className={classNames({ 'p-invalid': fieldState.error })}
+                    disabled={loading}
+                    rows={3}
+                    placeholder="Descripción detallada del tipo de vehículo"
+                  />
+                  {getFormErrorMessage(field.name)}
+                </>
               )}
             />
           </div>

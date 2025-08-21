@@ -669,7 +669,9 @@ export default function MultiCrud() {
               { label: "Unidad Medida", icon: "pi pi-briefcase", command: () => abrirModulo("unidadMedida", "Unidad Medida") },
               { label: "Tipo Material", icon: "pi pi-briefcase", command: () => abrirModulo("tipoMaterial", "Tipo Material") },
               { label: "Color", icon: "pi pi-briefcase", command: () => abrirModulo("color", "Color") },
-              { label: "Estado Multi Función", icon: "pi pi-cog", command: () => abrirModulo("estadoMultiFuncion", "Estado Multi Funcion") }
+              { label: "Estado Multi Función", icon: "pi pi-cog", command: () => abrirModulo("estadoMultiFuncion", "Estado Multi Funcion") },
+              { label: "Monedas", icon: "pi pi-dollar", command: () => abrirModulo("monedas", "Monedas") },
+              { label: "Tipo Vehiculos", icon: "pi pi-ship", command: () => abrirModulo("tipoVehiculo", "Tipo Vehiculos") }
             ]
           },
           {
@@ -711,7 +713,6 @@ export default function MultiCrud() {
           {
             label: "Financiero",
             items: [
-              { label: "Monedas", icon: "pi pi-dollar", command: () => abrirModulo("moneda", "Monedas") },
               { label: "Bancos", icon: "pi pi-building", command: () => abrirModulo("banco", "Bancos") },
               { label: "Incoterms", icon: "pi pi-globe", command: () => abrirModulo("incoterm", "Incoterms") }
             ]

@@ -48,3 +48,14 @@ export async function getAgenciasEnvio() {
   const res = await axios.get(`${API_URL}/agencias-envio`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Obtiene los proveedores GPS (entidades comerciales del tipo "PROVEEDOR EQUIPOS GEOLOCALIZACION")
+ * @returns {Promise<Array>} Lista de proveedores GPS con estructura {id, razonSocial}
+ */
+export async function getProveedoresGps() {
+  console.log("proveedores gps");
+  const res = await axios.get(`${API_URL}/proveedores-gps`, { headers: getAuthHeaders() });
+  console.log("proveedores gps",res.data);
+  return res.data;
+}

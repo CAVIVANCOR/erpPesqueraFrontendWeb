@@ -243,7 +243,7 @@ const TiposDocIdentidad = () => {
   };
 
   return (
-    <div className="crud-demo">
+    <div className="p-m-4">
       <Toast ref={toast} />
       <ConfirmDialog
         visible={confirmState.visible}

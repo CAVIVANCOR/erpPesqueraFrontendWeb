@@ -295,70 +295,6 @@ export default function ProductoForm({
 
   const familiaIdWatch = watch("familiaId");
 
-  // Opciones normalizadas para dropdowns
-  const familiasOptions = familias.map((f) => ({
-    label: f.nombre,
-    value: Number(f.id),
-  }));
-
-  const subfamiliasOptions = subfamilias
-    .filter((s) => Number(s.familiaId) === Number(familiaIdWatch))
-    .map((s) => ({
-      label: s.nombre,
-      value: Number(s.id),
-    }));
-
-  const unidadesMedidaOptions = unidadesMedida.map((u) => ({
-    label: `${u.nombre} (${u.simbolo})`,
-    value: Number(u.id),
-  }));
-
-  const unidadesMetricasOptions = unidadesMetricas.map((u) => ({
-    label: `${u.nombre} (${u.simbolo})`,
-    value: Number(u.id),
-  }));
-
-  const tiposMaterialOptions = tiposMaterial.map((t) => ({
-    label: t.nombre,
-    value: Number(t.id),
-  }));
-
-  const coloresOptions = colores.map((c) => ({
-    label: c.nombre,
-    value: Number(c.id),
-  }));
-
-  const empresasOptions = empresas.map((e) => ({
-    label: e.razonSocial,
-    value: Number(e.id),
-  }));
-
-  const clientesOptions = clientes
-    .filter((c) => c.esCliente === true)
-    .map((c) => ({
-      label: c.razonSocial,
-      value: Number(c.id),
-    }));
-
-  const tiposAlmacenamientoOptions = tiposAlmacenamiento.map((t) => ({
-    label: t.nombre,
-    value: Number(t.id),
-  }));
-
-  const paisesOptions = paises.map((p) => ({
-    label: p.gentilicio,
-    value: Number(p.id),
-  }));
-
-  const marcasOptions = marcas.map((m) => ({
-    label: m.nombre,
-    value: Number(m.id),
-  }));
-
-  const estadosInicialesOptions = estadosIniciales.map((e) => ({
-    label: e.descripcion,
-    value: Number(e.id),
-  }));
 
   // Limpiar subfamilia cuando cambie la familia
   useEffect(() => {
@@ -408,173 +344,6 @@ export default function ProductoForm({
       if (!watch("unidadAnguloId")) setValue("unidadAnguloId", defaultId);
     }
   }, [unidadMetricaDefault, modoEdicion, setValue, watch]);
-
-  // Función para armar descripcionArmada según especificación del usuario
-  const armarDescripcionArmada = () => {
-    const formData = watch();
-    let descripcionArmada = "";
-
-    // 1. Descripción base según aplicaSubfamilia
-    if (formData.aplicaSubfamilia) {
-      const subfamilia = subfamilias.find(
-        (s) => Number(s.id) === Number(formData.subfamiliaId)
-      );
-      if (subfamilia) {
-        descripcionArmada =
-          subfamilia.nombre +
-          " " +
-          (formData.descripcionBase || "") +
-          " " +
-          (formData.descripcionExtendida || "");
-      } else {
-        descripcionArmada =
-          (formData.descripcionBase || "") +
-          " " +
-          (formData.descripcionExtendida || "");
-      }
-    } else {
-      descripcionArmada =
-        (formData.descripcionBase || "") +
-        " " +
-        (formData.descripcionExtendida || "");
-    }
-
-    // 2. Tipo Material si tipoMaterialId > 1
-    if (Number(formData.tipoMaterialId) > 1) {
-      const tipoMaterial = tiposMaterial.find(
-        (t) => Number(t.id) === Number(formData.tipoMaterialId)
-      );
-      if (tipoMaterial) {
-        descripcionArmada += " " + tipoMaterial.nombre;
-      }
-    }
-
-    // 3. Medidas si alguna es diferente de ""
-    const tieneMedidas =
-      formData.medidaDiametro ||
-      formData.medidaAncho ||
-      formData.medidaAlto ||
-      formData.medidaLargo ||
-      formData.medidaEspesor ||
-      formData.medidaAngulo;
-
-    if (tieneMedidas) {
-      descripcionArmada += " ";
-
-      // Diámetro
-      if (formData.medidaDiametro) {
-        const unidadDiametro = unidadesMetricas.find(
-          (u) => Number(u.id) === Number(formData.unidadDiametroId)
-        );
-        descripcionArmada +=
-          " " + formData.medidaDiametro + " " + (unidadDiametro?.simbolo || "");
-      }
-
-      // Ancho
-      if (formData.medidaAncho) {
-        const unidadAncho = unidadesMetricas.find(
-          (u) => Number(u.id) === Number(formData.unidadAnchoId)
-        );
-        descripcionArmada +=
-          " " + formData.medidaAncho + " " + (unidadAncho?.simbolo || "");
-      }
-
-      // Alto
-      if (formData.medidaAlto) {
-        const unidadAlto = unidadesMetricas.find(
-          (u) => Number(u.id) === Number(formData.unidadAltoId)
-        );
-        descripcionArmada +=
-          " " + formData.medidaAlto + " " + (unidadAlto?.simbolo || "");
-      }
-
-      // Largo
-      if (formData.medidaLargo) {
-        const unidadLargo = unidadesMetricas.find(
-          (u) => Number(u.id) === Number(formData.unidadLargoId)
-        );
-        descripcionArmada +=
-          " " + formData.medidaLargo + " " + (unidadLargo?.simbolo || "");
-      }
-
-      // Espesor
-      if (formData.medidaEspesor) {
-        const unidadEspesor = unidadesMetricas.find(
-          (u) => Number(u.id) === Number(formData.unidadEspesorId)
-        );
-        descripcionArmada +=
-          " " + formData.medidaEspesor + " " + (unidadEspesor?.simbolo || "");
-      }
-
-      // Ángulo
-      if (formData.medidaAngulo) {
-        const unidadAngulo = unidadesMetricas.find(
-          (u) => Number(u.id) === Number(formData.unidadAnguloId)
-        );
-        descripcionArmada +=
-          " " + formData.medidaAngulo + " " + (unidadAngulo?.simbolo || "");
-      }
-      if (formData.descripcionMedidaAdicional) {
-        descripcionArmada += " " + formData.descripcionMedidaAdicional;
-      }
-    }
-
-    // 4. Marca si marcaId > 0 y aplicaMarca = true
-    if (Number(formData.marcaId) > 0 && formData.aplicaMarca) {
-      const marca = marcas.find(
-        (m) => Number(m.id) === Number(formData.marcaId)
-      );
-      if (marca) {
-        descripcionArmada += " " + marca.nombre;
-      }
-    }
-
-    // 5. Color si colorId > 1 y aplicaColor = true
-    if (Number(formData.colorId) > 1 && formData.aplicaColor) {
-      const color = colores.find(
-        (c) => Number(c.id) === Number(formData.colorId)
-      );
-      if (color) {
-        descripcionArmada += " " + color.nombre;
-      }
-    }
-
-    // 6. Unidad de medida si aplicaUnidadMedida = true
-    if (formData.aplicaUnidadMedida) {
-      const unidadMedida = unidadesMedida.find(
-        (u) => Number(u.id) === Number(formData.unidadMedidaId)
-      );
-      if (unidadMedida) {
-        descripcionArmada += " " + unidadMedida.simbolo;
-      }
-    }
-
-    // 7. Tipo de almacenamiento si aplicaTipoAlmacenamiento = true
-    if (formData.aplicaTipoAlmacenamiento) {
-      const tipoAlmacenamiento = tiposAlmacenamiento.find(
-        (t) => Number(t.id) === Number(formData.tipoAlmacenamientoId)
-      );
-      if (tipoAlmacenamiento) {
-        descripcionArmada += " " + tipoAlmacenamiento.nombre;
-      }
-    }
-
-    // 8. Procedencia si aplicaProcedencia = true
-    if (formData.aplicaProcedencia) {
-      const pais = paises.find(
-        (p) => Number(p.id) === Number(formData.procedenciaId)
-      );
-      if (pais) {
-        descripcionArmada += " " + pais.gentilicio;
-      }
-    }
-
-    // Limpiar espacios múltiples y actualizar el campo
-    descripcionArmada = descripcionArmada.replace(/\s+/g, " ").trim();
-    setValue("descripcionArmada", descripcionArmada);
-
-    return descripcionArmada;
-  };
 
   const handleCancelar = () => {
     onCancelar();
@@ -632,22 +401,27 @@ export default function ProductoForm({
         aplicaTipoMaterial: data.aplicaTipoMaterial,
         aplicaColor: data.aplicaColor,
         urlFichaTecnica: data.urlFichaTecnica,
-        urlFotoProducto: data.urlFotoProducto
+        urlFotoProducto: data.urlFotoProducto,
       };
 
       // Eliminar propiedades que son null o undefined
-      Object.keys(datosParaEnviar).forEach(key => {
-        if (datosParaEnviar[key] === null || datosParaEnviar[key] === undefined) {
+      Object.keys(datosParaEnviar).forEach((key) => {
+        if (
+          datosParaEnviar[key] === null ||
+          datosParaEnviar[key] === undefined
+        ) {
           delete datosParaEnviar[key];
         }
       });
 
       await onGuardar(datosParaEnviar);
-      
+
       toast.current.show({
         severity: "success",
         summary: "Éxito",
-        detail: `Producto ${modoEdicion ? "actualizado" : "creado"} correctamente`,
+        detail: `Producto ${
+          modoEdicion ? "actualizado" : "creado"
+        } correctamente`,
         life: 3000,
       });
     } catch (error) {
@@ -655,7 +429,10 @@ export default function ProductoForm({
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.message || error.message || "Error al guardar el producto",
+        detail:
+          error.response?.data?.message ||
+          error.message ||
+          "Error al guardar el producto",
         life: 3000,
       });
     } finally {
@@ -664,29 +441,27 @@ export default function ProductoForm({
   };
 
   return (
-    <div className="p-4">
+    <div className="producto-form">
       <Toast ref={toast} />
       {/* Mostrar descripción armada con Tag de PrimeReact */}
       <div className="flex justify-content-center mb-4">
-        <Tag 
-          value={watch('descripcionArmada') || 'Nuevo Producto'}
+        <Tag
+          value={watch("descripcionArmada") || "Nuevo Producto"}
           severity="info"
           style={{
-            fontSize: '1.1rem',
-            padding: '0.75rem 1.25rem',
-            textTransform: 'uppercase',
-            fontWeight: 'bold',
-            textAlign: 'center',
-            width: '100%',
-          }}
-          pt={{
-            root: { className: 'shadow-2' }
+            fontSize: "1.1rem",
+            padding: "0.75rem 1.25rem",
+            textTransform: "uppercase",
+            fontWeight: "bold",
+            textAlign: "center",
+            width: "100%",
           }}
         />
       </div>
 
       {/* Sistema de navegación con botones de iconos */}
       <Toolbar
+        className="mb-4"
         center={
           <ButtonGroup>
             <Button
@@ -782,14 +557,15 @@ export default function ProductoForm({
             defaultValues={getValues()} // Agregar defaultValues para acceso al id del producto
           />
         )}
-
+        {/* Botones de acción */}
         <div
           style={{
-            marginTop: "1rem",
-            alignItems: "center",
             display: "flex",
+            justifyContent: "center",
             gap: 10,
             flexDirection: window.innerWidth < 768 ? "column" : "row",
+            marginBottom: 10,
+            marginTop: 10,
           }}
         >
           <Button
@@ -799,13 +575,20 @@ export default function ProductoForm({
             className="p-button-secondary"
             onClick={handleCancelar}
             disabled={loading}
+            raised
+            size="small"
+            outlined
           />
           <Button
-            type="submit"
+            type="button"
             label={modoEdicion ? "Actualizar" : "Crear"}
             icon={modoEdicion ? "pi pi-check" : "pi pi-plus"}
             className="p-button-success"
+            onClick={handleSubmit(onSubmitForm)}
             loading={loading}
+            raised
+            size="small"
+            outlined
           />
         </div>
 
@@ -814,6 +597,7 @@ export default function ProductoForm({
             <ProgressSpinner />
           </div>
         )}
+        
       </form>
     </div>
   );
