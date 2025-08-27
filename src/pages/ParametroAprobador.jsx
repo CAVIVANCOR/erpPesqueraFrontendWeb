@@ -1,137 +1,363 @@
-// src/pages/ParametroAprobador.jsx
-// Pantalla CRUD profesional para ParametroAprobador. Cumple la regla transversal ERP Megui.
-import React, { useRef, useState, useEffect } from "react";
+/**
+ * Pantalla CRUD para gestión de Parámetros Aprobador
+ *
+ * Características implementadas:
+ * - Edición profesional por clic en fila (abre modal de edición)
+ * - Botón eliminar visible solo para superusuario/admin (usuario?.esSuperUsuario || usuario?.esAdmin)
+ * - Confirmación de borrado con ConfirmDialog visual rojo y mensajes claros
+ * - Feedback visual con Toast para éxito/error
+ * - Búsqueda global por personal responsable, módulo sistema
+ * - Cumple regla transversal ERP Megui completa
+ *
+ * @author ERP Megui
+ * @version 1.0.0
+ */
+
+import React, { useState, useEffect, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
-import { Dialog } from "primereact/dialog";
-import ParametroAprobadorForm from "../components/parametroAprobador/ParametroAprobadorForm";
-import { getParametrosAprobador, crearParametroAprobador, actualizarParametroAprobador, eliminarParametroAprobador } from "../api/parametroAprobador";
+import { Tag } from "primereact/tag";
+import { InputText } from "primereact/inputtext";
+import { getParametrosAprobador, eliminarParametroAprobador } from "../api/parametroAprobador";
+import { getPersonal } from "../api/personal";
+import { getModulos } from "../api/moduloSistema";
+import { getEmpresas } from "../api/empresa";
+import { getEmbarcaciones } from "../api/embarcacion";
+import { getSedes } from "../api/sedes";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import ParametroAprobadorForm from "../components/parametroAprobador/ParametroAprobadorForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
-/**
- * Pantalla profesional para gestión de Parámetros de Aprobador.
- * Cumple la regla transversal ERP Megui:
- * - Edición profesional por clic en fila (abre modal).
- * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin), usando useAuthStore.
- * - Confirmación de borrado con ConfirmDialog visual rojo.
- * - Feedback visual con Toast.
- * - Documentación de la regla en el encabezado.
- */
-export default function ParametroAprobador() {
+const ParametroAprobador = () => {
+  const [parametrosAprobador, setParametrosAprobador] = useState([]);
+  const [personal, setPersonal] = useState([]);
+  const [modulosSistema, setModulosSistema] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
+  const [embarcaciones, setEmbarcaciones] = useState([]);
+  const [sedes, setSedes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [parametroSeleccionado, setParametroSeleccionado] = useState(null);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [parametroAEliminar, setParametroAEliminar] = useState(null);
   const toast = useRef(null);
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showDialog, setShowDialog] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore(state => state.usuario);
+  const { usuario } = useAuthStore();
+  const [globalFilter, setGlobalFilter] = useState("");
 
   useEffect(() => {
-    cargarItems();
+    cargarParametrosAprobador();
+    cargarDatosCombos();
   }, []);
 
-  const cargarItems = async () => {
-    setLoading(true);
+  const cargarDatosCombos = async () => {
     try {
+      setLoading(true);
+      const [personalData, modulosData, empresasData, embarcacionesData, sedesData] = await Promise.all([
+        getPersonal(),
+        getModulos(),
+        getEmpresas(),
+        getEmbarcaciones(),
+        getSedes()
+      ]);
+      
+      setPersonal(personalData);
+      setModulosSistema(modulosData);
+      setEmpresas(empresasData);
+      setEmbarcaciones(embarcacionesData);
+      setSedes(sedesData);
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar datos de combos",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cargarParametrosAprobador = async () => {
+    try {
+      setLoading(true);
       const data = await getParametrosAprobador();
-      setItems(data);
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar la lista." });
+      setParametrosAprobador(data);
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar parámetros aprobador",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleEdit = (rowData) => {
-    setEditing(rowData);
-    setShowDialog(true);
+  const abrirDialogoNuevo = () => {
+    setParametroSeleccionado(null);
+    setDialogVisible(true);
   };
 
-  const handleDelete = (rowData) => {
-    setToDelete(rowData);
-    setShowConfirm(true);
+  const abrirDialogoEdicion = (parametro) => {
+    setParametroSeleccionado(parametro);
+    setDialogVisible(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    setShowConfirm(false);
-    if (!toDelete) return;
-    setLoading(true);
+  const cerrarDialogo = () => {
+    setDialogVisible(false);
+    setParametroSeleccionado(null);
+  };
+
+  const onGuardarExitoso = () => {
+    cargarParametrosAprobador();
+    cerrarDialogo();
+    toast.current.show({
+      severity: "success",
+      summary: "Éxito",
+      detail: parametroSeleccionado
+        ? "Parámetro aprobador actualizado correctamente"
+        : "Parámetro aprobador creado correctamente",
+      life: 3000,
+    });
+  };
+
+  const confirmarEliminacion = (parametro) => {
+    setParametroAEliminar(parametro);
+    setConfirmVisible(true);
+  };
+
+  const eliminar = async () => {
     try {
-      await eliminarParametroAprobador(toDelete.id);
-      toast.current.show({ severity: "success", summary: "Eliminado", detail: "Registro eliminado correctamente." });
-      cargarItems();
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo eliminar." });
+      await eliminarParametroAprobador(parametroAEliminar.id);
+      setParametrosAprobador(
+        parametrosAprobador.filter((p) => Number(p.id) !== Number(parametroAEliminar.id))
+      );
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Parámetro aprobador eliminado correctamente",
+        life: 3000,
+      });
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al eliminar parámetro aprobador",
+        life: 3000,
+      });
+    } finally {
+      setConfirmVisible(false);
+      setParametroAEliminar(null);
     }
-    setLoading(false);
-    setToDelete(null);
   };
 
-  const handleFormSubmit = async (data) => {
-    setLoading(true);
-    try {
-      if (editing && editing.id) {
-        await actualizarParametroAprobador(editing.id, data);
-        toast.current.show({ severity: "success", summary: "Actualizado", detail: "Registro actualizado." });
-      } else {
-        await crearParametroAprobador(data);
-        toast.current.show({ severity: "success", summary: "Creado", detail: "Registro creado." });
-      }
-      setShowDialog(false);
-      setEditing(null);
-      cargarItems();
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo guardar." });
-    }
-    setLoading(false);
+  const personalTemplate = (rowData) => {
+    const personalResp = personal.find(p => Number(p.id) === Number(rowData.personalRespId));
+    return personalResp ? `${personalResp.nombres} ${personalResp.apellidos}` : "N/A";
   };
 
-  const handleAdd = () => {
-    setEditing(null);
-    setShowDialog(true);
+  const moduloSistemaTemplate = (rowData) => {
+    const modulo = modulosSistema.find(m => Number(m.id) === Number(rowData.moduloSistemaId));
+    return modulo?.nombre || "N/A";
   };
 
-  const actionBody = (rowData) => (
-    <>
-      <Button icon="pi pi-pencil" className="p-button-text p-button-sm" onClick={() => handleEdit(rowData)} aria-label="Editar" />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger p-button-sm" onClick={() => handleDelete(rowData)} aria-label="Eliminar" />
-      )}
-    </>
-  );
+  const empresaTemplate = (rowData) => {
+    const empresa = empresas.find(e => Number(e.id) === Number(rowData.empresaId));
+    return empresa?.razonSocial || "N/A";
+  };
+
+  const embarcacionTemplate = (rowData) => {
+    if (!rowData.embarcacionId) return "N/A";
+    const embarcacion = embarcaciones.find(e => Number(e.id) === Number(rowData.embarcacionId));
+    return embarcacion?.nombre || "N/A";
+  };
+
+  const sedeTemplate = (rowData) => {
+    if (!rowData.sedeId) return "N/A";
+    const sede = sedes.find(s => Number(s.id) === Number(rowData.sedeId));
+    return sede?.nombre || "N/A";
+  };
+
+  const fechaTemplate = (rowData, field) => {
+    const fecha = rowData[field];
+    return fecha ? new Date(fecha).toLocaleDateString("es-ES") : "N/A";
+  };
+
+  const cesadoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.cesado ? "CESADO" : "ACTIVO"}
+        severity={rowData.cesado ? "danger" : "success"}
+        style={{ fontSize: "10px", padding: "2px 8px" }}
+      />
+    );
+  };
+
+  const accionesTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-mr-2"
+          onClick={(ev) => {
+            ev.stopPropagation();
+            abrirDialogoEdicion(rowData);
+          }}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+        />
+        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-text p-button-danger"
+            onClick={() => confirmarEliminacion(rowData)}
+            tooltip="Eliminar"
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="p-fluid">
+    <div className="p-4">
       <Toast ref={toast} />
-      <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar este registro?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
-      <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
-        <h2>Gestión de Parámetros de Aprobador</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
-      </div>
-      <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="personalRespId" header="Personal Responsable" />
-        <Column field="moduloSistemaId" header="Módulo Sistema" />
-        <Column field="empresaId" header="Empresa" />
-        <Column field="embarcacionId" header="Embarcación" />
-        <Column field="sedeId" header="Sede" />
-        <Column field="vigenteDesde" header="Vigente Desde" />
-        <Column field="vigenteHasta" header="Vigente Hasta" />
-        <Column field="cesado" header="Cesado" body={rowData => rowData.cesado ? "Sí" : "No"} />
-        <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
+      <DataTable
+        value={parametrosAprobador}
+        loading={loading}
+        paginator
+        rows={10}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        selectionMode="single"
+        className="p-datatable-hover cursor-pointer"
+        emptyMessage="No se encontraron parámetros aprobador"
+        globalFilter={globalFilter}
+        globalFilterFields={['personalRespId', 'moduloSistemaId', 'empresaId']}
+        header={
+          <div className="flex align-items-center gap-2">
+            <h2>Gestión de Parámetros Aprobador</h2>
+            <Button
+              label="Nuevo"
+              icon="pi pi-plus"
+              size="small"
+              raised
+              tooltip="Nuevo Parámetro Aprobador"
+              outlined
+              className="p-button-success"
+              onClick={abrirDialogoNuevo}
+            />
+            <span className="p-input-icon-left">
+              <InputText
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Buscar parámetros..."
+                style={{ width: "300px" }}
+              />
+            </span>
+          </div>
+        }
+        scrollable
+        scrollHeight="600px"
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+      >
+        <Column 
+          field="id" 
+          header="ID" 
+          sortable 
+          style={{ width: "80px" }}
+        />
+        <Column 
+          header="Personal Responsable" 
+          body={personalTemplate}
+          sortable 
+          style={{ minWidth: "200px" }}
+        />
+        <Column 
+          header="Módulo Sistema" 
+          body={moduloSistemaTemplate}
+          sortable 
+          style={{ minWidth: "150px" }}
+        />
+        <Column 
+          header="Empresa" 
+          body={empresaTemplate}
+          sortable 
+          style={{ minWidth: "200px" }}
+        />
+        <Column 
+          header="Embarcación" 
+          body={embarcacionTemplate}
+          sortable 
+          style={{ minWidth: "150px" }}
+        />
+        <Column 
+          header="Sede" 
+          body={sedeTemplate}
+          sortable 
+          style={{ minWidth: "150px" }}
+        />
+        <Column 
+          header="Vigente Desde" 
+          body={(rowData) => fechaTemplate(rowData, 'vigenteDesde')}
+          sortable 
+          style={{ minWidth: "120px" }}
+        />
+        <Column 
+          header="Vigente Hasta" 
+          body={(rowData) => fechaTemplate(rowData, 'vigenteHasta')}
+          sortable 
+          style={{ minWidth: "120px" }}
+        />
+        <Column 
+          header="Estado" 
+          body={cesadoTemplate}
+          sortable 
+          style={{ width: "100px" }}
+        />
+        <Column
+          body={accionesTemplate}
+          header="Acciones"
+          style={{ width: "8rem" }}
+        />
       </DataTable>
-      <Dialog header={editing ? "Editar Parámetro" : "Nuevo Parámetro"} visible={showDialog} style={{ width: 500 }} onHide={() => setShowDialog(false)} modal>
+
+      <Dialog
+        header={
+          parametroSeleccionado
+            ? "Editar Parámetro Aprobador"
+            : "Nuevo Parámetro Aprobador"
+        }
+        visible={dialogVisible}
+        onHide={cerrarDialogo}
+        style={{ width: "800px" }}
+        modal
+      >
         <ParametroAprobadorForm
-          isEdit={!!editing}
-          defaultValues={editing || {}}
-          onSubmit={handleFormSubmit}
-          onCancel={() => setShowDialog(false)}
-          loading={loading}
+          parametroAprobador={parametroSeleccionado}
+          onGuardar={onGuardarExitoso}
+          onCancelar={cerrarDialogo}
         />
       </Dialog>
+
+      <ConfirmDialog
+        visible={confirmVisible}
+        onHide={() => setConfirmVisible(false)}
+        message={`¿Está seguro de eliminar el parámetro aprobador con ID "${parametroAEliminar?.id}"?`}
+        header="Confirmar Eliminación"
+        icon="pi pi-exclamation-triangle"
+        accept={eliminar}
+        reject={() => setConfirmVisible(false)}
+        acceptLabel="Sí, Eliminar"
+        rejectLabel="Cancelar"
+        acceptClassName="p-button-danger"
+      />
     </div>
   );
-}
+};
+
+export default ParametroAprobador;

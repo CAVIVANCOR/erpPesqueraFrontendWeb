@@ -238,17 +238,19 @@ export default function CargosPersonal() {
         onRowClick={onRowClick}
         style={{fontSize: getResponsiveFontSize()}}
       >
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="descripcion" header="Descripción" />
+        <Column field="id" header="ID" style={{ width: 80 }} sortable />
+        <Column field="descripcion" header="Descripción" sortable />
         <Column
           field="cesado"
           header="¿Cesado?"
           body={(rowData) => (rowData.cesado ? "Sí" : "No")}
+          sortable
         />
         <Column
           header="Acciones"
           body={accionesTemplate}
           style={{ minWidth: 150, textAlign: "center" }}
+          sortable
         />
       </DataTable>
       <Dialog

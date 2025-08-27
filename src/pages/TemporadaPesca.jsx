@@ -1,38 +1,46 @@
 /**
  * Pantalla de gestión de Temporadas de Pesca
- * 
+ *
  * Características:
  * - DataTable con scroll horizontal para múltiples columnas
  * - Edición por clic en fila (regla transversal ERP Megui)
  * - Eliminación solo para superusuario/admin con ConfirmDialog
- * - Filtros por empresa, especie, bahía y estado
+ * - Filtros por empresa, bahía y estado
  * - Templates especializados para fechas, cuotas y resoluciones
  * - Indicadores visuales de temporadas activas
  * - Upload de archivos PDF para resoluciones
  * - Validación de períodos no superpuestos
- * 
+ *
  * @author ERP Megui
  * @version 1.0.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Toast } from 'primereact/toast';
-import { ConfirmDialog } from 'primereact/confirmdialog';
-import { Toolbar } from 'primereact/toolbar';
-import { InputText } from 'primereact/inputtext';
-import { Dropdown } from 'primereact/dropdown';
-import { Tag } from 'primereact/tag';
-import { Badge } from 'primereact/badge';
-import { Tooltip } from 'primereact/tooltip';
-import { FilterMatchMode } from 'primereact/api';
-import { useAuthStore } from '../shared/stores/useAuthStore';
-import { getTemporadasPesca, getTemporadaPescaPorId, crearTemporadaPesca, actualizarTemporadaPesca, eliminarTemporadaPesca, subirDocumentoTemporada } from '../api/temporadaPesca';
-import { getEmpresas } from '../api/empresa';
-import { getEspecies } from '../api/especie';
-import TemporadaPescaForm from '../components/temporadaPesca/TemporadaPescaForm';
+import React, { useState, useEffect, useRef } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
+import { Toolbar } from "primereact/toolbar";
+import { InputText } from "primereact/inputtext";
+import { Dropdown } from "primereact/dropdown";
+import { Tag } from "primereact/tag";
+import { Badge } from "primereact/badge";
+import { Tooltip } from "primereact/tooltip";
+import { FilterMatchMode } from "primereact/api";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import {
+  getTemporadasPesca,
+  getTemporadaPescaPorId,
+  crearTemporadaPesca,
+  actualizarTemporadaPesca,
+  eliminarTemporadaPesca,
+  subirDocumentoTemporada,
+} from "../api/temporadaPesca";
+import { getEmpresas } from "../api/empresa";
+import { getEstadosMultiFuncionParaTemporadaPesca } from "../api/estadoMultiFuncion";
+import TemporadaPescaForm from "../components/temporadaPesca/TemporadaPescaForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Componente principal para gestión de temporadas de pesca
@@ -42,9 +50,9 @@ const TemporadaPesca = () => {
   // Estados principales
   const [temporadas, setTemporadas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [globalFilterValue, setGlobalFilterValue] = useState('');
+  const [globalFilterValue, setGlobalFilterValue] = useState("");
   const [filters, setFilters] = useState({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
   });
 
   // Estados del formulario
@@ -53,9 +61,8 @@ const TemporadaPesca = () => {
 
   // Estados para combos de filtro
   const [empresas, setEmpresas] = useState([]);
-  const [especies, setEspecies] = useState([]);
+  const [estadosTemporada, setEstadosTemporada] = useState([]);
   const [filtroEmpresa, setFiltroEmpresa] = useState(null);
-  const [filtroEspecie, setFiltroEspecie] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState(null);
 
   // Referencias
@@ -78,7 +85,7 @@ const TemporadaPesca = () => {
    */
   useEffect(() => {
     aplicarFiltros();
-  }, [filtroEmpresa, filtroEspecie, filtroEstado]);
+  }, [filtroEmpresa, filtroEstado]);
 
   /**
    * Cargar temporadas de pesca
@@ -89,12 +96,12 @@ const TemporadaPesca = () => {
       const data = await getTemporadasPesca();
       setTemporadas(data);
     } catch (error) {
-      console.error('Error al cargar temporadas:', error);
+      console.error("Error al cargar temporadas:", error);
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'No se pudieron cargar las temporadas de pesca',
-        life: 3000
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar las temporadas de pesca",
+        life: 3000,
       });
     } finally {
       setLoading(false);
@@ -106,15 +113,22 @@ const TemporadaPesca = () => {
    */
   const cargarCombos = async () => {
     try {
-      const [empresasData, especiesData] = await Promise.all([
+      const [empresasData, estadosData] = await Promise.all([
         getEmpresas(),
-        getEspecies()
+        getEstadosMultiFuncionParaTemporadaPesca(),
       ]);
-      
-      setEmpresas(empresasData);
-      setEspecies(especiesData);
+
+      if (empresasData && Array.isArray(empresasData)) {
+        setEmpresas(empresasData.map((e) => ({ ...e, id: Number(e.id) })));
+      }
+
+      if (estadosData && Array.isArray(estadosData)) {
+        setEstadosTemporada(
+          estadosData.map((e) => ({ ...e, id: Number(e.id) }))
+        );
+      }
     } catch (error) {
-      console.error('Error al cargar combos:', error);
+      console.error("Error al cargar combos:", error);
     }
   };
 
@@ -124,15 +138,14 @@ const TemporadaPesca = () => {
   const aplicarFiltros = async () => {
     try {
       const filtros = {};
-      
+
       if (filtroEmpresa) filtros.empresaId = filtroEmpresa;
-      if (filtroEspecie) filtros.especieId = filtroEspecie;
-      if (filtroEstado !== null) filtros.activa = filtroEstado;
+      if (filtroEstado !== null) filtros.estadoTemporadaId = filtroEstado;
 
       const data = await getTemporadasPesca(filtros);
       setTemporadas(data);
     } catch (error) {
-      console.error('Error al aplicar filtros:', error);
+      console.error("Error al aplicar filtros:", error);
     }
   };
 
@@ -141,11 +154,10 @@ const TemporadaPesca = () => {
    */
   const limpiarFiltros = () => {
     setFiltroEmpresa(null);
-    setFiltroEspecie(null);
     setFiltroEstado(null);
-    setGlobalFilterValue('');
+    setGlobalFilterValue("");
     setFilters({
-      global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+      global: { value: null, matchMode: FilterMatchMode.CONTAINS },
     });
     cargarDatos();
   };
@@ -156,7 +168,7 @@ const TemporadaPesca = () => {
   const onGlobalFilterChange = (e) => {
     const value = e.target.value;
     let _filters = { ...filters };
-    _filters['global'].value = value;
+    _filters["global"].value = value;
     setFilters(_filters);
     setGlobalFilterValue(value);
   };
@@ -184,16 +196,16 @@ const TemporadaPesca = () => {
     // Solo superusuario o admin pueden eliminar (regla transversal ERP Megui)
     if (!usuario?.esSuperUsuario && !usuario?.esAdmin) {
       toast.current?.show({
-        severity: 'warn',
-        summary: 'Acceso Denegado',
-        detail: 'No tiene permisos para eliminar registros',
-        life: 3000
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar registros",
+        life: 3000,
       });
       return;
     }
 
     // ConfirmDialog profesional con estilo rojo
-    const confirmDialog = document.createElement('div');
+    const confirmDialog = document.createElement("div");
     confirmDialog.innerHTML = `
       <div class="confirmation-content">
         <i class="pi pi-exclamation-triangle" style="font-size: 2rem; color: #ef4444; margin-bottom: 1rem;"></i>
@@ -203,15 +215,15 @@ const TemporadaPesca = () => {
       </div>
     `;
 
-    import('primereact/api').then(({ confirmDialog: confirm }) => {
+    import("primereact/api").then(({ confirmDialog: confirm }) => {
       confirm({
         message: confirmDialog.innerHTML,
-        header: 'Confirmar Eliminación',
-        icon: 'pi pi-exclamation-triangle',
-        acceptClassName: 'p-button-danger',
-        acceptLabel: 'Sí, Eliminar',
-        rejectLabel: 'Cancelar',
-        accept: () => deleteItem(temporada.id)
+        header: "Confirmar Eliminación",
+        icon: "pi pi-exclamation-triangle",
+        acceptClassName: "p-button-danger",
+        acceptLabel: "Sí, Eliminar",
+        rejectLabel: "Cancelar",
+        accept: () => deleteItem(temporada.id),
       });
     });
   };
@@ -222,22 +234,22 @@ const TemporadaPesca = () => {
   const deleteItem = async (id) => {
     try {
       await eliminarTemporadaPesca(id);
-      
+
       toast.current?.show({
-        severity: 'success',
-        summary: 'Éxito',
-        detail: 'Temporada eliminada correctamente',
-        life: 3000
+        severity: "success",
+        summary: "Éxito",
+        detail: "Temporada eliminada correctamente",
+        life: 3000,
       });
-      
+
       cargarDatos();
     } catch (error) {
-      console.error('Error al eliminar temporada:', error);
+      console.error("Error al eliminar temporada:", error);
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: error.message || 'No se pudo eliminar la temporada',
-        life: 3000
+        severity: "error",
+        summary: "Error",
+        detail: error.message || "No se pudo eliminar la temporada",
+        life: 3000,
       });
     }
   };
@@ -250,52 +262,85 @@ const TemporadaPesca = () => {
       if (editingItem) {
         await actualizarTemporadaPesca(editingItem.id, data);
         toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Temporada actualizada correctamente',
-          life: 3000
+          severity: "success",
+          summary: "Éxito",
+          detail: "Temporada actualizada correctamente",
+          life: 3000,
         });
       } else {
         await crearTemporadaPesca(data);
         toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Temporada creada correctamente',
-          life: 3000
+          severity: "success",
+          summary: "Éxito",
+          detail: "Temporada creada correctamente",
+          life: 3000,
         });
       }
-      
+
       setShowForm(false);
       setEditingItem(null);
       cargarDatos();
     } catch (error) {
-      console.error('Error al guardar temporada:', error);
+      console.error("Error al guardar temporada:", error);
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: error.message || 'No se pudo guardar la temporada',
-        life: 3000
+        severity: "error",
+        summary: "Error",
+        detail: error.message || "No se pudo guardar la temporada",
+        life: 3000,
       });
     }
   };
 
   /**
-   * Template para estado de temporada (activa/inactiva)
+   * Obtener descripción del estado por ID
+   */
+  const getEstadoDescripcion = (id) => {
+    const estado = estadosTemporada.find((e) => Number(e.id) === Number(id));
+    return estado ? estado.descripcion : "Sin estado";
+  };
+
+  /**
+   * Obtener razón social de empresa por ID
+   */
+  const getEmpresaRazonSocial = (id) => {
+    const empresa = empresas.find((e) => Number(e.id) === Number(id));
+    return empresa ? empresa.razonSocial : "Sin empresa";
+  };
+
+  /**
+   * Template para estado de temporada desde EstadoMultiFuncion
    */
   const estadoTemplate = (rowData) => {
-    const ahora = new Date();
-    const inicio = new Date(rowData.fechaInicio);
-    const fin = new Date(rowData.fechaFin);
-    
-    const esActiva = ahora >= inicio && ahora <= fin;
-    
-    return (
-      <Tag
-        value={esActiva ? 'ACTIVA' : 'INACTIVA'}
-        severity={esActiva ? 'success' : 'secondary'}
-        icon={esActiva ? 'pi pi-check-circle' : 'pi pi-clock'}
-      />
-    );
+    const estadoDescripcion = getEstadoDescripcion(rowData.estadoTemporadaId);
+
+    // Determinar el color según el estado
+    let severity = "secondary";
+    let icon = "pi pi-question-circle";
+
+    switch (estadoDescripcion) {
+      case "EN ESPERA DE INICIO":
+        severity = "warning";
+        icon = "pi pi-clock";
+        break;
+      case "ACTIVA":
+        severity = "success";
+        icon = "pi pi-check-circle";
+        break;
+      case "SUSPENDIDA":
+        severity = "danger";
+        icon = "pi pi-pause-circle";
+        break;
+      case "FINALIZADA":
+        severity = "info";
+        icon = "pi pi-flag";
+        break;
+      case "CANCELADA":
+        severity = "danger";
+        icon = "pi pi-times-circle";
+        break;
+    }
+
+    return <Tag value={estadoDescripcion} severity={severity} icon={icon} />;
   };
 
   /**
@@ -303,10 +348,10 @@ const TemporadaPesca = () => {
    */
   const fechaTemplate = (rowData, field) => {
     const fecha = new Date(rowData[field]);
-    return fecha.toLocaleDateString('es-PE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
+    return fecha.toLocaleDateString("es-PE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
   };
 
@@ -315,14 +360,11 @@ const TemporadaPesca = () => {
    */
   const cuotaTemplate = (rowData, field) => {
     const valor = rowData[field];
-    if (!valor) return '-';
-    
+    if (!valor) return "-";
+
     return (
       <div className="text-right">
-        <Badge
-          value={`${Number(valor).toFixed(2)} Ton`}
-          severity="info"
-        />
+        <Badge value={`${Number(valor).toFixed(2)} Ton`} severity="info" />
       </div>
     );
   };
@@ -331,8 +373,8 @@ const TemporadaPesca = () => {
    * Template para resolución con enlace al PDF
    */
   const resolucionTemplate = (rowData) => {
-    if (!rowData.numeroResolucion) return '-';
-    
+    if (!rowData.numeroResolucion) return "-";
+
     return (
       <div className="flex align-items-center gap-2">
         <span>{rowData.numeroResolucion}</span>
@@ -341,8 +383,8 @@ const TemporadaPesca = () => {
             icon="pi pi-file-pdf"
             className="p-button-rounded p-button-text p-button-sm"
             tooltip="Ver PDF"
-            tooltipOptions={{ position: 'top' }}
-            onClick={() => window.open(rowData.urlResolucionPdf, '_blank')}
+            tooltipOptions={{ position: "top" }}
+            onClick={() => window.open(rowData.urlResolucionPdf, "_blank")}
           />
         )}
       </div>
@@ -353,16 +395,7 @@ const TemporadaPesca = () => {
    * Template para empresa
    */
   const empresaTemplate = (rowData) => {
-    const empresa = empresas.find(e => e.id === rowData.empresaId);
-    return empresa?.nombre || 'Sin empresa';
-  };
-
-  /**
-   * Template para especie
-   */
-  const especieTemplate = (rowData) => {
-    const especie = especies.find(e => e.id === rowData.especieId);
-    return especie?.nombre || 'Sin especie';
+    return getEmpresaRazonSocial(rowData.empresaId);
   };
 
   /**
@@ -380,101 +413,9 @@ const TemporadaPesca = () => {
           icon="pi pi-trash"
           className="p-button-rounded p-button-text p-button-danger p-button-sm"
           tooltip="Eliminar temporada"
-          tooltipOptions={{ position: 'top' }}
+          tooltipOptions={{ position: "top" }}
           onClick={() => confirmDelete(rowData)}
         />
-      </div>
-    );
-  };
-
-  /**
-   * Opciones para filtro de estado
-   */
-  const estadoOptions = [
-    { label: 'Todas', value: null },
-    { label: 'Activas', value: true },
-    { label: 'Inactivas', value: false }
-  ];
-
-  /**
-   * Opciones para filtro de empresas
-   */
-  const empresaOptions = [
-    { label: 'Todas las empresas', value: null },
-    ...empresas.map(empresa => ({
-      label: empresa.nombre,
-      value: Number(empresa.id)
-    }))
-  ];
-
-  /**
-   * Opciones para filtro de especies
-   */
-  const especieOptions = [
-    { label: 'Todas las especies', value: null },
-    ...especies.map(especie => ({
-      label: especie.nombre,
-      value: Number(especie.id)
-    }))
-  ];
-
-  /**
-   * Toolbar con controles de filtro y acciones
-   */
-  const leftToolbarTemplate = () => {
-    return (
-      <div className="flex flex-wrap gap-2">
-        <Button
-          label="Nueva Temporada"
-          icon="pi pi-plus"
-          className="p-button-success"
-          onClick={openNew}
-        />
-      </div>
-    );
-  };
-
-  const rightToolbarTemplate = () => {
-    return (
-      <div className="flex flex-wrap gap-2 align-items-center">
-        <Dropdown
-          value={filtroEmpresa}
-          options={empresaOptions}
-          onChange={(e) => setFiltroEmpresa(e.value)}
-          placeholder="Filtrar por empresa"
-          className="w-12rem"
-          showClear
-        />
-        <Dropdown
-          value={filtroEspecie}
-          options={especieOptions}
-          onChange={(e) => setFiltroEspecie(e.value)}
-          placeholder="Filtrar por especie"
-          className="w-12rem"
-          showClear
-        />
-        <Dropdown
-          value={filtroEstado}
-          options={estadoOptions}
-          onChange={(e) => setFiltroEstado(e.value)}
-          placeholder="Filtrar por estado"
-          className="w-10rem"
-        />
-        <Button
-          icon="pi pi-filter-slash"
-          className="p-button-outlined"
-          tooltip="Limpiar filtros"
-          onClick={limpiarFiltros}
-        />
-        <span className="p-input-icon-left">
-          <i className="pi pi-search" />
-          <InputText
-            value={globalFilterValue}
-            onChange={onGlobalFilterChange}
-            placeholder="Búsqueda global..."
-            className="w-15rem"
-          />
-        </span>
       </div>
     );
   };
@@ -484,19 +425,7 @@ const TemporadaPesca = () => {
       <Toast ref={toast} />
       <ConfirmDialog />
       <Tooltip target=".custom-tooltip" />
-
       <div className="card">
-        <h2 className="text-2xl font-bold mb-4 text-primary">
-          <i className="pi pi-calendar-times mr-2"></i>
-          Gestión de Temporadas de Pesca
-        </h2>
-
-        <Toolbar
-          className="mb-4"
-          left={leftToolbarTemplate}
-          right={rightToolbarTemplate}
-        />
-
         <DataTable
           ref={dt}
           value={temporadas}
@@ -510,99 +439,152 @@ const TemporadaPesca = () => {
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} temporadas"
           filters={filters}
           filterDisplay="menu"
-          globalFilterFields={['nombre', 'numeroResolucion']}
+          globalFilterFields={["nombre", "numeroResolucion"]}
           emptyMessage="No se encontraron temporadas de pesca"
           scrollable
           scrollHeight="600px"
           onRowClick={(e) => editItem(e.data)}
-          rowClassName={() => 'cursor-pointer hover:bg-primary-50'}
+          rowClassName={() => "cursor-pointer hover:bg-primary-50"}
+          style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+          header={
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginTop: 10,
+                gap: 5,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <h2>Gestión de Temporadas de Pesca</h2>
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Nueva Temporada"
+                  icon="pi pi-plus"
+                  className="p-button-success"
+                  raised
+                  outlined
+                  size="small"
+                  onClick={openNew}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Dropdown
+                  value={filtroEmpresa}
+                  options={empresas}
+                  onChange={(e) => setFiltroEmpresa(e.value)}
+                  optionLabel="razonSocial"
+                  optionValue="id"
+                  placeholder="Filtrar por empresa"
+                  className="w-12rem"
+                  showClear
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Dropdown
+                  value={filtroEstado}
+                  options={estadosTemporada}
+                  onChange={(e) => setFiltroEstado(e.value)}
+                  optionLabel="descripcion"
+                  optionValue="id"
+                  placeholder="Filtrar por estado"
+                  className="w-10rem"
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  icon="pi pi-filter-slash"
+                  className="p-button-outlined"
+                  tooltip="Limpiar filtros"
+                  onClick={limpiarFiltros}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <span className="p-input-icon-left">
+                  <InputText
+                    value={globalFilterValue}
+                    onChange={onGlobalFilterChange}
+                    placeholder="Búsqueda global..."
+                    className="w-15rem"
+                  />
+                </span>
+              </div>
+            </div>
+          }
         >
-          <Column
-            field="nombre"
-            header="Nombre de Temporada"
-            sortable
-            filter
-            filterPlaceholder="Buscar por nombre"
-            style={{ minWidth: '200px' }}
-            className="font-semibold"
-          />
-          
-          <Column
-            header="Estado"
-            body={estadoTemplate}
-            sortable
-            style={{ minWidth: '120px' }}
-            className="text-center"
-          />
-          
           <Column
             header="Empresa"
             body={empresaTemplate}
             sortable
-            style={{ minWidth: '180px' }}
+            style={{ minWidth: "180px" }}
           />
-          
-          <Column
-            header="Especie"
-            body={especieTemplate}
-            sortable
-            style={{ minWidth: '150px' }}
-          />
-          
-          <Column
-            field="fechaInicio"
-            header="Fecha Inicio"
-            body={(rowData) => fechaTemplate(rowData, 'fechaInicio')}
-            sortable
-            style={{ minWidth: '120px' }}
-            className="text-center"
-          />
-          
-          <Column
-            field="fechaFin"
-            header="Fecha Fin"
-            body={(rowData) => fechaTemplate(rowData, 'fechaFin')}
-            sortable
-            style={{ minWidth: '120px' }}
-            className="text-center"
-          />
-          
-          <Column
-            field="cuotaPropiaTon"
-            header="Cuota Propia"
-            body={(rowData) => cuotaTemplate(rowData, 'cuotaPropiaTon')}
-            sortable
-            style={{ minWidth: '130px' }}
-            className="text-center"
-          />
-          
-          <Column
-            field="cuotaAlquiladaTon"
-            header="Cuota Alquilada"
-            body={(rowData) => cuotaTemplate(rowData, 'cuotaAlquiladaTon')}
-            sortable
-            style={{ minWidth: '140px' }}
-            className="text-center"
-          />
-          
           <Column
             field="numeroResolucion"
             header="Resolución"
             body={resolucionTemplate}
             sortable
-            style={{ minWidth: '180px' }}
+            style={{ minWidth: "180px" }}
           />
-          
+          <Column
+            field="nombre"
+            header="Nombre de Temporada"
+            sortable
+            style={{ minWidth: "200px" }}
+            className="font-semibold"
+          />
+          <Column
+            header="Estado"
+            body={estadoTemplate}
+            sortable
+            style={{ minWidth: "120px" }}
+            className="text-center"
+          />
+          <Column
+            field="fechaInicio"
+            header="Fecha Inicio"
+            body={(rowData) => fechaTemplate(rowData, "fechaInicio")}
+            sortable
+            style={{ minWidth: "120px" }}
+            className="text-center"
+          />
+          <Column
+            field="fechaFin"
+            header="Fecha Fin"
+            body={(rowData) => fechaTemplate(rowData, "fechaFin")}
+            sortable
+            style={{ minWidth: "120px" }}
+            className="text-center"
+          />
+          <Column
+            field="cuotaPropiaTon"
+            header="Cuota Propia"
+            body={(rowData) => cuotaTemplate(rowData, "cuotaPropiaTon")}
+            sortable
+            style={{ minWidth: "130px" }}
+            className="text-center"
+          />
+
+          <Column
+            field="cuotaAlquiladaTon"
+            header="Cuota Alquilada"
+            body={(rowData) => cuotaTemplate(rowData, "cuotaAlquiladaTon")}
+            sortable
+            style={{ minWidth: "140px" }}
+            className="text-center"
+          />
+
           <Column
             header="Acciones"
             body={actionTemplate}
             exportable={false}
-            style={{ minWidth: '100px', maxWidth: '100px' }}
+            style={{ minWidth: "100px", maxWidth: "100px" }}
             className="text-center"
           />
         </DataTable>
       </div>
-
       {/* Formulario de temporada */}
       <TemporadaPescaForm
         visible={showForm}
@@ -613,7 +595,6 @@ const TemporadaPesca = () => {
         onSave={saveItem}
         editingItem={editingItem}
         empresas={empresas}
-        especies={especies}
       />
     </div>
   );

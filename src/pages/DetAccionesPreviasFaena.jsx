@@ -8,9 +8,9 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import DetAccionesPreviasFaenaForm from "../components/detAccionesPreviasFaena/DetAccionesPreviasFaenaForm";
-import { getAllDetAccionesPreviasFaena, createDetAccionesPreviasFaena, updateDetAccionesPreviasFaena, deleteDetAccionesPreviasFaena } from "../api/detAccionesPreviasFaena";
+import { getAllDetAccionesPreviasFaena, crearDetAccionesPreviasFaena, actualizarDetAccionesPreviasFaena, eliminarDetAccionesPreviasFaena } from "../api/detAccionesPreviasFaena";
 import { getFaenasPesca } from "../api/faenaPesca";
-import { getAccionesPreviasFaena } from "../api/accionesPreviasFaena";
+import { getAllAccionesPreviasFaena } from "../api/accionesPreviasFaena";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
 /**
@@ -44,7 +44,7 @@ export default function DetAccionesPreviasFaena() {
       const [detallesData, faenasData, accionesData] = await Promise.all([
         getAllDetAccionesPreviasFaena(),
         getFaenasPesca(),
-        getAccionesPreviasFaena()
+        getAllAccionesPreviasFaena()
       ]);
       setItems(detallesData);
       setFaenas(faenasData);
@@ -84,10 +84,10 @@ export default function DetAccionesPreviasFaena() {
     setLoading(true);
     try {
       if (editing && editing.id) {
-        await updateDetAccionesPreviasFaena(editing.id, data);
+        await actualizarDetAccionesPreviasFaena(editing.id, data);
         toast.current.show({ severity: "success", summary: "Actualizado", detail: "Detalle actualizado." });
       } else {
-        await createDetAccionesPreviasFaena(data);
+        await crearDetAccionesPreviasFaena(data);
         toast.current.show({ severity: "success", summary: "Creado", detail: "Detalle creado." });
       }
       setShowDialog(false);

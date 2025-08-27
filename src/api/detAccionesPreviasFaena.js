@@ -1,31 +1,23 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
 
-/**
- * Obtiene el token de autenticación desde el store de Zustand
- * @returns {string} Token JWT para autenticación
- */
-const getAuthToken = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/detalles-acciones-previas-faena`;
+
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /**
  * Obtiene todos los detalles de acciones previas de faena del sistema
  * @returns {Promise<Array>} Lista de detalles de acciones previas de faena
  */
-export const getAllDetAccionesPreviasFaena = async () => {
+export const getAllDetAccionesPreviasFaena = async (detAccionesPreviasId) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/det-acciones-previas-faena`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return response.data;
+    const params = detAccionesPreviasId ? { detAccionesPreviasId } : {};
+    const res = await axios.get(API_URL, { params, headers: getAuthHeader() });
+    return res.data;
   } catch (error) {
     console.error('Error al obtener detalles de acciones previas de faena:', error);
     throw error;
@@ -39,13 +31,7 @@ export const getAllDetAccionesPreviasFaena = async () => {
  */
 export const crearDetAccionesPreviasFaena = async (detalleData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/det-acciones-previas-faena`, detalleData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    const response = await axios.post(`${API_URL}`, detalleData, { headers: getAuthHeader() });
     return response.data;
   } catch (error) {
     console.error('Error al crear detalle de acciones previas de faena:', error);
@@ -61,14 +47,8 @@ export const crearDetAccionesPreviasFaena = async (detalleData) => {
  */
 export const actualizarDetAccionesPreviasFaena = async (id, detalleData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/det-acciones-previas-faena/${id}`, detalleData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return response.data;
+    const res = await axios.put(`${API_URL}/${id}`, detalleData, { headers: getAuthHeader() });
+    return res.data;
   } catch (error) {
     console.error('Error al actualizar detalle de acciones previas de faena:', error);
     throw error;
@@ -82,13 +62,7 @@ export const actualizarDetAccionesPreviasFaena = async (id, detalleData) => {
  */
 export const eliminarDetAccionesPreviasFaena = async (id) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/det-acciones-previas-faena/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    const response = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeader() });
     return response.data;
   } catch (error) {
     console.error('Error al eliminar detalle de acciones previas de faena:', error);
@@ -96,8 +70,17 @@ export const eliminarDetAccionesPreviasFaena = async (id) => {
   }
 };
 
-// Aliases en inglés para compatibilidad
-export const getDetAccionesPreviasFaena = getAllDetAccionesPreviasFaena;
-export const createDetAccionesPreviasFaena = crearDetAccionesPreviasFaena;
-export const updateDetAccionesPreviasFaena = actualizarDetAccionesPreviasFaena;
-export const deleteDetAccionesPreviasFaena = eliminarDetAccionesPreviasFaena;
+/**
+ * Obtiene los detalles de acciones previas de faena por temporada
+ * @param {number} temporadaId - ID de la temporada de pesca
+ * @returns {Promise<Array>} Lista de detalles de acciones previas de faena para la temporada
+ */
+export const obtenerDetAccionesPreviasFaenaPorTemporada = async (temporadaId) => {
+  try {
+    const response = await axios.get(`${API_URL}/temporada/${temporadaId}`, { headers: getAuthHeader() });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener detalles de acciones previas de faena por temporada:', error);
+    throw error;
+  }
+};

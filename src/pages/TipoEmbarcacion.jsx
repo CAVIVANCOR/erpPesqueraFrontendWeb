@@ -238,6 +238,11 @@ const TipoEmbarcacion = () => {
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
         <Column 
+          field="id" 
+          header="ID" 
+          sortable 
+        />
+        <Column 
           field="codigo" 
           header="Código" 
           body={codigoTemplate}

@@ -100,6 +100,19 @@ export const getVendedoresPorEmpresa = async (empresaId) => {
 };
 
 /**
+ * Obtiene personal con cargo "BAHIA COMERCIAL" filtrado por empresa.
+ * @param {number} empresaId - ID de la empresa para filtrar
+ * @returns {Promise<Array>} Lista de personal con cargo BAHIA COMERCIAL
+ */
+export const getBahiasComerciales = async (empresaId) => {
+  const res = await axios.get(`${API_URL}/bahias-comerciales/${empresaId}`, { headers: getAuthHeader() });
+  return res.data.map(persona => ({
+    ...persona,
+    nombreCompleto: `${persona.nombres} ${persona.apellidos}`.trim()
+  }));
+};
+
+/**
  * Elimina un registro de personal por ID.
  * @param {number|string} id - ID del personal a eliminar
  * @returns {Promise<void>}

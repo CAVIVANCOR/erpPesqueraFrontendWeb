@@ -5,7 +5,7 @@
 import axios from "axios";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
-const API_URL = `${import.meta.env.VITE_API_URL}/temporadas-pesca`;
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/temporadas-pesca`;
 
 /**
  * Obtiene el token JWT profesionalmente desde Zustand
@@ -40,15 +40,25 @@ export async function eliminarTemporadaPesca(id) {
   return res.data;
 }
 
-export async function subirDocumentoTemporada(temporadaId, file) {
+export async function subirDocumentoTemporada(file) {
   const formData = new FormData();
-  formData.append('documento', file);
-  const API_DOCUMENTO = `${import.meta.env.VITE_API_URL}/temporadas-pesca-documento/${temporadaId}/documento`;
-  const res = await axios.post(API_DOCUMENTO, formData, {
+  formData.append('resolucionPdf', file);
+  const API_RESOLUCION = `${import.meta.env.VITE_API_URL}/temporada-pesca-resolucion/upload`;
+  const res = await axios.post(API_RESOLUCION, formData, {
     headers: {
       ...getAuthHeaders(),
       'Content-Type': 'multipart/form-data',
     },
   });
+  return res.data;
+}
+
+export async function iniciarTemporada(temporadaId) {
+  const res = await axios.post(`${API_URL}/${temporadaId}/iniciar`, {}, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function iniciarTemporada2(temporadaId) {
+  const res = await axios.post(`${API_URL}/${temporadaId}/iniciar`, {}, { headers: getAuthHeaders() });
   return res.data;
 }

@@ -2,13 +2,14 @@
 // Página principal de gestión de personal en el ERP Megui.
 // Reutiliza patrones de Usuarios.jsx y documenta en español técnico.
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { InputText } from "primereact/inputtext";
+import { Dropdown } from "primereact/dropdown";
 import PersonalForm from "../components/personal/PersonalForm";
 import { Tag } from "primereact/tag";
 import {
@@ -41,6 +42,10 @@ export default function PersonalPage() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [empresaFilter, setEmpresaFilter] = useState(null);
+  const [cargoFilter, setCargoFilter] = useState(null);
+  const [filtroTipoPesca, setFiltroTipoPesca] = useState("todos");
+  const [filteredPersonales, setFilteredPersonales] = useState([]);
 
   /**
    * Carga los cargos desde el backend.
@@ -49,10 +54,10 @@ export default function PersonalPage() {
    */
   const [cargosLista, setCargosLista] = useState([]);
   useEffect(() => {
-    cargarCargos();
+    loadCargos();
   }, []);
 
-  const cargarCargos = async () => {
+  const loadCargos = async () => {
     try {
       const data = await getCargosPersonal();
       setCargosLista(data);
@@ -77,10 +82,10 @@ export default function PersonalPage() {
   // Cargar empresas
   const [empresasLista, setEmpresasLista] = useState([]);
   useEffect(() => {
-    cargarEmpresas();
+    loadEmpresas();
   }, []);
 
-  const cargarEmpresas = async () => {
+  const loadEmpresas = async () => {
     try {
       const data = await getEmpresas();
       setEmpresasLista(data);
@@ -100,10 +105,10 @@ export default function PersonalPage() {
 
   const [sedesLista, setSedesLista] = useState([]);
   useEffect(() => {
-    cargarSedes();
+    loadSedes();
   }, []);
 
-  const cargarSedes = async () => {
+  const loadSedes = async () => {
     try {
       const data = await getSedes();
       setSedesLista(data);
@@ -122,10 +127,10 @@ export default function PersonalPage() {
 
   const [areasFisicasLista, setAreasFisicasLista] = useState([]);
   useEffect(() => {
-    cargarAreasFisicas();
+    loadAreasFisicas();
   }, []);
 
-  const cargarAreasFisicas = async () => {
+  const loadAreasFisicas = async () => {
     try {
       const data = await getAreasFisicas();
       setAreasFisicasLista(data);
@@ -144,10 +149,14 @@ export default function PersonalPage() {
 
   // Carga inicial de personal
   useEffect(() => {
-    cargarPersonal();
+    loadPersonal();
+    loadCargos();
+    loadEmpresas();
+    loadSedes();
+    loadAreasFisicas();
   }, []);
 
-  const cargarPersonal = async () => {
+  const loadPersonal = async () => {
     setLoading(true);
     try {
       const data = await getPersonal();
@@ -161,6 +170,61 @@ export default function PersonalPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    aplicarFiltros();
+  }, [personales, filtroTipoPesca]);
+
+  const aplicarFiltros = () => {
+    let personalesFiltrados = [...personales];
+
+    if (filtroTipoPesca === "todos") {
+      // Mostrar todos los registros sin filtrar
+      setFilteredPersonales(personalesFiltrados);
+    } else if (filtroTipoPesca === "temporada") {
+      // Filtrar solo registros con paraTemporadaPesca = true
+      personalesFiltrados = personalesFiltrados.filter(
+        (personal) => personal.paraTemporadaPesca === true
+      );
+      setFilteredPersonales(personalesFiltrados);
+    } else if (filtroTipoPesca === "consumo") {
+      // Filtrar solo registros con paraPescaConsumo = true
+      personalesFiltrados = personalesFiltrados.filter(
+        (personal) => personal.paraPescaConsumo === true
+      );
+      setFilteredPersonales(personalesFiltrados);
+    }
+  };
+
+  const cambiarFiltroTipoPesca = () => {
+    const siguienteEstado = {
+      todos: "temporada",
+      temporada: "consumo",
+      consumo: "todos",
+    };
+    setFiltroTipoPesca(siguienteEstado[filtroTipoPesca]);
+  };
+
+  const obtenerConfigFiltro = () => {
+    const config = {
+      todos: {
+        label: "Todos",
+        icon: "pi pi-check-circle",
+        severity: "info",
+      },
+      temporada: {
+        label: "Temporada",
+        icon: "pi pi-cog",
+        severity: "warning",
+      },
+      consumo: {
+        label: "Consumo",
+        icon: "pi pi-users",
+        severity: "success",
+      },
+    };
+    return config[filtroTipoPesca] || config["todos"];
   };
 
   // Renderizado de botones de acción
@@ -241,7 +305,7 @@ export default function PersonalPage() {
         summary: "Personal eliminado",
         detail: `El personal ${nombreCompleto} fue eliminado correctamente.`,
       });
-      await cargarPersonal();
+      await loadPersonal();
     } catch (err) {
       if (err?.response?.data) {
         console.error(
@@ -310,9 +374,18 @@ export default function PersonalPage() {
         sexo: typeof data.sexo === "boolean" ? data.sexo : false,
         esVendedor:
           typeof data.esVendedor === "boolean" ? data.esVendedor : false,
+        paraTemporadaPesca:
+          typeof data.paraTemporadaPesca === "boolean"
+            ? data.paraTemporadaPesca
+            : false,
+        paraPescaConsumo:
+          typeof data.paraPescaConsumo === "boolean"
+            ? data.paraPescaConsumo
+            : false,
       };
       if (isEdit && selected) {
         // Edición de personal existente
+        console.log("Personal a editar:", personalPayload);
         await actualizarPersonal(selected.id, personalPayload);
         toast?.show({
           severity: "success",
@@ -330,7 +403,7 @@ export default function PersonalPage() {
       setShowForm(false);
       setSelected(null); // Limpiar selección después de guardar
       setIsEdit(false); // Resetear modo edición
-      cargarPersonal();
+      loadPersonal();
     } catch (err) {
       if (err?.response?.data) {
         console.error(
@@ -375,8 +448,16 @@ export default function PersonalPage() {
           ? String(selected.sedeEmpresaId)
           : "",
         sexo: typeof selected.sexo === "boolean" ? selected.sexo : false,
+        paraTemporadaPesca:
+          typeof selected.paraTemporadaPesca === "boolean"
+            ? selected.paraTemporadaPesca
+            : false,
+        paraPescaConsumo:
+          typeof selected.paraPescaConsumo === "boolean"
+            ? selected.paraPescaConsumo
+            : false,
       }
-    : { cesado: false };
+    : { cesado: false, paraTemporadaPesca: false, paraPescaConsumo: false };
 
   return (
     <div className="p-m-4">
@@ -409,7 +490,7 @@ export default function PersonalPage() {
         style={{ minWidth: 400 }}
       />
       <DataTable
-        value={personales}
+        value={filteredPersonales}
         loading={loading}
         paginator
         rows={10}
@@ -418,36 +499,115 @@ export default function PersonalPage() {
         onSelectionChange={(e) => setSelected(e.value)}
         header={
           <div className="flex align-items-center gap-2">
-            <h2>Gestión de Personal</h2>
-            <Button
-              label="Nuevo"
-              icon="pi pi-plus"
-              className="p-button-success"
-              size="small"
-              raised
-              tooltip="Nuevo Personal"
-              outlined
-              onClick={onNew}
-            />
-            <span className="p-input-icon-left">
-              <InputText
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Buscar personal..."
-                style={{ width: "300px" }}
-              />
-            </span>
+            <div
+              style={{
+                alignItems: "center",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div
+                style={{ flex: 2, display: "flex", flexDirection: "column" }}
+              >
+                <h2>Gestión de Personal</h2>
+              </div>
+              <div
+                style={{ flex: 1, display: "flex", flexDirection: "column" }}
+              >
+                <Button
+                  label="Nuevo"
+                  icon="pi pi-plus"
+                  className="p-button-success"
+                  size="small"
+                  raised
+                  tooltip="Nuevo Personal"
+                  outlined
+                  onClick={onNew}
+                />
+              </div>
+              <div
+                style={{ flex: 1, display: "flex", flexDirection: "column" }}
+              >
+                <span className="p-input-icon-left">
+                  <InputText
+                    value={globalFilter}
+                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    placeholder="Buscar personal..."
+                    style={{ width: "300px" }}
+                  />
+                </span>
+              </div>
+            </div>
+
+            <div
+              style={{
+                alignItems: "center",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <Dropdown
+                  value={empresaFilter}
+                  options={empresasLista}
+                  optionLabel="razonSocial"
+                  optionValue="id"
+                  placeholder="Filtrar por empresa"
+                  onChange={(e) => setEmpresaFilter(e.value)}
+                  showClear
+                  style={{ minWidth: "200px" }}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <Dropdown
+                  value={cargoFilter}
+                  options={cargosLista}
+                  optionLabel="descripcion"
+                  optionValue="id"
+                  placeholder="Filtrar por cargo"
+                  onChange={(e) => setCargoFilter(e.value)}
+                  showClear
+                  style={{ minWidth: "200px" }}
+                  filter
+                  filterBy="descripcion"
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <Button
+                  label={obtenerConfigFiltro().label}
+                  icon={obtenerConfigFiltro().icon}
+                  severity={obtenerConfigFiltro().severity}
+                  size="small"
+                  outlined
+                  onClick={cambiarFiltroTipoPesca}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <Button
+                  label="Limpiar"
+                  icon="pi pi-filter-slash"
+                  className="p-button-secondary"
+                  size="small"
+                  raised
+                  tooltip="Limpiar todos los filtros"
+                  outlined
+                  onClick={() => {
+                    setEmpresaFilter(null);
+                    setCargoFilter(null);
+                    setGlobalFilter("");
+                    setFiltroTipoPesca("todos");
+                  }}
+                />
+              </div>
+            </div>
           </div>
         }
         onRowClick={(e) => onEdit(e.data)}
-        globalFilter={globalFilter}
-        globalFilterFields={[
-          "nombres",
-          "apellidos",
-          "numeroDocumento",
-          "telefono",
-          "correo",
-        ]}
+        globalFilter={null}
+        globalFilterFields={[]}
         emptyMessage="No se encontraron registros que coincidan con la búsqueda."
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
@@ -500,26 +660,35 @@ export default function PersonalPage() {
           }}
           style={{ minWidth: 80, textAlign: "center" }}
         />
-        <Column field="nombres" header="Nombres" />
-        <Column field="apellidos" header="Apellidos" />
+        <Column field="nombres" header="Nombres" sortable />
+        <Column field="apellidos" header="Apellidos" sortable />
         <Column
           header="Cargo"
           body={(row) => getCargoDescripcion(row.cargoId)}
+          sortable
         />
         <Column
           header="Empresa"
           body={(row) => getEmpresaRazonSocial(row.empresaId)}
+          sortable
         />
         <Column
           header="Sede Empresa"
           body={(row) => getSedeNombre(row.sedeEmpresaId)}
+          sortable
         />
         <Column
-          header="Área Física"
+          header="Area Física"
           body={(row) => getAreaFisicaNombre(row.areaFisicaId)}
+          sortable
         />
-        <Column field="esVendedor" header="Vendedor" body={esVendedorTemplate} />
-        <Column field="cesado" header="Cesado" body={cesadoTemplate} />
+        <Column
+          field="esVendedor"
+          header="Vendedor"
+          body={esVendedorTemplate}
+          sortable
+        />
+        <Column field="cesado" header="Cesado" body={cesadoTemplate} sortable />
         <Column body={actionBodyTemplate} header="Acciones" />
       </DataTable>
       {/*
@@ -529,7 +698,7 @@ export default function PersonalPage() {
       <Dialog
         header={isEdit ? "Editar Personal" : "Nuevo Personal"}
         visible={showForm}
-        style={{ width: "40vw", minWidth: 350 }}
+        style={{ width: "1300px" }}
         modal
         className="p-fluid"
         onHide={onCancel}

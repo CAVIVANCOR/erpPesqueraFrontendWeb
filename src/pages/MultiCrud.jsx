@@ -438,7 +438,6 @@ export default function MultiCrud() {
             items: [
               { label: "Embarcaciones", icon: "pi pi-snowflake", command: () => abrirModulo("embarcacion", "Embarcaciones") },
               { label: "Tipo Embarcación", icon: "pi pi-compass", command: () => abrirModulo("tipoEmbarcacion", "Tipo Embarcación") },
-              { label: "Documentación Embarcación", icon: "pi pi-folder", command: () => abrirModulo("documentacionEmbarcacion", "Detalle Documentación Embarcación") },
               { label: "Boliche de Red", icon: "pi pi-circle", command: () => abrirModulo("bolicheRed", "Boliche de Red") }
             ]
           },
@@ -446,6 +445,7 @@ export default function MultiCrud() {
             label: "Documentación",
             items: [
               { label: "Documentación Pesca", icon: "pi pi-file-o", command: () => abrirModulo("documentoPesca", "Documentación Pesca") },
+              { label: "Documentación Embarcación", icon: "pi pi-folder", command: () => abrirModulo("documentacionEmbarcacion", "Detalle Documentación Embarcación") },
               { label: "Documentación Personal", icon: "pi pi-id-card", command: () => abrirModulo("documentacionPersonal", "Documentación Personal") },
               { label: "Puerto de Pesca", icon: "pi pi-anchor", command: () => abrirModulo("puertoPesca", "Puerto de Pesca") }
             ]
@@ -670,29 +670,13 @@ export default function MultiCrud() {
               { label: "Tipo Material", icon: "pi pi-briefcase", command: () => abrirModulo("tipoMaterial", "Tipo Material") },
               { label: "Color", icon: "pi pi-briefcase", command: () => abrirModulo("color", "Color") },
               { label: "Estado Multi Función", icon: "pi pi-cog", command: () => abrirModulo("estadoMultiFuncion", "Estado Multi Funcion") },
+              { label: "Tipo Proviene De", icon: "pi pi-cog", command: () => abrirModulo("tipoProvieneDe", "Tipo Proviene De") },
               { label: "Monedas", icon: "pi pi-dollar", command: () => abrirModulo("monedas", "Monedas") },
               { label: "Tipo Vehiculos", icon: "pi pi-ship", command: () => abrirModulo("tipoVehiculo", "Tipo Vehiculos") }
             ]
           },
-          {
-            label: "Pesca",
-            items: [
-              { label: "Especies", icon: "pi pi-globe", command: () => abrirModulo("especies", "Especies") },
-              { label: "Temporada Pesca", icon: "pi pi-calendar-times", command: () => abrirModulo("temporadaPesca", "Temporada Pesca") },
-              { label: "Bahías", icon: "pi pi-map", command: () => abrirModulo("bahias", "Bahias") },
-              { label: "Puertos Pesca", icon: "pi pi-ship", command: () => abrirModulo("puertoPesca", "Puertos Pesca") }
-            ]
-          },
         ],
         [
-          {
-            label: "Documentación",
-            items: [
-              { label: "Documento Pesca", icon: "pi pi-file", command: () => abrirModulo("documentoPesca", "Documento Pesca") },
-              { label: "Documentación Embarcación", icon: "pi pi-file", command: () => abrirModulo("documentacionEmbarcacion", "Documentacion Embarcacion") },
-              { label: "Detalle Doc Embarcación", icon: "pi pi-file", command: () => abrirModulo("detalleDocEmbarcacion", "Detalle Doc Embarcacion") }
-            ]
-          },
           {
             label: "Activos",
             items: [
@@ -705,7 +689,6 @@ export default function MultiCrud() {
             label: "Permisos",
             items: [
               { label: "Permiso Autorización", icon: "pi pi-key", command: () => abrirModulo("permisoAutorizacion", "Permiso Autorizacion") },
-              { label: "Tipo Proviene De", icon: "pi pi-cog", command: () => abrirModulo("tipoProvieneDe", "Tipo Proviene De") }
             ]
           }
         ],

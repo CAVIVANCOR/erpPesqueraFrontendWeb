@@ -48,6 +48,15 @@ export async function getEstadosMultiFuncionParaEmbarcaciones() {
   return res.data;
 }
 
+/**
+ * Obtiene estados multifunción específicamente para temporadas de pesca
+ * Filtra por TipoProvieneDe con descripción "TEMPORADA PESCA"
+ */
+export async function getEstadosMultiFuncionParaTemporadaPesca() {
+  const res = await axios.get(`${API_URL}/temporada-pesca`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function crearEstadoMultiFuncion(data) {
   const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
   return res.data;

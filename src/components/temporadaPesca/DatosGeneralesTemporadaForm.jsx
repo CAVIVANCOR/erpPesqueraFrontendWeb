@@ -1,0 +1,382 @@
+/**
+ * DatosGeneralesTemporadaForm.jsx
+ *
+ * Componente Card para gestionar los datos generales de una temporada de pesca.
+ * Incluye campos básicos de identificación, fechas, cuotas y configuración.
+ * Sigue el patrón profesional ERP Megui con React Hook Form.
+ *
+ * @author ERP Megui
+ * @version 1.0.0
+ */
+
+import React, { useEffect, useState } from "react";
+import { Card } from "primereact/card";
+import { InputText } from "primereact/inputtext";
+import { InputNumber } from "primereact/inputnumber";
+import { Dropdown } from "primereact/dropdown";
+import { Calendar } from "primereact/calendar";
+import { classNames } from "primereact/utils";
+import { Controller } from "react-hook-form";
+import { Message } from "primereact/message";
+
+export default function DatosGeneralesTemporadaForm({
+  control,
+  errors,
+  setValue,
+  watch,
+  getValues,
+  empresas = [],
+  bahiasComerciales = [],
+  estadosTemporada = [],
+  empresaSeleccionada,
+  defaultValues = {},
+}) {
+  // Opciones normalizadas para dropdowns
+  const empresasOptions = empresas.map((empresa) => ({
+    label: empresa.razonSocial || empresa.nombre,
+    value: Number(empresa.id),
+  }));
+
+  const bahiasComercialesOptions = bahiasComerciales.map((persona) => ({
+    label: persona.nombreCompleto,
+    value: Number(persona.id),
+  }));
+
+  const estadosTemporadaOptions = estadosTemporada.map((estado) => ({
+    label: estado.descripcion,
+    value: Number(estado.id),
+  }));
+
+  return (
+    <Card
+      title="Datos Generales de la Temporada"
+      className="mb-4"
+      pt={{
+        body: { className: "pt-0" },
+        content: { className: "pb-0" },
+      }}
+    >
+      <div className="p-fluid">
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {/* Empresa */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="empresaId" className="font-semibold">
+              Empresa *
+            </label>
+            <Controller
+              name="empresaId"
+              control={control}
+              rules={{ required: "La empresa es obligatoria" }}
+              render={({ field }) => (
+                <Dropdown
+                  id="empresaId"
+                  {...field}
+                  value={field.value ? Number(field.value) : null}
+                  options={empresasOptions}
+                  placeholder="Seleccione una empresa"
+                  filter
+                  showClear
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({ "p-invalid": errors.empresaId })}
+                />
+              )}
+            />
+            {errors.empresaId && (
+              <Message severity="error" text={errors.empresaId.message} />
+            )}
+          </div>
+
+          {/* Bahía */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="BahiaId" className="font-semibold">
+              Bahía Comercial *
+            </label>
+            <Controller
+              name="BahiaId"
+              control={control}
+              rules={{ required: "La bahía comercial es obligatoria" }}
+              render={({ field }) => (
+                <Dropdown
+                  id="BahiaId"
+                  {...field}
+                  value={field.value ? Number(field.value) : null}
+                  options={bahiasComercialesOptions}
+                  placeholder={
+                    empresaSeleccionada
+                      ? "Seleccione una bahía comercial"
+                      : "Primero seleccione empresa"
+                  }
+                  filter
+                  showClear
+                  disabled={!empresaSeleccionada}
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({ "p-invalid": errors.BahiaId })}
+                />
+              )}
+            />
+            {errors.BahiaId && (
+              <Message severity="error" text={errors.BahiaId.message} />
+            )}
+          </div>
+          {/* Número de Resolución */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="numeroResolucion" className="font-semibold">
+              Número de Resolución
+            </label>
+            <Controller
+              name="numeroResolucion"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  id="numeroResolucion"
+                  {...field}
+                  placeholder="Ej: R.M. N° 123-2024-PRODUCE"
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({
+                    "p-invalid": errors.numeroResolucion,
+                  })}
+                />
+              )}
+            />
+            <small className="text-muted">
+              Número de la resolución ministerial
+            </small>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {/* Nombre de Temporada */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="nombre" className="font-semibold">
+              Nombre de Temporada *
+            </label>
+            <Controller
+              name="nombre"
+              control={control}
+              rules={{
+                required: "El nombre es obligatorio",
+                minLength: { value: 3, message: "Mínimo 3 caracteres" },
+              }}
+              render={({ field }) => (
+                <InputText
+                  id="nombre"
+                  {...field}
+                  placeholder="Ej: Temporada Anchoveta 2024"
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({ "p-invalid": errors.nombre })}
+                />
+              )}
+            />
+            {errors.nombre && (
+              <Message severity="error" text={errors.nombre.message} />
+            )}
+          </div>
+                    {/* Fecha de Inicio */}
+                    <div style={{ flex: 1 }}>
+            <label htmlFor="fechaInicio" className="font-semibold">
+              Fecha de Inicio *
+            </label>
+            <Controller
+              name="fechaInicio"
+              control={control}
+              rules={{
+                required: "La fecha de inicio es obligatoria",
+                validate: (value) => {
+                  const fin = watch("fechaFin");
+                  if (fin && value >= fin) {
+                    return "La fecha de inicio debe ser anterior a la fecha de fin";
+                  }
+                  return true;
+                },
+              }}
+              render={({ field }) => (
+                <Calendar
+                  id="fechaInicio"
+                  {...field}
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.value)}
+                  dateFormat="dd/mm/yy"
+                  placeholder="Seleccione fecha de inicio"
+                  showIcon
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({ "p-invalid": errors.fechaInicio })}
+                />
+              )}
+            />
+            {errors.fechaInicio && (
+              <Message severity="error" text={errors.fechaInicio.message} />
+            )}
+          </div>
+
+          {/* Fecha de Fin */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="fechaFin" className="font-semibold">
+              Fecha de Fin *
+            </label>
+            <Controller
+              name="fechaFin"
+              control={control}
+              rules={{
+                required: "La fecha de fin es obligatoria",
+                validate: (value) => {
+                  const inicio = watch("fechaInicio");
+                  if (inicio && value <= inicio) {
+                    return "La fecha de fin debe ser posterior a la fecha de inicio";
+                  }
+                  return true;
+                },
+              }}
+              render={({ field }) => (
+                <Calendar
+                  id="fechaFin"
+                  {...field}
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.value)}
+                  dateFormat="dd/mm/yy"
+                  placeholder="Seleccione fecha de fin"
+                  showIcon
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({ "p-invalid": errors.fechaFin })}
+                />
+              )}
+            />
+            {errors.fechaFin && (
+              <Message severity="error" text={errors.fechaFin.message} />
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {/* Cuota Propia */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="cuotaPropiaTon" className="font-semibold">
+              Cuota Propia (Toneladas)
+            </label>
+            <Controller
+              name="cuotaPropiaTon"
+              control={control}
+              rules={{
+                min: { value: 0, message: "La cuota no puede ser negativa" },
+              }}
+              render={({ field }) => (
+                <InputNumber
+                  id="cuotaPropiaTon"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  placeholder="0.00"
+                  mode="decimal"
+                  minFractionDigits={0}
+                  maxFractionDigits={2}
+                  min={0}
+                  suffix=" Ton"
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({
+                    "p-invalid": errors.cuotaPropiaTon,
+                  })}
+                />
+              )}
+            />
+            {errors.cuotaPropiaTon && (
+              <Message severity="error" text={errors.cuotaPropiaTon.message} />
+            )}
+          </div>
+
+          {/* Cuota Alquilada */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="cuotaAlquiladaTon" className="font-semibold">
+              Cuota Alquilada (Toneladas)
+            </label>
+            <Controller
+              name="cuotaAlquiladaTon"
+              control={control}
+              rules={{
+                min: { value: 0, message: "La cuota no puede ser negativa" },
+              }}
+              render={({ field }) => (
+                <InputNumber
+                  id="cuotaAlquiladaTon"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  placeholder="0.00"
+                  mode="decimal"
+                  minFractionDigits={0}
+                  maxFractionDigits={2}
+                  min={0}
+                  suffix=" Ton"
+                  className={classNames({
+                    "p-invalid": errors.cuotaAlquiladaTon,
+                  })}
+                />
+              )}
+            />
+            {errors.cuotaAlquiladaTon && (
+              <Message
+                severity="error"
+                text={errors.cuotaAlquiladaTon.message}
+              />
+            )}
+          </div>
+
+          {/* Estado de Temporada */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="estadoTemporadaId" className="font-semibold">
+              Estado de Temporada *
+            </label>
+            <Controller
+              name="estadoTemporadaId"
+              control={control}
+              rules={{ required: "El estado es obligatorio" }}
+              render={({ field }) => (
+                <Dropdown
+                  id="estadoTemporadaId"
+                  {...field}
+                  value={field.value ? Number(field.value) : null}
+                  options={estadosTemporadaOptions}
+                  placeholder="Seleccione un estado"
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({
+                    "p-invalid": errors.estadoTemporadaId,
+                  })}
+                />
+              )}
+            />
+            {errors.estadoTemporadaId && (
+              <Message
+                severity="error"
+                text={errors.estadoTemporadaId.message}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}

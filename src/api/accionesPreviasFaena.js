@@ -1,16 +1,15 @@
-import axios from 'axios';
-import { useAuthStore } from '../shared/stores/useAuthStore';
+import axios from "axios";
+import { useAuthStore } from "../shared/stores/useAuthStore";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/acciones-previas-faena`;
 
 /**
- * Obtiene el token de autenticación desde el store de Zustand
- * @returns {string} Token JWT para autenticación
+ * Obtiene el token JWT profesionalmente desde Zustand
  */
-const getAuthToken = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
+function getAuthHeaders() {
+  const token = useAuthStore.getState().token;
+  return { Authorization: `Bearer ${token}` };
+}
 
 /**
  * Obtiene todas las acciones previas de faena del sistema
@@ -18,16 +17,12 @@ const getAuthToken = () => {
  */
 export const getAllAccionesPreviasFaena = async () => {
   try {
-    const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/acciones-previas-faena`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.get(`${API_URL}`, {
+      headers: getAuthHeaders(),
     });
     return response.data;
   } catch (error) {
-    console.error('Error al obtener acciones previas de faena:', error);
+    console.error("Error al obtener acciones previas de faena:", error);
     throw error;
   }
 };
@@ -39,16 +34,12 @@ export const getAllAccionesPreviasFaena = async () => {
  */
 export const crearAccionesPreviasFaena = async (accionData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/acciones-previas-faena`, accionData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.post(`${API_URL}`, accionData, {
+      headers: getAuthHeaders(),
     });
     return response.data;
   } catch (error) {
-    console.error('Error al crear acción previa de faena:', error);
+    console.error("Error al crear acción previa de faena:", error);
     throw error;
   }
 };
@@ -61,16 +52,12 @@ export const crearAccionesPreviasFaena = async (accionData) => {
  */
 export const actualizarAccionesPreviasFaena = async (id, accionData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/acciones-previas-faena/${id}`, accionData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.put(`${API_URL}/${id}`, accionData, {
+      headers: getAuthHeaders(),
     });
     return response.data;
   } catch (error) {
-    console.error('Error al actualizar acción previa de faena:', error);
+    console.error("Error al actualizar acción previa de faena:", error);
     throw error;
   }
 };
@@ -82,22 +69,12 @@ export const actualizarAccionesPreviasFaena = async (id, accionData) => {
  */
 export const eliminarAccionesPreviasFaena = async (id) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/acciones-previas-faena/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.delete(`${API_URL}/${id}`, {
+      headers: getAuthHeaders(),
     });
     return response.data;
   } catch (error) {
-    console.error('Error al eliminar acción previa de faena:', error);
+    console.error("Error al eliminar acción previa de faena:", error);
     throw error;
   }
 };
-
-// Aliases en inglés para compatibilidad
-export const getAccionesPreviasFaena = getAllAccionesPreviasFaena;
-export const createAccionesPreviasFaena = crearAccionesPreviasFaena;
-export const updateAccionesPreviasFaena = actualizarAccionesPreviasFaena;
-export const deleteAccionesPreviasFaena = eliminarAccionesPreviasFaena;

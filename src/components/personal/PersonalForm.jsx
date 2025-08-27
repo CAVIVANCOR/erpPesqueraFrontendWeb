@@ -32,11 +32,11 @@ const schema = Yup.object().shape({
   numeroDocumento: Yup.string().required(
     "El número de documento es obligatorio"
   ),
-  fechaNacimiento: Yup.date().required("La fecha de nacimiento es obligatoria"),
-  sexo: Yup.boolean().required("El sexo es obligatorio"), // Campo obligatorio según modelo Prisma
+  //fechaNacimiento: Yup.date().required("La fecha de nacimiento es obligatoria"),
+  //sexo: Yup.boolean().required("El sexo es obligatorio"), // Campo obligatorio según modelo Prisma
   fechaIngreso: Yup.date(),
   telefono: Yup.string().nullable(),
-  correo: Yup.string().nullable().email("Correo inválido"),
+  correo: Yup.string().nullable(),
   tipoContratoId: Yup.number(),
   cargoId: Yup.number(),
   areaFisicaId: Yup.number(),
@@ -81,6 +81,8 @@ export default function PersonalForm({
       ? Number(defaultValues.sedeEmpresaId)
       : null,
     sexo: typeof defaultValues.sexo === "boolean" ? defaultValues.sexo : null,
+    paraTemporadaPesca: typeof defaultValues.paraTemporadaPesca === "boolean" ? defaultValues.paraTemporadaPesca : false,
+    paraPescaConsumo: typeof defaultValues.paraPescaConsumo === "boolean" ? defaultValues.paraPescaConsumo : false,
 
     // Agrega aquí cualquier otro id de combo que uses
   };
@@ -387,7 +389,9 @@ export default function PersonalForm({
       tipoDocumentoId: data.tipoDocumentoId
         ? Number(data.tipoDocumentoId)
         : null,
-      tipoContratoId: data.tipoContratoId ? Number(data.tipoContratoId) : null,
+      tipoContratoId: data.tipoContratoId
+        ? Number(data.tipoContratoId)
+        : null,
       cargoId: data.cargoId ? Number(data.cargoId) : null,
       areaFisicaId: data.areaFisicaId ? Number(data.areaFisicaId) : null,
       sedeEmpresaId: data.sedeEmpresaId ? Number(data.sedeEmpresaId) : null,
@@ -405,6 +409,8 @@ export default function PersonalForm({
       esVendedor:
         typeof data.esVendedor === "boolean" ? data.esVendedor : false,
       cesado: typeof data.cesado === "boolean" ? data.cesado : false,
+      paraTemporadaPesca: typeof data.paraTemporadaPesca === "boolean" ? data.paraTemporadaPesca : false,
+      paraPescaConsumo: typeof data.paraPescaConsumo === "boolean" ? data.paraPescaConsumo : false,
     };
     // Fin construcción payload profesional
     onSubmit(payload);
@@ -528,7 +534,7 @@ export default function PersonalForm({
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 2 }}>
               <label>Empresa</label>
               <Controller
                 name="empresaId"
@@ -542,6 +548,7 @@ export default function PersonalForm({
                     optionValue="id"
                     placeholder="Seleccione una empresa"
                     className={errors.empresaId ? "p-invalid" : ""}
+                    style={{ fontWeight: "bold" }}
                     filter
                     showClear
                     onChange={(e) => field.onChange(e.value)}
@@ -549,6 +556,61 @@ export default function PersonalForm({
                 )}
               />
               <small className="p-error">{errors.empresaId?.message}</small>
+            </div>
+            {/* Sede Empresa */}
+            <div style={{ flex: 1 }}>
+              <label>Sede Empresa</label>
+              <Controller
+                name="sedeEmpresaId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="sedeEmpresaId"
+                    value={field.value ? Number(field.value) : null}
+                    //options={sedesEmpresaNorm}
+                    options={sedesFiltradas.map((e) => ({
+                      ...e,
+                      id: Number(e.id),
+                    }))}
+                    optionLabel="label"
+                    optionValue="id"
+                    placeholder="Seleccione una sede empresa"
+                    className={errors.sedeEmpresaId ? "p-invalid" : ""}
+                    style={{ fontWeight: "bold" }}
+                    filter
+                    showClear
+                    onChange={(e) => field.onChange(e.value)}
+                  />
+                )}
+              />
+              <small className="p-error">{errors.sedeEmpresaId?.message}</small>
+            </div>
+            {/* Área Física */}
+            <div style={{ flex: 1 }}>
+              <label>Área Física</label>
+              <Controller
+                name="areaFisicaId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="areaFisicaId"
+                    value={field.value ? Number(field.value) : null}
+                    options={areasFisicasFiltradas.map((e) => ({
+                      ...e,
+                      id: Number(e.id),
+                    }))}
+                    optionLabel="label"
+                    optionValue="id"
+                    placeholder="Seleccione un área física"
+                    className={errors.areaFisicaId ? "p-invalid" : ""}
+                    style={{ fontWeight: "bold" }}
+                    filter
+                    showClear
+                    onChange={(e) => field.onChange(e.value)}
+                  />
+                )}
+              />
+              <small className="p-error">{errors.areaFisicaId?.message}</small>
             </div>
           </div>
           {/* Nombres y Apellidos en una sola línea */}
@@ -564,7 +626,7 @@ export default function PersonalForm({
               <Controller
                 name="nombres"
                 control={control}
-                render={({ field }) => <InputText {...field} autoFocus />}
+                render={({ field }) => <InputText style={{ fontWeight: "bold" }} {...field} autoFocus />}
               />
               <small className="p-error">{errors.nombres?.message}</small>
             </div>
@@ -573,7 +635,7 @@ export default function PersonalForm({
               <Controller
                 name="apellidos"
                 control={control}
-                render={({ field }) => <InputText {...field} />}
+                render={({ field }) => <InputText style={{ fontWeight: "bold" }} {...field} />}
               />
               <small className="p-error">{errors.apellidos?.message}</small>
             </div>
@@ -600,6 +662,7 @@ export default function PersonalForm({
                     optionValue="id"
                     placeholder="Seleccione un tipo de documento"
                     className={errors.tipoDocumentoId ? "p-invalid" : ""}
+                    style={{ fontWeight: "bold" }}
                     filter
                     showClear
                     onChange={(e) => field.onChange(e.value)}
@@ -615,21 +678,12 @@ export default function PersonalForm({
               <Controller
                 name="numeroDocumento"
                 control={control}
-                render={({ field }) => <InputText {...field} />}
+                render={({ field }) => <InputText style={{ fontWeight: "bold" }} {...field} />}
               />
               <small className="p-error">
                 {errors.numeroDocumento?.message}
               </small>
             </div>
-          </div>
-          {/* Fechas: nacimiento e ingreso en una sola línea */}
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
             <div style={{ flex: 1 }}>
               <label>Nacimiento</label>
               <Controller
@@ -640,7 +694,7 @@ export default function PersonalForm({
                     {...field}
                     showIcon
                     dateFormat="dd/mm/yy"
-                    style={{ width: "100%" }}
+                    style={{ width: "100%"}}
                   />
                 )}
               />
@@ -658,7 +712,7 @@ export default function PersonalForm({
                     {...field}
                     showIcon
                     dateFormat="dd/mm/yy"
-                    style={{ width: "100%" }}
+                    style={{ width: "100%"}}
                   />
                 )}
               />
@@ -680,6 +734,7 @@ export default function PersonalForm({
                 {...register("telefono")}
                 maxLength={20}
                 className={errors.telefono ? "p-invalid" : ""}
+                style={{ fontWeight: "bold" }}
               />
               <small className="p-error">{errors.telefono?.message}</small>
             </div>
@@ -689,110 +744,71 @@ export default function PersonalForm({
               <InputText
                 {...register("correo")}
                 className={errors.correo ? "p-invalid" : ""}
+                style={{ fontWeight: "bold" }}
               />
               <small className="p-error">{errors.correo?.message}</small>
             </div>
           </div>
 
           {/* Tipo de Contrato */}
-          <div className="p-field">
-            <label>Tipo de Contrato</label>
-            <Controller
-              name="tipoContratoId"
-              control={control}
-              render={({ field }) => (
-                <Dropdown
-                  id="tipoContratoId"
-                  value={field.value ? Number(field.value) : null}
-                  options={tiposContratoNorm}
-                  optionLabel="label"
-                  optionValue="id"
-                  placeholder="Seleccione un tipo de contrato"
-                  className={errors.tipoContratoId ? "p-invalid" : ""}
-                  filter
-                  showClear
-                  onChange={(e) => field.onChange(e.value)}
-                />
-              )}
-            />
-            <small className="p-error">{errors.tipoContratoId?.message}</small>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label>Tipo de Contrato</label>
+              <Controller
+                name="tipoContratoId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="tipoContratoId"
+                    value={field.value ? Number(field.value) : null}
+                    options={tiposContratoNorm}
+                    optionLabel="label"
+                    optionValue="id"
+                    placeholder="Seleccione un tipo de contrato"
+                    className={errors.tipoContratoId ? "p-invalid" : ""}
+                    style={{ fontWeight: "bold" }}
+                    filter
+                    showClear
+                    onChange={(e) => field.onChange(e.value)}
+                  />
+                )}
+              />
+              <small className="p-error">
+                {errors.tipoContratoId?.message}
+              </small>
+            </div>
+            {/* Cargo */}
+            <div style={{ flex: 1 }}>
+              <label>Cargo</label>
+              <Controller
+                name="cargoId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="cargoId"
+                    value={field.value ? Number(field.value) : null}
+                    options={cargosNorm}
+                    optionLabel="label"
+                    optionValue="id"
+                    placeholder="Seleccione un cargo"
+                    className={errors.cargoId ? "p-invalid" : ""}
+                    style={{ fontWeight: "bold" }}
+                    filter
+                    showClear
+                    onChange={(e) => field.onChange(e.value)}
+                  />
+                )}
+              />
+              <small className="p-error">{errors.cargoId?.message}</small>
+            </div>
           </div>
-          {/* Cargo */}
-          <div className="p-field">
-            <label>Cargo</label>
-            <Controller
-              name="cargoId"
-              control={control}
-              render={({ field }) => (
-                <Dropdown
-                  id="cargoId"
-                  value={field.value ? Number(field.value) : null}
-                  options={cargosNorm}
-                  optionLabel="label"
-                  optionValue="id"
-                  placeholder="Seleccione un cargo"
-                  className={errors.cargoId ? "p-invalid" : ""}
-                  filter
-                  showClear
-                  onChange={(e) => field.onChange(e.value)}
-                />
-              )}
-            />
-            <small className="p-error">{errors.cargoId?.message}</small>
-          </div>
-          {/* Sede Empresa */}
-          <div className="p-field">
-            <label>Sede Empresa</label>
-            <Controller
-              name="sedeEmpresaId"
-              control={control}
-              render={({ field }) => (
-                <Dropdown
-                  id="sedeEmpresaId"
-                  value={field.value ? Number(field.value) : null}
-                  //options={sedesEmpresaNorm}
-                  options={sedesFiltradas.map((e) => ({
-                    ...e,
-                    id: Number(e.id),
-                  }))}
-                  optionLabel="label"
-                  optionValue="id"
-                  placeholder="Seleccione una sede empresa"
-                  className={errors.sedeEmpresaId ? "p-invalid" : ""}
-                  filter
-                  showClear
-                  onChange={(e) => field.onChange(e.value)}
-                />
-              )}
-            />
-            <small className="p-error">{errors.sedeEmpresaId?.message}</small>
-          </div>
-          {/* Área Física */}
-          <div className="p-field">
-            <label>Área Física</label>
-            <Controller
-              name="areaFisicaId"
-              control={control}
-              render={({ field }) => (
-                <Dropdown
-                  id="areaFisicaId"
-                  value={field.value ? Number(field.value) : null}
-                  options={areasFisicasFiltradas.map((e) => ({
-                    ...e,
-                    id: Number(e.id),
-                  }))}
-                  optionLabel="label"
-                  optionValue="id"
-                  placeholder="Seleccione un área física"
-                  className={errors.areaFisicaId ? "p-invalid" : ""}
-                  filter
-                  showClear
-                  onChange={(e) => field.onChange(e.value)}
-                />
-              )}
-            />
-            <small className="p-error">{errors.areaFisicaId?.message}</small>
-          </div>
+
           {/* Botones de Cesado y Sexo */}
           <div
             style={{
@@ -816,7 +832,7 @@ export default function PersonalForm({
                       offLabel="ACTIVO"
                       onIcon="pi pi-check"
                       offIcon="pi pi-times"
-                      checked={field.value}
+                      checked={field.value || false}
                       onChange={(e) => field.onChange(e.value)}
                     />
                   )}
@@ -831,7 +847,7 @@ export default function PersonalForm({
                       offLabel="Femenino"
                       onIcon="pi pi-check"
                       offIcon="pi pi-times"
-                      checked={field.value}
+                      checked={field.value || false}
                       onChange={(e) => field.onChange(e.value)}
                     />
                   )}
@@ -843,10 +859,40 @@ export default function PersonalForm({
                     <ToggleButton
                       id="esVendedor"
                       onLabel="Vendedor"
-                      offLabel="No Vendedor"
+                      offLabel="Vendedor"
                       onIcon="pi pi-check"
                       offIcon="pi pi-times"
-                      checked={field.value}
+                      checked={field.value || false}
+                      onChange={(e) => field.onChange(e.value)}
+                    />
+                  )}
+                />
+                <Controller
+                  name="paraTemporadaPesca"
+                  control={control}
+                  render={({ field }) => (
+                    <ToggleButton
+                      id="paraTemporadaPesca"
+                      onLabel="Temporada Pesca"
+                      offLabel="Temporada Pesca"
+                      onIcon="pi pi-check"
+                      offIcon="pi pi-times"
+                      checked={field.value || false}
+                      onChange={(e) => field.onChange(e.value)}
+                    />
+                  )}
+                />
+                <Controller
+                  name="paraPescaConsumo"
+                  control={control}
+                  render={({ field }) => (
+                    <ToggleButton
+                      id="paraPescaConsumo"
+                      onLabel="Pesca Consumo"
+                      offLabel="Pesca Consumo"
+                      onIcon="pi pi-check"
+                      offIcon="pi pi-times"
+                      checked={field.value || false}
                       onChange={(e) => field.onChange(e.value)}
                     />
                   )}
@@ -870,6 +916,9 @@ export default function PersonalForm({
               type="button"
               onClick={onCancel}
               disabled={loading}
+              raised
+              outlined
+              size="small"
             />
             <Button
               label={isEdit ? "Actualizar" : "Guardar"}
@@ -877,6 +926,9 @@ export default function PersonalForm({
               className="p-button-success"
               type="submit"
               loading={loading}
+              raised
+              outlined
+              size="small"
             />
           </div>
         </div>
