@@ -1,66 +1,175 @@
 // src/components/categoriaCCosto/CategoriaCCostoForm.jsx
 // Formulario profesional para CategoriaCCosto. Cumple la regla transversal ERP Megui.
-import React from 'react';
-import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
-import { Checkbox } from 'primereact/checkbox';
-import { InputTextarea } from 'primereact/inputtextarea';
+import React, { useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { Checkbox } from "primereact/checkbox";
+import { InputTextarea } from "primereact/inputtextarea";
+import { classNames } from "primereact/utils";
 
-export default function CategoriaCCostoForm({ isEdit, defaultValues, onSubmit, onCancel, loading }) {
-  const [nombre, setNombre] = React.useState(defaultValues.nombre || '');
-  const [descripcion, setDescripcion] = React.useState(defaultValues.descripcion || '');
-  const [activo, setActivo] = React.useState(defaultValues.activo !== undefined ? !!defaultValues.activo : true);
+/**
+ * Formulario profesional para gestión de Categorías de Centro de Costo
+ * Utiliza React Hook Form para validación y manejo de estado
+ * @param {boolean} isEdit - Indica si es modo edición
+ * @param {Object} defaultValues - Valores por defecto del formulario
+ * @param {Function} onSubmit - Función callback para envío del formulario
+ * @param {Function} onCancel - Función callback para cancelar
+ * @param {boolean} loading - Estado de carga
+ */
+export default function CategoriaCCostoForm({
+  isEdit,
+  defaultValues,
+  onSubmit,
+  onCancel,
+  loading,
+}) {
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      nombre: "",
+      descripcion: "",
+      activo: true,
+    },
+  });
 
-  React.useEffect(() => {
-    setNombre(defaultValues.nombre || '');
-    setDescripcion(defaultValues.descripcion || '');
-    setActivo(defaultValues.activo !== undefined ? !!defaultValues.activo : true);
-  }, [defaultValues]);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit({
-      nombre,
-      descripcion,
-      activo
+  // Resetear formulario cuando cambien los valores por defecto
+  useEffect(() => {
+    reset({
+      nombre: defaultValues?.nombre || "",
+      descripcion: defaultValues?.descripcion || "",
+      activo:
+        defaultValues?.activo !== undefined ? !!defaultValues.activo : true,
     });
+  }, [defaultValues, reset]);
+
+  const onFormSubmit = (data) => {
+    // Convertir campos de texto a mayúsculas antes de enviar
+    const formattedData = {
+      ...data,
+      nombre: data.nombre?.toUpperCase() || "",
+      descripcion: data.descripcion?.toUpperCase() || "",
+    };
+    onSubmit(formattedData);
+  };
+
+  const getFormErrorMessage = (name) => {
+    return (
+      errors[name] && <small className="p-error">{errors[name].message}</small>
+    );
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-fluid">
-      <div className="p-field">
-        <label htmlFor="nombre">Nombre*</label>
-        <InputText 
-          id="nombre" 
-          value={nombre} 
-          onChange={e => setNombre(e.target.value)} 
-          required 
-          disabled={loading}
-          maxLength={50}
+    <form onSubmit={handleSubmit(onFormSubmit)} className="p-fluid">
+      {/* Campo Nombre */}
+      <div className="field">
+        <label
+          htmlFor="nombre"
+          className={classNames({ "p-error": errors.nombre })}
+        >
+          Nombre *
+        </label>
+        <Controller
+          name="nombre"
+          control={control}
+          rules={{
+            required: "El nombre es requerido",
+            minLength: {
+              value: 2,
+              message: "El nombre debe tener al menos 2 caracteres",
+            },
+            maxLength: {
+              value: 50,
+              message: "El nombre no puede exceder 50 caracteres",
+            },
+          }}
+          render={({ field, fieldState }) => (
+            <InputText
+              id={field.name}
+              {...field}
+              autoFocus
+              disabled={loading}
+              className={classNames({ "p-invalid": fieldState.invalid })}
+              placeholder="Ingrese el nombre de la categoría"
+            />
+          )}
         />
+        {getFormErrorMessage("nombre")}
       </div>
-      <div className="p-field">
+
+      {/* Campo Descripción */}
+      <div className="field">
         <label htmlFor="descripcion">Descripción</label>
-        <InputTextarea 
-          id="descripcion" 
-          value={descripcion} 
-          onChange={e => setDescripcion(e.target.value)} 
-          rows={3} 
-          disabled={loading} 
+        <Controller
+          name="descripcion"
+          control={control}
+          render={({ field }) => (
+            <InputTextarea
+              id={field.name}
+              {...field}
+              rows={3}
+              disabled={loading}
+              placeholder="Ingrese una descripción opcional"
+            />
+          )}
         />
       </div>
-      <div className="p-field-checkbox">
-        <Checkbox 
-          id="activo" 
-          checked={activo} 
-          onChange={e => setActivo(e.checked)} 
-          disabled={loading} 
+
+      {/* Campo Activo */}
+      <div className="field-checkbox">
+        <Controller
+          name="activo"
+          control={control}
+          render={({ field }) => (
+            <Checkbox
+              inputId={field.name}
+              checked={field.value}
+              onChange={(e) => field.onChange(e.checked)}
+              disabled={loading}
+            />
+          )}
         />
-        <label htmlFor="activo">Activo</label>
+        <label htmlFor="activo" className="ml-2">
+          Activo
+        </label>
       </div>
-      <div className="p-d-flex p-jc-end" style={{ gap: 8 }}>
-        <Button type="button" label="Cancelar" className="p-button-text" onClick={onCancel} disabled={loading} />
-        <Button type="submit" label={isEdit ? "Actualizar" : "Crear"} icon="pi pi-save" loading={loading} />
+
+      {/* Botones de acción */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 8,
+          marginTop: 18,
+        }}
+      >
+        <Button
+          type="button"
+          label="Cancelar"
+          icon="pi pi-times"
+          className="p-button-text"
+          onClick={onCancel}
+          disabled={loading}
+          severity="danger"
+          raised
+          outlined
+          size="small"
+        />
+        <Button
+          type="submit"
+          label={isEdit ? "Actualizar" : "Crear"}
+          icon="pi pi-save"
+          loading={loading}
+          className="p-button-success"
+          severity="success"
+          raised
+          outlined
+          size="small"
+        />
       </div>
     </form>
   );

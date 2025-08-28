@@ -217,12 +217,14 @@ export default function ModulosSistemaPage() {
         }
         style={{ cursor: 'pointer', fontSize: getResponsiveFontSize() }}
       >
-        <Column field="nombre" header="Nombre" />
-        <Column field="descripcion" header="Descripción" />
+        <Column field="id" header="ID" sortable />
+        <Column field="nombre" header="Nombre" sortable />
+        <Column field="descripcion" header="Descripción" sortable />
         <Column
           field="activo"
           header="Activo"
           body={(row) => (row.activo ? "Sí" : "No")}
+          sortable
         />
         <Column
           header="Acciones"

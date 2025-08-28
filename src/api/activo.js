@@ -44,3 +44,15 @@ export async function getVehiculosPorRuc(ruc) {
   const res = await axios.get(`${API_URL}/vehiculos-por-ruc/${ruc}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Obtiene activos filtrados por empresa y tipo para embarcaciones pesqueras industriales
+ * @param {number} empresaId - ID de la empresa
+ * @param {number} tipoId - ID del tipo de activo (1 = Embarcacion pesquera Industrial)
+ */
+export async function getActivosPorEmpresaYTipo(empresaId, tipoId = 1) {
+  const res = await axios.get(`${API_URL}/por-empresa-tipo/${empresaId}/${tipoId}`, { 
+    headers: getAuthHeaders() 
+  });
+  return res.data;
+}

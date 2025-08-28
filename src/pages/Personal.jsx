@@ -606,8 +606,15 @@ export default function PersonalPage() {
           </div>
         }
         onRowClick={(e) => onEdit(e.data)}
-        globalFilter={null}
-        globalFilterFields={[]}
+        globalFilter={globalFilter}
+        globalFilterFields={[
+          "nombres", 
+          "apellidos", 
+          "numeroDocumento", 
+          "direccion", 
+          "telefono", 
+          "correo"
+        ]}
         emptyMessage="No se encontraron registros que coincidan con la búsqueda."
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >

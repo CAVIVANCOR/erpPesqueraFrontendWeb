@@ -1,16 +1,16 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/empresas-centro-costo`;
 
 /**
  * Obtiene el token de autenticación desde el store de Zustand
  * @returns {string} Token JWT para autenticación
  */
-const getAuthToken = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /**
  * Obtiene todas las relaciones empresa-centro de costo del sistema
@@ -18,14 +18,8 @@ const getAuthToken = () => {
  */
 export const getAllEmpresaCentroCosto = async () => {
   try {
-    const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/empresa-centro-costo`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return response.data;
+    const res = await axios.get(API_URL, { headers: getAuthHeader() });
+    return res.data;
   } catch (error) {
     console.error('Error al obtener relaciones empresa-centro de costo:', error);
     throw error;
@@ -39,12 +33,8 @@ export const getAllEmpresaCentroCosto = async () => {
  */
 export const crearEmpresaCentroCosto = async (relacionData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/empresa-centro-costo`, relacionData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.post(API_URL, relacionData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -61,12 +51,8 @@ export const crearEmpresaCentroCosto = async (relacionData) => {
  */
 export const actualizarEmpresaCentroCosto = async (id, relacionData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/empresa-centro-costo/${id}`, relacionData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.put(`${API_URL}/${id}`, relacionData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -82,12 +68,8 @@ export const actualizarEmpresaCentroCosto = async (id, relacionData) => {
  */
 export const eliminarEmpresaCentroCosto = async (id) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/empresa-centro-costo/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.delete(`${API_URL}/${id}`, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {

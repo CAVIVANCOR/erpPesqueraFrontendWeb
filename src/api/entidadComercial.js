@@ -59,3 +59,18 @@ export async function getProveedoresGps() {
   console.log("proveedores gps",res.data);
   return res.data;
 }
+
+/**
+ * Obtiene proveedores filtrados por empresa para dropdowns.
+ * @param {number} empresaId - ID de la empresa para filtrar
+ * @returns {Promise<Array>} Lista de proveedores activos con estructura para dropdown
+ */
+export async function getProveedoresPorEmpresa(empresaId) {
+  const params = { empresaId, esProveedor: true, estado: true };
+  const res = await axios.get(API_URL, { params, headers: getAuthHeaders() });
+  return res.data.map(proveedor => ({
+    ...proveedor,
+    label: proveedor.razonSocial || proveedor.nombreComercial,
+    value: Number(proveedor.id)
+  }));
+}

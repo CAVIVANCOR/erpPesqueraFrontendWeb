@@ -596,7 +596,8 @@ export default function MultiCrud() {
             items: [
               { label: "Asientos Contables", icon: "pi pi-book", command: () => abrirModulo("asientoContableInterfaz", "Asientos Contables Generados") },
               { label: "Centros de Costo", icon: "pi pi-anchor", command: () => abrirModulo("centroCosto", "Centros de Costo") },
-              { label: "Categorías Centro Costo", icon: "pi pi-anchor", command: () => abrirModulo("categoriaCCosto", "Categorias de Centros de Costo") }
+              { label: "Categorías Centro Costo", icon: "pi pi-anchor", command: () => abrirModulo("categoriaCCosto", "Categorias de Centros de Costo") },
+              { label: "Empresa por Centro Costo", icon: "pi pi-anchor", command: () => abrirModulo("empresaCentroCosto", "Empresa por Centro Costo") }
             ]
           },
           {

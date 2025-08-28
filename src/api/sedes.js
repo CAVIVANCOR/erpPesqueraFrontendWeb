@@ -54,6 +54,16 @@ export const actualizarSede = async (id, data) => {
 };
 
 /**
+ * Obtiene sedes de empresa filtradas por ID de empresa.
+ * @param {number|string} empresaId - ID de la empresa
+ * @returns {Promise<Array>} Lista de sedes de la empresa
+ */
+export const getSedesPorEmpresa = async (empresaId) => {
+  const res = await axios.get(`${API_URL}?empresaId=${empresaId}`, { headers: getAuthHeader() });
+  return res.data;
+};
+
+/**
  * Elimina una sede de empresa por ID.
  * @param {number|string} id - ID de la sede
  * @returns {Promise<void>} 

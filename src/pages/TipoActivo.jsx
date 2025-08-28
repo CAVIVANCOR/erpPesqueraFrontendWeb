@@ -210,6 +210,11 @@ const TipoActivo = () => {
         scrollHeight="600px"
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
+        <Column
+          field="id"
+          header="ID"
+          sortable
+        />
         <Column 
           field="codigo" 
           header="Código" 

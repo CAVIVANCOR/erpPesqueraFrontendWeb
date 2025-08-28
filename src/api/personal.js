@@ -113,6 +113,22 @@ export const getBahiasComerciales = async (empresaId) => {
 };
 
 /**
+ * Obtiene personal activo filtrado por empresa para dropdowns.
+ * @param {number} empresaId - ID de la empresa para filtrar
+ * @returns {Promise<Array>} Lista de personal activo con nombres completos
+ */
+export const getPersonalActivoPorEmpresa = async (empresaId) => {
+  const params = { empresaId, cesado: false };
+  const res = await axios.get(API_URL, { params, headers: getAuthHeader() });
+  return res.data.map(persona => ({
+    ...persona,
+    nombreCompleto: `${persona.nombres} ${persona.apellidos}`.trim(),
+    label: `${persona.nombres} ${persona.apellidos}`.trim(),
+    value: Number(persona.id)
+  }));
+};
+
+/**
  * Elimina un registro de personal por ID.
  * @param {number|string} id - ID del personal a eliminar
  * @returns {Promise<void>}

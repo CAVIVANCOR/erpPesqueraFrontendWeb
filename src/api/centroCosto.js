@@ -1,8 +1,12 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/centros-costo`;
 
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 /**
  * API para gestión de Centro de Costo
  * Proporciona funciones para operaciones CRUD en el módulo de centros de costo
@@ -13,11 +17,8 @@ const API_URL = import.meta.env.VITE_API_URL;
  * @returns {Promise} Lista de centros de costo
  */
 export const getCentrosCosto = async () => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/centro-costo`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+  const response = await axios.get(`${API_URL}`, {
+    headers: getAuthHeader(),
   });
   return response.data;
 };
@@ -36,11 +37,8 @@ export const getAllCentroCosto = async () => {
  * @returns {Promise} Centro de costo creado
  */
 export const crearCentroCosto = async (centroCostoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/centro-costo`, centroCostoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+  const response = await axios.post(`${API_URL}`, centroCostoData, {
+    headers: getAuthHeader(),
   });
   return response.data;
 };
@@ -52,11 +50,8 @@ export const crearCentroCosto = async (centroCostoData) => {
  * @returns {Promise} Centro de costo actualizado
  */
 export const actualizarCentroCosto = async (id, centroCostoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/centro-costo/${id}`, centroCostoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+  const response = await axios.put(`${API_URL}/${id}`, centroCostoData, {
+    headers: getAuthHeader(),
   });
   return response.data;
 };
@@ -66,17 +61,10 @@ export const actualizarCentroCosto = async (id, centroCostoData) => {
  * @param {number} id - ID del centro de costo a eliminar
  * @returns {Promise} Confirmación de eliminación
  */
-export const deleteCentroCosto = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/centro-costo/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+export const eliminarCentroCosto = async (id) => {
+  const response = await axios.delete(`${API_URL}/${id}`, {
+    headers: getAuthHeader(),
   });
   return response.data;
 };
 
-// Aliases en inglés para compatibilidad
-export const createCentroCosto = crearCentroCosto;
-export const updateCentroCosto = actualizarCentroCosto;
-export const eliminarCentroCosto = deleteCentroCosto;

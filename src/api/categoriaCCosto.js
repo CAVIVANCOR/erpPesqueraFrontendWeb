@@ -1,16 +1,16 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/categorias-ccosto`;
 
 /**
  * Obtiene el token de autenticación desde el store de Zustand
  * @returns {string} Token JWT para autenticación
  */
-const getAuthToken = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /**
  * Obtiene todas las categorías de centro de costo del sistema
@@ -18,14 +18,8 @@ const getAuthToken = () => {
  */
 export const getAllCategoriaCCosto = async () => {
   try {
-    const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/categoria-ccosto`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return response.data;
+    const res = await axios.get(API_URL, { headers: getAuthHeader() });
+    return res.data;
   } catch (error) {
     console.error('Error al obtener categorías de centro de costo:', error);
     throw error;
@@ -39,12 +33,8 @@ export const getAllCategoriaCCosto = async () => {
  */
 export const crearCategoriaCCosto = async (categoriaData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/categoria-ccosto`, categoriaData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.post(API_URL, categoriaData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -61,12 +51,8 @@ export const crearCategoriaCCosto = async (categoriaData) => {
  */
 export const actualizarCategoriaCCosto = async (id, categoriaData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/categoria-ccosto/${id}`, categoriaData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.put(`${API_URL}/${id}`, categoriaData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -82,12 +68,8 @@ export const actualizarCategoriaCCosto = async (id, categoriaData) => {
  */
 export const eliminarCategoriaCCosto = async (id) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/categoria-ccosto/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.delete(`${API_URL}/${id}`, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -95,9 +77,3 @@ export const eliminarCategoriaCCosto = async (id) => {
     throw error;
   }
 };
-
-// Aliases en inglés para compatibilidad
-export const getCategoriaCCosto = getAllCategoriaCCosto;
-export const createCategoriaCCosto = crearCategoriaCCosto;
-export const updateCategoriaCCosto = actualizarCategoriaCCosto;
-export const deleteCategoriaCCosto = eliminarCategoriaCCosto;

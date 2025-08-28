@@ -22,11 +22,16 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
-import { getParametrosAprobador, eliminarParametroAprobador } from "../api/parametroAprobador";
+import { Dropdown } from "primereact/dropdown";
+import {
+  getParametrosAprobador,
+  eliminarParametroAprobador,
+} from "../api/parametroAprobador";
 import { getPersonal } from "../api/personal";
 import { getModulos } from "../api/moduloSistema";
 import { getEmpresas } from "../api/empresa";
 import { getEmbarcaciones } from "../api/embarcacion";
+import { getActivos } from "../api/activo";
 import { getSedes } from "../api/sedes";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import ParametroAprobadorForm from "../components/parametroAprobador/ParametroAprobadorForm";
@@ -38,6 +43,7 @@ const ParametroAprobador = () => {
   const [modulosSistema, setModulosSistema] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [embarcaciones, setEmbarcaciones] = useState([]);
+  const [activos, setActivos] = useState([]);
   const [sedes, setSedes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -47,6 +53,31 @@ const ParametroAprobador = () => {
   const toast = useRef(null);
   const { usuario } = useAuthStore();
   const [globalFilter, setGlobalFilter] = useState("");
+  const [filtroModuloSistema, setFiltroModuloSistema] = useState(null);
+  const [filtroEmpresa, setFiltroEmpresa] = useState(null);
+  const [filtroEmbarcacion, setFiltroEmbarcacion] = useState(null);
+
+  const opcionesModuloSistema = modulosSistema.map((modulo) => ({
+    label: modulo.nombre,
+    value: modulo.id,
+  }));
+  const opcionesEmpresa = empresas.map((empresa) => ({
+    label: empresa.razonSocial,
+    value: empresa.id,
+  }));
+  const opcionesEmbarcacion = embarcaciones
+    .map((embarcacion) => {
+      const activo = activos.find(
+        (a) => Number(embarcacion.activoId) === Number(a.id)
+      );
+      return activo
+        ? {
+            label: activo.nombre,
+            value: Number(embarcacion.id),
+          }
+        : null;
+    })
+    .filter(Boolean);
 
   useEffect(() => {
     cargarParametrosAprobador();
@@ -56,18 +87,27 @@ const ParametroAprobador = () => {
   const cargarDatosCombos = async () => {
     try {
       setLoading(true);
-      const [personalData, modulosData, empresasData, embarcacionesData, sedesData] = await Promise.all([
+      const [
+        personalData,
+        modulosData,
+        empresasData,
+        embarcacionesData,
+        activosData,
+        sedesData,
+      ] = await Promise.all([
         getPersonal(),
         getModulos(),
         getEmpresas(),
         getEmbarcaciones(),
-        getSedes()
+        getActivos(),
+        getSedes(),
       ]);
-      
+
       setPersonal(personalData);
       setModulosSistema(modulosData);
       setEmpresas(empresasData);
       setEmbarcaciones(embarcacionesData);
+      setActivos(activosData);
       setSedes(sedesData);
     } catch (error) {
       toast.current.show({
@@ -135,7 +175,9 @@ const ParametroAprobador = () => {
     try {
       await eliminarParametroAprobador(parametroAEliminar.id);
       setParametrosAprobador(
-        parametrosAprobador.filter((p) => Number(p.id) !== Number(parametroAEliminar.id))
+        parametrosAprobador.filter(
+          (p) => Number(parametroAEliminar.id) !== Number(p.id)
+        )
       );
       toast.current.show({
         severity: "success",
@@ -157,29 +199,42 @@ const ParametroAprobador = () => {
   };
 
   const personalTemplate = (rowData) => {
-    const personalResp = personal.find(p => Number(p.id) === Number(rowData.personalRespId));
-    return personalResp ? `${personalResp.nombres} ${personalResp.apellidos}` : "N/A";
+    const personalResp = personal.find(
+      (p) => Number(rowData.personalRespId) === Number(p.id)
+    );
+    return personalResp
+      ? `${personalResp.nombres} ${personalResp.apellidos}`
+      : "N/A";
   };
 
   const moduloSistemaTemplate = (rowData) => {
-    const modulo = modulosSistema.find(m => Number(m.id) === Number(rowData.moduloSistemaId));
+    const modulo = modulosSistema.find(
+      (m) => Number(rowData.moduloSistemaId) === Number(m.id)
+    );
     return modulo?.nombre || "N/A";
   };
 
   const empresaTemplate = (rowData) => {
-    const empresa = empresas.find(e => Number(e.id) === Number(rowData.empresaId));
+    const empresa = empresas.find(
+      (e) => Number(rowData.empresaId) === Number(e.id)
+    );
     return empresa?.razonSocial || "N/A";
   };
 
   const embarcacionTemplate = (rowData) => {
     if (!rowData.embarcacionId) return "N/A";
-    const embarcacion = embarcaciones.find(e => Number(e.id) === Number(rowData.embarcacionId));
-    return embarcacion?.nombre || "N/A";
+    const embarcacion = embarcaciones.find(
+      (e) => Number(rowData.embarcacionId) === Number(e.id)
+    );
+    const activo = activos.find(
+      (a) => Number(embarcacion.activoId) === Number(a.id)
+    );
+    return activo?.nombre || "N/A";
   };
 
   const sedeTemplate = (rowData) => {
     if (!rowData.sedeId) return "N/A";
-    const sede = sedes.find(s => Number(s.id) === Number(rowData.sedeId));
+    const sede = sedes.find((s) => Number(rowData.sedeId) === Number(s.id));
     return sede?.nombre || "N/A";
   };
 
@@ -223,11 +278,32 @@ const ParametroAprobador = () => {
     );
   };
 
+  const limpiarFiltros = () => {
+    setFiltroModuloSistema(null);
+    setFiltroEmpresa(null);
+    setFiltroEmbarcacion(null);
+    setGlobalFilter("");
+  };
+
+  // Función para filtrar datos
+  const datosFiltrados = parametrosAprobador.filter((parametro) => {
+    const cumpleFiltroModulo =
+      !filtroModuloSistema ||
+      Number(parametro.moduloSistemaId) === Number(filtroModuloSistema);
+    const cumpleFiltroEmpresa =
+      !filtroEmpresa || Number(parametro.empresaId) === Number(filtroEmpresa);
+    const cumpleFiltroEmbarcacion =
+      !filtroEmbarcacion ||
+      Number(parametro.embarcacionId) === Number(filtroEmbarcacion);
+
+    return cumpleFiltroModulo && cumpleFiltroEmpresa && cumpleFiltroEmbarcacion;
+  });
+
   return (
     <div className="p-4">
       <Toast ref={toast} />
       <DataTable
-        value={parametrosAprobador}
+        value={datosFiltrados}
         loading={loading}
         paginator
         rows={10}
@@ -237,87 +313,160 @@ const ParametroAprobador = () => {
         className="p-datatable-hover cursor-pointer"
         emptyMessage="No se encontraron parámetros aprobador"
         globalFilter={globalFilter}
-        globalFilterFields={['personalRespId', 'moduloSistemaId', 'empresaId']}
+        globalFilterFields={["personalRespId", "moduloSistemaId", "empresaId"]}
         header={
           <div className="flex align-items-center gap-2">
-            <h2>Gestión de Parámetros Aprobador</h2>
-            <Button
-              label="Nuevo"
-              icon="pi pi-plus"
-              size="small"
-              raised
-              tooltip="Nuevo Parámetro Aprobador"
-              outlined
-              className="p-button-success"
-              onClick={abrirDialogoNuevo}
-            />
-            <span className="p-input-icon-left">
-              <InputText
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Buscar parámetros..."
-                style={{ width: "300px" }}
-              />
-            </span>
+            <div
+              style={{
+                alignItems: "center",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div
+                style={{ flex: 2, display: "flex", flexDirection: "column" }}
+              >
+                <h2>Gestión de Parámetros Aprobador</h2>
+              </div>
+              <div
+                style={{ flex: 1, display: "flex", flexDirection: "column" }}
+              >
+                <Button
+                  label="Nuevo"
+                  icon="pi pi-plus"
+                  size="small"
+                  raised
+                  tooltip="Nuevo Parámetro Aprobador"
+                  outlined
+                  className="p-button-success"
+                  onClick={abrirDialogoNuevo}
+                />
+              </div>
+              <div
+                style={{ flex: 1, display: "flex", flexDirection: "column" }}
+              >
+                <span className="p-input-icon-left">
+                  <InputText
+                    value={globalFilter}
+                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    placeholder="Buscar parámetros..."
+                    style={{ width: "300px" }}
+                  />
+                </span>
+              </div>
+            </div>
+
+            <div
+              style={{
+                alignItems: "center",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div
+                style={{ flex: 1, display: "flex", flexDirection: "column" }}
+              >
+                <Dropdown
+                  value={filtroModuloSistema}
+                  options={opcionesModuloSistema}
+                  onChange={(e) => setFiltroModuloSistema(e.value)}
+                  placeholder="Filtrar por Módulo Sistema"
+                  showClear
+                  style={{ minWidth: "200px" }}
+                />
+              </div>
+              <div
+                style={{ flex: 1, display: "flex", flexDirection: "column" }}
+              >
+                <Dropdown
+                  value={filtroEmpresa}
+                  options={opcionesEmpresa}
+                  onChange={(e) => setFiltroEmpresa(e.value)}
+                  placeholder="Filtrar por Empresa"
+                  showClear
+                  style={{ minWidth: "200px" }}
+                />
+              </div>
+              <div
+                style={{ flex: 1, display: "flex", flexDirection: "column" }}
+              >
+                <Dropdown
+                  value={filtroEmbarcacion}
+                  options={opcionesEmbarcacion}
+                  onChange={(e) => setFiltroEmbarcacion(e.value)}
+                  placeholder="Filtrar por Embarcación"
+                  showClear
+                  style={{ minWidth: "200px" }}
+                />
+              </div>
+              <div
+                style={{ flex: 1, display: "flex", flexDirection: "column" }}
+              >
+                <Button
+                  label="Limpiar"
+                  icon="pi pi-filter-slash"
+                  className="p-button-outlined p-button-secondary"
+                  size="small"
+                  onClick={limpiarFiltros}
+                />
+              </div>
+            </div>
           </div>
         }
         scrollable
         scrollHeight="600px"
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
-        <Column 
-          field="id" 
-          header="ID" 
-          sortable 
-          style={{ width: "80px" }}
-        />
-        <Column 
-          header="Personal Responsable" 
+        <Column field="id" header="ID" sortable style={{ width: "80px" }} />
+        <Column
+          header="Personal Responsable"
           body={personalTemplate}
-          sortable 
-          style={{ minWidth: "200px" }}
+          sortable
+          style={{ minWidth: "150px" }}
         />
-        <Column 
-          header="Módulo Sistema" 
+        <Column
+          header="Módulo Sistema"
           body={moduloSistemaTemplate}
-          sortable 
-          style={{ minWidth: "150px" }}
+          sortable
+          style={{ minWidth: "120px" }}
         />
-        <Column 
-          header="Empresa" 
+        <Column
+          header="Empresa"
           body={empresaTemplate}
-          sortable 
-          style={{ minWidth: "200px" }}
+          sortable
+          style={{ minWidth: "150px" }}
         />
-        <Column 
-          header="Embarcación" 
+        <Column
+          header="Embarcación"
           body={embarcacionTemplate}
-          sortable 
+          sortable
           style={{ minWidth: "150px" }}
         />
-        <Column 
-          header="Sede" 
+        <Column
+          header="Sede"
           body={sedeTemplate}
-          sortable 
+          sortable
           style={{ minWidth: "150px" }}
         />
-        <Column 
-          header="Vigente Desde" 
-          body={(rowData) => fechaTemplate(rowData, 'vigenteDesde')}
-          sortable 
-          style={{ minWidth: "120px" }}
+        <Column
+          header="Vigente Desde"
+          body={(rowData) => fechaTemplate(rowData, "vigenteDesde")}
+          sortable
+          style={{ minWidth: "100px" }}
         />
-        <Column 
-          header="Vigente Hasta" 
-          body={(rowData) => fechaTemplate(rowData, 'vigenteHasta')}
-          sortable 
-          style={{ minWidth: "120px" }}
+        <Column
+          header="Vigente Hasta"
+          body={(rowData) => fechaTemplate(rowData, "vigenteHasta")}
+          sortable
+          style={{ minWidth: "80px" }}
         />
-        <Column 
-          header="Estado" 
+        <Column
+          header="Estado"
           body={cesadoTemplate}
-          sortable 
-          style={{ width: "100px" }}
+          sortable
+          style={{ width: "80px" }}
         />
         <Column
           body={accionesTemplate}
