@@ -24,21 +24,22 @@ import { ButtonGroup } from "primereact/buttongroup";
 import { Tag } from "primereact/tag";
 import { Message } from "primereact/message";
 import { Toast } from "primereact/toast";
-import { getBahiasComerciales } from "../../api/personal";
 import {
-  getTemporadasPesca,
-  getTemporadaPescaPorId,
-  crearTemporadaPesca,
-  actualizarTemporadaPesca,
-  subirDocumentoTemporada,
-  iniciarTemporada,
-} from "../../api/temporadaPesca";
+  getBahiasComerciales,
+  getMotoristas,
+  getPatrones,
+} from "../../api/personal";
+import { iniciarTemporada } from "../../api/temporadaPesca";
 import { getEstadosMultiFuncionParaTemporadaPesca } from "../../api/estadoMultiFuncion";
-
+import { crearFaenaPesca } from "../../api/faenaPesca"; // Importar función crearFaenaPesca
+import { getEmbarcaciones } from "../../api/embarcacion";
+import { getAllBolicheRed } from "../../api/bolicheRed";
+import { getPuertosPesca } from "../../api/puertoPesca";
 // Importar componentes de cards
 import DatosGeneralesTemporadaForm from "./DatosGeneralesTemporadaForm";
 import ResolucionPDFTemporadaForm from "./ResolucionPDFTemporadaForm";
 import DetalleAccionesPreviasForm from "./DetalleAccionesPreviasForm";
+import DetalleFaenasPescaCard from "./DetalleFaenasPescaCard";
 
 /**
  * Componente de formulario para temporadas de pesca
@@ -54,13 +55,17 @@ const TemporadaPescaForm = ({
   // Estados principales
   const [activeCard, setActiveCard] = useState("datos-generales");
   const [bahiasComerciales, setBahiasComerciales] = useState([]);
-  const [bahiasComercialesFiltradas, setBahiasComercialesFiltradas] = useState([]);
+  const [motoristas, setMotoristas] = useState([]);
+  const [patrones, setPatrones] = useState([]);
   const [estadosTemporada, setEstadosTemporada] = useState([]);
   const [estadoDefaultId, setEstadoDefaultId] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [archivoSubido, setArchivoSubido] = useState(null);
   const [validandoSuperposicion, setValidandoSuperposicion] = useState(false);
   const [iniciandoTemporada, setIniciandoTemporada] = useState(false);
+  const [embarcaciones, setEmbarcaciones] = useState([]);
+  const [boliches, setBoliches] = useState([]);
+  const [puertosPesca, setPuertosPesca] = useState([]);
 
   // Ref para Toast
   const toast = useRef(null);
@@ -102,8 +107,17 @@ const TemporadaPescaForm = ({
   useEffect(() => {
     const cargarDatos = async () => {
       try {
-        const estadosData = await getEstadosMultiFuncionParaTemporadaPesca();
+        const [estadosData, embarcacionesData, bolichesData, puertosData] = await Promise.all([
+          getEstadosMultiFuncionParaTemporadaPesca(),
+          getEmbarcaciones(),
+          getAllBolicheRed(),
+          getPuertosPesca()
+        ]);
+        
         setEstadosTemporada(estadosData);
+        setEmbarcaciones(embarcacionesData);
+        setBoliches(bolichesData);
+        setPuertosPesca(puertosData);
 
         // Encontrar y guardar el ID del estado por defecto
         const estadoDefault = estadosData.find(
@@ -133,23 +147,35 @@ const TemporadaPescaForm = ({
    */
   useEffect(() => {
     if (empresaSeleccionada) {
-      const cargarBahiasComerciales = async () => {
+      const cargarResponsablesFaena = async () => {
         try {
           const bahiasData = await getBahiasComerciales(
-            Number(empresaSeleccionada)
+            Number(empresaSeleccionada),
+            "BAHIA COMERCIAL"
+          );
+          const motoristasData = await getMotoristas(
+            Number(empresaSeleccionada),
+            "MOTORISTA EMBARCACION"
+          );
+          const patronesData = await getPatrones(
+            Number(empresaSeleccionada),
+            "PATRON EMBARCACION"
           );
           setBahiasComerciales(bahiasData);
-          setBahiasComercialesFiltradas(bahiasData);
+          setMotoristas(motoristasData);
+          setPatrones(patronesData);
         } catch (error) {
           console.error("Error cargando bahías comerciales:", error);
           setBahiasComerciales([]);
-          setBahiasComercialesFiltradas([]);
+          setMotoristas([]);
+          setPatrones([]);
         }
       };
-      cargarBahiasComerciales();
+      cargarResponsablesFaena();
     } else {
       setBahiasComerciales([]);
-      setBahiasComercialesFiltradas([]);
+      setMotoristas([]);
+      setPatrones([]);
       setValue("BahiaId", null);
     }
   }, [empresaSeleccionada, setValue]);
@@ -294,7 +320,7 @@ const TemporadaPescaForm = ({
 
     try {
       setIniciandoTemporada(true);
-      await iniciarTemporada(editingItem.id);
+      await iniciarTemporadaConAutocompletado(editingItem);
       toast.current.show({
         severity: "success",
         summary: "Éxito",
@@ -311,6 +337,18 @@ const TemporadaPescaForm = ({
       });
     } finally {
       setIniciandoTemporada(false);
+    }
+  };
+
+  const iniciarTemporadaConAutocompletado = async (temporada) => {
+    try {
+      // Solo llamar al backend para iniciar temporada
+      // El backend ya crea FaenaPesca, EntregaARendir y DetAccionesPreviasFaena
+      await iniciarTemporada(temporada.id);
+
+    } catch (error) {
+      console.error("Error en iniciarTemporadaConAutocompletado:", error);
+      throw error;
     }
   };
 
@@ -414,6 +452,20 @@ const TemporadaPescaForm = ({
                 type="button"
               />
             )}
+            {editingItem && (
+              <Button
+                icon="pi pi-chart-line"
+                tooltip="Faenas Pesca - Detalle de faenas de pesca"
+                tooltipOptions={{ position: "bottom" }}
+                className={
+                  activeCard === "faenas-pesca"
+                    ? "p-button-info"
+                    : "p-button-outlined"
+                }
+                onClick={() => handleNavigateToCard("faenas-pesca")}
+                type="button"
+              />
+            )}
           </ButtonGroup>
         }
       />
@@ -427,7 +479,9 @@ const TemporadaPescaForm = ({
             watch={watch}
             getValues={getValues}
             empresas={empresas}
-            bahiasComerciales={bahiasComercialesFiltradas}
+            bahiasComerciales={bahiasComerciales}
+            motoristas={motoristas}
+            patrones={patrones}
             estadosTemporada={estadosTemporada}
             empresaSeleccionada={empresaSeleccionada}
             defaultValues={getValues()}
@@ -454,6 +508,19 @@ const TemporadaPescaForm = ({
             watch={watch}
             getValues={getValues}
             defaultValues={getValues()}
+          />
+        )}
+
+        {activeCard === "faenas-pesca" && (
+          <DetalleFaenasPescaCard
+            temporadaPescaId={editingItem?.id}
+            embarcaciones={embarcaciones}
+            boliches={boliches}
+            puertos={puertosPesca}
+            bahiasComerciales={bahiasComerciales}
+            motoristas={motoristas}
+            patrones={patrones}
+            temporadaData={editingItem}
           />
         )}
 

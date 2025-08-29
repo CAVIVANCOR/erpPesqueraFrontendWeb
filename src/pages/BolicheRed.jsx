@@ -144,6 +144,24 @@ const BolicheRed = () => {
     );
   };
 
+  const paraPescaConsumoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.paraPescaConsumo ? "Sí" : "No"}
+        severity={rowData.paraPescaConsumo ? "success" : "secondary"}
+      />
+    );
+  };
+
+  const paraPescaIndustrialTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.paraPescaIndustrial ? "Sí" : "No"}
+        severity={rowData.paraPescaIndustrial ? "success" : "secondary"}
+      />
+    );
+  };
+
   const numeroTemplate = (rowData, field) => {
     const valor = rowData[field];
     return valor ? Number(valor).toLocaleString() : 'N/A';
@@ -239,6 +257,8 @@ const BolicheRed = () => {
         <Column field="nroFlotadores" header="Nº Flotadores" sortable body={(rowData) => numeroTemplate(rowData, 'nroFlotadores')} />
         <Column field="nroPlomos" header="Nº Plomos" sortable body={(rowData) => numeroTemplate(rowData, 'nroPlomos')} />
         <Column field="cesado" header="Estado" sortable body={cesadoTemplate} />
+        <Column field="paraPescaConsumo" header="Para Pesca Consumo" sortable body={paraPescaConsumoTemplate} />
+        <Column field="paraPescaIndustrial" header="Para Pesca Industrial" sortable body={paraPescaIndustrialTemplate} />
         <Column body={accionesTemplate} header="Acciones" style={{ width: "120px", textAlign: "center" }} />
       </DataTable>
 

@@ -57,8 +57,3 @@ export async function iniciarTemporada(temporadaId) {
   const res = await axios.post(`${API_URL}/${temporadaId}/iniciar`, {}, { headers: getAuthHeaders() });
   return res.data;
 }
-
-export async function iniciarTemporada2(temporadaId) {
-  const res = await axios.post(`${API_URL}/${temporadaId}/iniciar`, {}, { headers: getAuthHeaders() });
-  return res.data;
-}

@@ -108,7 +108,13 @@ const DatosGeneralesEntidad = ({
       const datos = await consultarReniec(dni);
 
       // Asignar datos encontrados
-      setValue("razonSocial", datos.full_name || "");
+      const nombreCompleto = [
+        datos.first_name,
+        datos.first_last_name,
+        datos.second_last_name
+      ].filter(Boolean).join(' ');
+
+      setValue("razonSocial", nombreCompleto || "");
 
       toast?.current?.show({
         severity: "success",

@@ -39,3 +39,12 @@ export async function eliminarPuertoPesca(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+export async function getPuertosActivos() {
+  const res = await axios.get(`${API_URL}/activos`, { headers: getAuthHeaders() });
+  return res.data.map(puerto => ({
+    ...puerto,
+    label: puerto.nombre,
+    value: Number(puerto.id)
+  }));
+}

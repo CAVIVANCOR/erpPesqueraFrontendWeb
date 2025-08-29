@@ -294,6 +294,59 @@ export default function DatosGeneralesBolicheRedForm({
             </div>
           </div>
         </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+            marginBottom: 10,
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <div className="field-checkbox">
+              <Controller
+                name="paraPescaConsumo"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    id="paraPescaConsumo"
+                    {...field}
+                    checked={field.value || false}
+                    onChange={(e) => field.onChange(e.checked)}
+                  />
+                )}
+              />
+              <label htmlFor="paraPescaConsumo" className="font-bold">
+                Para Pesca Consumo
+              </label>
+            </div>
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <div className="field-checkbox">
+              <Controller
+                name="paraPescaIndustrial"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    id="paraPescaIndustrial"
+                    {...field}
+                    checked={field.value || false}
+                    onChange={(e) => field.onChange(e.checked)}
+                  />
+                )}
+              />
+              <label htmlFor="paraPescaIndustrial" className="font-bold">
+                Para Pesca Industrial
+              </label>
+            </div>
+          </div>
+
+          <div style={{ flex: 1 }}>
+            {/* Espacio vacío para mantener el layout */}
+          </div>
+        </div>
       </div>
     </Card>
   );

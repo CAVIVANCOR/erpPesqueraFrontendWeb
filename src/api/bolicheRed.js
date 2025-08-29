@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/boliches-red`;
 
 /**
  * Obtiene el token de autenticación desde el store de Zustand
@@ -19,7 +19,7 @@ const getAuthToken = () => {
 export const getAllBolicheRed = async () => {
   try {
     const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/pesca/boliches-red`, {
+    const response = await axios.get(API_URL, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -40,7 +40,7 @@ export const getAllBolicheRed = async () => {
 export const crearBolicheRed = async (bolicheData) => {
   try {
     const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/pesca/boliches-red`, bolicheData, {
+    const response = await axios.post(API_URL, bolicheData, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -62,7 +62,7 @@ export const crearBolicheRed = async (bolicheData) => {
 export const actualizarBolicheRed = async (id, bolicheData) => {
   try {
     const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/pesca/boliches-red/${id}`, bolicheData, {
+    const response = await axios.put(`${API_URL}/${id}`, bolicheData, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -83,7 +83,7 @@ export const actualizarBolicheRed = async (id, bolicheData) => {
 export const eliminarBolicheRed = async (id) => {
   try {
     const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/pesca/boliches-red/${id}`, {
+    const response = await axios.delete(`${API_URL}/${id}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -95,6 +95,21 @@ export const eliminarBolicheRed = async (id) => {
     throw error;
   }
 };
+
+/**
+ * Obtiene boliches filtrados por paraPescaIndustrial
+ * @returns {Promise<Array>} Lista de boliches filtrados
+ */
+export async function getBolichesPorPescaIndustrial() {
+  const res = await axios.get(API_URL, { headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' } });
+  // Filtrar solo boliches para pesca industrial
+  const bolichesFiltrados = res.data.filter(boliche => boliche.paraPescaIndustrial === true);
+  return bolichesFiltrados.map(boliche => ({
+    ...boliche,
+    label: boliche.descripcion || `Boliche ${boliche.id}`,
+    value: Number(boliche.id)
+  }));
+}
 
 // Aliases en inglés para compatibilidad
 export const getBolicheRed = getAllBolicheRed;

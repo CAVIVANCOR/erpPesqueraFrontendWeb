@@ -99,18 +99,7 @@ export const getVendedoresPorEmpresa = async (empresaId) => {
   }));
 };
 
-/**
- * Obtiene personal con cargo "BAHIA COMERCIAL" filtrado por empresa.
- * @param {number} empresaId - ID de la empresa para filtrar
- * @returns {Promise<Array>} Lista de personal con cargo BAHIA COMERCIAL
- */
-export const getBahiasComerciales = async (empresaId) => {
-  const res = await axios.get(`${API_URL}/bahias-comerciales/${empresaId}`, { headers: getAuthHeader() });
-  return res.data.map(persona => ({
-    ...persona,
-    nombreCompleto: `${persona.nombres} ${persona.apellidos}`.trim()
-  }));
-};
+
 
 /**
  * Obtiene personal activo filtrado por empresa para dropdowns.
@@ -141,4 +130,44 @@ export const getPersonalActivoPorEmpresa = async (empresaId) => {
  */
 export const eliminarPersonal = async (id) => {
   await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeader() });
+};
+
+
+/**
+ * Obtiene personal con cargo "BAHIA COMERCIAL" filtrado por empresa.
+ * @param {number} empresaId - ID de la empresa para filtrar
+ * @returns {Promise<Array>} Lista de personal con cargo BAHIA COMERCIAL
+ */
+export const getBahiasComerciales = async (empresaId,descripcionCargo) => {
+  const res = await axios.get(`${API_URL}/personalxdescripcioncargo/${empresaId}/${descripcionCargo}`, { headers: getAuthHeader() });
+  const bahias = res.data.filter(persona => !persona.cesado);
+  return bahias;
+};
+
+/**
+ * Obtiene personal con cargo "MOTORISTA EMBARCACION" filtrado por empresa.
+ * @param {number} empresaId - ID de la empresa para filtrar
+ * @returns {Promise<Array>} Lista de motoristas activos
+ */
+export const getMotoristas = async (empresaId,descripcionCargo) => {
+  const res = await axios.get(`${API_URL}/personalxdescripcioncargo/${empresaId}/${descripcionCargo}`, { 
+    headers: getAuthHeader() 
+  });
+  // Filtrar por cargo MOTORISTA EMBARCACION (cargoId: 14) y activos
+  const motoristas = res.data.filter(persona => !persona.cesado);
+  return motoristas;
+};
+
+/**
+ * Obtiene personal con cargo "PATRON EMBARCACION" filtrado por empresa.
+ * @param {number} empresaId - ID de la empresa para filtrar
+ * @returns {Promise<Array>} Lista de patrones activos
+ */
+export const getPatrones = async (empresaId,descripcionCargo) => {
+  const res = await axios.get(`${API_URL}/personalxdescripcioncargo/${empresaId}/${descripcionCargo}`, { 
+    headers: getAuthHeader() 
+  });
+  // Filtrar por cargo PATRON EMBARCACION (cargoId: 22) y activos
+  const patrones = res.data.filter(persona => !persona.cesado);
+  return patrones;
 };

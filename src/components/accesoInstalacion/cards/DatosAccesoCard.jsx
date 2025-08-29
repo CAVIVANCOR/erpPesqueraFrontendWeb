@@ -8,6 +8,7 @@ import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Checkbox } from "primereact/checkbox";
 import { ProgressSpinner } from "primereact/progressspinner";
+import { Button } from "primereact/button";
 import { Controller } from "react-hook-form";
 import { formatearFechaHora } from "../../../utils/utils";
 
@@ -146,6 +147,11 @@ const DatosAccesoCard = ({
                     disabled={accesoSellado || modoEdicion}
                   />
                 )}
+              />
+              <Button
+                icon="pi pi-search"
+                className="p-button-secondary"
+                disabled={accesoSellado || modoEdicion}
               />
               {buscandoPersona && (
                 <span className="p-inputgroup-addon">

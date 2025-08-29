@@ -88,6 +88,8 @@ const esquemaValidacion = yup.object().shape({
       return originalValue === "" ? null : value;
     }),
   cesado: yup.boolean().default(false),
+  paraPescaConsumo: yup.boolean().default(false),
+  paraPescaIndustrial: yup.boolean().default(false),
 });
 
 export default function BolicheRedForm({ bolicheRed, onGuardar, onCancelar }) {
@@ -122,6 +124,8 @@ export default function BolicheRedForm({ bolicheRed, onGuardar, onCancelar }) {
       nroPlomos: null,
       urlBolicheRedPdf: "",
       cesado: false,
+      paraPescaConsumo: false,
+      paraPescaIndustrial: false,
     },
   });
 
@@ -167,6 +171,8 @@ export default function BolicheRedForm({ bolicheRed, onGuardar, onCancelar }) {
       setValue("nroPlomos", bolicheRed.nroPlomos || null);
       setValue("urlBolicheRedPdf", bolicheRed.urlBolicheRedPdf || "");
       setValue("cesado", bolicheRed.cesado || false);
+      setValue("paraPescaConsumo", bolicheRed.paraPescaConsumo || false);
+      setValue("paraPescaIndustrial", bolicheRed.paraPescaIndustrial || false);
     } else if (!bolicheRed) {
       reset({
         activoId: null,
@@ -179,6 +185,8 @@ export default function BolicheRedForm({ bolicheRed, onGuardar, onCancelar }) {
         nroPlomos: null,
         urlBolicheRedPdf: "",
         cesado: false,
+        paraPescaConsumo: false,
+        paraPescaIndustrial: false,
       });
     }
   }, [bolicheRed, setValue, reset, activos, estadosActivo]);
@@ -200,6 +208,8 @@ export default function BolicheRedForm({ bolicheRed, onGuardar, onCancelar }) {
         nroPlomos: data.nroPlomos || null,
         urlBolicheRedPdf: data.urlBolicheRedPdf?.trim() || null,
         cesado: data.cesado || false,
+        paraPescaConsumo: data.paraPescaConsumo || false,
+        paraPescaIndustrial: data.paraPescaIndustrial || false,
       };
       if (datosParaEnviar.id) {
         await actualizarBolicheRed(datosParaEnviar.id, datosParaEnviar);

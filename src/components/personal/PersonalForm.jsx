@@ -916,6 +916,7 @@ export default function PersonalForm({
               type="button"
               onClick={onCancel}
               disabled={loading}
+              severity="danger"
               raised
               outlined
               size="small"
@@ -926,6 +927,7 @@ export default function PersonalForm({
               className="p-button-success"
               type="submit"
               loading={loading}
+              severity="success"
               raised
               outlined
               size="small"

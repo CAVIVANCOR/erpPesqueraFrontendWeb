@@ -39,6 +39,7 @@ import {
   buscarPersonaPorDocumento,
   buscarVehiculoPorPlaca,
 } from "../../api/accesoInstalacion";
+import { consultarReniec } from "../../api/consultaExterna";
 
 // Esquema de validación con Yup - Coincide exactamente con el modelo Prisma AccesoInstalacion
 const schema = yup.object().shape({
@@ -268,15 +269,73 @@ export default function AccesoInstalacionForm({
           life: 3000,
         });
       } else {
-        setPersonaEncontrada(null);
-        setDatosAutocompletados(false);
+        // Si no se encuentra en la base de datos local, buscar en RENIEC
+        const numeroDoc = numDoc.trim();
+        // Solo buscar en RENIEC si es un DNI (8 dígitos numéricos)
+        if (numeroDoc.length === 8 && /^\d+$/.test(numeroDoc)) {
+          toast.current?.show({
+            severity: "info",
+            summary: "Buscando en RENIEC",
+            detail: "Persona no encontrada localmente. Consultando RENIEC...",
+            life: 2000,
+          });
+          try {
+            const respuestaReniec = await consultarReniec(numeroDoc);
+            if (respuestaReniec) {
+              // Construir nombre completo: first_name + first_last_name + second_last_name
+              const nombreCompleto = [
+                respuestaReniec.first_name,
+                respuestaReniec.first_last_name,
+                respuestaReniec.second_last_name
+              ].filter(Boolean).join(' ');
+              
+              // Autocompletar con datos de RENIEC
+              setValue("nombrePersona", nombreCompleto || "");
+              setValue("tipoDocIdentidadId", 1); // DNI por defecto
+              setValue("numeroDocumento", numeroDoc);
+              
+              setDatosAutocompletados(true);
+              
+              toast.current?.show({
+                severity: "success",
+                summary: "Datos encontrados en RENIEC",
+                detail: `Datos autocompletados para: ${nombreCompleto}`,
+                life: 3000,
+              });
+            } else {
+              // No encontrado en RENIEC tampoco
+              setPersonaEncontrada(null);
+              setDatosAutocompletados(false);
+              
+              toast.current?.show({
+                severity: "warn",
+                summary: "No encontrado",
+                detail: "Persona no encontrada en RENIEC. Complete los datos manualmente.",
+                life: 3000,
+              });
+            }
+          } catch (errorReniec) {
+            console.error("Error consultando RENIEC:", errorReniec);
+            
+            toast.current?.show({
+              severity: "error",
+              summary: "Error en RENIEC",
+              detail: "Error al consultar RENIEC. Complete los datos manualmente.",
+              life: 3000,
+            });
+          }
+        } else {
+          // No es DNI, mostrar mensaje normal
+          setPersonaEncontrada(null);
+          setDatosAutocompletados(false);
 
-        toast.current?.show({
-          severity: "info",
-          summary: "Información",
-          detail: "Persona no encontrada. Complete los datos manualmente.",
-          life: 3000,
-        });
+          toast.current?.show({
+            severity: "info",
+            summary: "Información",
+            detail: "Persona no encontrada. Complete los datos manualmente.",
+            life: 3000,
+          });
+        }
       }
     } catch (error) {
       setPersonaEncontrada(null);

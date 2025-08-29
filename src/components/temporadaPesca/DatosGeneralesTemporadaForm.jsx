@@ -19,7 +19,6 @@ import { Button } from "primereact/button";
 import { classNames } from "primereact/utils";
 import { Controller } from "react-hook-form";
 import { Message } from "primereact/message";
-import { getPersonal } from "../../api/personal";
 import { getEmbarcaciones } from "../../api/embarcacion";
 import { crearFaenaPesca } from "../../api/faenaPesca";
 
@@ -31,16 +30,15 @@ export default function DatosGeneralesTemporadaForm({
   getValues,
   empresas = [],
   bahiasComerciales = [],
+  motoristas = [],
+  patrones = [],
   estadosTemporada = [],
   empresaSeleccionada,
   defaultValues = {},
   onIniciarTemporada,
 }) {
-  const [personal, setPersonal] = useState([]);
   const [embarcaciones, setEmbarcaciones] = useState([]);
-
   const empresaWatched = watch("empresaId");
-
   // Cargar datos iniciales
   useEffect(() => {
     cargarDatos();
@@ -53,15 +51,12 @@ export default function DatosGeneralesTemporadaForm({
     } else {
       setValue("BahiaId", null);
     }
-  }, [empresaWatched, setValue, personal]);
+  }, [empresaWatched, setValue,bahiasComerciales]);
 
   const cargarDatos = async () => {
     try {
-      const [personalData, embarcacionesData] = await Promise.all([
-        getPersonal(),
-        getEmbarcaciones()
-      ]);
-      setPersonal(personalData);
+      // Solo cargar embarcaciones, el personal ya viene como props
+      const embarcacionesData = await getEmbarcaciones();
       setEmbarcaciones(embarcacionesData);
     } catch (error) {
       console.error("Error al cargar datos:", error);
@@ -74,73 +69,17 @@ export default function DatosGeneralesTemporadaForm({
       const valorActual = getValues("BahiaId");
       if (valorActual) return;
       
-      const bahiasComerciales = personal.filter(p => 
-        Number(p.empresaId) === Number(empresaId) && 
-        Number(p.cargoId) === 10 && 
-        !p.cesado
-      );
-      
+      // Usar directamente el prop bahiasComerciales en lugar de filtrar personal
       if (bahiasComerciales.length === 1) {
-        setValue("BahiaId", Number(bahiasComerciales[0].id));
+        const valorCalculado = Number(bahiasComerciales[0].id);
+        setValue("BahiaId", valorCalculado);
       }
     } catch (error) {
       console.error("Error al autocompletar BahiaId:", error);
     }
   };
 
-  const iniciarTemporada = async () => {
-    try {
-      const temporadaData = getValues();
-      
-      // Filtrar embarcación por tipoEmbarcacionId=1
-      const embarcacionesTipo1 = embarcaciones.filter(e => Number(e.tipoEmbarcacionId) === 1);
-      const embarcacionId = embarcacionesTipo1.length === 1 ? embarcacionesTipo1[0].id : null;
-      
-      // Filtrar personal por empresa y cargos específicos
-      const motoristas = personal.filter(p => 
-        Number(p.empresaId) === Number(temporadaData.empresaId) && 
-        Number(p.cargoId) === 14 && 
-        !p.cesado
-      );
-      const motoristaId = motoristas.length === 1 ? motoristas[0].id : null;
-      
-      const patrones = personal.filter(p => 
-        Number(p.empresaId) === Number(temporadaData.empresaId) && 
-        Number(p.cargoId) === 22 && 
-        !p.cesado
-      );
-      const patronId = patrones.length === 1 ? patrones[0].id : null;
-      
-      const bahias = personal.filter(p => 
-        Number(p.empresaId) === Number(temporadaData.empresaId) && 
-        Number(p.cargoId) === 10 && 
-        !p.cesado
-      );
-      const bahiaId = bahias.length === 1 ? bahias[0].id : null;
-      
-      const faenaData = {
-        temporadaId: temporadaData.id,
-        embarcacionId,
-        fechaSalida: null,
-        fechaRetorno: null,
-        puertoSalidaId: null,
-        puertoDescargaId: null,
-        puertoRetornoId: null,
-        motoristaId,
-        patronId,
-        bahiaId,
-        descripcion: `Faena de ${temporadaData.nombre}`,
-      };
-      
-      await crearFaenaPesca(faenaData);
-      
-      if (onIniciarTemporada) {
-        onIniciarTemporada();
-      }
-    } catch (error) {
-      console.error("Error al iniciar temporada:", error);
-    }
-  };
+
 
   // Opciones normalizadas para dropdowns
   const empresasOptions = empresas.map((empresa) => ({
@@ -148,13 +87,11 @@ export default function DatosGeneralesTemporadaForm({
     value: Number(empresa.id),
   }));
 
-  // Filtrar bahías comerciales por empresa seleccionada
-  const bahiasComercialesOptions = bahiasComerciales
-    .filter(persona => !empresaWatched || Number(persona.empresaId) === Number(empresaWatched))
-    .map((persona) => ({
-      label: persona.nombreCompleto,
-      value: Number(persona.id),
-    }));
+  // Convertir bahías comerciales a opciones para dropdown
+  const bahiasComercialesOptions = bahiasComerciales.map((persona) => ({
+    label: persona.nombres + " " + persona.apellidos,
+    value: Number(persona.id),
+  }));
 
   const estadosTemporadaOptions = estadosTemporada.map((estado) => ({
     label: estado.descripcion,

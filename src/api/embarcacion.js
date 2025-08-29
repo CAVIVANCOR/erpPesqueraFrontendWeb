@@ -63,3 +63,23 @@ export const subirFotoEmbarcacion = async (id, archivoFoto) => {
   );
   return res.data;
 };
+
+/**
+ * Obtiene embarcaciones filtradas por tipo de embarcación
+ * @param {number} tipoId - ID del tipo de embarcación
+ * @returns {Promise<Array>} Lista de embarcaciones del tipo especificado
+ */
+export const getEmbarcacionesPorTipo = async (tipoId) => {
+  const res = await axios.get(`${API_URL}`, { 
+    headers: getAuthHeaders() 
+  });
+  // Filtrar por tipo de embarcación
+  const embarcacionesFiltradas = res.data.filter(embarcacion => 
+    embarcacion.tipoEmbarcacionId === Number(tipoId)
+  );
+  return embarcacionesFiltradas.map(embarcacion => ({
+    ...embarcacion,
+    label: embarcacion.nombre,
+    value: Number(embarcacion.id)
+  }));
+};
