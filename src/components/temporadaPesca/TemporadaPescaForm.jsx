@@ -320,7 +320,15 @@ const TemporadaPescaForm = ({
 
     try {
       setIniciandoTemporada(true);
-      await iniciarTemporadaConAutocompletado(editingItem);
+      const resultado = await iniciarTemporadaConAutocompletado(editingItem);
+      
+      // Actualizar el estado de la temporada en el frontend
+      if (resultado && resultado.temporadaActualizada) {
+        // Actualizar el formulario para que el dropdown refleje el cambio
+        setValue("estadoTemporadaId", resultado.temporadaActualizada.estadoTemporadaId);
+        
+      }
+      
       toast.current.show({
         severity: "success",
         summary: "Éxito",
@@ -344,7 +352,8 @@ const TemporadaPescaForm = ({
     try {
       // Solo llamar al backend para iniciar temporada
       // El backend ya crea FaenaPesca, EntregaARendir y DetAccionesPreviasFaena
-      await iniciarTemporada(temporada.id);
+      const resultado = await iniciarTemporada(temporada.id);
+      return resultado;
 
     } catch (error) {
       console.error("Error en iniciarTemporadaConAutocompletado:", error);

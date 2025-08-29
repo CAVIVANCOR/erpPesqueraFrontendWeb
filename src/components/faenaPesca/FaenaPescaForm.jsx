@@ -44,12 +44,10 @@ export default function FaenaPescaForm({
     defaultValues.descripcion || ""
   );
   const [fechaSalida, setFechaSalida] = React.useState(
-    defaultValues.fechaSalida ? new Date(defaultValues.fechaSalida) : new Date()
+    defaultValues.fechaSalida ? new Date(defaultValues.fechaSalida) : null
   );
   const [fechaRetorno, setFechaRetorno] = React.useState(
-    defaultValues.fechaRetorno
-      ? new Date(defaultValues.fechaRetorno)
-      : new Date()
+    defaultValues.fechaRetorno ? new Date(defaultValues.fechaRetorno) : null
   );
   const [puertoSalidaId, setPuertoSalidaId] = React.useState(
     defaultValues.puertoSalidaId || ""
@@ -125,14 +123,10 @@ export default function FaenaPescaForm({
     setPatronId(defaultValues.patronId || "");
     setDescripcion(defaultValues.descripcion || "");
     setFechaSalida(
-      defaultValues.fechaSalida
-        ? new Date(defaultValues.fechaSalida)
-        : new Date()
+      defaultValues.fechaSalida ? new Date(defaultValues.fechaSalida) : null
     );
     setFechaRetorno(
-      defaultValues.fechaRetorno
-        ? new Date(defaultValues.fechaRetorno)
-        : new Date()
+      defaultValues.fechaRetorno ? new Date(defaultValues.fechaRetorno) : null
     );
     setPuertoSalidaId(defaultValues.puertoSalidaId || "");
     setPuertoRetornoId(defaultValues.puertoRetornoId || "");
@@ -158,11 +152,10 @@ export default function FaenaPescaForm({
       puertoDescargaId,
       embarcacionId,
       bolicheRedId,
-      urlInformeFaena
+      urlInformeFaena,
     });
     
     onSubmit({
-      temporadaId: temporadaId ? Number(temporadaId) : null,
       bahiaId: bahiaId ? Number(bahiaId) : null,
       motoristaId: motoristaId ? Number(motoristaId) : null,
       patronId: patronId ? Number(patronId) : null,
@@ -328,21 +321,6 @@ export default function FaenaPescaForm({
         }}
       >
         <div style={{ flex: 1 }}>
-          <label htmlFor="puertoDescargaId">Puerto Descarga*</label>
-          <Dropdown
-            id="puertoDescargaId"
-            value={puertoDescargaId}
-            options={puertos}
-            optionLabel="label"
-            optionValue="value"
-            onChange={(e) => setPuertoDescargaId(e.value)}
-            style={{ fontWeight: "bold" }}
-            placeholder="Seleccione puerto de descarga"
-            required
-            disabled={loading}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
           <label htmlFor="puertoRetornoId">Puerto Retorno*</label>
           <Dropdown
             id="puertoRetornoId"
@@ -357,8 +335,22 @@ export default function FaenaPescaForm({
             disabled={loading}
           />
         </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="puertoDescargaId">Puerto Descarga*</label>
+          <Dropdown
+            id="puertoDescargaId"
+            value={puertoDescargaId}
+            options={puertos}
+            optionLabel="label"
+            optionValue="value"
+            onChange={(e) => setPuertoDescargaId(e.value)}
+            style={{ fontWeight: "bold" }}
+            placeholder="Seleccione puerto de descarga"
+            required
+            disabled={loading}
+          />
+        </div>
       </div>
-
       <div
         style={{
           display: "flex",

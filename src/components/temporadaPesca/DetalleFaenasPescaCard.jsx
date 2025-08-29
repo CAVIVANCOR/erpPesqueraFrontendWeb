@@ -207,9 +207,8 @@ const DetalleFaenasPescaCard = ({
     try {
       const faenaData = {
         ...data,
-        temporadaId: temporadaPescaId,
-        fechaSalida: data.fechaSalida.toISOString(),
-        fechaRetorno: data.fechaRetorno.toISOString(),
+        fechaSalida: data.fechaSalida ? data.fechaSalida.toISOString() : null,
+        fechaRetorno: data.fechaRetorno ? data.fechaRetorno.toISOString() : null,
       };
       
       console.log("faenaData preparada:", faenaData);
@@ -370,12 +369,6 @@ const DetalleFaenasPescaCard = ({
       header: "Puerto Retorno",
       sortable: true,
       body: (rowData) => obtenerNombrePuerto(rowData.puertoRetornoId),
-    },
-    {
-      field: "puertoDescargaId",
-      header: "Puerto Descarga",
-      sortable: true,
-      body: (rowData) => obtenerNombrePuerto(rowData.puertoDescargaId),
     },
     {
       field: "estado",
