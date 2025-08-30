@@ -38,7 +38,6 @@ import { getPuertosPesca } from "../../api/puertoPesca";
 // Importar componentes de cards
 import DatosGeneralesTemporadaForm from "./DatosGeneralesTemporadaForm";
 import ResolucionPDFTemporadaForm from "./ResolucionPDFTemporadaForm";
-import DetalleAccionesPreviasForm from "./DetalleAccionesPreviasForm";
 import DetalleFaenasPescaCard from "./DetalleFaenasPescaCard";
 
 /**
@@ -449,20 +448,6 @@ const TemporadaPescaForm = ({
             />
             {editingItem && (
               <Button
-                icon="pi pi-list"
-                tooltip="Acciones Previas - Lista de acciones previas de faena"
-                tooltipOptions={{ position: "bottom" }}
-                className={
-                  activeCard === "acciones-previas"
-                    ? "p-button-success"
-                    : "p-button-outlined"
-                }
-                onClick={() => handleNavigateToCard("acciones-previas")}
-                type="button"
-              />
-            )}
-            {editingItem && (
-              <Button
                 icon="pi pi-chart-line"
                 tooltip="Faenas Pesca - Detalle de faenas de pesca"
                 tooltipOptions={{ position: "bottom" }}
@@ -499,18 +484,6 @@ const TemporadaPescaForm = ({
 
         {activeCard === "resolucion-pdf" && (
           <ResolucionPDFTemporadaForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={getValues()}
-          />
-        )}
-
-        {activeCard === "acciones-previas" && (
-          <DetalleAccionesPreviasForm
-            temporadaPescaId={editingItem?.id}
             control={control}
             errors={errors}
             setValue={setValue}

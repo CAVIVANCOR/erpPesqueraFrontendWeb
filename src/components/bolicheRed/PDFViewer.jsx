@@ -41,12 +41,10 @@ const PDFViewer = ({ urlDocumento }) => {
 
         // Construir URL completa para boliche red PDFs
         let urlCompleta;
-console.log("urlDocumento", urlDocumento);
         if (urlDocumento.startsWith('/uploads/fichas-tecnicas-boliches/')) {
           // Formato ficha técnica boliches: /uploads/fichas-tecnicas-boliches/boliche-red-123.pdf
           // Convertir a: /pesca/ficha-tecnica-boliches/archivo/boliche-red-123.pdf
           const rutaArchivo = urlDocumento.replace('/uploads/fichas-tecnicas-boliches/', '');
-          console.log("rutaArchivo", rutaArchivo);
           urlCompleta = `${import.meta.env.VITE_API_URL}/ficha-tecnica-boliches/archivo/${rutaArchivo}`;
 
         } else if (urlDocumento.startsWith('/uploads/boliche-red-pdfs/')) {

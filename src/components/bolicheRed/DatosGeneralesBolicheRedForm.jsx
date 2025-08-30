@@ -28,8 +28,6 @@ export default function DatosGeneralesBolicheRedForm({
   estadosActivo = [],
   defaultValues = {},
 }) {
-  console.log("DatosGeneralesBolicheRedForm - activos:", activos);
-  console.log("DatosGeneralesBolicheRedForm - estadosActivo:", estadosActivo);
 
   return (
     <Card title="Datos Generales" className="mt-3">

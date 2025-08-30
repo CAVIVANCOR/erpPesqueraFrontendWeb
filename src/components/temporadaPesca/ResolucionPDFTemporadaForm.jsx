@@ -73,22 +73,15 @@ export default function ResolucionPDFTemporadaForm({
     setSubiendoPDF(true);
 
     try {
-      console.log('defaultValues:', defaultValues);
-      console.log('defaultValues.id:', defaultValues.id);
+
       
       // Usar getValues() para obtener el ID actual del formulario
       const currentValues = getValues();
       const temporadaId = currentValues.id || defaultValues.id;
-      
-      console.log('currentValues:', currentValues);
-      console.log('temporadaId:', temporadaId);
-      
       const formData = new FormData();
       formData.append("resolucionPdf", file);
       formData.append("temporadaId", temporadaId);
-
       const token = useAuthStore.getState().token;
-
       const response = await fetch(`${import.meta.env.VITE_API_URL}/temporada-pesca-resolucion/upload`, {
         method: "POST",
         headers: {

@@ -39,6 +39,11 @@ export default function DatosGeneralesTemporadaForm({
 }) {
   const [embarcaciones, setEmbarcaciones] = useState([]);
   const empresaWatched = watch("empresaId");
+
+  // Watch para generar nombre automáticamente
+  const idWatched = watch("id");
+  const numeroResolucionWatched = watch("numeroResolucion");
+
   // Cargar datos iniciales
   useEffect(() => {
     cargarDatos();
@@ -51,7 +56,18 @@ export default function DatosGeneralesTemporadaForm({
     } else {
       setValue("BahiaId", null);
     }
-  }, [empresaWatched, setValue,bahiasComerciales]);
+  }, [empresaWatched, setValue, bahiasComerciales]);
+
+  // Generar nombre automáticamente cuando cambien id o numeroResolucion
+  useEffect(() => {
+    if (idWatched && numeroResolucionWatched) {
+      const nombreGenerado = `Temporada Pesca - ${idWatched} - ${numeroResolucionWatched}`;
+      setValue("nombre", nombreGenerado);
+    } else if (idWatched) {
+      const nombreGenerado = `Temporada Pesca - ${idWatched}`;
+      setValue("nombre", nombreGenerado);
+    }
+  }, [idWatched, numeroResolucionWatched, setValue]);
 
   const cargarDatos = async () => {
     try {
@@ -68,7 +84,7 @@ export default function DatosGeneralesTemporadaForm({
       // Solo autocompletar si no hay valor previo
       const valorActual = getValues("BahiaId");
       if (valorActual) return;
-      
+
       // Usar directamente el prop bahiasComerciales en lugar de filtrar personal
       if (bahiasComerciales.length === 1) {
         const valorCalculado = Number(bahiasComerciales[0].id);
@@ -78,8 +94,6 @@ export default function DatosGeneralesTemporadaForm({
       console.error("Error al autocompletar BahiaId:", error);
     }
   };
-
-
 
   // Opciones normalizadas para dropdowns
   const empresasOptions = empresas.map((empresa) => ({
@@ -199,6 +213,36 @@ export default function DatosGeneralesTemporadaForm({
               Número de la resolución ministerial
             </small>
           </div>
+          {/* Estado de Temporada */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="estadoTemporadaId" className="font-semibold">
+              Estado de Temporada *
+            </label>
+            <Controller
+              name="estadoTemporadaId"
+              control={control}
+              rules={{ required: "El estado es obligatorio" }}
+              render={({ field }) => (
+                <Dropdown
+                  id="estadoTemporadaId"
+                  {...field}
+                  value={field.value ? Number(field.value) : null}
+                  options={estadosTemporadaOptions}
+                  placeholder="Seleccione un estado"
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({
+                    "p-invalid": errors.estadoTemporadaId,
+                  })}
+                />
+              )}
+            />
+            {errors.estadoTemporadaId && (
+              <Message
+                severity="error"
+                text={errors.estadoTemporadaId.message}
+              />
+            )}
+          </div>
         </div>
 
         <div
@@ -208,34 +252,8 @@ export default function DatosGeneralesTemporadaForm({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          {/* Nombre de Temporada */}
+          {/* Fecha de Inicio */}
           <div style={{ flex: 1 }}>
-            <label htmlFor="nombre" className="font-semibold">
-              Nombre de Temporada *
-            </label>
-            <Controller
-              name="nombre"
-              control={control}
-              rules={{
-                required: "El nombre es obligatorio",
-                minLength: { value: 3, message: "Mínimo 3 caracteres" },
-              }}
-              render={({ field }) => (
-                <InputText
-                  id="nombre"
-                  {...field}
-                  placeholder="Ej: Temporada Anchoveta 2024"
-                  style={{ fontWeight: "bold" }}
-                  className={classNames({ "p-invalid": errors.nombre })}
-                />
-              )}
-            />
-            {errors.nombre && (
-              <Message severity="error" text={errors.nombre.message} />
-            )}
-          </div>
-                    {/* Fecha de Inicio */}
-                    <div style={{ flex: 1 }}>
             <label htmlFor="fechaInicio" className="font-semibold">
               Fecha de Inicio *
             </label>
@@ -261,7 +279,7 @@ export default function DatosGeneralesTemporadaForm({
                   dateFormat="dd/mm/yy"
                   placeholder="Seleccione fecha de inicio"
                   showIcon
-                  style={{ fontWeight: "bold" }}
+                  inputStyle={{ fontWeight: "bold" }}
                   className={classNames({ "p-invalid": errors.fechaInicio })}
                 />
               )}
@@ -298,7 +316,7 @@ export default function DatosGeneralesTemporadaForm({
                   dateFormat="dd/mm/yy"
                   placeholder="Seleccione fecha de fin"
                   showIcon
-                  style={{ fontWeight: "bold" }}
+                  inputStyle={{ fontWeight: "bold" }}
                   className={classNames({ "p-invalid": errors.fechaFin })}
                 />
               )}
@@ -307,29 +325,10 @@ export default function DatosGeneralesTemporadaForm({
               <Message severity="error" text={errors.fechaFin.message} />
             )}
           </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
           {/* Cuota Propia */}
           <div style={{ flex: 1 }}>
             <label htmlFor="cuotaPropiaTon" className="font-semibold">
-              Cuota Propia (Toneladas)
+              Cuota Propia
             </label>
             <Controller
               name="cuotaPropiaTon"
@@ -346,9 +345,9 @@ export default function DatosGeneralesTemporadaForm({
                   mode="decimal"
                   minFractionDigits={0}
                   maxFractionDigits={2}
+                  inputStyle={{ fontWeight: "bold" }}
                   min={0}
                   suffix=" Ton"
-                  style={{ fontWeight: "bold" }}
                   className={classNames({
                     "p-invalid": errors.cuotaPropiaTon,
                   })}
@@ -363,7 +362,7 @@ export default function DatosGeneralesTemporadaForm({
           {/* Cuota Alquilada */}
           <div style={{ flex: 1 }}>
             <label htmlFor="cuotaAlquiladaTon" className="font-semibold">
-              Cuota Alquilada (Toneladas)
+              Cuota Alquilada
             </label>
             <Controller
               name="cuotaAlquiladaTon"
@@ -380,6 +379,7 @@ export default function DatosGeneralesTemporadaForm({
                   mode="decimal"
                   minFractionDigits={0}
                   maxFractionDigits={2}
+                  inputStyle={{ fontWeight: "bold" }}
                   min={0}
                   suffix=" Ton"
                   className={classNames({
@@ -392,37 +392,6 @@ export default function DatosGeneralesTemporadaForm({
               <Message
                 severity="error"
                 text={errors.cuotaAlquiladaTon.message}
-              />
-            )}
-          </div>
-
-          {/* Estado de Temporada */}
-          <div style={{ flex: 1 }}>
-            <label htmlFor="estadoTemporadaId" className="font-semibold">
-              Estado de Temporada *
-            </label>
-            <Controller
-              name="estadoTemporadaId"
-              control={control}
-              rules={{ required: "El estado es obligatorio" }}
-              render={({ field }) => (
-                <Dropdown
-                  id="estadoTemporadaId"
-                  {...field}
-                  value={field.value ? Number(field.value) : null}
-                  options={estadosTemporadaOptions}
-                  placeholder="Seleccione un estado"
-                  style={{ fontWeight: "bold" }}
-                  className={classNames({
-                    "p-invalid": errors.estadoTemporadaId,
-                  })}
-                />
-              )}
-            />
-            {errors.estadoTemporadaId && (
-              <Message
-                severity="error"
-                text={errors.estadoTemporadaId.message}
               />
             )}
           </div>

@@ -97,7 +97,6 @@ export default function DocumentacionPersonal() {
         ]);
 
       if (personalRes.status === "fulfilled") {
-        console.log("Personal data:", personalRes.value); // Debug log
         const empresasData =
           empresasRes.status === "fulfilled" ? empresasRes.value : [];
         const personalData = personalRes.value.map((p) => {

@@ -99,11 +99,6 @@ const DetallePreciosEntidad = forwardRef(
     const [confirmVisible, setConfirmVisible] = useState(false);
     const [precioAEliminar, setPrecioAEliminar] = useState(null);
     const [globalFilter, setGlobalFilter] = useState("");
-    console.log("DetallePreciosEntidad", {
-      entidadComercialId,
-      empresaId,
-      productos,
-    });
     // Referencias
     const toast = useRef(null);
     const { usuario } = useAuthStore();
@@ -342,15 +337,8 @@ const DetallePreciosEntidad = forwardRef(
             life: 3000,
           });
         } else {
-          console.log(
-            "Else onSubmitPrecio",
-            precioNormalizado,
-            "precioSeleccionado",
-            precioSeleccionado
-          );
           // Crear nuevo precio
           resultado = await crearPrecioEntidad(precioNormalizado);
-          console.log("resultado", resultado);
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
@@ -842,11 +830,9 @@ const DetallePreciosEntidad = forwardRef(
                 onClick={async () => {
                   // Validar formulario manualmente
                   const isValid = await trigger();
-                  console.log("isValid", isValid);
                   if (isValid) {
                     // Obtener datos del formulario y guardar
                     const formData = getValues();
-                    console.log("formData", formData);
                     await onSubmitPrecio(formData);
                   }
                 }}

@@ -402,7 +402,8 @@ export default function MultiCrud() {
               { label: "Temporada Pesca", icon: "pi pi-leaf", command: () => abrirModulo("temporadaPesca", "Temporada Pesca") },
               { label: "Faena Temporada", icon: "pi pi-leaf", command: () => abrirModulo("faenaPesca", "Faena Temporada Pesca") },
               { label: "Entregas a Rendir", icon: "pi pi-snowflake", command: () => abrirModulo("entregaARendir", "Entregas a Rendir Temporada Pesca") },
-              { label: "Liquidaciones", icon: "pi pi-calendar", command: () => abrirModulo("liquidacionTemporadaPesca", "Liquidaciones Temporada Pesca") }
+              { label: "Liquidaciones", icon: "pi pi-calendar", command: () => abrirModulo("liquidacionTemporadaPesca", "Liquidaciones Temporada Pesca") },
+              { label: "Especies", icon: "pi pi-leaf", command: () => abrirModulo("especie", "Especies") }
             ]
           },
           {

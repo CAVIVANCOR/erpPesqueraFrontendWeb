@@ -47,7 +47,6 @@ export async function eliminarEmbarcacion(id) {
  * @returns {Promise<object>} - Objeto con la respuesta del servidor.
  */
 export const subirFotoEmbarcacion = async (id, archivoFoto) => {
-  console.log("subirFotoEmbarcacion", id, archivoFoto);
   const formData = new FormData();
   formData.append('foto', archivoFoto);
   const token = useAuthStore.getState().token;

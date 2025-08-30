@@ -200,21 +200,13 @@ const DetalleFaenasPescaCard = ({
    * Guardar faena
    */
   const onSubmit = async (data) => {
-    console.log("DetalleFaenasPescaCard - onSubmit ejecutándose");
-    console.log("Data recibida:", data);
-    console.log("editingFaena:", editingFaena);
-    
     try {
       const faenaData = {
         ...data,
         fechaSalida: data.fechaSalida ? data.fechaSalida.toISOString() : null,
         fechaRetorno: data.fechaRetorno ? data.fechaRetorno.toISOString() : null,
       };
-      
-      console.log("faenaData preparada:", faenaData);
-
       if (editingFaena) {
-        console.log("Actualizando faena con ID:", editingFaena.id);
         await actualizarFaenaPesca(editingFaena.id, faenaData);
         toast.current?.show({
           severity: "success",
@@ -223,7 +215,6 @@ const DetalleFaenasPescaCard = ({
           life: 3000,
         });
       } else {
-        console.log("Creando nueva faena");
         await crearFaenaPesca(faenaData);
         toast.current?.show({
           severity: "success",
@@ -292,28 +283,15 @@ const DetalleFaenasPescaCard = ({
   // Configuración de columnas
   const columns = [
     {
-      field: "descripcion",
-      header: "Descripción",
+      field: "id",
+      header: "ID Faena",
       sortable: true,
-    },
-    {
-      field: "fechaSalida",
-      header: "Fecha Salida",
-      sortable: true,
-      body: (rowData) => rowData.fechaSalida ? new Date(rowData.fechaSalida).toLocaleDateString() : '-',
-    },
-    {
-      field: "fechaRetorno",
-      header: "Fecha Retorno",
-      sortable: true,
-      body: (rowData) => rowData.fechaRetorno ? new Date(rowData.fechaRetorno).toLocaleDateString() : '-',
     },
     {
       field: "embarcacionId",
       header: "Embarcación",
       sortable: true,
       body: (rowData) => {
-        console.log("Embarcación rowData:", rowData.embarcacionId, "embarcaciones:", embarcaciones);
         const embarcacion = embarcaciones.find(e => Number(e.id) === Number(rowData.embarcacionId));
         return embarcacion ? embarcacion.activo?.nombre || 'Sin nombre' : 'N/A';
       },
@@ -323,7 +301,6 @@ const DetalleFaenasPescaCard = ({
       header: "Boliche",
       sortable: true,
       body: (rowData) => {
-        console.log("Boliche rowData:", rowData.bolicheRedId, "boliches:", boliches);
         const boliche = boliches.find(b => Number(b.id) === Number(rowData.bolicheRedId));
         return boliche ? boliche.descripcion : 'N/A';
       },
@@ -333,7 +310,6 @@ const DetalleFaenasPescaCard = ({
       header: "Bahía",
       sortable: true,
       body: (rowData) => {
-        console.log("Bahía rowData:", rowData.bahiaId, "bahiasComerciales:", bahiasComerciales);
         const bahia = bahiasComerciales.find(b => Number(b.id) === Number(rowData.bahiaId));
         return bahia ? `${bahia.nombres} ${bahia.apellidos}` : 'N/A';
       },
@@ -343,7 +319,6 @@ const DetalleFaenasPescaCard = ({
       header: "Patrón",
       sortable: true,
       body: (rowData) => {
-        console.log("Patrón rowData:", rowData.patronId, "patrones:", patrones);
         const patron = patrones.find(p => Number(p.id) === Number(rowData.patronId));
         return patron ? `${patron.nombres} ${patron.apellidos}` : 'N/A';
       },
@@ -353,16 +328,27 @@ const DetalleFaenasPescaCard = ({
       header: "Motorista",
       sortable: true,
       body: (rowData) => {
-        console.log("Motorista rowData:", rowData.motoristaId, "motoristas:", motoristas);
         const motorista = motoristas.find(m => Number(m.id) === Number(rowData.motoristaId));
         return motorista ? `${motorista.nombres} ${motorista.apellidos}` : 'N/A';
       },
     },
     {
+      field: "fechaSalida",
+      header: "Fecha Zarpe",
+      sortable: true,
+      body: (rowData) => rowData.fechaSalida ? new Date(rowData.fechaSalida).toLocaleDateString() : '-',
+    },
+    {
       field: "puertoSalidaId",
-      header: "Puerto Salida",
+      header: "Puerto Zarpe",
       sortable: true,
       body: (rowData) => obtenerNombrePuerto(rowData.puertoSalidaId),
+    },
+    {
+      field: "fechaRetorno",
+      header: "Fecha Retorno",
+      sortable: true,
+      body: (rowData) => rowData.fechaRetorno ? new Date(rowData.fechaRetorno).toLocaleDateString() : '-',
     },
     {
       field: "puertoRetornoId",
@@ -481,10 +467,11 @@ const DetalleFaenasPescaCard = ({
         onHide={() => setDialogVisible(false)}
       >
         <FaenaPescaForm
+          visible={dialogVisible}
+          onHide={() => setDialogVisible(false)}
           isEdit={!!editingFaena}
           defaultValues={editingFaena || {}}
           onSubmit={onSubmit}
-          onCancel={() => setDialogVisible(false)}
           loading={loading}
           temporadaData={temporadaData}
           embarcacionesOptions={embarcaciones.map((e) => ({ 

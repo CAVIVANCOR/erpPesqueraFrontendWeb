@@ -135,7 +135,6 @@ export default function DatosGeneralesEmbarcacionForm({
 
     try {
       // Sube la foto usando el endpoint profesional
-      console.log("defaultValues.id", defaultValues.id, "file", file);
       const res = await subirFotoEmbarcacion(defaultValues.id, file);
       setValue("urlFotoEmbarcacion", res.foto, { shouldValidate: true });
 

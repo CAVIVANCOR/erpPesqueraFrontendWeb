@@ -1,11 +1,11 @@
 // src/components/faenaPesca/FaenaPescaForm.jsx
 // Formulario profesional para FaenaPesca. Cumple la regla transversal ERP Megui.
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "primereact/button";
-import { InputText } from "primereact/inputtext";
-import { Calendar } from "primereact/calendar";
-import { InputTextarea } from "primereact/inputtextarea";
-import { Dropdown } from "primereact/dropdown";
+import { Dialog } from "primereact/dialog";
+import { ButtonGroup } from "primereact/buttongroup";
+import { Toast } from "primereact/toast";
+import { Tag } from "primereact/tag";
 
 // APIs
 import {
@@ -18,11 +18,17 @@ import { getBolichesPorPescaIndustrial } from "../../api/bolicheRed";
 import { getPuertosActivos } from "../../api/puertoPesca";
 import { getTemporadaPescaPorId } from "../../api/temporadaPesca";
 
+// Componentes de cards
+import DatosGeneralesFaenaPesca from "./DatosGeneralesFaenaPesca";
+import DetalleAccionesPreviasForm from "./DetalleAccionesPreviasForm";
+import InformeFaenaPescaForm from "./InformeFaenaPescaForm";
+
 export default function FaenaPescaForm({
+  visible,
+  onHide,
   isEdit = false,
   defaultValues = {},
   onSubmit,
-  onCancel,
   loading = false,
   temporadaData,
   embarcacionesOptions = [],
@@ -32,6 +38,11 @@ export default function FaenaPescaForm({
   patronesOptions = [],
   puertosOptions = [],
 }) {
+  // Estados principales
+  const [activeCard, setActiveCard] = useState("datos-generales");
+  const toast = React.useRef(null);
+
+  // Estados del formulario
   const [temporadaId, setTemporadaId] = React.useState(
     defaultValues.temporadaId || ""
   );
@@ -48,6 +59,9 @@ export default function FaenaPescaForm({
   );
   const [fechaRetorno, setFechaRetorno] = React.useState(
     defaultValues.fechaRetorno ? new Date(defaultValues.fechaRetorno) : null
+  );
+  const [fechaDescarga, setFechaDescarga] = React.useState(
+    defaultValues.fechaDescarga ? new Date(defaultValues.fechaDescarga) : null
   );
   const [puertoSalidaId, setPuertoSalidaId] = React.useState(
     defaultValues.puertoSalidaId || ""
@@ -79,11 +93,6 @@ export default function FaenaPescaForm({
   const [puertos, setPuertos] = React.useState(puertosOptions);
 
   useEffect(() => {
-    console.log(
-      "FaenaPescaForm - useEffect ejecutándose, temporadaData:",
-      temporadaData
-    );
-
     // Actualizar opciones cuando cambien las props
     setBahias(bahiasComercialesOptions);
     setMotoristas(motoristasOptions);
@@ -95,10 +104,8 @@ export default function FaenaPescaForm({
     const cargarDatos = async () => {
       try {
         if (temporadaData) {
-          console.log("TemporadaData recibida:", temporadaData);
           setTemporada(temporadaData);
         } else {
-          console.log("No se recibió temporadaData");
         }
       } catch (error) {
         console.error("Error general cargando datos para dropdowns:", error);
@@ -128,6 +135,9 @@ export default function FaenaPescaForm({
     setFechaRetorno(
       defaultValues.fechaRetorno ? new Date(defaultValues.fechaRetorno) : null
     );
+    setFechaDescarga(
+      defaultValues.fechaDescarga ? new Date(defaultValues.fechaDescarga) : null
+    );
     setPuertoSalidaId(defaultValues.puertoSalidaId || "");
     setPuertoRetornoId(defaultValues.puertoRetornoId || "");
     setPuertoDescargaId(defaultValues.puertoDescargaId || "");
@@ -138,23 +148,6 @@ export default function FaenaPescaForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("FaenaPescaForm - handleSubmit ejecutándose");
-    console.log("Datos del formulario:", {
-      temporadaId,
-      bahiaId,
-      motoristaId,
-      patronId,
-      descripcion,
-      fechaSalida,
-      fechaRetorno,
-      puertoSalidaId,
-      puertoRetornoId,
-      puertoDescargaId,
-      embarcacionId,
-      bolicheRedId,
-      urlInformeFaena,
-    });
-    
     onSubmit({
       bahiaId: bahiaId ? Number(bahiaId) : null,
       motoristaId: motoristaId ? Number(motoristaId) : null,
@@ -162,6 +155,7 @@ export default function FaenaPescaForm({
       descripcion,
       fechaSalida,
       fechaRetorno,
+      fechaDescarga,
       puertoSalidaId: puertoSalidaId ? Number(puertoSalidaId) : null,
       puertoRetornoId: puertoRetornoId ? Number(puertoRetornoId) : null,
       puertoDescargaId: puertoDescargaId ? Number(puertoDescargaId) : null,
@@ -171,278 +165,179 @@ export default function FaenaPescaForm({
     });
   };
 
+  /**
+   * Función para navegar entre cards
+   */
+  const handleNavigateToCard = (cardName) => {
+    setActiveCard(cardName);
+  };
+
+  /**
+   * Manejar cierre del diálogo
+   */
+  const handleHide = () => {
+    setActiveCard("datos-generales");
+    onHide();
+  };
+
+  /**
+   * Footer del diálogo con botones de acción
+   */
+  const dialogFooter = (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        gap: 8,
+        marginTop: 18,
+      }}
+    >
+      <Button
+        label="Cancelar"
+        icon="pi pi-times"
+        onClick={handleHide}
+        className="p-button-text"
+        severity="danger"
+        raised
+        outlined
+        size="small"
+      />
+      <Button
+        label={isEdit ? "Actualizar" : "Crear"}
+        icon="pi pi-check"
+        onClick={handleSubmit}
+        className="p-button-success"
+        loading={loading}
+        severity="success"
+        raised
+        outlined
+        size="small"
+      />
+    </div>
+  );
+
   return (
-    <form onSubmit={handleSubmit} className="p-fluid">
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="temporadaId">Temporada*</label>
-          <InputTextarea
-            id="temporadaId"
-            value={temporadaData?.nombre || "Sin temporada"}
-            disabled={true}
-            rows={2}
-            style={{ fontWeight: "bold" }}
-            placeholder="Temporada será cargada automáticamente"
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="descripcion">Faena Descripción</label>
-          <InputTextarea
-            id="descripcion"
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            rows={2}
-            disabled={loading}
-            style={{ fontWeight: "bold" }}
-          />
-        </div>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="bahiaId">Bahía*</label>
-          <Dropdown
-            id="bahiaId"
-            value={bahiaId}
-            options={bahias}
-            optionLabel="label"
-            optionValue="value"
-            onChange={(e) => setBahiaId(e.value)}
-            style={{ fontWeight: "bold" }}
-            placeholder="Seleccione bahía comercial"
-            required
-            disabled={loading}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="motoristaId">Motorista*</label>
-          <Dropdown
-            id="motoristaId"
-            value={motoristaId}
-            options={motoristas}
-            optionLabel="label"
-            optionValue="value"
-            onChange={(e) => setMotoristaId(e.value)}
-            style={{ fontWeight: "bold" }}
-            placeholder="Seleccione motorista"
-            required
-            disabled={loading}
-          />
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="patronId">Patrón*</label>
-          <Dropdown
-            id="patronId"
-            value={patronId}
-            options={patrones}
-            optionLabel="label"
-            optionValue="value"
-            onChange={(e) => setPatronId(e.value)}
-            style={{ fontWeight: "bold" }}
-            placeholder="Seleccione patrón"
-            required
-            disabled={loading}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="puertoSalidaId">Puerto Salida*</label>
-          <Dropdown
-            id="puertoSalidaId"
-            value={puertoSalidaId}
-            options={puertos}
-            optionLabel="label"
-            optionValue="value"
-            onChange={(e) => setPuertoSalidaId(e.value)}
-            style={{ fontWeight: "bold" }}
-            placeholder="Seleccione puerto de salida"
-            required
-            disabled={loading}
-          />
-        </div>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaSalida">Fecha Salida*</label>
-          <Calendar
-            id="fechaSalida"
-            value={fechaSalida}
-            onChange={(e) => setFechaSalida(e.value)}
-            showIcon
-            dateFormat="yy-mm-dd"
-            disabled={loading}
-            required
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaRetorno">Fecha Retorno*</label>
-          <Calendar
-            id="fechaRetorno"
-            value={fechaRetorno}
-            onChange={(e) => setFechaRetorno(e.value)}
-            showIcon
-            dateFormat="yy-mm-dd"
-            disabled={loading}
-            required
-          />
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="puertoRetornoId">Puerto Retorno*</label>
-          <Dropdown
-            id="puertoRetornoId"
-            value={puertoRetornoId}
-            options={puertos}
-            optionLabel="label"
-            optionValue="value"
-            onChange={(e) => setPuertoRetornoId(e.value)}
-            style={{ fontWeight: "bold" }}
-            placeholder="Seleccione puerto de retorno"
-            required
-            disabled={loading}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="puertoDescargaId">Puerto Descarga*</label>
-          <Dropdown
-            id="puertoDescargaId"
-            value={puertoDescargaId}
-            options={puertos}
-            optionLabel="label"
-            optionValue="value"
-            onChange={(e) => setPuertoDescargaId(e.value)}
-            style={{ fontWeight: "bold" }}
-            placeholder="Seleccione puerto de descarga"
-            required
-            disabled={loading}
-          />
-        </div>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="embarcacionId">Embarcación</label>
-          <Dropdown
-            id="embarcacionId"
-            value={embarcacionId}
-            options={embarcaciones}
-            optionLabel="label"
-            optionValue="value"
-            onChange={(e) => setEmbarcacionId(e.value)}
-            style={{ fontWeight: "bold" }}
-            placeholder="Seleccione embarcación"
-            disabled={loading}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="bolicheRedId">Boliche Red</label>
-          <Dropdown
-            id="bolicheRedId"
-            value={bolicheRedId}
-            options={boliches}
-            optionLabel="label"
-            optionValue="value"
-            onChange={(e) => setBolicheRedId(e.value)}
-            style={{ fontWeight: "bold" }}
-            placeholder="Seleccione boliche red"
-            disabled={loading}
-          />
-        </div>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="urlInformeFaena">URL Informe Faena</label>
-          <InputText
-            id="urlInformeFaena"
-            value={urlInformeFaena}
-            onChange={(e) => setUrlInformeFaena(e.target.value)}
-            disabled
-            style={{ fontWeight: "bold" }}
-            placeholder="URL Informe Faena"
-          />
-        </div>
-      </div>
-
-      {/* Botones de acción */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 8,
-          marginTop: 18,
-        }}
-      >
-        <Button
-          type="button"
-          label="Cancelar"
-          className="p-button-text"
-          onClick={onCancel}
-          disabled={loading}
-          severity="danger"
-          raised
-          outlined
-          size="small"
-        />
-        <Button
-          type="submit"
-          label={isEdit ? "Actualizar" : "Crear"}
-          icon="pi pi-save"
-          className="p-button-success"
-          severity="success"
-          raised
-          outlined
-          size="small"
-          loading={loading}
-          onClick={(e) => {
-            console.log("Botón Actualizar clickeado");
-            handleSubmit(e);
+    <Dialog
+      visible={visible}
+      style={{ width: "1300px" }}
+      header={isEdit ? "Editar Faena de Pesca" : "Nueva Faena de Pesca"}
+      modal
+      footer={dialogFooter}
+      onHide={handleHide}
+    >
+      {/* Mostrar descripción de faena con Tag */}
+      <div className="flex justify-content-center mb-4">
+        <Tag
+          value={descripcion || "Nueva Faena de Pesca"}
+          severity="info"
+          style={{
+            fontSize: "1.1rem",
+            padding: "0.75rem 1.25rem",
+            textTransform: "uppercase",
+            fontWeight: "bold",
+            textAlign: "center",
+            width: "100%",
           }}
         />
       </div>
-    </form>
+
+      {/* Navegación de Cards */}
+      <div
+        className="mb-4"
+        style={{ display: "flex", justifyContent: "center", marginTop: "0.5rem" }}
+      >
+        <ButtonGroup>
+          <Button
+            icon="pi pi-info-circle"
+            tooltip="Datos Generales"
+            tooltipOptions={{ position: "bottom" }}
+            className={
+              activeCard === "datos-generales"
+                ? "p-button-info"
+                : "p-button-outlined"
+            }
+            onClick={() => handleNavigateToCard("datos-generales")}
+            type="button"
+          />
+          <Button
+            icon="pi pi-list"
+            tooltip="Acciones Previas"
+            tooltipOptions={{ position: "bottom" }}
+            className={
+              activeCard === "acciones-previas"
+                ? "p-button-info"
+                : "p-button-outlined"
+            }
+            onClick={() => handleNavigateToCard("acciones-previas")}
+            type="button"
+          />
+          <Button
+            icon="pi pi-file"
+            tooltip="Informe de Faena"
+            tooltipOptions={{ position: "bottom" }}
+            className={
+              activeCard === "informe" ? "p-button-info" : "p-button-outlined"
+            }
+            onClick={() => handleNavigateToCard("informe")}
+            type="button"
+          />
+        </ButtonGroup>
+      </div>
+
+      {/* Contenido de Cards */}
+      <div className="p-fluid">
+        {activeCard === "datos-generales" && (
+          <DatosGeneralesFaenaPesca
+            temporadaData={temporadaData}
+            descripcion={descripcion}
+            setDescripcion={setDescripcion}
+            bahiaId={bahiaId}
+            setBahiaId={setBahiaId}
+            motoristaId={motoristaId}
+            setMotoristaId={setMotoristaId}
+            patronId={patronId}
+            setPatronId={setPatronId}
+            puertoSalidaId={puertoSalidaId}
+            setPuertoSalidaId={setPuertoSalidaId}
+            fechaSalida={fechaSalida}
+            setFechaSalida={setFechaSalida}
+            fechaRetorno={fechaRetorno}
+            setFechaRetorno={setFechaRetorno}
+            fechaDescarga={fechaDescarga}
+            setFechaDescarga={setFechaDescarga}
+            puertoRetornoId={puertoRetornoId}
+            setPuertoRetornoId={setPuertoRetornoId}
+            puertoDescargaId={puertoDescargaId}
+            setPuertoDescargaId={setPuertoDescargaId}
+            embarcacionId={embarcacionId}
+            setEmbarcacionId={setEmbarcacionId}
+            bolicheRedId={bolicheRedId}
+            setBolicheRedId={setBolicheRedId}
+            bahias={bahias}
+            motoristas={motoristas}
+            patrones={patrones}
+            puertos={puertos}
+            embarcaciones={embarcaciones}
+            boliches={boliches}
+            faenaPescaId={defaultValues.id}
+            loading={loading}
+          />
+        )}
+
+        {activeCard === "acciones-previas" && (
+          <DetalleAccionesPreviasForm temporadaPescaId={temporadaData?.id} />
+        )}
+
+        {activeCard === "informe" && (
+          <InformeFaenaPescaForm
+            urlInformeFaena={urlInformeFaena}
+            setUrlInformeFaena={setUrlInformeFaena}
+            loading={loading}
+          />
+        )}
+      </div>
+
+      <Toast ref={toast} />
+    </Dialog>
   );
 }

@@ -134,12 +134,9 @@ export default function BolicheRedForm({ bolicheRed, onGuardar, onCancelar }) {
    */
   const cargarCombos = async () => {
     try {
-      console.log("BolicheRedForm - Cargando combos...");
       const activosData = await getActivos();
-      console.log("BolicheRedForm - activosData:", activosData);
       setActivos(activosData);
       const estadosActivoData = await getEstadosMultiFuncionPorTipoProvieneDe();
-      console.log("BolicheRedForm - estadosActivoData:", estadosActivoData);
       setEstadosActivo(estadosActivoData);
     } catch (error) {
       console.error("Error al cargar combos:", error);
@@ -154,16 +151,10 @@ export default function BolicheRedForm({ bolicheRed, onGuardar, onCancelar }) {
   // Cargar datos en modo edición
   useEffect(() => {
     if (bolicheRed && activos.length > 0 && estadosActivo.length > 0) {
-      console.log("BolicheRedForm - Cargando datos del registro:", bolicheRed);
       setValue("id", bolicheRed.id);
       setValue("activoId", bolicheRed.activoId);
-      console.log("BolicheRedForm - activoId setValue:", bolicheRed.activoId);
       setValue("descripcion", bolicheRed.descripcion || "");
       setValue("estadoActivoId", bolicheRed.estadoActivoId);
-      console.log(
-        "BolicheRedForm - estadoActivoId setValue:",
-        bolicheRed.estadoActivoId
-      );
       setValue("largoContraido", bolicheRed.largoContraido || null);
       setValue("largoExpandido", bolicheRed.largoExpandido || null);
       setValue("altoM", bolicheRed.altoM || null);

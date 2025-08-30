@@ -100,8 +100,6 @@ const DetalleVehiculosEntidad = forwardRef(
     },
     ref
   ) => {
-    //console.log('Parametros entidadComercial:', "entidadComercialId",entidadComercialId, "vehiculos",entidadComercial.vehiculos, "entidadComercial", entidadComercial);
-    // Estados del componente
     const [vehiculosData, setVehiculosData] = useState([]);
     const [tiposVehiculo, setTiposVehiculo] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -399,16 +397,12 @@ const DetalleVehiculosEntidad = forwardRef(
 
     const cargarActivos = async () => {
       try {
-        const activos = await getVehiculosPorRuc(entidadComercial.numeroDocumento);
-        console.log('activos', activos);
-        
+        const activos = await getVehiculosPorRuc(entidadComercial.numeroDocumento);        
         // Formatear activos para el dropdown
         const activosFormateados = activos.map(activo => ({
           value: Number(activo.id),
           label: `${activo.nombre}${activo.descripcion ? ' - ' + activo.descripcion : ''}`
         }));
-        
-        console.log('activos formateados:', activosFormateados);
         setActivos(activosFormateados);
       } catch (error) {
         console.error('Error al cargar activos:', error);

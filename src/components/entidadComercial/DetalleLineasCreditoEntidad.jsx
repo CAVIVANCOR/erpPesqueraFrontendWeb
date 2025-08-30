@@ -91,7 +91,6 @@ const DetalleLineasCreditoEntidad = forwardRef(
     },
     ref
   ) => {
-    console.log("EntidadComercialId", entidadComercialId);
     // Estados del componente
     const [lineasCreditoData, setLineasCreditoData] = useState(lineasCredito);
     const [loading, setLoading] = useState(false);
@@ -141,9 +140,7 @@ const DetalleLineasCreditoEntidad = forwardRef(
      */
     const cargarMonedas = async () => {
       try {
-        const data = await getMonedas();
-        console.log("cargarMonedas: data", data);
-        
+        const data = await getMonedas();        
         // Formatear monedas para el dropdown
         const monedasFormateadas = data
           .filter(moneda => moneda.activo)
@@ -151,8 +148,6 @@ const DetalleLineasCreditoEntidad = forwardRef(
             value: Number(moneda.id),
             label: `${moneda.codigoSunat} - ${moneda.nombreLargo}`
           }));
-        
-        console.log("monedas formateadas:", monedasFormateadas);
         setMonedasData(monedasFormateadas);
       } catch (error) {
         console.error("Error al cargar monedas:", error);
@@ -379,7 +374,6 @@ const DetalleLineasCreditoEntidad = forwardRef(
 
     // Templates para las columnas
     const monedaTemplate = (rowData) => {
-      console.log("rowData", rowData, "monedasData", monedasData);
       const moneda = monedasData.find(
         (m) => Number(m.value) === Number(rowData.monedaId)
       );

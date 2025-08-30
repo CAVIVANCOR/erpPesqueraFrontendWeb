@@ -385,7 +385,6 @@ export default function PersonalPage() {
       };
       if (isEdit && selected) {
         // Edición de personal existente
-        console.log("Personal a editar:", personalPayload);
         await actualizarPersonal(selected.id, personalPayload);
         toast?.show({
           severity: "success",
