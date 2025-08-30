@@ -177,7 +177,7 @@ const TemporadaPesca = () => {
    * Abrir formulario para nueva temporada
    */
   const openNew = () => {
-    setEditingItem(null);
+    setEditingItem({ empresaId: filtroEmpresa });
     setShowForm(true);
   };
 
@@ -259,7 +259,8 @@ const TemporadaPesca = () => {
    */
   const saveItem = async (data) => {
     try {
-      if (editingItem) {
+      if (editingItem?.id) {
+        // Actualizar temporada existente
         await actualizarTemporadaPesca(editingItem.id, data);
         toast.current?.show({
           severity: "success",
@@ -268,6 +269,7 @@ const TemporadaPesca = () => {
           life: 3000,
         });
       } else {
+        // Crear nueva temporada
         await crearTemporadaPesca(data);
         toast.current?.show({
           severity: "success",
@@ -461,17 +463,6 @@ const TemporadaPesca = () => {
                 <h2>Gestión de Temporadas de Pesca</h2>
               </div>
               <div style={{ flex: 1 }}>
-                <Button
-                  label="Nueva Temporada"
-                  icon="pi pi-plus"
-                  className="p-button-success"
-                  raised
-                  outlined
-                  size="small"
-                  onClick={openNew}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
                 <Dropdown
                   value={filtroEmpresa}
                   options={empresas}
@@ -483,6 +474,21 @@ const TemporadaPesca = () => {
                   showClear
                 />
               </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Nueva Temporada"
+                  icon="pi pi-plus"
+                  className="p-button-success"
+                  raised
+                  outlined
+                  size="small"
+                  onClick={openNew}
+                  disabled={!filtroEmpresa}
+                  tooltip={!filtroEmpresa ? "Seleccione una empresa para crear una nueva temporada" : "Crear nueva temporada"}
+                  tooltipOptions={{ position: "bottom" }}
+                />
+              </div>
+
               <div style={{ flex: 1 }}>
                 <Dropdown
                   value={filtroEstado}

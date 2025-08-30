@@ -31,18 +31,8 @@ import {
   actualizarFaenaPesca,
   eliminarFaenaPesca,
 } from "../../api/faenaPesca";
-import { getTemporadaPescaPorId } from "../../api/temporadaPesca";
 import { getPuertosPesca } from "../../api/puertoPesca";
-import { getEmbarcaciones } from "../../api/embarcacion";
-import { getAllBolicheRed } from "../../api/bolicheRed";
-import { 
-  getBahiasComerciales,
-  getMotoristas,
-  getPatrones 
-} from "../../api/personal";
 import { getResponsiveFontSize } from "../../utils/utils";
-
-
 // Esquema de validación
 const schema = yup.object().shape({
   descripcion: yup.string().required("La descripción es obligatoria"),
@@ -63,6 +53,7 @@ const schema = yup.object().shape({
  * @param {Array} props.motoristas - Lista de motoristas disponibles
  * @param {Array} props.patron - Lista de patrones disponibles
  * @param {Object} props.temporadaData - Data de la temporada de pesca
+ * @param {Function} props.onRefresh - Callback para refrescar la lista de faenas
  */
 const DetalleFaenasPescaCard = ({
   temporadaPescaId,
@@ -73,7 +64,9 @@ const DetalleFaenasPescaCard = ({
   motoristas = [],
   patrones = [],
   temporadaData,
+  onRefresh, // Nueva prop para callback de refresco
 }) => {
+
   // Estados
   const [faenas, setFaenas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -134,6 +127,21 @@ const DetalleFaenasPescaCard = ({
   // Cargar faenas al montar o cambiar temporada
   useEffect(() => {
     cargarFaenas();
+  }, [temporadaPescaId]);
+
+  // Escuchar evento para refrescar faenas
+  useEffect(() => {
+    const handleRefreshFaenas = (event) => {
+      if (event.detail?.temporadaId === temporadaPescaId) {
+        cargarFaenas();
+      }
+    };
+    
+    window.addEventListener('refreshFaenas', handleRefreshFaenas);
+    
+    return () => {
+      window.removeEventListener('refreshFaenas', handleRefreshFaenas);
+    };
   }, [temporadaPescaId]);
 
   // Cargar puertos al montar el componente
@@ -428,7 +436,7 @@ const DetalleFaenasPescaCard = ({
         title={
           <div className="flex align-items-center gap-2">
             <i className="pi pi-anchor text-2xl"></i>
-            <span className="text-xl font-bold">Faenas de Pesca</span>
+            <span className="text-xl font-bold">Detalle Faenas de Pesca</span>
           </div>
         }
         className="shadow-2"
@@ -446,6 +454,7 @@ const DetalleFaenasPescaCard = ({
             loading={loading}
             paginator
             rows={10}
+            showGridlines
             emptyMessage="No hay faenas registradas para esta temporada"
             className="p-datatable-sm"
             onRowClick={(e) => handleEditarFaena(e.data)}

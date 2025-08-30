@@ -142,51 +142,37 @@ const TemporadaPescaForm = ({
   }, [estadoDefaultId, editingItem, setValue]);
 
   /**
-   * Filtrar bahías comerciales cuando cambie la empresa seleccionada
+   * Cargar responsables de faena al montar el componente
    */
   useEffect(() => {
-    if (empresaSeleccionada) {
-      const cargarResponsablesFaena = async () => {
-        try {
-          const bahiasData = await getBahiasComerciales(
-            Number(empresaSeleccionada),
-            "BAHIA COMERCIAL"
-          );
-          const motoristasData = await getMotoristas(
-            Number(empresaSeleccionada),
-            "MOTORISTA EMBARCACION"
-          );
-          const patronesData = await getPatrones(
-            Number(empresaSeleccionada),
-            "PATRON EMBARCACION"
-          );
+    const cargarResponsablesFaena = async () => {
+      try {
+        // Usar la empresa del editingItem o la primera empresa disponible
+        const empresaId = editingItem?.empresaId || empresas[0]?.id;
+        
+        if (empresaId) {
+          const [bahiasData, motoristasData, patronesData] = await Promise.all([
+            getBahiasComerciales(Number(empresaId), "BAHIA COMERCIAL"),
+            getMotoristas(Number(empresaId), "MOTORISTA EMBARCACION"),
+            getPatrones(Number(empresaId), "PATRON EMBARCACION")
+          ]);
+          
           setBahiasComerciales(bahiasData);
           setMotoristas(motoristasData);
           setPatrones(patronesData);
-        } catch (error) {
-          console.error("Error cargando bahías comerciales:", error);
-          setBahiasComerciales([]);
-          setMotoristas([]);
-          setPatrones([]);
         }
-      };
+      } catch (error) {
+        console.error("Error cargando responsables de faena:", error);
+        setBahiasComerciales([]);
+        setMotoristas([]);
+        setPatrones([]);
+      }
+    };
+    
+    if (empresas.length > 0) {
       cargarResponsablesFaena();
-    } else {
-      setBahiasComerciales([]);
-      setMotoristas([]);
-      setPatrones([]);
-      setValue("BahiaId", null);
     }
-  }, [empresaSeleccionada, setValue]);
-
-  /**
-   * Validar superposición cuando cambien fechas o estado
-   */
-  useEffect(() => {
-    if (fechaInicio && fechaFin && estadoSeleccionado && empresaSeleccionada) {
-      validarSuperposicionFechas();
-    }
-  }, [fechaInicio, fechaFin, estadoSeleccionado, empresaSeleccionada]);
+  }, [editingItem, empresas]);
 
   /**
    * Efecto para cargar datos cuando se edita un elemento
@@ -194,31 +180,19 @@ const TemporadaPescaForm = ({
   useEffect(() => {
     if (editingItem) {
       reset({
-        id: editingItem.id,
-        empresaId: Number(editingItem.empresaId),
-        BahiaId: Number(editingItem.BahiaId),
-        estadoTemporadaId: Number(editingItem.estadoTemporadaId) || 1,
-        nombre: editingItem.nombre,
-        fechaInicio: new Date(editingItem.fechaInicio),
-        fechaFin: new Date(editingItem.fechaFin),
+        id: editingItem.id || null,
+        empresaId: editingItem.empresaId ? Number(editingItem.empresaId) : null,
+        BahiaId: editingItem.BahiaId || null,
+        estadoTemporadaId: editingItem.estadoTemporadaId || estadoDefaultId,
+        nombre: editingItem.nombre || "",
+        fechaInicio: editingItem.fechaInicio ? new Date(editingItem.fechaInicio) : null,
+        fechaFin: editingItem.fechaFin ? new Date(editingItem.fechaFin) : null,
         numeroResolucion: editingItem.numeroResolucion || "",
         urlResolucionPdf: editingItem.urlResolucionPdf || "",
-        cuotaPropiaTon: editingItem.cuotaPropiaTon
-          ? Number(editingItem.cuotaPropiaTon)
-          : null,
-        cuotaAlquiladaTon: editingItem.cuotaAlquiladaTon
-          ? Number(editingItem.cuotaAlquiladaTon)
-          : null,
+        cuotaPropiaTon: editingItem.cuotaPropiaTon || null,
+        cuotaAlquiladaTon: editingItem.cuotaAlquiladaTon || null,
       });
-
-      if (editingItem.urlResolucionPdf) {
-        setArchivoSubido({
-          name: editingItem.numeroResolucion + ".pdf",
-          url: editingItem.urlResolucionPdf,
-        });
-      }
     } else {
-      // Limpiar formulario para nueva temporada
       reset({
         id: null,
         empresaId: null,
@@ -232,9 +206,17 @@ const TemporadaPescaForm = ({
         cuotaPropiaTon: null,
         cuotaAlquiladaTon: null,
       });
-      setArchivoSubido(null);
     }
   }, [editingItem, reset, estadoDefaultId]);
+
+  /**
+   * Validar superposición cuando cambien fechas o estado
+   */
+  useEffect(() => {
+    if (fechaInicio && fechaFin && estadoSeleccionado && empresaSeleccionada) {
+      validarSuperposicionFechas();
+    }
+  }, [fechaInicio, fechaFin, estadoSeleccionado, empresaSeleccionada]);
 
   /**
    * Validar superposición de fechas con otras temporadas
@@ -271,24 +253,49 @@ const TemporadaPescaForm = ({
    * Manejar envío del formulario
    */
   const onSubmit = (data) => {
+    // Validar campos obligatorios
+    const camposObligatorios = [];
+    
+    if (!data.empresaId) camposObligatorios.push("Empresa");
+    if (!data.BahiaId) camposObligatorios.push("Bahía Comercial");
+    if (!data.estadoTemporadaId) camposObligatorios.push("Estado de Temporada");
+    if (!data.numeroResolucion || !data.numeroResolucion.trim()) camposObligatorios.push("Número de Resolución");
+    if (!data.nombre || !data.nombre.trim()) camposObligatorios.push("Nombre (se genera automáticamente)");
+    if (!data.fechaInicio) camposObligatorios.push("Fecha de Inicio");
+    if (!data.fechaFin) camposObligatorios.push("Fecha de Fin");
+    
+    if (camposObligatorios.length > 0) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Campos Obligatorios",
+        detail: `Debe completar los siguientes campos: ${camposObligatorios.join(", ")}`,
+        life: 5000,
+      });
+      return;
+    }
+    
     // Preparar datos con normalización de IDs
     const formData = {
-      id: data.id,
       empresaId: Number(data.empresaId),
       BahiaId: Number(data.BahiaId),
       estadoTemporadaId: Number(data.estadoTemporadaId),
-      nombre: data.nombre.trim(),
+      nombre: data.nombre?.trim().toUpperCase() || '',
       fechaInicio: data.fechaInicio.toISOString(),
       fechaFin: data.fechaFin.toISOString(),
-      numeroResolucion: data.numeroResolucion?.trim() || null,
+      numeroResolucion: data.numeroResolucion?.trim().toUpperCase() || null,
       urlResolucionPdf:
         data.urlResolucionPdf?.trim() || archivoSubido?.url || null,
       cuotaPropiaTon: data.cuotaPropiaTon ? Number(data.cuotaPropiaTon) : null,
       cuotaAlquiladaTon: data.cuotaAlquiladaTon
         ? Number(data.cuotaAlquiladaTon)
         : null,
+      fechaActualizacion: new Date().toISOString(),
     };
 
+    // Solo incluir ID si existe y no es null (para edición)
+    if (data.id && editingItem?.id) {
+      formData.id = data.id;
+    }
     onSave(formData);
   };
 
@@ -326,12 +333,20 @@ const TemporadaPescaForm = ({
         // Actualizar el formulario para que el dropdown refleje el cambio
         setValue("estadoTemporadaId", resultado.temporadaActualizada.estadoTemporadaId);
         
+        // Refrescar las faenas de pesca para mostrar la nueva faena creada
+        // Necesitamos acceder al ref del DetalleFaenasPescaCard desde DatosGeneralesTemporadaForm
+        setTimeout(() => {
+          // Disparar evento personalizado para refrescar faenas
+          window.dispatchEvent(new CustomEvent('refreshFaenas', { 
+            detail: { temporadaId: editingItem.id } 
+          }));
+        }, 500);
       }
       
       toast.current.show({
         severity: "success",
         summary: "Éxito",
-        detail: "Temporada iniciada exitosamente",
+        detail: "Temporada iniciada correctamente",
         life: 3000,
       });
     } catch (error) {
@@ -339,7 +354,7 @@ const TemporadaPescaForm = ({
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.message || "Error al iniciar temporada",
+        detail: error.message || "No se pudo iniciar la temporada",
         life: 3000,
       });
     } finally {
@@ -378,6 +393,7 @@ const TemporadaPescaForm = ({
           severity="success"
           onClick={handleIniciarTemporada}
           loading={iniciandoTemporada}
+          disabled={!editingItem.id}
         />
       )}
       <Button
@@ -424,7 +440,7 @@ const TemporadaPescaForm = ({
           <ButtonGroup>
             <Button
               icon="pi pi-info-circle"
-              tooltip="Datos Generales - Información básica de la temporada"
+              tooltip="Datos Generales Temporada de Pesca y Detalle de Faenas"
               tooltipOptions={{ position: "bottom" }}
               className={
                 activeCard === "datos-generales"
@@ -446,20 +462,6 @@ const TemporadaPescaForm = ({
               onClick={() => handleNavigateToCard("resolucion-pdf")}
               type="button"
             />
-            {editingItem && (
-              <Button
-                icon="pi pi-chart-line"
-                tooltip="Faenas Pesca - Detalle de faenas de pesca"
-                tooltipOptions={{ position: "bottom" }}
-                className={
-                  activeCard === "faenas-pesca"
-                    ? "p-button-info"
-                    : "p-button-outlined"
-                }
-                onClick={() => handleNavigateToCard("faenas-pesca")}
-                type="button"
-              />
-            )}
           </ButtonGroup>
         }
       />
@@ -479,6 +481,10 @@ const TemporadaPescaForm = ({
             estadosTemporada={estadosTemporada}
             empresaSeleccionada={empresaSeleccionada}
             defaultValues={getValues()}
+            embarcaciones={embarcaciones}
+            boliches={boliches}
+            puertos={puertosPesca}
+            temporadaData={editingItem}
           />
         )}
 
@@ -492,20 +498,6 @@ const TemporadaPescaForm = ({
             defaultValues={getValues()}
           />
         )}
-
-        {activeCard === "faenas-pesca" && (
-          <DetalleFaenasPescaCard
-            temporadaPescaId={editingItem?.id}
-            embarcaciones={embarcaciones}
-            boliches={boliches}
-            puertos={puertosPesca}
-            bahiasComerciales={bahiasComerciales}
-            motoristas={motoristas}
-            patrones={patrones}
-            temporadaData={editingItem}
-          />
-        )}
-
         {/* Indicador de validación de superposición */}
         {validandoSuperposicion && (
           <div className="col-12">

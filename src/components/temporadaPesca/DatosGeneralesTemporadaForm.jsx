@@ -9,7 +9,7 @@
  * @version 1.0.0
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
@@ -21,6 +21,7 @@ import { Controller } from "react-hook-form";
 import { Message } from "primereact/message";
 import { getEmbarcaciones } from "../../api/embarcacion";
 import { crearFaenaPesca } from "../../api/faenaPesca";
+import DetalleFaenasPescaCard from "./DetalleFaenasPescaCard";
 
 export default function DatosGeneralesTemporadaForm({
   control,
@@ -36,8 +37,15 @@ export default function DatosGeneralesTemporadaForm({
   empresaSeleccionada,
   defaultValues = {},
   onIniciarTemporada,
+  // Nuevos props para DetalleFaenasPescaCard
+  embarcaciones = [],
+  boliches = [],
+  puertos = [],
+  temporadaData = null,
 }) {
-  const [embarcaciones, setEmbarcaciones] = useState([]);
+
+  const detalleFaenasRef = useRef(null);
+
   const empresaWatched = watch("empresaId");
 
   // Watch para generar nombre automáticamente
@@ -60,12 +68,18 @@ export default function DatosGeneralesTemporadaForm({
 
   // Generar nombre automáticamente cuando cambien id o numeroResolucion
   useEffect(() => {
+    
     if (idWatched && numeroResolucionWatched) {
       const nombreGenerado = `Temporada Pesca - ${idWatched} - ${numeroResolucionWatched}`;
+      setValue("nombre", nombreGenerado);
+    } else if (numeroResolucionWatched && numeroResolucionWatched.trim()) {
+      // Para nuevas temporadas sin ID, usar solo numeroResolucion
+      const nombreGenerado = `Temporada Pesca - ${numeroResolucionWatched}`;
       setValue("nombre", nombreGenerado);
     } else if (idWatched) {
       const nombreGenerado = `Temporada Pesca - ${idWatched}`;
       setValue("nombre", nombreGenerado);
+    } else {
     }
   }, [idWatched, numeroResolucionWatched, setValue]);
 
@@ -73,7 +87,7 @@ export default function DatosGeneralesTemporadaForm({
     try {
       // Solo cargar embarcaciones, el personal ya viene como props
       const embarcacionesData = await getEmbarcaciones();
-      setEmbarcaciones(embarcacionesData);
+      // setEmbarcaciones(embarcacionesData);
     } catch (error) {
       console.error("Error al cargar datos:", error);
     }
@@ -192,15 +206,18 @@ export default function DatosGeneralesTemporadaForm({
           {/* Número de Resolución */}
           <div style={{ flex: 1 }}>
             <label htmlFor="numeroResolucion" className="font-semibold">
-              Número de Resolución
+              Número de Resolución *
             </label>
             <Controller
               name="numeroResolucion"
               control={control}
+              rules={{ required: "El número de resolución es obligatorio" }}
               render={({ field }) => (
                 <InputText
                   id="numeroResolucion"
                   {...field}
+                  value={field.value?.toUpperCase() || ''}
+                  onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                   placeholder="Ej: R.M. N° 123-2024-PRODUCE"
                   style={{ fontWeight: "bold" }}
                   className={classNames({
@@ -209,6 +226,9 @@ export default function DatosGeneralesTemporadaForm({
                 />
               )}
             />
+            {errors.numeroResolucion && (
+              <Message severity="error" text={errors.numeroResolucion.message} />
+            )}
             <small className="text-muted">
               Número de la resolución ministerial
             </small>
@@ -396,6 +416,17 @@ export default function DatosGeneralesTemporadaForm({
             )}
           </div>
         </div>
+          <DetalleFaenasPescaCard
+            ref={detalleFaenasRef}
+            temporadaPescaId={temporadaData?.id}
+            embarcaciones={embarcaciones}
+            boliches={boliches}
+            puertos={puertos}
+            bahiasComerciales={bahiasComerciales}
+            motoristas={motoristas}
+            patrones={patrones}
+            temporadaData={temporadaData}
+          />
       </div>
     </Card>
   );

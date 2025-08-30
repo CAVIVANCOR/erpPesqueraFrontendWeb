@@ -81,10 +81,6 @@ const DetalleCalasForm = ({
   }, [faenaPescaId]);
 
   useEffect(() => {
-    console.log("Use Effect Bahía ID:", bahiasProps);
-    console.log("Use Effect Motorista ID:", motoristasProps);
-    console.log("Use Effect Patrón ID:", patronesProps);
-    console.log("Use Effect Embarcación ID:", embarcacionesProps);
     
     if (bahiasProps?.length > 0 && motoristasProps?.length > 0 && patronesProps?.length > 0 && embarcacionesProps?.length > 0) {
       // Normalizar los arrays para convertir values a Number
