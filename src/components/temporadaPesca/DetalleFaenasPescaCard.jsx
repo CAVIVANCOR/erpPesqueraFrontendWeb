@@ -32,6 +32,7 @@ import {
   eliminarFaenaPesca,
 } from "../../api/faenaPesca";
 import { getCalasPorFaena } from "../../api/cala";
+import { getDetalleCalaEspeciePorCala } from "../../api/detalleCalaEspecie";
 import { getPuertosPesca } from "../../api/puertoPesca";
 import { getResponsiveFontSize } from "../../utils/utils";
 
@@ -81,6 +82,8 @@ const DetalleFaenasPescaCard = ({
   const [puertosData, setPuertosData] = useState([]);
   const [expandedRows, setExpandedRows] = useState({});
   const [calasData, setCalasData] = useState({}); // Nuevo estado para calas por faena
+  const [expandedCalasRows, setExpandedCalasRows] = useState({}); // Estado para expansión de calas
+  const [detallesEspecieData, setDetallesEspecieData] = useState({}); // Estado para detalles de especie por cala
 
   // Refs
   const toast = useRef(null);
@@ -432,6 +435,111 @@ const DetalleFaenasPescaCard = ({
       });
     };
 
+    // Template de expansión para calas (tercer nivel)
+    const calaExpansionTemplate = (calaData) => {
+      const detallesEspecie = detallesEspecieData[calaData.id] || [];
+      
+      return (
+        <div className="p-3">
+          <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+            <Tag 
+              value={`Especies de la Cala ${calaData.id}`}
+              severity="info"
+              style={{ 
+                width: "100%",
+                color: "white",
+              }}
+            />
+          </div>
+          {detallesEspecie.length === 0 ? (
+            <p>No hay especies registradas para esta cala</p>
+          ) : (
+            <DataTable
+              value={detallesEspecie}
+              dataKey="id"
+              className="datatable-responsive"
+              style={{cursor: "no-drop", fontSize: getResponsiveFontSize() }}
+            >
+              <Column
+                field="id"
+                header="ID"
+                sortable
+                style={{ minWidth: "4rem" }}
+              />
+              <Column
+                field="especie.nombre"
+                header="Especie"
+                sortable
+                style={{ minWidth: "10rem" }}
+              />
+              <Column
+                field="especie.nombreCientifico"
+                header="Nombre Científico"
+                sortable
+                style={{ minWidth: "12rem" }}
+              />
+              <Column
+                field="toneladas"
+                header="Toneladas"
+                sortable
+                style={{ minWidth: "8rem" }}
+                body={(rowData) => {
+                  // Mostrar directamente en toneladas
+                  const tons = rowData.toneladas ? parseFloat(rowData.toneladas).toFixed(3) : "0.000";
+                  return `${tons} t`;
+                }}
+              />
+              <Column
+                field="porcentajeJuveniles"
+                header="% Juvenil"
+                sortable
+                style={{ minWidth: "8rem" }}
+                body={(rowData) => {
+                  const porcentaje = rowData.porcentajeJuveniles !== null && rowData.porcentajeJuveniles !== undefined 
+                    ? parseFloat(rowData.porcentajeJuveniles).toFixed(1) 
+                    : "0.0";
+                  return `${porcentaje}%`;
+                }}
+              />
+              <Column
+                field="observaciones"
+                header="Observaciones"
+                style={{ minWidth: "12rem" }}
+                body={(rowData) => rowData.observaciones || "-"}
+              />
+            </DataTable>
+          )}
+        </div>
+      );
+    };
+
+    // Función para expandir calas y cargar especies
+    const onCalaRowExpand = async (event) => {
+      const calaId = event.data.id;
+      console.log("🔍 DEBUG EXPANDIR CALA:", { calaId, especiesExistentes: !!detallesEspecieData[calaId] });
+      
+      if (!detallesEspecieData[calaId]) {
+        try {
+          console.log("📡 Cargando especies para cala:", calaId);
+          const especies = await getDetalleCalaEspeciePorCala(calaId);
+          console.log("✅ Especies recibidas:", especies);
+          setDetallesEspecieData((prevData) => ({ ...prevData, [calaId]: especies }));
+        } catch (error) {
+          console.error("❌ Error cargando especies:", error);
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "Error al cargar las especies de la cala",
+            life: 3000,
+          });
+        }
+      }
+    };
+
+    const onCalaRowCollapse = (event) => {
+      console.log("🔍 DEBUG CONTRAER CALA:", event.data.id);
+    };
+
     return (
       <div className="p-3">
         <div style={{ textAlign: "center", marginBottom: "1rem" }}>
@@ -452,7 +560,13 @@ const DetalleFaenasPescaCard = ({
             dataKey="id"
             className="datatable-responsive"
             style={{cursor: "no-drop", fontSize: getResponsiveFontSize() }}
+            rowExpansionTemplate={calaExpansionTemplate}
+            expandedRows={expandedCalasRows}
+            onRowToggle={(e) => setExpandedCalasRows(e.data)}
+            onRowExpand={onCalaRowExpand}
+            onRowCollapse={onCalaRowCollapse}
           >
+            <Column expander style={{ width: "5rem" }} />
             <Column
               field="id"
               header="ID"
@@ -490,6 +604,11 @@ const DetalleFaenasPescaCard = ({
               header="Toneladas"
               sortable
               style={{ minWidth: "8rem" }}
+              body={(rowData) => {
+                // Mostrar directamente en toneladas
+                const tons = rowData.toneladasCapturadas ? parseFloat(rowData.toneladasCapturadas).toFixed(3) : "0.000";
+                return `${tons} t`;
+              }}
             />
           </DataTable>
         )}
@@ -530,12 +649,91 @@ const DetalleFaenasPescaCard = ({
   };
 
   // Botones para expandir y contraer todas las filas
-  const expandAll = (e) => {
+  const expandAll = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    let _expandedRows = {};
-    faenas.forEach((faena) => (_expandedRows[`${faena.id}`] = true));
-    setExpandedRows(_expandedRows);
+    
+    try {
+      // Expandir todas las faenas
+      let _expandedRows = {};
+      faenas.forEach((faena) => (_expandedRows[`${faena.id}`] = true));
+      setExpandedRows(_expandedRows);
+
+      // Cargar calas para todas las faenas
+      const calasPromises = faenas.map(async (faena) => {
+        if (!calasData[faena.id]) {
+          try {
+            const calas = await getCalasPorFaena(faena.id);
+            return { faenaId: faena.id, calas };
+          } catch (error) {
+            console.error(`Error cargando calas para faena ${faena.id}:`, error);
+            return { faenaId: faena.id, calas: [] };
+          }
+        }
+        return { faenaId: faena.id, calas: calasData[faena.id] };
+      });
+
+      const calasResults = await Promise.all(calasPromises);
+      
+      // Actualizar estado de calas
+      const newCalasData = { ...calasData };
+      calasResults.forEach(({ faenaId, calas }) => {
+        newCalasData[faenaId] = calas;
+      });
+      setCalasData(newCalasData);
+
+      // Expandir todas las calas y cargar especies
+      let _expandedCalasRows = {};
+      const especiesPromises = [];
+      
+      calasResults.forEach(({ faenaId, calas }) => {
+        calas.forEach((cala) => {
+          _expandedCalasRows[`${cala.id}`] = true;
+          
+          // Solo cargar especies si no existen ya
+          if (!detallesEspecieData[cala.id]) {
+            especiesPromises.push(
+              getDetalleCalaEspeciePorCala(cala.id)
+                .then(especies => ({ calaId: cala.id, especies }))
+                .catch(error => {
+                  console.error(`Error cargando especies para cala ${cala.id}:`, error);
+                  return { calaId: cala.id, especies: [] };
+                })
+            );
+          }
+        });
+      });
+
+      setExpandedCalasRows(_expandedCalasRows);
+
+      // Cargar todas las especies
+      if (especiesPromises.length > 0) {
+        const especiesResults = await Promise.all(especiesPromises);
+        const newDetallesEspecieData = { ...detallesEspecieData };
+        
+        especiesResults.forEach(({ calaId, especies }) => {
+          newDetallesEspecieData[calaId] = especies;
+        });
+        
+        setDetallesEspecieData(newDetallesEspecieData);
+      }
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Todos los niveles expandidos correctamente",
+        life: 3000,
+      });
+
+    } catch (error) {
+      console.error("Error expandiendo todos los niveles:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al expandir todos los niveles",
+        life: 3000,
+      });
+    }
   };
 
   const collapseAll = (e) => {
