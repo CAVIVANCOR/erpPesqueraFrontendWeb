@@ -84,6 +84,7 @@ export default function FaenaPesca() {
       setEditing(null);
       cargarItems();
     } catch (err) {
+      console.error("Error al guardar:", err);
       toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo guardar." });
     }
     setLoading(false);

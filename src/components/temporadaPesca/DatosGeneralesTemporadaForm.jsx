@@ -9,18 +9,16 @@
  * @version 1.0.0
  */
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
-import { Button } from "primereact/button";
 import { classNames } from "primereact/utils";
 import { Controller } from "react-hook-form";
 import { Message } from "primereact/message";
 import { getEmbarcaciones } from "../../api/embarcacion";
-import { crearFaenaPesca } from "../../api/faenaPesca";
 import DetalleFaenasPescaCard from "./DetalleFaenasPescaCard";
 
 export default function DatosGeneralesTemporadaForm({

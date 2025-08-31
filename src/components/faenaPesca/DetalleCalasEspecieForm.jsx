@@ -41,6 +41,7 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
   // Estados del formulario
   const [especieId, setEspecieId] = useState("");
   const [toneladas, setToneladas] = useState("");
+  const [kilogramos, setKilogramos] = useState(""); // Nuevo estado para mostrar en kg
   const [porcentajeJuveniles, setPorcentajeJuveniles] = useState("");
   const [observaciones, setObservaciones] = useState("");
 
@@ -94,6 +95,7 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
     setEditingDetalle(detalle);
     setEspecieId(detalle.especieId || "");
     setToneladas(detalle.toneladas || "");
+    setKilogramos(detalle.toneladas * 1000 || ""); // Convertir toneladas a kilogramos
     setPorcentajeJuveniles(detalle.porcentajeJuveniles || "");
     setObservaciones(detalle.observaciones || "");
     setDetalleDialog(true);
@@ -102,6 +104,7 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
   const limpiarFormulario = () => {
     setEspecieId("");
     setToneladas("");
+    setKilogramos("");
     setPorcentajeJuveniles("");
     setObservaciones("");
   };
@@ -132,7 +135,7 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
       const detalleData = {
         calaId: Number(calaId),
         especieId: Number(especieId),
-        toneladas: toneladas ? Number(toneladas) : null,
+        toneladas: kilogramos ? Number(kilogramos) / 1000 : null, // Convertir kilogramos a toneladas
         porcentajeJuveniles: porcentajeJuveniles
           ? Number(porcentajeJuveniles)
           : null,
@@ -290,10 +293,18 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
         size="small"
       >
         <Column
-          field="especieNombre"
+          field="especie.nombre"
           header="Especie"
           sortable
           style={{ minWidth: "8rem" }}
+          body={(rowData) => rowData.especie?.nombre || "-"}
+        ></Column>
+        <Column
+          field="especie.nombreCientifico"
+          header="Nombre Científico"
+          sortable
+          style={{ minWidth: "10rem" }}
+          body={(rowData) => rowData.especie?.nombreCientifico || "-"}
         ></Column>
         <Column
           field="toneladas"
@@ -349,15 +360,15 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
             />
           </div>
           <div className="col-12 md:col-6">
-            <label htmlFor="toneladas">Toneladas</label>
+            <label htmlFor="kilogramos">Kilogramos</label>
             <InputNumber
-              id="toneladas"
-              value={toneladas}
-              onValueChange={(e) => setToneladas(e.value)}
+              id="kilogramos"
+              value={kilogramos}
+              onValueChange={(e) => setKilogramos(e.value)}
               mode="decimal"
               minFractionDigits={0}
               maxFractionDigits={3}
-              suffix=" Ton"
+              suffix=" Kg"
               min={0}
             />
           </div>

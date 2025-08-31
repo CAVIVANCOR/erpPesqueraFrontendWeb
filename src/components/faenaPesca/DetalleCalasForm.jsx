@@ -34,6 +34,7 @@ const DetalleCalasForm = ({
   faenaPescaId,
   temporadaData,
   faenaData,
+  faenaDescripcion,
   bahias: bahiasProps = [],
   motoristas: motoristasProps = [],
   patrones: patronesProps = [],
@@ -81,31 +82,34 @@ const DetalleCalasForm = ({
   }, [faenaPescaId]);
 
   useEffect(() => {
-    
-    if (bahiasProps?.length > 0 && motoristasProps?.length > 0 && patronesProps?.length > 0 && embarcacionesProps?.length > 0) {
-      // Normalizar los arrays para convertir values a Number
-      const bahiasNormalizadas = bahiasProps.map(item => ({
-        ...item,
-        value: Number(item.value)
+    if (
+      bahiasProps?.length > 0 &&
+      motoristasProps?.length > 0 &&
+      patronesProps?.length > 0 &&
+      embarcacionesProps?.length > 0
+    ) {
+      // Normalizar los arrays para convertir values a Number y asegurar labels correctos
+      const bahiasNormalizadas = bahiasProps.map((item) => ({
+        value: Number(item.value),
+        label: item.label,
       }));
-      const motoristasNormalizados = motoristasProps.map(item => ({
-        ...item,
-        value: Number(item.value)
+      const motoristasNormalizados = motoristasProps.map((item) => ({
+        value: Number(item.value),
+        label: item.label,
       }));
-      const patronesNormalizados = patronesProps.map(item => ({
-        ...item,
-        value: Number(item.value)
+      const patronesNormalizados = patronesProps.map((item) => ({
+        value: Number(item.value),
+        label: item.label,
       }));
-      const embarcacionesNormalizadas = embarcacionesProps.map(item => ({
-        ...item,
-        value: Number(item.value)
+      const embarcacionesNormalizadas = embarcacionesProps.map((item) => ({
+        value: Number(item.value),
+        label: item.label,
       }));
-
       setBahias(bahiasNormalizadas);
       setMotoristas(motoristasNormalizados);
       setPatrones(patronesNormalizados);
       setEmbarcaciones(embarcacionesNormalizadas);
-      
+
       // Asignar valores seleccionados desde faenaData si están disponibles
       if (faenaData) {
         setSelectedBahiaId(Number(faenaData.bahiaId));
@@ -114,7 +118,13 @@ const DetalleCalasForm = ({
         setSelectedEmbarcacionId(Number(faenaData.embarcacionId));
       }
     }
-  }, [bahiasProps, motoristasProps, patronesProps, embarcacionesProps, faenaData]);
+  }, [
+    bahiasProps,
+    motoristasProps,
+    patronesProps,
+    embarcacionesProps,
+    faenaData,
+  ]);
 
   const cargarCalas = async () => {
     try {
@@ -140,16 +150,16 @@ const DetalleCalasForm = ({
 
     // Asignar valores directamente desde faenaData
     if (faenaData) {
-      setSelectedBahiaId(faenaData.bahiaId);
-      setSelectedMotoristaId(faenaData.motoristaId);
-      setSelectedPatronId(faenaData.patronId);
-      setSelectedEmbarcacionId(faenaData.embarcacionId);
+      // Convertir a números para asegurar compatibilidad
+      const bahiaIdNum = Number(faenaData.bahiaId);
+      const motoristaIdNum = Number(faenaData.motoristaId);
+      const patronIdNum = Number(faenaData.patronId);
+      const embarcacionIdNum = Number(faenaData.embarcacionId);
 
-      // Crear opciones simples para mostrar
-      setBahias([{ label: bahias[0].label, value: Number(bahias[0].value) }]);
-      setMotoristas([{ label: motoristas[0].label, value: Number(motoristas[0].value) }]);
-      setPatrones([{ label: patrones[0].label, value: Number(patrones[0].value) }]);
-      setEmbarcaciones([{ label: embarcaciones[0].label, value: Number(embarcaciones[0].value) }]);
+      setSelectedBahiaId(bahiaIdNum);
+      setSelectedMotoristaId(motoristaIdNum);
+      setSelectedPatronId(patronIdNum);
+      setSelectedEmbarcacionId(embarcacionIdNum);
     }
 
     setCalaDialog(true);
@@ -157,7 +167,9 @@ const DetalleCalasForm = ({
 
   const editarCala = (cala) => {
     setEditingCala(cala);
-    setFechaHoraInicio(cala.fechaHoraInicio ? new Date(cala.fechaHoraInicio) : null);
+    setFechaHoraInicio(
+      cala.fechaHoraInicio ? new Date(cala.fechaHoraInicio) : null
+    );
     setFechaHoraFin(cala.fechaHoraFin ? new Date(cala.fechaHoraFin) : null);
     setLatitud(cala.latitud || "");
     setLongitud(cala.longitud || "");
@@ -167,22 +179,18 @@ const DetalleCalasForm = ({
     setCreatedAt(cala.createdAt ? new Date(cala.createdAt) : null);
     setUpdatedAt(cala.updatedAt ? new Date(cala.updatedAt) : null);
 
-    // Usar valores de la cala o faenaData
-    const bahiaValue = cala.bahiaId || faenaData?.bahiaId;
-    const motoristaValue = cala.motoristaId || faenaData?.motoristaId;
-    const patronValue = cala.patronId || faenaData?.patronId;
-    const embarcacionValue = cala.embarcacionId || faenaData?.embarcacionId;
+    // Usar valores de la cala o faenaData y convertir a números
+    const bahiaValue = Number(cala.bahiaId || faenaData?.bahiaId);
+    const motoristaValue = Number(cala.motoristaId || faenaData?.motoristaId);
+    const patronValue = Number(cala.patronId || faenaData?.patronId);
+    const embarcacionValue = Number(
+      cala.embarcacionId || faenaData?.embarcacionId
+    );
 
     setSelectedBahiaId(bahiaValue);
     setSelectedMotoristaId(motoristaValue);
     setSelectedPatronId(patronValue);
     setSelectedEmbarcacionId(embarcacionValue);
-
-    setBahias([{ label: `Bahía ${bahiaValue}`, value: bahiaValue }]);
-    setMotoristas([{ label: `Motorista ${motoristaValue}`, value: motoristaValue }]);
-    setPatrones([{ label: `Patrón ${patronValue}`, value: patronValue }]);
-    setEmbarcaciones([{ label: `Embarcación ${embarcacionValue}`, value: embarcacionValue }]);
-
     setCalaDialog(true);
   };
 
@@ -240,7 +248,9 @@ const DetalleCalasForm = ({
         bahiaId: Number(selectedBahiaId || faenaData?.bahiaId),
         motoristaId: Number(selectedMotoristaId || faenaData?.motoristaId),
         patronId: Number(selectedPatronId || faenaData?.patronId),
-        embarcacionId: Number(selectedEmbarcacionId || faenaData?.embarcacionId),
+        embarcacionId: Number(
+          selectedEmbarcacionId || faenaData?.embarcacionId
+        ),
         faenaPescaId: Number(faenaPescaId),
         temporadaPescaId: Number(temporadaData?.id),
         fechaHoraInicio,
@@ -252,6 +262,7 @@ const DetalleCalasForm = ({
           ? Number(toneladasCapturadas)
           : null,
         observaciones: observaciones || null,
+        updatedAt: new Date(), // Campo requerido por Prisma
       };
 
       if (editingCala) {
@@ -265,7 +276,9 @@ const DetalleCalasForm = ({
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: editingCala ? "Cala actualizada" : "Cala creada",
+        detail: editingCala
+          ? "Cala actualizada correctamente"
+          : "Cala creada correctamente",
         life: 3000,
       });
 
@@ -273,11 +286,23 @@ const DetalleCalasForm = ({
       cargarCalas();
     } catch (error) {
       console.error("Error guardando cala:", error);
+
+      // Manejo específico de errores
+      let errorMessage = "Error al guardar la cala";
+
+      if (error.response?.data?.message) {
+        // Error del backend
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        // Error de red o cliente
+        errorMessage = error.message;
+      }
+
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al guardar la cala",
-        life: 3000,
+        detail: errorMessage,
+        life: 5000,
       });
     }
   };
@@ -358,9 +383,17 @@ const DetalleCalasForm = ({
             icon="pi pi-plus"
             className="p-button-success"
             onClick={abrirNuevaCala}
-            disabled={!faenaPescaId}
+            disabled={
+              !faenaPescaId ||
+              !faenaData?.fechaSalida ||
+              !faenaData?.puertoSalidaId
+            }
             type="button"
-            tooltip="Agregar nueva cala"
+            tooltip={
+              !faenaData?.fechaSalida || !faenaData?.puertoSalidaId
+                ? "Debe ingresar fecha de salida y puerto de salida antes de crear calas"
+                : "Agregar nueva cala"
+            }
             tooltipOptions={{ position: "top" }}
             raised
             outlined
@@ -399,9 +432,14 @@ const DetalleCalasForm = ({
   );
 
   return (
-    <Card title="Detalle de Calas" className="mt-4">
+    <Card
+      className="mt-4"
+      pt={{
+        header: { style: { display: "none" } },
+        body: { style: { paddingTop: "0" } },
+      }}
+    >
       <Toast ref={toast} />
-      <Toolbar className="mb-4"></Toolbar>
       <DataTable
         value={calas}
         selection={selectedCala}
@@ -424,14 +462,9 @@ const DetalleCalasForm = ({
           style={{ minWidth: "4rem" }}
         ></Column>
         <Column
-          field="temporadaNombre"
-          header="Temporada"
-          sortable
-          style={{ minWidth: "12rem" }}
-        ></Column>
-        <Column
           field="faenaDescripcion"
           header="Faena"
+          body={(rowData) => faenaDescripcion}
           sortable
           style={{ minWidth: "12rem" }}
         ></Column>
@@ -488,6 +521,7 @@ const DetalleCalasForm = ({
                 options={bahias}
                 placeholder="Bahía (automático)"
                 disabled
+                style={{ fontWeight: "bold" }}
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -498,6 +532,7 @@ const DetalleCalasForm = ({
                 options={motoristas}
                 placeholder="Motorista (automático)"
                 disabled
+                style={{ fontWeight: "bold" }}
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -508,6 +543,7 @@ const DetalleCalasForm = ({
                 options={patrones}
                 placeholder="Patrón (automático)"
                 disabled
+                style={{ fontWeight: "bold" }}
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -518,6 +554,7 @@ const DetalleCalasForm = ({
                 options={embarcaciones}
                 placeholder="Embarcación (automático)"
                 disabled
+                style={{ fontWeight: "bold" }}
               />
             </div>
           </div>
@@ -529,6 +566,30 @@ const DetalleCalasForm = ({
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="latitud">Latitud</label>
+              <InputNumber
+                id="latitud"
+                value={latitud}
+                onValueChange={(e) => setLatitud(e.value)}
+                mode="decimal"
+                minFractionDigits={0}
+                maxFractionDigits={6}
+                inputStyle={{ fontWeight: "bold" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="longitud">Longitud</label>
+              <InputNumber
+                id="longitud"
+                value={longitud}
+                onValueChange={(e) => setLongitud(e.value)}
+                mode="decimal"
+                minFractionDigits={0}
+                maxFractionDigits={6}
+                inputStyle={{ fontWeight: "bold" }}
+              />
+            </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="fechaHoraInicio">Fecha y Hora Inicio</label>
               <Calendar
@@ -576,50 +637,6 @@ const DetalleCalasForm = ({
             }}
           >
             <div style={{ flex: 1 }}>
-              <label htmlFor="latitud">Latitud</label>
-              <InputNumber
-                id="latitud"
-                value={latitud}
-                onValueChange={(e) => setLatitud(e.value)}
-                mode="decimal"
-                minFractionDigits={0}
-                maxFractionDigits={6}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="longitud">Longitud</label>
-              <InputNumber
-                id="longitud"
-                value={longitud}
-                onValueChange={(e) => setLongitud(e.value)}
-                mode="decimal"
-                minFractionDigits={0}
-                maxFractionDigits={6}
-              />
-            </div>
-            <div style={{ flex: 4 }}>
-              <label htmlFor="observaciones">Observaciones</label>
-              <InputTextarea
-                id="observaciones"
-                value={observaciones}
-                onChange={(e) => setObservaciones(e.target.value)}
-                style={{ fontWeight: "bold", fontStyle: "italic" }}
-                placeholder="Observaciones"
-                rows={1}
-                cols={20}
-              />
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-              marginTop: 10,
-            }}
-          >
-            <div style={{ flex: 1 }}>
               <label htmlFor="createdAt">Fecha Creación</label>
               <Calendar
                 id="createdAt"
@@ -643,8 +660,19 @@ const DetalleCalasForm = ({
                 placeholder="Se actualiza automáticamente"
               />
             </div>
+            <div style={{ flex: 4 }}>
+              <label htmlFor="observaciones">Observaciones</label>
+              <InputTextarea
+                id="observaciones"
+                value={observaciones}
+                onChange={(e) => setObservaciones(e.target.value)}
+                style={{ fontWeight: "bold", fontStyle: "italic" }}
+                placeholder="Observaciones"
+                rows={1}
+                cols={20}
+              />
+            </div>
           </div>
-
           <div className="col-12">
             <DetalleCalasEspecieForm calaId={editingCala?.id} />
           </div>

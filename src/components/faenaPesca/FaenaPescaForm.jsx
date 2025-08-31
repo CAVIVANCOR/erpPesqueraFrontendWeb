@@ -1,27 +1,20 @@
 // src/components/faenaPesca/FaenaPescaForm.jsx
 // Formulario profesional para FaenaPesca. Cumple la regla transversal ERP Megui.
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { useForm, Controller } from "react-hook-form";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { ButtonGroup } from "primereact/buttongroup";
 import { Toast } from "primereact/toast";
 import { Tag } from "primereact/tag";
 
-// APIs
-import {
-  getBahiasComerciales,
-  getMotoristas,
-  getPatrones,
-} from "../../api/personal";
-import { getEmbarcacionesPorTipo } from "../../api/embarcacion";
-import { getBolichesPorPescaIndustrial } from "../../api/bolicheRed";
-import { getPuertosActivos } from "../../api/puertoPesca";
-import { getTemporadaPescaPorId } from "../../api/temporadaPesca";
-
 // Componentes de cards
 import DatosGeneralesFaenaPesca from "./DatosGeneralesFaenaPesca";
 import DetalleAccionesPreviasForm from "./DetalleAccionesPreviasForm";
 import InformeFaenaPescaForm from "./InformeFaenaPescaForm";
+
+// API imports
+import { listarEstadosMultiFuncionFaenaPesca } from "../../api/estadoMultiFuncion";
 
 export default function FaenaPescaForm({
   visible,
@@ -40,57 +33,51 @@ export default function FaenaPescaForm({
 }) {
   // Estados principales
   const [activeCard, setActiveCard] = useState("datos-generales");
-  const toast = React.useRef(null);
+  const toast = useRef(null);
 
-  // Estados del formulario
-  const [temporadaId, setTemporadaId] = React.useState(
-    defaultValues.temporadaId || ""
-  );
-  const [bahiaId, setBahiaId] = React.useState(defaultValues.bahiaId || "");
-  const [motoristaId, setMotoristaId] = React.useState(
-    defaultValues.motoristaId || ""
-  );
-  const [patronId, setPatronId] = React.useState(defaultValues.patronId || "");
-  const [descripcion, setDescripcion] = React.useState(
-    defaultValues.descripcion || ""
-  );
-  const [fechaSalida, setFechaSalida] = React.useState(
-    defaultValues.fechaSalida ? new Date(defaultValues.fechaSalida) : null
-  );
-  const [fechaRetorno, setFechaRetorno] = React.useState(
-    defaultValues.fechaRetorno ? new Date(defaultValues.fechaRetorno) : null
-  );
-  const [fechaDescarga, setFechaDescarga] = React.useState(
-    defaultValues.fechaDescarga ? new Date(defaultValues.fechaDescarga) : null
-  );
-  const [puertoSalidaId, setPuertoSalidaId] = React.useState(
-    defaultValues.puertoSalidaId || ""
-  );
-  const [puertoRetornoId, setPuertoRetornoId] = React.useState(
-    defaultValues.puertoRetornoId || ""
-  );
-  const [puertoDescargaId, setPuertoDescargaId] = React.useState(
-    defaultValues.puertoDescargaId || ""
-  );
-  const [embarcacionId, setEmbarcacionId] = React.useState(
-    defaultValues.embarcacionId || ""
-  );
-  const [bolicheRedId, setBolicheRedId] = React.useState(
-    defaultValues.bolicheRedId || ""
-  );
-  const [urlInformeFaena, setUrlInformeFaena] = React.useState(
-    defaultValues.urlInformeFaena || ""
-  );
+  // Estados para datos del backend
+  const [estadosFaena, setEstadosFaena] = useState([]);
 
   // Estados para dropdowns
-  const [temporada, setTemporada] = React.useState(null);
-  const [bahias, setBahias] = React.useState(bahiasComercialesOptions);
-  const [motoristas, setMotoristas] = React.useState(motoristasOptions);
-  const [patrones, setPatrones] = React.useState(patronesOptions);
-  const [embarcaciones, setEmbarcaciones] =
-    React.useState(embarcacionesOptions);
-  const [boliches, setBoliches] = React.useState(bolichesOptions);
-  const [puertos, setPuertos] = React.useState(puertosOptions);
+  const [temporada, setTemporada] = useState(null);
+  const [bahias, setBahias] = useState(bahiasComercialesOptions);
+  const [motoristas, setMotoristas] = useState(motoristasOptions);
+  const [patrones, setPatrones] = useState(patronesOptions);
+  const [embarcaciones, setEmbarcaciones] = useState(embarcacionesOptions);
+  const [boliches, setBoliches] = useState(bolichesOptions);
+  const [puertos, setPuertos] = useState(puertosOptions);
+
+  // Configuración del formulario con React Hook Form
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    getValues,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      id: null,
+      temporadaId: null,
+      bahiaId: null,
+      motoristaId: null,
+      patronId: null,
+      descripcion: "",
+      fechaSalida: null,
+      fechaRetorno: null,
+      fechaDescarga: null,
+      puertoSalidaId: null,
+      puertoRetornoId: null,
+      puertoDescargaId: null,
+      embarcacionId: null,
+      bolicheRedId: null,
+      urlInformeFaena: "",
+      urlReporteFaenaCalas: "",
+      urlDeclaracionDesembarqueArmador: "",
+      estadoFaenaId: null,
+    },
+  });
 
   useEffect(() => {
     // Actualizar opciones cuando cambien las props
@@ -103,9 +90,18 @@ export default function FaenaPescaForm({
 
     const cargarDatos = async () => {
       try {
+        // Cargar estados de faena
+        const estadosData = await listarEstadosMultiFuncionFaenaPesca();        
+        // Normalizar IDs a números
+        const estadosNormalizados = estadosData.map(estado => ({
+          ...estado,
+          id: Number(estado.id)
+        }));
+        
+        setEstadosFaena(estadosNormalizados);
+        
         if (temporadaData) {
           setTemporada(temporadaData);
-        } else {
         }
       } catch (error) {
         console.error("Error general cargando datos para dropdowns:", error);
@@ -124,65 +120,23 @@ export default function FaenaPescaForm({
   ]);
 
   React.useEffect(() => {
-    setTemporadaId(defaultValues.temporadaId || "");
-    setBahiaId(defaultValues.bahiaId || "");
-    setMotoristaId(defaultValues.motoristaId || "");
-    setPatronId(defaultValues.patronId || "");
-    setDescripcion(defaultValues.descripcion || "");
-    setFechaSalida(
-      defaultValues.fechaSalida ? new Date(defaultValues.fechaSalida) : null
-    );
-    setFechaRetorno(
-      defaultValues.fechaRetorno ? new Date(defaultValues.fechaRetorno) : null
-    );
-    setFechaDescarga(
-      defaultValues.fechaDescarga ? new Date(defaultValues.fechaDescarga) : null
-    );
-    setPuertoSalidaId(defaultValues.puertoSalidaId || "");
-    setPuertoRetornoId(defaultValues.puertoRetornoId || "");
-    setPuertoDescargaId(defaultValues.puertoDescargaId || "");
-    setEmbarcacionId(defaultValues.embarcacionId || "");
-    setBolicheRedId(defaultValues.bolicheRedId || "");
-    setUrlInformeFaena(defaultValues.urlInformeFaena || "");
-  }, [defaultValues]);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit({
-      bahiaId: bahiaId ? Number(bahiaId) : null,
-      motoristaId: motoristaId ? Number(motoristaId) : null,
-      patronId: patronId ? Number(patronId) : null,
-      descripcion,
-      fechaSalida,
-      fechaRetorno,
-      fechaDescarga,
-      puertoSalidaId: puertoSalidaId ? Number(puertoSalidaId) : null,
-      puertoRetornoId: puertoRetornoId ? Number(puertoRetornoId) : null,
-      puertoDescargaId: puertoDescargaId ? Number(puertoDescargaId) : null,
-      embarcacionId: embarcacionId ? Number(embarcacionId) : null,
-      bolicheRedId: bolicheRedId ? Number(bolicheRedId) : null,
-      urlInformeFaena,
+    reset({
+      ...defaultValues,
+      fechaSalida: defaultValues.fechaSalida ? new Date(defaultValues.fechaSalida) : null,
+      fechaRetorno: defaultValues.fechaRetorno ? new Date(defaultValues.fechaRetorno) : null,
+      fechaDescarga: defaultValues.fechaDescarga ? new Date(defaultValues.fechaDescarga) : null,
     });
-  };
+  }, [defaultValues, reset]);
 
-  /**
-   * Función para navegar entre cards
-   */
   const handleNavigateToCard = (cardName) => {
     setActiveCard(cardName);
   };
 
-  /**
-   * Manejar cierre del diálogo
-   */
   const handleHide = () => {
     setActiveCard("datos-generales");
     onHide();
   };
 
-  /**
-   * Footer del diálogo con botones de acción
-   */
   const dialogFooter = (
     <div
       style={{
@@ -205,7 +159,9 @@ export default function FaenaPescaForm({
       <Button
         label={isEdit ? "Actualizar" : "Crear"}
         icon="pi pi-check"
-        onClick={handleSubmit}
+        onClick={handleSubmit((data) => {
+          onSubmit(data);
+        })}
         className="p-button-success"
         loading={loading}
         severity="success"
@@ -228,7 +184,7 @@ export default function FaenaPescaForm({
       {/* Mostrar descripción de faena con Tag */}
       <div className="flex justify-content-center mb-4">
         <Tag
-          value={descripcion || "Nueva Faena de Pesca"}
+          value={watch("descripcion") || "Nueva Faena de Pesca"}
           severity="info"
           style={{
             fontSize: "1.1rem",
@@ -289,38 +245,26 @@ export default function FaenaPescaForm({
         {activeCard === "datos-generales" && (
           <DatosGeneralesFaenaPesca
             temporadaData={temporadaData}
-            descripcion={descripcion}
-            setDescripcion={setDescripcion}
-            bahiaId={bahiaId}
-            setBahiaId={setBahiaId}
-            motoristaId={motoristaId}
-            setMotoristaId={setMotoristaId}
-            patronId={patronId}
-            setPatronId={setPatronId}
-            puertoSalidaId={puertoSalidaId}
-            setPuertoSalidaId={setPuertoSalidaId}
-            fechaSalida={fechaSalida}
-            setFechaSalida={setFechaSalida}
-            fechaRetorno={fechaRetorno}
-            setFechaRetorno={setFechaRetorno}
-            fechaDescarga={fechaDescarga}
-            setFechaDescarga={setFechaDescarga}
-            puertoRetornoId={puertoRetornoId}
-            setPuertoRetornoId={setPuertoRetornoId}
-            puertoDescargaId={puertoDescargaId}
-            setPuertoDescargaId={setPuertoDescargaId}
-            embarcacionId={embarcacionId}
-            setEmbarcacionId={setEmbarcacionId}
-            bolicheRedId={bolicheRedId}
-            setBolicheRedId={setBolicheRedId}
+            control={control}
+            watch={watch}
+            errors={errors}
+            setValue={setValue}
             bahias={bahias}
             motoristas={motoristas}
             patrones={patrones}
             puertos={puertos}
             embarcaciones={embarcaciones}
             boliches={boliches}
+            estadosFaena={estadosFaena}
             faenaPescaId={defaultValues.id}
             loading={loading}
+            handleFinalizarFaena={() => {
+              setValue("estadoFaenaId", 19);
+              // Forzar actualización inmediata
+              handleSubmit((data) => {
+                onSubmit(data);
+              })();
+            }}
           />
         )}
 
@@ -330,8 +274,9 @@ export default function FaenaPescaForm({
 
         {activeCard === "informe" && (
           <InformeFaenaPescaForm
-            urlInformeFaena={urlInformeFaena}
-            setUrlInformeFaena={setUrlInformeFaena}
+            control={control}
+            watch={watch}
+            errors={errors}
             loading={loading}
           />
         )}

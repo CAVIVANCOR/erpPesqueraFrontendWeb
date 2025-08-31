@@ -18,7 +18,7 @@ import { Toast } from "primereact/toast";
 import { Toolbar } from "primereact/toolbar";
 import { Tag } from "primereact/tag";
 import { ConfirmDialog } from "primereact/confirmdialog";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import FaenaPescaForm from "../faenaPesca/FaenaPescaForm";
@@ -31,8 +31,10 @@ import {
   actualizarFaenaPesca,
   eliminarFaenaPesca,
 } from "../../api/faenaPesca";
+import { getCalasPorFaena } from "../../api/cala";
 import { getPuertosPesca } from "../../api/puertoPesca";
 import { getResponsiveFontSize } from "../../utils/utils";
+
 // Esquema de validación
 const schema = yup.object().shape({
   descripcion: yup.string().required("La descripción es obligatoria"),
@@ -40,6 +42,9 @@ const schema = yup.object().shape({
   fechaRetorno: yup.date().required("La fecha de retorno es obligatoria"),
   embarcacionId: yup.number().required("La embarcación es obligatoria"),
   bolicheId: yup.number().required("El boliche es obligatorio"),
+  urlReporteFaenaCalas: yup.string().url("Debe ser una URL válida").nullable(),
+  urlDeclaracionDesembarqueArmador: yup.string().url("Debe ser una URL válida").nullable(),
+  estadoFaenaId: yup.number().nullable(),
 });
 
 /**
@@ -66,7 +71,6 @@ const DetalleFaenasPescaCard = ({
   temporadaData,
   onRefresh, // Nueva prop para callback de refresco
 }) => {
-
   // Estados
   const [faenas, setFaenas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -75,6 +79,8 @@ const DetalleFaenasPescaCard = ({
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [faenaToDelete, setFaenaToDelete] = useState(null);
   const [puertosData, setPuertosData] = useState([]);
+  const [expandedRows, setExpandedRows] = useState({});
+  const [calasData, setCalasData] = useState({}); // Nuevo estado para calas por faena
 
   // Refs
   const toast = useRef(null);
@@ -94,6 +100,9 @@ const DetalleFaenasPescaCard = ({
       embarcacionId: null,
       bolicheId: null,
       observaciones: "",
+      urlReporteFaenaCalas: "",
+      urlDeclaracionDesembarqueArmador: "",
+      estadoFaenaId: null,
     },
   });
 
@@ -136,11 +145,11 @@ const DetalleFaenasPescaCard = ({
         cargarFaenas();
       }
     };
-    
-    window.addEventListener('refreshFaenas', handleRefreshFaenas);
-    
+
+    window.addEventListener("refreshFaenas", handleRefreshFaenas);
+
     return () => {
-      window.removeEventListener('refreshFaenas', handleRefreshFaenas);
+      window.removeEventListener("refreshFaenas", handleRefreshFaenas);
     };
   }, [temporadaPescaId]);
 
@@ -169,6 +178,9 @@ const DetalleFaenasPescaCard = ({
       embarcacionId: null,
       bolicheId: null,
       observaciones: "",
+      urlReporteFaenaCalas: "",
+      urlDeclaracionDesembarqueArmador: "",
+      estadoFaenaId: null,
     });
     setDialogVisible(true);
   };
@@ -176,32 +188,24 @@ const DetalleFaenasPescaCard = ({
   /**
    * Abrir diálogo para editar faena
    */
-  const handleEditarFaena = async (faena) => {
-    try {
-      const faenaCompleta = await getFaenaPescaPorId(faena.id);
-      setEditingFaena(faenaCompleta);
-      reset({
-        descripcion: faenaCompleta.descripcion || "",
-        fechaSalida: faenaCompleta.fechaSalida
-          ? new Date(faenaCompleta.fechaSalida)
-          : null,
-        fechaRetorno: faenaCompleta.fechaRetorno
-          ? new Date(faenaCompleta.fechaRetorno)
-          : null,
-        embarcacionId: faenaCompleta.embarcacionId,
-        bolicheId: faenaCompleta.bolicheId,
-        observaciones: faenaCompleta.observaciones || "",
-      });
-      setDialogVisible(true);
-    } catch (error) {
-      console.error("Error cargando faena:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Error al cargar los datos de la faena",
-        life: 3000,
-      });
+  const handleEditarFaena = (faena, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
+    setEditingFaena(faena);
+    reset({
+      descripcion: faena.descripcion || "",
+      fechaSalida: faena.fechaSalida ? new Date(faena.fechaSalida) : null,
+      fechaRetorno: faena.fechaRetorno ? new Date(faena.fechaRetorno) : null,
+      embarcacionId: faena.embarcacionId || null,
+      bolicheId: faena.bolicheRedId || null,
+      observaciones: faena.observaciones || "",
+      urlReporteFaenaCalas: faena.urlReporteFaenaCalas || "",
+      urlDeclaracionDesembarqueArmador: faena.urlDeclaracionDesembarqueArmador || "",
+      estadoFaenaId: faena.estadoFaenaId || null,
+    });
+    setDialogVisible(true);
   };
 
   /**
@@ -212,7 +216,9 @@ const DetalleFaenasPescaCard = ({
       const faenaData = {
         ...data,
         fechaSalida: data.fechaSalida ? data.fechaSalida.toISOString() : null,
-        fechaRetorno: data.fechaRetorno ? data.fechaRetorno.toISOString() : null,
+        fechaRetorno: data.fechaRetorno
+          ? data.fechaRetorno.toISOString()
+          : null,
       };
       if (editingFaena) {
         await actualizarFaenaPesca(editingFaena.id, faenaData);
@@ -284,8 +290,8 @@ const DetalleFaenasPescaCard = ({
    * Obtener nombre del puerto por ID
    */
   const obtenerNombrePuerto = (puertoId) => {
-    const puerto = puertosData.find(p => p.id === puertoId);
-    return puerto ? puerto.nombre : 'N/A';
+    const puerto = puertosData.find((p) => p.id === puertoId);
+    return puerto ? puerto.nombre : "N/A";
   };
 
   // Configuración de columnas
@@ -300,8 +306,12 @@ const DetalleFaenasPescaCard = ({
       header: "Embarcación",
       sortable: true,
       body: (rowData) => {
-        const embarcacion = embarcaciones.find(e => Number(e.id) === Number(rowData.embarcacionId));
-        return embarcacion ? embarcacion.activo?.nombre || 'Sin nombre' : 'N/A';
+        const embarcacion = embarcaciones.find(
+          (e) => Number(e.id) === Number(rowData.embarcacionId)
+        );
+        return embarcacion
+          ? embarcacion.activo?.nombre || embarcacion.nombre || "Sin nombre"
+          : "N/A";
       },
     },
     {
@@ -309,8 +319,10 @@ const DetalleFaenasPescaCard = ({
       header: "Boliche",
       sortable: true,
       body: (rowData) => {
-        const boliche = boliches.find(b => Number(b.id) === Number(rowData.bolicheRedId));
-        return boliche ? boliche.descripcion : 'N/A';
+        const boliche = boliches.find(
+          (b) => Number(b.id) === Number(rowData.bolicheRedId)
+        );
+        return boliche ? boliche.descripcion : "N/A";
       },
     },
     {
@@ -318,8 +330,10 @@ const DetalleFaenasPescaCard = ({
       header: "Bahía",
       sortable: true,
       body: (rowData) => {
-        const bahia = bahiasComerciales.find(b => Number(b.id) === Number(rowData.bahiaId));
-        return bahia ? `${bahia.nombres} ${bahia.apellidos}` : 'N/A';
+        const bahia = bahiasComerciales.find(
+          (b) => Number(b.id) === Number(rowData.bahiaId)
+        );
+        return bahia ? `${bahia.nombres} ${bahia.apellidos}` : "N/A";
       },
     },
     {
@@ -327,8 +341,10 @@ const DetalleFaenasPescaCard = ({
       header: "Patrón",
       sortable: true,
       body: (rowData) => {
-        const patron = patrones.find(p => Number(p.id) === Number(rowData.patronId));
-        return patron ? `${patron.nombres} ${patron.apellidos}` : 'N/A';
+        const patron = patrones.find(
+          (p) => Number(p.id) === Number(rowData.patronId)
+        );
+        return patron ? `${patron.nombres} ${patron.apellidos}` : "N/A";
       },
     },
     {
@@ -336,27 +352,37 @@ const DetalleFaenasPescaCard = ({
       header: "Motorista",
       sortable: true,
       body: (rowData) => {
-        const motorista = motoristas.find(m => Number(m.id) === Number(rowData.motoristaId));
-        return motorista ? `${motorista.nombres} ${motorista.apellidos}` : 'N/A';
+        const motorista = motoristas.find(
+          (m) => Number(m.id) === Number(rowData.motoristaId)
+        );
+        return motorista
+          ? `${motorista.nombres} ${motorista.apellidos}`
+          : "N/A";
       },
     },
     {
       field: "fechaSalida",
       header: "Fecha Zarpe",
       sortable: true,
-      body: (rowData) => rowData.fechaSalida ? new Date(rowData.fechaSalida).toLocaleDateString() : '-',
-    },
-    {
-      field: "puertoSalidaId",
-      header: "Puerto Zarpe",
-      sortable: true,
-      body: (rowData) => obtenerNombrePuerto(rowData.puertoSalidaId),
+      body: (rowData) =>
+        rowData.fechaSalida
+          ? new Date(rowData.fechaSalida).toLocaleDateString()
+          : "-",
     },
     {
       field: "fechaRetorno",
       header: "Fecha Retorno",
       sortable: true,
-      body: (rowData) => rowData.fechaRetorno ? new Date(rowData.fechaRetorno).toLocaleDateString() : '-',
+      body: (rowData) =>
+        rowData.fechaRetorno
+          ? new Date(rowData.fechaRetorno).toLocaleDateString()
+          : "-",
+    },
+    {
+      field: "puertoSalidaId",
+      header: "Puerto Salida",
+      sortable: true,
+      body: (rowData) => obtenerNombrePuerto(rowData.puertoSalidaId),
     },
     {
       field: "puertoRetornoId",
@@ -365,38 +391,216 @@ const DetalleFaenasPescaCard = ({
       body: (rowData) => obtenerNombrePuerto(rowData.puertoRetornoId),
     },
     {
-      field: "estado",
-      header: "Estado",
-      sortable: true,
-      body: (rowData) => (
-        <Tag
-          value={rowData.estado}
-          severity={rowData.estado === "ACTIVO" ? "success" : "danger"}
-        />
-      ),
-    },
-    {
       header: "Acciones",
       body: (rowData) => (
         <div className="flex gap-2">
           <Button
-            type="button"
             icon="pi pi-pencil"
-            className="p-button-rounded p-button-text p-button-warning"
-            onClick={() => handleEditarFaena(rowData)}
-            tooltip="Editar"
+            className="p-button-rounded p-button-success p-button-text"
+            onClick={(e) => handleEditarFaena(rowData, e)}
+            tooltip="Editar faena"
           />
           <Button
-            type="button"
             icon="pi pi-trash"
-            className="p-button-rounded p-button-text p-button-danger"
+            className="p-button-rounded p-button-danger p-button-text"
             onClick={() => handleEliminarFaena(rowData)}
-            tooltip="Eliminar"
+            tooltip="Eliminar faena"
           />
         </div>
       ),
     },
   ];
+
+  // Template de expansión
+  const rowExpansionTemplate = (data) => {
+    const calas = calasData[data.id] || [];
+    console.log("🔍 DEBUG TEMPLATE EXPANSIÓN:", { 
+      faenaId: data.id, 
+      calas, 
+      cantidadCalas: calas.length,
+      calasDataCompleto: calasData 
+    });
+
+    const formatearFecha = (fecha) => {
+      if (!fecha) return "";
+      return new Date(fecha).toLocaleString("es-ES", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    };
+
+    return (
+      <div className="p-3">
+        <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+          <Tag 
+            value={`Calas de la Faena ${data.id}`}
+            severity="warning"
+            style={{ 
+              width: "100%",
+              color: "black",
+            }}
+          />
+        </div>
+        {calas.length === 0 ? (
+          <p>No hay calas registradas para esta faena</p>
+        ) : (
+          <DataTable
+            value={calas}
+            dataKey="id"
+            className="datatable-responsive"
+            style={{cursor: "no-drop", fontSize: getResponsiveFontSize() }}
+          >
+            <Column
+              field="id"
+              header="ID"
+              sortable
+              style={{ minWidth: "4rem" }}
+            />
+            <Column
+              field="fechaHoraInicio"
+              header="Fecha Inicio"
+              body={(rowData) => formatearFecha(rowData.fechaHoraInicio)}
+              sortable
+              style={{ minWidth: "10rem" }}
+            />
+            <Column
+              field="fechaHoraFin"
+              header="Fecha Fin"
+              body={(rowData) => formatearFecha(rowData.fechaHoraFin)}
+              sortable
+              style={{ minWidth: "10rem" }}
+            />
+            <Column
+              field="latitud"
+              header="Latitud"
+              sortable
+              style={{ minWidth: "8rem" }}
+            />
+            <Column
+              field="longitud"
+              header="Longitud"
+              sortable
+              style={{ minWidth: "8rem" }}
+            />
+            <Column
+              field="toneladasCapturadas"
+              header="Toneladas"
+              sortable
+              style={{ minWidth: "8rem" }}
+            />
+          </DataTable>
+        )}
+      </div>
+    );
+  };
+
+  // Funciones para expandir y contraer filas
+  const onRowExpand = async (event) => {
+    const faenaId = event.data.id;
+    console.log("🔍 DEBUG EXPANDIR FAENA:", { faenaId, calasExistentes: !!calasData[faenaId] });
+    
+    if (!calasData[faenaId]) {
+      try {
+        console.log("📡 Cargando calas para faena:", faenaId);
+        const calas = await getCalasPorFaena(faenaId);
+        console.log("✅ Calas recibidas:", calas);
+        setCalasData((prevCalasData) => ({ ...prevCalasData, [faenaId]: calas }));
+      } catch (error) {
+        console.error("❌ Error cargando calas:", error);
+      }
+    }
+    toast.current?.show({
+      severity: "info",
+      summary: "Faena Expandida",
+      detail: `Faena ${event.data.id}`,
+      life: 3000,
+    });
+  };
+
+  const onRowCollapse = (event) => {
+    toast.current?.show({
+      severity: "success",
+      summary: "Faena Contraída",
+      detail: `Faena ${event.data.id}`,
+      life: 3000,
+    });
+  };
+
+  // Botones para expandir y contraer todas las filas
+  const expandAll = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    let _expandedRows = {};
+    faenas.forEach((faena) => (_expandedRows[`${faena.id}`] = true));
+    setExpandedRows(_expandedRows);
+  };
+
+  const collapseAll = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpandedRows({});
+  };
+
+  // Header con botones de expansión
+  const header = (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        flexDirection: window.innerWidth < 768 ? "column" : "row",
+      }}
+    >
+      <div style={{ flex: 3 }}>
+        <h2>Detalle Faenas de Pesca</h2>
+      </div>
+      <div style={{ flex: 1 }}>
+        <Button
+          label="Nueva Faena"
+          icon="pi pi-plus"
+          onClick={handleNuevaFaena}
+          disabled={!temporadaPescaId}
+          raised
+          outlined
+          size="small"
+          tooltip={!temporadaPescaId ? "Guarde la temporada para crear faenas" : "Crear nueva faena"}
+          tooltipOptions={{ position: "bottom" }}
+          className="p-button-success"
+          severity="success"
+        />
+      </div>
+      <div style={{ flex: 1 }}>
+        <Button
+          label="Expandir Todo"
+          icon="pi pi-plus"
+          onClick={expandAll}
+          raised
+          outlined
+          size="small"
+          tooltip="Expandir Todas"
+          tooltipOptions={{ position: "bottom" }}
+          className="p-button-warning"
+          severity="warning"
+        />
+      </div>
+      <div style={{ flex: 1 }}>
+        <Button
+          label="Contraer Todo"
+          icon="pi pi-minus"
+          onClick={collapseAll}
+          text
+          size="small"
+          tooltip="Contraer Todas"
+          tooltipOptions={{ position: "bottom" }}
+          className="p-button-success"
+          severity="success"
+        />
+      </div>
+    </div>
+  );
 
   // Header del card
   const cardHeader = (
@@ -408,12 +612,14 @@ const DetalleFaenasPescaCard = ({
         </div>
       }
       end={
-        <Button
-          label="Nueva Faena"
-          icon="pi pi-plus"
-          onClick={handleNuevaFaena}
-          disabled={!temporadaPescaId}
-        />
+        <div className="flex gap-2">
+          <Button
+            label="Nueva Faena"
+            icon="pi pi-plus"
+            onClick={handleNuevaFaena}
+            disabled={!temporadaPescaId}
+          />
+        </div>
       }
     />
   );
@@ -433,13 +639,7 @@ const DetalleFaenasPescaCard = ({
       />
 
       <Card
-        title={
-          <div className="flex align-items-center gap-2">
-            <i className="pi pi-anchor text-2xl"></i>
-            <span className="text-xl font-bold">Detalle Faenas de Pesca</span>
-          </div>
-        }
-        className="shadow-2"
+
       >
         {!temporadaPescaId ? (
           <div className="text-center p-4">
@@ -457,9 +657,17 @@ const DetalleFaenasPescaCard = ({
             showGridlines
             emptyMessage="No hay faenas registradas para esta temporada"
             className="p-datatable-sm"
-            onRowClick={(e) => handleEditarFaena(e.data)}
+            onRowClick={(e) => handleEditarFaena(e.data, e.originalEvent)}
             style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+            rowExpansionTemplate={rowExpansionTemplate}
+            expandedRows={expandedRows}
+            onRowToggle={(e) => setExpandedRows(e.data)}
+            onRowExpand={onRowExpand}
+            onRowCollapse={onRowCollapse}
+            dataKey="id"
+            header={header}
           >
+            <Column expander style={{ width: "5rem" }} />
             {columns.map((column) => (
               <Column key={column.field} {...column} />
             ))}
@@ -483,15 +691,30 @@ const DetalleFaenasPescaCard = ({
           onSubmit={onSubmit}
           loading={loading}
           temporadaData={temporadaData}
-          embarcacionesOptions={embarcaciones.map((e) => ({ 
-            label: e.activo?.nombre || e.nombre || 'Sin nombre', 
-            value: e.id 
+          embarcacionesOptions={embarcaciones.map((e) => ({
+            label: e.activo?.nombre || e.nombre || "Sin nombre",
+            value: e.id,
           }))}
-          bolichesOptions={boliches.map((b) => ({ label: b.descripcion, value: b.id }))}
-          bahiasComercialesOptions={bahiasComerciales.map((b) => ({ label: `${b.nombres} ${b.apellidos}`, value: b.id }))}
-          motoristasOptions={motoristas.map((m) => ({ label: `${m.nombres} ${m.apellidos}`, value: m.id }))}
-          patronesOptions={patrones.map((p) => ({ label: `${p.nombres} ${p.apellidos}`, value: p.id }))}
-          puertosOptions={puertosData.map((p) => ({ label: p.nombre, value: p.id }))}
+          bolichesOptions={boliches.map((b) => ({
+            label: b.descripcion,
+            value: b.id,
+          }))}
+          bahiasComercialesOptions={bahiasComerciales.map((b) => ({
+            label: `${b.nombres} ${b.apellidos}`,
+            value: b.id,
+          }))}
+          motoristasOptions={motoristas.map((m) => ({
+            label: `${m.nombres} ${m.apellidos}`,
+            value: m.id,
+          }))}
+          patronesOptions={patrones.map((p) => ({
+            label: `${p.nombres} ${p.apellidos}`,
+            value: p.id,
+          }))}
+          puertosOptions={puertosData.map((p) => ({
+            label: p.nombre,
+            value: p.id,
+          }))}
         />
       </Dialog>
     </div>

@@ -16,7 +16,7 @@
  */
 
 import React, { useEffect, useState, useRef } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
 import { Toolbar } from "primereact/toolbar";
@@ -31,14 +31,12 @@ import {
 } from "../../api/personal";
 import { iniciarTemporada } from "../../api/temporadaPesca";
 import { getEstadosMultiFuncionParaTemporadaPesca } from "../../api/estadoMultiFuncion";
-import { crearFaenaPesca } from "../../api/faenaPesca"; // Importar función crearFaenaPesca
 import { getEmbarcaciones } from "../../api/embarcacion";
 import { getAllBolicheRed } from "../../api/bolicheRed";
 import { getPuertosPesca } from "../../api/puertoPesca";
 // Importar componentes de cards
 import DatosGeneralesTemporadaForm from "./DatosGeneralesTemporadaForm";
 import ResolucionPDFTemporadaForm from "./ResolucionPDFTemporadaForm";
-import DetalleFaenasPescaCard from "./DetalleFaenasPescaCard";
 
 /**
  * Componente de formulario para temporadas de pesca

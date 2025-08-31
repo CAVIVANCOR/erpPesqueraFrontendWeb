@@ -39,3 +39,8 @@ export async function eliminarCala(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+export async function getCalasPorFaena(faenaPescaId) {
+  const res = await axios.get(`${API_URL}/faena/${faenaPescaId}`, { headers: getAuthHeaders() });
+  return res.data;
+}
