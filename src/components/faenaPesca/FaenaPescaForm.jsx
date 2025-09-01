@@ -30,6 +30,8 @@ export default function FaenaPescaForm({
   motoristasOptions = [],
   patronesOptions = [],
   puertosOptions = [],
+  onDataChange, // Callback para notificar cambios en los datos
+  onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
 }) {
   // Estados principales
   const [activeCard, setActiveCard] = useState("datos-generales");
@@ -172,6 +174,22 @@ export default function FaenaPescaForm({
     </div>
   );
 
+  const handleFormSubmit = async (data) => {
+    try {
+      // Llamar onSubmit original
+      await onSubmit(data);
+    } catch (error) {
+      console.error('Error en handleFormSubmit:', error);
+    }
+  };
+
+  const handleFinalizarFaena = () => {
+    // Cambiar estado a FINALIZADA (19)
+    setValue("estadoFaenaId", 19);
+    // Forzar actualización inmediata
+    handleSubmit(handleFormSubmit)();
+  };
+
   return (
     <Dialog
       visible={visible}
@@ -181,6 +199,7 @@ export default function FaenaPescaForm({
       footer={dialogFooter}
       onHide={handleHide}
     >
+      <Toast ref={toast} />
       {/* Mostrar descripción de faena con Tag */}
       <div className="flex justify-content-center mb-4">
         <Tag
@@ -258,13 +277,9 @@ export default function FaenaPescaForm({
             estadosFaena={estadosFaena}
             faenaPescaId={defaultValues.id}
             loading={loading}
-            handleFinalizarFaena={() => {
-              setValue("estadoFaenaId", 19);
-              // Forzar actualización inmediata
-              handleSubmit((data) => {
-                onSubmit(data);
-              })();
-            }}
+            handleFinalizarFaena={handleFinalizarFaena}
+            onDataChange={onDataChange} // Callback para notificar cambios en los datos
+            onTemporadaDataChange={onTemporadaDataChange} // Callback para notificar cambios en datos de temporada
           />
         )}
 
@@ -282,7 +297,6 @@ export default function FaenaPescaForm({
         )}
       </div>
 
-      <Toast ref={toast} />
     </Dialog>
   );
 }

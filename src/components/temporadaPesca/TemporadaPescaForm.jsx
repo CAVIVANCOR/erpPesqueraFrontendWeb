@@ -48,6 +48,7 @@ const TemporadaPescaForm = ({
   onSave,
   editingItem,
   empresas = [],
+  onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
 }) => {
   // Estados principales
   const [activeCard, setActiveCard] = useState("datos-generales");
@@ -89,6 +90,7 @@ const TemporadaPescaForm = ({
       urlResolucionPdf: "",
       cuotaPropiaTon: null,
       cuotaAlquiladaTon: null,
+      toneladasCapturadasTemporada: null,
     },
   });
 
@@ -146,7 +148,7 @@ const TemporadaPescaForm = ({
     const cargarResponsablesFaena = async () => {
       try {
         // Usar la empresa del editingItem o la primera empresa disponible
-        const empresaId = editingItem?.empresaId || empresas[0]?.id;
+        const empresaId = editingItem?.empresaId || empresas[0]?.id || null;
         
         if (empresaId) {
           const [bahiasData, motoristasData, patronesData] = await Promise.all([
@@ -167,7 +169,7 @@ const TemporadaPescaForm = ({
       }
     };
     
-    if (empresas.length > 0) {
+    if (editingItem?.empresaId || empresas.length > 0) {
       cargarResponsablesFaena();
     }
   }, [editingItem, empresas]);
@@ -189,6 +191,7 @@ const TemporadaPescaForm = ({
         urlResolucionPdf: editingItem.urlResolucionPdf || "",
         cuotaPropiaTon: editingItem.cuotaPropiaTon || null,
         cuotaAlquiladaTon: editingItem.cuotaAlquiladaTon || null,
+        toneladasCapturadasTemporada: editingItem.toneladasCapturadasTemporada || null,
       });
     } else {
       reset({
@@ -203,6 +206,7 @@ const TemporadaPescaForm = ({
         urlResolucionPdf: "",
         cuotaPropiaTon: null,
         cuotaAlquiladaTon: null,
+        toneladasCapturadasTemporada: null,
       });
     }
   }, [editingItem, reset, estadoDefaultId]);
@@ -250,7 +254,7 @@ const TemporadaPescaForm = ({
   /**
    * Manejar envío del formulario
    */
-  const onSubmit = (data) => {
+  const handleFormSubmit = (data) => {
     // Validar campos obligatorios
     const camposObligatorios = [];
     
@@ -288,6 +292,7 @@ const TemporadaPescaForm = ({
         ? Number(data.cuotaAlquiladaTon)
         : null,
       fechaActualizacion: new Date().toISOString(),
+      toneladasCapturadasTemporada: data.toneladasCapturadasTemporada ? Number(data.toneladasCapturadasTemporada) : null,
     };
 
     // Solo incluir ID si existe y no es null (para edición)
@@ -397,7 +402,7 @@ const TemporadaPescaForm = ({
       <Button
         label={editingItem ? "Actualizar" : "Crear"}
         icon="pi pi-check"
-        onClick={handleSubmit(onSubmit)}
+        onClick={handleSubmit(handleFormSubmit)}
         loading={validandoSuperposicion}
       />
     </div>
@@ -407,9 +412,7 @@ const TemporadaPescaForm = ({
     <Dialog
       visible={visible}
       style={{ width: "1300px" }}
-      header={
-        editingItem ? "Editar Temporada de Pesca" : "Nueva Temporada de Pesca"
-      }
+      headerStyle={{ display: "none" }}
       modal
       footer={dialogFooter}
       onHide={handleHide}
@@ -422,11 +425,12 @@ const TemporadaPescaForm = ({
           severity="info"
           style={{
             fontSize: "1.1rem",
-            padding: "0.75rem 1.25rem",
+            padding: "0.75rem 0.5rem",
             textTransform: "uppercase",
             fontWeight: "bold",
             textAlign: "center",
             width: "100%",
+            marginTop: "0.5rem",
           }}
         />
       </div>
@@ -464,7 +468,7 @@ const TemporadaPescaForm = ({
         }
       />
 
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(handleFormSubmit)}>
         {activeCard === "datos-generales" && (
           <DatosGeneralesTemporadaForm
             control={control}
@@ -483,6 +487,7 @@ const TemporadaPescaForm = ({
             boliches={boliches}
             puertos={puertosPesca}
             temporadaData={editingItem}
+            onTemporadaDataChange={onTemporadaDataChange}
           />
         )}
 

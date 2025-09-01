@@ -362,6 +362,21 @@ const TemporadaPesca = () => {
    */
   const cuotaTemplate = (rowData, field) => {
     const valor = rowData[field];
+
+    // Para toneladas capturadas, mostrar 0.00 si es null/undefined
+    if (field === "toneladasCapturadasTemporada") {
+      const valorNumerico = Number(valor) || 0;
+      return (
+        <div className="text-right">
+          <Badge
+            value={`${valorNumerico.toFixed(2)} Ton`}
+            severity={valorNumerico > 0 ? "success" : "secondary"}
+          />
+        </div>
+      );
+    }
+
+    // Para otros campos, mantener comportamiento original
     if (!valor) return "-";
 
     return (
@@ -377,6 +392,91 @@ const TemporadaPesca = () => {
   const resolucionTemplate = (rowData) => {
     if (!rowData.numeroResolucion) return "-";
 
+    const handlePdfClick = async () => {
+      if (!rowData.urlResolucionPdf) {
+        toast.current.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "No hay PDF disponible para esta resolución",
+          life: 3000,
+        });
+        return;
+      }
+
+      try {
+        let urlCompleta;
+
+        // Construcción de URL siguiendo el patrón funcional
+        if (
+          rowData.urlResolucionPdf.startsWith(
+            "/uploads/resoluciones-temporada/"
+          )
+        ) {
+          const rutaArchivo = rowData.urlResolucionPdf.replace(
+            "/uploads/resoluciones-temporada/",
+            ""
+          );
+          urlCompleta = `${
+            import.meta.env.VITE_API_URL
+          }/temporada-pesca-resolucion/archivo/${rutaArchivo}`;
+        } else if (rowData.urlResolucionPdf.startsWith("/api/")) {
+          const rutaSinApi = rowData.urlResolucionPdf.substring(4);
+          urlCompleta = `${import.meta.env.VITE_API_URL}${rutaSinApi}`;
+        } else if (rowData.urlResolucionPdf.startsWith("/")) {
+          urlCompleta = `${import.meta.env.VITE_API_URL}${
+            rowData.urlResolucionPdf
+          }`;
+        } else {
+          urlCompleta = rowData.urlResolucionPdf;
+        }
+
+        // Obtener token y hacer fetch con autenticación
+        const token = useAuthStore.getState().token;
+        const response = await fetch(urlCompleta, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          // Crear blob y abrir en nueva ventana
+          const blob = await response.blob();
+          const blobUrl = window.URL.createObjectURL(blob);
+          const newWindow = window.open(blobUrl, "_blank");
+
+          // Limpiar blob después de 10 segundos
+          setTimeout(() => {
+            window.URL.revokeObjectURL(blobUrl);
+          }, 10000);
+
+          if (!newWindow) {
+            toast.current.show({
+              severity: "warn",
+              summary: "Aviso",
+              detail:
+                "El navegador bloqueó la ventana emergente. Por favor, permita ventanas emergentes para este sitio.",
+              life: 5000,
+            });
+          }
+        } else {
+          toast.current.show({
+            severity: "error",
+            summary: "Error",
+            detail: `No se pudo abrir el documento (${response.status})`,
+            life: 3000,
+          });
+        }
+      } catch (error) {
+        console.error("Error al abrir PDF:", error);
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: `Error al abrir el documento: ${error.message}`,
+          life: 3000,
+        });
+      }
+    };
+
     return (
       <div className="flex align-items-center gap-2">
         <span>{rowData.numeroResolucion}</span>
@@ -386,7 +486,7 @@ const TemporadaPesca = () => {
             className="p-button-rounded p-button-text p-button-sm"
             tooltip="Ver PDF"
             tooltipOptions={{ position: "top" }}
-            onClick={() => window.open(rowData.urlResolucionPdf, "_blank")}
+            onClick={handlePdfClick}
           />
         )}
       </div>
@@ -418,6 +518,89 @@ const TemporadaPesca = () => {
           tooltipOptions={{ position: "top" }}
           onClick={() => confirmDelete(rowData)}
         />
+      </div>
+    );
+  };
+
+  /**
+   * Template para cuota total (Cuota Propia + Cuota Alquilada)
+   */
+  const cuotaTotalTemplate = (rowData) => {
+    const cuotaPropia = Number(rowData.cuotaPropiaTon) || 0;
+    const cuotaAlquilada = Number(rowData.cuotaAlquiladaTon) || 0;
+    const cuotaTotal = cuotaPropia + cuotaAlquilada;
+
+    return (
+      <div className="text-right">
+        <Badge value={`${cuotaTotal.toFixed(2)} Ton`} severity="primary" />
+      </div>
+    );
+  };
+
+  /**
+   * Template para toneladas pendientes (Cuota Total - Toneladas Capturadas)
+   */
+  const toneladasPendientesTemplate = (rowData) => {
+    const cuotaPropia = Number(rowData.cuotaPropiaTon) || 0;
+    const cuotaAlquilada = Number(rowData.cuotaAlquiladaTon) || 0;
+    const cuotaTotal = cuotaPropia + cuotaAlquilada;
+    const capturadas = Number(rowData.toneladasCapturadasTemporada) || 0;
+    const pendientes = cuotaTotal - capturadas;
+
+    // Determinar color según el estado
+    let severity = "secondary";
+    if (pendientes > 0) {
+      severity = "warning"; // Amarillo para pendientes
+    } else if (pendientes === 0) {
+      severity = "success"; // Verde para completado
+    } else {
+      severity = "danger"; // Rojo para sobrepesca
+    }
+
+    return (
+      <div className="text-right">
+        <Badge value={`${pendientes.toFixed(2)} Ton`} severity={severity} />
+      </div>
+    );
+  };
+
+  /**
+   * Template para porcentaje avanzado (Toneladas Capturadas / Cuota Total * 100)
+   */
+  const porcentajeAvanzadoTemplate = (rowData) => {
+    const cuotaPropia = Number(rowData.cuotaPropiaTon) || 0;
+    const cuotaAlquilada = Number(rowData.cuotaAlquiladaTon) || 0;
+    const cuotaTotal = cuotaPropia + cuotaAlquilada;
+    const capturadas = Number(rowData.toneladasCapturadasTemporada) || 0;
+    
+    // Evitar división por cero
+    if (cuotaTotal === 0) {
+      return (
+        <div className="text-center">
+          <Badge value="0%" severity="secondary" />
+        </div>
+      );
+    }
+    
+    const porcentaje = (capturadas / cuotaTotal) * 100;
+    
+    // Determinar color según el porcentaje
+    let severity = "secondary";
+    if (porcentaje >= 100) {
+      severity = "success"; // Verde para 100% o más
+    } else if (porcentaje >= 75) {
+      severity = "info"; // Azul para 75-99%
+    } else if (porcentaje >= 50) {
+      severity = "warning"; // Amarillo para 50-74%
+    } else if (porcentaje > 0) {
+      severity = "secondary"; // Gris para 1-49%
+    } else {
+      severity = "danger"; // Rojo para 0%
+    }
+
+    return (
+      <div className="text-center">
+        <Badge value={`${porcentaje.toFixed(1)}%`} severity={severity} />
       </div>
     );
   };
@@ -484,7 +667,11 @@ const TemporadaPesca = () => {
                   size="small"
                   onClick={openNew}
                   disabled={!filtroEmpresa}
-                  tooltip={!filtroEmpresa ? "Seleccione una empresa para crear una nueva temporada" : "Crear nueva temporada"}
+                  tooltip={
+                    !filtroEmpresa
+                      ? "Seleccione una empresa para crear una nueva temporada"
+                      : "Crear nueva temporada"
+                  }
                   tooltipOptions={{ position: "bottom" }}
                 />
               </div>
@@ -525,21 +712,14 @@ const TemporadaPesca = () => {
             header="Empresa"
             body={empresaTemplate}
             sortable
-            style={{ minWidth: "180px" }}
+            style={{ minWidth: "120px" }}
           />
           <Column
             field="numeroResolucion"
             header="Resolución"
             body={resolucionTemplate}
             sortable
-            style={{ minWidth: "180px" }}
-          />
-          <Column
-            field="nombre"
-            header="Nombre de Temporada"
-            sortable
-            style={{ minWidth: "200px" }}
-            className="font-semibold"
+            style={{ minWidth: "120px" }}
           />
           <Column
             header="Estado"
@@ -553,7 +733,7 @@ const TemporadaPesca = () => {
             header="Fecha Inicio"
             body={(rowData) => fechaTemplate(rowData, "fechaInicio")}
             sortable
-            style={{ minWidth: "120px" }}
+            style={{ minWidth: "100px" }}
             className="text-center"
           />
           <Column
@@ -561,24 +741,43 @@ const TemporadaPesca = () => {
             header="Fecha Fin"
             body={(rowData) => fechaTemplate(rowData, "fechaFin")}
             sortable
+            style={{ minWidth: "100px" }}
+            className="text-center"
+          />
+          <Column
+            field="cuotaTotal"
+            header="Cuota Total"
+            body={cuotaTotalTemplate}
+            sortable
             style={{ minWidth: "120px" }}
             className="text-center"
           />
           <Column
-            field="cuotaPropiaTon"
-            header="Cuota Propia"
-            body={(rowData) => cuotaTemplate(rowData, "cuotaPropiaTon")}
+            field="toneladasCapturadasTemporada"
+            header="Toneladas Capturadas"
+            body={(rowData) =>
+              cuotaTemplate(rowData, "toneladasCapturadasTemporada")
+            }
             sortable
-            style={{ minWidth: "130px" }}
+            style={{ minWidth: "120px" }}
             className="text-center"
           />
 
           <Column
-            field="cuotaAlquiladaTon"
-            header="Cuota Alquilada"
-            body={(rowData) => cuotaTemplate(rowData, "cuotaAlquiladaTon")}
+            field="toneladasPendientes"
+            header="Toneladas Pendientes"
+            body={toneladasPendientesTemplate}
             sortable
-            style={{ minWidth: "140px" }}
+            style={{ minWidth: "120px" }}
+            className="text-center"
+          />
+
+          <Column
+            field="porcentajeAvanzado"
+            header="Porcentaje Avanzado"
+            body={porcentajeAvanzadoTemplate}
+            sortable
+            style={{ minWidth: "120px" }}
             className="text-center"
           />
 
@@ -601,6 +800,7 @@ const TemporadaPesca = () => {
         onSave={saveItem}
         editingItem={editingItem}
         empresas={empresas}
+        onTemporadaDataChange={cargarDatos}
       />
     </div>
   );

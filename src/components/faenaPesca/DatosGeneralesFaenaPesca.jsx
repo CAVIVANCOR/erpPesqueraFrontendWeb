@@ -16,6 +16,7 @@ import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { classNames } from "primereact/utils";
 import { Message } from "primereact/message";
+import { InputNumber } from "primereact/inputnumber"; // Import InputNumber
 import DetalleCalasForm from "./DetalleCalasForm";
 
 const DatosGeneralesFaenaPesca = ({
@@ -34,6 +35,8 @@ const DatosGeneralesFaenaPesca = ({
   faenaPescaId,
   loading = false,
   handleFinalizarFaena,
+  onDataChange, // Callback para notificar cambios en los datos
+  onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
 }) => {
   // Transformar estadosFaena a formato options
   const estadosFaenaOptions = estadosFaena.map((estado) => ({
@@ -49,6 +52,7 @@ const DatosGeneralesFaenaPesca = ({
   const fechaRetorno = watch("fechaRetorno");
   const puertoRetornoId = watch("puertoRetornoId");
   const estadoFaenaId = watch("estadoFaenaId");
+  const toneladasCapturadasFaena = watch("toneladasCapturadasFaena");
 
   // Validar si todos los campos requeridos están completos
   const todosCamposCompletos =
@@ -60,7 +64,6 @@ const DatosGeneralesFaenaPesca = ({
     puertoRetornoId;
   // Lógica de cambio automático de estado
   useEffect(() => {
-
     // Solo cambiar si estado actual es 17 (INICIADA) y tenemos fechaSalida + puertoSalidaId
     if (Number(estadoFaenaId) === 17 && fechaSalida && puertoSalidaId) {
       setValue("estadoFaenaId", 18); // Cambiar a EN ZARPE
@@ -186,9 +189,29 @@ const DatosGeneralesFaenaPesca = ({
             <Message severity="error" text={errors.estadoFaenaId.message} />
           )}
         </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="toneladasCapturadasFaena">Toneladas Capturadas</label>
+          <Controller
+            name="toneladasCapturadasFaena"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="toneladasCapturadasFaena"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="decimal"
+                minFractionDigits={0}
+                maxFractionDigits={3}
+                suffix=" Ton"
+                inputStyle={{ fontWeight: "bold" }}
+                disabled
+              />
+            )}
+          />
+        </div>
         {/* Botón Fin de Faena */}
         {showFinalizarButton && (
-        <div style={{ flex: 0.5 }}>
+          <div style={{ flex: 0.5 }}>
             <Button
               label="Fin de Faena"
               icon="pi pi-check"
@@ -487,6 +510,8 @@ const DatosGeneralesFaenaPesca = ({
         puertos={puertos}
         embarcaciones={embarcaciones}
         loading={loading}
+        onDataChange={onDataChange} // Callback para notificar cambios en los datos
+        onTemporadaDataChange={onTemporadaDataChange} // Callback para notificar cambios en datos de temporada
       />
     </div>
   );

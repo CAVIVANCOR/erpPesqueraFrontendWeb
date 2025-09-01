@@ -24,7 +24,7 @@ import { Card } from "primereact/card";
 import { getResponsiveFontSize } from "../../utils/utils";
 import DetalleCalasEspecieForm from "./DetalleCalasEspecieForm";
 import {
-  getCalas,
+  getCalasPorFaena,
   crearCala,
   actualizarCala,
   eliminarCala,
@@ -127,8 +127,13 @@ const DetalleCalasForm = ({
   ]);
 
   const cargarCalas = async () => {
+    if (!faenaPescaId) {
+      setCalas([]);
+      return;
+    }
+    
     try {
-      const response = await getCalas(faenaPescaId);
+      const response = await getCalasPorFaena(faenaPescaId);
       setCalas(response);
     } catch (error) {
       console.error("Error cargando calas:", error);
@@ -222,6 +227,28 @@ const DetalleCalasForm = ({
     }
   };
 
+  const eliminarCalaRecord = async (cala) => {
+    try {
+      await eliminarCala(cala.id);
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Cala eliminada",
+        life: 3000,
+      });
+      
+      cargarCalas();
+    } catch (error) {
+      console.error("Error eliminando cala:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al eliminar la cala",
+        life: 3000,
+      });
+    }
+  };
+
   const limpiarFormulario = () => {
     setFechaHoraInicio(null);
     setFechaHoraFin(null);
@@ -265,64 +292,43 @@ const DetalleCalasForm = ({
         updatedAt: new Date(), // Campo requerido por Prisma
       };
 
+      let nuevaCalaCreada = null;
+
       if (editingCala) {
         // Actualizar cala existente
         await actualizarCala(editingCala.id, calaData);
+        toast.current?.show({
+          severity: "success",
+          summary: "Cala Actualizada",
+          detail: "Cala actualizada correctamente",
+          life: 3000,
+        });
+        setCalaDialog(false);
       } else {
         // Crear nueva cala
-        await crearCala(calaData);
+        nuevaCalaCreada = await crearCala(calaData);
+        
+        // Actualizar el estado editingCala con la nueva cala creada
+        setEditingCala(nuevaCalaCreada);
+        
+        toast.current?.show({
+          severity: "success",
+          summary: "Cala Creada",
+          detail: "Cala creada correctamente. Ahora puede agregar especies.",
+          life: 4000,
+        });
+        
+        // NO cerrar el dialog para permitir agregar especies
+        // setCalaDialog(false); // Comentado para mantener abierto
       }
 
-      toast.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: editingCala
-          ? "Cala actualizada correctamente"
-          : "Cala creada correctamente",
-        life: 3000,
-      });
-
-      setCalaDialog(false);
       cargarCalas();
     } catch (error) {
       console.error("Error guardando cala:", error);
-
-      // Manejo específico de errores
-      let errorMessage = "Error al guardar la cala";
-
-      if (error.response?.data?.message) {
-        // Error del backend
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        // Error de red o cliente
-        errorMessage = error.message;
-      }
-
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: errorMessage,
-        life: 5000,
-      });
-    }
-  };
-
-  const eliminarCala = async (cala) => {
-    try {
-      await eliminarCala(cala.id);
-      toast.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "Cala eliminada",
-        life: 3000,
-      });
-      cargarCalas();
-    } catch (error) {
-      console.error("Error eliminando cala:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Error al eliminar la cala",
+        detail: error.message || "Error al guardar la cala",
         life: 3000,
       });
     }
@@ -339,30 +345,132 @@ const DetalleCalasForm = ({
     });
   };
 
+  const iniciarCala = async (cala) => {
+    if (!cala || fechaHoraInicio) {
+      // No hacer nada si ya tiene fecha de inicio
+      return;
+    }
+
+    try {
+      const ahora = new Date();
+      setFechaHoraInicio(ahora);
+      
+      // Actualizar en la base de datos
+      const calaActualizada = {
+        ...cala,
+        fechaHoraInicio: ahora.toISOString(),
+      };
+      
+      await actualizarCala(cala.id, calaActualizada);
+      
+      toast.current?.show({
+        severity: "success",
+        summary: "Cala Iniciada",
+        detail: `Cala iniciada a las ${ahora.toLocaleTimeString()}`,
+        life: 3000,
+      });
+      
+      // Recargar la lista de calas
+      cargarCalas();
+      
+    } catch (error) {
+      console.error("Error iniciando cala:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al iniciar la cala",
+        life: 3000,
+      });
+    }
+  };
+
+  const finalizarCalaAction = async (cala) => {
+    if (!cala || !fechaHoraInicio || fechaHoraFin) {
+      // No hacer nada si no está iniciada o ya está finalizada
+      return;
+    }
+
+    try {
+      const ahora = new Date();
+      setFechaHoraFin(ahora);
+      
+      // Actualizar en la base de datos
+      const calaActualizada = {
+        ...cala,
+        fechaHoraFin: ahora.toISOString(),
+      };
+      
+      await actualizarCala(cala.id, calaActualizada);
+      
+      toast.current?.show({
+        severity: "success",
+        summary: "Cala Finalizada",
+        detail: `Cala finalizada a las ${ahora.toLocaleTimeString()}`,
+        life: 3000,
+      });
+      
+      // Recargar la lista de calas
+      cargarCalas();
+      
+    } catch (error) {
+      console.error("Error finalizando cala:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al finalizar la cala",
+        life: 3000,
+      });
+    }
+  };
+
+  // Estados para determinar si los botones están habilitados
+  const puedeIniciarCala = !fechaHoraInicio;
+  const puedeFinalizarCala = fechaHoraInicio && !fechaHoraFin;
+  const calaFinalizada = fechaHoraInicio && fechaHoraFin;
+
   const accionesTemplate = (rowData) => {
     return (
-      <div>
+      <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
         <Button
           icon="pi pi-pencil"
-          className="p-button-rounded p-button-success p-mr-2"
+          className="p-button-rounded p-button-success"
           onClick={() => editarCala(rowData)}
           tooltip="Editar"
+          size="small"
         />
         <Button
           icon="pi pi-trash"
-          className="p-button-rounded p-button-warning"
-          onClick={() => eliminarCala(rowData)}
-          tooltip="Eliminar"
-        />
-        <Button
-          icon="pi pi-stop"
           className="p-button-rounded p-button-danger"
-          onClick={() => finalizarCala(rowData)}
-          tooltip="Finalizar Cala"
+          onClick={() => eliminarCalaRecord(rowData)}
+          tooltip="Eliminar"
+          size="small"
         />
       </div>
     );
   };
+
+  const calaDialogFooter = (
+    <>
+      <Button
+        label="Cancelar"
+        icon="pi pi-times"
+        className="p-button-text"
+        onClick={() => setCalaDialog(false)}
+      />
+      <Button
+        label="Guardar"
+        icon="pi pi-check"
+        className="p-button-text"
+        onClick={guardarCala}
+      />
+    </>
+  );
+
+  const calaDialogHeader = (
+    <div className="flex align-items-center justify-content-between">
+      <h4>{editingCala ? "Editar Cala" : "Nueva Cala"}</h4>
+    </div>
+  );
 
   const header = (
     <div className="flex align-items-center gap-2">
@@ -414,23 +522,6 @@ const DetalleCalasForm = ({
     </div>
   );
 
-  const calaDialogFooter = (
-    <>
-      <Button
-        label="Cancelar"
-        icon="pi pi-times"
-        className="p-button-text"
-        onClick={() => setCalaDialog(false)}
-      />
-      <Button
-        label="Guardar"
-        icon="pi pi-check"
-        className="p-button-text"
-        onClick={guardarCala}
-      />
-    </>
-  );
-
   return (
     <Card
       className="mt-4"
@@ -439,7 +530,7 @@ const DetalleCalasForm = ({
         body: { style: { paddingTop: "0" } },
       }}
     >
-      <Toast ref={toast} />
+      <Toast ref={toast} style={{ zIndex: 9999 }} baseZIndex={9999} />
       <DataTable
         value={calas}
         selection={selectedCala}
@@ -469,6 +560,30 @@ const DetalleCalasForm = ({
           style={{ minWidth: "12rem" }}
         ></Column>
         <Column
+          field="latitud"
+          header="Latitud"
+          sortable
+          body={(rowData) => {
+            const latitudNormalizada = rowData.latitud
+              ? parseFloat(rowData.latitud).toFixed(8)
+              : "0.00000000";
+            return latitudNormalizada;
+          }}
+          style={{ minWidth: "8rem" }}
+        ></Column>
+        <Column
+          field="longitud"
+          header="Longitud"
+          sortable
+          body={(rowData) => {
+            const longitudNormalizada = rowData.longitud
+              ? parseFloat(rowData.longitud).toFixed(8)
+              : "0.00000000";
+            return longitudNormalizada;
+          }}
+          style={{ minWidth: "8rem" }}
+        ></Column>
+        <Column
           field="fechaHoraInicio"
           header="Fecha Inicio"
           body={(rowData) => formatearFecha(rowData.fechaHoraInicio)}
@@ -486,6 +601,12 @@ const DetalleCalasForm = ({
           field="toneladasCapturadas"
           header="Toneladas"
           sortable
+          body={(rowData) => {
+            const tonsC = rowData.toneladasCapturadas
+              ? parseFloat(rowData.toneladasCapturadas).toFixed(3)
+              : "0.000";
+            return `${tonsC} t`;
+          }}
           style={{ minWidth: "8rem" }}
         ></Column>
         <Column
@@ -498,7 +619,7 @@ const DetalleCalasForm = ({
       <Dialog
         visible={calaDialog}
         style={{ width: "1300px" }}
-        header={editingCala ? "Editar Cala" : "Nueva Cala"}
+        header={calaDialogHeader}
         modal
         className="p-fluid"
         footer={calaDialogFooter}
@@ -563,77 +684,9 @@ const DetalleCalasForm = ({
             style={{
               display: "flex",
               gap: 10,
+              alignItems: "end",
               flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <label htmlFor="latitud">Latitud</label>
-              <InputNumber
-                id="latitud"
-                value={latitud}
-                onValueChange={(e) => setLatitud(e.value)}
-                mode="decimal"
-                minFractionDigits={0}
-                maxFractionDigits={6}
-                inputStyle={{ fontWeight: "bold" }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="longitud">Longitud</label>
-              <InputNumber
-                id="longitud"
-                value={longitud}
-                onValueChange={(e) => setLongitud(e.value)}
-                mode="decimal"
-                minFractionDigits={0}
-                maxFractionDigits={6}
-                inputStyle={{ fontWeight: "bold" }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="fechaHoraInicio">Fecha y Hora Inicio</label>
-              <Calendar
-                id="fechaHoraInicio"
-                value={fechaHoraInicio}
-                onChange={(e) => setFechaHoraInicio(e.value)}
-                inputStyle={{ fontWeight: "bold" }}
-                showTime
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled={loading}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="fechaHoraFin">Fecha y Hora Fin</label>
-              <Calendar
-                id="fechaHoraFin"
-                value={fechaHoraFin}
-                onChange={(e) => setFechaHoraFin(e.value)}
-                inputStyle={{ fontWeight: "bold" }}
-                showTime
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled={loading}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="toneladasCapturadas">Toneladas Capturadas</label>
-              <InputNumber
-                id="toneladasCapturadas"
-                value={toneladasCapturadas}
-                onValueChange={(e) => setToneladasCapturadas(e.value)}
-                mode="decimal"
-                minFractionDigits={0}
-                maxFractionDigits={3}
-                suffix=" Ton"
-              />
-            </div>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
+              marginTop: 10,
             }}
           >
             <div style={{ flex: 1 }}>
@@ -660,7 +713,269 @@ const DetalleCalasForm = ({
                 placeholder="Se actualiza automáticamente"
               />
             </div>
-            <div style={{ flex: 4 }}>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="fechaHoraInicio">Fecha y Hora Inicio</label>
+              <Calendar
+                id="fechaHoraInicio"
+                value={fechaHoraInicio}
+                onChange={(e) => setFechaHoraInicio(e.value)}
+                inputStyle={{ fontWeight: "bold" }}
+                showTime
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          {/* Componente de coordenadas GPS completo */}
+          <div
+            style={{
+              border: "6px solid #1fad2f",
+              backgroundColor: "#edf9f2",
+              padding: "0.5rem",
+              borderRadius: "8px",
+              marginTop: "1rem",
+              marginBottom: "1rem",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <Button
+                onClick={async () => {
+                  if (!navigator.geolocation) {
+                    toast.current?.show({
+                      severity: "error",
+                      summary: "Error",
+                      detail: "GPS no disponible en este dispositivo",
+                      life: 3000,
+                    });
+                    return;
+                  }
+
+                  const options = {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0,
+                  };
+
+                  navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                      const { latitude, longitude, accuracy } = position.coords;
+                      setLatitud(latitude);
+                      setLongitud(longitude);
+                      console.log(
+                        `GPS capturado: ${latitude}, ${longitude} (precisión: ${accuracy}m)`
+                      );
+                      toast.current?.show({
+                        severity: "success",
+                        summary: "GPS capturado",
+                        detail: `GPS capturado con precisión de ${accuracy.toFixed(
+                          1
+                        )}m. Guardando cala...`,
+                        life: 3000,
+                      });
+
+                      // Guardar automáticamente la cala después de capturar GPS
+                      try {
+                        await guardarCala();
+                      } catch (error) {
+                        console.error("Error al guardar cala automáticamente:", error);
+                        toast.current?.show({
+                          severity: "error",
+                          summary: "Error",
+                          detail: "GPS capturado pero error al guardar la cala",
+                          life: 4000,
+                        });
+                      }
+                    },
+                    (error) => {
+                      let message = "Error desconocido";
+                      switch (error.code) {
+                        case error.PERMISSION_DENIED:
+                          message =
+                            "Permiso GPS denegado. Active la ubicación.";
+                          break;
+                        case error.POSITION_UNAVAILABLE:
+                          message = "Señal GPS no disponible.";
+                          break;
+                        case error.TIMEOUT:
+                          message = "Timeout GPS. Intente nuevamente.";
+                          break;
+                      }
+                      toast.current?.show({
+                        severity: "error",
+                        summary: "Error",
+                        detail: message,
+                        life: 3000,
+                      });
+                    },
+                    options
+                  );
+                }}
+                disabled={loading}
+                label="Capturar GPS"
+                icon="pi pi-map-marker"
+                className="p-button-success"
+                raised
+                severity="success"
+                size="large"
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "5px",
+                  fontWeight: "bold",
+                }}
+              >
+                Latitud
+              </label>
+              <input
+                type="number"
+                value={latitud || ""}
+                onChange={(e) => setLatitud(parseFloat(e.target.value) || 0)}
+                disabled={loading}
+                step="0.000001"
+                placeholder="Ej: -12.345678"
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                }}
+              />
+              <small style={{ color: "#666" }}>
+                Formato decimal (+ Norte, - Sur)
+              </small>
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "5px",
+                  fontWeight: "bold",
+                }}
+              >
+                Longitud
+              </label>
+              <input
+                type="number"
+                value={longitud || ""}
+                onChange={(e) => setLongitud(parseFloat(e.target.value) || 0)}
+                disabled={loading}
+                step="0.000001"
+                placeholder="Ej: -77.123456"
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                }}
+              />
+              <small style={{ color: "#666" }}>
+                Formato decimal (+ Este, - Oeste)
+              </small>
+            </div>
+
+            <div style={{ flex: 1 }}>
+              {/* Conversión a formato DMS para referencia */}
+              {(latitud !== 0 || longitud !== 0) && (
+                <div
+                  style={{
+                    marginTop: "15px",
+                    padding: "10px",
+                    backgroundColor: "#f3fce8",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <strong>📐 Formato DMS (Marítimo):</strong>
+                  <div style={{ marginTop: "5px", fontSize: "14px" }}>
+                    <div>
+                      <strong>Lat:</strong>{" "}
+                      {(() => {
+                        const abs = Math.abs(latitud);
+                        const deg = Math.floor(abs);
+                        const minFloat = (abs - deg) * 60;
+                        const min = Math.floor(minFloat);
+                        const sec = (minFloat - min) * 60;
+                        const dir = latitud >= 0 ? "N" : "S";
+                        return `${deg}° ${min}' ${sec.toFixed(2)}" ${dir}`;
+                      })()}
+                    </div>
+                    <div>
+                      <strong>Lon:</strong>{" "}
+                      {(() => {
+                        const abs = Math.abs(longitud);
+                        const deg = Math.floor(abs);
+                        const minFloat = (abs - deg) * 60;
+                        const min = Math.floor(minFloat);
+                        const sec = (minFloat - min) * 60;
+                        const dir = longitud >= 0 ? "E" : "W";
+                        return `${deg}° ${min}' ${sec.toFixed(2)}" ${dir}`;
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "end",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Finalizar Cala"
+                icon="pi pi-stop"
+                className="p-button-warning"
+                onClick={() => finalizarCalaAction(editingCala)}
+                size="large"
+                disabled={!puedeFinalizarCala || loading}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="fechaHoraFin">Fecha y Hora Fin</label>
+              <Calendar
+                id="fechaHoraFin"
+                value={fechaHoraFin}
+                onChange={(e) => setFechaHoraFin(e.value)}
+                inputStyle={{ fontWeight: "bold" }}
+                showTime
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled={loading || calaFinalizada}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="toneladasCapturadas">Toneladas Capturadas</label>
+              <InputNumber
+                id="toneladasCapturadas"
+                value={toneladasCapturadas}
+                onValueChange={(e) => setToneladasCapturadas(e.value)}
+                mode="decimal"
+                minFractionDigits={0}
+                maxFractionDigits={3}
+                suffix=" Ton"
+                inputStyle={{ fontWeight: "bold" }}
+                style={{ backgroundColor: "#f7ee88" }}
+                disabled
+              />
+            </div>
+
+            <div style={{ flex: 2 }}>
               <label htmlFor="observaciones">Observaciones</label>
               <InputTextarea
                 id="observaciones"

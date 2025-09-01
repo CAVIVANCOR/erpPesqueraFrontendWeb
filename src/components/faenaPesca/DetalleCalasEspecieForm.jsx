@@ -28,16 +28,16 @@ import {
   actualizarDetalleCalaEspecie,
   eliminarDetalleCalaEspecie
 } from "../../api/detalleCalaEspecie";
+import { recalcularCascadaDesdeCala } from "../../api/recalcularToneladas";
 
 const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
   const [especiesDetalle, setEspeciesDetalle] = useState([]);
-  const [especies, setEspecies] = useState([]);
-  const [selectedDetalle, setSelectedDetalle] = useState(null);
+  const [especiesDisponibles, setEspeciesDisponibles] = useState([]);
   const [detalleDialog, setDetalleDialog] = useState(false);
   const [editingDetalle, setEditingDetalle] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const toast = useRef(null);
-
+  
   // Estados del formulario
   const [especieId, setEspecieId] = useState("");
   const [toneladas, setToneladas] = useState("");
@@ -55,7 +55,7 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
   const cargarEspecies = async () => {
     try {
       const response = await getEspecies();
-      setEspecies(response.map(e => ({ 
+      setEspeciesDisponibles(response.map(e => ({ 
         label: `${e.nombre} (${e.nombreCientifico})`, 
         value: e.id 
       })));
@@ -115,9 +115,9 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
       if (!calaId) {
         toast.current?.show({
           severity: "error",
-          summary: "Error",
-          detail: "No se puede guardar: falta calaId",
-          life: 3000,
+          summary: "Error de Validación",
+          detail: "No se puede guardar: falta identificador de cala",
+          life: 4000,
         });
         return;
       }
@@ -125,11 +125,48 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
       if (!especieId) {
         toast.current?.show({
           severity: "error",
-          summary: "Error",
-          detail: "Debe seleccionar una especie",
-          life: 3000,
+          summary: "Campo Requerido",
+          detail: "Debe seleccionar una especie para continuar",
+          life: 4000,
         });
         return;
+      }
+
+      if (!kilogramos || Number(kilogramos) <= 0) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Campo Requerido",
+          detail: "Debe ingresar una cantidad válida en kilogramos (mayor a 0)",
+          life: 4000,
+        });
+        return;
+      }
+
+      if (porcentajeJuveniles && (Number(porcentajeJuveniles) < 0 || Number(porcentajeJuveniles) > 100)) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Valor Inválido",
+          detail: "El porcentaje de juveniles debe estar entre 0 y 100",
+          life: 4000,
+        });
+        return;
+      }
+
+      // Validar duplicados solo al crear (no al editar)
+      if (!editingDetalle) {
+        const especieYaExiste = especiesDetalle.some(
+          detalle => Number(detalle.especieId) === Number(especieId)
+        );
+        
+        if (especieYaExiste) {
+          toast.current?.show({
+            severity: "warn",
+            summary: "Especie Duplicada",
+            detail: "Ya existe un registro para esta especie en la cala. Use 'Editar' para modificar el registro existente.",
+            life: 5000,
+          });
+          return;
+        }
       }
 
       const detalleData = {
@@ -141,6 +178,7 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
           : null,
         observaciones: observaciones || null,
       };
+      
       if (editingDetalle) {
         // Actualizar detalle existente
         const result = await actualizarDetalleCalaEspecie(editingDetalle.id, detalleData);
@@ -151,22 +189,84 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
 
       toast.current?.show({
         severity: "success",
-        summary: "Éxito",
-        detail: editingDetalle ? "Especie actualizada" : "Especie agregada",
+        summary: "Operación Exitosa",
+        detail: editingDetalle ? "Especie actualizada correctamente" : "Especie agregada correctamente",
         life: 3000,
       });
 
       setDetalleDialog(false);
       cargarEspeciesDetalle();
+      
+      // RECÁLCULO AUTOMÁTICO: Cuando se modifica DetalleCalaEspecie → recalcular en cascada desde Cala
+      try {
+        toast.current?.show({
+          severity: "info",
+          summary: "Recálculo Automático",
+          detail: `Iniciando recálculo de toneladas para Cala ${calaId}...`,
+          life: 2000,
+        });
+        
+        await recalcularCascadaDesdeCala(calaId);
+        
+        toast.current?.show({
+          severity: "success",
+          summary: "Recálculo Completado",
+          detail: `Toneladas recalculadas exitosamente para Cala ${calaId}`,
+          life: 3000,
+        });
+      } catch (error) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error en Recálculo",
+          detail: "No se pudieron recalcular las toneladas automáticamente. Intente recargar la página.",
+          life: 5000,
+        });
+      }
     } catch (error) {
-      console.error("Error guardando detalle:", error);
-      console.error("Error details:", error.response?.data);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: error.response?.data?.message || "Error al guardar la especie",
-        life: 3000,
-      });
+      // Manejo específico para diferentes tipos de errores
+      if (error.response?.status === 409) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Registro Duplicado",
+          detail: "Ya existe un registro para esta especie en la cala. No se pueden tener especies duplicadas.",
+          life: 5000,
+        });
+      } else if (error.response?.status === 400) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Datos Inválidos",
+          detail: error.response?.data?.message || "Los datos ingresados no son válidos. Verifique la información.",
+          life: 4000,
+        });
+      } else if (error.response?.status === 422) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error de Validación",
+          detail: error.response?.data?.message || "Los datos no cumplen con las reglas de validación del sistema.",
+          life: 4000,
+        });
+      } else if (error.response?.status >= 500) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error del Servidor",
+          detail: "Error interno del servidor. Contacte al administrador del sistema.",
+          life: 5000,
+        });
+      } else if (error.code === 'NETWORK_ERROR' || !error.response) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error de Conexión",
+          detail: "No se pudo conectar con el servidor. Verifique su conexión a internet.",
+          life: 5000,
+        });
+      } else {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error Inesperado",
+          detail: error.response?.data?.message || "Ocurrió un error inesperado. Intente nuevamente.",
+          life: 4000,
+        });
+      }
     }
   };
 
@@ -180,6 +280,13 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
         life: 3000,
       });
       cargarEspeciesDetalle();
+      
+      // RECÁLCULO AUTOMÁTICO: Cuando se elimina DetalleCalaEspecie → recalcular en cascada desde Cala
+      try {
+        await recalcularCascadaDesdeCala(calaId);
+      } catch (error) {
+        console.error('❌ Error en recálculo automático:', error);
+      }
     } catch (error) {
       console.error("Error eliminando detalle:", error);
       toast.current?.show({
@@ -278,8 +385,8 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
 
       <DataTable
         value={especiesDetalle}
-        selection={selectedDetalle}
-        onSelectionChange={(e) => setSelectedDetalle(e.value)}
+        selection={null}
+        onSelectionChange={(e) => null}
         dataKey="id"
         paginator
         rows={5}
@@ -353,7 +460,7 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
             <Dropdown
               id="especieId"
               value={especieId}
-              options={especies}
+              options={especiesDisponibles}
               onChange={(e) => setEspecieId(e.value)}
               placeholder="Seleccione una especie"
               required

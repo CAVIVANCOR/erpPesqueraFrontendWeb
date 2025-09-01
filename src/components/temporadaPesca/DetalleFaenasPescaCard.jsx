@@ -44,7 +44,10 @@ const schema = yup.object().shape({
   embarcacionId: yup.number().required("La embarcación es obligatoria"),
   bolicheId: yup.number().required("El boliche es obligatorio"),
   urlReporteFaenaCalas: yup.string().url("Debe ser una URL válida").nullable(),
-  urlDeclaracionDesembarqueArmador: yup.string().url("Debe ser una URL válida").nullable(),
+  urlDeclaracionDesembarqueArmador: yup
+    .string()
+    .url("Debe ser una URL válida")
+    .nullable(),
   estadoFaenaId: yup.number().nullable(),
 });
 
@@ -58,8 +61,8 @@ const schema = yup.object().shape({
  * @param {Array} props.bahiasComerciales - Lista de bahías comerciales disponibles
  * @param {Array} props.motoristas - Lista de motoristas disponibles
  * @param {Array} props.patron - Lista de patrones disponibles
- * @param {Object} props.temporadaData - Data de la temporada de pesca
- * @param {Function} props.onRefresh - Callback para refrescar la lista de faenas
+ * @param {Object} props.temporadaData - Datos de la temporada
+ * @param {Function} props.onTemporadaDataChange - Callback para notificar cambios en datos de temporada
  */
 const DetalleFaenasPescaCard = ({
   temporadaPescaId,
@@ -69,8 +72,8 @@ const DetalleFaenasPescaCard = ({
   bahiasComerciales = [],
   motoristas = [],
   patrones = [],
-  temporadaData,
-  onRefresh, // Nueva prop para callback de refresco
+  temporadaData = {},
+  onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
 }) => {
   // Estados
   const [faenas, setFaenas] = useState([]);
@@ -205,7 +208,8 @@ const DetalleFaenasPescaCard = ({
       bolicheId: faena.bolicheRedId || null,
       observaciones: faena.observaciones || "",
       urlReporteFaenaCalas: faena.urlReporteFaenaCalas || "",
-      urlDeclaracionDesembarqueArmador: faena.urlDeclaracionDesembarqueArmador || "",
+      urlDeclaracionDesembarqueArmador:
+        faena.urlDeclaracionDesembarqueArmador || "",
       estadoFaenaId: faena.estadoFaenaId || null,
     });
     setDialogVisible(true);
@@ -373,6 +377,12 @@ const DetalleFaenasPescaCard = ({
           : "-",
     },
     {
+      field: "puertoSalidaId",
+      header: "Puerto Zarpe",
+      sortable: true,
+      body: (rowData) => obtenerNombrePuerto(rowData.puertoSalidaId),
+    },
+    {
       field: "fechaRetorno",
       header: "Fecha Retorno",
       sortable: true,
@@ -382,16 +392,21 @@ const DetalleFaenasPescaCard = ({
           : "-",
     },
     {
-      field: "puertoSalidaId",
-      header: "Puerto Salida",
-      sortable: true,
-      body: (rowData) => obtenerNombrePuerto(rowData.puertoSalidaId),
-    },
-    {
       field: "puertoRetornoId",
       header: "Puerto Retorno",
       sortable: true,
       body: (rowData) => obtenerNombrePuerto(rowData.puertoRetornoId),
+    },
+    {
+      field: "toneladasCapturadasFaena",
+      header: "Toneladas",
+      sortable: true,
+      body: (rowData) => {
+        const tons = rowData.toneladasCapturadasFaena
+          ? parseFloat(rowData.toneladasCapturadasFaena).toFixed(3)
+          : "0.000";
+        return `${tons} t`;
+      },
     },
     {
       header: "Acciones",
@@ -417,13 +432,6 @@ const DetalleFaenasPescaCard = ({
   // Template de expansión
   const rowExpansionTemplate = (data) => {
     const calas = calasData[data.id] || [];
-    console.log("🔍 DEBUG TEMPLATE EXPANSIÓN:", { 
-      faenaId: data.id, 
-      calas, 
-      cantidadCalas: calas.length,
-      calasDataCompleto: calasData 
-    });
-
     const formatearFecha = (fecha) => {
       if (!fecha) return "";
       return new Date(fecha).toLocaleString("es-ES", {
@@ -438,14 +446,13 @@ const DetalleFaenasPescaCard = ({
     // Template de expansión para calas (tercer nivel)
     const calaExpansionTemplate = (calaData) => {
       const detallesEspecie = detallesEspecieData[calaData.id] || [];
-      
       return (
         <div className="p-3">
           <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-            <Tag 
+            <Tag
               value={`Especies de la Cala ${calaData.id}`}
               severity="info"
-              style={{ 
+              style={{
                 width: "100%",
                 color: "white",
               }}
@@ -458,7 +465,7 @@ const DetalleFaenasPescaCard = ({
               value={detallesEspecie}
               dataKey="id"
               className="datatable-responsive"
-              style={{cursor: "no-drop", fontSize: getResponsiveFontSize() }}
+              style={{ cursor: "no-drop", fontSize: getResponsiveFontSize() }}
             >
               <Column
                 field="id"
@@ -479,15 +486,10 @@ const DetalleFaenasPescaCard = ({
                 style={{ minWidth: "12rem" }}
               />
               <Column
-                field="toneladas"
-                header="Toneladas"
-                sortable
-                style={{ minWidth: "8rem" }}
-                body={(rowData) => {
-                  // Mostrar directamente en toneladas
-                  const tons = rowData.toneladas ? parseFloat(rowData.toneladas).toFixed(3) : "0.000";
-                  return `${tons} t`;
-                }}
+                field="observaciones"
+                header="Observaciones"
+                style={{ minWidth: "12rem" }}
+                body={(rowData) => rowData.observaciones || "-"}
               />
               <Column
                 field="porcentajeJuveniles"
@@ -495,17 +497,26 @@ const DetalleFaenasPescaCard = ({
                 sortable
                 style={{ minWidth: "8rem" }}
                 body={(rowData) => {
-                  const porcentaje = rowData.porcentajeJuveniles !== null && rowData.porcentajeJuveniles !== undefined 
-                    ? parseFloat(rowData.porcentajeJuveniles).toFixed(1) 
-                    : "0.0";
+                  const porcentaje =
+                    rowData.porcentajeJuveniles !== null &&
+                    rowData.porcentajeJuveniles !== undefined
+                      ? parseFloat(rowData.porcentajeJuveniles).toFixed(1)
+                      : "0.0";
                   return `${porcentaje}%`;
                 }}
               />
               <Column
-                field="observaciones"
-                header="Observaciones"
-                style={{ minWidth: "12rem" }}
-                body={(rowData) => rowData.observaciones || "-"}
+                field="toneladas"
+                header="Toneladas"
+                sortable
+                style={{ minWidth: "8rem" }}
+                body={(rowData) => {
+                  // Mostrar directamente en toneladas
+                  const tons = rowData.toneladas
+                    ? parseFloat(rowData.toneladas).toFixed(3)
+                    : "0.000";
+                  return `${tons} t`;
+                }}
               />
             </DataTable>
           )}
@@ -516,37 +527,47 @@ const DetalleFaenasPescaCard = ({
     // Función para expandir calas y cargar especies
     const onCalaRowExpand = async (event) => {
       const calaId = event.data.id;
-      console.log("🔍 DEBUG EXPANDIR CALA:", { calaId, especiesExistentes: !!detallesEspecieData[calaId] });
       
-      if (!detallesEspecieData[calaId]) {
-        try {
-          console.log("📡 Cargando especies para cala:", calaId);
-          const especies = await getDetalleCalaEspeciePorCala(calaId);
-          console.log("✅ Especies recibidas:", especies);
-          setDetallesEspecieData((prevData) => ({ ...prevData, [calaId]: especies }));
-        } catch (error) {
-          console.error("❌ Error cargando especies:", error);
-          toast.current?.show({
-            severity: "error",
-            summary: "Error",
-            detail: "Error al cargar las especies de la cala",
-            life: 3000,
-          });
-        }
+      // SIEMPRE recargar especies para obtener datos actualizados
+      try {
+        const especies = await getDetalleCalaEspeciePorCala(calaId);
+        setDetallesEspecieData((prevData) => ({
+          ...prevData,
+          [calaId]: especies,
+        }));
+        toast.current?.show({
+          severity: "success",
+          summary: "Especies Actualizadas",
+          detail: `Datos actualizados para Cala ${calaId}`,
+          life: 2000,
+        });
+      } catch (error) {
+        console.error("❌ Error cargando especies:", error);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al cargar las especies de la cala",
+          life: 3000,
+        });
       }
     };
 
     const onCalaRowCollapse = (event) => {
-      console.log("🔍 DEBUG CONTRAER CALA:", event.data.id);
+      toast.current?.show({
+        severity: "success",
+        summary: "Cala Contraída",
+        detail: `Cala ${event.data.id}`,
+        life: 3000,
+      });
     };
 
     return (
       <div className="p-3">
         <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-          <Tag 
+          <Tag
             value={`Calas de la Faena ${data.id}`}
             severity="warning"
-            style={{ 
+            style={{
               width: "100%",
               color: "black",
             }}
@@ -559,7 +580,7 @@ const DetalleFaenasPescaCard = ({
             value={calas}
             dataKey="id"
             className="datatable-responsive"
-            style={{cursor: "no-drop", fontSize: getResponsiveFontSize() }}
+            style={{ cursor: "no-drop", fontSize: getResponsiveFontSize() }}
             rowExpansionTemplate={calaExpansionTemplate}
             expandedRows={expandedCalasRows}
             onRowToggle={(e) => setExpandedCalasRows(e.data)}
@@ -606,7 +627,9 @@ const DetalleFaenasPescaCard = ({
               style={{ minWidth: "8rem" }}
               body={(rowData) => {
                 // Mostrar directamente en toneladas
-                const tons = rowData.toneladasCapturadas ? parseFloat(rowData.toneladasCapturadas).toFixed(3) : "0.000";
+                const tons = rowData.toneladasCapturadas
+                  ? parseFloat(rowData.toneladasCapturadas).toFixed(3)
+                  : "0.000";
                 return `${tons} t`;
               }}
             />
@@ -619,16 +642,27 @@ const DetalleFaenasPescaCard = ({
   // Funciones para expandir y contraer filas
   const onRowExpand = async (event) => {
     const faenaId = event.data.id;
-    console.log("🔍 DEBUG EXPANDIR FAENA:", { faenaId, calasExistentes: !!calasData[faenaId] });
-    
     if (!calasData[faenaId]) {
       try {
-        console.log("📡 Cargando calas para faena:", faenaId);
         const calas = await getCalasPorFaena(faenaId);
-        console.log("✅ Calas recibidas:", calas);
-        setCalasData((prevCalasData) => ({ ...prevCalasData, [faenaId]: calas }));
+        setCalasData((prevCalasData) => ({
+          ...prevCalasData,
+          [faenaId]: calas,
+        }));
+        toast.current?.show({
+          severity: "success",
+          summary: "Calas Cargadas",
+          detail: `Calas para faena ${faenaId}`,
+          life: 3000,
+        });
       } catch (error) {
         console.error("❌ Error cargando calas:", error);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al cargar las calas de la faena",
+          life: 3000,
+        });
       }
     }
     toast.current?.show({
@@ -652,7 +686,7 @@ const DetalleFaenasPescaCard = ({
   const expandAll = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     try {
       // Expandir todas las faenas
       let _expandedRows = {};
@@ -666,7 +700,10 @@ const DetalleFaenasPescaCard = ({
             const calas = await getCalasPorFaena(faena.id);
             return { faenaId: faena.id, calas };
           } catch (error) {
-            console.error(`Error cargando calas para faena ${faena.id}:`, error);
+            console.error(
+              `Error cargando calas para faena ${faena.id}:`,
+              error
+            );
             return { faenaId: faena.id, calas: [] };
           }
         }
@@ -674,7 +711,7 @@ const DetalleFaenasPescaCard = ({
       });
 
       const calasResults = await Promise.all(calasPromises);
-      
+
       // Actualizar estado de calas
       const newCalasData = { ...calasData };
       calasResults.forEach(({ faenaId, calas }) => {
@@ -685,18 +722,21 @@ const DetalleFaenasPescaCard = ({
       // Expandir todas las calas y cargar especies
       let _expandedCalasRows = {};
       const especiesPromises = [];
-      
+
       calasResults.forEach(({ faenaId, calas }) => {
         calas.forEach((cala) => {
           _expandedCalasRows[`${cala.id}`] = true;
-          
+
           // Solo cargar especies si no existen ya
           if (!detallesEspecieData[cala.id]) {
             especiesPromises.push(
               getDetalleCalaEspeciePorCala(cala.id)
-                .then(especies => ({ calaId: cala.id, especies }))
-                .catch(error => {
-                  console.error(`Error cargando especies para cala ${cala.id}:`, error);
+                .then((especies) => ({ calaId: cala.id, especies }))
+                .catch((error) => {
+                  console.error(
+                    `Error cargando especies para cala ${cala.id}:`,
+                    error
+                  );
                   return { calaId: cala.id, especies: [] };
                 })
             );
@@ -710,11 +750,11 @@ const DetalleFaenasPescaCard = ({
       if (especiesPromises.length > 0) {
         const especiesResults = await Promise.all(especiesPromises);
         const newDetallesEspecieData = { ...detallesEspecieData };
-        
+
         especiesResults.forEach(({ calaId, especies }) => {
           newDetallesEspecieData[calaId] = especies;
         });
-        
+
         setDetallesEspecieData(newDetallesEspecieData);
       }
 
@@ -724,7 +764,6 @@ const DetalleFaenasPescaCard = ({
         detail: "Todos los niveles expandidos correctamente",
         life: 3000,
       });
-
     } catch (error) {
       console.error("Error expandiendo todos los niveles:", error);
       toast.current?.show({
@@ -740,6 +779,12 @@ const DetalleFaenasPescaCard = ({
     e.preventDefault();
     e.stopPropagation();
     setExpandedRows({});
+    toast.current?.show({
+      severity: "success",
+      summary: "Éxito",
+      detail: "Todos los niveles contraídos correctamente",
+      life: 3000,
+    });
   };
 
   // Header con botones de expansión
@@ -764,7 +809,11 @@ const DetalleFaenasPescaCard = ({
           raised
           outlined
           size="small"
-          tooltip={!temporadaPescaId ? "Guarde la temporada para crear faenas" : "Crear nueva faena"}
+          tooltip={
+            !temporadaPescaId
+              ? "Guarde la temporada para crear faenas"
+              : "Crear nueva faena"
+          }
           tooltipOptions={{ position: "bottom" }}
           className="p-button-success"
           severity="success"
@@ -836,9 +885,7 @@ const DetalleFaenasPescaCard = ({
         acceptClassName="p-button-danger"
       />
 
-      <Card
-
-      >
+      <Card>
         {!temporadaPescaId ? (
           <div className="text-center p-4">
             <i className="pi pi-info-circle text-4xl text-blue-500 mb-3"></i>
@@ -888,7 +935,9 @@ const DetalleFaenasPescaCard = ({
           defaultValues={editingFaena || {}}
           onSubmit={onSubmit}
           loading={loading}
+          onDataChange={cargarFaenas} // Callback para recargar faenas cuando cambien las toneladas
           temporadaData={temporadaData}
+          onTemporadaDataChange={onTemporadaDataChange} // Callback para notificar cambios en datos de temporada
           embarcacionesOptions={embarcaciones.map((e) => ({
             label: e.activo?.nombre || e.nombre || "Sin nombre",
             value: e.id,

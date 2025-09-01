@@ -40,8 +40,8 @@ export default function DatosGeneralesTemporadaForm({
   boliches = [],
   puertos = [],
   temporadaData = null,
+  onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
 }) {
-
   const detalleFaenasRef = useRef(null);
 
   const empresaWatched = watch("empresaId");
@@ -49,6 +49,9 @@ export default function DatosGeneralesTemporadaForm({
   // Watch para generar nombre automáticamente
   const idWatched = watch("id");
   const numeroResolucionWatched = watch("numeroResolucion");
+
+  // Watch para toneladas capturadas
+  const toneladasCapturadasTemporada = watch("toneladasCapturadasTemporada");
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -66,7 +69,6 @@ export default function DatosGeneralesTemporadaForm({
 
   // Generar nombre automáticamente cuando cambien id o numeroResolucion
   useEffect(() => {
-    
     if (idWatched && numeroResolucionWatched) {
       const nombreGenerado = `Temporada Pesca - ${idWatched} - ${numeroResolucionWatched}`;
       setValue("nombre", nombreGenerado);
@@ -126,7 +128,6 @@ export default function DatosGeneralesTemporadaForm({
 
   return (
     <Card
-      title="Datos Generales de la Temporada"
       className="mb-4"
       pt={{
         body: { className: "pt-0" },
@@ -214,7 +215,7 @@ export default function DatosGeneralesTemporadaForm({
                 <InputText
                   id="numeroResolucion"
                   {...field}
-                  value={field.value?.toUpperCase() || ''}
+                  value={field.value?.toUpperCase() || ""}
                   onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                   placeholder="Ej: R.M. N° 123-2024-PRODUCE"
                   style={{ fontWeight: "bold" }}
@@ -225,7 +226,10 @@ export default function DatosGeneralesTemporadaForm({
               )}
             />
             {errors.numeroResolucion && (
-              <Message severity="error" text={errors.numeroResolucion.message} />
+              <Message
+                severity="error"
+                text={errors.numeroResolucion.message}
+              />
             )}
             <small className="text-muted">
               Número de la resolución ministerial
@@ -413,18 +417,44 @@ export default function DatosGeneralesTemporadaForm({
               />
             )}
           </div>
+          {/* Toneladas Capturadas */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="toneladasCapturadasTemporada" className="font-semibold">
+              Toneladas Capturadas
+            </label>
+            <Controller
+              name="toneladasCapturadasTemporada"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  id="toneladasCapturadasTemporada"
+                  value={toneladasCapturadasTemporada}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  placeholder="0.000"
+                  mode="decimal"
+                  minFractionDigits={3}
+                  maxFractionDigits={3}
+                  inputStyle={{ fontWeight: "bold" }}
+                  min={0}
+                  suffix=" Ton"
+                  disabled
+                />
+              )}
+            />
+          </div>
         </div>
-          <DetalleFaenasPescaCard
-            ref={detalleFaenasRef}
-            temporadaPescaId={temporadaData?.id}
-            embarcaciones={embarcaciones}
-            boliches={boliches}
-            puertos={puertos}
-            bahiasComerciales={bahiasComerciales}
-            motoristas={motoristas}
-            patrones={patrones}
-            temporadaData={temporadaData}
-          />
+        <DetalleFaenasPescaCard
+          ref={detalleFaenasRef}
+          temporadaPescaId={temporadaData?.id}
+          embarcaciones={embarcaciones}
+          boliches={boliches}
+          puertos={puertos}
+          bahiasComerciales={bahiasComerciales}
+          motoristas={motoristas}
+          patrones={patrones}
+          temporadaData={temporadaData}
+          onTemporadaDataChange={onTemporadaDataChange} // Callback para notificar cambios en datos de temporada
+        />
       </div>
     </Card>
   );

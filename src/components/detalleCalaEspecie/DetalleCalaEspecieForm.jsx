@@ -5,6 +5,7 @@ import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
 import { InputTextarea } from 'primereact/inputtextarea';
+import { recalcularCascadaDesdeCala } from '../../api/recalcularToneladas';
 
 export default function DetalleCalaEspecieForm({ isEdit, defaultValues, onSubmit, onCancel, loading }) {
   const [calaId, setCalaId] = React.useState(defaultValues.calaId || '');
@@ -21,15 +22,28 @@ export default function DetalleCalaEspecieForm({ isEdit, defaultValues, onSubmit
     setObservaciones(defaultValues.observaciones || '');
   }, [defaultValues]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit({
+    
+    const formData = {
       calaId: calaId ? Number(calaId) : null,
       especieId: especieId ? Number(especieId) : null,
       toneladas,
       porcentajeJuveniles,
       observaciones
-    });
+    };
+
+    // Llamar onSubmit original
+    await onSubmit(formData);
+
+    // RECÁLCULO AUTOMÁTICO: Cuando se modifica DetalleCalaEspecie → recalcular en cascada desde Cala
+    if (calaId) {
+      try {
+        await recalcularCascadaDesdeCala(calaId);
+      } catch (error) {
+        console.error(' Error en recálculo automático:', error);
+      }
+    }
   };
 
   return (
