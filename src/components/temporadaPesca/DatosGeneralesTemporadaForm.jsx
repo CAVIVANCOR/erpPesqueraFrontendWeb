@@ -9,7 +9,7 @@
  * @version 1.0.0
  */
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
@@ -19,6 +19,7 @@ import { classNames } from "primereact/utils";
 import { Controller } from "react-hook-form";
 import { Message } from "primereact/message";
 import { getEmbarcaciones } from "../../api/embarcacion";
+import { getTemporadaPescaPorId } from "../../api/temporadaPesca";
 import DetalleFaenasPescaCard from "./DetalleFaenasPescaCard";
 
 export default function DatosGeneralesTemporadaForm({
@@ -41,8 +42,12 @@ export default function DatosGeneralesTemporadaForm({
   puertos = [],
   temporadaData = null,
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
+  onFaenasChange, // Callback para notificar cambios en faenas
 }) {
   const detalleFaenasRef = useRef(null);
+
+  // Estado para controlar actualizaciones de faenas
+  const [faenasUpdateTrigger, setFaenasUpdateTrigger] = useState(0);
 
   const empresaWatched = watch("empresaId");
 
@@ -108,6 +113,36 @@ export default function DatosGeneralesTemporadaForm({
       console.error("Error al autocompletar BahiaId:", error);
     }
   };
+
+  // Función para recargar datos de temporada
+  const recargarDatosTemporada = async () => {
+    if (!temporadaData?.id) {
+      return;
+    }
+    
+    try {
+      const temporadaActualizada = await getTemporadaPescaPorId(temporadaData.id);
+      const valorASetear = temporadaActualizada.toneladasCapturadas || temporadaActualizada.toneladasCapturadasTemporada || 0;
+      setValue("toneladasCapturadasTemporada", valorASetear);
+      
+      // Verificar si se actualizó
+      const valorActual = getValues("toneladasCapturadasTemporada");
+      
+      // Notificar cambios al componente padre
+      if (onTemporadaDataChange) {
+        onTemporadaDataChange(temporadaActualizada);
+      }
+    } catch (error) {
+      console.error("❌ Error al recargar datos de temporada:", error);
+    }
+  };
+
+  // useEffect para recargar datos cuando cambien las faenas
+  useEffect(() => {
+    if (faenasUpdateTrigger > 0) {
+      recargarDatosTemporada();
+    }
+  }, [faenasUpdateTrigger]);
 
   // Opciones normalizadas para dropdowns
   const empresasOptions = empresas.map((empresa) => ({
@@ -427,8 +462,9 @@ export default function DatosGeneralesTemporadaForm({
               control={control}
               render={({ field }) => (
                 <InputNumber
+                  key={`toneladas-${faenasUpdateTrigger}`}
                   id="toneladasCapturadasTemporada"
-                  value={toneladasCapturadasTemporada}
+                  value={field.value}
                   onValueChange={(e) => field.onChange(e.value)}
                   placeholder="0.000"
                   mode="decimal"
@@ -454,6 +490,9 @@ export default function DatosGeneralesTemporadaForm({
           patrones={patrones}
           temporadaData={temporadaData}
           onTemporadaDataChange={onTemporadaDataChange} // Callback para notificar cambios en datos de temporada
+          onFaenasChange={onFaenasChange} // Callback para notificar cambios en faenas
+          faenasUpdateTrigger={faenasUpdateTrigger}
+          setFaenasUpdateTrigger={setFaenasUpdateTrigger}
         />
       </div>
     </Card>

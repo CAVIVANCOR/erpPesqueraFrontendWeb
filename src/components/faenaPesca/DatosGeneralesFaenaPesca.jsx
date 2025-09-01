@@ -8,7 +8,7 @@
  * @version 2.0.0
  */
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Controller } from "react-hook-form";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
@@ -18,6 +18,7 @@ import { classNames } from "primereact/utils";
 import { Message } from "primereact/message";
 import { InputNumber } from "primereact/inputnumber"; // Import InputNumber
 import DetalleCalasForm from "./DetalleCalasForm";
+import { getFaenaPescaPorId } from "../../api/faenaPesca";
 
 const DatosGeneralesFaenaPesca = ({
   temporadaData,
@@ -37,7 +38,30 @@ const DatosGeneralesFaenaPesca = ({
   handleFinalizarFaena,
   onDataChange, // Callback para notificar cambios en los datos
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
+  onFaenasChange, // Callback para notificar cambios en faenas
 }) => {
+  // Estado para controlar actualizaciones de calas
+  const [calasUpdateTrigger, setCalasUpdateTrigger] = useState(0);
+
+  // useEffect para recargar datos de faena cuando hay cambios en calas
+  useEffect(() => {
+    const recargarDatosFaena = async () => {
+      if (faenaPescaId && calasUpdateTrigger > 0) {
+        try {
+          const faenaActualizada = await getFaenaPescaPorId(faenaPescaId);
+          // Actualizar solo el campo toneladasCapturadasFaena
+          setValue("toneladasCapturadasFaena", faenaActualizada.toneladasCapturadasFaena || 0);          
+        } catch (error) {
+          console.error('❌ Error recargando datos de faena:', error);
+        }
+      }
+    };
+    recargarDatosFaena();
+  }, [calasUpdateTrigger, faenaPescaId, setValue]);
+  // Función para notificar cambios en calas
+  const handleCalasChange = () => {
+    setCalasUpdateTrigger(prev => prev + 1);
+  };
   // Transformar estadosFaena a formato options
   const estadosFaenaOptions = estadosFaena.map((estado) => ({
     label: estado.descripcion,
@@ -512,6 +536,8 @@ const DatosGeneralesFaenaPesca = ({
         loading={loading}
         onDataChange={onDataChange} // Callback para notificar cambios en los datos
         onTemporadaDataChange={onTemporadaDataChange} // Callback para notificar cambios en datos de temporada
+        onFaenasChange={onFaenasChange} // Callback para notificar cambios en faenas
+        onCalasChange={handleCalasChange} // Callback para notificar cambios en calas
       />
     </div>
   );

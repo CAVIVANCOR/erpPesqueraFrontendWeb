@@ -10,9 +10,7 @@ export default function CoordinatesInput({
   onLatitudChange, 
   onLongitudChange, 
   disabled = false 
-}) {
-  console.log('🔍 CoordinatesInput renderizado:', { latitud, longitud, disabled });
-  
+}) {  
   return (
     <div style={{ 
       border: '2px solid blue', 
@@ -25,7 +23,6 @@ export default function CoordinatesInput({
       <p>Longitud: {longitud || 'No definida'}</p>
       <button 
         onClick={() => {
-          console.log('Botón test clickeado');
           onLatitudChange(-12.345678);
           onLongitudChange(-77.123456);
         }}

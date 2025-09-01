@@ -8,7 +8,7 @@
  * @version 1.0.0
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef } from "react";
 import { Card } from "primereact/card";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -63,18 +63,28 @@ const schema = yup.object().shape({
  * @param {Array} props.patron - Lista de patrones disponibles
  * @param {Object} props.temporadaData - Datos de la temporada
  * @param {Function} props.onTemporadaDataChange - Callback para notificar cambios en datos de temporada
+ * @param {Function} props.onFaenasChange - Callback para notificar cambios en faenas
+ * @param {number} props.faenasUpdateTrigger - Trigger para actualizar faenas
+ * @param {Function} props.setFaenasUpdateTrigger - Función para actualizar trigger
  */
-const DetalleFaenasPescaCard = ({
-  temporadaPescaId,
-  embarcaciones = [],
-  boliches = [],
-  puertos = [],
-  bahiasComerciales = [],
-  motoristas = [],
-  patrones = [],
-  temporadaData = {},
-  onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
-}) => {
+const DetalleFaenasPescaCard = forwardRef(
+  (
+    {
+      temporadaPescaId,
+      embarcaciones = [],
+      boliches = [],
+      puertos = [],
+      bahiasComerciales = [],
+      motoristas = [],
+      patrones = [],
+      temporadaData = null,
+      onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
+      onFaenasChange, // Callback para notificar cambios en faenas
+      faenasUpdateTrigger,
+      setFaenasUpdateTrigger,
+    },
+    ref
+  ) => {
   // Estados
   const [faenas, setFaenas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -247,6 +257,8 @@ const DetalleFaenasPescaCard = ({
 
       setDialogVisible(false);
       cargarFaenas();
+      onFaenasChange?.(); // Notificar cambios en faenas
+      handleFaenasChange(); // Actualizar trigger
     } catch (error) {
       console.error("Error guardando faena:", error);
       toast.current?.show({
@@ -279,6 +291,8 @@ const DetalleFaenasPescaCard = ({
         life: 3000,
       });
       cargarFaenas();
+      onFaenasChange?.(); // Notificar cambios en faenas
+      handleFaenasChange(); // Actualizar trigger
     } catch (error) {
       console.error("Error eliminando faena:", error);
       toast.current?.show({
@@ -871,6 +885,11 @@ const DetalleFaenasPescaCard = ({
     />
   );
 
+  // Función para actualizar trigger de faenas
+  const handleFaenasChange = () => {
+    setFaenasUpdateTrigger((prevTrigger) => prevTrigger + 1);
+  };
+
   return (
     <div className="card">
       <Toast ref={toast} />
@@ -938,6 +957,7 @@ const DetalleFaenasPescaCard = ({
           onDataChange={cargarFaenas} // Callback para recargar faenas cuando cambien las toneladas
           temporadaData={temporadaData}
           onTemporadaDataChange={onTemporadaDataChange} // Callback para notificar cambios en datos de temporada
+          onFaenasChange={onFaenasChange} // Callback para notificar cambios en faenas
           embarcacionesOptions={embarcaciones.map((e) => ({
             label: e.activo?.nombre || e.nombre || "Sin nombre",
             value: e.id,
@@ -966,6 +986,8 @@ const DetalleFaenasPescaCard = ({
       </Dialog>
     </div>
   );
-};
+});
+
+DetalleFaenasPescaCard.displayName = "DetalleFaenasPescaCard";
 
 export default DetalleFaenasPescaCard;

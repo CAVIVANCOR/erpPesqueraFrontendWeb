@@ -73,15 +73,25 @@ export default function FaenaPesca() {
   const handleFormSubmit = async (data) => {
     setLoading(true);
     try {
+      let faenaGuardada;
+      
       if (editing && editing.id) {
-        await actualizarFaenaPesca(editing.id, data);
+        faenaGuardada = await actualizarFaenaPesca(editing.id, data);
         toast.current.show({ severity: "success", summary: "Actualizado", detail: "Registro actualizado." });
       } else {
-        await crearFaenaPesca(data);
+        faenaGuardada = await crearFaenaPesca(data);
         toast.current.show({ severity: "success", summary: "Creado", detail: "Registro creado." });
+        
+        // Para nuevas faenas, actualizar editing con los datos guardados
+        // para mantener el formulario en modo edición
+        setEditing(faenaGuardada);
       }
-      setShowDialog(false);
-      setEditing(null);
+      
+      // NO cerrar el formulario - mantener modo edición activo
+      // setShowDialog(false);
+      // setEditing(null);
+      
+      // Recargar datos para actualizar la tabla
       cargarItems();
     } catch (err) {
       console.error("Error al guardar:", err);

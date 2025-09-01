@@ -259,9 +259,11 @@ const TemporadaPesca = () => {
    */
   const saveItem = async (data) => {
     try {
+      let temporadaGuardada;
+      
       if (editingItem?.id) {
         // Actualizar temporada existente
-        await actualizarTemporadaPesca(editingItem.id, data);
+        temporadaGuardada = await actualizarTemporadaPesca(editingItem.id, data);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -270,18 +272,28 @@ const TemporadaPesca = () => {
         });
       } else {
         // Crear nueva temporada
-        await crearTemporadaPesca(data);
+        temporadaGuardada = await crearTemporadaPesca(data);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
           detail: "Temporada creada correctamente",
           life: 3000,
         });
+        
+        // Para nuevas temporadas, actualizar editingItem con los datos guardados
+        // para mantener el formulario en modo edición
+        setEditingItem(temporadaGuardada);
       }
 
-      setShowForm(false);
-      setEditingItem(null);
+      // NO cerrar el formulario - mantener modo edición activo
+      // setShowForm(false);
+      // setEditingItem(null);
+      
+      // Recargar datos para actualizar la tabla
       cargarDatos();
+      
+      // Devolver el objeto resultado
+      return temporadaGuardada;
     } catch (error) {
       console.error("Error al guardar temporada:", error);
       toast.current?.show({
@@ -290,6 +302,7 @@ const TemporadaPesca = () => {
         detail: error.message || "No se pudo guardar la temporada",
         life: 3000,
       });
+      throw error; // Re-lanzar el error para que el formulario lo maneje
     }
   };
 
@@ -749,8 +762,8 @@ const TemporadaPesca = () => {
             header="Cuota Total"
             body={cuotaTotalTemplate}
             sortable
-            style={{ minWidth: "120px" }}
-            className="text-center"
+            style={{ minWidth: "130px" }}
+            className="text-right"
           />
           <Column
             field="toneladasCapturadasTemporada"
@@ -759,8 +772,8 @@ const TemporadaPesca = () => {
               cuotaTemplate(rowData, "toneladasCapturadasTemporada")
             }
             sortable
-            style={{ minWidth: "120px" }}
-            className="text-center"
+            style={{ minWidth: "130px" }}
+            className="text-right"
           />
 
           <Column
@@ -768,8 +781,8 @@ const TemporadaPesca = () => {
             header="Toneladas Pendientes"
             body={toneladasPendientesTemplate}
             sortable
-            style={{ minWidth: "120px" }}
-            className="text-center"
+            style={{ minWidth: "130px" }}
+            className="text-right"
           />
 
           <Column
@@ -778,7 +791,7 @@ const TemporadaPesca = () => {
             body={porcentajeAvanzadoTemplate}
             sortable
             style={{ minWidth: "120px" }}
-            className="text-center"
+            className="text-right"
           />
 
           <Column

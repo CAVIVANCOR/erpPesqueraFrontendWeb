@@ -28,9 +28,9 @@ import {
   actualizarDetalleCalaEspecie,
   eliminarDetalleCalaEspecie
 } from "../../api/detalleCalaEspecie";
-import { recalcularCascadaDesdeCala } from "../../api/recalcularToneladas";
+import { recalcularToneladasCala } from "../../api/recalcularToneladas";
 
-const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
+const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, onDataChange, onFaenasChange, loading = false }) => {
   const [especiesDetalle, setEspeciesDetalle] = useState([]);
   const [especiesDisponibles, setEspeciesDisponibles] = useState([]);
   const [detalleDialog, setDetalleDialog] = useState(false);
@@ -168,7 +168,6 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
           return;
         }
       }
-
       const detalleData = {
         calaId: Number(calaId),
         especieId: Number(especieId),
@@ -178,13 +177,31 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
           : null,
         observaciones: observaciones || null,
       };
-      
       if (editingDetalle) {
         // Actualizar detalle existente
         const result = await actualizarDetalleCalaEspecie(editingDetalle.id, detalleData);
       } else {
         // Crear nuevo detalle
         const result = await crearDetalleCalaEspecie(detalleData);
+      }
+      // RECÁLCULO AUTOMÁTICO: Siempre ejecutar después de guardar DetalleCalaEspecie
+      try {
+        await recalcularToneladasCala(calaId, faenaPescaId, temporadaId);        
+        // Notificar al componente padre que los datos han cambiado
+        if (onDataChange) {
+          onDataChange();
+        }
+        if (onFaenasChange) {
+          onFaenasChange();
+        }
+      } catch (error) {
+        console.error('❌ Error en recálculo automático:', error);
+        toast.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "Los datos se guardaron pero hubo un error en el recálculo automático",
+          life: 4000,
+        });
       }
 
       toast.current?.show({
@@ -196,32 +213,6 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
 
       setDetalleDialog(false);
       cargarEspeciesDetalle();
-      
-      // RECÁLCULO AUTOMÁTICO: Cuando se modifica DetalleCalaEspecie → recalcular en cascada desde Cala
-      try {
-        toast.current?.show({
-          severity: "info",
-          summary: "Recálculo Automático",
-          detail: `Iniciando recálculo de toneladas para Cala ${calaId}...`,
-          life: 2000,
-        });
-        
-        await recalcularCascadaDesdeCala(calaId);
-        
-        toast.current?.show({
-          severity: "success",
-          summary: "Recálculo Completado",
-          detail: `Toneladas recalculadas exitosamente para Cala ${calaId}`,
-          life: 3000,
-        });
-      } catch (error) {
-        toast.current?.show({
-          severity: "error",
-          summary: "Error en Recálculo",
-          detail: "No se pudieron recalcular las toneladas automáticamente. Intente recargar la página.",
-          life: 5000,
-        });
-      }
     } catch (error) {
       // Manejo específico para diferentes tipos de errores
       if (error.response?.status === 409) {
@@ -283,7 +274,15 @@ const DetalleCalasEspecieForm = ({ calaId, loading = false }) => {
       
       // RECÁLCULO AUTOMÁTICO: Cuando se elimina DetalleCalaEspecie → recalcular en cascada desde Cala
       try {
-        await recalcularCascadaDesdeCala(calaId);
+        await recalcularToneladasCala(calaId, faenaPescaId, temporadaId);
+        
+        // Notificar al componente padre que los datos han cambiado
+        if (onDataChange) {
+          onDataChange();
+        }
+        if (onFaenasChange) {
+          onFaenasChange();
+        }
       } catch (error) {
         console.error('❌ Error en recálculo automático:', error);
       }

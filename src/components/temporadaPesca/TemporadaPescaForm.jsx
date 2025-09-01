@@ -24,12 +24,14 @@ import { ButtonGroup } from "primereact/buttongroup";
 import { Tag } from "primereact/tag";
 import { Message } from "primereact/message";
 import { Toast } from "primereact/toast";
+import { confirmDialog } from "primereact/confirmdialog";
 import {
   getBahiasComerciales,
   getMotoristas,
   getPatrones,
 } from "../../api/personal";
 import { iniciarTemporada } from "../../api/temporadaPesca";
+import { getFaenasPesca } from "../../api/faenaPesca";
 import { getEstadosMultiFuncionParaTemporadaPesca } from "../../api/estadoMultiFuncion";
 import { getEmbarcaciones } from "../../api/embarcacion";
 import { getAllBolicheRed } from "../../api/bolicheRed";
@@ -50,6 +52,7 @@ const TemporadaPescaForm = ({
   empresas = [],
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
 }) => {
+
   // Estados principales
   const [activeCard, setActiveCard] = useState("datos-generales");
   const [bahiasComerciales, setBahiasComerciales] = useState([]);
@@ -64,6 +67,8 @@ const TemporadaPescaForm = ({
   const [embarcaciones, setEmbarcaciones] = useState([]);
   const [boliches, setBoliches] = useState([]);
   const [puertosPesca, setPuertosPesca] = useState([]);
+  const [tieneFaenas, setTieneFaenas] = useState(false);
+  const [camposRequeridosCompletos, setCamposRequeridosCompletos] = useState(false);
 
   // Ref para Toast
   const toast = useRef(null);
@@ -175,41 +180,57 @@ const TemporadaPescaForm = ({
   }, [editingItem, empresas]);
 
   /**
-   * Efecto para cargar datos cuando se edita un elemento
+   * Verificar si la temporada tiene faenas
    */
+  const verificarRegistrosTemporada = async (temporadaId) => {
+    if (!temporadaId) {
+      setTieneFaenas(false);
+      return;
+    }
+    try {
+      // Verificar faenas
+      const todasLasFaenas = await getFaenasPesca();      
+      const faenasDeTemporada = todasLasFaenas.filter(
+        faena => faena.temporadaId === temporadaId
+      );
+      const tieneFaenasResult = faenasDeTemporada.length > 0;
+      setTieneFaenas(tieneFaenasResult);
+    } catch (error) {
+      console.error("Error verificando registros de temporada:", error);
+      setTieneFaenas(false);
+    }
+  };
+
+  /**
+   * Verificar si los campos requeridos están completos
+   */
+  const verificarCamposRequeridos = (formData) => {
+    const camposCompletos = !!(
+      formData.numeroResolucion &&
+      formData.fechaInicio &&
+      formData.fechaFin &&
+      formData.cuotaPropiaTon &&
+      formData.cuotaAlquiladaTon
+    );
+    setCamposRequeridosCompletos(camposCompletos);
+    return camposCompletos;
+  };
+
+  // Efecto para verificar campos requeridos cuando cambian los valores del formulario
+  useEffect(() => {
+    const subscription = watch((value) => {
+      verificarCamposRequeridos(value);
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
+
+  // Efecto para re-evaluar campos requeridos cuando editingItem cambie
   useEffect(() => {
     if (editingItem) {
-      reset({
-        id: editingItem.id || null,
-        empresaId: editingItem.empresaId ? Number(editingItem.empresaId) : null,
-        BahiaId: editingItem.BahiaId || null,
-        estadoTemporadaId: editingItem.estadoTemporadaId || estadoDefaultId,
-        nombre: editingItem.nombre || "",
-        fechaInicio: editingItem.fechaInicio ? new Date(editingItem.fechaInicio) : null,
-        fechaFin: editingItem.fechaFin ? new Date(editingItem.fechaFin) : null,
-        numeroResolucion: editingItem.numeroResolucion || "",
-        urlResolucionPdf: editingItem.urlResolucionPdf || "",
-        cuotaPropiaTon: editingItem.cuotaPropiaTon || null,
-        cuotaAlquiladaTon: editingItem.cuotaAlquiladaTon || null,
-        toneladasCapturadasTemporada: editingItem.toneladasCapturadasTemporada || null,
-      });
-    } else {
-      reset({
-        id: null,
-        empresaId: null,
-        BahiaId: null,
-        estadoTemporadaId: estadoDefaultId,
-        nombre: "",
-        fechaInicio: null,
-        fechaFin: null,
-        numeroResolucion: "",
-        urlResolucionPdf: "",
-        cuotaPropiaTon: null,
-        cuotaAlquiladaTon: null,
-        toneladasCapturadasTemporada: null,
-      });
+      const currentValues = getValues();
+      verificarCamposRequeridos(currentValues);
     }
-  }, [editingItem, reset, estadoDefaultId]);
+  }, [editingItem, getValues]);
 
   /**
    * Validar superposición cuando cambien fechas o estado
@@ -254,28 +275,8 @@ const TemporadaPescaForm = ({
   /**
    * Manejar envío del formulario
    */
-  const handleFormSubmit = (data) => {
-    // Validar campos obligatorios
-    const camposObligatorios = [];
-    
-    if (!data.empresaId) camposObligatorios.push("Empresa");
-    if (!data.BahiaId) camposObligatorios.push("Bahía Comercial");
-    if (!data.estadoTemporadaId) camposObligatorios.push("Estado de Temporada");
-    if (!data.numeroResolucion || !data.numeroResolucion.trim()) camposObligatorios.push("Número de Resolución");
-    if (!data.nombre || !data.nombre.trim()) camposObligatorios.push("Nombre (se genera automáticamente)");
-    if (!data.fechaInicio) camposObligatorios.push("Fecha de Inicio");
-    if (!data.fechaFin) camposObligatorios.push("Fecha de Fin");
-    
-    if (camposObligatorios.length > 0) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Campos Obligatorios",
-        detail: `Debe completar los siguientes campos: ${camposObligatorios.join(", ")}`,
-        life: 5000,
-      });
-      return;
-    }
-    
+  const handleFormSubmit = async (data) => {
+    setValidandoSuperposicion(true);
     // Preparar datos con normalización de IDs
     const formData = {
       empresaId: Number(data.empresaId),
@@ -298,8 +299,28 @@ const TemporadaPescaForm = ({
     // Solo incluir ID si existe y no es null (para edición)
     if (data.id && editingItem?.id) {
       formData.id = data.id;
+    }    
+
+    try {
+      const resultado = await onSave(formData);      
+      // Si es una nueva temporada y se obtuvo un ID, re-verificar registros
+      if (resultado && resultado.id && !editingItem?.id) {        
+        // Forzar re-verificación de registros con el nuevo ID
+        setTimeout(async () => {
+          await verificarRegistrosTemporada(resultado.id);
+        }, 100);
+      } else if (resultado && resultado.id) {
+        // Si es actualización de temporada existente, también verificar
+        setTimeout(async () => {
+          await verificarRegistrosTemporada(resultado.id);
+        }, 100);
+      }
+      setValidandoSuperposicion(false);
+    } catch (error) {
+      console.error("Error en handleFormSubmit:", error);
+      setValidandoSuperposicion(false);
+      throw error;
     }
-    onSave(formData);
   };
 
   /**
@@ -314,68 +335,53 @@ const TemporadaPescaForm = ({
   };
 
   /**
+   * Determinar si el botón Iniciar Temporada debe estar habilitado
+   */
+  const puedeIniciarTemporada = () => {
+    const tieneId = !!(editingItem?.id);
+    const camposCompletos = camposRequeridosCompletos;
+    const noTieneFaenas = !tieneFaenas;
+    return tieneId && camposCompletos && noTieneFaenas;
+  };
+
+  /**
    * Manejar inicio de temporada
    */
-  const handleIniciarTemporada = async () => {
-    if (!editingItem?.id) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "Debe guardar la temporada antes de iniciarla",
-        life: 3000,
-      });
-      return;
-    }
-
-    try {
-      setIniciandoTemporada(true);
-      const resultado = await iniciarTemporadaConAutocompletado(editingItem);
-      
-      // Actualizar el estado de la temporada en el frontend
-      if (resultado && resultado.temporadaActualizada) {
-        // Actualizar el formulario para que el dropdown refleje el cambio
-        setValue("estadoTemporadaId", resultado.temporadaActualizada.estadoTemporadaId);
-        
-        // Refrescar las faenas de pesca para mostrar la nueva faena creada
-        // Necesitamos acceder al ref del DetalleFaenasPescaCard desde DatosGeneralesTemporadaForm
-        setTimeout(() => {
-          // Disparar evento personalizado para refrescar faenas
+  const handleIniciarTemporada = () => {
+    confirmDialog({
+      message: "¿Está seguro de iniciar esta temporada de pesca? Esta acción creará los registros necesarios.",
+      header: "Confirmar Inicio de Temporada",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-success",
+      rejectClassName: "p-button-secondary",
+      acceptLabel: "Sí, Iniciar",
+      rejectLabel: "Cancelar",
+      accept: async () => {
+        try {          
+          await iniciarTemporada(editingItem.id);
+          toast.current?.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: "Temporada iniciada correctamente",
+          });
+          
+          // Re-verificar registros para deshabilitar el botón
+          await verificarRegistrosTemporada(editingItem.id);
+          
+          // Notificar actualización de faenas
           window.dispatchEvent(new CustomEvent('refreshFaenas', { 
             detail: { temporadaId: editingItem.id } 
           }));
-        }, 500);
-      }
-      
-      toast.current.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "Temporada iniciada correctamente",
-        life: 3000,
-      });
-    } catch (error) {
-      console.error("Error al iniciar temporada:", error);
-      toast.current.show({
-        severity: "error",
-        summary: "Error",
-        detail: error.message || "No se pudo iniciar la temporada",
-        life: 3000,
-      });
-    } finally {
-      setIniciandoTemporada(false);
-    }
-  };
-
-  const iniciarTemporadaConAutocompletado = async (temporada) => {
-    try {
-      // Solo llamar al backend para iniciar temporada
-      // El backend ya crea FaenaPesca, EntregaARendir y DetAccionesPreviasFaena
-      const resultado = await iniciarTemporada(temporada.id);
-      return resultado;
-
-    } catch (error) {
-      console.error("Error en iniciarTemporadaConAutocompletado:", error);
-      throw error;
-    }
+        } catch (error) {
+          console.error("Error iniciando temporada:", error);
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "Error al iniciar la temporada",
+          });
+        }
+      },
+    });
   };
 
   /**
@@ -393,10 +399,21 @@ const TemporadaPescaForm = ({
         <Button
           label="Iniciar Temporada"
           icon="pi pi-play"
-          severity="success"
+          className="p-button-success"
+          disabled={(() => {
+            const resultado = !puedeIniciarTemporada();
+            return resultado;
+          })()}
           onClick={handleIniciarTemporada}
-          loading={iniciandoTemporada}
-          disabled={!editingItem.id}
+          tooltip={
+            !editingItem?.id 
+              ? "Debe guardar la temporada primero"
+              : !camposRequeridosCompletos
+              ? "Complete todos los campos requeridos (Número de resolución, fechas y cuotas)"
+              : tieneFaenas
+              ? "La temporada ya tiene faenas creadas"
+              : "Iniciar temporada de pesca"
+          }
         />
       )}
       <Button
@@ -407,6 +424,40 @@ const TemporadaPescaForm = ({
       />
     </div>
   );
+
+  useEffect(() => {
+    if (editingItem) {
+      reset({
+        id: editingItem.id || null,
+        empresaId: editingItem.empresaId ? Number(editingItem.empresaId) : null,
+        BahiaId: editingItem.BahiaId || null,
+        estadoTemporadaId: editingItem.estadoTemporadaId || estadoDefaultId,
+        nombre: editingItem.nombre || "",
+        fechaInicio: editingItem.fechaInicio ? new Date(editingItem.fechaInicio) : null,
+        fechaFin: editingItem.fechaFin ? new Date(editingItem.fechaFin) : null,
+        numeroResolucion: editingItem.numeroResolucion || "",
+        urlResolucionPdf: editingItem.urlResolucionPdf || "",
+        cuotaPropiaTon: editingItem.cuotaPropiaTon || null,
+        cuotaAlquiladaTon: editingItem.cuotaAlquiladaTon || null,
+        toneladasCapturadasTemporada: editingItem.toneladasCapturadasTemporada || null,
+      });
+    } else {
+      reset({
+        id: null,
+        empresaId: null,
+        BahiaId: null,
+        estadoTemporadaId: estadoDefaultId,
+        nombre: "",
+        fechaInicio: null,
+        fechaFin: null,
+        numeroResolucion: "",
+        urlResolucionPdf: "",
+        cuotaPropiaTon: null,
+        cuotaAlquiladaTon: null,
+        toneladasCapturadasTemporada: null,
+      });
+    }
+  }, [editingItem, reset, estadoDefaultId]);
 
   return (
     <Dialog

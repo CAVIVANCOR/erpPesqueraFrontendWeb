@@ -32,6 +32,7 @@ export default function FaenaPescaForm({
   puertosOptions = [],
   onDataChange, // Callback para notificar cambios en los datos
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
+  onFaenasChange, // Callback para notificar cambios en faenas
 }) {
   // Estados principales
   const [activeCard, setActiveCard] = useState("datos-generales");
@@ -78,6 +79,7 @@ export default function FaenaPescaForm({
       urlReporteFaenaCalas: "",
       urlDeclaracionDesembarqueArmador: "",
       estadoFaenaId: null,
+      toneladasCapturadasFaena: 0,
     },
   });
 
@@ -280,6 +282,7 @@ export default function FaenaPescaForm({
             handleFinalizarFaena={handleFinalizarFaena}
             onDataChange={onDataChange} // Callback para notificar cambios en los datos
             onTemporadaDataChange={onTemporadaDataChange} // Callback para notificar cambios en datos de temporada
+            onFaenasChange={onFaenasChange} // Callback para notificar cambios en faenas
           />
         )}
 

@@ -18,12 +18,14 @@ function getAuthHeaders() {
 /**
  * Recalcula toneladas de una cala específica
  * @param {string|number} calaId - ID de la cala
+ * @param {string|number} faenaPescaId - ID de la faena
+ * @param {string|number} TemporadaPescaId - ID de la temporada
  */
-export const recalcularToneladasCala = async (calaId) => {
+export const recalcularToneladasCala = async (calaId, faenaPescaId, TemporadaPescaId) => {
   try {
     const response = await axios.post(
       `${API_URL}/recalcular-toneladas/cala/${calaId}`,
-      {},
+      { faenaPescaId, TemporadaPescaId },
       { headers: getAuthHeaders() }
     );
     return response.data;

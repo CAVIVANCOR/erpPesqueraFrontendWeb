@@ -77,7 +77,6 @@ export default function CalaForm({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('handleSubmit');
     const formData = {
       bahiaId: bahiaId ? Number(bahiaId) : null,
       motoristaId: motoristaId ? Number(motoristaId) : null,
@@ -210,7 +209,6 @@ export default function CalaForm({
             <p>Longitud: {longitud || 'No definida'}</p>
             <button 
               onClick={() => {
-                console.log('Botón inline clickeado');
                 setLatitud(-12.345678);
                 setLongitud(-77.123456);
               }}

@@ -41,6 +41,9 @@ const DetalleCalasForm = ({
   puertos: puertosProps = [],
   embarcaciones: embarcacionesProps = [],
   loading = false,
+  onDataChange,
+  onCalasChange, // Callback para notificar cambios en calas
+  onFaenasChange, // Callback para notificar cambios en faenas
 }) => {
   const [calas, setCalas] = useState([]);
   const [selectedCala, setSelectedCala] = useState(null);
@@ -135,6 +138,7 @@ const DetalleCalasForm = ({
     try {
       const response = await getCalasPorFaena(faenaPescaId);
       setCalas(response);
+      onCalasChange(response); // Notificar cambios en calas
     } catch (error) {
       console.error("Error cargando calas:", error);
       toast.current?.show({
@@ -216,6 +220,7 @@ const DetalleCalasForm = ({
       });
 
       cargarCalas();
+      onCalasChange(); // Notificar cambios en calas
     } catch (error) {
       console.error("Error finalizando cala:", error);
       toast.current?.show({
@@ -238,6 +243,7 @@ const DetalleCalasForm = ({
       });
       
       cargarCalas();
+      onCalasChange(); // Notificar cambios en calas
     } catch (error) {
       console.error("Error eliminando cala:", error);
       toast.current?.show({
@@ -323,6 +329,7 @@ const DetalleCalasForm = ({
       }
 
       cargarCalas();
+      onCalasChange(); // Notificar cambios en calas
     } catch (error) {
       console.error("Error guardando cala:", error);
       toast.current?.show({
@@ -372,6 +379,7 @@ const DetalleCalasForm = ({
       
       // Recargar la lista de calas
       cargarCalas();
+      onCalasChange(); // Notificar cambios en calas
       
     } catch (error) {
       console.error("Error iniciando cala:", error);
@@ -411,6 +419,7 @@ const DetalleCalasForm = ({
       
       // Recargar la lista de calas
       cargarCalas();
+      onCalasChange(); // Notificar cambios en calas
       
     } catch (error) {
       console.error("Error finalizando cala:", error);
@@ -521,6 +530,34 @@ const DetalleCalasForm = ({
       </div>
     </div>
   );
+
+  const handleDataChange = async () => {    
+    // Recargar las calas para obtener los datos actualizados
+    await cargarCalas();
+    
+    // Si hay una cala siendo editada, actualizar sus datos con los valores recalculados
+    if (editingCala?.id) {
+      try {
+        const calasActualizadas = await getCalasPorFaena(faenaPescaId);
+        const calaActualizada = calasActualizadas.find(c => c.id === editingCala.id);
+        
+        if (calaActualizada) {
+          // Actualizar el estado del formulario con los nuevos valores
+          setToneladasCapturadas(calaActualizada.toneladasCapturadas || "");
+        }
+      } catch (error) {
+        console.error("Error actualizando datos de cala:", error);
+      }
+    }
+    
+    // Notificar al componente padre que debe recargar los datos
+    if (onDataChange && typeof onDataChange === 'function') {
+      await onDataChange();
+    }
+    if (onFaenasChange && typeof onFaenasChange === 'function') {
+      await onFaenasChange();
+    }
+  };
 
   return (
     <Card
@@ -767,9 +804,6 @@ const DetalleCalasForm = ({
                       const { latitude, longitude, accuracy } = position.coords;
                       setLatitud(latitude);
                       setLongitud(longitude);
-                      console.log(
-                        `GPS capturado: ${latitude}, ${longitude} (precisión: ${accuracy}m)`
-                      );
                       toast.current?.show({
                         severity: "success",
                         summary: "GPS capturado",
@@ -989,7 +1023,13 @@ const DetalleCalasForm = ({
             </div>
           </div>
           <div className="col-12">
-            <DetalleCalasEspecieForm calaId={editingCala?.id} />
+            <DetalleCalasEspecieForm 
+              calaId={editingCala?.id} 
+              faenaPescaId={faenaPescaId}
+              temporadaId={temporadaData?.id}
+              onDataChange={handleDataChange}
+              onFaenasChange={onFaenasChange}
+            />
           </div>
         </div>
       </Dialog>
