@@ -460,6 +460,15 @@ const TemporadaPescaForm = ({
     }
   }, [editingItem, reset, estadoDefaultId]);
 
+  // Verificar si la temporada ya fue iniciada cuando editingItem cambie
+  useEffect(() => {
+    if (editingItem?.id) {
+      verificarTemporadaIniciada(editingItem.id);
+    } else {
+      setTieneFaenas(false);
+    }
+  }, [editingItem?.id]);
+
   return (
     <Dialog
       visible={visible}

@@ -854,7 +854,7 @@ const DetalleCalasForm = ({
                     options
                   );
                 }}
-                disabled={loading}
+                disabled={loading || calaFinalizada}
                 label="Capturar GPS"
                 icon="pi pi-map-marker"
                 className="p-button-success"
@@ -1031,6 +1031,7 @@ const DetalleCalasForm = ({
               calaId={editingCala?.id} 
               faenaPescaId={faenaPescaId}
               temporadaId={temporadaData?.id}
+              calaFinalizada={calaFinalizada}
               onDataChange={handleDataChange}
               onFaenasChange={onFaenasChange}
             />

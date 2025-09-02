@@ -30,7 +30,7 @@ import {
 } from "../../api/detalleCalaEspecie";
 import { recalcularToneladasCala } from "../../api/recalcularToneladas";
 
-const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, onDataChange, onFaenasChange, loading = false }) => {
+const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinalizada = false, onDataChange, onFaenasChange, loading = false }) => {
   const [especiesDetalle, setEspeciesDetalle] = useState([]);
   const [especiesDisponibles, setEspeciesDisponibles] = useState([]);
   const [detalleDialog, setDetalleDialog] = useState(false);
@@ -313,6 +313,7 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, onDataChan
           onClick={() => eliminarDetalle(rowData)}
           tooltip="Eliminar"
           size="small"
+          disabled={calaFinalizada}
         />
       </div>
     );
@@ -337,7 +338,7 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, onDataChan
             icon="pi pi-plus"
             className="p-button-success"
             onClick={abrirNuevoDetalle}
-            disabled={!calaId}
+            disabled={!calaId || calaFinalizada}
             size="small"
             type="button"
             tooltip="Agregar Especie"
@@ -463,6 +464,7 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, onDataChan
               onChange={(e) => setEspecieId(e.value)}
               placeholder="Seleccione una especie"
               required
+              disabled={calaFinalizada}
             />
           </div>
           <div className="col-12 md:col-6">
@@ -476,6 +478,7 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, onDataChan
               maxFractionDigits={3}
               suffix=" Kg"
               min={0}
+              disabled={calaFinalizada}
             />
           </div>
           <div className="col-12 md:col-6">
@@ -492,6 +495,7 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, onDataChan
               suffix="%"
               min={0}
               max={100}
+              disabled={calaFinalizada}
             />
           </div>
           <div className="col-12">
@@ -502,6 +506,7 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, onDataChan
               onChange={(e) => setObservaciones(e.target.value)}
               rows={3}
               cols={20}
+              disabled={calaFinalizada}
             />
           </div>
         </div>
