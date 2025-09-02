@@ -20,7 +20,7 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
-import { ConfirmDialog } from "primereact/confirmdialog";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Toolbar } from "primereact/toolbar";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
@@ -99,9 +99,9 @@ const TemporadaPesca = () => {
       console.error("Error al cargar temporadas:", error);
       toast.current?.show({
         severity: "error",
-        summary: "Error",
-        detail: "No se pudieron cargar las temporadas de pesca",
-        life: 3000,
+        summary: "Error de Carga",
+        detail: "No se pudieron cargar las temporadas de pesca. Verifique su conexión e intente nuevamente.",
+        life: 4000,
       });
     } finally {
       setLoading(false);
@@ -129,6 +129,12 @@ const TemporadaPesca = () => {
       }
     } catch (error) {
       console.error("Error al cargar combos:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error de Carga",
+        detail: "No se pudieron cargar los datos de los combos. Verifique su conexión e intente nuevamente.",
+        life: 4000,
+      });
     }
   };
 
@@ -146,6 +152,12 @@ const TemporadaPesca = () => {
       setTemporadas(data);
     } catch (error) {
       console.error("Error al aplicar filtros:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error de Filtro",
+        detail: "No se pudieron aplicar los filtros. Verifique su conexión e intente nuevamente.",
+        life: 4000,
+      });
     }
   };
 
@@ -198,33 +210,20 @@ const TemporadaPesca = () => {
       toast.current?.show({
         severity: "warn",
         summary: "Acceso Denegado",
-        detail: "No tiene permisos para eliminar registros",
+        detail: "No tiene permisos para eliminar registros.",
         life: 3000,
       });
       return;
     }
 
-    // ConfirmDialog profesional con estilo rojo
-    const confirmDialog = document.createElement("div");
-    confirmDialog.innerHTML = `
-      <div class="confirmation-content">
-        <i class="pi pi-exclamation-triangle" style="font-size: 2rem; color: #ef4444; margin-bottom: 1rem;"></i>
-        <h3>Confirmar Eliminación</h3>
-        <p>¿Está seguro de que desea eliminar la temporada "${temporada.nombre}"?</p>
-        <p><strong>Esta acción no se puede deshacer.</strong></p>
-      </div>
-    `;
-
-    import("primereact/api").then(({ confirmDialog: confirm }) => {
-      confirm({
-        message: confirmDialog.innerHTML,
-        header: "Confirmar Eliminación",
-        icon: "pi pi-exclamation-triangle",
-        acceptClassName: "p-button-danger",
-        acceptLabel: "Sí, Eliminar",
-        rejectLabel: "Cancelar",
-        accept: () => deleteItem(temporada.id),
-      });
+    confirmDialog({
+      message: `¿Está seguro de que desea eliminar la temporada "${temporada.nombre}"?`,
+      header: "Confirmar Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
+      acceptLabel: "Sí, Eliminar",
+      rejectLabel: "Cancelar",
+      accept: () => deleteItem(temporada.id),
     });
   };
 
@@ -237,19 +236,51 @@ const TemporadaPesca = () => {
 
       toast.current?.show({
         severity: "success",
-        summary: "Éxito",
-        detail: "Temporada eliminada correctamente",
+        summary: "Eliminación Exitosa",
+        detail: "La temporada ha sido eliminada correctamente.",
         life: 3000,
       });
 
       cargarDatos();
     } catch (error) {
       console.error("Error al eliminar temporada:", error);
+      
+      let mensajeError = "No se pudo eliminar la temporada. Verifique su conexión e intente nuevamente.";
+      
+      // Manejo específico de errores HTTP
+      if (error.response) {
+        const { status, data } = error.response;
+        
+        switch (status) {
+          case 409: // Conflict
+            if (data.mensaje && data.mensaje.includes("faenas, entregas o liquidación")) {
+              mensajeError = "No se puede eliminar esta temporada porque tiene faenas, entregas o liquidaciones asociadas. Debe eliminar primero estos registros relacionados antes de poder eliminar la temporada.";
+            } else {
+              mensajeError = "No se puede eliminar este registro porque tiene información relacionada. Elimine primero los registros dependientes.";
+            }
+            break;
+          case 400: // Bad Request
+            mensajeError = "Solicitud inválida. Verifique que el registro existe y es válido para eliminación.";
+            break;
+          case 404: // Not Found
+            mensajeError = "La temporada que intenta eliminar no existe o ya ha sido eliminada.";
+            break;
+          case 403: // Forbidden
+            mensajeError = "No tiene permisos para eliminar este registro.";
+            break;
+          case 500: // Internal Server Error
+            mensajeError = "Error interno del servidor. Por favor, contacte al administrador del sistema.";
+            break;
+          default:
+            mensajeError = `Error del servidor (${status}). Por favor, intente nuevamente o contacte al soporte técnico.`;
+        }
+      }
+      
       toast.current?.show({
         severity: "error",
-        summary: "Error",
-        detail: error.message || "No se pudo eliminar la temporada",
-        life: 3000,
+        summary: "Error de Eliminación",
+        detail: mensajeError,
+        life: 5000,
       });
     }
   };
@@ -266,8 +297,8 @@ const TemporadaPesca = () => {
         temporadaGuardada = await actualizarTemporadaPesca(editingItem.id, data);
         toast.current?.show({
           severity: "success",
-          summary: "Éxito",
-          detail: "Temporada actualizada correctamente",
+          summary: "Actualización Exitosa",
+          detail: "La temporada ha sido actualizada correctamente.",
           life: 3000,
         });
       } else {
@@ -275,8 +306,8 @@ const TemporadaPesca = () => {
         temporadaGuardada = await crearTemporadaPesca(data);
         toast.current?.show({
           severity: "success",
-          summary: "Éxito",
-          detail: "Temporada creada correctamente",
+          summary: "Creación Exitosa",
+          detail: "La temporada ha sido creada correctamente.",
           life: 3000,
         });
         
@@ -296,11 +327,45 @@ const TemporadaPesca = () => {
       return temporadaGuardada;
     } catch (error) {
       console.error("Error al guardar temporada:", error);
+      
+      let mensajeError = "No se pudo guardar la temporada. Verifique su conexión e intente nuevamente.";
+      
+      // Manejo específico de errores HTTP
+      if (error.response) {
+        const { status, data } = error.response;
+        
+        switch (status) {
+          case 409: // Conflict
+            if (data.mensaje && data.mensaje.includes("fechas que se superponen")) {
+              mensajeError = "Ya existe una temporada con el mismo nombre para esta empresa en fechas que se superponen. Por favor, verifique las fechas de inicio y fin o cambie el nombre de la temporada.";
+            } else if (data.mensaje && data.mensaje.includes("faenas, entregas o liquidación")) {
+              mensajeError = "No se puede eliminar esta temporada porque tiene faenas, entregas o liquidaciones asociadas. Debe eliminar primero estos registros relacionados.";
+            } else {
+              mensajeError = "Ya existe un registro similar. Por favor, verifique los datos ingresados.";
+            }
+            break;
+          case 400: // Bad Request
+            mensajeError = "Los datos ingresados no son válidos. Por favor, revise la información y corrija los errores.";
+            break;
+          case 404: // Not Found
+            mensajeError = "El registro que intenta modificar no existe o ha sido eliminado.";
+            break;
+          case 403: // Forbidden
+            mensajeError = "No tiene permisos para realizar esta operación.";
+            break;
+          case 500: // Internal Server Error
+            mensajeError = "Error interno del servidor. Por favor, contacte al administrador del sistema.";
+            break;
+          default:
+            mensajeError = `Error del servidor (${status}). Por favor, intente nuevamente o contacte al soporte técnico.`;
+        }
+      }
+      
       toast.current?.show({
         severity: "error",
-        summary: "Error",
-        detail: error.message || "No se pudo guardar la temporada",
-        life: 3000,
+        summary: "Error de Guardado",
+        detail: mensajeError,
+        life: 5000,
       });
       throw error; // Re-lanzar el error para que el formulario lo maneje
     }
@@ -410,7 +475,7 @@ const TemporadaPesca = () => {
         toast.current.show({
           severity: "warn",
           summary: "Advertencia",
-          detail: "No hay PDF disponible para esta resolución",
+          detail: "No hay PDF disponible para esta resolución.",
           life: 3000,
         });
         return;

@@ -36,6 +36,7 @@ import { getEstadosMultiFuncionParaTemporadaPesca } from "../../api/estadoMultiF
 import { getEmbarcaciones } from "../../api/embarcacion";
 import { getAllBolicheRed } from "../../api/bolicheRed";
 import { getPuertosPesca } from "../../api/puertoPesca";
+import { getTemporadaPescaPorId } from "../../api/temporadaPesca"; // Importar función para obtener temporada por ID
 // Importar componentes de cards
 import DatosGeneralesTemporadaForm from "./DatosGeneralesTemporadaForm";
 import ResolucionPDFTemporadaForm from "./ResolucionPDFTemporadaForm";
@@ -180,23 +181,23 @@ const TemporadaPescaForm = ({
   }, [editingItem, empresas]);
 
   /**
-   * Verificar si la temporada tiene faenas
+   * Verificar si la temporada ya fue iniciada
    */
-  const verificarRegistrosTemporada = async (temporadaId) => {
+  const verificarTemporadaIniciada = async (temporadaId) => {
+    console.log("Verificando si temporada fue iniciada:", temporadaId);
     if (!temporadaId) {
       setTieneFaenas(false);
       return;
     }
+
     try {
-      // Verificar faenas
-      const todasLasFaenas = await getFaenasPesca();      
-      const faenasDeTemporada = todasLasFaenas.filter(
-        faena => faena.temporadaId === temporadaId
-      );
-      const tieneFaenasResult = faenasDeTemporada.length > 0;
-      setTieneFaenas(tieneFaenasResult);
+      // Obtener la temporada por ID para verificar temporadaPescaIniciada
+      const temporada = await getTemporadaPescaPorId(temporadaId);
+      const yaIniciada = temporada?.temporadaPescaIniciada || false;
+      setTieneFaenas(yaIniciada);
+      console.log("Temporada iniciada:", yaIniciada);
     } catch (error) {
-      console.error("Error verificando registros de temporada:", error);
+      console.error("Error verificando temporada iniciada:", error);
       setTieneFaenas(false);
     }
   };
@@ -307,12 +308,12 @@ const TemporadaPescaForm = ({
       if (resultado && resultado.id && !editingItem?.id) {        
         // Forzar re-verificación de registros con el nuevo ID
         setTimeout(async () => {
-          await verificarRegistrosTemporada(resultado.id);
+          await verificarTemporadaIniciada(resultado.id);
         }, 100);
       } else if (resultado && resultado.id) {
         // Si es actualización de temporada existente, también verificar
         setTimeout(async () => {
-          await verificarRegistrosTemporada(resultado.id);
+          await verificarTemporadaIniciada(resultado.id);
         }, 100);
       }
       setValidandoSuperposicion(false);
@@ -366,7 +367,7 @@ const TemporadaPescaForm = ({
           });
           
           // Re-verificar registros para deshabilitar el botón
-          await verificarRegistrosTemporada(editingItem.id);
+          await verificarTemporadaIniciada(editingItem.id);
           
           // Notificar actualización de faenas
           window.dispatchEvent(new CustomEvent('refreshFaenas', { 
@@ -389,12 +390,6 @@ const TemporadaPescaForm = ({
    */
   const dialogFooter = (
     <div className="flex justify-content-end gap-2">
-      <Button
-        label="Cancelar"
-        icon="pi pi-times"
-        outlined
-        onClick={handleHide}
-      />
       {editingItem && (
         <Button
           label="Iniciar Temporada"
@@ -411,11 +406,17 @@ const TemporadaPescaForm = ({
               : !camposRequeridosCompletos
               ? "Complete todos los campos requeridos (Número de resolución, fechas y cuotas)"
               : tieneFaenas
-              ? "La temporada ya tiene faenas creadas"
+              ? "La temporada ya fue iniciada"
               : "Iniciar temporada de pesca"
           }
         />
       )}
+      <Button
+        label="Cancelar"
+        icon="pi pi-times"
+        outlined
+        onClick={handleHide}
+      />
       <Button
         label={editingItem ? "Actualizar" : "Crear"}
         icon="pi pi-check"

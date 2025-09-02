@@ -11,6 +11,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import { Tag } from "primereact/tag";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
@@ -476,8 +477,19 @@ const DetalleCalasForm = ({
   );
 
   const calaDialogHeader = (
-    <div className="flex align-items-center justify-content-between">
-      <h4>{editingCala ? "Editar Cala" : "Nueva Cala"}</h4>
+    <div className="flex justify-content-center mb-4">
+        <Tag
+          value={"Cala"}
+          severity="info"
+          style={{
+            fontSize: "1.1rem",
+            padding: "0.75rem 1.25rem",
+            textTransform: "uppercase",
+            fontWeight: "bold",
+            textAlign: "center",
+            width: "100%",
+          }}
+        />
     </div>
   );
 
@@ -590,13 +602,6 @@ const DetalleCalasForm = ({
           style={{ minWidth: "4rem" }}
         ></Column>
         <Column
-          field="faenaDescripcion"
-          header="Faena"
-          body={(rowData) => faenaDescripcion}
-          sortable
-          style={{ minWidth: "12rem" }}
-        ></Column>
-        <Column
           field="latitud"
           header="Latitud"
           sortable
@@ -668,7 +673,6 @@ const DetalleCalasForm = ({
               display: "flex",
               gap: 10,
               flexDirection: window.innerWidth < 768 ? "column" : "row",
-              marginTop: 10,
             }}
           >
             <div style={{ flex: 1 }}>
@@ -760,7 +764,7 @@ const DetalleCalasForm = ({
                 showTime
                 dateFormat="dd/mm/yy"
                 showIcon
-                disabled={loading}
+                disabled
               />
             </div>
           </div>
@@ -873,7 +877,7 @@ const DetalleCalasForm = ({
                 type="number"
                 value={latitud || ""}
                 onChange={(e) => setLatitud(parseFloat(e.target.value) || 0)}
-                disabled={loading}
+                disabled
                 step="0.000001"
                 placeholder="Ej: -12.345678"
                 style={{
@@ -903,7 +907,7 @@ const DetalleCalasForm = ({
                 type="number"
                 value={longitud || ""}
                 onChange={(e) => setLongitud(parseFloat(e.target.value) || 0)}
-                disabled={loading}
+                disabled
                 step="0.000001"
                 placeholder="Ej: -77.123456"
                 style={{
