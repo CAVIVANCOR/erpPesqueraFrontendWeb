@@ -443,7 +443,74 @@ const DetalleFaenasPescaCard = forwardRef(
     },
   ];
 
-  // Template de expansión
+  // Template de expansión para calas (tercer nivel)
+  const calaExpansionTemplate = (calaData) => {
+    const detallesEspecie = detallesEspecieData[calaData.id] || [];
+    return (
+      <div className="p-3">
+        <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+          <Tag
+            value={`Especies de la Cala ${calaData.id}`}
+            severity="info"
+            style={{
+              width: "100%",
+              color: "white",
+            }}
+          />
+        </div>
+        {detallesEspecie.length === 0 ? (
+          <p>No hay especies registradas para esta cala</p>
+        ) : (
+          <DataTable
+            value={detallesEspecie}
+            dataKey="id"
+            className="datatable-responsive"
+            style={{ cursor: "no-drop", fontSize: getResponsiveFontSize() }}
+          >
+            <Column
+              field="id"
+              header="ID"
+              sortable
+              style={{ minWidth: "4rem" }}
+            />
+            <Column
+              field="especie.nombre"
+              header="Especie"
+              sortable
+              style={{ minWidth: "10rem" }}
+            />
+            <Column
+              field="porcentajeJuveniles"
+              header="% Juveniles"
+              sortable
+              style={{ minWidth: "8rem" }}
+              body={(rowData) => {
+                const porcentaje = rowData.porcentajeJuveniles
+                  ? parseFloat(rowData.porcentajeJuveniles).toFixed(2)
+                  : "0.00";
+                return `${porcentaje}%`;
+              }}
+            />
+            <Column
+              field="toneladas"
+              header="Toneladas"
+              sortable
+              style={{ minWidth: "8rem" }}
+              body={(rowData) => {
+                // Mostrar directamente en toneladas
+                const tons = rowData.toneladas
+                  ? parseFloat(rowData.toneladas).toFixed(3)
+                  : "0.000";
+                return `${tons} t`;
+              }}
+            />
+          </DataTable>
+        )}
+      </div>
+    );
+  };
+
+  // Template de expansión para faenas (segundo nivel)
   const rowExpansionTemplate = (data) => {
     const calas = calasData[data.id] || [];
     const formatearFecha = (fecha) => {
@@ -455,87 +522,6 @@ const DetalleFaenasPescaCard = forwardRef(
         hour: "2-digit",
         minute: "2-digit",
       });
-    };
-
-    // Template de expansión para calas (tercer nivel)
-    const calaExpansionTemplate = (calaData) => {
-      const detallesEspecie = detallesEspecieData[calaData.id] || [];
-      return (
-        <div className="p-3">
-          <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-            <Tag
-              value={`Especies de la Cala ${calaData.id}`}
-              severity="info"
-              style={{
-                width: "100%",
-                color: "white",
-              }}
-            />
-          </div>
-          {detallesEspecie.length === 0 ? (
-            <p>No hay especies registradas para esta cala</p>
-          ) : (
-            <DataTable
-              value={detallesEspecie}
-              dataKey="id"
-              className="datatable-responsive"
-              style={{ cursor: "no-drop", fontSize: getResponsiveFontSize() }}
-            >
-              <Column
-                field="id"
-                header="ID"
-                sortable
-                style={{ minWidth: "4rem" }}
-              />
-              <Column
-                field="especie.nombre"
-                header="Especie"
-                sortable
-                style={{ minWidth: "10rem" }}
-              />
-              <Column
-                field="especie.nombreCientifico"
-                header="Nombre Científico"
-                sortable
-                style={{ minWidth: "12rem" }}
-              />
-              <Column
-                field="observaciones"
-                header="Observaciones"
-                style={{ minWidth: "12rem" }}
-                body={(rowData) => rowData.observaciones || "-"}
-              />
-              <Column
-                field="porcentajeJuveniles"
-                header="% Juvenil"
-                sortable
-                style={{ minWidth: "8rem" }}
-                body={(rowData) => {
-                  const porcentaje =
-                    rowData.porcentajeJuveniles !== null &&
-                    rowData.porcentajeJuveniles !== undefined
-                      ? parseFloat(rowData.porcentajeJuveniles).toFixed(1)
-                      : "0.0";
-                  return `${porcentaje}%`;
-                }}
-              />
-              <Column
-                field="toneladas"
-                header="Toneladas"
-                sortable
-                style={{ minWidth: "8rem" }}
-                body={(rowData) => {
-                  // Mostrar directamente en toneladas
-                  const tons = rowData.toneladas
-                    ? parseFloat(rowData.toneladas).toFixed(3)
-                    : "0.000";
-                  return `${tons} t`;
-                }}
-              />
-            </DataTable>
-          )}
-        </div>
-      );
     };
 
     // Función para expandir calas y cargar especies
@@ -577,77 +563,86 @@ const DetalleFaenasPescaCard = forwardRef(
 
     return (
       <div className="p-3">
-        <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-          <Tag
-            value={`Calas de la Faena ${data.id}`}
-            severity="warning"
-            style={{
-              width: "100%",
-              color: "black",
-            }}
-          />
-        </div>
         {calas.length === 0 ? (
           <p>No hay calas registradas para esta faena</p>
         ) : (
-          <DataTable
-            value={calas}
-            dataKey="id"
-            className="datatable-responsive"
-            style={{ cursor: "no-drop", fontSize: getResponsiveFontSize() }}
-            rowExpansionTemplate={calaExpansionTemplate}
-            expandedRows={expandedCalasRows}
-            onRowToggle={(e) => setExpandedCalasRows(e.data)}
-            onRowExpand={onCalaRowExpand}
-            onRowCollapse={onCalaRowCollapse}
-          >
-            <Column expander style={{ width: "5rem" }} />
-            <Column
-              field="id"
-              header="ID"
-              sortable
-              style={{ minWidth: "4rem" }}
-            />
-            <Column
-              field="fechaHoraInicio"
-              header="Fecha Inicio"
-              body={(rowData) => formatearFecha(rowData.fechaHoraInicio)}
-              sortable
-              style={{ minWidth: "10rem" }}
-            />
-            <Column
-              field="fechaHoraFin"
-              header="Fecha Fin"
-              body={(rowData) => formatearFecha(rowData.fechaHoraFin)}
-              sortable
-              style={{ minWidth: "10rem" }}
-            />
-            <Column
-              field="latitud"
-              header="Latitud"
-              sortable
-              style={{ minWidth: "8rem" }}
-            />
-            <Column
-              field="longitud"
-              header="Longitud"
-              sortable
-              style={{ minWidth: "8rem" }}
-            />
-            <Column
-              field="toneladasCapturadas"
-              header="Toneladas"
-              sortable
-              style={{ minWidth: "8rem" }}
-              body={(rowData) => {
-                // Mostrar directamente en toneladas
-                const tons = rowData.toneladasCapturadas
-                  ? parseFloat(rowData.toneladasCapturadas).toFixed(3)
-                  : "0.000";
-                return `${tons} t`;
-              }}
-            />
-          </DataTable>
+          calas.map((cala, index) => (
+            <div key={cala.id} style={{ marginBottom: "2rem" }}>
+              {/* Título individual para cada cala */}
+              <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+                <Tag
+                  value={`Cala ${cala.id} de Faena ${data.id}`}
+                  severity="warning"
+                  style={{
+                    width: "100%",
+                    color: "black",
+                    fontSize: "1rem",
+                    padding: "0.5rem",
+                  }}
+                />
+              </div>
+              
+              {/* DataTable individual para cada cala */}
+              <DataTable
+                value={[cala]}
+                dataKey="id"
+                className="datatable-responsive"
+                style={{ cursor: "no-drop", fontSize: getResponsiveFontSize() }}
+                rowExpansionTemplate={calaExpansionTemplate}
+                expandedRows={expandedCalasRows}
+                onRowToggle={(e) => setExpandedCalasRows(e.data)}
+                onRowExpand={onCalaRowExpand}
+                onRowCollapse={onCalaRowCollapse}
+              >
+                <Column expander style={{ width: "5rem" }} />
+                <Column
+                  field="id"
+                  header="ID"
+                  sortable
+                  style={{ minWidth: "4rem" }}
+                />
+                <Column
+                  field="fechaHoraInicio"
+                  header="Fecha Inicio"
+                  body={(rowData) => formatearFecha(rowData.fechaHoraInicio)}
+                  sortable
+                  style={{ minWidth: "10rem" }}
+                />
+                <Column
+                  field="fechaHoraFin"
+                  header="Fecha Fin"
+                  body={(rowData) => formatearFecha(rowData.fechaHoraFin)}
+                  sortable
+                  style={{ minWidth: "10rem" }}
+                />
+                <Column
+                  field="latitud"
+                  header="Latitud"
+                  sortable
+                  style={{ minWidth: "8rem" }}
+                />
+                <Column
+                  field="longitud"
+                  header="Longitud"
+                  sortable
+                  style={{ minWidth: "8rem" }}
+                />
+                <Column
+                  field="toneladasCapturadas"
+                  header="Toneladas"
+                  sortable
+                  style={{ minWidth: "8rem" }}
+                  body={(rowData) => {
+                    // Mostrar directamente en toneladas
+                    const tons = rowData.toneladasCapturadas
+                      ? parseFloat(rowData.toneladasCapturadas).toFixed(3)
+                      : "0.000";
+                    return `${tons} t`;
+                  }}
+                />
+              </DataTable>
+            </div>
+          ))
         )}
       </div>
     );

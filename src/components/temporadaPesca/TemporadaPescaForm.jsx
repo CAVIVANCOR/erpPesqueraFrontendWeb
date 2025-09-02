@@ -503,7 +503,7 @@ const TemporadaPescaForm = ({
           <ButtonGroup>
             <Button
               icon="pi pi-info-circle"
-              tooltip="Datos Generales Temporada de Pesca y Detalle de Faenas"
+              tooltip="Temporada de Pesca y Detalle de Faenas"
               tooltipOptions={{ position: "bottom" }}
               className={
                 activeCard === "datos-generales"
@@ -515,7 +515,7 @@ const TemporadaPescaForm = ({
             />
             <Button
               icon="pi pi-file-pdf"
-              tooltip="Resolución PDF - Documento ministerial de autorización"
+              tooltip="Resolución Ministerial en PDF"
               tooltipOptions={{ position: "bottom" }}
               className={
                 activeCard === "resolucion-pdf"
