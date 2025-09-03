@@ -41,6 +41,7 @@ import { getEmpresas } from "../api/empresa";
 import { getEstadosMultiFuncionParaTemporadaPesca } from "../api/estadoMultiFuncion";
 import TemporadaPescaForm from "../components/temporadaPesca/TemporadaPescaForm";
 import { getResponsiveFontSize } from "../utils/utils";
+import { abrirPdfEnNuevaPestana } from "../utils/pdfUtils";
 
 /**
  * Componente principal para gestión de temporadas de pesca
@@ -255,8 +256,10 @@ const TemporadaPesca = () => {
           case 409: // Conflict
             if (data.mensaje && data.mensaje.includes("faenas, entregas o liquidación")) {
               mensajeError = "No se puede eliminar esta temporada porque tiene faenas, entregas o liquidaciones asociadas. Debe eliminar primero estos registros relacionados antes de poder eliminar la temporada.";
+            } else if (data.mensaje && data.mensaje.includes("faenas, entregas o liquidación")) {
+              mensajeError = "No se puede eliminar esta temporada porque tiene faenas, entregas o liquidaciones asociadas. Debe eliminar primero estos registros relacionados.";
             } else {
-              mensajeError = "No se puede eliminar este registro porque tiene información relacionada. Elimine primero los registros dependientes.";
+              mensajeError = "Ya existe un registro similar. Por favor, verifique los datos ingresados.";
             }
             break;
           case 400: // Bad Request
@@ -470,91 +473,6 @@ const TemporadaPesca = () => {
   const resolucionTemplate = (rowData) => {
     if (!rowData.numeroResolucion) return "-";
 
-    const handlePdfClick = async () => {
-      if (!rowData.urlResolucionPdf) {
-        toast.current.show({
-          severity: "warn",
-          summary: "Advertencia",
-          detail: "No hay PDF disponible para esta resolución.",
-          life: 3000,
-        });
-        return;
-      }
-
-      try {
-        let urlCompleta;
-
-        // Construcción de URL siguiendo el patrón funcional
-        if (
-          rowData.urlResolucionPdf.startsWith(
-            "/uploads/resoluciones-temporada/"
-          )
-        ) {
-          const rutaArchivo = rowData.urlResolucionPdf.replace(
-            "/uploads/resoluciones-temporada/",
-            ""
-          );
-          urlCompleta = `${
-            import.meta.env.VITE_API_URL
-          }/temporada-pesca-resolucion/archivo/${rutaArchivo}`;
-        } else if (rowData.urlResolucionPdf.startsWith("/api/")) {
-          const rutaSinApi = rowData.urlResolucionPdf.substring(4);
-          urlCompleta = `${import.meta.env.VITE_API_URL}${rutaSinApi}`;
-        } else if (rowData.urlResolucionPdf.startsWith("/")) {
-          urlCompleta = `${import.meta.env.VITE_API_URL}${
-            rowData.urlResolucionPdf
-          }`;
-        } else {
-          urlCompleta = rowData.urlResolucionPdf;
-        }
-
-        // Obtener token y hacer fetch con autenticación
-        const token = useAuthStore.getState().token;
-        const response = await fetch(urlCompleta, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          // Crear blob y abrir en nueva ventana
-          const blob = await response.blob();
-          const blobUrl = window.URL.createObjectURL(blob);
-          const newWindow = window.open(blobUrl, "_blank");
-
-          // Limpiar blob después de 10 segundos
-          setTimeout(() => {
-            window.URL.revokeObjectURL(blobUrl);
-          }, 10000);
-
-          if (!newWindow) {
-            toast.current.show({
-              severity: "warn",
-              summary: "Aviso",
-              detail:
-                "El navegador bloqueó la ventana emergente. Por favor, permita ventanas emergentes para este sitio.",
-              life: 5000,
-            });
-          }
-        } else {
-          toast.current.show({
-            severity: "error",
-            summary: "Error",
-            detail: `No se pudo abrir el documento (${response.status})`,
-            life: 3000,
-          });
-        }
-      } catch (error) {
-        console.error("Error al abrir PDF:", error);
-        toast.current.show({
-          severity: "error",
-          summary: "Error",
-          detail: `Error al abrir el documento: ${error.message}`,
-          life: 3000,
-        });
-      }
-    };
-
     return (
       <div className="flex align-items-center gap-2">
         <span>{rowData.numeroResolucion}</span>
@@ -564,7 +482,7 @@ const TemporadaPesca = () => {
             className="p-button-rounded p-button-text p-button-sm"
             tooltip="Ver PDF"
             tooltipOptions={{ position: "top" }}
-            onClick={handlePdfClick}
+            onClick={() => abrirPdfEnNuevaPestana(rowData.urlResolucionPdf, toast, "No hay PDF disponible para esta resolución.")}
           />
         )}
       </div>

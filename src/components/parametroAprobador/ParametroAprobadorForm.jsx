@@ -323,10 +323,15 @@ const ParametroAprobadorForm = ({
   };
 
   // Opciones para combos
-  const personalOptions = personal.map((persona) => ({
-    label: `${persona.nombres} ${persona.apellidos}`,
-    value: Number(persona.id),
-  }));
+  const personalOptions = personal.map((persona) => {
+    const empresa = empresas.find(emp => Number(emp.id) === Number(persona.empresaId));
+    const empresaNombre = empresa ? empresa.razonSocial : 'Sin empresa';
+    
+    return {
+      label: `${persona.nombres} ${persona.apellidos} - ${empresaNombre}`,
+      value: Number(persona.id),
+    };
+  });
 
   const modulosSistemaOptions = modulosSistema.map((modulo) => ({
     label: modulo.nombre,
@@ -359,33 +364,6 @@ const ParametroAprobadorForm = ({
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
-        {/* Campo Personal Responsable */}
-        <div style={{ flex: 1 }}>
-          <label htmlFor="personalRespId" className="p-d-block">
-            Personal Responsable <span className="p-error">*</span>
-          </label>
-          <Controller
-            name="personalRespId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="personalRespId"
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                options={personalOptions}
-                placeholder="Seleccione personal responsable"
-                className={getFieldClass("personalRespId")}
-                filter
-                showClear
-              />
-            )}
-          />
-          {errors.personalRespId && (
-            <small className="p-error p-d-block">
-              {errors.personalRespId.message}
-            </small>
-          )}
-        </div>
         {/* Campo Empresa */}
         <div style={{ flex: 1 }}>
           <label htmlFor="empresaId" className="p-d-block">
@@ -404,12 +382,41 @@ const ParametroAprobadorForm = ({
                 className={getFieldClass("empresaId")}
                 filter
                 showClear
+                style={{ fontWeight: "bold" }}
               />
             )}
           />
           {errors.empresaId && (
             <small className="p-error p-d-block">
               {errors.empresaId.message}
+            </small>
+          )}
+        </div>
+        {/* Campo Personal Responsable */}
+        <div style={{ flex: 1 }}>
+          <label htmlFor="personalRespId" className="p-d-block">
+            Personal Responsable <span className="p-error">*</span>
+          </label>
+          <Controller
+            name="personalRespId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="personalRespId"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={personalOptions}
+                placeholder="Seleccione personal responsable"
+                className={getFieldClass("personalRespId")}
+                filter
+                showClear
+                style={{ fontWeight: "bold" }}
+              />
+            )}
+          />
+          {errors.personalRespId && (
+            <small className="p-error p-d-block">
+              {errors.personalRespId.message}
             </small>
           )}
         </div>
@@ -440,6 +447,7 @@ const ParametroAprobadorForm = ({
                 className={getFieldClass("moduloSistemaId")}
                 filter
                 showClear
+                style={{ fontWeight: "bold" }}
               />
             )}
           />
@@ -473,6 +481,7 @@ const ParametroAprobadorForm = ({
                 disabled={!empresaSeleccionada}
                 filter
                 showClear
+                style={{ fontWeight: "bold" }}
               />
             )}
           />
@@ -508,6 +517,7 @@ const ParametroAprobadorForm = ({
                 className={getFieldClass("vigenteDesde")}
                 dateFormat="dd/mm/yy"
                 showIcon
+                style={{ fontWeight: "bold" }}
               />
             )}
           />
@@ -535,6 +545,7 @@ const ParametroAprobadorForm = ({
                 className={getFieldClass("vigenteHasta")}
                 dateFormat="dd/mm/yy"
                 showIcon
+                style={{ fontWeight: "bold" }}
               />
             )}
           />
@@ -573,6 +584,7 @@ const ParametroAprobadorForm = ({
                 className={getFieldClass("sedeId")}
                 filter
                 showClear
+                style={{ fontWeight: "bold" }}
               />
             )}
           />

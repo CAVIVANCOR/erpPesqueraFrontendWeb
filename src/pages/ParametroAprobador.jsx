@@ -483,7 +483,7 @@ const ParametroAprobador = () => {
         }
         visible={dialogVisible}
         onHide={cerrarDialogo}
-        style={{ width: "800px" }}
+        style={{ width: "1000px" }}
         modal
       >
         <ParametroAprobadorForm

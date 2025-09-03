@@ -174,13 +174,28 @@ export default function PersonalPage() {
 
   useEffect(() => {
     aplicarFiltros();
-  }, [personales, filtroTipoPesca]);
+  }, [personales, filtroTipoPesca, empresaFilter, cargoFilter]);
 
   const aplicarFiltros = () => {
     let personalesFiltrados = [...personales];
 
+    // Filtrar por empresa
+    if (empresaFilter) {
+      personalesFiltrados = personalesFiltrados.filter(
+        (personal) => Number(personal.empresaId) === Number(empresaFilter)
+      );
+    }
+
+    // Filtrar por cargo
+    if (cargoFilter) {
+      personalesFiltrados = personalesFiltrados.filter(
+        (personal) => Number(personal.cargoId) === Number(cargoFilter)
+      );
+    }
+
+    // Filtrar por tipo de pesca
     if (filtroTipoPesca === "todos") {
-      // Mostrar todos los registros sin filtrar
+      // Mostrar todos los registros ya filtrados por empresa/cargo
       setFilteredPersonales(personalesFiltrados);
     } else if (filtroTipoPesca === "temporada") {
       // Filtrar solo registros con paraTemporadaPesca = true

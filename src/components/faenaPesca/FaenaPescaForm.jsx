@@ -15,6 +15,7 @@ import InformeFaenaPescaForm from "./InformeFaenaPescaForm";
 
 // API imports
 import { listarEstadosMultiFuncionFaenaPesca } from "../../api/estadoMultiFuncion";
+import { getPersonal } from "../../api/personal";
 
 export default function FaenaPescaForm({
   visible,
@@ -40,6 +41,7 @@ export default function FaenaPescaForm({
 
   // Estados para datos del backend
   const [estadosFaena, setEstadosFaena] = useState([]);
+  const [personal, setPersonal] = useState([]);
 
   // Estados para dropdowns
   const [temporada, setTemporada] = useState(null);
@@ -95,18 +97,22 @@ export default function FaenaPescaForm({
     const cargarDatos = async () => {
       try {
         // Cargar estados de faena
-        const estadosData = await listarEstadosMultiFuncionFaenaPesca();        
+        const estadosData = await listarEstadosMultiFuncionFaenaPesca();
         // Normalizar IDs a números
-        const estadosNormalizados = estadosData.map(estado => ({
+        const estadosNormalizados = estadosData.map((estado) => ({
           ...estado,
-          id: Number(estado.id)
+          id: Number(estado.id),
         }));
-        
+
         setEstadosFaena(estadosNormalizados);
-        
+
         if (temporadaData) {
           setTemporada(temporadaData);
         }
+
+        // Cargar personal
+        const personalData = await getPersonal();
+        setPersonal(personalData);
       } catch (error) {
         console.error("Error general cargando datos para dropdowns:", error);
       }
@@ -126,9 +132,15 @@ export default function FaenaPescaForm({
   React.useEffect(() => {
     reset({
       ...defaultValues,
-      fechaSalida: defaultValues.fechaSalida ? new Date(defaultValues.fechaSalida) : null,
-      fechaRetorno: defaultValues.fechaRetorno ? new Date(defaultValues.fechaRetorno) : null,
-      fechaDescarga: defaultValues.fechaDescarga ? new Date(defaultValues.fechaDescarga) : null,
+      fechaSalida: defaultValues.fechaSalida
+        ? new Date(defaultValues.fechaSalida)
+        : null,
+      fechaRetorno: defaultValues.fechaRetorno
+        ? new Date(defaultValues.fechaRetorno)
+        : null,
+      fechaDescarga: defaultValues.fechaDescarga
+        ? new Date(defaultValues.fechaDescarga)
+        : null,
     });
   }, [defaultValues, reset]);
 
@@ -145,34 +157,77 @@ export default function FaenaPescaForm({
     <div
       style={{
         display: "flex",
-        justifyContent: "flex-end",
+        justifyContent: "space-between",
+        alignItems: "center",
         gap: 8,
-        marginTop: 18,
+        marginTop: 2,
       }}
     >
-      <Button
-        label="Cancelar"
-        icon="pi pi-times"
-        onClick={handleHide}
-        className="p-button-text"
-        severity="danger"
-        raised
-        outlined
-        size="small"
-      />
-      <Button
-        label={isEdit ? "Actualizar" : "Crear"}
-        icon="pi pi-check"
-        onClick={handleSubmit((data) => {
-          onSubmit(data);
-        })}
-        className="p-button-success"
-        loading={loading}
-        severity="success"
-        raised
-        outlined
-        size="small"
-      />
+      {/* Botones de navegación de Cards - lado izquierdo */}
+      <div className="flex gap-1">
+        <Button
+          icon="pi pi-info-circle"
+          tooltip="Datos Generales"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "datos-generales"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("datos-generales")}
+          type="button"
+          size="small"
+        />
+        <Button
+          icon="pi pi-list"
+          tooltip="Acciones Previas"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "acciones-previas"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("acciones-previas")}
+          type="button"
+          size="small"
+        />
+        <Button
+          icon="pi pi-file"
+          tooltip="Informe de Faena"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "informe" ? "p-button-info" : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("informe")}
+          type="button"
+          size="small"
+        />
+      </div>
+      <div className="flex gap-2">
+        <Button
+          label="Cancelar"
+          icon="pi pi-times"
+          onClick={handleHide}
+          className="p-button-text"
+          severity="danger"
+          raised
+          outlined
+          size="small"
+        />
+        <Button
+          label={isEdit ? "Actualizar" : "Crear"}
+          icon="pi pi-check"
+          onClick={handleSubmit((data) => {
+            onSubmit(data);
+          })}
+          className="p-button-success"
+          loading={loading}
+          severity="success"
+          raised
+          outlined
+          size="small"
+        />
+      </div>
     </div>
   );
 
@@ -181,7 +236,7 @@ export default function FaenaPescaForm({
       // Llamar onSubmit original
       await onSubmit(data);
     } catch (error) {
-      console.error('Error en handleFormSubmit:', error);
+      console.error("Error en handleFormSubmit:", error);
     }
   };
 
@@ -196,7 +251,7 @@ export default function FaenaPescaForm({
     <Dialog
       visible={visible}
       style={{ width: "1300px" }}
-      header={isEdit ? "Editar Faena de Pesca" : "Nueva Faena de Pesca"}
+      headerStyle={{ display: "none" }}
       modal
       footer={dialogFooter}
       onHide={handleHide}
@@ -205,7 +260,7 @@ export default function FaenaPescaForm({
       {/* Mostrar descripción de faena con Tag */}
       <div className="flex justify-content-center mb-4">
         <Tag
-          value={watch("descripcion") || "Nueva Faena de Pesca"}
+          value={watch("descripcion") || defaultValues.descripcion || "Nueva Faena de Pesca"}
           severity="info"
           style={{
             fontSize: "1.1rem",
@@ -214,53 +269,10 @@ export default function FaenaPescaForm({
             fontWeight: "bold",
             textAlign: "center",
             width: "100%",
+            marginTop: "0.5rem",
           }}
         />
       </div>
-
-      {/* Navegación de Cards */}
-      <div
-        className="mb-4"
-        style={{ display: "flex", justifyContent: "center", marginTop: "0.5rem" }}
-      >
-        <ButtonGroup>
-          <Button
-            icon="pi pi-info-circle"
-            tooltip="Datos Generales"
-            tooltipOptions={{ position: "bottom" }}
-            className={
-              activeCard === "datos-generales"
-                ? "p-button-info"
-                : "p-button-outlined"
-            }
-            onClick={() => handleNavigateToCard("datos-generales")}
-            type="button"
-          />
-          <Button
-            icon="pi pi-list"
-            tooltip="Acciones Previas"
-            tooltipOptions={{ position: "bottom" }}
-            className={
-              activeCard === "acciones-previas"
-                ? "p-button-info"
-                : "p-button-outlined"
-            }
-            onClick={() => handleNavigateToCard("acciones-previas")}
-            type="button"
-          />
-          <Button
-            icon="pi pi-file"
-            tooltip="Informe de Faena"
-            tooltipOptions={{ position: "bottom" }}
-            className={
-              activeCard === "informe" ? "p-button-info" : "p-button-outlined"
-            }
-            onClick={() => handleNavigateToCard("informe")}
-            type="button"
-          />
-        </ButtonGroup>
-      </div>
-
       {/* Contenido de Cards */}
       <div className="p-fluid">
         {activeCard === "datos-generales" && (
@@ -287,7 +299,11 @@ export default function FaenaPescaForm({
         )}
 
         {activeCard === "acciones-previas" && (
-          <DetalleAccionesPreviasForm temporadaPescaId={temporadaData?.id} />
+          <DetalleAccionesPreviasForm 
+          temporadaPescaId={temporadaData?.id} 
+          faenaPescaId={defaultValues.id}
+          personal={personal}
+          />
         )}
 
         {activeCard === "informe" && (
@@ -299,7 +315,6 @@ export default function FaenaPescaForm({
           />
         )}
       </div>
-
     </Dialog>
   );
 }

@@ -504,7 +504,7 @@ const DetalleCalasForm = ({
         }}
       >
         <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
-          <h2>Gestión de Calas</h2>
+          <h2>DETALLE DE CALAS</h2>
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <Button

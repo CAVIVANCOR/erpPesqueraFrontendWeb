@@ -53,7 +53,6 @@ const TemporadaPescaForm = ({
   empresas = [],
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
 }) => {
-
   // Estados principales
   const [activeCard, setActiveCard] = useState("datos-generales");
   const [bahiasComerciales, setBahiasComerciales] = useState([]);
@@ -69,7 +68,8 @@ const TemporadaPescaForm = ({
   const [boliches, setBoliches] = useState([]);
   const [puertosPesca, setPuertosPesca] = useState([]);
   const [tieneFaenas, setTieneFaenas] = useState(false);
-  const [camposRequeridosCompletos, setCamposRequeridosCompletos] = useState(false);
+  const [camposRequeridosCompletos, setCamposRequeridosCompletos] =
+    useState(false);
 
   // Ref para Toast
   const toast = useRef(null);
@@ -112,13 +112,14 @@ const TemporadaPescaForm = ({
   useEffect(() => {
     const cargarDatos = async () => {
       try {
-        const [estadosData, embarcacionesData, bolichesData, puertosData] = await Promise.all([
-          getEstadosMultiFuncionParaTemporadaPesca(),
-          getEmbarcaciones(),
-          getAllBolicheRed(),
-          getPuertosPesca()
-        ]);
-        
+        const [estadosData, embarcacionesData, bolichesData, puertosData] =
+          await Promise.all([
+            getEstadosMultiFuncionParaTemporadaPesca(),
+            getEmbarcaciones(),
+            getAllBolicheRed(),
+            getPuertosPesca(),
+          ]);
+
         setEstadosTemporada(estadosData);
         setEmbarcaciones(embarcacionesData);
         setBoliches(bolichesData);
@@ -155,14 +156,14 @@ const TemporadaPescaForm = ({
       try {
         // Usar la empresa del editingItem o la primera empresa disponible
         const empresaId = editingItem?.empresaId || empresas[0]?.id || null;
-        
+
         if (empresaId) {
           const [bahiasData, motoristasData, patronesData] = await Promise.all([
             getBahiasComerciales(Number(empresaId), "BAHIA COMERCIAL"),
             getMotoristas(Number(empresaId), "MOTORISTA EMBARCACION"),
-            getPatrones(Number(empresaId), "PATRON EMBARCACION")
+            getPatrones(Number(empresaId), "PATRON EMBARCACION"),
           ]);
-          
+
           setBahiasComerciales(bahiasData);
           setMotoristas(motoristasData);
           setPatrones(patronesData);
@@ -174,7 +175,7 @@ const TemporadaPescaForm = ({
         setPatrones([]);
       }
     };
-    
+
     if (editingItem?.empresaId || empresas.length > 0) {
       cargarResponsablesFaena();
     }
@@ -184,7 +185,6 @@ const TemporadaPescaForm = ({
    * Verificar si la temporada ya fue iniciada
    */
   const verificarTemporadaIniciada = async (temporadaId) => {
-    console.log("Verificando si temporada fue iniciada:", temporadaId);
     if (!temporadaId) {
       setTieneFaenas(false);
       return;
@@ -195,7 +195,6 @@ const TemporadaPescaForm = ({
       const temporada = await getTemporadaPescaPorId(temporadaId);
       const yaIniciada = temporada?.temporadaPescaIniciada || false;
       setTieneFaenas(yaIniciada);
-      console.log("Temporada iniciada:", yaIniciada);
     } catch (error) {
       console.error("Error verificando temporada iniciada:", error);
       setTieneFaenas(false);
@@ -283,7 +282,7 @@ const TemporadaPescaForm = ({
       empresaId: Number(data.empresaId),
       BahiaId: Number(data.BahiaId),
       estadoTemporadaId: Number(data.estadoTemporadaId),
-      nombre: data.nombre?.trim().toUpperCase() || '',
+      nombre: data.nombre?.trim().toUpperCase() || "",
       fechaInicio: data.fechaInicio.toISOString(),
       fechaFin: data.fechaFin.toISOString(),
       numeroResolucion: data.numeroResolucion?.trim().toUpperCase() || null,
@@ -294,18 +293,19 @@ const TemporadaPescaForm = ({
         ? Number(data.cuotaAlquiladaTon)
         : null,
       fechaActualizacion: new Date().toISOString(),
-      toneladasCapturadasTemporada: data.toneladasCapturadasTemporada ? Number(data.toneladasCapturadasTemporada) : null,
+      toneladasCapturadasTemporada:
+        data.toneladasCapturadasTemporada || null,
     };
 
     // Solo incluir ID si existe y no es null (para edición)
     if (data.id && editingItem?.id) {
       formData.id = data.id;
-    }    
+    }
 
     try {
-      const resultado = await onSave(formData);      
+      const resultado = await onSave(formData);
       // Si es una nueva temporada y se obtuvo un ID, re-verificar registros
-      if (resultado && resultado.id && !editingItem?.id) {        
+      if (resultado && resultado.id && !editingItem?.id) {
         // Forzar re-verificación de registros con el nuevo ID
         setTimeout(async () => {
           await verificarTemporadaIniciada(resultado.id);
@@ -339,7 +339,7 @@ const TemporadaPescaForm = ({
    * Determinar si el botón Iniciar Temporada debe estar habilitado
    */
   const puedeIniciarTemporada = () => {
-    const tieneId = !!(editingItem?.id);
+    const tieneId = !!editingItem?.id;
     const camposCompletos = camposRequeridosCompletos;
     const noTieneFaenas = !tieneFaenas;
     return tieneId && camposCompletos && noTieneFaenas;
@@ -350,7 +350,8 @@ const TemporadaPescaForm = ({
    */
   const handleIniciarTemporada = () => {
     confirmDialog({
-      message: "¿Está seguro de iniciar esta temporada de pesca? Esta acción creará los registros necesarios.",
+      message:
+        "¿Está seguro de iniciar esta temporada de pesca? Esta acción creará los registros necesarios.",
       header: "Confirmar Inicio de Temporada",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-success",
@@ -358,21 +359,23 @@ const TemporadaPescaForm = ({
       acceptLabel: "Sí, Iniciar",
       rejectLabel: "Cancelar",
       accept: async () => {
-        try {          
+        try {
           await iniciarTemporada(editingItem.id);
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
             detail: "Temporada iniciada correctamente",
           });
-          
+
           // Re-verificar registros para deshabilitar el botón
           await verificarTemporadaIniciada(editingItem.id);
-          
+
           // Notificar actualización de faenas
-          window.dispatchEvent(new CustomEvent('refreshFaenas', { 
-            detail: { temporadaId: editingItem.id } 
-          }));
+          window.dispatchEvent(
+            new CustomEvent("refreshFaenas", {
+              detail: { temporadaId: editingItem.id },
+            })
+          );
         } catch (error) {
           console.error("Error iniciando temporada:", error);
           toast.current?.show({
@@ -389,40 +392,81 @@ const TemporadaPescaForm = ({
    * Footer del diálogo con botones de acción
    */
   const dialogFooter = (
-    <div className="flex justify-content-end gap-2">
-      {editingItem && (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 8,
+        marginTop: 2,
+      }}
+    >
+      {/* Botones de navegación de Cards - lado izquierdo */}
+      <div className="flex gap-1">
         <Button
-          label="Iniciar Temporada"
-          icon="pi pi-play"
-          className="p-button-success"
-          disabled={(() => {
-            const resultado = !puedeIniciarTemporada();
-            return resultado;
-          })()}
-          onClick={handleIniciarTemporada}
-          tooltip={
-            !editingItem?.id 
-              ? "Debe guardar la temporada primero"
-              : !camposRequeridosCompletos
-              ? "Complete todos los campos requeridos (Número de resolución, fechas y cuotas)"
-              : tieneFaenas
-              ? "La temporada ya fue iniciada"
-              : "Iniciar temporada de pesca"
+          icon="pi pi-info-circle"
+          tooltip="Temporada de Pesca y Detalle de Faenas"
+          tooltipOptions={{ position: "top" }}
+          className={
+            activeCard === "datos-generales"
+              ? "p-button-primary"
+              : "p-button-outlined"
           }
+          onClick={() => handleNavigateToCard("datos-generales")}
+          type="button"
+          size="small"
         />
-      )}
-      <Button
-        label="Cancelar"
-        icon="pi pi-times"
-        outlined
-        onClick={handleHide}
-      />
-      <Button
-        label={editingItem ? "Actualizar" : "Crear"}
-        icon="pi pi-check"
-        onClick={handleSubmit(handleFormSubmit)}
-        loading={validandoSuperposicion}
-      />
+        <Button
+          icon="pi pi-file-pdf"
+          tooltip="Resolución Ministerial en PDF"
+          tooltipOptions={{ position: "top" }}
+          className={
+            activeCard === "resolucion-pdf"
+              ? "p-button-warning"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("resolucion-pdf")}
+          type="button"
+          size="small"
+        />
+      </div>
+
+      {/* Botones de acción - lado derecho */}
+      <div className="flex gap-2">
+        {editingItem && (
+          <Button
+            label="Iniciar Temporada"
+            icon="pi pi-play"
+            className="p-button-success"
+            disabled={(() => {
+              const resultado = !puedeIniciarTemporada();
+              return resultado;
+            })()}
+            onClick={handleIniciarTemporada}
+            tooltip={
+              !editingItem?.id
+                ? "Debe guardar la temporada primero"
+                : !camposRequeridosCompletos
+                ? "Complete todos los campos requeridos (Número de resolución, fechas y cuotas)"
+                : tieneFaenas
+                ? "La temporada ya fue iniciada"
+                : "Iniciar temporada de pesca"
+            }
+          />
+        )}
+        <Button
+          label="Cancelar"
+          icon="pi pi-times"
+          outlined
+          onClick={handleHide}
+        />
+        <Button
+          label={editingItem ? "Actualizar" : "Crear"}
+          icon="pi pi-check"
+          onClick={handleSubmit(handleFormSubmit)}
+          loading={validandoSuperposicion}
+        />
+      </div>
     </div>
   );
 
@@ -434,13 +478,16 @@ const TemporadaPescaForm = ({
         BahiaId: editingItem.BahiaId || null,
         estadoTemporadaId: editingItem.estadoTemporadaId || estadoDefaultId,
         nombre: editingItem.nombre || "",
-        fechaInicio: editingItem.fechaInicio ? new Date(editingItem.fechaInicio) : null,
+        fechaInicio: editingItem.fechaInicio
+          ? new Date(editingItem.fechaInicio)
+          : null,
         fechaFin: editingItem.fechaFin ? new Date(editingItem.fechaFin) : null,
         numeroResolucion: editingItem.numeroResolucion || "",
         urlResolucionPdf: editingItem.urlResolucionPdf || "",
         cuotaPropiaTon: editingItem.cuotaPropiaTon || null,
         cuotaAlquiladaTon: editingItem.cuotaAlquiladaTon || null,
-        toneladasCapturadasTemporada: editingItem.toneladasCapturadasTemporada || null,
+        toneladasCapturadasTemporada:
+          editingItem.toneladasCapturadasTemporada || null,
       });
     } else {
       reset({
@@ -495,39 +542,6 @@ const TemporadaPescaForm = ({
           }}
         />
       </div>
-
-      {/* Sistema de navegación con botones de iconos */}
-      <Toolbar
-        className="mb-4"
-        center={
-          <ButtonGroup>
-            <Button
-              icon="pi pi-info-circle"
-              tooltip="Temporada de Pesca y Detalle de Faenas"
-              tooltipOptions={{ position: "bottom" }}
-              className={
-                activeCard === "datos-generales"
-                  ? "p-button-primary"
-                  : "p-button-outlined"
-              }
-              onClick={() => handleNavigateToCard("datos-generales")}
-              type="button"
-            />
-            <Button
-              icon="pi pi-file-pdf"
-              tooltip="Resolución Ministerial en PDF"
-              tooltipOptions={{ position: "bottom" }}
-              className={
-                activeCard === "resolucion-pdf"
-                  ? "p-button-warning"
-                  : "p-button-outlined"
-              }
-              onClick={() => handleNavigateToCard("resolucion-pdf")}
-              type="button"
-            />
-          </ButtonGroup>
-        }
-      />
 
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         {activeCard === "datos-generales" && (

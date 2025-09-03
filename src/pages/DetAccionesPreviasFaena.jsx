@@ -8,7 +8,12 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import DetAccionesPreviasFaenaForm from "../components/detAccionesPreviasFaena/DetAccionesPreviasFaenaForm";
-import { getAllDetAccionesPreviasFaena, crearDetAccionesPreviasFaena, actualizarDetAccionesPreviasFaena, eliminarDetAccionesPreviasFaena } from "../api/detAccionesPreviasFaena";
+import {
+  getAllDetAccionesPreviasFaena,
+  crearDetAccionesPreviasFaena,
+  actualizarDetAccionesPreviasFaena,
+  eliminarDetAccionesPreviasFaena,
+} from "../api/detAccionesPreviasFaena";
 import { getFaenasPesca } from "../api/faenaPesca";
 import { getAllAccionesPreviasFaena } from "../api/accionesPreviasFaena";
 import { useAuthStore } from "../shared/stores/useAuthStore";
@@ -32,7 +37,7 @@ export default function DetAccionesPreviasFaena() {
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore(state => state.usuario);
+  const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
     cargarDatos();
@@ -44,13 +49,17 @@ export default function DetAccionesPreviasFaena() {
       const [detallesData, faenasData, accionesData] = await Promise.all([
         getAllDetAccionesPreviasFaena(),
         getFaenasPesca(),
-        getAllAccionesPreviasFaena()
+        getAllAccionesPreviasFaena(),
       ]);
       setItems(detallesData);
       setFaenas(faenasData);
       setAcciones(accionesData);
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar los datos." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar los datos.",
+      });
     }
     setLoading(false);
   };
@@ -71,10 +80,18 @@ export default function DetAccionesPreviasFaena() {
     setLoading(true);
     try {
       await deleteDetAccionesPreviasFaena(toDelete.id);
-      toast.current.show({ severity: "success", summary: "Eliminado", detail: "Detalle eliminado correctamente." });
+      toast.current.show({
+        severity: "success",
+        summary: "Eliminado",
+        detail: "Detalle eliminado correctamente.",
+      });
       cargarDatos();
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo eliminar." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo eliminar.",
+      });
     }
     setLoading(false);
     setToDelete(null);
@@ -85,16 +102,28 @@ export default function DetAccionesPreviasFaena() {
     try {
       if (editing && editing.id) {
         await actualizarDetAccionesPreviasFaena(editing.id, data);
-        toast.current.show({ severity: "success", summary: "Actualizado", detail: "Detalle actualizado." });
+        toast.current.show({
+          severity: "success",
+          summary: "Actualizado",
+          detail: "Detalle actualizado.",
+        });
       } else {
         await crearDetAccionesPreviasFaena(data);
-        toast.current.show({ severity: "success", summary: "Creado", detail: "Detalle creado." });
+        toast.current.show({
+          severity: "success",
+          summary: "Creado",
+          detail: "Detalle creado.",
+        });
       }
       setShowDialog(false);
       setEditing(null);
       cargarDatos();
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo guardar." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo guardar.",
+      });
     }
     setLoading(false);
   };
@@ -105,20 +134,34 @@ export default function DetAccionesPreviasFaena() {
   };
 
   const faenaNombre = (rowData) => {
-    const faena = faenas.find(f => Number(f.id) === Number(rowData.faenaPescaId));
-    return faena ? `Faena ${faena.id}` : '';
+    const faena = faenas.find(
+      (f) => Number(f.id) === Number(rowData.faenaPescaId)
+    );
+    return faena ? `Faena ${faena.id}` : "";
   };
 
   const accionNombre = (rowData) => {
-    const accion = acciones.find(a => Number(a.id) === Number(rowData.accionPreviaId));
-    return accion ? accion.nombre : '';
+    const accion = acciones.find(
+      (a) => Number(a.id) === Number(rowData.accionPreviaId)
+    );
+    return accion ? accion.nombre : "";
   };
 
   const actionBody = (rowData) => (
     <>
-      <Button icon="pi pi-pencil" className="p-button-text p-button-sm" onClick={() => handleEdit(rowData)} aria-label="Editar" />
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-text p-button-sm"
+        onClick={() => handleEdit(rowData)}
+        aria-label="Editar"
+      />
       {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger p-button-sm" onClick={() => handleDelete(rowData)} aria-label="Eliminar" />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger p-button-sm"
+          onClick={() => handleDelete(rowData)}
+          aria-label="Eliminar"
+        />
       )}
     </>
   );
@@ -126,23 +169,85 @@ export default function DetAccionesPreviasFaena() {
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
-      <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar este detalle?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
-      <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
+      <ConfirmDialog
+        visible={showConfirm}
+        onHide={() => setShowConfirm(false)}
+        message="¿Está seguro que desea eliminar este detalle?"
+        header="Confirmar eliminación"
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        accept={handleDeleteConfirm}
+        reject={() => setShowConfirm(false)}
+      />
+      <div
+        className="p-d-flex p-jc-between p-ai-center"
+        style={{ marginBottom: 16 }}
+      >
         <h2>Gestión de Detalle Acciones Previas de Faena</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
+        <Button
+          label="Nuevo"
+          icon="pi pi-plus"
+          className="p-button-success"
+          size="small"
+          outlined
+          onClick={handleAdd}
+          disabled={loading}
+        />
       </div>
-      <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
+      <DataTable
+        value={items}
+        loading={loading}
+        dataKey="id"
+        paginator
+        rows={10}
+        onRowClick={(e) => handleEdit(e.data)}
+        style={{ cursor: "pointer" }}
+      >
         <Column field="id" header="ID" style={{ width: 80 }} />
         <Column field="faenaPescaId" header="Faena" body={faenaNombre} />
         <Column field="accionPreviaId" header="Acción" body={accionNombre} />
-        <Column field="cumplida" header="Cumplida" body={rowData => rowData.cumplida ? "Sí" : "No"} />
-        <Column field="verificado" header="Verificado" body={rowData => rowData.verificado ? "Sí" : "No"} />
-        <Column field="fechaCumplida" header="Fecha Cumplida" body={rowData => rowData.fechaCumplida ? new Date(rowData.fechaCumplida).toLocaleDateString() : ''} />
-        <Column field="fechaVerificacion" header="Fecha Verificación" body={rowData => rowData.fechaVerificacion ? new Date(rowData.fechaVerificacion).toLocaleDateString() : ''} />
+        <Column
+          field="cumplida"
+          header="Cumplida"
+          body={(rowData) => (rowData.cumplida ? "Sí" : "No")}
+        />
+        <Column
+          field="verificado"
+          header="Verificado"
+          body={(rowData) => (rowData.verificado ? "Sí" : "No")}
+        />
+        <Column
+          field="fechaCumplida"
+          header="Fecha Cumplida"
+          body={(rowData) =>
+            rowData.fechaCumplida
+              ? new Date(rowData.fechaCumplida).toLocaleDateString()
+              : ""
+          }
+        />
+        <Column
+          field="fechaVerificacion"
+          header="Fecha Verificación"
+          body={(rowData) =>
+            rowData.fechaVerificacion
+              ? new Date(rowData.fechaVerificacion).toLocaleDateString()
+              : ""
+          }
+        />
         <Column field="observaciones" header="Observaciones" />
-        <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
+        <Column
+          body={actionBody}
+          header="Acciones"
+          style={{ width: 130, textAlign: "center" }}
+        />
       </DataTable>
-      <Dialog header={editing ? "Editar Detalle" : "Nuevo Detalle"} visible={showDialog} style={{ width: 800 }} onHide={() => setShowDialog(false)} modal>
+      <Dialog
+        header={editing ? "Editar Detalle" : "Nuevo Detalle"}
+        visible={showDialog}
+        style={{ width: 800 }}
+        onHide={() => setShowDialog(false)}
+        modal
+      >
         <DetAccionesPreviasFaenaForm
           isEdit={!!editing}
           defaultValues={editing || {}}
