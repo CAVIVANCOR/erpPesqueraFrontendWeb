@@ -1,6 +1,6 @@
 // src/components/detAccionesPreviasFaena/ConfirmacionAccionPreviaPDFCard.jsx
 // Card para confirmación PDF de DetAccionesPreviasFaena. Cumple la regla transversal ERP Megui.
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
@@ -8,6 +8,7 @@ import { Controller } from "react-hook-form";
 import PDFViewer from "../shared/PDFViewer";
 import DocumentoCapture from "../shared/DocumentoCapture";
 import { abrirPdfEnNuevaPestana, descargarPdf } from "../../utils/pdfUtils";
+import { actualizarDetAccionesPreviasFaena } from "../../api/detAccionesPreviasFaena";
 
 export default function ConfirmacionAccionPreviaPDFCard({
   control,
@@ -17,9 +18,92 @@ export default function ConfirmacionAccionPreviaPDFCard({
   toast,
   accionPreviaId,
   faenaPescaId,
+  detAccionesPreviasFaenaId, // ID del registro para actualizar
 }) {
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
   const urlConfirmaAccionPdf = watch("urlConfirmaAccionPdf");
+  const verificado = watch("verificado");
+  const fechaVerificacion = watch("fechaVerificacion");
+
+  // useEffect para actualizar verificación automáticamente cuando se carga PDF
+  useEffect(() => {
+    const actualizarVerificacion = async () => {
+      console.log('🔍 [DEBUG] Verificando condiciones para actualización automática:', {
+        urlConfirmaAccionPdf: urlConfirmaAccionPdf,
+        detAccionesPreviasFaenaId: detAccionesPreviasFaenaId,
+        verificado: verificado,
+        loading: loading,
+        urlValida: urlConfirmaAccionPdf && urlConfirmaAccionPdf.trim() !== "",
+        tieneId: !!detAccionesPreviasFaenaId,
+        noVerificado: !verificado,
+        noCargando: !loading
+      });
+
+      // Solo actualizar si:
+      // 1. Hay una URL de PDF válida
+      // 2. Existe el ID del registro
+      // 3. No está ya verificado (para evitar actualizaciones innecesarias)
+      // 4. No está en proceso de carga
+      if (
+        urlConfirmaAccionPdf && 
+        urlConfirmaAccionPdf.trim() !== "" && 
+        detAccionesPreviasFaenaId && 
+        !verificado && 
+        !loading
+      ) {
+        console.log('✅ [DEBUG] Todas las condiciones cumplidas, procediendo a actualizar verificación...');
+        
+        try {
+          const ahora = new Date();
+          
+          console.log('🚀 [DEBUG] Llamando a API actualizarDetAccionesPreviasFaena con:', {
+            id: detAccionesPreviasFaenaId,
+            datos: {
+              fechaVerificacion: ahora,
+              verificado: true,
+              urlConfirmaAccionPdf: urlConfirmaAccionPdf
+            }
+          });
+          
+          // Actualizar en la base de datos
+          const resultado = await actualizarDetAccionesPreviasFaena(detAccionesPreviasFaenaId, {
+            fechaVerificacion: ahora,
+            verificado: true,
+            urlConfirmaAccionPdf: urlConfirmaAccionPdf // Asegurar que la URL se mantiene
+          });
+
+          console.log('✅ [DEBUG] Respuesta de API:', resultado);
+
+          // Actualizar los valores del formulario
+          setValue("fechaVerificacion", ahora);
+          setValue("verificado", true);
+
+          console.log('✅ [DEBUG] Valores del formulario actualizados');
+
+          // Mostrar mensaje de éxito
+          toast?.show({
+            severity: "success",
+            summary: "Verificación Actualizada",
+            detail: "La verificación de la acción previa se ha completado automáticamente",
+            life: 4000,
+          });
+
+        } catch (error) {
+          console.error('❌ [DEBUG] Error al actualizar verificación:', error);
+          toast?.show({
+            severity: "error",
+            summary: "Error de Verificación",
+            detail: "No se pudo actualizar la verificación automáticamente",
+            life: 4000,
+          });
+        }
+      } else {
+        console.log('❌ [DEBUG] Condiciones no cumplidas, no se actualiza verificación');
+      }
+    };
+
+    actualizarVerificacion();
+  }, [urlConfirmaAccionPdf, detAccionesPreviasFaenaId, verificado, loading, setValue, toast]);
 
   // Manejar cuando se sube un documento exitosamente
   const handleDocumentoSubido = (urlDocumento) => {

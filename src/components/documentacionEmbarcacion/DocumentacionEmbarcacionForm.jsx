@@ -7,6 +7,8 @@ import { useForm, Controller } from "react-hook-form";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
+import { Calendar } from "primereact/calendar";
+import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import { Message } from "primereact/message";
 import * as Yup from "yup";
@@ -20,6 +22,11 @@ import { getActivos } from "../../api/activo";
 const schema = Yup.object().shape({
   embarcacionId: Yup.number().required("La embarcación es obligatoria"),
   documentoPescaId: Yup.number().required("El documento de pesca es obligatorio"),
+  numeroDocumento: Yup.string().nullable().max(50, "El número de documento no puede exceder 50 caracteres"),
+  fechaEmision: Yup.date().nullable(),
+  fechaVencimiento: Yup.date().nullable().min(Yup.ref('fechaEmision'), 'La fecha de vencimiento debe ser posterior a la fecha de emisión'),
+  urlDocPdf: Yup.string().nullable().url("Debe ser una URL válida").max(500, "La URL no puede exceder 500 caracteres"),
+  docVencido: Yup.boolean(),
   observaciones: Yup.string().nullable().max(500, "Las observaciones no pueden exceder 500 caracteres"),
 });
 
@@ -44,6 +51,11 @@ export default function DocumentacionEmbarcacionForm({
     ...defaultValues,
     embarcacionId: defaultValues.embarcacionId ? Number(defaultValues.embarcacionId) : null,
     documentoPescaId: defaultValues.documentoPescaId ? Number(defaultValues.documentoPescaId) : null,
+    numeroDocumento: defaultValues.numeroDocumento || "",
+    fechaEmision: defaultValues.fechaEmision ? new Date(defaultValues.fechaEmision) : null,
+    fechaVencimiento: defaultValues.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
+    urlDocPdf: defaultValues.urlDocPdf || "",
+    docVencido: defaultValues.docVencido || false,
     observaciones: defaultValues.observaciones || "",
   };
 
@@ -124,6 +136,11 @@ export default function DocumentacionEmbarcacionForm({
     const normalizedData = {
       embarcacionId: Number(data.embarcacionId),
       documentoPescaId: Number(data.documentoPescaId),
+      numeroDocumento: data.numeroDocumento?.trim().toUpperCase() || null,
+      fechaEmision: data.fechaEmision || null,
+      fechaVencimiento: data.fechaVencimiento || null,
+      urlDocPdf: data.urlDocPdf?.trim() || null,
+      docVencido: data.docVencido || false,
       observaciones: data.observaciones?.trim().toUpperCase() || null,
     };
     onSubmit(normalizedData);
@@ -201,6 +218,136 @@ export default function DocumentacionEmbarcacionForm({
             />
             {errors.documentoPescaId && (
               <small className="p-error">{errors.documentoPescaId.message}</small>
+            )}
+          </div>
+
+          {/* Número de Documento */}
+          <div className="col-12 md:col-6">
+            <label htmlFor="numeroDocumento" className="block text-900 font-medium mb-2">
+              Número de Documento
+            </label>
+            <Controller
+              name="numeroDocumento"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  id="numeroDocumento"
+                  {...field}
+                  placeholder="Ingrese el número del documento"
+                  className={getFieldClass("numeroDocumento")}
+                  disabled={loading}
+                  style={{ textTransform: 'uppercase', fontWeight: "bold" }}
+                  maxLength={50}
+                />
+              )}
+            />
+            {errors.numeroDocumento && (
+              <small className="p-error">{errors.numeroDocumento.message}</small>
+            )}
+          </div>
+
+          {/* Fecha de Emisión */}
+          <div className="col-12 md:col-6">
+            <label htmlFor="fechaEmision" className="block text-900 font-medium mb-2">
+              Fecha de Emisión
+            </label>
+            <Controller
+              name="fechaEmision"
+              control={control}
+              render={({ field }) => (
+                <Calendar
+                  id="fechaEmision"
+                  {...field}
+                  placeholder="Seleccione fecha de emisión"
+                  className={getFieldClass("fechaEmision")}
+                  disabled={loading}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  showButtonBar
+                />
+              )}
+            />
+            {errors.fechaEmision && (
+              <small className="p-error">{errors.fechaEmision.message}</small>
+            )}
+          </div>
+
+          {/* Fecha de Vencimiento */}
+          <div className="col-12 md:col-6">
+            <label htmlFor="fechaVencimiento" className="block text-900 font-medium mb-2">
+              Fecha de Vencimiento
+            </label>
+            <Controller
+              name="fechaVencimiento"
+              control={control}
+              render={({ field }) => (
+                <Calendar
+                  id="fechaVencimiento"
+                  {...field}
+                  placeholder="Seleccione fecha de vencimiento"
+                  className={getFieldClass("fechaVencimiento")}
+                  disabled={loading}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  showButtonBar
+                />
+              )}
+            />
+            {errors.fechaVencimiento && (
+              <small className="p-error">{errors.fechaVencimiento.message}</small>
+            )}
+          </div>
+
+          {/* URL del Documento PDF */}
+          <div className="col-12 md:col-8">
+            <label htmlFor="urlDocPdf" className="block text-900 font-medium mb-2">
+              URL del Documento PDF
+            </label>
+            <Controller
+              name="urlDocPdf"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  id="urlDocPdf"
+                  {...field}
+                  placeholder="Ingrese la URL del documento PDF"
+                  className={getFieldClass("urlDocPdf")}
+                  disabled={loading}
+                  style={{ fontWeight: "bold" }}
+                  maxLength={500}
+                />
+              )}
+            />
+            {errors.urlDocPdf && (
+              <small className="p-error">{errors.urlDocPdf.message}</small>
+            )}
+          </div>
+
+          {/* Documento Vencido */}
+          <div className="col-12 md:col-4">
+            <label htmlFor="docVencido" className="block text-900 font-medium mb-2">
+              Estado del Documento
+            </label>
+            <div className="field-checkbox mt-2">
+              <Controller
+                name="docVencido"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    id="docVencido"
+                    {...field}
+                    checked={field.value}
+                    className={getFieldClass("docVencido")}
+                    disabled={loading}
+                  />
+                )}
+              />
+              <label htmlFor="docVencido" className="ml-2">
+                Documento Vencido
+              </label>
+            </div>
+            {errors.docVencido && (
+              <small className="p-error">{errors.docVencido.message}</small>
             )}
           </div>
 

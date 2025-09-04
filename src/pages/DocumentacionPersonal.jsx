@@ -567,7 +567,7 @@ export default function DocumentacionPersonal() {
       <Dialog
         header={isEdit ? "Editar Documentación" : "Nueva Documentación"}
         visible={showForm}
-        style={{ width: "90vw", maxWidth: "800px" }}
+        style={{ width: 1300 }}
         onHide={onCancel}
         modal
         maximizable

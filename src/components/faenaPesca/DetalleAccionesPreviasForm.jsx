@@ -310,7 +310,7 @@ const DetalleAccionesPreviasForm = forwardRef(
               }}
             >
               <div style={{ flex: 2 }}>
-                <h3 className="m-0">Acciones Previas de Faena</h3>
+                <h3 className="m-0">ACCIONES PREVIAS DE FAENA</h3>
               </div>
               <div style={{ flex: 1 }}>
                 <Tag
@@ -425,6 +425,7 @@ const DetalleAccionesPreviasForm = forwardRef(
             <DetAccionesPreviasFaenaForm
               isEdit={true}
               defaultValues={{
+                id: selectedAccion.id, // Agregar el ID del registro
                 faenaPescaId: selectedAccion.faenaPescaId,
                 accionPreviaId: selectedAccion.accionPreviaId,
                 responsableId: selectedAccion.responsableId,

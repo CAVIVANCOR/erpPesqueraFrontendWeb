@@ -1,16 +1,16 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/descargas-faena`;
 
 /**
  * Obtiene el token de autenticación desde el store de Zustand
  * @returns {string} Token JWT para autenticación
  */
-const getAuthToken = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /**
  * Obtiene todas las descargas de faena pesca del sistema
@@ -18,12 +18,8 @@ const getAuthToken = () => {
  */
 export const getAllDescargaFaenaPesca = async () => {
   try {
-    const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/descarga-faena-pesca`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.get(`${API_URL}`, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -39,12 +35,8 @@ export const getAllDescargaFaenaPesca = async () => {
  */
 export const crearDescargaFaenaPesca = async (descargaData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/descarga-faena-pesca`, descargaData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.post(`${API_URL}`, descargaData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -61,12 +53,8 @@ export const crearDescargaFaenaPesca = async (descargaData) => {
  */
 export const actualizarDescargaFaenaPesca = async (id, descargaData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/descarga-faena-pesca/${id}`, descargaData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.put(`${API_URL}/${id}`, descargaData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -82,12 +70,8 @@ export const actualizarDescargaFaenaPesca = async (id, descargaData) => {
  */
 export const eliminarDescargaFaenaPesca = async (id) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/descarga-faena-pesca/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.delete(`${API_URL}/${id}`, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -95,9 +79,3 @@ export const eliminarDescargaFaenaPesca = async (id) => {
     throw error;
   }
 };
-
-// Aliases en inglés para compatibilidad
-export const getDescargaFaenaPesca = getAllDescargaFaenaPesca;
-export const createDescargaFaenaPesca = crearDescargaFaenaPesca;
-export const updateDescargaFaenaPesca = actualizarDescargaFaenaPesca;
-export const deleteDescargaFaenaPesca = eliminarDescargaFaenaPesca;

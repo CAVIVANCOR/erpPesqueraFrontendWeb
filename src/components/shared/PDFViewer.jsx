@@ -38,6 +38,10 @@ const PDFViewer = ({ urlDocumento, tipoDocumento = "documentos-visitantes" }) =>
           // Soporte para confirmaciones de acciones previas
           const rutaArchivo = urlDocumento.replace('/uploads/confirmaciones-acciones-previas/', '');
           urlCompleta = `${import.meta.env.VITE_API_URL}/confirmaciones-acciones-previas/archivo/${rutaArchivo}`;
+        } else if (urlDocumento.startsWith('/uploads/documentacion-personal/')) {
+          // Soporte para documentación personal
+          const rutaArchivo = urlDocumento.replace('/uploads/documentacion-personal/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/documentacion-personal/archivo/${rutaArchivo}`;
         } else if (urlDocumento.startsWith('/api/')) {
           // Remover /api/ del inicio porque VITE_API_URL ya lo incluye
           const rutaSinApi = urlDocumento.substring(4);

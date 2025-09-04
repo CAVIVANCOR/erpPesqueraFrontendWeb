@@ -276,7 +276,7 @@ export default function DocumentoPesca() {
           editing ? "Editar Documento de Pesca" : "Nuevo Documento de Pesca"
         }
         visible={showDialog}
-        style={{ width: 500 }}
+        style={{ width: 1300 }}
         onHide={() => setShowDialog(false)}
         modal
       >

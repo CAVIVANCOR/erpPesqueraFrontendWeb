@@ -8,7 +8,7 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import DescargaFaenaPescaForm from "../components/descargaFaenaPesca/DescargaFaenaPescaForm";
-import { getAllDescargaFaenaPesca, createDescargaFaenaPesca, updateDescargaFaenaPesca, deleteDescargaFaenaPesca } from "../api/descargaFaenaPesca";
+import { getAllDescargaFaenaPesca, crearDescargaFaenaPesca, actualizarDescargaFaenaPesca, eliminarDescargaFaenaPesca } from "../api/descargaFaenaPesca";
 import { getFaenasPesca } from "../api/faenaPesca";
 import { getPuertosPesca } from "../api/puertoPesca";
 import { useAuthStore } from "../shared/stores/useAuthStore";
@@ -70,7 +70,7 @@ export default function DescargaFaenaPesca() {
     if (!toDelete) return;
     setLoading(true);
     try {
-      await deleteDescargaFaenaPesca(toDelete.id);
+      await eliminarDescargaFaenaPesca(toDelete.id);
       toast.current.show({ severity: "success", summary: "Eliminado", detail: "Descarga eliminada correctamente." });
       cargarDatos();
     } catch (err) {
@@ -84,10 +84,10 @@ export default function DescargaFaenaPesca() {
     setLoading(true);
     try {
       if (editing && editing.id) {
-        await updateDescargaFaenaPesca(editing.id, data);
+        await actualizarDescargaFaenaPesca(editing.id, data);
         toast.current.show({ severity: "success", summary: "Actualizado", detail: "Descarga actualizada." });
       } else {
-        await createDescargaFaenaPesca(data);
+        await crearDescargaFaenaPesca(data);
         toast.current.show({ severity: "success", summary: "Creado", detail: "Descarga creada." });
       }
       setShowDialog(false);

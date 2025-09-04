@@ -55,7 +55,8 @@ export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, 
       fechaVencimiento: null,
       urlDocTripulantePdf: '',
       observaciones: '',
-      verificado: false
+      verificado: false,
+      docVencido: false
     }
   });
 
@@ -118,7 +119,8 @@ export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, 
       fechaVencimiento: detalle.fechaVencimiento ? new Date(detalle.fechaVencimiento) : null,
       urlDocTripulantePdf: detalle.urlDocTripulantePdf || '',
       observaciones: detalle.observaciones || '',
-      verificado: detalle.verificado || false
+      verificado: detalle.verificado || false,
+      docVencido: detalle.docVencido || false
     });
   };
 
@@ -138,7 +140,8 @@ export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, 
         fechaVencimiento: data.fechaVencimiento?.toISOString(),
         urlDocTripulantePdf: data.urlDocTripulantePdf || null,
         observaciones: data.observaciones || null,
-        verificado: data.verificado
+        verificado: data.verificado,
+        docVencido: data.docVencido
       };
 
       if (detalle?.id) {
@@ -325,7 +328,7 @@ export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, 
         </div>
 
         {/* Estado Verificado */}
-        <div className="col-12">
+        <div className="col-12 md:col-6">
           <div className="field-checkbox">
             <Controller
               name="verificado"
@@ -340,6 +343,26 @@ export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, 
             />
             <label htmlFor="verificado" className="ml-2">
               Documento verificado
+            </label>
+          </div>
+        </div>
+
+        {/* Documento Vencido */}
+        <div className="col-12 md:col-6">
+          <div className="field-checkbox">
+            <Controller
+              name="docVencido"
+              control={control}
+              render={({ field }) => (
+                <Checkbox
+                  inputId="docVencido"
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.checked)}
+                />
+              )}
+            />
+            <label htmlFor="docVencido" className="ml-2">
+              Documento vencido
             </label>
           </div>
         </div>

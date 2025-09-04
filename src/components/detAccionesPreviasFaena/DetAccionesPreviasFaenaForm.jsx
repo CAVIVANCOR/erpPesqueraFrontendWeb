@@ -103,6 +103,7 @@ export default function DetAccionesPreviasFaenaForm({
             toast={toast}
             accionPreviaId={watch("accionPreviaId")}
             faenaPescaId={watch("faenaPescaId")}
+            detAccionesPreviasFaenaId={defaultValues?.id}
           />
         );
       default:
@@ -129,22 +130,24 @@ export default function DetAccionesPreviasFaenaForm({
           <Button
             type="button"
             icon="pi pi-angle-left"
+            label="Datos Generales"
             onClick={() => setCurrentCard(Math.max(0, currentCard - 1))}
             disabled={currentCard === 0}
             size="small"
             outlined
-            tooltip="Anterior"
-            tooltipOptions={{ position: "top" }}
+            tooltip="Datos Generales"
+            tooltipOptions={{ position: "bottom" }}
           />
           <Button
             type="button"
             icon="pi pi-angle-right"
+            label="Captura Evidencia (Fotos)"
             onClick={() => setCurrentCard(Math.min(totalCards - 1, currentCard + 1))}
             disabled={currentCard === totalCards - 1}
             size="small"
             outlined
-            tooltip="Siguiente"
-            tooltipOptions={{ position: "top" }}
+            tooltip="Captura Evidencia (Fotos) y Generación PDF"
+            tooltipOptions={{ position: "bottom" }}
           />
         </div>
 

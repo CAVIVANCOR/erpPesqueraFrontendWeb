@@ -12,10 +12,16 @@ import { Tag } from "primereact/tag";
 import DatosGeneralesFaenaPesca from "./DatosGeneralesFaenaPesca";
 import DetalleAccionesPreviasForm from "./DetalleAccionesPreviasForm";
 import InformeFaenaPescaForm from "./InformeFaenaPescaForm";
+import DetalleDocTripulantesCard from "./DetalleDocTripulantesCard";
+import DetalleDocEmbarcacionCard from "./DetalleDocEmbarcacionCard";
+import DescargaFaenaPescaCard from "./DescargaFaenaPescaCard";
+import LiquidacionFaenaPescaCard from "./LiquidacionFaenaPescaCard";
 
 // API imports
 import { listarEstadosMultiFuncionFaenaPesca } from "../../api/estadoMultiFuncion";
 import { getPersonal } from "../../api/personal";
+import { getDocumentosPesca } from "../../api/documentoPesca";
+import logoEscudoPeru from "../../assets/logoEscudoPeru.png";
 
 export default function FaenaPescaForm({
   visible,
@@ -51,6 +57,7 @@ export default function FaenaPescaForm({
   const [embarcaciones, setEmbarcaciones] = useState(embarcacionesOptions);
   const [boliches, setBoliches] = useState(bolichesOptions);
   const [puertos, setPuertos] = useState(puertosOptions);
+  const [documentosPesca, setDocumentosPesca] = useState([]);
 
   // Configuración del formulario con React Hook Form
   const {
@@ -112,7 +119,9 @@ export default function FaenaPescaForm({
 
         // Cargar personal
         const personalData = await getPersonal();
+        const documentosPescaData = await getDocumentosPesca();
         setPersonal(personalData);
+        setDocumentosPesca(documentosPescaData);
       } catch (error) {
         console.error("Error general cargando datos para dropdowns:", error);
       }
@@ -167,7 +176,8 @@ export default function FaenaPescaForm({
       <div className="flex gap-1">
         <Button
           icon="pi pi-info-circle"
-          tooltip="Datos Generales"
+          tooltip="Datos Generales y Detalle de Calas"
+          label="Generales y Calas"
           tooltipOptions={{ position: "bottom" }}
           className={
             activeCard === "datos-generales"
@@ -181,6 +191,7 @@ export default function FaenaPescaForm({
         <Button
           icon="pi pi-list"
           tooltip="Acciones Previas"
+          label="Acciones Previas"
           tooltipOptions={{ position: "bottom" }}
           className={
             activeCard === "acciones-previas"
@@ -192,16 +203,84 @@ export default function FaenaPescaForm({
           size="small"
         />
         <Button
-          icon="pi pi-file"
-          tooltip="Informe de Faena"
+          icon="pi pi-users"
+          tooltip="Documentos de Tripulantes"
+          label="Doc. Tripulantes"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "doc-tripulantes"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("doc-tripulantes")}
+          type="button"
+          size="small"
+        />
+        <Button
+          icon="pi pi-id-card"
+          tooltip="Documentos de Embarcación"
+          label="Doc. Embarcación"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "doc-embarcacion"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("doc-embarcacion")}
+          type="button"
+          size="small"
+        />
+        <Button
+          icon="pi pi-download"
+          tooltip="Descarga de Faena"
+          label="Descarga"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "descarga-faena"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("descarga-faena")}
+          type="button"
+          size="small"
+        />
+        <Button
+          icon="pi pi-calculator"
+          tooltip="Liquidación de Faena"
+          label="Liquidación"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "liquidacion-faena"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("liquidacion-faena")}
+          type="button"
+          size="small"
+        />
+        <Button
+          tooltip="Reporte de Faenas y Calas PRODUCE"
           tooltipOptions={{ position: "bottom" }}
           className={
             activeCard === "informe" ? "p-button-info" : "p-button-outlined"
           }
           onClick={() => handleNavigateToCard("informe")}
           type="button"
+          style={{ fontWeight: "bold" }}
           size="small"
-        />
+        >
+          <img 
+            src={logoEscudoPeru} 
+            alt="Escudo Perú" 
+            style={{ 
+              width: "16px", 
+              height: "16px", 
+              marginRight: "0.5rem",
+              filter: activeCard === "informe" ? "brightness(0) invert(1)" : "none"
+            }} 
+          />
+          Reportes PRODUCE
+        </Button>
       </div>
       <div className="flex gap-2">
         <Button
@@ -253,6 +332,7 @@ export default function FaenaPescaForm({
       style={{ width: "1300px" }}
       headerStyle={{ display: "none" }}
       modal
+      maximizable
       footer={dialogFooter}
       onHide={handleHide}
     >
@@ -303,6 +383,51 @@ export default function FaenaPescaForm({
           temporadaPescaId={temporadaData?.id} 
           faenaPescaId={defaultValues.id}
           personal={personal}
+          />
+        )}
+
+        {activeCard === "doc-tripulantes" && (
+          <DetalleDocTripulantesCard
+            faenaPescaId={defaultValues.id}
+            temporadaData={temporadaData}
+            personal={personal}
+            documentosPesca={documentosPesca}
+            loading={loading}
+            onDataChange={onDataChange}
+            onFaenasChange={onFaenasChange}
+          />
+        )}
+
+        {activeCard === "doc-embarcacion" && (
+          <DetalleDocEmbarcacionCard
+            faenaPescaId={defaultValues.id}
+            temporadaData={temporadaData}
+            personal={personal}
+            loading={loading}
+            onDataChange={onDataChange}
+            onFaenasChange={onFaenasChange}
+          />
+        )}
+
+        {activeCard === "descarga-faena" && (
+          <DescargaFaenaPescaCard
+            faenaPescaId={defaultValues.id}
+            temporadaData={temporadaData}
+            personal={personal}
+            loading={loading}
+            onDataChange={onDataChange}
+            onFaenasChange={onFaenasChange}
+          />
+        )}
+
+        {activeCard === "liquidacion-faena" && (
+          <LiquidacionFaenaPescaCard
+            faenaPescaId={defaultValues.id}
+            temporadaData={temporadaData}
+            personal={personal}
+            loading={loading}
+            onDataChange={onDataChange}
+            onFaenasChange={onFaenasChange}
           />
         )}
 

@@ -8,7 +8,7 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import DetalleDocEmbarcacionForm from "../components/detalleDocEmbarcacion/DetalleDocEmbarcacionForm";
-import { getAllDetalleDocEmbarcacion, createDetalleDocEmbarcacion, updateDetalleDocEmbarcacion, deleteDetalleDocEmbarcacion } from "../api/detalleDocEmbarcacion";
+import { getAllDetalleDocEmbarcacion, crearDetalleDocEmbarcacion, actualizarDetalleDocEmbarcacion, eliminarDetalleDocEmbarcacion } from "../api/detalleDocEmbarcacion";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
 /**
@@ -60,7 +60,7 @@ export default function DetalleDocEmbarcacion() {
     if (!toDelete) return;
     setLoading(true);
     try {
-      await deleteDetalleDocEmbarcacion(toDelete.id);
+      await eliminarDetalleDocEmbarcacion(toDelete.id);
       toast.current.show({ severity: "success", summary: "Eliminado", detail: "Registro eliminado correctamente." });
       cargarItems();
     } catch (err) {
@@ -74,10 +74,10 @@ export default function DetalleDocEmbarcacion() {
     setLoading(true);
     try {
       if (editing && editing.id) {
-        await updateDetalleDocEmbarcacion(editing.id, data);
+        await actualizarDetalleDocEmbarcacion(editing.id, data);
         toast.current.show({ severity: "success", summary: "Actualizado", detail: "Registro actualizado." });
       } else {
-        await createDetalleDocEmbarcacion(data);
+        await crearDetalleDocEmbarcacion(data);
         toast.current.show({ severity: "success", summary: "Creado", detail: "Registro creado." });
       }
       setShowDialog(false);

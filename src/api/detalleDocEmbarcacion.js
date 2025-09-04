@@ -1,16 +1,17 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/detalles-doc-embarcacion`;
 
 /**
  * Obtiene el token de autenticación desde el store de Zustand
  * @returns {string} Token JWT para autenticación
  */
-const getAuthToken = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 
 /**
  * Obtiene todos los detalles de documentos de embarcación del sistema
@@ -18,12 +19,8 @@ const getAuthToken = () => {
  */
 export const getAllDetalleDocEmbarcacion = async () => {
   try {
-    const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/detalle-doc-embarcacion`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.get(`${API_URL}`, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -39,12 +36,8 @@ export const getAllDetalleDocEmbarcacion = async () => {
  */
 export const crearDetalleDocEmbarcacion = async (detalleData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/detalle-doc-embarcacion`, detalleData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.post(`${API_URL}`, detalleData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -61,12 +54,8 @@ export const crearDetalleDocEmbarcacion = async (detalleData) => {
  */
 export const actualizarDetalleDocEmbarcacion = async (id, detalleData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/detalle-doc-embarcacion/${id}`, detalleData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.put(`${API_URL}/${id}`, detalleData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -82,12 +71,8 @@ export const actualizarDetalleDocEmbarcacion = async (id, detalleData) => {
  */
 export const eliminarDetalleDocEmbarcacion = async (id) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/detalle-doc-embarcacion/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.delete(`${API_URL}/${id}`, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -96,8 +81,3 @@ export const eliminarDetalleDocEmbarcacion = async (id) => {
   }
 };
 
-// Aliases en inglés para compatibilidad
-export const getDetalleDocEmbarcacion = getAllDetalleDocEmbarcacion;
-export const createDetalleDocEmbarcacion = crearDetalleDocEmbarcacion;
-export const updateDetalleDocEmbarcacion = actualizarDetalleDocEmbarcacion;
-export const deleteDetalleDocEmbarcacion = eliminarDetalleDocEmbarcacion;

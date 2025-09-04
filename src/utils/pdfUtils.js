@@ -27,6 +27,9 @@ export const abrirPdfEnNuevaPestana = async (urlPdf, toast, mensajeError = "No h
     } else if (urlPdf.startsWith("/uploads/confirmaciones-acciones-previas/")) {
       const rutaArchivo = urlPdf.replace("/uploads/confirmaciones-acciones-previas/", "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/confirmaciones-acciones-previas/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/documentacion-personal/")) {
+      const rutaArchivo = urlPdf.replace("/uploads/documentacion-personal/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/documentacion-personal/archivo/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/")) {
       // Para otros tipos de uploads (archivos de confirmación, etc.)
       urlCompleta = `${import.meta.env.VITE_API_URL}${urlPdf}`;
