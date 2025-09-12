@@ -19,6 +19,7 @@ import { classNames } from "primereact/utils";
 import { Controller } from "react-hook-form";
 import PDFViewer from "./PDFViewer";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { abrirPdfEnNuevaPestana, descargarPdf } from "../../utils/pdfUtils";
 
 /**
  * Componente CertificadoEmbarcacionForm
@@ -183,156 +184,27 @@ export default function CertificadoEmbarcacionForm({
               )}
             </div>
             <div style={{ flex: 1 }}>
-            <Button
-                  type="button"
-                  icon="pi pi-download"
-                  label="Descargar"
-                  className="p-button-outlined p-button-sm"
-                  disabled={!urlCertificado}
-                  onClick={async () => {
-                    try {
-                      // Construir URL completa usando la misma lógica que FichaTecnicaBolicheRedForm
-                      let urlCompleta;
-                      if (
-                        urlCertificado.startsWith(
-                          "/uploads/certificados-embarcacion/"
-                        )
-                      ) {
-                        const rutaArchivo = urlCertificado.replace(
-                          "/uploads/certificados-embarcacion/",
-                          ""
-                        );
-                        urlCompleta = `${
-                          import.meta.env.VITE_API_URL
-                        }/certificados-embarcacion/archivo/${rutaArchivo}`;
-                      } else if (urlCertificado.startsWith("/api/")) {
-                        const rutaSinApi = urlCertificado.substring(4);
-                        urlCompleta = `${
-                          import.meta.env.VITE_API_URL
-                        }${rutaSinApi}`;
-                      } else if (urlCertificado.startsWith("/")) {
-                        urlCompleta = `${
-                          import.meta.env.VITE_API_URL
-                        }${urlCertificado}`;
-                      } else {
-                        urlCompleta = urlCertificado;
-                      }
+              <Button
+                type="button"
+                icon="pi pi-download"
+                label="Descargar"
+                className="p-button-outlined p-button-sm"
+                disabled={!urlCertificado}
+                onClick={() => descargarPdf(urlCertificado, title)}
+                tooltip={`Descargar ${title.toLowerCase()}`}
+                tooltipOptions={{ position: "top" }}
+              />
 
-                      const token = useAuthStore.getState().token;
-                      const response = await fetch(urlCompleta, {
-                        headers: {
-                          Authorization: `Bearer ${token}`,
-                        },
-                      });
-
-                      if (response.ok) {
-                        const blob = await response.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const link = document.createElement("a");
-                        link.href = url;
-                        link.download = `${title.replace(/\s+/g, "_")}.pdf`;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        window.URL.revokeObjectURL(url);
-                      } else {
-                        toastPDF.current?.show({
-                          severity: "error",
-                          summary: "Error",
-                          detail: "No se pudo descargar el certificado",
-                        });
-                      }
-                    } catch (error) {
-                      console.error("Error al descargar:", error);
-                      toastPDF.current?.show({
-                        severity: "error",
-                        summary: "Error",
-                        detail: `Error al descargar el ${title.toLowerCase()}: ${
-                          error.message
-                        }`,
-                      });
-                    }
-                  }}
-                  tooltip={`Descargar ${title.toLowerCase()}`}
-                  tooltipOptions={{ position: "top" }}
-                />
-
-                <Button
-                  type="button"
-                  icon="pi pi-external-link"
-                  className="p-button-outlined p-button-sm"
-                  label="Abrir en Nueva Pestaña"
-                  disabled={!urlCertificado}
-                  onClick={async () => {
-                    try {
-                      // Construir URL completa usando la misma lógica que FichaTecnicaBolicheRedForm
-                      let urlCompleta;
-                      if (
-                        urlCertificado.startsWith(
-                          "/uploads/certificados-embarcacion/"
-                        )
-                      ) {
-                        const rutaArchivo = urlCertificado.replace(
-                          "/uploads/certificados-embarcacion/",
-                          ""
-                        );
-                        urlCompleta = `${
-                          import.meta.env.VITE_API_URL
-                        }/certificados-embarcacion/archivo/${rutaArchivo}`;
-                      } else if (urlCertificado.startsWith("/api/")) {
-                        const rutaSinApi = urlCertificado.substring(4);
-                        urlCompleta = `${
-                          import.meta.env.VITE_API_URL
-                        }${rutaSinApi}`;
-                      } else if (urlCertificado.startsWith("/")) {
-                        urlCompleta = `${
-                          import.meta.env.VITE_API_URL
-                        }${urlCertificado}`;
-                      } else {
-                        urlCompleta = urlCertificado;
-                      }
-
-                      const token = useAuthStore.getState().token;
-                      const response = await fetch(urlCompleta, {
-                        headers: {
-                          Authorization: `Bearer ${token}`,
-                        },
-                      });
-
-                      if (response.ok) {
-                        const blob = await response.blob();
-                        const blobUrl = window.URL.createObjectURL(blob);
-                        const newWindow = window.open(blobUrl, "_blank");
-                        setTimeout(() => {
-                          window.URL.revokeObjectURL(blobUrl);
-                        }, 10000);
-
-                        if (!newWindow) {
-                          toastPDF.current?.show({
-                            severity: "warn",
-                            summary: "Aviso",
-                            detail:
-                              "El navegador bloqueó la ventana emergente. Por favor, permita ventanas emergentes para este sitio.",
-                          });
-                        }
-                      } else {
-                        toastPDF.current?.show({
-                          severity: "error",
-                          summary: "Error",
-                          detail: `No se pudo abrir el documento (${response.status})`,
-                        });
-                      }
-                    } catch (error) {
-                      toastPDF.current?.show({
-                        severity: "error",
-                        summary: "Error",
-                        detail: `Error al abrir el documento: ${error.message}`,
-                      });
-                    }
-                  }}
-                  tooltip={`Abrir ${title.toLowerCase()} en nueva pestaña`}
-                  tooltipOptions={{ position: "top" }}
-                />
+              <Button
+                type="button"
+                icon="pi pi-external-link"
+                className="p-button-outlined p-button-sm"
+                label="Abrir en Nueva Pestaña"
+                disabled={!urlCertificado}
+                onClick={() => abrirPdfEnNuevaPestana(urlCertificado)}
+                tooltip={`Abrir ${title.toLowerCase()} en nueva pestaña`}
+                tooltipOptions={{ position: "top" }}
+              />
             </div>
           </div>
 

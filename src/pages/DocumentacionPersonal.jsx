@@ -2,7 +2,7 @@
 // Pantalla CRUD profesional para DocumentacionPersonal. Cumple la regla transversal ERP Megui.
 // Sigue el patrón estándar de DocumentacionEmbarcacion.jsx con templates profesionales y control de roles.
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -25,6 +25,8 @@ import { getEmpresas } from "../api/empresa";
 import { getCargosPersonal } from "../api/cargosPersonal";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
+import { recalcularDocPersonalVencidos } from "../utils/documentacionPersonalUtils";
+import { abrirPdfEnNuevaPestana } from "../utils/pdfUtils";
 
 /**
  * Página de gestión de documentación de personal.
@@ -44,13 +46,14 @@ export default function DocumentacionPersonal() {
   const [selected, setSelected] = useState(null);
   const [isEdit, setIsEdit] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState(null);
+  const toast = useRef(null);
   const [globalFilter, setGlobalFilter] = useState("");
 
   // Estados para filtros específicos
   const [filtroPersonal, setFiltroPersonal] = useState(null);
   const [filtroDocumentoPesca, setFiltroDocumentoPesca] = useState(null);
   const [filtroCargo, setFiltroCargo] = useState(null);
+  const [filtroEstadoDoc, setFiltroEstadoDoc] = useState("todos");
 
   // Estados para combos de referencia
   const [personal, setPersonal] = useState([]);
@@ -76,7 +79,7 @@ export default function DocumentacionPersonal() {
       const data = await getAllDocumentacionPersonal();
       setDocumentaciones(data);
     } catch (err) {
-      toast?.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar la documentación de personal",
@@ -210,6 +213,45 @@ export default function DocumentacionPersonal() {
     );
   };
 
+  // Template para fecha de vencimiento
+  const fechaVencimientoTemplate = (rowData) => {
+    if (!rowData.fechaVencimiento) {
+      return <Tag severity="secondary" value="Sin fecha" />;
+    }
+
+    const fechaVencimiento = new Date(rowData.fechaVencimiento);
+    const fechaActual = new Date();
+    fechaActual.setHours(0, 0, 0, 0);
+    fechaVencimiento.setHours(0, 0, 0, 0);
+
+    const esVencido = fechaVencimiento < fechaActual;
+
+    return (
+      <div
+        style={{
+          color: esVencido ? "#d32f2f" : "#2e7d32",
+          fontWeight: "bold",
+        }}
+      >
+        {fechaVencimiento.toLocaleDateString("es-PE")}
+      </div>
+    );
+  };
+
+  // Template para estado de documento vencido
+  const docVencidoTemplate = (rowData) => {
+    const esVencido = rowData.docVencido;
+
+    return (
+      <Tag
+        severity={esVencido ? "danger" : "success"}
+        value={esVencido ? "VENCIDO" : "VIGENTE"}
+        icon={esVencido ? "pi pi-times" : "pi pi-check"}
+        style={{ fontWeight: "bold" }}
+      />
+    );
+  };
+
   // Funciones de CRUD
   const onNew = () => {
     setSelected(null);
@@ -245,7 +287,7 @@ export default function DocumentacionPersonal() {
     setLoading(true);
     try {
       await eliminarDocumentacionPersonal(row.id);
-      toast?.show({
+      toast.current?.show({
         severity: "success",
         summary: "Eliminado",
         detail: `Se eliminó la documentación: ${descripcion}`,
@@ -253,7 +295,7 @@ export default function DocumentacionPersonal() {
       cargarDocumentaciones();
     } catch (err) {
       if (err.response?.status === 400) {
-        toast?.show({
+        toast.current?.show({
           severity: "error",
           summary: "Error",
           detail:
@@ -262,7 +304,7 @@ export default function DocumentacionPersonal() {
         });
       } else {
         console.error("[DocumentacionPersonal] Error inesperado:", err);
-        toast?.show({
+        toast.current?.show({
           severity: "error",
           summary: "Error",
           detail: "Error inesperado al eliminar la documentación.",
@@ -278,14 +320,14 @@ export default function DocumentacionPersonal() {
     try {
       if (isEdit && selected?.id) {
         await actualizarDocumentacionPersonal(selected.id, data);
-        toast?.show({
+        toast.current?.show({
           severity: "success",
           summary: "Actualizado",
           detail: "Documentación actualizada correctamente",
         });
       } else {
         await crearDocumentacionPersonal(data);
-        toast?.show({
+        toast.current?.show({
           severity: "success",
           summary: "Creado",
           detail: "Documentación creada correctamente",
@@ -296,7 +338,7 @@ export default function DocumentacionPersonal() {
       setIsEdit(false);
       cargarDocumentaciones();
     } catch (err) {
-      toast?.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo guardar la documentación",
@@ -355,7 +397,7 @@ export default function DocumentacionPersonal() {
       const filtroDocumentoMatch = filtroDocumentoPesca
         ? Number(doc.documentoPescaId) === Number(filtroDocumentoPesca)
         : true;
-      
+
       // Buscar la persona para obtener su cargoId
       const persona = personal.find(
         (p) => Number(p.id) === Number(doc.personalId)
@@ -364,7 +406,18 @@ export default function DocumentacionPersonal() {
         ? Number(persona?.cargoId) === Number(filtroCargo)
         : true;
 
-      return filtroPersonalMatch && filtroDocumentoMatch && filtroCargoMatch;
+      // Aplicar filtro de estado de documento
+      const filtroEstadoMatch =
+        filtroEstadoDoc === "todos" ||
+        (filtroEstadoDoc === "vencidos" && doc.docVencido) ||
+        (filtroEstadoDoc === "vigentes" && !doc.docVencido);
+
+      return (
+        filtroPersonalMatch &&
+        filtroDocumentoMatch &&
+        filtroCargoMatch &&
+        filtroEstadoMatch
+      );
     });
 
   // Función para limpiar filtros
@@ -372,13 +425,85 @@ export default function DocumentacionPersonal() {
     setFiltroPersonal(null);
     setFiltroDocumentoPesca(null);
     setFiltroCargo(null);
+    setFiltroEstadoDoc("todos");
     setGlobalFilter("");
+  };
+
+  // Función para recalcular y guardar estados en base de datos
+  const recalcularEstados = async () => {
+    try {
+      await recalcularDocPersonalVencidos(toast);
+      // Recargar datos después de la actualización
+      cargarDocumentaciones();
+    } catch (error) {
+      // El error ya se maneja en la función utilitaria
+      console.error("Error en recalcularEstados:", error);
+    }
+  };
+
+  // Función para cambiar filtro de estado de documento
+  const cambiarFiltroEstadoDoc = () => {
+    const estados = ["todos", "vencidos", "vigentes"];
+    const indiceActual = estados.indexOf(filtroEstadoDoc);
+    const siguienteIndice = (indiceActual + 1) % estados.length;
+    setFiltroEstadoDoc(estados[siguienteIndice]);
+  };
+
+  // Función para obtener configuración del filtro de estado
+  const obtenerConfigFiltroEstado = () => {
+    switch (filtroEstadoDoc) {
+      case "vencidos":
+        return {
+          label: "Vencidos",
+          icon: "pi pi-times-circle",
+          className: "p-button-danger",
+          size: "small",
+          raised: true,
+          tooltip: "Mostrando solo documentos vencidos",
+        };
+      case "vigentes":
+        return {
+          label: "Vigentes",
+          icon: "pi pi-check-circle",
+          className: "p-button-success",
+          size: "small",
+          raised: true,
+          tooltip: "Mostrando solo documentos vigentes",
+        };
+      default:
+        return {
+          label: "Todos los Estados",
+          icon: "pi pi-list",
+          className: "p-button-secondary",
+          size: "small",
+          raised: true,
+          tooltip: "Mostrando todos los documentos",
+        };
+    }
   };
 
   // Template para botones de acción
   const actionBodyTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
+        <Button
+          icon="pi pi-file-pdf"
+          className="p-button-rounded p-button-text"
+          disabled={!rowData.urlDocPdf}
+          onClick={() =>
+            abrirPdfEnNuevaPestana(
+              rowData.urlDocPdf,
+              toast,
+              "No hay PDF de documentación disponible"
+            )
+          }
+          tooltip={
+            rowData.urlDocPdf
+              ? "Ver PDF de documentación"
+              : "No hay PDF de documentación disponible"
+          }
+          tooltipOptions={{ position: "top" }}
+        />
         <Button
           icon="pi pi-pencil"
           className="p-button-text p-button-rounded"
@@ -405,7 +530,7 @@ export default function DocumentacionPersonal() {
 
   return (
     <div className="p-m-4">
-      <Toast ref={setToast} />
+      <Toast ref={toast} />
       <ConfirmDialog
         visible={confirmState.visible}
         onHide={() => setConfirmState({ visible: false, row: null })}
@@ -437,85 +562,115 @@ export default function DocumentacionPersonal() {
         selectionMode="single"
         selection={selected}
         onSelectionChange={(e) => setSelected(e.value)}
+        sortField="id"
+        sortOrder={-1}
         header={
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginTop: 10,
-              gap: 5,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 2 }}>
-              <h2>Gestión de Documentación de Personal</h2>
+          <div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.25rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <h2>Documentación Requerida Tripulantes</h2>
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Nuevo"
+                  icon="pi pi-plus"
+                  className="p-button-success"
+                  size="small"
+                  raised
+                  tooltip="Nueva Documentación"
+                  outlined
+                  onClick={onNew}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <Button
+                  label="Recalcular Estados"
+                  icon="pi pi-refresh"
+                  className="p-button-info"
+                  size="small"
+                  raised
+                  tooltip="Recalcular Estados"
+                  onClick={recalcularEstados}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <Button
+                  {...obtenerConfigFiltroEstado()}
+                  onClick={cambiarFiltroEstadoDoc}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <Button
+                  label="Limpiar Filtros"
+                  icon="pi pi-filter-slash"
+                  className="p-button-warning"
+                  size="small"
+                  raised
+                  tooltip="Limpiar Filtros"
+                  onClick={limpiarFiltros}
+                />
+              </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                label="Nuevo"
-                icon="pi pi-plus"
-                className="p-button-success"
-                size="small"
-                raised
-                tooltip="Nueva Documentación"
-                outlined
-                onClick={onNew}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Dropdown
-                value={filtroPersonal}
-                onChange={(e) => setFiltroPersonal(Number(e.value))}
-                options={personal}
-                optionLabel="label"
-                optionValue="id"
-                placeholder="Filtrar Personal"
-                showClear
-                style={{ width: "250px", fontWeight: "bold" }}
-                filter
-                filterBy="label"
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Dropdown
-                value={filtroDocumentoPesca}
-                onChange={(e) => setFiltroDocumentoPesca(Number(e.value))}
-                options={documentosPesca}
-                optionLabel="label"
-                optionValue="id"
-                placeholder="Filtrar Documento"
-                showClear
-                style={{ width: "250px", fontWeight: "bold" }}
-                filter
-                filterBy="label"
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Dropdown
-                value={filtroCargo}
-                onChange={(e) => setFiltroCargo(Number(e.value))}
-                options={cargosPersonal}
-                optionLabel="label"
-                optionValue="id"
-                placeholder="Filtrar Cargo"
-                showClear
-                style={{ width: "250px", fontWeight: "bold" }}
-                filter
-                filterBy="label"
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                label="Limpiar Filtros"
-                icon="pi pi-filter-slash"
-                className="p-button-secondary"
-                size="small"
-                raised
-                tooltip="Limpiar Filtros"
-                outlined
-                onClick={limpiarFiltros}
-              />
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                marginTop: "0.25rem",
+                gap: "0.25rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <Dropdown
+                  value={filtroPersonal}
+                  onChange={(e) => setFiltroPersonal(Number(e.value))}
+                  options={personal}
+                  optionLabel="label"
+                  optionValue="id"
+                  placeholder="Filtrar Personal"
+                  showClear
+                  style={{ width: "250px", fontWeight: "bold" }}
+                  filter
+                  filterBy="label"
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Dropdown
+                  value={filtroDocumentoPesca}
+                  onChange={(e) => setFiltroDocumentoPesca(Number(e.value))}
+                  options={documentosPesca}
+                  optionLabel="label"
+                  optionValue="id"
+                  placeholder="Filtrar Documento"
+                  showClear
+                  style={{ width: "250px", fontWeight: "bold" }}
+                  filter
+                  filterBy="label"
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Dropdown
+                  value={filtroCargo}
+                  onChange={(e) => setFiltroCargo(Number(e.value))}
+                  options={cargosPersonal}
+                  optionLabel="label"
+                  optionValue="id"
+                  placeholder="Filtrar Cargo"
+                  showClear
+                  style={{ width: "250px", fontWeight: "bold" }}
+                  filter
+                  filterBy="label"
+                />
+              </div>
+
             </div>
           </div>
         }
@@ -541,26 +696,40 @@ export default function DocumentacionPersonal() {
           body={cargoTemplate}
           sortable
           field="cargoNombre"
-          style={{ minWidth: "150px" }}
+          style={{ minWidth: "120px" }}
         />
         <Column
           header="Personal"
           body={personalTemplate}
           sortable
           field="personalNombre"
-          style={{ minWidth: "200px" }}
+          style={{ minWidth: "150px" }}
         />
         <Column
           header="Documento de Pesca"
           body={documentoPescaTemplate}
           sortable
           field="documentoPescaNombre"
-          style={{ minWidth: "200px" }}
+          style={{ minWidth: "160px" }}
+        />
+        <Column
+          header="Fecha Vencimiento"
+          body={fechaVencimientoTemplate}
+          sortable
+          field="fechaVencimiento"
+          style={{ minWidth: "130px", textAlign: "center" }}
+        />
+        <Column
+          header="Estado"
+          body={docVencidoTemplate}
+          sortable
+          field="docVencido"
+          style={{ minWidth: "120px", textAlign: "center" }}
         />
         <Column
           body={actionBodyTemplate}
           header="Acciones"
-          style={{ width: 130, textAlign: "center" }}
+          style={{ width: 180, textAlign: "center" }}
         />
       </DataTable>
 

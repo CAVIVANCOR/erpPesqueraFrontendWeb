@@ -918,7 +918,6 @@ export default function PersonalForm({
               disabled={loading}
               severity="danger"
               raised
-              outlined
               size="small"
             />
             <Button
@@ -929,7 +928,6 @@ export default function PersonalForm({
               loading={loading}
               severity="success"
               raised
-              outlined
               size="small"
             />
           </div>

@@ -601,6 +601,18 @@ const TemporadaPesca = () => {
     );
   };
 
+  /**
+   * Actualizar datos de la temporada en edición
+   */
+  const actualizarEditingItem = async (temporadaActualizada) => {
+    if (temporadaActualizada && editingItem?.id === temporadaActualizada.id) {
+      setEditingItem(temporadaActualizada);
+      
+      // También actualizar la lista de temporadas
+      await cargarDatos();
+    }
+  };
+
   return (
     <div className="temporada-pesca-container">
       <Toast ref={toast} />
@@ -627,6 +639,8 @@ const TemporadaPesca = () => {
           onRowClick={(e) => editItem(e.data)}
           rowClassName={() => "cursor-pointer hover:bg-primary-50"}
           style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+          sortField="id"
+          sortOrder={-1}
           header={
             <div
               style={{
@@ -704,6 +718,12 @@ const TemporadaPesca = () => {
             </div>
           }
         >
+          <Column
+            field="id"
+            header="ID"
+            sortable
+            style={{ minWidth: "100px" }}
+          />
           <Column
             header="Empresa"
             body={empresaTemplate}
@@ -796,7 +816,7 @@ const TemporadaPesca = () => {
         onSave={saveItem}
         editingItem={editingItem}
         empresas={empresas}
-        onTemporadaDataChange={cargarDatos}
+        onTemporadaDataChange={actualizarEditingItem}
       />
     </div>
   );

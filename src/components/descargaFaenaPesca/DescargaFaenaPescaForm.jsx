@@ -1,225 +1,810 @@
 // src/components/descargaFaenaPesca/DescargaFaenaPescaForm.jsx
-// Formulario profesional para DescargaFaenaPesca. Cumple la regla transversal ERP Megui.
-import React from 'react';
-import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
-import { InputNumber } from 'primereact/inputnumber';
-import { Calendar } from 'primereact/calendar';
-import { Dropdown } from 'primereact/dropdown';
-import { InputTextarea } from 'primereact/inputtextarea';
+// Formulario profesional para DescargaFaenaPesca - ERP Megui
+// Maneja creación y edición con validaciones, combos dependientes y reglas de negocio
+// Documentado en español técnico para mantenibilidad
 
-export default function DescargaFaenaPescaForm({ isEdit, defaultValues, faenas, puertos, onSubmit, onCancel, loading }) {
-  const [faenaPescaId, setFaenaPescaId] = React.useState(defaultValues.faenaPescaId || null);
-  const [temporadaPescaId, setTemporadaPescaId] = React.useState(defaultValues.temporadaPescaId || '');
-  const [puertoDescargaId, setPuertoDescargaId] = React.useState(defaultValues.puertoDescargaId || null);
-  const [fechaHoraArriboPuerto, setFechaHoraArriboPuerto] = React.useState(defaultValues.fechaHoraArriboPuerto ? new Date(defaultValues.fechaHoraArriboPuerto) : new Date());
-  const [fechaHoraLlegadaPuerto, setFechaHoraLlegadaPuerto] = React.useState(defaultValues.fechaHoraLlegadaPuerto ? new Date(defaultValues.fechaHoraLlegadaPuerto) : new Date());
-  const [clienteId, setClienteId] = React.useState(defaultValues.clienteId || '');
-  const [numPlataformaDescarga, setNumPlataformaDescarga] = React.useState(defaultValues.numPlataformaDescarga || '');
-  const [turnoPlataformaDescarga, setTurnoPlataformaDescarga] = React.useState(defaultValues.turnoPlataformaDescarga || '');
-  const [fechaHoraInicioDescarga, setFechaHoraInicioDescarga] = React.useState(defaultValues.fechaHoraInicioDescarga ? new Date(defaultValues.fechaHoraInicioDescarga) : new Date());
-  const [fechaHoraFinDescarga, setFechaHoraFinDescarga] = React.useState(defaultValues.fechaHoraFinDescarga ? new Date(defaultValues.fechaHoraFinDescarga) : new Date());
-  const [numWinchaPesaje, setNumWinchaPesaje] = React.useState(defaultValues.numWinchaPesaje || '');
-  const [urlComprobanteWincha, setUrlComprobanteWincha] = React.useState(defaultValues.urlComprobanteWincha || '');
-  const [patroId, setPatroId] = React.useState(defaultValues.patroId || '');
-  const [motoristaId, setMotoristaId] = React.useState(defaultValues.motoristaId || '');
-  const [bahiaId, setBahiaId] = React.useState(defaultValues.bahiaId || '');
-  const [latitud, setLatitud] = React.useState(defaultValues.latitud || 0);
-  const [longitud, setLongitud] = React.useState(defaultValues.longitud || 0);
-  const [fechaDescarga, setFechaDescarga] = React.useState(defaultValues.fechaDescarga ? new Date(defaultValues.fechaDescarga) : new Date());
-  const [combustibleAbastecidoGalones, setCombustibleAbastecidoGalones] = React.useState(defaultValues.combustibleAbastecidoGalones || 0);
-  const [urlValeAbastecimiento, setUrlValeAbastecimiento] = React.useState(defaultValues.urlValeAbastecimiento || '');
-  const [urlInformeDescargaProduce, setUrlInformeDescargaProduce] = React.useState(defaultValues.urlInformeDescargaProduce || '');
-  const [movIngresoAlmacenId, setMovIngresoAlmacenId] = React.useState(defaultValues.movIngresoAlmacenId || '');
-  const [observaciones, setObservaciones] = React.useState(defaultValues.observaciones || '');
+import React, { useState, useEffect, useRef } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { InputTextarea } from "primereact/inputtextarea";
+import { Dropdown } from "primereact/dropdown";
+import { Calendar } from "primereact/calendar";
+import { InputNumber } from "primereact/inputnumber";
+import { classNames } from "primereact/utils";
+import { Message } from "primereact/message";
+import { Toast } from "primereact/toast";
 
-  React.useEffect(() => {
-    setFaenaPescaId(defaultValues.faenaPescaId ? Number(defaultValues.faenaPescaId) : null);
-    setTemporadaPescaId(defaultValues.temporadaPescaId || '');
-    setPuertoDescargaId(defaultValues.puertoDescargaId ? Number(defaultValues.puertoDescargaId) : null);
-    setFechaHoraArriboPuerto(defaultValues.fechaHoraArriboPuerto ? new Date(defaultValues.fechaHoraArriboPuerto) : new Date());
-    setFechaHoraLlegadaPuerto(defaultValues.fechaHoraLlegadaPuerto ? new Date(defaultValues.fechaHoraLlegadaPuerto) : new Date());
-    setClienteId(defaultValues.clienteId || '');
-    setNumPlataformaDescarga(defaultValues.numPlataformaDescarga || '');
-    setTurnoPlataformaDescarga(defaultValues.turnoPlataformaDescarga || '');
-    setFechaHoraInicioDescarga(defaultValues.fechaHoraInicioDescarga ? new Date(defaultValues.fechaHoraInicioDescarga) : new Date());
-    setFechaHoraFinDescarga(defaultValues.fechaHoraFinDescarga ? new Date(defaultValues.fechaHoraFinDescarga) : new Date());
-    setNumWinchaPesaje(defaultValues.numWinchaPesaje || '');
-    setUrlComprobanteWincha(defaultValues.urlComprobanteWincha || '');
-    setPatroId(defaultValues.patroId || '');
-    setMotoristaId(defaultValues.motoristaId || '');
-    setBahiaId(defaultValues.bahiaId || '');
-    setLatitud(defaultValues.latitud || 0);
-    setLongitud(defaultValues.longitud || 0);
-    setFechaDescarga(defaultValues.fechaDescarga ? new Date(defaultValues.fechaDescarga) : new Date());
-    setCombustibleAbastecidoGalones(defaultValues.combustibleAbastecidoGalones || 0);
-    setUrlValeAbastecimiento(defaultValues.urlValeAbastecimiento || '');
-    setUrlInformeDescargaProduce(defaultValues.urlInformeDescargaProduce || '');
-    setMovIngresoAlmacenId(defaultValues.movIngresoAlmacenId || '');
-    setObservaciones(defaultValues.observaciones || '');
-  }, [defaultValues]);
+import {
+  crearDescargaFaenaPesca,
+  actualizarDescargaFaenaPesca,
+} from "../../api/descargaFaenaPesca";
+import { 
+  capturarGPS, 
+  formatearCoordenadas, 
+  convertirDecimalADMS,
+  crearInputCoordenadas 
+} from "../../utils/gpsUtils";
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit({
-      faenaPescaId: faenaPescaId ? Number(faenaPescaId) : null,
-      temporadaPescaId: temporadaPescaId ? Number(temporadaPescaId) : null,
-      puertoDescargaId: puertoDescargaId ? Number(puertoDescargaId) : null,
-      fechaHoraArriboPuerto,
-      fechaHoraLlegadaPuerto,
-      clienteId: clienteId ? Number(clienteId) : null,
-      numPlataformaDescarga,
-      turnoPlataformaDescarga,
-      fechaHoraInicioDescarga,
-      fechaHoraFinDescarga,
-      numWinchaPesaje,
-      urlComprobanteWincha,
-      patroId: patroId ? Number(patroId) : null,
-      motoristaId: motoristaId ? Number(motoristaId) : null,
-      bahiaId: bahiaId ? Number(bahiaId) : null,
-      latitud,
-      longitud,
-      fechaDescarga,
-      combustibleAbastecidoGalones,
-      urlValeAbastecimiento,
-      urlInformeDescargaProduce,
-      movIngresoAlmacenId: movIngresoAlmacenId ? Number(movIngresoAlmacenId) : null,
-      observaciones
-    });
+/**
+ * Formulario DescargaFaenaPescaForm
+ *
+ * Formulario profesional para gestión de descargas de faena de pesca.
+ * Características:
+ * - Validaciones robustas con react-hook-form
+ * - Combos normalizados (IDs numéricos)
+ * - Campos de fecha con validaciones
+ * - Captura de GPS integrada
+ * - Layout responsive siguiendo patrón DatosGeneralesFaenaPesca
+ * 
+ * Props esperadas desde el componente padre:
+ * - puertos: Array de puertos (todos los puertos disponibles)
+ * - clientes: Array de clientes filtrados por EntidadComercial (empresaId, tipoEntidadId=8, esCliente=true, estado=true)
+ * - especies: Array de especies
+ * - bahiaId: ID de bahía (valor fijo desde FaenaPesca)
+ * - motoristaId: ID de motorista (valor fijo desde FaenaPesca)
+ * - patronId: ID de patrón (valor fijo desde FaenaPesca)
+ * - faenaPescaId: ID de faena de pesca (valor fijo desde FaenaPesca)
+ * - temporadaPescaId: ID de temporada de pesca (valor fijo desde FaenaPesca)
+ */
+export default function DescargaFaenaPescaForm({
+  detalle,
+  puertos = [],
+  clientes = [],
+  especies = [],
+  bahiaId = null,
+  motoristaId = null,
+  patronId = null,
+  faenaPescaId = null,
+  temporadaPescaId = null,
+  onGuardadoExitoso,
+  onCancelar,
+}) {
+  console.log("Detalle:", detalle);
+  console.log("Bahía ID:", bahiaId);
+  console.log("Motorista ID:", motoristaId);
+  console.log("Patrón ID:", patronId);
+  console.log("Faena Pesca ID:", faenaPescaId);
+  console.log("Temporada Pesca ID:", temporadaPescaId);
+  console.log("Puertos:", puertos);
+  console.log("Clientes:", clientes);
+  console.log("Especies:", especies);
+  // Estados para loading
+  const [loading, setLoading] = useState(false);
+
+  // Configuración del formulario
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+    watch,
+  } = useForm({
+    defaultValues: {
+      faenaPescaId: faenaPescaId,
+      temporadaPescaId: temporadaPescaId,
+      puertoDescargaId: null,
+      fechaHoraArriboPuerto: null,
+      fechaHoraLlegadaPuerto: null,
+      clienteId: null,
+      numPlataformaDescarga: "",
+      turnoPlataformaDescarga: "",
+      fechaHoraInicioDescarga: null,
+      fechaHoraFinDescarga: null,
+      numWinchaPesaje: "",
+      urlComprobanteWincha: "",
+      patroId: patronId,
+      motoristaId: motoristaId,
+      bahiaId: bahiaId,
+      latitud: 0,
+      longitud: 0,
+      fechaDescarga: null,
+      combustibleAbastecidoGalones: 0,
+      urlValeAbastecimiento: "",
+      urlInformeDescargaProduce: "",
+      movIngresoAlmacenId: null,
+      observaciones: "",
+      especieId: null,
+      toneladas: 0,
+      porcentajeJuveniles: 0,
+    },
+  });
+
+  // Observar cambios en coordenadas para mostrar formato DMS
+  const latitud = watch("latitud");
+  const longitud = watch("longitud");
+
+  // Cargar datos del registro a editar cuando cambie detalle
+  useEffect(() => {
+    if (detalle) {
+      reset({
+        faenaPescaId: detalle.faenaPescaId ? Number(detalle.faenaPescaId) : faenaPescaId,
+        temporadaPescaId: detalle.temporadaPescaId ? Number(detalle.temporadaPescaId) : temporadaPescaId,
+        puertoDescargaId: detalle.puertoDescargaId ? Number(detalle.puertoDescargaId) : null,
+        fechaHoraArriboPuerto: detalle.fechaHoraArriboPuerto ? new Date(detalle.fechaHoraArriboPuerto) : null,
+        fechaHoraLlegadaPuerto: detalle.fechaHoraLlegadaPuerto ? new Date(detalle.fechaHoraLlegadaPuerto) : null,
+        clienteId: detalle.clienteId ? Number(detalle.clienteId) : null,
+        numPlataformaDescarga: detalle.numPlataformaDescarga || "",
+        turnoPlataformaDescarga: detalle.turnoPlataformaDescarga || "",
+        fechaHoraInicioDescarga: detalle.fechaHoraInicioDescarga ? new Date(detalle.fechaHoraInicioDescarga) : null,
+        fechaHoraFinDescarga: detalle.fechaHoraFinDescarga ? new Date(detalle.fechaHoraFinDescarga) : null,
+        numWinchaPesaje: detalle.numWinchaPesaje || "",
+        urlComprobanteWincha: detalle.urlComprobanteWincha || "",
+        patroId: detalle.patroId ? Number(detalle.patroId) : patronId,
+        motoristaId: detalle.motoristaId ? Number(detalle.motoristaId) : motoristaId,
+        bahiaId: detalle.bahiaId ? Number(detalle.bahiaId) : bahiaId,
+        latitud: detalle.latitud || 0,
+        longitud: detalle.longitud || 0,
+        fechaDescarga: detalle.fechaDescarga ? new Date(detalle.fechaDescarga) : null,
+        combustibleAbastecidoGalones: detalle.combustibleAbastecidoGalones || 0,
+        urlValeAbastecimiento: detalle.urlValeAbastecimiento || "",
+        urlInformeDescargaProduce: detalle.urlInformeDescargaProduce || "",
+        movIngresoAlmacenId: detalle.movIngresoAlmacenId ? Number(detalle.movIngresoAlmacenId) : null,
+        observaciones: detalle.observaciones || "",
+        especieId: detalle.especieId ? Number(detalle.especieId) : null,
+        toneladas: detalle.toneladas || 0,
+        porcentajeJuveniles: detalle.porcentajeJuveniles || 0,
+      });
+    } else {
+      // Resetear para nuevo registro con valores fijos de faena
+      reset({
+        faenaPescaId: faenaPescaId,
+        temporadaPescaId: temporadaPescaId,
+        puertoDescargaId: null,
+        fechaHoraArriboPuerto: null,
+        fechaHoraLlegadaPuerto: null,
+        clienteId: null,
+        numPlataformaDescarga: "",
+        turnoPlataformaDescarga: "",
+        fechaHoraInicioDescarga: null,
+        fechaHoraFinDescarga: null,
+        numWinchaPesaje: "",
+        urlComprobanteWincha: "",
+        patroId: patronId,
+        motoristaId: motoristaId,
+        bahiaId: bahiaId,
+        latitud: 0,
+        longitud: 0,
+        fechaDescarga: null,
+        combustibleAbastecidoGalones: 0,
+        urlValeAbastecimiento: "",
+        urlInformeDescargaProduce: "",
+        movIngresoAlmacenId: null,
+        observaciones: "",
+        especieId: null,
+        toneladas: 0,
+        porcentajeJuveniles: 0,
+      });
+    }
+  }, [detalle, reset, bahiaId, motoristaId, patronId, faenaPescaId, temporadaPescaId]);
+
+  /**
+   * Maneja el envío del formulario
+   */
+  const onSubmit = async (data) => {
+    try {
+      setLoading(true);
+
+      const payload = {
+        faenaPescaId: data.faenaPescaId ? Number(data.faenaPescaId) : null,
+        temporadaPescaId: data.temporadaPescaId ? Number(data.temporadaPescaId) : null,
+        puertoDescargaId: data.puertoDescargaId ? Number(data.puertoDescargaId) : null,
+        fechaHoraArriboPuerto: data.fechaHoraArriboPuerto ? data.fechaHoraArriboPuerto.toISOString() : null,
+        fechaHoraLlegadaPuerto: data.fechaHoraLlegadaPuerto ? data.fechaHoraLlegadaPuerto.toISOString() : null,
+        clienteId: data.clienteId ? Number(data.clienteId) : null,
+        numPlataformaDescarga: data.numPlataformaDescarga?.trim() || null,
+        turnoPlataformaDescarga: data.turnoPlataformaDescarga?.trim() || null,
+        fechaHoraInicioDescarga: data.fechaHoraInicioDescarga ? data.fechaHoraInicioDescarga.toISOString() : null,
+        fechaHoraFinDescarga: data.fechaHoraFinDescarga ? data.fechaHoraFinDescarga.toISOString() : null,
+        numWinchaPesaje: data.numWinchaPesaje?.trim() || null,
+        urlComprobanteWincha: data.urlComprobanteWincha?.trim() || null,
+        patroId: data.patroId ? Number(data.patroId) : null,
+        motoristaId: data.motoristaId ? Number(data.motoristaId) : null,
+        bahiaId: data.bahiaId ? Number(data.bahiaId) : null,
+        latitud: data.latitud || 0,
+        longitud: data.longitud || 0,
+        fechaDescarga: data.fechaDescarga ? data.fechaDescarga.toISOString() : null,
+        combustibleAbastecidoGalones: data.combustibleAbastecidoGalones || 0,
+        urlValeAbastecimiento: data.urlValeAbastecimiento?.trim() || null,
+        urlInformeDescargaProduce: data.urlInformeDescargaProduce?.trim() || null,
+        movIngresoAlmacenId: data.movIngresoAlmacenId ? Number(data.movIngresoAlmacenId) : null,
+        observaciones: data.observaciones?.trim() || null,
+        especieId: data.especieId ? Number(data.especieId) : null,
+        toneladas: data.toneladas || 0,
+        porcentajeJuveniles: data.porcentajeJuveniles || 0,
+      };
+
+      if (detalle?.id) {
+        await actualizarDescargaFaenaPesca(detalle.id, payload);
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Descarga actualizada correctamente",
+          life: 3000,
+        });
+      } else {
+        await crearDescargaFaenaPesca(payload);
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito", 
+          detail: "Descarga creada correctamente",
+          life: 3000,
+        });
+      }
+
+      onGuardadoExitoso?.();
+    } catch (error) {
+      console.error("Error al guardar descarga:", error);
+      
+      // Mostrar mensaje de error específico
+      const errorMessage = error?.response?.data?.message || 
+                          error?.message || 
+                          "Error desconocido al guardar la descarga";
+      
+      toast.current?.show({
+        severity: "error",
+        summary: "Error al guardar",
+        detail: errorMessage,
+        life: 5000,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Normalizar opciones para los dropdowns
-  const faenasOptions = faenas.map(f => ({ 
-    ...f, 
-    id: Number(f.id),
-    label: `Faena ${f.id}`,
-    value: Number(f.id)
-  }));
+  const toast = useRef(null);
 
-  const puertosOptions = puertos.map(p => ({ 
-    ...p, 
-    id: Number(p.id),
-    label: p.nombre,
-    value: Number(p.id)
-  }));
+  /**
+   * Maneja la captura de GPS usando las funciones genéricas
+   */
+  const handleCapturarGPS = async () => {
+    try {
+      await capturarGPS(
+        (latitude, longitude, accuracy) => {
+          // Callback de éxito
+          setValue("latitud", latitude);
+          setValue("longitud", longitude);
+          
+          toast.current?.show({
+            severity: "success",
+            summary: "GPS capturado",
+            detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m`,
+            life: 3000,
+          });
+        },
+        (errorMessage) => {
+          // Callback de error
+          toast.current?.show({
+            severity: "error",
+            summary: "Error GPS",
+            detail: errorMessage,
+            life: 3000,
+          });
+        }
+      );
+    } catch (error) {
+      console.error("Error capturando GPS:", error);
+    }
+  };
+
+  // Crear configuración de inputs de coordenadas usando utilidad genérica
+  const coordenadasConfig = crearInputCoordenadas({
+    latitud,
+    longitud,
+    onLatitudChange: (valor) => setValue("latitud", valor),
+    onLongitudChange: (valor) => setValue("longitud", valor),
+    disabled: true, // Solo lectura, se captura por GPS
+    mostrarDMS: true,
+  });
 
   return (
-    <form onSubmit={handleSubmit} className="p-fluid">
-      <div className="p-grid">
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="faenaPescaId">Faena Pesca*</label>
-            <Dropdown
-              id="faenaPescaId"
-              value={faenaPescaId ? Number(faenaPescaId) : null}
-              options={faenasOptions}
-              onChange={e => setFaenaPescaId(e.value)}
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Seleccionar faena"
-              disabled={loading}
-              required
-            />
-          </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
+      <Toast ref={toast} />
+      
+      {/* Primera fila: Datos básicos */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "end",
+          gap: 10,
+          marginBottom: "0.5rem",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label htmlFor="puertoDescargaId">Puerto Descarga*</label>
+          <Controller
+            name="puertoDescargaId"
+            control={control}
+            rules={{ required: "El puerto de descarga es obligatorio" }}
+            render={({ field }) => (
+              <Dropdown
+                id="puertoDescargaId"
+                {...field}
+                value={field.value}
+                options={puertos}
+                optionLabel="label"
+                optionValue="value"
+                style={{ fontWeight: "bold" }}
+                placeholder="Seleccione puerto"
+                disabled={loading}
+                className={classNames({ "p-invalid": errors.puertoDescargaId })}
+              />
+            )}
+          />
+          {errors.puertoDescargaId && (
+            <Message severity="error" text={errors.puertoDescargaId.message} />
+          )}
         </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="puertoDescargaId">Puerto Descarga*</label>
-            <Dropdown
-              id="puertoDescargaId"
-              value={puertoDescargaId ? Number(puertoDescargaId) : null}
-              options={puertosOptions}
-              onChange={e => setPuertoDescargaId(e.value)}
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Seleccionar puerto"
-              disabled={loading}
-              required
-            />
-          </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="clienteId">Cliente*</label>
+          <Controller
+            name="clienteId"
+            control={control}
+            rules={{ required: "El cliente es obligatorio" }}
+            render={({ field }) => (
+              <Dropdown
+                id="clienteId"
+                {...field}
+                value={field.value}
+                options={clientes}
+                optionLabel="label"
+                optionValue="value"
+                style={{ fontWeight: "bold" }}
+                placeholder="Seleccione cliente"
+                disabled={loading}
+                className={classNames({ "p-invalid": errors.clienteId })}
+              />
+            )}
+          />
+          {errors.clienteId && (
+            <Message severity="error" text={errors.clienteId.message} />
+          )}
         </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="temporadaPescaId">Temporada Pesca ID*</label>
-            <InputText id="temporadaPescaId" value={temporadaPescaId} onChange={e => setTemporadaPescaId(e.target.value)} required disabled={loading} />
-          </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="numPlataformaDescarga">Plataforma</label>
+          <Controller
+            name="numPlataformaDescarga"
+            control={control}
+            render={({ field }) => (
+              <InputText
+                id="numPlataformaDescarga"
+                {...field}
+                placeholder="Número plataforma"
+                disabled={loading}
+                style={{ fontWeight: "bold" }}
+                maxLength={20}
+              />
+            )}
+          />
         </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="clienteId">Cliente ID*</label>
-            <InputText id="clienteId" value={clienteId} onChange={e => setClienteId(e.target.value)} required disabled={loading} />
-          </div>
-        </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="fechaHoraArriboPuerto">Fecha Arribo Puerto*</label>
-            <Calendar id="fechaHoraArriboPuerto" value={fechaHoraArriboPuerto} onChange={e => setFechaHoraArriboPuerto(e.value)} showIcon showTime hourFormat="24" disabled={loading} required />
-          </div>
-        </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="fechaHoraLlegadaPuerto">Fecha Llegada Puerto*</label>
-            <Calendar id="fechaHoraLlegadaPuerto" value={fechaHoraLlegadaPuerto} onChange={e => setFechaHoraLlegadaPuerto(e.value)} showIcon showTime hourFormat="24" disabled={loading} required />
-          </div>
-        </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="numPlataformaDescarga">Plataforma Descarga</label>
-            <InputText id="numPlataformaDescarga" value={numPlataformaDescarga} onChange={e => setNumPlataformaDescarga(e.target.value)} disabled={loading} maxLength={20} />
-          </div>
-        </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="turnoPlataformaDescarga">Turno Plataforma</label>
-            <InputText id="turnoPlataformaDescarga" value={turnoPlataformaDescarga} onChange={e => setTurnoPlataformaDescarga(e.target.value)} disabled={loading} maxLength={20} />
-          </div>
-        </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="fechaHoraInicioDescarga">Inicio Descarga*</label>
-            <Calendar id="fechaHoraInicioDescarga" value={fechaHoraInicioDescarga} onChange={e => setFechaHoraInicioDescarga(e.value)} showIcon showTime hourFormat="24" disabled={loading} required />
-          </div>
-        </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="fechaHoraFinDescarga">Fin Descarga*</label>
-            <Calendar id="fechaHoraFinDescarga" value={fechaHoraFinDescarga} onChange={e => setFechaHoraFinDescarga(e.value)} showIcon showTime hourFormat="24" disabled={loading} required />
-          </div>
-        </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="combustibleAbastecidoGalones">Combustible (Galones)*</label>
-            <InputNumber id="combustibleAbastecidoGalones" value={combustibleAbastecidoGalones} onValueChange={e => setCombustibleAbastecidoGalones(e.value)} mode="decimal" minFractionDigits={2} maxFractionDigits={2} required disabled={loading} />
-          </div>
-        </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="fechaDescarga">Fecha Descarga*</label>
-            <Calendar id="fechaDescarga" value={fechaDescarga} onChange={e => setFechaDescarga(e.value)} showIcon dateFormat="yy-mm-dd" disabled={loading} required />
-          </div>
-        </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="latitud">Latitud</label>
-            <InputNumber id="latitud" value={latitud} onValueChange={e => setLatitud(e.value)} mode="decimal" minFractionDigits={6} maxFractionDigits={6} disabled={loading} />
-          </div>
-        </div>
-        <div className="p-col-12 p-md-6">
-          <div className="p-field">
-            <label htmlFor="longitud">Longitud</label>
-            <InputNumber id="longitud" value={longitud} onValueChange={e => setLongitud(e.value)} mode="decimal" minFractionDigits={6} maxFractionDigits={6} disabled={loading} />
-          </div>
-        </div>
-        <div className="p-col-12">
-          <div className="p-field">
-            <label htmlFor="observaciones">Observaciones</label>
-            <InputTextarea id="observaciones" value={observaciones} onChange={e => setObservaciones(e.target.value)} rows={3} disabled={loading} />
-          </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="turnoPlataformaDescarga">Turno</label>
+          <Controller
+            name="turnoPlataformaDescarga"
+            control={control}
+            render={({ field }) => (
+              <InputText
+                id="turnoPlataformaDescarga"
+                {...field}
+                placeholder="Turno plataforma"
+                disabled={loading}
+                style={{ fontWeight: "bold" }}
+                maxLength={20}
+              />
+            )}
+          />
         </div>
       </div>
-      <div className="p-d-flex p-jc-end" style={{ gap: 8, marginTop: 16 }}>
-        <Button type="button" label="Cancelar" className="p-button-text" onClick={onCancel} disabled={loading} />
-        <Button type="submit" label={isEdit ? "Actualizar" : "Crear"} icon="pi pi-save" loading={loading} />
+
+      {/* Segunda fila: Fechas y horas */}
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          marginBottom: "0.5rem",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label htmlFor="fechaHoraArriboPuerto" style={{ color: "#2c32d3" }}>
+            Arribo Puerto*
+          </label>
+          <Controller
+            name="fechaHoraArriboPuerto"
+            control={control}
+            rules={{ required: "La fecha de arribo es obligatoria" }}
+            render={({ field }) => (
+              <Calendar
+                id="fechaHoraArriboPuerto"
+                {...field}
+                showIcon
+                showTime
+                hourFormat="24"
+                dateFormat="dd/mm/yy"
+                inputStyle={{ fontWeight: "bold", color: "#2c32d3" }}
+                disabled={loading}
+                className={classNames({ "p-invalid": errors.fechaHoraArriboPuerto })}
+              />
+            )}
+          />
+          {errors.fechaHoraArriboPuerto && (
+            <Message severity="error" text={errors.fechaHoraArriboPuerto.message} />
+          )}
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="fechaHoraLlegadaPuerto" style={{ color: "#2c32d3" }}>
+            Llegada Puerto*
+          </label>
+          <Controller
+            name="fechaHoraLlegadaPuerto"
+            control={control}
+            rules={{ required: "La fecha de llegada es obligatoria" }}
+            render={({ field }) => (
+              <Calendar
+                id="fechaHoraLlegadaPuerto"
+                {...field}
+                showIcon
+                showTime
+                hourFormat="24"
+                dateFormat="dd/mm/yy"
+                inputStyle={{ fontWeight: "bold", color: "#2c32d3" }}
+                disabled={loading}
+                className={classNames({ "p-invalid": errors.fechaHoraLlegadaPuerto })}
+              />
+            )}
+          />
+          {errors.fechaHoraLlegadaPuerto && (
+            <Message severity="error" text={errors.fechaHoraLlegadaPuerto.message} />
+          )}
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="fechaHoraInicioDescarga" style={{ color: "#21962e" }}>
+            Inicio Descarga*
+          </label>
+          <Controller
+            name="fechaHoraInicioDescarga"
+            control={control}
+            rules={{ required: "La fecha de inicio es obligatoria" }}
+            render={({ field }) => (
+              <Calendar
+                id="fechaHoraInicioDescarga"
+                {...field}
+                showIcon
+                showTime
+                hourFormat="24"
+                dateFormat="dd/mm/yy"
+                inputStyle={{ fontWeight: "bold", color: "#21962e" }}
+                disabled={loading}
+                className={classNames({ "p-invalid": errors.fechaHoraInicioDescarga })}
+              />
+            )}
+          />
+          {errors.fechaHoraInicioDescarga && (
+            <Message severity="error" text={errors.fechaHoraInicioDescarga.message} />
+          )}
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="fechaHoraFinDescarga" style={{ color: "#21962e" }}>
+            Fin Descarga*
+          </label>
+          <Controller
+            name="fechaHoraFinDescarga"
+            control={control}
+            rules={{ required: "La fecha de fin es obligatoria" }}
+            render={({ field }) => (
+              <Calendar
+                id="fechaHoraFinDescarga"
+                {...field}
+                showIcon
+                showTime
+                hourFormat="24"
+                dateFormat="dd/mm/yy"
+                inputStyle={{ fontWeight: "bold", color: "#21962e" }}
+                disabled={loading}
+                className={classNames({ "p-invalid": errors.fechaHoraFinDescarga })}
+              />
+            )}
+          />
+          {errors.fechaHoraFinDescarga && (
+            <Message severity="error" text={errors.fechaHoraFinDescarga.message} />
+          )}
+        </div>
+      </div>
+
+      {/* Tercera fila: Datos numéricos */}
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          marginBottom: "0.5rem",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label htmlFor="fechaDescarga" style={{ color: "#c61515" }}>
+            Fecha Descarga*
+          </label>
+          <Controller
+            name="fechaDescarga"
+            control={control}
+            rules={{ required: "La fecha de descarga es obligatoria" }}
+            render={({ field }) => (
+              <Calendar
+                id="fechaDescarga"
+                {...field}
+                showIcon
+                dateFormat="dd/mm/yy"
+                inputStyle={{ fontWeight: "bold", color: "#c61515" }}
+                disabled={loading}
+                className={classNames({ "p-invalid": errors.fechaDescarga })}
+              />
+            )}
+          />
+          {errors.fechaDescarga && (
+            <Message severity="error" text={errors.fechaDescarga.message} />
+          )}
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="combustibleAbastecidoGalones">Combustible (Gal)*</label>
+          <Controller
+            name="combustibleAbastecidoGalones"
+            control={control}
+            rules={{ required: "El combustible es obligatorio" }}
+            render={({ field }) => (
+              <InputNumber
+                id="combustibleAbastecidoGalones"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                suffix=" Gal"
+                inputStyle={{ fontWeight: "bold" }}
+                disabled={loading}
+                className={classNames({ "p-invalid": errors.combustibleAbastecidoGalones })}
+              />
+            )}
+          />
+          {errors.combustibleAbastecidoGalones && (
+            <Message severity="error" text={errors.combustibleAbastecidoGalones.message} />
+          )}
+        </div>
+      </div>
+
+      {/* Cuarta fila: Coordenadas GPS */}
+      <div
+        style={{
+          border: "6px solid #1fad2f",
+          backgroundColor: "#edf9f2",
+          padding: "0.5rem",
+          borderRadius: "8px",
+          marginBottom: "0.5rem",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <Button
+            type="button"
+            onClick={handleCapturarGPS}
+            disabled={loading}
+            label="Capturar GPS"
+            icon="pi pi-map-marker"
+            className="p-button-success"
+            raised
+            severity="success"
+            size="large"
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "5px",
+              fontWeight: "bold",
+            }}
+          >
+            Latitud
+          </label>
+          <input {...coordenadasConfig.inputLatitud} />
+          <small style={{ color: "#666" }}>
+            Formato decimal (+ Norte, - Sur)
+          </small>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "5px",
+              fontWeight: "bold",
+            }}
+          >
+            Longitud
+          </label>
+          <input {...coordenadasConfig.inputLongitud} />
+          <small style={{ color: "#666" }}>
+            Formato decimal (+ Este, - Oeste)
+          </small>
+        </div>
+        <div style={{ flex: 1 }}>
+          {/* Conversión a formato DMS para referencia */}
+          {(latitud !== 0 || longitud !== 0) && coordenadasConfig.formatoDMS && (
+            <div
+              style={{
+                marginTop: "15px",
+                padding: "10px",
+                backgroundColor: "#f3fce8",
+                borderRadius: "4px",
+              }}
+            >
+              <strong>📐 Formato DMS (Marítimo):</strong>
+              <div style={{ marginTop: "5px", fontSize: "14px" }}>
+                <div>
+                  <strong>Lat:</strong> {coordenadasConfig.formatoDMS.latitudDMS}
+                </div>
+                <div>
+                  <strong>Lon:</strong> {coordenadasConfig.formatoDMS.longitudDMS}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quinta fila: Especie */}
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          marginBottom: "0.5rem",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label htmlFor="especieId">Especie*</label>
+          <Controller
+            name="especieId"
+            control={control}
+            rules={{ required: "La especie es obligatoria" }}
+            render={({ field }) => (
+              <Dropdown
+                id="especieId"
+                {...field}
+                value={field.value}
+                options={especies}
+                optionLabel="label"
+                optionValue="value"
+                style={{ fontWeight: "bold" }}
+                placeholder="Seleccione especie"
+                disabled={loading}
+                className={classNames({ "p-invalid": errors.especieId })}
+              />
+            )}
+          />
+          {errors.especieId && (
+            <Message severity="error" text={errors.especieId.message} />
+          )}
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="toneladas">Toneladas*</label>
+          <Controller
+            name="toneladas"
+            control={control}
+            rules={{ required: "Las toneladas son obligatorias" }}
+            render={({ field }) => (
+              <InputNumber
+                id="toneladas"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                suffix=" Ton"
+                inputStyle={{ fontWeight: "bold" }}
+                disabled={loading}
+                className={classNames({ "p-invalid": errors.toneladas })}
+              />
+            )}
+          />
+          {errors.toneladas && (
+            <Message severity="error" text={errors.toneladas.message} />
+          )}
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="porcentajeJuveniles">Porcentaje Juveniles*</label>
+          <Controller
+            name="porcentajeJuveniles"
+            control={control}
+            rules={{ required: "El porcentaje de juveniles es obligatorio" }}
+            render={({ field }) => (
+              <InputNumber
+                id="porcentajeJuveniles"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                suffix=" %"
+                inputStyle={{ fontWeight: "bold" }}
+                disabled={loading}
+                className={classNames({ "p-invalid": errors.porcentajeJuveniles })}
+              />
+            )}
+          />
+          {errors.porcentajeJuveniles && (
+            <Message severity="error" text={errors.porcentajeJuveniles.message} />
+          )}
+        </div>
+      </div>
+
+      {/* Sexta fila: Observaciones */}
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          marginBottom: "0.5rem",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label htmlFor="observaciones">Observaciones</label>
+          <Controller
+            name="observaciones"
+            control={control}
+            render={({ field }) => (
+              <InputTextarea
+                id="observaciones"
+                {...field}
+                rows={2}
+                placeholder="Observaciones adicionales"
+                style={{
+                  fontWeight: "bold",
+                  color: "red",
+                  fontStyle: "italic",
+                  textTransform: "uppercase",
+                }}
+                disabled={loading}
+              />
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Botones de acción */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: 8,
+          marginTop: 18,
+        }}
+      >
+        <Button
+          type="button"
+          label="Cancelar"
+          icon="pi pi-times"
+          className="p-button-warning"
+          onClick={onCancelar}
+          disabled={loading}
+          severity="warning"
+          raised
+          size="small"
+        />
+        <Button
+          type="submit"
+          label={detalle?.id ? "Actualizar" : "Guardar"}
+          icon="pi pi-check"
+          loading={loading}
+          className="p-button-success"
+          severity="success"
+          raised
+          size="small"
+        />
       </div>
     </form>
   );

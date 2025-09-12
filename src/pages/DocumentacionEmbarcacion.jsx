@@ -24,6 +24,7 @@ import { getDocumentosPesca } from "../api/documentoPesca";
 import { getActivos } from "../api/activo";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
+import { recalcularDocEmbarcacionVencidos } from "../utils/documentacionEmbarcacionUtils";
 
 /**
  * Página de gestión de documentación de embarcaciones.
@@ -142,7 +143,7 @@ export default function DocumentacionEmbarcacion() {
       <div>
         <strong>{documento.nombre}</strong>
         {documento.obligatorio && (
-          <Tag severity="danger" value="OBLIGATORIO" className="ml-2" />
+          <Tag severity="warning" value="OBLIGATORIO" className="ml-2" />
         )}
       </div>
     ) : (
@@ -150,25 +151,49 @@ export default function DocumentacionEmbarcacion() {
     );
   };
 
-  const fechaTemplate = (rowData, field) => {
-    return rowData[field]
-      ? new Date(rowData[field]).toLocaleDateString("es-PE")
-      : "-";
+  const fechaEmisionBodyTemplate = (rowData) => {
+    if (!rowData.fechaEmision) return "";
+    const fecha = new Date(rowData.fechaEmision);
+    const fechaFormateada = fecha.toLocaleDateString("es-PE");
+    const horaFormateada = fecha.toLocaleTimeString("es-PE", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return `${fechaFormateada} ${horaFormateada}`;
   };
 
-  const observacionesTemplate = (rowData) => {
-    return rowData.observaciones ? (
-      <div
-        style={{
-          maxWidth: "200px",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        {rowData.observaciones}
-      </div>
-    ) : (
-      <Tag severity="secondary" value="Sin observaciones" />
+  const fechaVencimientoBodyTemplate = (rowData) => {
+    if (!rowData.fechaVencimiento) return "";
+    const fecha = new Date(rowData.fechaVencimiento);
+    const fechaFormateada = fecha.toLocaleDateString("es-PE");
+    const horaFormateada = fecha.toLocaleTimeString("es-PE", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return `${fechaFormateada} ${horaFormateada}`;
+  };
+
+  const fechaUpdateBodyTemplate = (rowData) => {
+    if (!rowData.updatedAt) return "";
+    const fecha = new Date(rowData.updatedAt);
+    const fechaFormateada = fecha.toLocaleDateString("es-PE");
+    const horaFormateada = fecha.toLocaleTimeString("es-PE", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return `${fechaFormateada} ${horaFormateada}`;
+  };
+
+  const docVencidoTemplate = (rowData) => {
+    const esVencido = rowData.docVencido;
+
+    return (
+      <Tag
+        severity={esVencido ? "danger" : "success"}
+        value={esVencido ? "VENCIDO" : "VIGENTE"}
+        icon={esVencido ? "pi pi-times" : "pi pi-check"}
+        style={{ fontWeight: "bold" }}
+      />
     );
   };
 
@@ -285,18 +310,24 @@ export default function DocumentacionEmbarcacion() {
       const payload = {
         embarcacionId: Number(data.embarcacionId),
         documentoPescaId: Number(data.documentoPescaId),
+        numeroDocumento: data.numeroDocumento || null,
+        fechaEmision: data.fechaEmision || null,
+        fechaVencimiento: data.fechaVencimiento || null,
+        urlDocPdf: data.urlDocPdf || null,
+        docVencido: data.docVencido || false,
         observaciones: data.observaciones || null,
       };
 
+
       if (isEdit && selected) {
-        await actualizarDocumentacionEmbarcacion(selected.id, payload);
+        const resultado = await actualizarDocumentacionEmbarcacion(selected.id, payload);
         toast?.show({
           severity: "success",
           summary: "Documentación actualizada",
           detail: "La documentación fue actualizada correctamente.",
         });
       } else {
-        await crearDocumentacionEmbarcacion(payload);
+        const resultado = await crearDocumentacionEmbarcacion(payload);
         toast?.show({
           severity: "success",
           summary: "Documentación creada",
@@ -308,6 +339,7 @@ export default function DocumentacionEmbarcacion() {
       setIsEdit(false);
       cargarDocumentaciones();
     } catch (err) {
+      console.error("[DocumentacionEmbarcacion] Error completo:", err);
       if (err?.response?.data) {
         console.error(
           "[DocumentacionEmbarcacion] Respuesta de error backend:",
@@ -328,6 +360,28 @@ export default function DocumentacionEmbarcacion() {
     setFiltroEmbarcacion(null);
     setFiltroDocumentoPesca(null);
     setGlobalFilter("");
+  };
+
+  const recalcularEstados = async () => {
+    setLoading(true);
+    try {
+      await recalcularDocEmbarcacionVencidos();
+      toast?.show({
+        severity: "success",
+        summary: "Estados recalculados",
+        detail: "Los estados de vencimiento fueron recalculados correctamente.",
+      });
+      await cargarDocumentaciones();
+    } catch (err) {
+      console.error("[DocumentacionEmbarcacion] Error al recalcular estados:", err);
+      toast?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo recalcular los estados de vencimiento.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Conversión profesional de campos para edición
@@ -409,6 +463,8 @@ export default function DocumentacionEmbarcacion() {
         selectionMode="single"
         selection={selected}
         onSelectionChange={(e) => setSelected(e.value)}
+        sortField="id"
+        sortOrder={-1}
         header={
           <div
             style={{
@@ -421,7 +477,7 @@ export default function DocumentacionEmbarcacion() {
             }}
           >
             <div style={{ flex: 2 }}>
-              <h2>Gestión de Documentación de Embarcaciones</h2>
+              <h2>Documentación Embarcaciones</h2>
             </div>
             <div style={{ flex: 1 }}>
               <Button
@@ -431,7 +487,6 @@ export default function DocumentacionEmbarcacion() {
                 size="small"
                 raised
                 tooltip="Nueva Documentación"
-                outlined
                 onClick={onNew}
               />
             </div>
@@ -475,6 +530,17 @@ export default function DocumentacionEmbarcacion() {
                 onClick={limpiarFiltros}
               />
             </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Recalculo Estados"
+                icon="pi pi-refresh"
+                className="p-button-info"
+                size="small"
+                raised
+                tooltip="Recalcular Estados de Vencimiento"
+                onClick={recalcularEstados}
+              />
+            </div>
           </div>
         }
         onRowClick={(e) => onEdit(e.data)}
@@ -507,14 +573,29 @@ export default function DocumentacionEmbarcacion() {
           style={{ minWidth: "200px" }}
         />
         <Column
-          header="Observaciones"
-          body={observacionesTemplate}
-          style={{ minWidth: "200px" }}
+          field="fechaEmision"
+          header="Fecha Emisión"
+          sortable
+          body={fechaEmisionBodyTemplate}
+        />
+        <Column
+          field="fechaVencimiento"
+          header="Fecha Vencimiento"
+          body={fechaVencimientoBodyTemplate}
+          sortable
+          style={{ width: 120 }}
+        />
+        <Column
+          header="Estado"
+          body={docVencidoTemplate}
+          sortable
+          field="docVencido"
+          style={{ minWidth: "120px", textAlign: "center" }}
         />
         <Column
           field="updatedAt"
           header="Actualizado"
-          body={(rowData) => fechaTemplate(rowData, "updatedAt")}
+          body={fechaUpdateBodyTemplate}
           sortable
           style={{ width: 120 }}
         />
@@ -528,7 +609,7 @@ export default function DocumentacionEmbarcacion() {
       <Dialog
         header={isEdit ? "Editar Documentación" : "Nueva Documentación"}
         visible={showForm}
-        style={{ width: "50vw", minWidth: 400 }}
+        style={{ width: "1300px" }}
         modal
         className="p-fluid"
         onHide={onCancel}

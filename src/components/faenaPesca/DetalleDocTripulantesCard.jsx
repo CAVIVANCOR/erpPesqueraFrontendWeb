@@ -21,6 +21,7 @@ import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { SelectButton } from "primereact/selectbutton";
 import { getResponsiveFontSize } from "../../utils/utils";
+import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
 import DetalleDocTripulantesForm from "../detalleDocTripulantes/DetalleDocTripulantesForm";
 import {
   getDetallesDocTripulantes,
@@ -51,18 +52,30 @@ const DetalleDocTripulantesCard = ({
   const [filtroEstado, setFiltroEstado] = useState(null);
   const [filtroTripulante, setFiltroTripulante] = useState(null);
   const [filtroDocumento, setFiltroDocumento] = useState(null);
+  const [filtroVencidos, setFiltroVencidos] = useState(null);
+
+  // Estados para controlar el ordenamiento
+  const [sortField, setSortField] = useState("id");
+  const [sortOrder, setSortOrder] = useState(-1);
 
   // Estados para opciones de filtros dinámicos
   const [opcionesTripulante, setOpcionesTripulante] = useState([]);
   const [opcionesDocumento, setOpcionesDocumento] = useState([]);
 
   // Estados para props normalizadas
-  const [tripulantes, setTripulantes] = useState(null);
+  const [tripulantesNormalizados, setTripulantesNormalizados] = useState([]);
+  const [documentosNormalizados, setDocumentosNormalizados] = useState([]);
 
   // Opciones fijas para el SelectButton de estado
   const opcionesEstado = [
     { label: "PENDIENTE", value: false },
     { label: "VERIFICADO", value: true },
+  ];
+
+  // Opciones para filtro de vencidos
+  const opcionesVencidos = [
+    { label: "VENCIDOS", value: true },
+    { label: "VIGENTES", value: false },
   ];
 
   useEffect(() => {
@@ -75,6 +88,26 @@ const DetalleDocTripulantesCard = ({
   useEffect(() => {
     actualizarOpcionesFiltros();
   }, [docTripulantes, personal, documentosPesca]);
+
+  useEffect(() => {
+    // Normalizar personal para el formulario
+    const tripulantesFormateados = personal.map((p) => ({
+      label: `${p.nombres} ${p.apellidos}`,
+      value: Number(p.id),
+      ...p,
+    }));
+    setTripulantesNormalizados(tripulantesFormateados);
+
+    // Normalizar documentos para el formulario
+    const documentosFormateados = documentosPesca
+      .filter((d) => d.paraTripulantes === true)
+      .map((d) => ({
+        label: d.nombre || d.descripcion,
+        value: Number(d.id),
+        ...d,
+      }));
+    setDocumentosNormalizados(documentosFormateados);
+  }, [personal, documentosPesca]);
 
   const actualizarOpcionesFiltros = () => {
     if (!docTripulantes.length) return;
@@ -151,9 +184,55 @@ const DetalleDocTripulantesCard = ({
     setEditingDocTripulante(null);
   };
 
+  const verificarDocumento = async (rowData) => {
+    try {
+      setLoadingData(true);
+      const nuevoEstado = !rowData.verificado;
+
+      await actualizarDetalleDocTripulantes(rowData.id, {
+        ...rowData,
+        verificado: nuevoEstado,
+      });
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: `Documento ${
+          nuevoEstado ? "verificado" : "marcado como pendiente"
+        } correctamente`,
+        life: 3000,
+      });
+
+      cargarDocTripulantes();
+      if (onDocTripulantesChange) {
+        onDocTripulantesChange();
+      }
+    } catch (error) {
+      console.error("Error al verificar documento:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo actualizar el estado del documento",
+        life: 3000,
+      });
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
   const saveDocTripulante = async (docTripulanteData) => {
     try {
       setLoadingData(true);
+
+      // Calcular docVencido basado en fechaVencimiento
+      const fechaActual = new Date();
+      const fechaVencimiento = docTripulanteData.fechaVencimiento
+        ? new Date(docTripulanteData.fechaVencimiento)
+        : null;
+
+      // Si fechaVencimiento es null, se considera vencido (true)
+      // Si fechaVencimiento < fechaActual, se considera vencido (true)
+      const docVencido = !fechaVencimiento || fechaVencimiento < fechaActual;
 
       const dataToSend = {
         ...docTripulanteData,
@@ -164,6 +243,7 @@ const DetalleDocTripulantesCard = ({
         documentoId: docTripulanteData.documentoId
           ? Number(docTripulanteData.documentoId)
           : null,
+        docVencido: docVencido,
       };
 
       if (editingDocTripulante) {
@@ -223,8 +303,26 @@ const DetalleDocTripulantesCard = ({
       filtroDocumento === null ||
       Number(doc.documentoId) === Number(filtroDocumento);
 
+    // Filtro por vencidos - evaluar fechaVencimiento vs fecha actual
+    let cumpleFiltroVencidos = true;
+    if (filtroVencidos !== null) {
+      const fechaActual = new Date();
+      const fechaVencimiento = doc.fechaVencimiento
+        ? new Date(doc.fechaVencimiento)
+        : null;
+
+      // Si fechaVencimiento es null, se considera vencido (true)
+      // Si fechaVencimiento < fechaActual, se considera vencido (true)
+      const estaVencido = !fechaVencimiento || fechaVencimiento < fechaActual;
+
+      cumpleFiltroVencidos = estaVencido === filtroVencidos;
+    }
+
     return (
-      cumpleFiltroEstado && cumpleFiltroTripulante && cumpleFiltroDocumento
+      cumpleFiltroEstado &&
+      cumpleFiltroTripulante &&
+      cumpleFiltroDocumento &&
+      cumpleFiltroVencidos
     );
   });
 
@@ -232,7 +330,37 @@ const DetalleDocTripulantesCard = ({
     setFiltroEstado(null);
     setFiltroTripulante(null);
     setFiltroDocumento(null);
+    setFiltroVencidos(null);
     setGlobalFilter("");
+  };
+
+  // Funciones para el filtro toggle de Estado
+  const handleToggleEstado = () => {
+    if (filtroEstado === null) {
+      setFiltroEstado(false); // Mostrar solo pendientes
+    } else if (filtroEstado === false) {
+      setFiltroEstado(true); // Mostrar solo verificados
+    } else {
+      setFiltroEstado(null); // Mostrar todos
+    }
+  };
+
+  const getEstadoButtonLabel = () => {
+    if (filtroEstado === null) return "TODOS";
+    if (filtroEstado === false) return "PENDIENTES";
+    return "VERIFICADOS";
+  };
+
+  const getEstadoButtonClass = () => {
+    if (filtroEstado === null) return "p-button-outlined";
+    if (filtroEstado === false) return "p-button-warning";
+    return "p-button-success";
+  };
+
+  const getEstadoButtonIcon = () => {
+    if (filtroEstado === null) return "pi pi-filter";
+    if (filtroEstado === false) return "pi pi-clock";
+    return "pi pi-check-circle";
   };
 
   const header = (
@@ -255,31 +383,6 @@ const DetalleDocTripulantesCard = ({
             placeholder="Buscar documentos..."
           />
         </div>
-        <div style={{ flex: 1 }}>
-          <label
-            className="block text-900 font-medium mb-1"
-            style={{ fontSize: "0.875rem" }}
-          >
-            Filtrar por Estado
-          </label>
-          <SelectButton
-            value={filtroEstado}
-            onChange={(e) => setFiltroEstado(e.value)}
-            options={opcionesEstado}
-            allowEmpty={true}
-            className="w-full"
-            style={{ fontSize: "0.875rem" }}
-          />
-        </div>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "end",
-          gap: 8,
-          marginTop: "0.5rem",
-        }}
-      >
         <div style={{ flex: 1 }}>
           <label
             className="block text-900 font-medium mb-1"
@@ -313,6 +416,73 @@ const DetalleDocTripulantesCard = ({
             showClear
             filter
             className="w-full"
+            style={{ fontSize: "0.875rem" }}
+          />
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "end",
+          gap: 8,
+          marginTop: "0.5rem",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label
+            className="block text-900 font-medium mb-1"
+            style={{ fontSize: "0.875rem" }}
+          >
+            Filtrar por Estado
+          </label>
+          <Button
+            type="button"
+            label={getEstadoButtonLabel()}
+            icon={getEstadoButtonIcon()}
+            className={`w-full ${getEstadoButtonClass()}`}
+            onClick={handleToggleEstado}
+            style={{ fontSize: "0.875rem" }}
+          />
+        </div>
+
+        <div style={{ flex: 1 }}>
+          <label
+            className="block text-900 font-medium mb-1"
+            style={{ fontSize: "0.875rem" }}
+          >
+            Filtrar por Vencimiento
+          </label>
+          <Button
+            label={
+              filtroVencidos === null
+                ? "Todos"
+                : filtroVencidos === true
+                ? "VENCIDOS"
+                : "VIGENTES"
+            }
+            icon={
+              filtroVencidos === null
+                ? "pi pi-filter"
+                : filtroVencidos === true
+                ? "pi pi-times-circle"
+                : "pi pi-check-circle"
+            }
+            className={`w-full ${
+              filtroVencidos === true
+                ? "p-button-danger"
+                : filtroVencidos === false
+                ? "p-button-success"
+                : "p-button-outlined"
+            }`}
+            onClick={() => {
+              if (filtroVencidos === null) {
+                setFiltroVencidos(true); // Primero mostrar vencidos
+              } else if (filtroVencidos === true) {
+                setFiltroVencidos(false); // Luego mostrar vigentes
+              } else {
+                setFiltroVencidos(null); // Finalmente mostrar todos
+              }
+            }}
             style={{ fontSize: "0.875rem" }}
           />
         </div>
@@ -357,7 +527,15 @@ const DetalleDocTripulantesCard = ({
         size="small"
         stripedRows
         showGridlines
-        style={{ fontSize: getResponsiveFontSize() }}
+        style={{ fontSize: getResponsiveFontSize(), cursor: "pointer" }}
+        sortField={sortField}
+        sortOrder={sortOrder}
+        onSort={(e) => {
+          setSortField(e.sortField);
+          setSortOrder(e.sortOrder);
+        }}
+        onRowClick={(e) => editDocTripulante(e.data)}
+        rowHover
       >
         <Column field="id" header="ID" sortable style={{ minWidth: "80px" }} />
         <Column
@@ -404,25 +582,56 @@ const DetalleDocTripulantesCard = ({
         />
         <Column
           field="fechaEmision"
-          header="F. Emisión"
-          body={(rowData) =>
-            rowData.fechaEmision
-              ? new Date(rowData.fechaEmision).toLocaleDateString("es-ES")
-              : "-"
-          }
+          header="Emisión"
+          body={(rowData) => {
+            return rowData.fechaEmision
+              ? new Date(rowData.fechaEmision).toLocaleDateString("es-PE")
+              : "-";
+          }}
           sortable
           style={{ minWidth: "100px" }}
         />
         <Column
           field="fechaVencimiento"
-          header="F. Vencimiento"
-          body={(rowData) =>
-            rowData.fechaVencimiento
-              ? new Date(rowData.fechaVencimiento).toLocaleDateString("es-ES")
-              : "-"
-          }
+          header="Vencimiento"
+          body={(rowData) => {
+            const fechaActual = new Date();
+            const fechaVencimiento = rowData.fechaVencimiento
+              ? new Date(rowData.fechaVencimiento)
+              : null;
+
+            // Si fechaVencimiento es null, se considera vencido (true)
+            // Si fechaVencimiento < fechaActual, se considera vencido (true)
+            const estaVencido =
+              !fechaVencimiento || fechaVencimiento < fechaActual;
+
+            const fechaTexto = rowData.fechaVencimiento
+              ? new Date(rowData.fechaVencimiento).toLocaleDateString("es-PE")
+              : "-";
+
+            return (
+              <div>
+                <div
+                  style={{
+                    fontSize: getResponsiveFontSize(),
+                    marginBottom: "4px",
+                  }}
+                >
+                  {fechaTexto}
+                </div>
+                <Tag
+                  value={estaVencido ? "VENCIDO" : "VIGENTE"}
+                  severity={estaVencido ? "danger" : "success"}
+                  style={{
+                    fontSize: getResponsiveFontSize(),
+                    fontWeight: "bold",
+                  }}
+                />
+              </div>
+            );
+          }}
           sortable
-          style={{ minWidth: "100px" }}
+          style={{ minWidth: "120px" }}
         />
         <Column
           field="verificado"
@@ -444,22 +653,51 @@ const DetalleDocTripulantesCard = ({
           body={(rowData) => (
             <div className="flex gap-2">
               <Button
-                icon="pi pi-pencil"
-                className="p-button-rounded p-button-success p-button-sm"
+                icon="pi pi-file-pdf"
+                className="p-button-rounded p-button-text"
+                disabled={!rowData.urlDocTripulantePdf}
+                onClick={() =>
+                  abrirPdfEnNuevaPestana(
+                    rowData.urlDocTripulantePdf,
+                    toast,
+                    "No hay PDF disponible"
+                  )
+                }
+                tooltip={
+                  rowData.urlDocTripulantePdf
+                    ? "Ver PDF del documento"
+                    : "No hay PDF disponible"
+                }
+                tooltipOptions={{ position: "top" }}
+              />
+              <Button
+                icon="pi pi-file-edit"
+                className="p-button-rounded p-button-outlined p-button-sm"
                 onClick={() => editDocTripulante(rowData)}
                 tooltip="Editar"
+                tooltipOptions={{ position: "top" }}
+              />
+              <Button
+                icon={rowData.verificado ? "pi pi-times" : "pi pi-check"}
+                className={`p-button-rounded ${
+                  rowData.verificado ? "p-button-warning" : "p-button-success"
+                }`}
+                onClick={() => verificarDocumento(rowData)}
+                tooltip={
+                  rowData.verificado ? "Marcar como pendiente" : "Verificar"
+                }
                 tooltipOptions={{ position: "top" }}
               />
             </div>
           )}
           header="Acciones"
-          style={{ minWidth: "100px" }}
+          style={{ minWidth: "150px" }}
         />
       </DataTable>
 
       <Dialog
         visible={docTripulanteDialog}
-        style={{ width: "800px" }}
+        style={{ width: "1300px" }}
         header={
           editingDocTripulante
             ? "Editar Documento de Tripulante"
@@ -472,16 +710,17 @@ const DetalleDocTripulantesCard = ({
       >
         {docTripulanteDialog && (
           <DetalleDocTripulantesForm
-            isEdit={!!editingDocTripulante}
-            defaultValues={
-              editingDocTripulante || { faenaPescaId: Number(faenaPescaId) }
-            }
-            tripulantes={tripulantes}
-            documentos={documentosPesca}
-            onSubmit={saveDocTripulante}
-            onCancel={hideDialog}
-            loading={loadingData}
-            toast={toast}
+            detalle={editingDocTripulante}
+            tripulantes={tripulantesNormalizados}
+            documentos={documentosNormalizados}
+            onGuardadoExitoso={() => {
+              hideDialog();
+              cargarDocTripulantes();
+              if (onDocTripulantesChange) {
+                onDocTripulantesChange();
+              }
+            }}
+            onCancelar={hideDialog}
           />
         )}
       </Dialog>

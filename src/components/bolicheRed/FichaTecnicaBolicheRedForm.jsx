@@ -19,6 +19,7 @@ import { classNames } from "primereact/utils";
 import { Controller } from "react-hook-form";
 import PDFViewer from "./PDFViewer";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { abrirPdfEnNuevaPestana, descargarPdf } from "../../utils/pdfUtils";
 
 /**
  * Componente FichaTecnicaBolicheRedForm
@@ -206,71 +207,7 @@ export default function FichaTecnicaBolicheRedForm({
                 icon="pi pi-external-link"
                 className="p-button-outlined p-button-sm"
                 style={{ minWidth: "80px" }}
-                onClick={async () => {
-                  try {
-                    // Construir URL completa usando la misma lógica que DocumentosAdjuntosCard.jsx
-                    let urlCompleta;
-                    if (
-                      urlBolicheRedPdf.startsWith("/uploads/fichas-tecnicas-boliches/")
-                    ) {
-                      const rutaArchivo = urlBolicheRedPdf.replace(
-                        "/uploads/fichas-tecnicas-boliches/",
-                        ""
-                      );
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }/ficha-tecnica-boliches/archivo/${rutaArchivo}`;
-                    } else if (urlBolicheRedPdf.startsWith("/api/")) {
-                      const rutaSinApi = urlBolicheRedPdf.substring(4);
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }${rutaSinApi}`;
-                    } else if (urlBolicheRedPdf.startsWith("/")) {
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }${urlBolicheRedPdf}`;
-                    } else {
-                      urlCompleta = urlBolicheRedPdf;
-                    }
-
-                    const token = useAuthStore.getState().token;
-                    const response = await fetch(urlCompleta, {
-                      headers: {
-                        Authorization: `Bearer ${token}`,
-                      },
-                    });
-
-                    if (response.ok) {
-                      const blob = await response.blob();
-                      const blobUrl = window.URL.createObjectURL(blob);
-                      const newWindow = window.open(blobUrl, "_blank");
-                      setTimeout(() => {
-                        window.URL.revokeObjectURL(blobUrl);
-                      }, 10000);
-
-                      if (!newWindow) {
-                        toastPDF.current?.show({
-                          severity: "warn",
-                          summary: "Aviso",
-                          detail:
-                            "El navegador bloqueó la ventana emergente. Por favor, permita ventanas emergentes para este sitio.",
-                        });
-                      }
-                    } else {
-                      toastPDF.current?.show({
-                        severity: "error",
-                        summary: "Error",
-                        detail: `No se pudo abrir el documento (${response.status})`,
-                      });
-                    }
-                  } catch (error) {
-                    toastPDF.current?.show({
-                      severity: "error",
-                      summary: "Error",
-                      detail: `Error al abrir el documento: ${error.message}`,
-                    });
-                  }
-                }}
+                onClick={() => abrirPdfEnNuevaPestana(urlBolicheRedPdf)}
                 tooltip="Abrir ficha técnica en nueva pestaña"
                 tooltipOptions={{ position: "top" }}
               />
@@ -282,67 +219,7 @@ export default function FichaTecnicaBolicheRedForm({
                 icon="pi pi-download"
                 className="p-button-outlined p-button-sm"
                 style={{ minWidth: "80px" }}
-                onClick={async () => {
-                  try {
-                    // Construir URL completa usando la misma lógica
-                    let urlCompleta;
-                    if (
-                      urlBolicheRedPdf.startsWith("/uploads/fichas-tecnicas-boliches/")
-                    ) {
-                      const rutaArchivo = urlBolicheRedPdf.replace(
-                        "/uploads/fichas-tecnicas-boliches/",
-                        ""
-                      );
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }/ficha-tecnica-boliches/archivo/${rutaArchivo}`;
-                    } else if (urlBolicheRedPdf.startsWith("/api/")) {
-                      const rutaSinApi = urlBolicheRedPdf.substring(4);
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }${rutaSinApi}`;
-                    } else if (urlBolicheRedPdf.startsWith("/")) {
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }${urlBolicheRedPdf}`;
-                    } else {
-                      urlCompleta = urlBolicheRedPdf;
-                    }
-
-                    const token = useAuthStore.getState().token;
-                    const response = await fetch(urlCompleta, {
-                      headers: {
-                        Authorization: `Bearer ${token}`,
-                      },
-                    });
-
-                    if (response.ok) {
-                      const blob = await response.blob();
-                      const url = window.URL.createObjectURL(blob);
-                      const link = document.createElement("a");
-                      link.href = url;
-                      link.download = `ficha-tecnica-boliche-red-${
-                        defaultValues.id || "sin-id"
-                      }.pdf`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      window.URL.revokeObjectURL(url);
-                    } else {
-                      toastPDF.current?.show({
-                        severity: "error",
-                        summary: "Error",
-                        detail: "No se pudo descargar la ficha técnica",
-                      });
-                    }
-                  } catch (error) {
-                    toastPDF.current?.show({
-                      severity: "error",
-                      summary: "Error",
-                      detail: `Error al descargar la ficha técnica: ${error.message}`,
-                    });
-                  }
-                }}
+                onClick={() => descargarPdf(urlBolicheRedPdf, defaultValues.id)}
                 tooltip="Descargar ficha técnica PDF"
                 tooltipOptions={{ position: "top" }}
               />

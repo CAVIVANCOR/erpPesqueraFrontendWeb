@@ -28,16 +28,6 @@ export default function ConfirmacionAccionPreviaPDFCard({
   // useEffect para actualizar verificación automáticamente cuando se carga PDF
   useEffect(() => {
     const actualizarVerificacion = async () => {
-      console.log('🔍 [DEBUG] Verificando condiciones para actualización automática:', {
-        urlConfirmaAccionPdf: urlConfirmaAccionPdf,
-        detAccionesPreviasFaenaId: detAccionesPreviasFaenaId,
-        verificado: verificado,
-        loading: loading,
-        urlValida: urlConfirmaAccionPdf && urlConfirmaAccionPdf.trim() !== "",
-        tieneId: !!detAccionesPreviasFaenaId,
-        noVerificado: !verificado,
-        noCargando: !loading
-      });
 
       // Solo actualizar si:
       // 1. Hay una URL de PDF válida
@@ -51,20 +41,10 @@ export default function ConfirmacionAccionPreviaPDFCard({
         !verificado && 
         !loading
       ) {
-        console.log('✅ [DEBUG] Todas las condiciones cumplidas, procediendo a actualizar verificación...');
         
         try {
           const ahora = new Date();
-          
-          console.log('🚀 [DEBUG] Llamando a API actualizarDetAccionesPreviasFaena con:', {
-            id: detAccionesPreviasFaenaId,
-            datos: {
-              fechaVerificacion: ahora,
-              verificado: true,
-              urlConfirmaAccionPdf: urlConfirmaAccionPdf
-            }
-          });
-          
+        
           // Actualizar en la base de datos
           const resultado = await actualizarDetAccionesPreviasFaena(detAccionesPreviasFaenaId, {
             fechaVerificacion: ahora,
@@ -72,13 +52,11 @@ export default function ConfirmacionAccionPreviaPDFCard({
             urlConfirmaAccionPdf: urlConfirmaAccionPdf // Asegurar que la URL se mantiene
           });
 
-          console.log('✅ [DEBUG] Respuesta de API:', resultado);
 
           // Actualizar los valores del formulario
           setValue("fechaVerificacion", ahora);
           setValue("verificado", true);
 
-          console.log('✅ [DEBUG] Valores del formulario actualizados');
 
           // Mostrar mensaje de éxito
           toast?.show({
@@ -98,7 +76,7 @@ export default function ConfirmacionAccionPreviaPDFCard({
           });
         }
       } else {
-        console.log('❌ [DEBUG] Condiciones no cumplidas, no se actualiza verificación');
+        console.error('❌ [DEBUG] Condiciones no cumplidas, no se actualiza verificación');
       }
     };
 

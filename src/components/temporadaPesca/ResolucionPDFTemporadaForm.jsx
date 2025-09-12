@@ -19,6 +19,7 @@ import { classNames } from "primereact/utils";
 import { Controller } from "react-hook-form";
 import PDFViewerTemporada from "./PDFViewerTemporada";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { abrirPdfEnNuevaPestana, descargarPdf } from "../../utils/pdfUtils";
 
 /**
  * Componente ResolucionPDFTemporadaForm
@@ -180,6 +181,7 @@ export default function ResolucionPDFTemporadaForm({
                 </small>
               )}
             </div>
+            {/* Botones de acción para el PDF */}
             <div style={{ flex: 1 }}>
               <Button
                 type="button"
@@ -187,71 +189,14 @@ export default function ResolucionPDFTemporadaForm({
                 icon="pi pi-external-link"
                 className="p-button-outlined p-button-sm"
                 style={{ minWidth: "80px" }}
-                onClick={async () => {
-                  try {
-                    let urlCompleta;
-                    if (
-                      urlResolucionPdf.startsWith("/uploads/resoluciones-temporada/")
-                    ) {
-                      const rutaArchivo = urlResolucionPdf.replace(
-                        "/uploads/resoluciones-temporada/",
-                        ""
-                      );
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }/temporada-pesca-resolucion/archivo/${rutaArchivo}`;
-                    } else if (urlResolucionPdf.startsWith("/api/")) {
-                      const rutaSinApi = urlResolucionPdf.substring(4);
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }${rutaSinApi}`;
-                    } else if (urlResolucionPdf.startsWith("/")) {
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }${urlResolucionPdf}`;
-                    } else {
-                      urlCompleta = urlResolucionPdf;
-                    }
-
-                    const token = useAuthStore.getState().token;
-                    const response = await fetch(urlCompleta, {
-                      headers: {
-                        Authorization: `Bearer ${token}`,
-                      },
-                    });
-
-                    if (response.ok) {
-                      const blob = await response.blob();
-                      const blobUrl = window.URL.createObjectURL(blob);
-                      const newWindow = window.open(blobUrl, "_blank");
-                      setTimeout(() => {
-                        window.URL.revokeObjectURL(blobUrl);
-                      }, 10000);
-
-                      if (!newWindow) {
-                        toastPDF.current?.show({
-                          severity: "warn",
-                          summary: "Aviso",
-                          detail:
-                            "El navegador bloqueó la ventana emergente. Por favor, permita ventanas emergentes para este sitio.",
-                        });
-                      }
-                    } else {
-                      toastPDF.current?.show({
-                        severity: "error",
-                        summary: "Error",
-                        detail: `No se pudo abrir el documento (${response.status})`,
-                      });
-                    }
-                  } catch (error) {
-                    toastPDF.current?.show({
-                      severity: "error",
-                      summary: "Error",
-                      detail: `Error al abrir el documento: ${error.message}`,
-                    });
-                  }
-                }}
-                tooltip="Abrir resolución en nueva pestaña"
+                onClick={() =>
+                  abrirPdfEnNuevaPestana(
+                    urlResolucionPdf,
+                    toastPDF,
+                    "No hay resolución PDF disponible"
+                  )
+                }
+                tooltip="Abrir PDF en nueva pestaña"
                 tooltipOptions={{ position: "top" }}
               />
             </div>
@@ -262,67 +207,15 @@ export default function ResolucionPDFTemporadaForm({
                 icon="pi pi-download"
                 className="p-button-outlined p-button-sm"
                 style={{ minWidth: "80px" }}
-                onClick={async () => {
-                  try {
-                    let urlCompleta;
-                    if (
-                      urlResolucionPdf.startsWith("/uploads/resoluciones-temporada/")
-                    ) {
-                      const rutaArchivo = urlResolucionPdf.replace(
-                        "/uploads/resoluciones-temporada/",
-                        ""
-                      );
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }/temporada-pesca-resolucion/archivo/${rutaArchivo}`;
-                    } else if (urlResolucionPdf.startsWith("/api/")) {
-                      const rutaSinApi = urlResolucionPdf.substring(4);
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }${rutaSinApi}`;
-                    } else if (urlResolucionPdf.startsWith("/")) {
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }${urlResolucionPdf}`;
-                    } else {
-                      urlCompleta = urlResolucionPdf;
-                    }
-
-                    const token = useAuthStore.getState().token;
-                    const response = await fetch(urlCompleta, {
-                      headers: {
-                        Authorization: `Bearer ${token}`,
-                      },
-                    });
-
-                    if (response.ok) {
-                      const blob = await response.blob();
-                      const url = window.URL.createObjectURL(blob);
-                      const link = document.createElement("a");
-                      link.href = url;
-                      link.download = `resolucion-temporada-${
-                        defaultValues.id || "sin-id"
-                      }.pdf`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      window.URL.revokeObjectURL(url);
-                    } else {
-                      toastPDF.current?.show({
-                        severity: "error",
-                        summary: "Error",
-                        detail: "No se pudo descargar la resolución",
-                      });
-                    }
-                  } catch (error) {
-                    toastPDF.current?.show({
-                      severity: "error",
-                      summary: "Error",
-                      detail: `Error al descargar la resolución: ${error.message}`,
-                    });
-                  }
-                }}
-                tooltip="Descargar resolución PDF"
+                onClick={() =>
+                  descargarPdf(
+                    urlResolucionPdf,
+                    toastPDF,
+                    `resolucion-temporada-${defaultValues.id || "sin-id"}.pdf`,
+                    "resoluciones-temporada"
+                  )
+                }
+                tooltip="Descargar PDF de resolución"
                 tooltipOptions={{ position: "top" }}
               />
             </div>

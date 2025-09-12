@@ -72,3 +72,29 @@ export async function getProveedoresPorEmpresa(empresaId) {
     value: Number(proveedor.id)
   }));
 }
+
+/**
+ * Obtiene clientes filtrados por empresa para dropdowns de descarga de faena.
+ * Filtra por: tipoEntidadId=8 (CLIENTE MERCADERIAS), esCliente=true, estado=true
+ * @param {number} empresaId - ID de la empresa para filtrar
+ * @returns {Promise<Array>} Lista de clientes activos con estructura para dropdown
+ */
+export async function getClientesPorEmpresa(empresaId) {
+  // Obtener todos los registros de EntidadComercial
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  
+  // Filtrar localmente según los criterios especificados
+  const clientesFiltrados = res.data.filter(entidad => 
+    Number(entidad.empresaId) === Number(empresaId) &&
+    Number(entidad.tipoEntidadId) === 8 && // CLIENTE MERCADERIAS
+    entidad.esCliente === true &&
+    entidad.estado === true
+  );
+  
+  // Normalizar datos para dropdown
+  return clientesFiltrados.map(cliente => ({
+    ...cliente,
+    label: cliente.razonSocial || cliente.nombreComercial,
+    value: Number(cliente.id)
+  }));
+}

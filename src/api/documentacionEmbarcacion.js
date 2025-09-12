@@ -39,6 +39,3 @@ export async function eliminarDocumentacionEmbarcacion(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
-
-// Alias para compatibilidad con código existente
-export const getAllDocumentacionEmbarcacion = getDocumentacionesEmbarcacion;

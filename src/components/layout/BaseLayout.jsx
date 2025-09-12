@@ -288,7 +288,7 @@ export default function BaseLayout({ children, onLogout }) {
           {/* Avatar del usuario autenticado y botón de logout */}
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             {/* Avatar PrimeReact: ahora más grande y visualmente destacado */}
-            <UserAvatar size={"xlarge"} style={{ width: 64, height: 64, fontSize: 32 }} />
+            <UserAvatar usuario={usuario} />
             {/* Botón de cerrar sesión: ahora exactamente del mismo tamaño que el avatar */}
             {/* Botón de cerrar sesión: fondo y borde blancos, icono gris oscuro para máxima visibilidad UX */}
             <Button
@@ -331,7 +331,7 @@ export default function BaseLayout({ children, onLogout }) {
       {/* Footer */}
       <footer style={{ width: "100%", background: "var(--accent-color)", color: "var(--secondary-color-text)", padding: "1rem 0", marginTop: "auto" }}>
         <div style={{ maxWidth: 1280, margin: "0 auto", textAlign: "center", fontSize: "0.95rem" }}>
-          © {new Date().getFullYear()} Megui Investment SAC. Todos los derechos reservados.<br />
+          &copy; {new Date().getFullYear()} Megui Investment SAC. Todos los derechos reservados.<br />
           <span style={{ fontSize: '0.8rem' }}>Desarrollado por <a href="https://13elfuturohoy.com/" style={{ textDecoration: 'none', display: 'inline-block', verticalAlign: 'middle' }} target="_blank" rel="noopener noreferrer"><img src={logoCerebro13} alt="13 El Futuro Hoy" style={{ height: 20, border: 0, verticalAlign: 'middle', borderRadius: '50%' }} /></a></span>
         </div>
       </footer>

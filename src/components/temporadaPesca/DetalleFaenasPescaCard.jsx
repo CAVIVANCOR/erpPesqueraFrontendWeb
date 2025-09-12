@@ -85,11 +85,12 @@ const DetalleFaenasPescaCard = forwardRef(
     },
     ref
   ) => {
-  // Estados
+  // Estados principales
   const [faenas, setFaenas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [editingFaena, setEditingFaena] = useState(null);
+  const [faenaCreatedSuccessfully, setFaenaCreatedSuccessfully] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [faenaToDelete, setFaenaToDelete] = useState(null);
   const [puertosData, setPuertosData] = useState([]);
@@ -115,7 +116,6 @@ const DetalleFaenasPescaCard = forwardRef(
       fechaRetorno: null,
       embarcacionId: null,
       bolicheId: null,
-      observaciones: "",
       urlReporteFaenaCalas: "",
       urlDeclaracionDesembarqueArmador: "",
       estadoFaenaId: null,
@@ -193,7 +193,6 @@ const DetalleFaenasPescaCard = forwardRef(
       fechaRetorno: null,
       embarcacionId: null,
       bolicheId: null,
-      observaciones: "",
       urlReporteFaenaCalas: "",
       urlDeclaracionDesembarqueArmador: "",
       estadoFaenaId: null,
@@ -215,8 +214,7 @@ const DetalleFaenasPescaCard = forwardRef(
       fechaSalida: faena.fechaSalida ? new Date(faena.fechaSalida) : null,
       fechaRetorno: faena.fechaRetorno ? new Date(faena.fechaRetorno) : null,
       embarcacionId: faena.embarcacionId || null,
-      bolicheId: faena.bolicheRedId || null,
-      observaciones: faena.observaciones || "",
+      bolicheRedId: faena.bolicheRedId || null,
       urlReporteFaenaCalas: faena.urlReporteFaenaCalas || "",
       urlDeclaracionDesembarqueArmador:
         faena.urlDeclaracionDesembarqueArmador || "",
@@ -230,15 +228,33 @@ const DetalleFaenasPescaCard = forwardRef(
    */
   const onSubmit = async (data) => {
     try {
+      // Limpiar datos eliminando campos undefined y agregando campos requeridos
       const faenaData = {
-        ...data,
+        temporadaId: temporadaPescaId, // Campo obligatorio
+        descripcion: data.descripcion || "",
         fechaSalida: data.fechaSalida ? data.fechaSalida.toISOString() : null,
-        fechaRetorno: data.fechaRetorno
-          ? data.fechaRetorno.toISOString()
-          : null,
+        fechaRetorno: data.fechaRetorno ? data.fechaRetorno.toISOString() : null,
+        fechaDescarga: data.fechaDescarga ? data.fechaDescarga.toISOString() : null,
+        embarcacionId: data.embarcacionId || null,
+        bolicheRedId: data.bolicheRedId || null,
+        patronId: data.patronId || null,
+        motoristaId: data.motoristaId || null,
+        puertoSalidaId: data.puertoSalidaId || null,
+        puertoRetornoId: data.puertoRetornoId || null,
+        puertoDescargaId: data.puertoDescargaId || null,
+        bahiaId: data.bahiaId || null,
+        estadoFaenaId: data.estadoFaenaId || null,
+        toneladasCapturadasFaena: data.toneladasCapturadasFaena || null,
+        urlReporteFaenaCalas: data.urlReporteFaenaCalas || "",
+        urlDeclaracionDesembarqueArmador: data.urlDeclaracionDesembarqueArmador || "",
+        urlInformeFaena: data.urlInformeFaena || null,
+        // Campo de auditoría requerido por Prisma
+        updatedAt: new Date().toISOString(),
       };
+      // NO enviar createdAt ni observaciones - no existen en el esquema de Prisma
+      let resultado;
       if (editingFaena) {
-        await actualizarFaenaPesca(editingFaena.id, faenaData);
+        resultado = await actualizarFaenaPesca(editingFaena.id, faenaData);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -246,19 +262,26 @@ const DetalleFaenasPescaCard = forwardRef(
           life: 3000,
         });
       } else {
-        await crearFaenaPesca(faenaData);
+        resultado = await crearFaenaPesca(faenaData);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
           detail: "Faena creada correctamente",
           life: 3000,
         });
+        setFaenaCreatedSuccessfully(true);
       }
 
-      setDialogVisible(false);
+      // NO cerrar la ventana automáticamente - comentar setDialogVisible(false)
+      // setDialogVisible(false);
+
       cargarFaenas();
       onFaenasChange?.(); // Notificar cambios en faenas
       handleFaenasChange(); // Actualizar trigger
+
+      // Retornar el resultado para que FaenaPescaForm pueda obtener el ID
+      return resultado;
+
     } catch (error) {
       console.error("Error guardando faena:", error);
       toast.current?.show({
@@ -267,6 +290,7 @@ const DetalleFaenasPescaCard = forwardRef(
         detail: "Error al guardar la faena",
         life: 3000,
       });
+      throw error; // Re-lanzar el error para que FaenaPescaForm lo maneje
     }
   };
 
@@ -527,7 +551,7 @@ const DetalleFaenasPescaCard = forwardRef(
     // Función para expandir calas y cargar especies
     const onCalaRowExpand = async (event) => {
       const calaId = event.data.id;
-      
+
       // SIEMPRE recargar especies para obtener datos actualizados
       try {
         const especies = await getDetalleCalaEspeciePorCala(calaId);
@@ -581,7 +605,7 @@ const DetalleFaenasPescaCard = forwardRef(
                   }}
                 />
               </div>
-              
+
               {/* DataTable individual para cada cala */}
               <DataTable
                 value={[cala]}
@@ -814,13 +838,15 @@ const DetalleFaenasPescaCard = forwardRef(
           label="Nueva Faena"
           icon="pi pi-plus"
           onClick={handleNuevaFaena}
-          disabled={!temporadaPescaId}
+          disabled={!temporadaPescaId || !temporadaData?.temporadaPescaIniciada}
           raised
           outlined
           size="small"
           tooltip={
             !temporadaPescaId
               ? "Guarde la temporada para crear faenas"
+              : !temporadaData?.temporadaPescaIniciada
+              ? "Debe iniciar la temporada antes de crear faenas"
               : "Crear nueva faena"
           }
           tooltipOptions={{ position: "bottom" }}
@@ -873,7 +899,15 @@ const DetalleFaenasPescaCard = forwardRef(
             label="Nueva Faena"
             icon="pi pi-plus"
             onClick={handleNuevaFaena}
-            disabled={!temporadaPescaId}
+            disabled={!temporadaPescaId || !temporadaData?.temporadaPescaIniciada}
+            tooltip={
+              !temporadaPescaId
+                ? "Guarde la temporada para crear faenas"
+                : !temporadaData?.temporadaPescaIniciada
+                ? "Debe iniciar la temporada antes de crear faenas"
+                : "Crear nueva faena"
+            }
+            tooltipOptions={{ position: "bottom" }}
           />
         </div>
       }
@@ -977,6 +1011,8 @@ const DetalleFaenasPescaCard = forwardRef(
             label: p.nombre,
             value: p.id,
           }))}
+          faenaCreatedSuccessfully={faenaCreatedSuccessfully}
+          setFaenaCreatedSuccessfully={setFaenaCreatedSuccessfully}
         />
       </Dialog>
     </div>

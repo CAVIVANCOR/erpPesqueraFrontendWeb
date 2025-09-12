@@ -30,6 +30,18 @@ export const abrirPdfEnNuevaPestana = async (urlPdf, toast, mensajeError = "No h
     } else if (urlPdf.startsWith("/uploads/documentacion-personal/")) {
       const rutaArchivo = urlPdf.replace("/uploads/documentacion-personal/", "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/documentacion-personal/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/documentacion-embarcacion/")) {
+      const rutaArchivo = urlPdf.replace("/uploads/documentacion-embarcacion/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/documentaciones-embarcacion/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/fichas-tecnicas-boliches/")) {
+      const rutaArchivo = urlPdf.replace("/uploads/fichas-tecnicas-boliches/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/ficha-tecnica-boliches/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/certificados-embarcacion/")) {
+      const rutaArchivo = urlPdf.replace("/uploads/certificados-embarcacion/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/certificados-embarcacion/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/fichas-tecnicas/")) {
+      const rutaArchivo = urlPdf.replace("/uploads/fichas-tecnicas/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/producto-ficha-tecnica/archivo/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/")) {
       // Para otros tipos de uploads (archivos de confirmación, etc.)
       urlCompleta = `${import.meta.env.VITE_API_URL}${urlPdf}`;
@@ -96,7 +108,7 @@ export const abrirPdfEnNuevaPestana = async (urlPdf, toast, mensajeError = "No h
  */
 export const descargarPdf = async (urlPdf, toast, nombreArchivo = "documento.pdf", tipoUpload = "documentos-visitantes") => {
   if (!urlPdf) {
-    toast.current?.show({
+    toast?.show({
       severity: "warn",
       summary: "Advertencia",
       detail: "No hay PDF disponible para descargar",
@@ -108,8 +120,29 @@ export const descargarPdf = async (urlPdf, toast, nombreArchivo = "documento.pdf
   try {
     let urlCompleta;
 
-    // Construcción de URL basada en el tipo de upload
-    if (urlPdf.startsWith(`/uploads/${tipoUpload}/`)) {
+    // Construcción de URL basada en el tipo específico de archivo
+    if (urlPdf.startsWith("/uploads/resoluciones-temporada/")) {
+      const rutaArchivo = urlPdf.replace("/uploads/resoluciones-temporada/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/temporada-pesca-resolucion/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/confirmaciones-acciones-previas/")) {
+      const rutaArchivo = urlPdf.replace("/uploads/confirmaciones-acciones-previas/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/confirmaciones-acciones-previas/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/documentacion-personal/")) {
+      const rutaArchivo = urlPdf.replace("/uploads/documentacion-personal/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/documentacion-personal/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/documentacion-embarcacion/")) {
+      const rutaArchivo = urlPdf.replace("/uploads/documentacion-embarcacion/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/documentaciones-embarcacion/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/fichas-tecnicas-boliches/")) {
+      const rutaArchivo = urlPdf.replace("/uploads/fichas-tecnicas-boliches/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/ficha-tecnica-boliches/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/certificados-embarcacion/")) {
+      const rutaArchivo = urlPdf.replace("/uploads/certificados-embarcacion/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/certificados-embarcacion/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/fichas-tecnicas/")) {
+      const rutaArchivo = urlPdf.replace("/uploads/fichas-tecnicas/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/producto-ficha-tecnica/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith(`/uploads/${tipoUpload}/`)) {
       const rutaArchivo = urlPdf.replace(`/uploads/${tipoUpload}/`, "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/${tipoUpload}/archivo/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/api/")) {
@@ -139,7 +172,7 @@ export const descargarPdf = async (urlPdf, toast, nombreArchivo = "documento.pdf
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } else {
-      toast.current?.show({
+      toast?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo descargar el documento",
@@ -147,7 +180,7 @@ export const descargarPdf = async (urlPdf, toast, nombreArchivo = "documento.pdf
       });
     }
   } catch (error) {
-    toast.current?.show({
+    toast?.show({
       severity: "error",
       summary: "Error",
       detail: `Error al descargar el documento: ${error.message}`,
@@ -288,6 +321,7 @@ export const generarPdfDesdeImagenes = async (imagenes, prefijo = "documento", i
  */
 export const subirDocumentoPdf = async (archivo, endpoint, datosAdicionales = {}, toast) => {
   try {
+    
     const formData = new FormData();
     formData.append('documento', archivo);
     
@@ -307,13 +341,16 @@ export const subirDocumentoPdf = async (archivo, endpoint, datosAdicionales = {}
       body: formData
     });
 
+
     if (!response.ok) {
-      throw new Error('Error al subir el documento');
+      const errorText = await response.text();
+      console.error('Error response:', errorText);
+      throw new Error(`Error al subir el documento: ${response.status} - ${errorText}`);
     }
 
     const resultado = await response.json();
 
-    toast.current?.show({
+    toast?.show({
       severity: 'success',
       summary: 'Documento Subido',
       detail: 'Archivo guardado exitosamente',
@@ -323,13 +360,161 @@ export const subirDocumentoPdf = async (archivo, endpoint, datosAdicionales = {}
     return resultado;
 
   } catch (error) {
-    console.error('Error al subir archivo:', error);
-    toast.current?.show({
+    console.error('=== ERROR EN UPLOAD ===');
+    console.error('Error completo:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    toast?.show({
       severity: 'error',
       summary: 'Error',
-      detail: 'No se pudo subir el documento',
+      detail: `No se pudo subir el documento: ${error.message}`,
       life: 5000
     });
     throw error;
   }
+};
+
+/**
+ * Función genérica mejorada para procesar y subir documentos (imágenes o PDFs)
+ * @param {Array} archivos - Array de archivos (imágenes o PDFs)
+ * @param {string} endpoint - Endpoint de la API para subir
+ * @param {Object} datosAdicionales - Datos adicionales para el FormData
+ * @param {Object} toast - Referencia al componente Toast
+ * @param {string} prefijo - Prefijo para el nombre del archivo (solo para imágenes)
+ * @param {string} identificador - Identificador único para el archivo (solo para imágenes)
+ */
+export const procesarYSubirDocumentos = async (archivos, endpoint, datosAdicionales = {}, toast, prefijo = "documento", identificador = "sin-id") => {
+  if (!archivos || archivos.length === 0) {
+    toast?.show({
+      severity: 'warn',
+      summary: 'Advertencia',
+      detail: 'Debe seleccionar al menos un archivo',
+      life: 3000
+    });
+    throw new Error('No hay archivos seleccionados');
+  }
+
+  try {
+    // Separar archivos por tipo
+    const imagenes = [];
+    const pdfs = [];
+    
+    archivos.forEach(archivo => {
+      if (archivo.type.startsWith('image/')) {
+        imagenes.push(archivo);
+      } else if (archivo.type === 'application/pdf') {
+        pdfs.push(archivo);
+      }
+    });
+
+    // Validar que no se mezclen tipos
+    if (imagenes.length > 0 && pdfs.length > 0) {
+      toast?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pueden subir imágenes y PDFs al mismo tiempo. Seleccione solo un tipo de archivo.',
+        life: 4000
+      });
+      throw new Error('Tipos de archivo mixtos no permitidos');
+    }
+
+    // Validar que solo haya un PDF si se selecciona PDF
+    if (pdfs.length > 1) {
+      toast?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Solo se puede subir un archivo PDF a la vez.',
+        life: 4000
+      });
+      throw new Error('Solo un PDF permitido');
+    }
+
+    let archivoParaSubir;
+
+    if (imagenes.length > 0) {
+      // Procesar imágenes: generar PDF desde las imágenes
+      toast?.show({
+        severity: 'info',
+        summary: 'Procesando',
+        detail: `Generando PDF desde ${imagenes.length} imagen(es)...`,
+        life: 3000
+      });
+      
+      archivoParaSubir = await generarPdfDesdeImagenes(imagenes, prefijo, identificador);
+      
+    } else if (pdfs.length === 1) {
+      // Procesar PDF: renombrar con timestamp y estructura estándar
+      const pdfOriginal = pdfs[0];
+      const timestamp = Date.now();
+      const extension = '.pdf';
+      
+      // Generar nombre siguiendo el patrón del sistema
+      const nuevoNombre = `${prefijo}-${timestamp}-${identificador}${extension}`;
+      
+      // Crear nuevo archivo con el nombre estandarizado
+      archivoParaSubir = new File([pdfOriginal], nuevoNombre, {
+        type: 'application/pdf'
+      });
+      
+      toast?.show({
+        severity: 'info',
+        summary: 'Procesando',
+        detail: 'Preparando archivo PDF para subir...',
+        life: 2000
+      });
+    } else {
+      throw new Error('No se encontraron archivos válidos para procesar');
+    }
+
+    // Subir documento usando función genérica existente
+    const resultado = await subirDocumentoPdf(
+      archivoParaSubir,
+      endpoint,
+      datosAdicionales,
+      toast
+    );
+
+    return resultado;
+
+  } catch (error) {
+    console.error('Error al procesar documentos:', error);
+    
+    // Solo mostrar toast de error si no es un error de upload (que ya maneja subirDocumentoPdf)
+    if (!error.message.includes('Error al subir') && !error.message.includes('No se pudo subir')) {
+      toast?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: `Error al procesar documentos: ${error.message}`,
+        life: 5000
+      });
+    }
+    
+    throw error;
+  }
+};
+
+/**
+ * Función auxiliar para validar tipos de archivo permitidos
+ * @param {Array} archivos - Array de archivos a validar
+ * @returns {Object} - Objeto con información de validación
+ */
+export const validarTiposArchivo = (archivos) => {
+  const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+  const archivosValidos = [];
+  const archivosInvalidos = [];
+  
+  archivos.forEach(archivo => {
+    if (tiposPermitidos.includes(archivo.type)) {
+      archivosValidos.push(archivo);
+    } else {
+      archivosInvalidos.push(archivo);
+    }
+  });
+  
+  return {
+    validos: archivosValidos,
+    invalidos: archivosInvalidos,
+    esValido: archivosInvalidos.length === 0
+  };
 };

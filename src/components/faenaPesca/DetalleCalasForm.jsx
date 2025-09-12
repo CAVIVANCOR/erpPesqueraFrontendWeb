@@ -23,6 +23,11 @@ import { Toast } from "primereact/toast";
 import { Toolbar } from "primereact/toolbar";
 import { Card } from "primereact/card";
 import { getResponsiveFontSize } from "../../utils/utils";
+import { 
+  capturarGPS, 
+  formatearCoordenadas, 
+  crearInputCoordenadas 
+} from "../../utils/gpsUtils";
 import DetalleCalasEspecieForm from "./DetalleCalasEspecieForm";
 import {
   getCalasPorFaena,
@@ -787,72 +792,46 @@ const DetalleCalasForm = ({
             <div style={{ flex: 1 }}>
               <Button
                 onClick={async () => {
-                  if (!navigator.geolocation) {
-                    toast.current?.show({
-                      severity: "error",
-                      summary: "Error",
-                      detail: "GPS no disponible en este dispositivo",
-                      life: 3000,
-                    });
-                    return;
-                  }
+                  try {
+                    await capturarGPS(
+                      async (latitude, longitude, accuracy) => {
+                        // Callback de éxito usando funciones genéricas
+                        setLatitud(latitude);
+                        setLongitud(longitude);
+                        
+                        toast.current?.show({
+                          severity: "success",
+                          summary: "GPS capturado",
+                          detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m. Guardando cala...`,
+                          life: 3000,
+                        });
 
-                  const options = {
-                    enableHighAccuracy: true,
-                    timeout: 15000,
-                    maximumAge: 0,
-                  };
-
-                  navigator.geolocation.getCurrentPosition(
-                    async (position) => {
-                      const { latitude, longitude, accuracy } = position.coords;
-                      setLatitud(latitude);
-                      setLongitud(longitude);
-                      toast.current?.show({
-                        severity: "success",
-                        summary: "GPS capturado",
-                        detail: `GPS capturado con precisión de ${accuracy.toFixed(
-                          1
-                        )}m. Guardando cala...`,
-                        life: 3000,
-                      });
-
-                      // Guardar automáticamente la cala después de capturar GPS
-                      try {
-                        await guardarCala();
-                      } catch (error) {
-                        console.error("Error al guardar cala automáticamente:", error);
+                        // Guardar automáticamente la cala después de capturar GPS
+                        try {
+                          await guardarCala();
+                        } catch (error) {
+                          console.error("Error al guardar cala automáticamente:", error);
+                          toast.current?.show({
+                            severity: "error",
+                            summary: "Error",
+                            detail: "GPS capturado pero error al guardar la cala",
+                            life: 4000,
+                          });
+                        }
+                      },
+                      (errorMessage) => {
+                        // Callback de error usando funciones genéricas
                         toast.current?.show({
                           severity: "error",
                           summary: "Error",
-                          detail: "GPS capturado pero error al guardar la cala",
-                          life: 4000,
+                          detail: errorMessage,
+                          life: 3000,
                         });
                       }
-                    },
-                    (error) => {
-                      let message = "Error desconocido";
-                      switch (error.code) {
-                        case error.PERMISSION_DENIED:
-                          message =
-                            "Permiso GPS denegado. Active la ubicación.";
-                          break;
-                        case error.POSITION_UNAVAILABLE:
-                          message = "Señal GPS no disponible.";
-                          break;
-                        case error.TIMEOUT:
-                          message = "Timeout GPS. Intente nuevamente.";
-                          break;
-                      }
-                      toast.current?.show({
-                        severity: "error",
-                        summary: "Error",
-                        detail: message,
-                        life: 3000,
-                      });
-                    },
-                    options
-                  );
+                    );
+                  } catch (error) {
+                    console.error("Error capturando GPS:", error);
+                  }
                 }}
                 disabled={loading || calaFinalizada}
                 label="Capturar GPS"
@@ -924,7 +903,7 @@ const DetalleCalasForm = ({
             </div>
 
             <div style={{ flex: 1 }}>
-              {/* Conversión a formato DMS para referencia */}
+              {/* Conversión a formato DMS para referencia usando funciones genéricas */}
               {(latitud !== 0 || longitud !== 0) && (
                 <div
                   style={{
@@ -937,28 +916,10 @@ const DetalleCalasForm = ({
                   <strong>📐 Formato DMS (Marítimo):</strong>
                   <div style={{ marginTop: "5px", fontSize: "14px" }}>
                     <div>
-                      <strong>Lat:</strong>{" "}
-                      {(() => {
-                        const abs = Math.abs(latitud);
-                        const deg = Math.floor(abs);
-                        const minFloat = (abs - deg) * 60;
-                        const min = Math.floor(minFloat);
-                        const sec = (minFloat - min) * 60;
-                        const dir = latitud >= 0 ? "N" : "S";
-                        return `${deg}° ${min}' ${sec.toFixed(2)}" ${dir}`;
-                      })()}
+                      <strong>Lat:</strong> {formatearCoordenadas(latitud, longitud).latitudDMS}
                     </div>
                     <div>
-                      <strong>Lon:</strong>{" "}
-                      {(() => {
-                        const abs = Math.abs(longitud);
-                        const deg = Math.floor(abs);
-                        const minFloat = (abs - deg) * 60;
-                        const min = Math.floor(minFloat);
-                        const sec = (minFloat - min) * 60;
-                        const dir = longitud >= 0 ? "E" : "W";
-                        return `${deg}° ${min}' ${sec.toFixed(2)}" ${dir}`;
-                      })()}
+                      <strong>Lon:</strong> {formatearCoordenadas(latitud, longitud).longitudDMS}
                     </div>
                   </div>
                 </div>

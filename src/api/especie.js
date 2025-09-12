@@ -39,3 +39,16 @@ export async function eliminarEspecie(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Obtiene especies normalizadas para dropdowns
+ * @returns {Promise<Array>} Lista de especies con estructura para dropdown
+ */
+export async function getEspeciesParaDropdown() {
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  return res.data.map(especie => ({
+    ...especie,
+    label: `${especie.nombre} (${especie.nombreCientifico})`,
+    value: Number(especie.id)
+  }));
+}

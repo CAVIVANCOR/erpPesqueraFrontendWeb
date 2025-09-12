@@ -37,6 +37,7 @@ const DescargaFaenaPescaCard = ({
   motoristas: motoristasProps = [],
   bahias: bahiasProps = [],
   clientes: clientesProps = [],
+  especies: especiesProps = [],
   loading = false,
   onDataChange,
   onDescargaChange, // Callback para notificar cambios
@@ -56,6 +57,7 @@ const DescargaFaenaPescaCard = ({
   const [motoristas, setMotoristas] = useState(motoristasProps);
   const [bahias, setBahias] = useState(bahiasProps);
   const [clientes, setClientes] = useState(clientesProps);
+  const [especies, setEspecies] = useState(especiesProps);
 
   useEffect(() => {
     if (faenaPescaId) {
@@ -112,6 +114,16 @@ const DescargaFaenaPescaCard = ({
       setClientes(clientesNormalizados);
     }
   }, [clientesProps]);
+
+  useEffect(() => {
+    if (especiesProps?.length > 0) {
+      const especiesNormalizadas = especiesProps.map((item) => ({
+        value: Number(item.value),
+        label: item.label,
+      }));
+      setEspecies(especiesNormalizadas);
+    }
+  }, [especiesProps]);
 
   const cargarDescargas = async () => {
     try {
@@ -376,7 +388,7 @@ const DescargaFaenaPescaCard = ({
 
       <Dialog
         visible={descargaDialog}
-        style={{ width: "1200px" }}
+        style={{ width: "1300px" }}
         header={
           editingDescarga
             ? "Editar Descarga de Faena"
@@ -389,20 +401,23 @@ const DescargaFaenaPescaCard = ({
       >
         {descargaDialog && (
           <DescargaFaenaPescaForm
-            isEdit={!!editingDescarga}
-            defaultValues={
-              editingDescarga || { faenaPescaId: Number(faenaPescaId) }
-            }
+            detalle={editingDescarga}
             puertos={puertos}
-            patrones={patrones}
-            motoristas={motoristas}
-            bahias={bahias}
             clientes={clientes}
-            temporadaData={temporadaData}
-            onSubmit={saveDescarga}
-            onCancel={hideDialog}
-            loading={loadingData}
-            toast={toast}
+            bahiaId={faenaData?.bahiaId ? Number(faenaData.bahiaId) : null}
+            motoristaId={faenaData?.motoristaId ? Number(faenaData.motoristaId) : null}
+            patronId={faenaData?.patroId ? Number(faenaData.patroId) : null}
+            faenaPescaId={faenaPescaId ? Number(faenaPescaId) : null}
+            temporadaPescaId={temporadaData?.id ? Number(temporadaData.id) : null}
+            especies={especies}
+            onGuardadoExitoso={() => {
+              cargarDescargas();
+              hideDialog();
+              if (onDescargaChange) {
+                onDescargaChange();
+              }
+            }}
+            onCancelar={hideDialog}
           />
         )}
       </Dialog>

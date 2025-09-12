@@ -43,6 +43,7 @@ const schema = Yup.object().shape({
     .matches(/^\/.*$/, "Debe ser una ruta relativa válida")
     .max(500, "La URL no puede exceder 500 caracteres"),
   docVencido: Yup.boolean(),
+  cesado: Yup.boolean(),
   observaciones: Yup.string()
     .nullable()
     .max(500, "Las observaciones no pueden exceder 500 caracteres"),
@@ -82,6 +83,7 @@ export default function DocumentacionPersonalForm({
       : null,
     urlDocPdf: defaultValues.urlDocPdf || "",
     docVencido: defaultValues.docVencido || false,
+    cesado: defaultValues.cesado || false,
     observaciones: defaultValues.observaciones || "",
   };
 
@@ -110,6 +112,27 @@ export default function DocumentacionPersonalForm({
 
   // Observar cambios en urlDocPdf
   const urlDocPdf = watch("urlDocPdf");
+
+  // Observar cambios en fechaVencimiento para recalcular docVencido automáticamente
+  const fechaVencimiento = watch("fechaVencimiento");
+
+  // useEffect para recalcular docVencido automáticamente cuando cambia fechaVencimiento
+  useEffect(() => {
+    if (fechaVencimiento !== undefined) {
+      const fechaActual = new Date();
+      fechaActual.setHours(0, 0, 0, 0);
+      
+      let docVencidoCalculado = true; // Por defecto vencido si no hay fecha
+      
+      if (fechaVencimiento) {
+        const fechaVenc = new Date(fechaVencimiento);
+        fechaVenc.setHours(0, 0, 0, 0);
+        docVencidoCalculado = fechaVenc < fechaActual;
+      }
+      
+      setValue("docVencido", docVencidoCalculado);
+    }
+  }, [fechaVencimiento, setValue]);
 
   // Reset cuando cambian los valores por defecto
   useEffect(() => {
@@ -181,6 +204,18 @@ export default function DocumentacionPersonalForm({
 
   // Función de envío con normalización
   const onSubmitForm = (data) => {
+    // Recalcular docVencido antes de enviar (por seguridad)
+    const fechaActual = new Date();
+    fechaActual.setHours(0, 0, 0, 0);
+    
+    let docVencidoCalculado = true; // Por defecto vencido si no hay fecha
+    
+    if (data.fechaVencimiento) {
+      const fechaVenc = new Date(data.fechaVencimiento);
+      fechaVenc.setHours(0, 0, 0, 0);
+      docVencidoCalculado = fechaVenc < fechaActual;
+    }
+
     const normalizedData = {
       personalId: Number(data.personalId),
       documentoPescaId: Number(data.documentoPescaId),
@@ -188,7 +223,8 @@ export default function DocumentacionPersonalForm({
       fechaEmision: data.fechaEmision || null,
       fechaVencimiento: data.fechaVencimiento || null,
       urlDocPdf: data.urlDocPdf?.trim() || null,
-      docVencido: data.docVencido || false,
+      docVencido: docVencidoCalculado, // Usar el valor recalculado
+      cesado: data.cesado,
       observaciones: data.observaciones?.trim().toUpperCase() || null,
     };
     onSubmit(normalizedData);
@@ -429,7 +465,32 @@ export default function DocumentacionPersonalForm({
               <small className="p-error">{errors.docVencido.message}</small>
             )}
           </div>
-
+          {/* Cesado */}
+          <div style={{ flex: 1 }}>
+            <label
+              htmlFor="cesado"
+              className="block text-900 font-medium mb-2"
+            >
+              Cesado
+            </label>
+            <Controller
+              name="cesado"
+              control={control}
+              render={({ field }) => (
+                <Button
+                  type="button"
+                  label={field.value ? "SI" : "NO"}
+                  icon={field.value ? "pi pi-check" : "pi pi-times"}
+                  className={!field.value ? "p-button-success" : "p-button-danger"}
+                  onClick={() => field.onChange(!field.value)}
+                  size="small"
+                />
+              )}
+            />
+            {errors.cesado && (
+              <small className="p-error">{errors.cesado.message}</small>
+            )}
+          </div>
           {/* Observaciones */}
           <div style={{ flex: 2 }}>
             <label

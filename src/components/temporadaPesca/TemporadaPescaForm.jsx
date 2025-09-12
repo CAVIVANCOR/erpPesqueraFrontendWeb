@@ -370,11 +370,22 @@ const TemporadaPescaForm = ({
           // Re-verificar registros para deshabilitar el botón
           await verificarTemporadaIniciada(editingItem.id);
 
+          // Obtener datos actualizados de la temporada y notificar cambios
+          const temporadaActualizada = await getTemporadaPescaPorId(editingItem.id);
+          if (onTemporadaDataChange && temporadaActualizada) {
+            onTemporadaDataChange(temporadaActualizada);
+          }
+
           // Notificar actualización de faenas
           window.dispatchEvent(
             new CustomEvent("refreshFaenas", {
               detail: { temporadaId: editingItem.id },
             })
+          );
+
+          // Recalcular estados de documentación personal
+          window.dispatchEvent(
+            new CustomEvent("recalcularDocumentacionPersonal")
           );
         } catch (error) {
           console.error("Error iniciando temporada:", error);

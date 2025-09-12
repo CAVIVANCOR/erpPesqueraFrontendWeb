@@ -1,6 +1,6 @@
 /**
  * Componente genérico para captura y upload de documentos
- * Versión reutilizable usando funciones genéricas de pdfUtils
+ * Versión mejorada que soporta imágenes y PDFs usando funciones genéricas de pdfUtils
  * Integrado con el sistema de upload del ERP Megui
  */
 
@@ -12,7 +12,7 @@ import { ProgressBar } from 'primereact/progressbar';
 import { Card } from 'primereact/card';
 import { FileUpload } from 'primereact/fileupload';
 import { Message } from 'primereact/message';
-import { generarPdfDesdeImagenes, subirDocumentoPdf } from '../../utils/pdfUtils';
+import { procesarYSubirDocumentos, validarTiposArchivo } from '../../utils/pdfUtils';
 
 const DocumentoCapture = ({ 
   visible, 
@@ -30,10 +30,40 @@ const DocumentoCapture = ({
   const toast = useRef(null);
   const fileUploadRef = useRef(null);
 
-  // Manejar selección de archivos
+  // Manejar selección de archivos con validación mejorada
   const onFileSelect = (e) => {
     const files = Array.from(e.files);
-    setArchivosSeleccionados(prev => [...prev, ...files]);
+    
+    // Validar tipos de archivo
+    const validacion = validarTiposArchivo(files);
+    
+    if (!validacion.esValido) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Archivos no válidos',
+        detail: `Se encontraron ${validacion.invalidos.length} archivo(s) con formato no soportado. Solo se permiten imágenes (JPG, PNG, GIF, WEBP) y PDFs.`,
+        life: 4000
+      });
+      return;
+    }
+
+    // Verificar si ya hay archivos seleccionados y el tipo
+    if (archivosSeleccionados.length > 0) {
+      const tipoExistente = archivosSeleccionados[0].type.startsWith('image/') ? 'imagen' : 'pdf';
+      const tipoNuevo = validacion.validos[0].type.startsWith('image/') ? 'imagen' : 'pdf';
+      
+      if (tipoExistente !== tipoNuevo) {
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Tipos mixtos no permitidos',
+          detail: 'No se pueden mezclar imágenes y PDFs. Elimine los archivos actuales o seleccione el mismo tipo.',
+          life: 4000
+        });
+        return;
+      }
+    }
+
+    setArchivosSeleccionados(prev => [...prev, ...validacion.validos]);
   };
 
   // Eliminar archivo
@@ -41,13 +71,18 @@ const DocumentoCapture = ({
     setArchivosSeleccionados(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Subir documento usando funciones genéricas
+  // Limpiar todos los archivos
+  const limpiarArchivos = () => {
+    setArchivosSeleccionados([]);
+  };
+
+  // Subir documento usando la nueva función genérica mejorada
   const subirDocumento = async () => {
     if (archivosSeleccionados.length === 0) {
       toast.current?.show({
         severity: 'warn',
         summary: 'Advertencia',
-        detail: 'Debe seleccionar al menos una imagen',
+        detail: 'Debe seleccionar al menos un archivo',
         life: 3000
       });
       return;
@@ -56,19 +91,14 @@ const DocumentoCapture = ({
     setProcesando(true);
 
     try {
-      // Generar PDF desde imágenes usando función genérica
-      const archivoParaSubir = await generarPdfDesdeImagenes(
-        archivosSeleccionados, 
-        prefijo, 
-        identificador
-      );
-      
-      // Subir documento usando función genérica
-      const resultado = await subirDocumentoPdf(
-        archivoParaSubir,
+      // Usar la nueva función genérica que maneja imágenes y PDFs
+      const resultado = await procesarYSubirDocumentos(
+        archivosSeleccionados,
         endpoint,
         datosAdicionales,
-        toast
+        toast.current,
+        prefijo,
+        identificador
       );
 
       onDocumentoSubido?.(resultado.urlDocumento || resultado.url);
@@ -86,6 +116,24 @@ const DocumentoCapture = ({
   const limpiarYCerrar = () => {
     setArchivosSeleccionados([]);
     onHide?.();
+  };
+
+  // Obtener información del tipo de archivos seleccionados
+  const getTipoArchivos = () => {
+    if (archivosSeleccionados.length === 0) return '';
+    
+    const esImagen = archivosSeleccionados[0].type.startsWith('image/');
+    return esImagen ? 'imágenes' : 'PDF';
+  };
+
+  // Obtener icono según el tipo de archivo
+  const getIconoArchivo = (archivo) => {
+    if (archivo.type.startsWith('image/')) {
+      return 'pi pi-image';
+    } else if (archivo.type === 'application/pdf') {
+      return 'pi pi-file-pdf';
+    }
+    return 'pi pi-file';
   };
 
   return (
@@ -113,6 +161,15 @@ const DocumentoCapture = ({
             </div>
           )}
 
+          {/* Información sobre tipos de archivo soportados */}
+          <div className="col-12">
+            <Message 
+              severity="info" 
+              text="Puede subir imágenes (que se convertirán automáticamente a PDF) o un archivo PDF directamente. No se pueden mezclar tipos."
+              className="mb-3"
+            />
+          </div>
+
           {/* Sección de Selección de Archivos */}
           <div className="col-12 md:col-6">
             <Card title="Seleccionar Archivos" className="h-full">
@@ -129,7 +186,11 @@ const DocumentoCapture = ({
                   className="p-button-outlined"
                 />
                 <p className="text-500 mt-2 text-sm">
-                  Imágenes o PDFs (máx. 10MB)
+                  Imágenes (JPG, PNG, GIF, WEBP) o PDFs (máx. 10MB)
+                </p>
+                <p className="text-400 mt-1 text-xs">
+                  • Imágenes: Se generará un PDF automáticamente<br/>
+                  • PDF: Se subirá directamente con nombre estandarizado
                 </p>
               </div>
             </Card>
@@ -138,13 +199,26 @@ const DocumentoCapture = ({
           {/* Lista de archivos seleccionados */}
           {archivosSeleccionados.length > 0 && (
             <div className="col-12">
-              <Card title={`Archivos Seleccionados (${archivosSeleccionados.length})`}>
+              <Card title={`Archivos Seleccionados (${archivosSeleccionados.length}) - ${getTipoArchivos()}`}>
+                <div className="flex justify-content-between align-items-center mb-3">
+                  <span className="text-sm text-600">
+                    Tipo: {getTipoArchivos()}
+                  </span>
+                  <Button
+                    label="Limpiar Todo"
+                    icon="pi pi-trash"
+                    className="p-button-outlined p-button-danger p-button-sm"
+                    onClick={limpiarArchivos}
+                    disabled={procesando}
+                  />
+                </div>
+                
                 <div className="grid">
                   {archivosSeleccionados.map((archivo, index) => (
                     <div key={index} className="col-12 md:col-6 lg:col-4">
                       <div className="border-300 border-round p-2 flex align-items-center justify-content-between">
                         <div className="flex align-items-center">
-                          <i className="pi pi-file text-primary mr-2"></i>
+                          <i className={`${getIconoArchivo(archivo)} text-primary mr-2`}></i>
                           <div>
                             <div className="font-semibold text-sm">
                               {archivo.name.length > 20 
@@ -161,6 +235,7 @@ const DocumentoCapture = ({
                           className="p-button-rounded p-button-text p-button-danger p-button-sm"
                           onClick={() => eliminarArchivo(index)}
                           tooltip="Eliminar"
+                          disabled={procesando}
                         />
                       </div>
                     </div>
@@ -169,7 +244,7 @@ const DocumentoCapture = ({
                 
                 <div className="text-center mt-3">
                   <Button
-                    label="Subir Documentos"
+                    label={`Subir ${getTipoArchivos()}`}
                     icon="pi pi-upload"
                     onClick={subirDocumento}
                     loading={procesando}
@@ -182,7 +257,9 @@ const DocumentoCapture = ({
                   <div className="mt-3">
                     <ProgressBar mode="indeterminate" />
                     <small className="text-center block mt-2">
-                      Subiendo documento al servidor...
+                      {getTipoArchivos() === 'imágenes' 
+                        ? 'Generando PDF desde imágenes y subiendo al servidor...' 
+                        : 'Procesando PDF y subiendo al servidor...'}
                     </small>
                   </div>
                 )}

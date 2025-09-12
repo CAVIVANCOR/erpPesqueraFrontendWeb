@@ -412,8 +412,8 @@ export default function AccesoInstalacion() {
   const fechaHoraBodyTemplate = (rowData) => {
     if (!rowData.fechaHora) return "";
     const fecha = new Date(rowData.fechaHora);
-    const fechaFormateada = fecha.toLocaleDateString("es-ES");
-    const horaFormateada = fecha.toLocaleTimeString("es-ES", {
+    const fechaFormateada = fecha.toLocaleDateString("es-PE");
+    const horaFormateada = fecha.toLocaleTimeString("es-PE", {
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -423,8 +423,8 @@ export default function AccesoInstalacion() {
   const fechaSalidaBodyTemplate = (rowData) => {
     if (!rowData.fechaHoraSalidaDefinitiva) return "";
     const fecha = new Date(rowData.fechaHoraSalidaDefinitiva);
-    const fechaFormateada = fecha.toLocaleDateString("es-ES");
-    const horaFormateada = fecha.toLocaleTimeString("es-ES", {
+    const fechaFormateada = fecha.toLocaleDateString("es-PE");
+    const horaFormateada = fecha.toLocaleTimeString("es-PE", {
       hour: "2-digit",
       minute: "2-digit",
     });

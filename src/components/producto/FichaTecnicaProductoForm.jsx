@@ -19,6 +19,7 @@ import { classNames } from "primereact/utils";
 import { Controller } from "react-hook-form";
 import PDFViewer from "./PDFViewer";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { abrirPdfEnNuevaPestana, descargarPdf } from "../../utils/pdfUtils";
 
 /**
  * Componente FichaTecnicaProductoForm
@@ -207,71 +208,13 @@ export default function FichaTecnicaProductoForm({
                 icon="pi pi-external-link"
                 className="p-button-outlined p-button-sm"
                 style={{ minWidth: "80px" }}
-                onClick={async () => {
-                  try {
-                    // Construir URL completa usando la misma lógica que DocumentosAdjuntosCard.jsx
-                    let urlCompleta;
-                    if (
-                      urlFichaTecnica.startsWith("/uploads/fichas-tecnicas/")
-                    ) {
-                      const rutaArchivo = urlFichaTecnica.replace(
-                        "/uploads/fichas-tecnicas/",
-                        ""
-                      );
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }/producto-ficha-tecnica/archivo/${rutaArchivo}`;
-                    } else if (urlFichaTecnica.startsWith("/api/")) {
-                      const rutaSinApi = urlFichaTecnica.substring(4);
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }${rutaSinApi}`;
-                    } else if (urlFichaTecnica.startsWith("/")) {
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }${urlFichaTecnica}`;
-                    } else {
-                      urlCompleta = urlFichaTecnica;
-                    }
-
-                    const token = useAuthStore.getState().token;
-                    const response = await fetch(urlCompleta, {
-                      headers: {
-                        Authorization: `Bearer ${token}`,
-                      },
-                    });
-
-                    if (response.ok) {
-                      const blob = await response.blob();
-                      const blobUrl = window.URL.createObjectURL(blob);
-                      const newWindow = window.open(blobUrl, "_blank");
-                      setTimeout(() => {
-                        window.URL.revokeObjectURL(blobUrl);
-                      }, 10000);
-
-                      if (!newWindow) {
-                        toastPDF.current?.show({
-                          severity: "warn",
-                          summary: "Aviso",
-                          detail:
-                            "El navegador bloqueó la ventana emergente. Por favor, permita ventanas emergentes para este sitio.",
-                        });
-                      }
-                    } else {
-                      toastPDF.current?.show({
-                        severity: "error",
-                        summary: "Error",
-                        detail: `No se pudo abrir el documento (${response.status})`,
-                      });
-                    }
-                  } catch (error) {
-                    toastPDF.current?.show({
-                      severity: "error",
-                      summary: "Error",
-                      detail: `Error al abrir el documento: ${error.message}`,
-                    });
-                  }
-                }}
+                onClick={() =>
+                  abrirPdfEnNuevaPestana(
+                    urlFichaTecnica,
+                    toastPDF,
+                    "No hay ficha técnica PDF disponible"
+                  )
+                }
                 tooltip="Abrir ficha técnica en nueva pestaña"
                 tooltipOptions={{ position: "top" }}
               />
@@ -283,67 +226,14 @@ export default function FichaTecnicaProductoForm({
                 icon="pi pi-download"
                 className="p-button-outlined p-button-sm"
                 style={{ minWidth: "80px" }}
-                onClick={async () => {
-                  try {
-                    // Construir URL completa usando la misma lógica
-                    let urlCompleta;
-                    if (
-                      urlFichaTecnica.startsWith("/uploads/fichas-tecnicas/")
-                    ) {
-                      const rutaArchivo = urlFichaTecnica.replace(
-                        "/uploads/fichas-tecnicas/",
-                        ""
-                      );
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }/producto-ficha-tecnica/archivo/${rutaArchivo}`;
-                    } else if (urlFichaTecnica.startsWith("/api/")) {
-                      const rutaSinApi = urlFichaTecnica.substring(4);
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }${rutaSinApi}`;
-                    } else if (urlFichaTecnica.startsWith("/")) {
-                      urlCompleta = `${
-                        import.meta.env.VITE_API_URL
-                      }${urlFichaTecnica}`;
-                    } else {
-                      urlCompleta = urlFichaTecnica;
-                    }
-
-                    const token = useAuthStore.getState().token;
-                    const response = await fetch(urlCompleta, {
-                      headers: {
-                        Authorization: `Bearer ${token}`,
-                      },
-                    });
-
-                    if (response.ok) {
-                      const blob = await response.blob();
-                      const url = window.URL.createObjectURL(blob);
-                      const link = document.createElement("a");
-                      link.href = url;
-                      link.download = `ficha-tecnica-producto-${
-                        defaultValues.id || "sin-id"
-                      }.pdf`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      window.URL.revokeObjectURL(url);
-                    } else {
-                      toastPDF.current?.show({
-                        severity: "error",
-                        summary: "Error",
-                        detail: "No se pudo descargar la ficha técnica",
-                      });
-                    }
-                  } catch (error) {
-                    toastPDF.current?.show({
-                      severity: "error",
-                      summary: "Error",
-                      detail: `Error al descargar la ficha técnica: ${error.message}`,
-                    });
-                  }
-                }}
+                onClick={() =>
+                  descargarPdf(
+                    urlFichaTecnica,
+                    toastPDF,
+                    `ficha-tecnica-producto-${defaultValues.id || "sin-id"}.pdf`,
+                    "fichas-tecnicas"
+                  )
+                }
                 tooltip="Descargar ficha técnica PDF"
                 tooltipOptions={{ position: "top" }}
               />

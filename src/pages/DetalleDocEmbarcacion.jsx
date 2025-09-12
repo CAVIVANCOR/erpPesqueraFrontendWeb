@@ -8,7 +8,7 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import DetalleDocEmbarcacionForm from "../components/detalleDocEmbarcacion/DetalleDocEmbarcacionForm";
-import { getAllDetalleDocEmbarcacion, crearDetalleDocEmbarcacion, actualizarDetalleDocEmbarcacion, eliminarDetalleDocEmbarcacion } from "../api/detalleDocEmbarcacion";
+import { getDetallesDocEmbarcacion, crearDetalleDocEmbarcacion, actualizarDetalleDocEmbarcacion, eliminarDetalleDocEmbarcacion } from "../api/detalleDocEmbarcacion";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
 /**
@@ -37,7 +37,7 @@ export default function DetalleDocEmbarcacion() {
   const cargarItems = async () => {
     setLoading(true);
     try {
-      const data = await getAllDetalleDocEmbarcacion();
+      const data = await getDetallesDocEmbarcacion();
       setItems(data);
     } catch (err) {
       toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar la lista." });

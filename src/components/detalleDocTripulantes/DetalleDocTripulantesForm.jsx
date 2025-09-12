@@ -3,25 +3,31 @@
 // Maneja creación y edición con validaciones, combos dependientes y reglas de negocio
 // Documentado en español técnico para mantenibilidad
 
-import React, { useState, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { Dropdown } from 'primereact/dropdown';
-import { Calendar } from 'primereact/calendar';
-import { Checkbox } from 'primereact/checkbox';
-import { classNames } from 'primereact/utils';
+import React, { useState, useEffect, useRef } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { InputTextarea } from "primereact/inputtextarea";
+import { Dropdown } from "primereact/dropdown";
+import { Calendar } from "primereact/calendar";
+import { Checkbox } from "primereact/checkbox";
+import { classNames } from "primereact/utils";
+import PDFViewer from "../shared/PDFViewer";
+import { abrirPdfEnNuevaPestana, descargarPdf } from "../../utils/pdfUtils";
+import { Toast } from "primereact/toast";
 
-import { crearDetalleDocTripulantes, actualizarDetalleDocTripulantes } from '../../api/detalleDocTripulantes';
-import { getFaenasPesca } from '../../api/faenaPesca';
-import { getPersonal } from '../../api/personal';
-import { getTiposDocumento } from '../../api/tipoDocumento';
+import {
+  crearDetalleDocTripulantes,
+  actualizarDetalleDocTripulantes,
+} from "../../api/detalleDocTripulantes";
+import { getFaenasPesca } from "../../api/faenaPesca";
+import { getPersonal } from "../../api/personal";
+import { getTiposDocumento } from "../../api/tipoDocumento";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 /**
  * Formulario DetalleDocTripulantesForm
- * 
+ *
  * Formulario profesional para gestión de documentos de tripulantes.
  * Características:
  * - Validaciones robustas con react-hook-form
@@ -31,11 +37,14 @@ import { useAuthStore } from "../../shared/stores/useAuthStore";
  * - Estado de verificación
  * - Validaciones de fechas (vencimiento > emisión)
  */
-export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, onCancelar }) {
-  // Estados para combos
-  const [faenas, setFaenas] = useState([]);
-  const [tripulantes, setTripulantes] = useState([]);
-  const [documentos, setDocumentos] = useState([]);
+export default function DetalleDocTripulantesForm({
+  detalle,
+  tripulantes = [],
+  documentos = [],
+  onGuardadoExitoso,
+  onCancelar,
+}) {
+  // Estados para loading
   const [loading, setLoading] = useState(false);
 
   // Configuración del formulario
@@ -44,85 +53,67 @@ export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, 
     handleSubmit,
     reset,
     formState: { errors },
-    watch
+    watch,
   } = useForm({
     defaultValues: {
       faenaPescaId: null,
       tripulanteId: null,
       documentoId: null,
-      numeroDocumento: '',
+      numeroDocumento: "",
       fechaEmision: null,
       fechaVencimiento: null,
-      urlDocTripulantePdf: '',
-      observaciones: '',
+      urlDocTripulantePdf: "",
+      observaciones: "",
       verificado: false,
-      docVencido: false
-    }
+      docVencido: false,
+    },
   });
 
   // Observar fechas para validaciones
-  const fechaEmision = watch('fechaEmision');
+  const fechaEmision = watch("fechaEmision");
 
-  // Cargar datos iniciales
-  useEffect(() => {
-    cargarDatosIniciales();
-  }, []);
+  // Observar cambios en urlDocTripulantePdf
+  const urlDocTripulantePdf = watch("urlDocTripulantePdf");
 
-  // Cargar datos del registro a editar
+  // Cargar datos del registro a editar cuando cambie detalle
   useEffect(() => {
     if (detalle) {
-      cargarDatosDetalle();
+      reset({
+        faenaPescaId: detalle.faenaPescaId
+          ? Number(detalle.faenaPescaId)
+          : null,
+        tripulanteId: detalle.tripulanteId
+          ? Number(detalle.tripulanteId)
+          : null,
+        documentoId: detalle.documentoId ? Number(detalle.documentoId) : null,
+        numeroDocumento: detalle.numeroDocumento || "",
+        fechaEmision: detalle.fechaEmision
+          ? new Date(detalle.fechaEmision)
+          : null,
+        fechaVencimiento: detalle.fechaVencimiento
+          ? new Date(detalle.fechaVencimiento)
+          : null,
+        urlDocTripulantePdf: detalle.urlDocTripulantePdf || "",
+        observaciones: detalle.observaciones || "",
+        verificado: detalle.verificado || false,
+        docVencido: detalle.docVencido || false,
+      });
+    } else {
+      // Resetear para nuevo registro
+      reset({
+        faenaPescaId: null,
+        tripulanteId: null,
+        documentoId: null,
+        numeroDocumento: "",
+        fechaEmision: null,
+        fechaVencimiento: null,
+        urlDocTripulantePdf: "",
+        observaciones: "",
+        verificado: false,
+        docVencido: false,
+      });
     }
-  }, [detalle]);
-
-  /**
-   * Carga todos los datos necesarios para los combos
-   */
-  const cargarDatosIniciales = async () => {
-    try {
-      const [faenasData, tripulantesData, documentosData] = await Promise.all([
-        getFaenasPesca(),
-        getPersonal(),
-        getTiposDocumento()
-      ]);
-
-      setFaenas(faenasData?.map(item => ({
-        label: item.codigo || `Faena ${item.id}`,
-        value: Number(item.id)
-      })) || []);
-
-      setTripulantes(tripulantesData?.map(item => ({
-        label: `${item.nombres} ${item.apellidos}`,
-        value: Number(item.id)
-      })) || []);
-
-      setDocumentos(documentosData?.map(item => ({
-        label: item.nombre,
-        value: Number(item.id)
-      })) || []);
-
-    } catch (error) {
-      console.error('Error al cargar datos iniciales:', error);
-    }
-  };
-
-  /**
-   * Carga los datos del detalle a editar en el formulario
-   */
-  const cargarDatosDetalle = () => {
-    reset({
-      faenaPescaId: detalle.faenaPescaId ? Number(detalle.faenaPescaId) : null,
-      tripulanteId: detalle.tripulanteId ? Number(detalle.tripulanteId) : null,
-      documentoId: detalle.documentoId ? Number(detalle.documentoId) : null,
-      numeroDocumento: detalle.numeroDocumento || '',
-      fechaEmision: detalle.fechaEmision ? new Date(detalle.fechaEmision) : null,
-      fechaVencimiento: detalle.fechaVencimiento ? new Date(detalle.fechaVencimiento) : null,
-      urlDocTripulantePdf: detalle.urlDocTripulantePdf || '',
-      observaciones: detalle.observaciones || '',
-      verificado: detalle.verificado || false,
-      docVencido: detalle.docVencido || false
-    });
-  };
+  }, [detalle, reset]);
 
   /**
    * Maneja el envío del formulario
@@ -132,16 +123,20 @@ export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, 
       setLoading(true);
 
       const payload = {
-        faenaPescaId: data.faenaPescaId,
-        tripulanteId: data.tripulanteId,
-        documentoId: data.documentoId,
-        numeroDocumento: data.numeroDocumento || null,
-        fechaEmision: data.fechaEmision?.toISOString(),
-        fechaVencimiento: data.fechaVencimiento?.toISOString(),
-        urlDocTripulantePdf: data.urlDocTripulantePdf || null,
-        observaciones: data.observaciones || null,
-        verificado: data.verificado,
-        docVencido: data.docVencido
+        faenaPescaId: data.faenaPescaId ? Number(data.faenaPescaId) : null,
+        tripulanteId: data.tripulanteId ? Number(data.tripulanteId) : null,
+        documentoId: data.documentoId ? Number(data.documentoId) : null,
+        numeroDocumento: data.numeroDocumento?.trim() || null,
+        fechaEmision: data.fechaEmision
+          ? data.fechaEmision.toISOString()
+          : null,
+        fechaVencimiento: data.fechaVencimiento
+          ? data.fechaVencimiento.toISOString()
+          : null,
+        urlDocTripulantePdf: data.urlDocTripulantePdf?.trim() || null,
+        observaciones: data.observaciones?.trim() || null,
+        verificado: Boolean(data.verificado),
+        docVencido: Boolean(data.docVencido),
       };
 
       if (detalle?.id) {
@@ -150,9 +145,10 @@ export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, 
         await crearDetalleDocTripulantes(payload);
       }
 
-      onGuardadoExitoso();
+      onGuardadoExitoso?.();
     } catch (error) {
-      console.error('Error al guardar documento:', error);
+      console.error("Error al guardar documento:", error);
+      // Aquí podrías mostrar un toast de error si tienes acceso
     } finally {
       setLoading(false);
     }
@@ -162,84 +158,119 @@ export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, 
    * Obtiene el mensaje de error para un campo
    */
   const getFormErrorMessage = (name) => {
-    return errors[name] && <small className="p-error">{errors[name].message}</small>;
+    return (
+      errors[name] && <small className="p-error">{errors[name].message}</small>
+    );
+  };
+
+  /**
+   * Función para obtener clases de error
+   */
+  const getFieldClass = (fieldName) => {
+    return errors[fieldName] ? "p-invalid" : "";
+  };
+
+  const handleVerPDF = () => {
+    if (urlDocTripulantePdf) {
+      abrirPdfEnNuevaPestana(urlDocTripulantePdf);
+    }
+  };
+
+  const toast = useRef(null);
+
+  const handleDescargarPDF = () => {
+    if (urlDocTripulantePdf) {
+      descargarPdf(
+        urlDocTripulantePdf,
+        toast,
+        `documento-tripulante-${detalle?.tripulanteId || "sin-id"}-${
+          detalle?.documentoId || "sin-doc"
+        }.pdf`,
+        "documentacion-personal"
+      );
+    }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
-      <div className="grid">
-        {/* Faena de Pesca */}
-        <div className="col-12 md:col-6">
-          <label htmlFor="faenaPescaId" className="block text-900 font-medium mb-2">
-            Faena de Pesca *
-          </label>
-          <Controller
-            name="faenaPescaId"
-            control={control}
-            rules={{ required: 'La faena de pesca es obligatoria' }}
-            render={({ field }) => (
-              <Dropdown
-                id="faenaPescaId"
-                value={field.value ? Number(field.value) : null}
-                onChange={(e) => field.onChange(e.value)}
-                options={faenas}
-                placeholder="Seleccione una faena"
-                className={classNames({ 'p-invalid': errors.faenaPescaId })}
-                filter
-                showClear
-              />
-            )}
-          />
-          {getFormErrorMessage('faenaPescaId')}
-        </div>
-
-        {/* Tripulante */}
-        <div className="col-12 md:col-6">
-          <label htmlFor="tripulanteId" className="block text-900 font-medium mb-2">
+      <Toast ref={toast} />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "end",
+          gap: 10,
+          marginBottom: "0.5rem",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          {/* Tripulante */}
+          <label
+            htmlFor="tripulanteId"
+            className="block text-900 font-medium mb-2"
+          >
             Tripulante
           </label>
           <Controller
             name="tripulanteId"
             control={control}
+            rules={{ required: "El tripulante es obligatorio" }}
             render={({ field }) => (
               <Dropdown
                 id="tripulanteId"
-                value={field.value ? Number(field.value) : null}
+                value={field.value}
                 onChange={(e) => field.onChange(e.value)}
                 options={tripulantes}
+                optionLabel="label"
+                optionValue="value"
                 placeholder="Seleccione un tripulante"
                 filter
                 showClear
+                disabled
+                style={{ fontWeight: "bold" }}
+                className={classNames({ "p-invalid": errors.tripulanteId })}
               />
             )}
           />
+          {getFormErrorMessage("tripulanteId")}
         </div>
-
-        {/* Tipo de Documento */}
-        <div className="col-12 md:col-6">
-          <label htmlFor="documentoId" className="block text-900 font-medium mb-2">
+        <div style={{ flex: 1 }}>
+          {/* Tipo de Documento */}
+          <label
+            htmlFor="documentoId"
+            className="block text-900 font-medium mb-2"
+          >
             Tipo de Documento
           </label>
           <Controller
             name="documentoId"
             control={control}
+            rules={{ required: "El tipo de documento es obligatorio" }}
             render={({ field }) => (
               <Dropdown
                 id="documentoId"
-                value={field.value ? Number(field.value) : null}
+                value={field.value}
                 onChange={(e) => field.onChange(e.value)}
                 options={documentos}
+                optionLabel="label"
+                optionValue="value"
                 placeholder="Seleccione tipo de documento"
                 filter
                 showClear
+                disabled
+                style={{ fontWeight: "bold" }}
+                className={classNames({ "p-invalid": errors.documentoId })}
               />
             )}
           />
+          {getFormErrorMessage("documentoId")}
         </div>
-
-        {/* Número de Documento */}
-        <div className="col-12 md:col-6">
-          <label htmlFor="numeroDocumento" className="block text-900 font-medium mb-2">
+        <div style={{ flex: 1 }}>
+          {/* Número de Documento */}
+          <label
+            htmlFor="numeroDocumento"
+            className="block text-900 font-medium mb-2"
+          >
             Número de Documento
           </label>
           <Controller
@@ -248,17 +279,31 @@ export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, 
             render={({ field }) => (
               <InputText
                 id="numeroDocumento"
-                value={field.value || ''}
+                value={field.value || ""}
                 onChange={field.onChange}
                 placeholder="Ej: DOC-2024-001"
+                disabled
+                style={{ fontWeight: "bold" }}
               />
             )}
           />
         </div>
-
-        {/* Fecha de Emisión */}
-        <div className="col-12 md:col-6">
-          <label htmlFor="fechaEmision" className="block text-900 font-medium mb-2">
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "end",
+          gap: 10,
+          marginBottom: "0.5rem",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          {/* Fecha de Emisión */}
+          <label
+            htmlFor="fechaEmision"
+            className="block text-900 font-medium mb-2"
+          >
             Fecha de Emisión
           </label>
           <Controller
@@ -272,14 +317,17 @@ export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, 
                 placeholder="dd/mm/aaaa"
                 dateFormat="dd/mm/yy"
                 showIcon
+                disabled
+                inputStyle={{ fontWeight: "bold" }}
               />
             )}
           />
         </div>
-
-        {/* Fecha de Vencimiento */}
-        <div className="col-12 md:col-6">
-          <label htmlFor="fechaVencimiento" className="block text-900 font-medium mb-2">
+        <div style={{ flex: 1 }}>
+          <label
+            htmlFor="fechaVencimiento"
+            className="block text-900 font-medium mb-2"
+          >
             Fecha de Vencimiento
           </label>
           <Controller
@@ -288,10 +336,10 @@ export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, 
             rules={{
               validate: (value) => {
                 if (value && fechaEmision && value <= fechaEmision) {
-                  return 'La fecha de vencimiento debe ser posterior a la fecha de emisión';
+                  return "La fecha de vencimiento debe ser posterior a la fecha de emisión";
                 }
                 return true;
-              }
+              },
             }}
             render={({ field }) => (
               <Calendar
@@ -301,75 +349,50 @@ export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, 
                 placeholder="dd/mm/aaaa"
                 dateFormat="dd/mm/yy"
                 showIcon
-                className={classNames({ 'p-invalid': errors.fechaVencimiento })}
+                disabled
+                inputStyle={{ fontWeight: "bold" }}
+                className={classNames({ "p-invalid": errors.fechaVencimiento })}
               />
             )}
           />
-          {getFormErrorMessage('fechaVencimiento')}
+          {getFormErrorMessage("fechaVencimiento")}
         </div>
-
-        {/* URL del Documento PDF */}
-        <div className="col-12">
-          <label htmlFor="urlDocTripulantePdf" className="block text-900 font-medium mb-2">
-            URL del Documento PDF
-          </label>
+        <div style={{ flex: 1 }}>
           <Controller
-            name="urlDocTripulantePdf"
+            name="verificado"
             control={control}
             render={({ field }) => (
-              <InputText
-                id="urlDocTripulantePdf"
-                value={field.value || ''}
-                onChange={field.onChange}
-                placeholder="https://ejemplo.com/documento.pdf"
+              <Button
+                id="verificado"
+                label={field.value ? "VERIFICADO" : "VERIFICAR"}
+                icon={field.value ? "pi pi-check" : "pi pi-times"}
+                disabled
+                className={field.value ? "p-button-success" : "p-button-danger"}
               />
             )}
           />
         </div>
-
-        {/* Estado Verificado */}
-        <div className="col-12 md:col-6">
-          <div className="field-checkbox">
-            <Controller
-              name="verificado"
-              control={control}
-              render={({ field }) => (
-                <Checkbox
-                  inputId="verificado"
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.checked)}
-                />
-              )}
-            />
-            <label htmlFor="verificado" className="ml-2">
-              Documento verificado
-            </label>
-          </div>
+        <div style={{ flex: 1 }}>
+          <Controller
+            name="docVencido"
+            control={control}
+            render={({ field }) => (
+              <Button
+                id="docVencido"
+                label={field.value ? "VENCIDO" : "VIGENTE"}
+                icon={field.value ? "pi pi-times" : "pi pi-check"}
+                disabled
+                className={field.value ? "p-button-danger" : "p-button-success"}
+              />
+            )}
+          />
         </div>
-
-        {/* Documento Vencido */}
-        <div className="col-12 md:col-6">
-          <div className="field-checkbox">
-            <Controller
-              name="docVencido"
-              control={control}
-              render={({ field }) => (
-                <Checkbox
-                  inputId="docVencido"
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.checked)}
-                />
-              )}
-            />
-            <label htmlFor="docVencido" className="ml-2">
-              Documento vencido
-            </label>
-          </div>
-        </div>
-
-        {/* Observaciones */}
-        <div className="col-12">
-          <label htmlFor="observaciones" className="block text-900 font-medium mb-2">
+        <div style={{ flex: 2 }}>
+          {/* Observaciones */}
+          <label
+            htmlFor="observaciones"
+            className="block text-900 font-medium mb-2"
+          >
             Observaciones
           </label>
           <Controller
@@ -378,31 +401,172 @@ export default function DetalleDocTripulantesForm({ detalle, onGuardadoExitoso, 
             render={({ field }) => (
               <InputTextarea
                 id="observaciones"
-                value={field.value || ''}
+                value={field.value || ""}
                 onChange={field.onChange}
-                rows={3}
-                placeholder="Observaciones adicionales sobre el documento..."
+                rows={1}
+                placeholder="Observaciones adicionales"
+                style={{
+                  fontWeight: "bold",
+                  color: "red",
+                  fontStyle: "italic",
+                  textTransform: "uppercase",
+                }}
               />
             )}
           />
         </div>
       </div>
 
+      <div className="grid">
+        {/* URL del Documento PDF */}
+        <div className="col-12">
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "end",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <label
+                htmlFor="urlDocTripulantePdf"
+                className="block text-900 font-medium mb-2"
+              >
+                Documento PDF
+              </label>
+              <div className="grid">
+                <div className="col-12 md:col-8">
+                  <Controller
+                    name="urlDocTripulantePdf"
+                    control={control}
+                    render={({ field }) => (
+                      <InputText
+                        id="urlDocTripulantePdf"
+                        {...field}
+                        placeholder="URL del documento PDF"
+                        className={getFieldClass("urlDocTripulantePdf")}
+                        disabled
+                        style={{ fontWeight: "bold" }}
+                        maxLength={500}
+                        readOnly
+                      />
+                    )}
+                  />
+                  {errors.urlDocTripulantePdf && (
+                    <small className="p-error">
+                      {errors.urlDocTripulantePdf.message}
+                    </small>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div style={{ flex: 1 }}>
+              {urlDocTripulantePdf && (
+                <Button
+                  type="button"
+                  label="Ver PDF"
+                  icon="pi pi-eye"
+                  className="p-button-secondary"
+                  onClick={handleVerPDF}
+                  disabled={loading}
+                  size="small"
+                />
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              {urlDocTripulantePdf && (
+                <Button
+                  type="button"
+                  label="Descargar"
+                  icon="pi pi-download"
+                  className="p-button-outlined p-button-sm"
+                  style={{ minWidth: "80px" }}
+                  onClick={() =>
+                    descargarPdf(
+                      urlDocTripulantePdf,
+                      toast,
+                      `documento-tripulante-${
+                        detalle?.tripulanteId || "sin-id"
+                      }-${detalle?.documentoId || "sin-doc"}.pdf`,
+                      "documentacion-personal"
+                    )
+                  }
+                  tooltip="Descargar PDF del documento"
+                  tooltipOptions={{ position: "top" }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+          marginTop: "0.5rem",
+        }}
+      >
+        {/* Visor de PDF */}
+        {urlDocTripulantePdf && (
+          <div style={{ flex: 1 }}>
+            <PDFViewer urlDocumento={urlDocTripulantePdf} />
+          </div>
+        )}
+
+        {/* Mensaje cuando no hay documento */}
+        {!urlDocTripulantePdf && detalle?.id && (
+          <div className="field col-12">
+            <div
+              className="text-center p-4"
+              style={{ backgroundColor: "#f8f9fa", borderRadius: "6px" }}
+            >
+              <i
+                className="pi pi-file-pdf text-gray-400"
+                style={{ fontSize: "3rem" }}
+              ></i>
+              <p className="text-600 mt-3 mb-2">No hay documento PDF cargado</p>
+              <small className="text-500">
+                Use el botón "Capturar/Subir" para agregar el documento del
+                tripulante
+              </small>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Botones de acción */}
-      <div className="flex justify-content-end gap-2 mt-4">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: 8,
+          marginTop: 18,
+        }}
+      >
         <Button
           type="button"
           label="Cancelar"
           icon="pi pi-times"
-          className="p-button-text"
+          className="p-button-warning"
           onClick={onCancelar}
           disabled={loading}
+          severity="warning"
+          raised
+          size="small"
         />
         <Button
           type="submit"
-          label={detalle?.id ? 'Actualizar' : 'Guardar'}
+          label={detalle?.id ? "Actualizar" : "Guardar"}
           icon="pi pi-check"
           loading={loading}
+          className="p-button-success"
+          severity="success"
+          raised
+          size="small"
         />
       </div>
     </form>
