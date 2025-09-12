@@ -168,7 +168,7 @@ const DescargaFaenaPescaCard = ({
         puertoDescargaId: descargaData.puertoDescargaId
           ? Number(descargaData.puertoDescargaId)
           : null,
-        patroId: descargaData.patroId ? Number(descargaData.patroId) : null,
+        patronId: descargaData.patronId ? Number(descargaData.patronId) : null,
         motoristaId: descargaData.motoristaId
           ? Number(descargaData.motoristaId)
           : null,
@@ -406,7 +406,7 @@ const DescargaFaenaPescaCard = ({
             clientes={clientes}
             bahiaId={faenaData?.bahiaId ? Number(faenaData.bahiaId) : null}
             motoristaId={faenaData?.motoristaId ? Number(faenaData.motoristaId) : null}
-            patronId={faenaData?.patroId ? Number(faenaData.patroId) : null}
+            patronId={faenaData?.patronId ? Number(faenaData.patronId) : null}
             faenaPescaId={faenaPescaId ? Number(faenaPescaId) : null}
             temporadaPescaId={temporadaData?.id ? Number(temporadaData.id) : null}
             especies={especies}

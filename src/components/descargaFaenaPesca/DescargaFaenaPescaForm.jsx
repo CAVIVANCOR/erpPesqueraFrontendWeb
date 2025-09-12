@@ -94,12 +94,11 @@ export default function DescargaFaenaPescaForm({
       fechaHoraFinDescarga: null,
       numWinchaPesaje: "",
       urlComprobanteWincha: "",
-      patroId: patronId,
+      patronId: patronId,
       motoristaId: motoristaId,
       bahiaId: bahiaId,
       latitud: 0,
       longitud: 0,
-      fechaDescarga: null,
       combustibleAbastecidoGalones: 0,
       urlValeAbastecimiento: "",
       urlInformeDescargaProduce: "",
@@ -131,12 +130,11 @@ export default function DescargaFaenaPescaForm({
         fechaHoraFinDescarga: detalle.fechaHoraFinDescarga ? new Date(detalle.fechaHoraFinDescarga) : null,
         numWinchaPesaje: detalle.numWinchaPesaje || "",
         urlComprobanteWincha: detalle.urlComprobanteWincha || "",
-        patroId: detalle.patroId ? Number(detalle.patroId) : patronId,
+        patronId: detalle.patronId ? Number(detalle.patronId) : patronId,
         motoristaId: detalle.motoristaId ? Number(detalle.motoristaId) : motoristaId,
         bahiaId: detalle.bahiaId ? Number(detalle.bahiaId) : bahiaId,
         latitud: detalle.latitud || 0,
         longitud: detalle.longitud || 0,
-        fechaDescarga: detalle.fechaDescarga ? new Date(detalle.fechaDescarga) : null,
         combustibleAbastecidoGalones: detalle.combustibleAbastecidoGalones || 0,
         urlValeAbastecimiento: detalle.urlValeAbastecimiento || "",
         urlInformeDescargaProduce: detalle.urlInformeDescargaProduce || "",
@@ -161,12 +159,11 @@ export default function DescargaFaenaPescaForm({
         fechaHoraFinDescarga: null,
         numWinchaPesaje: "",
         urlComprobanteWincha: "",
-        patroId: patronId,
+        patronId: patronId,
         motoristaId: motoristaId,
         bahiaId: bahiaId,
         latitud: 0,
         longitud: 0,
-        fechaDescarga: null,
         combustibleAbastecidoGalones: 0,
         urlValeAbastecimiento: "",
         urlInformeDescargaProduce: "",
@@ -199,12 +196,11 @@ export default function DescargaFaenaPescaForm({
         fechaHoraFinDescarga: data.fechaHoraFinDescarga ? data.fechaHoraFinDescarga.toISOString() : null,
         numWinchaPesaje: data.numWinchaPesaje?.trim() || null,
         urlComprobanteWincha: data.urlComprobanteWincha?.trim() || null,
-        patroId: data.patroId ? Number(data.patroId) : null,
+        patronId: data.patronId ? Number(data.patronId) : null,
         motoristaId: data.motoristaId ? Number(data.motoristaId) : null,
         bahiaId: data.bahiaId ? Number(data.bahiaId) : null,
         latitud: data.latitud || 0,
         longitud: data.longitud || 0,
-        fechaDescarga: data.fechaDescarga ? data.fechaDescarga.toISOString() : null,
         combustibleAbastecidoGalones: data.combustibleAbastecidoGalones || 0,
         urlValeAbastecimiento: data.urlValeAbastecimiento?.trim() || null,
         urlInformeDescargaProduce: data.urlInformeDescargaProduce?.trim() || null,
@@ -214,6 +210,9 @@ export default function DescargaFaenaPescaForm({
         toneladas: data.toneladas || 0,
         porcentajeJuveniles: data.porcentajeJuveniles || 0,
       };
+
+      console.log("Payload a enviar:", payload);
+      console.log("Datos del formulario:", data);
 
       if (detalle?.id) {
         await actualizarDescargaFaenaPesca(detalle.id, payload);
@@ -236,17 +235,39 @@ export default function DescargaFaenaPescaForm({
       onGuardadoExitoso?.();
     } catch (error) {
       console.error("Error al guardar descarga:", error);
+      console.log("Estructura completa del error:", JSON.stringify(error, null, 2));
+      console.log("error.response:", error?.response);
+      console.log("error.response.data:", error?.response?.data);
+      console.log("error.response.status:", error?.response?.status);
       
-      // Mostrar mensaje de error específico
-      const errorMessage = error?.response?.data?.message || 
-                          error?.message || 
-                          "Error desconocido al guardar la descarga";
+      // Extraer mensaje de error del backend
+      let errorMessage = "Error desconocido al guardar la descarga";
+      
+      if (error?.response?.data?.mensaje) {
+        // Error del backend con campo 'mensaje'
+        errorMessage = error.response.data.mensaje;
+      } else if (error?.response?.data?.message) {
+        // Error del backend con campo 'message'
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.data?.error) {
+        // Algunos backends envían el error en 'error'
+        errorMessage = error.response.data.error;
+      } else if (error?.message) {
+        // Error de axios o JavaScript
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        // Error como string directo
+        errorMessage = error;
+      }
+      
+      console.log("Mensaje de error extraído:", errorMessage);
+      console.log("Mostrando Toast de error...");
       
       toast.current?.show({
         severity: "error",
-        summary: "Error al guardar",
+        summary: "Error de Validación",
         detail: errorMessage,
-        life: 5000,
+        life: 8000,
       });
     } finally {
       setLoading(false);
@@ -432,6 +453,16 @@ export default function DescargaFaenaPescaForm({
           {errors.fechaHoraArriboPuerto && (
             <Message severity="error" text={errors.fechaHoraArriboPuerto.message} />
           )}
+          <Button
+            type="button"
+            label="Arribar a Puerto"
+            icon="pi pi-clock"
+            className="p-button-info"
+            onClick={() => setValue("fechaHoraArriboPuerto", new Date())}
+            disabled={loading}
+            size="small"
+            style={{ marginTop: "5px" }}
+          />
         </div>
         <div style={{ flex: 1 }}>
           <label htmlFor="fechaHoraLlegadaPuerto" style={{ color: "#2c32d3" }}>
@@ -458,6 +489,16 @@ export default function DescargaFaenaPescaForm({
           {errors.fechaHoraLlegadaPuerto && (
             <Message severity="error" text={errors.fechaHoraLlegadaPuerto.message} />
           )}
+          <Button
+            type="button"
+            label="Llego a Puerto"
+            icon="pi pi-clock"
+            className="p-button-info"
+            onClick={() => setValue("fechaHoraLlegadaPuerto", new Date())}
+            disabled={loading}
+            size="small"
+            style={{ marginTop: "5px" }}
+          />
         </div>
         <div style={{ flex: 1 }}>
           <label htmlFor="fechaHoraInicioDescarga" style={{ color: "#21962e" }}>
@@ -484,6 +525,16 @@ export default function DescargaFaenaPescaForm({
           {errors.fechaHoraInicioDescarga && (
             <Message severity="error" text={errors.fechaHoraInicioDescarga.message} />
           )}
+          <Button
+            type="button"
+            label="Iniciar Descarga"
+            icon="pi pi-clock"
+            className="p-button-success"
+            onClick={() => setValue("fechaHoraInicioDescarga", new Date())}
+            disabled={loading}
+            size="small"
+            style={{ marginTop: "5px" }}
+          />
         </div>
         <div style={{ flex: 1 }}>
           <label htmlFor="fechaHoraFinDescarga" style={{ color: "#21962e" }}>
@@ -510,6 +561,16 @@ export default function DescargaFaenaPescaForm({
           {errors.fechaHoraFinDescarga && (
             <Message severity="error" text={errors.fechaHoraFinDescarga.message} />
           )}
+          <Button
+            type="button"
+            label="Fin Descarga"
+            icon="pi pi-clock"
+            className="p-button-success"
+            onClick={() => setValue("fechaHoraFinDescarga", new Date())}
+            disabled={loading}
+            size="small"
+            style={{ marginTop: "5px" }}
+          />
         </div>
       </div>
 
@@ -522,30 +583,6 @@ export default function DescargaFaenaPescaForm({
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaDescarga" style={{ color: "#c61515" }}>
-            Fecha Descarga*
-          </label>
-          <Controller
-            name="fechaDescarga"
-            control={control}
-            rules={{ required: "La fecha de descarga es obligatoria" }}
-            render={({ field }) => (
-              <Calendar
-                id="fechaDescarga"
-                {...field}
-                showIcon
-                dateFormat="dd/mm/yy"
-                inputStyle={{ fontWeight: "bold", color: "#c61515" }}
-                disabled={loading}
-                className={classNames({ "p-invalid": errors.fechaDescarga })}
-              />
-            )}
-          />
-          {errors.fechaDescarga && (
-            <Message severity="error" text={errors.fechaDescarga.message} />
-          )}
-        </div>
         <div style={{ flex: 1 }}>
           <label htmlFor="combustibleAbastecidoGalones">Combustible (Gal)*</label>
           <Controller
@@ -590,13 +627,11 @@ export default function DescargaFaenaPescaForm({
         <div style={{ flex: 1 }}>
           <Button
             type="button"
-            onClick={handleCapturarGPS}
-            disabled={loading}
             label="Capturar GPS"
             icon="pi pi-map-marker"
             className="p-button-success"
-            raised
-            severity="success"
+            onClick={handleCapturarGPS}
+            disabled={loading}
             size="large"
           />
         </div>
