@@ -60,24 +60,15 @@ export default function DescargaFaenaPescaForm({
   onGuardadoExitoso,
   onCancelar,
 }) {
-  console.log("Detalle:", detalle);
-  console.log("Bahía ID:", bahiaId);
-  console.log("Motorista ID:", motoristaId);
-  console.log("Patrón ID:", patronId);
-  console.log("Faena Pesca ID:", faenaPescaId);
-  console.log("Temporada Pesca ID:", temporadaPescaId);
-  console.log("Puertos:", puertos);
-  console.log("Clientes:", clientes);
-  console.log("Especies:", especies);
   // Estados para loading
   const [loading, setLoading] = useState(false);
 
   // Configuración del formulario
   const {
     control,
-    handleSubmit,
     reset,
     setValue,
+    getValues,
     formState: { errors },
     watch,
   } = useForm({
@@ -107,6 +98,7 @@ export default function DescargaFaenaPescaForm({
       especieId: null,
       toneladas: 0,
       porcentajeJuveniles: 0,
+      numReporteRecepcion: "",
     },
   });
 
@@ -143,6 +135,7 @@ export default function DescargaFaenaPescaForm({
         especieId: detalle.especieId ? Number(detalle.especieId) : null,
         toneladas: detalle.toneladas || 0,
         porcentajeJuveniles: detalle.porcentajeJuveniles || 0,
+        numReporteRecepcion: detalle.numReporteRecepcion || "",
       });
     } else {
       // Resetear para nuevo registro con valores fijos de faena
@@ -172,14 +165,18 @@ export default function DescargaFaenaPescaForm({
         especieId: null,
         toneladas: 0,
         porcentajeJuveniles: 0,
+        numReporteRecepcion: "",
       });
     }
   }, [detalle, reset, bahiaId, motoristaId, patronId, faenaPescaId, temporadaPescaId]);
 
   /**
-   * Maneja el envío del formulario
+   * Maneja el guardado del formulario
    */
-  const onSubmit = async (data) => {
+  const handleGuardar = async () => {
+    // Obtener datos del formulario manualmente
+    const data = getValues();
+    
     try {
       setLoading(true);
 
@@ -209,10 +206,8 @@ export default function DescargaFaenaPescaForm({
         especieId: data.especieId ? Number(data.especieId) : null,
         toneladas: data.toneladas || 0,
         porcentajeJuveniles: data.porcentajeJuveniles || 0,
+        numReporteRecepcion: data.numReporteRecepcion?.trim() || null,
       };
-
-      console.log("Payload a enviar:", payload);
-      console.log("Datos del formulario:", data);
 
       if (detalle?.id) {
         await actualizarDescargaFaenaPesca(detalle.id, payload);
@@ -235,11 +230,6 @@ export default function DescargaFaenaPescaForm({
       onGuardadoExitoso?.();
     } catch (error) {
       console.error("Error al guardar descarga:", error);
-      console.log("Estructura completa del error:", JSON.stringify(error, null, 2));
-      console.log("error.response:", error?.response);
-      console.log("error.response.data:", error?.response?.data);
-      console.log("error.response.status:", error?.response?.status);
-      
       // Extraer mensaje de error del backend
       let errorMessage = "Error desconocido al guardar la descarga";
       
@@ -259,10 +249,7 @@ export default function DescargaFaenaPescaForm({
         // Error como string directo
         errorMessage = error;
       }
-      
-      console.log("Mensaje de error extraído:", errorMessage);
-      console.log("Mostrando Toast de error...");
-      
+    
       toast.current?.show({
         severity: "error",
         summary: "Error de Validación",
@@ -320,7 +307,7 @@ export default function DescargaFaenaPescaForm({
   });
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
+    <div className="p-fluid">
       <Toast ref={toast} />
       
       {/* Primera fila: Datos básicos */}
@@ -809,6 +796,34 @@ export default function DescargaFaenaPescaForm({
         </div>
       </div>
 
+      {/* Séptima fila: Reporte de recepción */}
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          marginBottom: "0.5rem",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label htmlFor="numReporteRecepcion">Número de reporte de recepción</label>
+          <Controller
+            name="numReporteRecepcion"
+            control={control}
+            render={({ field }) => (
+              <InputText
+                id="numReporteRecepcion"
+                {...field}
+                placeholder="Número de reporte de recepción"
+                disabled={loading}
+                style={{ fontWeight: "bold" }}
+                maxLength={20}
+              />
+            )}
+          />
+        </div>
+      </div>
+
       {/* Botones de acción */}
       <div
         style={{
@@ -831,7 +846,7 @@ export default function DescargaFaenaPescaForm({
           size="small"
         />
         <Button
-          type="submit"
+          onClick={handleGuardar}
           label={detalle?.id ? "Actualizar" : "Guardar"}
           icon="pi pi-check"
           loading={loading}
@@ -841,6 +856,6 @@ export default function DescargaFaenaPescaForm({
           size="small"
         />
       </div>
-    </form>
+    </div>
   );
 }

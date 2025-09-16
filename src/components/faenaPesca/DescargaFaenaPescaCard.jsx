@@ -32,12 +32,12 @@ const DescargaFaenaPescaCard = ({
   temporadaData,
   faenaData,
   faenaDescripcion,
-  puertos: puertosProps = [],
-  patrones: patronesProps = [],
-  motoristas: motoristasProps = [],
-  bahias: bahiasProps = [],
-  clientes: clientesProps = [],
-  especies: especiesProps = [],
+  puertos = [],
+  patrones = [],
+  motoristas = [],
+  bahias = [],
+  clientes = [],
+  especies = [],
   loading = false,
   onDataChange,
   onDescargaChange, // Callback para notificar cambios
@@ -51,79 +51,11 @@ const DescargaFaenaPescaCard = ({
   const [loadingData, setLoadingData] = useState(false);
   const toast = useRef(null);
 
-  // Estados para props normalizadas
-  const [puertos, setPuertos] = useState(puertosProps);
-  const [patrones, setPatrones] = useState(patronesProps);
-  const [motoristas, setMotoristas] = useState(motoristasProps);
-  const [bahias, setBahias] = useState(bahiasProps);
-  const [clientes, setClientes] = useState(clientesProps);
-  const [especies, setEspecies] = useState(especiesProps);
-
   useEffect(() => {
     if (faenaPescaId) {
       cargarDescargas();
     }
   }, [faenaPescaId]);
-
-  useEffect(() => {
-    if (puertosProps?.length > 0) {
-      const puertosNormalizados = puertosProps.map((item) => ({
-        value: Number(item.value),
-        label: item.label,
-      }));
-      setPuertos(puertosNormalizados);
-    }
-  }, [puertosProps]);
-
-  useEffect(() => {
-    if (patronesProps?.length > 0) {
-      const patronesNormalizados = patronesProps.map((item) => ({
-        value: Number(item.value),
-        label: item.label,
-      }));
-      setPatrones(patronesNormalizados);
-    }
-  }, [patronesProps]);
-
-  useEffect(() => {
-    if (motoristasProps?.length > 0) {
-      const motoristasNormalizados = motoristasProps.map((item) => ({
-        value: Number(item.value),
-        label: item.label,
-      }));
-      setMotoristas(motoristasNormalizados);
-    }
-  }, [motoristasProps]);
-
-  useEffect(() => {
-    if (bahiasProps?.length > 0) {
-      const bahiasNormalizadas = bahiasProps.map((item) => ({
-        value: Number(item.value),
-        label: item.label,
-      }));
-      setBahias(bahiasNormalizadas);
-    }
-  }, [bahiasProps]);
-
-  useEffect(() => {
-    if (clientesProps?.length > 0) {
-      const clientesNormalizados = clientesProps.map((item) => ({
-        value: Number(item.value),
-        label: item.label,
-      }));
-      setClientes(clientesNormalizados);
-    }
-  }, [clientesProps]);
-
-  useEffect(() => {
-    if (especiesProps?.length > 0) {
-      const especiesNormalizadas = especiesProps.map((item) => ({
-        value: Number(item.value),
-        label: item.label,
-      }));
-      setEspecies(especiesNormalizadas);
-    }
-  }, [especiesProps]);
 
   const cargarDescargas = async () => {
     try {
@@ -219,28 +151,44 @@ const DescargaFaenaPescaCard = ({
 
   // Templates para las columnas
   const puertoTemplate = (rowData) => {
+    const puerto = puertos.find(p => Number(p.id) === Number(rowData.puertoDescargaId));
     return (
       <span style={{ fontWeight: "bold" }}>
-        {rowData.puertoDescarga?.nombre || "N/A"}
+        {puerto?.nombre || "N/A"}
       </span>
     );
   };
 
-  const patronTemplate = (rowData) => {
+  const clienteTemplate = (rowData) => {
+    const cliente = clientes.find(c => Number(c.id) === Number(rowData.clienteId));
     return (
-      <span style={{ fontStyle: "italic" }}>
-        {rowData.patro?.nombre || "N/A"}
+      <span style={{ fontWeight: "bold" }}>
+        {cliente?.razonSocial || "N/A"}
       </span>
     );
   };
 
-  const motoristaTemplate = (rowData) => {
+  const especieTemplate = (rowData) => {
+    const especie = especies.find(e => Number(e.id) === Number(rowData.especieId));
     return (
-      <span style={{ fontStyle: "italic" }}>
-        {rowData.motorista?.nombre || "N/A"}
+      <span style={{ fontWeight: "bold" }}>
+        {especie?.nombre || "N/A"}
       </span>
     );
   };
+
+  const toneladasTemplate = (rowData) => {
+    return rowData.toneladas
+      ? `${rowData.toneladas} Ton`
+      : "-";
+  };
+
+  const porcentajeJuvenilesTemplate = (rowData) => {
+    return rowData.porcentajeJuveniles
+      ? `${rowData.porcentajeJuveniles}%`
+      : "-";
+  };
+
 
   const fechaHoraTemplate = (field) => (rowData) => {
     return rowData[field]
@@ -359,18 +307,32 @@ const DescargaFaenaPescaCard = ({
           style={{ minWidth: "140px" }}
         />
         <Column
-          field="patro"
-          header="Patrón"
-          body={patronTemplate}
+          field="cliente"
+          header="Cliente"
+          body={clienteTemplate}
           sortable
           style={{ minWidth: "120px" }}
         />
         <Column
-          field="motorista"
-          header="Motorista"
-          body={motoristaTemplate}
+          field="especie"
+          header="Especie"
+          body={especieTemplate}
           sortable
           style={{ minWidth: "120px" }}
+        />
+        <Column
+          field="toneladas"
+          header="Toneladas"
+          body={toneladasTemplate}
+          sortable
+          style={{ minWidth: "100px" }}
+        />
+        <Column
+          field="porcentajeJuveniles"
+          header="Porcentaje Juveniles"
+          body={porcentajeJuvenilesTemplate}
+          sortable
+          style={{ minWidth: "100px" }}
         />
         <Column
           field="combustibleAbastecidoGalones"
@@ -378,6 +340,12 @@ const DescargaFaenaPescaCard = ({
           body={combustibleTemplate}
           sortable
           style={{ minWidth: "100px" }}
+        />
+        <Column
+          field="numReporteRecepcion"
+          header="Reporte Recepción"
+          sortable
+          style={{ minWidth: "120px" }}
         />
         <Column
           body={actionBodyTemplate}

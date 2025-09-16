@@ -24,6 +24,7 @@ import { getDocumentosPesca } from "../../api/documentoPesca";
 import { getDocumentacionesEmbarcacion } from "../../api/documentacionEmbarcacion";
 import { getClientesPorEmpresa } from "../../api/entidadComercial"; 
 import { getEspeciesParaDropdown } from "../../api/especie";
+import { getPuertosActivos } from "../../api/puertoPesca";
 import logoEscudoPeru from "../../assets/logoEscudoPeru.png";
 
 export default function FaenaPescaForm({
@@ -68,6 +69,7 @@ export default function FaenaPescaForm({
   const [embarcaciones, setEmbarcaciones] = useState(embarcacionesOptions);
   const [boliches, setBoliches] = useState(bolichesOptions);
   const [puertos, setPuertos] = useState(puertosOptions);
+  const [puertosDescarga, setPuertosDescarga] = useState([]); // Estado para puertos de descarga
   const [documentosPesca, setDocumentosPesca] = useState([]);
 
   // Configuración del formulario con React Hook Form
@@ -133,15 +135,17 @@ export default function FaenaPescaForm({
         const documentosPescaData = await getDocumentosPesca();
         const documentacionEmbarcacionData = await getDocumentacionesEmbarcacion();
         const especiesData = await getEspeciesParaDropdown();
+        const puertosData = await getPuertosActivos();
+        
         setPersonal(personalData);
         setDocumentosPesca(documentosPescaData);
         setDocumentacionEmbarcacion(documentacionEmbarcacionData);
         setEspecies(especiesData);
+        setPuertosDescarga(puertosData);
 
         // Cargar clientes si hay temporada con empresaId
         if (temporadaData?.empresaId) {
           const clientesData = await getClientesPorEmpresa(temporadaData.empresaId);
-          console.log("clientesData", clientesData)
           setClientes(clientesData);
         }
       } catch (error) {
@@ -543,7 +547,7 @@ export default function FaenaPescaForm({
             faenaPescaId={currentFaenaData.id || defaultValues.id}
             temporadaData={temporadaData}
             faenaData={currentFaenaData}
-            puertos={puertos}
+            puertos={puertosDescarga} // Usar puertos de descarga
             patrones={patrones}
             motoristas={motoristas}
             bahias={bahias}
