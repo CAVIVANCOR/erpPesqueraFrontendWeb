@@ -123,22 +123,22 @@ const FaenaPescaConsumo = () => {
     return formatearFechaHora(rowData.fechaSalida);
   };
 
-  const fechaRetornoTemplate = (rowData) => {
-    return formatearFechaHora(rowData.fechaRetorno);
+  const fechaHoraFondeoTemplate = (rowData) => {
+    return formatearFechaHora(rowData.fechaHoraFondeo);
   };
 
   const estadoTemplate = (rowData) => {
     const ahora = new Date();
     const salida = new Date(rowData.fechaSalida);
-    const retorno = new Date(rowData.fechaRetorno);
+    const fondeo = new Date(rowData.fechaHoraFondeo);
     
     let estado = 'Programada';
     let severity = 'info';
     
-    if (ahora >= salida && ahora < retorno) {
+    if (ahora >= salida && ahora < fondeo) {
       estado = 'En Mar';
       severity = 'warning';
-    } else if (ahora >= retorno) {
+    } else if (ahora >= fondeo) {
       estado = 'Retornada';
       severity = 'success';
     }
@@ -147,11 +147,11 @@ const FaenaPescaConsumo = () => {
   };
 
   const duracionTemplate = (rowData) => {
-    if (!rowData.fechaSalida || !rowData.fechaRetorno) return '';
+    if (!rowData.fechaSalida || !rowData.fechaHoraFondeo) return '';
     
     const salida = new Date(rowData.fechaSalida);
-    const retorno = new Date(rowData.fechaRetorno);
-    const diferencia = retorno - salida;
+    const fondeo = new Date(rowData.fechaHoraFondeo);
+    const diferencia = fondeo - salida;
     const horas = Math.round(diferencia / (1000 * 60 * 60));
     
     if (horas < 24) {
@@ -254,9 +254,9 @@ const FaenaPescaConsumo = () => {
             style={{ width: '150px' }}
           />
           <Column 
-            field="fechaRetorno" 
-            header="Fecha Retorno" 
-            body={fechaRetornoTemplate}
+            field="fechaHoraFondeo" 
+            header="Fecha/Hora Fondeo" 
+            body={fechaHoraFondeoTemplate}
             sortable 
             style={{ width: '150px' }}
           />
@@ -273,7 +273,7 @@ const FaenaPescaConsumo = () => {
             className="text-center"
           />
           <Column field="puertoSalidaId" header="Pto. Salida" sortable style={{ width: '120px' }} />
-          <Column field="puertoRetornoId" header="Pto. Retorno" sortable style={{ width: '120px' }} />
+          <Column field="puertoFondeoId" header="Pto. Fondeo" sortable style={{ width: '120px' }} />
           <Column field="puertoDescargaId" header="Pto. Descarga" sortable style={{ width: '130px' }} />
           <Column 
             field="descripcion" 

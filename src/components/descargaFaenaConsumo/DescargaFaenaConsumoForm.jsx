@@ -29,6 +29,8 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
 
   const pesoTotalDescargado = watch('pesoTotalDescargado');
   const pesoTotalDeclarado = watch('pesoTotalDeclarado');
+  const latitudFondeo = watch('latitudFondeo');
+  const longitudFondeo = watch('longitudFondeo');
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -49,7 +51,12 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
         estadoProducto: descarga.estadoProducto || 'FRESCO',
         calidadProducto: descarga.calidadProducto || 'PRIMERA',
         observaciones: descarga.observaciones || '',
-        estadoDescarga: descarga.estadoDescarga || 'PENDIENTE'
+        estadoDescarga: descarga.estadoDescarga || 'PENDIENTE',
+        // Nuevos campos de fondeo
+        fechaHoraFondeo: descarga.fechaHoraFondeo ? new Date(descarga.fechaHoraFondeo) : null,
+        latitudFondeo: descarga.latitudFondeo || null,
+        longitudFondeo: descarga.longitudFondeo || null,
+        puertoFondeoId: descarga.puertoFondeoId ? Number(descarga.puertoFondeoId) : null
       });
     } else {
       reset({
@@ -65,7 +72,12 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
         estadoProducto: 'FRESCO',
         calidadProducto: 'PRIMERA',
         observaciones: '',
-        estadoDescarga: 'PENDIENTE'
+        estadoDescarga: 'PENDIENTE',
+        // Nuevos campos de fondeo
+        fechaHoraFondeo: null,
+        latitudFondeo: null,
+        longitudFondeo: null,
+        puertoFondeoId: null
       });
     }
   }, [descarga, reset]);
@@ -118,6 +130,62 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
     }).format(peso) + ' kg';
   };
 
+  const capturarFechaHoraActualFondeo = () => {
+    const fechaHoraActual = new Date();
+    reset(prev => ({
+      ...prev,
+      fechaHoraFondeo: fechaHoraActual
+    }));
+    toast.current?.show({
+      severity: 'success',
+      summary: 'Fecha/Hora Capturada',
+      detail: `Fecha y hora de fondeo: ${fechaHoraActual.toLocaleString('es-PE')}`
+    });
+  };
+
+  const capturarGPSFondeo = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          reset(prev => ({
+            ...prev,
+            latitudFondeo: latitude,
+            longitudFondeo: longitude
+          }));
+          toast.current?.show({
+            severity: 'success',
+            summary: 'GPS Capturado',
+            detail: `Coordenadas de fondeo obtenidas: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+          });
+        },
+        (error) => {
+          toast.current?.show({
+            severity: 'error',
+            summary: 'Error GPS',
+            detail: 'No se pudo obtener la ubicación GPS'
+          });
+        }
+      );
+    } else {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'GPS No Disponible',
+        detail: 'El navegador no soporta geolocalización'
+      });
+    }
+  };
+
+  const convertirADMS = (decimal) => {
+    if (!decimal) return '';
+    const abs = Math.abs(decimal);
+    const grados = Math.floor(abs);
+    const minutos = Math.floor((abs - grados) * 60);
+    const segundos = ((abs - grados) * 60 - minutos) * 60;
+    const direccion = decimal >= 0 ? (decimal === latitudFondeo ? 'N' : 'E') : (decimal === latitudFondeo ? 'S' : 'W');
+    return `${grados}° ${minutos}' ${segundos.toFixed(2)}" ${direccion}`;
+  };
+
   const onSubmit = async (data) => {
     try {
       setLoading(true);
@@ -153,7 +221,12 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
         estadoProducto: data.estadoProducto || 'FRESCO',
         calidadProducto: data.calidadProducto || 'PRIMERA',
         observaciones: data.observaciones?.trim() || null,
-        estadoDescarga: data.estadoDescarga || 'PENDIENTE'
+        estadoDescarga: data.estadoDescarga || 'PENDIENTE',
+        // Nuevos campos de fondeo
+        fechaHoraFondeo: data.fechaHoraFondeo,
+        latitudFondeo: data.latitudFondeo,
+        longitudFondeo: data.longitudFondeo,
+        puertoFondeoId: data.puertoFondeoId ? Number(data.puertoFondeoId) : null
       };
 
       if (payload.pesoTotalDeclarado) {
@@ -488,6 +561,119 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
                     />
                   )}
                 />
+              </div>
+            </div>
+          </TabPanel>
+
+          <TabPanel header="Fondeo">
+            <div className="grid">
+              <div className="col-12 md:col-6">
+                <label htmlFor="fechaHoraFondeo" className="block text-900 font-medium mb-2">
+                  Fecha y Hora de Fondeo
+                </label>
+                <Controller
+                  name="fechaHoraFondeo"
+                  control={control}
+                  render={({ field }) => (
+                    <Calendar
+                      id="fechaHoraFondeo"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      dateFormat="dd/mm/yy hh:mm"
+                      placeholder="Seleccione fecha y hora"
+                      showIcon
+                    />
+                  )}
+                />
+                <Button
+                  type="button"
+                  label="Capturar Fecha/Hora Actual"
+                  icon="pi pi-clock"
+                  className="p-button-secondary"
+                  onClick={capturarFechaHoraActualFondeo}
+                />
+              </div>
+
+              <div className="col-12 md:col-6">
+                <label htmlFor="latitudFondeo" className="block text-900 font-medium mb-2">
+                  Latitud de Fondeo
+                </label>
+                <Controller
+                  name="latitudFondeo"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="latitudFondeo"
+                      value={field.value}
+                      onValueChange={(e) => field.onChange(e.value)}
+                      placeholder="0.000000"
+                      maxFractionDigits={6}
+                    />
+                  )}
+                />
+                <Button
+                  type="button"
+                  label="Capturar GPS"
+                  icon="pi pi-map-marker"
+                  className="p-button-secondary"
+                  onClick={capturarGPSFondeo}
+                />
+              </div>
+
+              <div className="col-12 md:col-6">
+                <label htmlFor="longitudFondeo" className="block text-900 font-medium mb-2">
+                  Longitud de Fondeo
+                </label>
+                <Controller
+                  name="longitudFondeo"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="longitudFondeo"
+                      value={field.value}
+                      onValueChange={(e) => field.onChange(e.value)}
+                      placeholder="0.000000"
+                      maxFractionDigits={6}
+                    />
+                  )}
+                />
+              </div>
+
+              <div className="col-12 md:col-6">
+                <label htmlFor="puertoFondeoId" className="block text-900 font-medium mb-2">
+                  Puerto de Fondeo
+                </label>
+                <Controller
+                  name="puertoFondeoId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="puertoFondeoId"
+                      value={field.value ? Number(field.value) : null}
+                      onChange={(e) => field.onChange(e.value)}
+                      options={puertos.map(p => ({ 
+                        ...p, 
+                        id: Number(p.id),
+                        nombreCompleto: `${p.nombre} (${p.codigo}) - ${p.region}`
+                      }))}
+                      optionLabel="nombreCompleto"
+                      optionValue="id"
+                      placeholder="Seleccione puerto"
+                      filter
+                    />
+                  )}
+                />
+              </div>
+
+              <div className="col-12">
+                <label className="block text-900 font-medium mb-2">
+                  Coordenadas de Fondeo (DMS)
+                </label>
+                <div className="p-inputtext p-component p-filled">
+                  <span className="font-bold">
+                    {convertirADMS(latitudFondeo)} {convertirADMS(longitudFondeo)}
+                  </span>
+                </div>
               </div>
             </div>
           </TabPanel>

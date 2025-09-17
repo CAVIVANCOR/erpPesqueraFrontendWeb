@@ -130,9 +130,9 @@ export default function FaenaPesca() {
         <Column field="patronId" header="Patrón" />
         <Column field="descripcion" header="Descripción" />
         <Column field="fechaSalida" header="Fecha Salida" body={rowData => new Date(rowData.fechaSalida).toLocaleDateString()} />
-        <Column field="fechaRetorno" header="Fecha Retorno" body={rowData => new Date(rowData.fechaRetorno).toLocaleDateString()} />
+        <Column field="fechaHoraFondeo" header="Fecha Fondeo" body={rowData => rowData.fechaHoraFondeo ? new Date(rowData.fechaHoraFondeo).toLocaleDateString() : '-'} />
         <Column field="puertoSalidaId" header="Puerto Salida" />
-        <Column field="puertoRetornoId" header="Puerto Retorno" />
+        <Column field="puertoFondeoId" header="Puerto Fondeo" />
         <Column field="puertoDescargaId" header="Puerto Descarga" />
         <Column field="embarcacionId" header="Embarcación" />
         <Column field="bolicheRedId" header="Boliche Red" />

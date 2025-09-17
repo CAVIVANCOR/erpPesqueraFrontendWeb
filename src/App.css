@@ -40,3 +40,13 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Alineación superior para DataTable */
+.align-top td {
+  vertical-align: top !important;
+}
+
+/* Alineación superior específica para PrimeReact DataTable */
+.p-datatable .p-datatable-tbody > tr > td {
+  vertical-align: top !important;
+}

@@ -30,7 +30,7 @@ const FaenaPescaConsumoForm = ({ faena, onSave, onCancel }) => {
 
   // Observar fechas para validación
   const fechaSalida = watch('fechaSalida');
-  const fechaRetorno = watch('fechaRetorno');
+  const fechaHoraFondeo = watch('fechaHoraFondeo');
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -46,9 +46,9 @@ const FaenaPescaConsumoForm = ({ faena, onSave, onCancel }) => {
         patronId: faena.patronId ? Number(faena.patronId) : null,
         descripcion: faena.descripcion || '',
         fechaSalida: faena.fechaSalida ? new Date(faena.fechaSalida) : null,
-        fechaRetorno: faena.fechaRetorno ? new Date(faena.fechaRetorno) : null,
+        fechaHoraFondeo: faena.fechaHoraFondeo ? new Date(faena.fechaHoraFondeo) : null,
         puertoSalidaId: faena.puertoSalidaId ? Number(faena.puertoSalidaId) : null,
-        puertoRetornoId: faena.puertoRetornoId ? Number(faena.puertoRetornoId) : null,
+        puertoFondeoId: faena.puertoFondeoId ? Number(faena.puertoFondeoId) : null,
         puertoDescargaId: faena.puertoDescargaId ? Number(faena.puertoDescargaId) : null,
         embarcacionId: faena.embarcacionId ? Number(faena.embarcacionId) : null,
         bolicheRedId: faena.bolicheRedId ? Number(faena.bolicheRedId) : null,
@@ -63,9 +63,9 @@ const FaenaPescaConsumoForm = ({ faena, onSave, onCancel }) => {
         patronId: null,
         descripcion: '',
         fechaSalida: null,
-        fechaRetorno: null,
+        fechaHoraFondeo: null,
         puertoSalidaId: null,
-        puertoRetornoId: null,
+        puertoFondeoId: null,
         puertoDescargaId: null,
         embarcacionId: null,
         bolicheRedId: null,
@@ -126,16 +126,16 @@ const FaenaPescaConsumoForm = ({ faena, onSave, onCancel }) => {
   };
 
   const validarFechas = () => {
-    if (fechaSalida && fechaRetorno && fechaSalida >= fechaRetorno) {
-      return 'La fecha de retorno debe ser posterior a la fecha de salida';
+    if (fechaSalida && fechaHoraFondeo && fechaSalida >= fechaHoraFondeo) {
+      return 'La fecha de fondeo debe ser posterior a la fecha de salida';
     }
     return true;
   };
 
   const calcularDuracion = () => {
-    if (!fechaSalida || !fechaRetorno) return '';
+    if (!fechaSalida || !fechaHoraFondeo) return '';
     
-    const diferencia = fechaRetorno - fechaSalida;
+    const diferencia = fechaHoraFondeo - fechaSalida;
     const horas = Math.round(diferencia / (1000 * 60 * 60));
     
     if (horas < 24) {
@@ -170,9 +170,9 @@ const FaenaPescaConsumoForm = ({ faena, onSave, onCancel }) => {
         patronId: Number(data.patronId),
         descripcion: data.descripcion?.trim() || null,
         fechaSalida: data.fechaSalida.toISOString(),
-        fechaRetorno: data.fechaRetorno.toISOString(),
+        fechaHoraFondeo: data.fechaHoraFondeo.toISOString(),
         puertoSalidaId: Number(data.puertoSalidaId),
-        puertoRetornoId: Number(data.puertoRetornoId),
+        puertoFondeoId: Number(data.puertoFondeoId),
         puertoDescargaId: Number(data.puertoDescargaId),
         embarcacionId: data.embarcacionId ? Number(data.embarcacionId) : null,
         bolicheRedId: data.bolicheRedId ? Number(data.bolicheRedId) : null,
@@ -392,18 +392,18 @@ const FaenaPescaConsumoForm = ({ faena, onSave, onCancel }) => {
                 )}
               </div>
 
-              {/* Fecha Retorno */}
+              {/* Fecha Hora Fondeo */}
               <div className="col-12 md:col-6">
-                <label htmlFor="fechaRetorno" className="block text-900 font-medium mb-2">
-                  Fecha y Hora de Retorno *
+                <label htmlFor="fechaHoraFondeo" className="block text-900 font-medium mb-2">
+                  Fecha y Hora de Fondeo *
                 </label>
                 <Controller
-                  name="fechaRetorno"
+                  name="fechaHoraFondeo"
                   control={control}
-                  rules={{ required: 'La fecha de retorno es obligatoria' }}
+                  rules={{ required: 'La fecha de fondeo es obligatoria' }}
                   render={({ field }) => (
                     <Calendar
-                      id="fechaRetorno"
+                      id="fechaHoraFondeo"
                       value={field.value}
                       onChange={(e) => field.onChange(e.value)}
                       placeholder="Seleccione fecha y hora"
@@ -412,12 +412,12 @@ const FaenaPescaConsumoForm = ({ faena, onSave, onCancel }) => {
                       hourFormat="24"
                       showIcon
                       minDate={fechaSalida}
-                      className={errors.fechaRetorno ? 'p-invalid' : ''}
+                      className={errors.fechaHoraFondeo ? 'p-invalid' : ''}
                     />
                   )}
                 />
-                {errors.fechaRetorno && (
-                  <small className="p-error">{errors.fechaRetorno.message}</small>
+                {errors.fechaHoraFondeo && (
+                  <small className="p-error">{errors.fechaHoraFondeo.message}</small>
                 )}
               </div>
 
@@ -453,18 +453,18 @@ const FaenaPescaConsumoForm = ({ faena, onSave, onCancel }) => {
                 )}
               </div>
 
-              {/* Puerto Retorno */}
+              {/* Puerto Fondeo */}
               <div className="col-12 md:col-4">
-                <label htmlFor="puertoRetornoId" className="block text-900 font-medium mb-2">
-                  Puerto de Retorno *
+                <label htmlFor="puertoFondeoId" className="block text-900 font-medium mb-2">
+                  Puerto de Fondeo *
                 </label>
                 <Controller
-                  name="puertoRetornoId"
+                  name="puertoFondeoId"
                   control={control}
-                  rules={{ required: 'El puerto de retorno es obligatorio' }}
+                  rules={{ required: 'El puerto de fondeo es obligatorio' }}
                   render={({ field }) => (
                     <Dropdown
-                      id="puertoRetornoId"
+                      id="puertoFondeoId"
                       value={field.value ? Number(field.value) : null}
                       onChange={(e) => field.onChange(e.value)}
                       options={puertos.map(p => ({ 
@@ -475,13 +475,13 @@ const FaenaPescaConsumoForm = ({ faena, onSave, onCancel }) => {
                       optionLabel="nombreCompleto"
                       optionValue="id"
                       placeholder="Seleccione puerto"
-                      className={errors.puertoRetornoId ? 'p-invalid' : ''}
+                      className={errors.puertoFondeoId ? 'p-invalid' : ''}
                       filter
                     />
                   )}
                 />
-                {errors.puertoRetornoId && (
-                  <small className="p-error">{errors.puertoRetornoId.message}</small>
+                {errors.puertoFondeoId && (
+                  <small className="p-error">{errors.puertoFondeoId.message}</small>
                 )}
               </div>
 
@@ -518,7 +518,7 @@ const FaenaPescaConsumoForm = ({ faena, onSave, onCancel }) => {
               </div>
 
               {/* Duración Calculada */}
-              {fechaSalida && fechaRetorno && (
+              {fechaSalida && fechaHoraFondeo && (
                 <div className="col-12">
                   <div className="card p-3 bg-blue-50">
                     <h5 className="mb-2 text-blue-800">Información de Duración</h5>
@@ -644,11 +644,11 @@ const FaenaPescaConsumoForm = ({ faena, onSave, onCancel }) => {
                       }
                     </div>
                     <div className="col-6">
-                      <strong>Fecha Retorno:</strong> {
-                        fechaRetorno ? fechaRetorno.toLocaleString('es-PE') : 'Sin definir'
+                      <strong>Fecha Hora Fondeo:</strong> {
+                        fechaHoraFondeo ? fechaHoraFondeo.toLocaleString('es-PE') : 'Sin definir'
                       }
                     </div>
-                    {fechaSalida && fechaRetorno && (
+                    {fechaSalida && fechaHoraFondeo && (
                       <div className="col-12">
                         <div className="text-lg font-bold text-primary">
                           <strong>Duración: {calcularDuracion()}</strong>

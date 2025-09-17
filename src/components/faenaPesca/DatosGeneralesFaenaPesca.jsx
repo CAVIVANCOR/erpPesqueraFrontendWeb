@@ -73,8 +73,8 @@ const DatosGeneralesFaenaPesca = ({
   const puertoSalidaId = watch("puertoSalidaId");
   const fechaDescarga = watch("fechaDescarga");
   const puertoDescargaId = watch("puertoDescargaId");
-  const fechaRetorno = watch("fechaRetorno");
-  const puertoRetornoId = watch("puertoRetornoId");
+  const fechaHoraFondeo = watch("fechaHoraFondeo");
+  const puertoFondeoId = watch("puertoFondeoId");
   const estadoFaenaId = watch("estadoFaenaId");
   const toneladasCapturadasFaena = watch("toneladasCapturadasFaena");
 
@@ -84,8 +84,8 @@ const DatosGeneralesFaenaPesca = ({
     puertoSalidaId &&
     fechaDescarga &&
     puertoDescargaId &&
-    fechaRetorno &&
-    puertoRetornoId;
+    fechaHoraFondeo &&
+    puertoFondeoId;
   // Lógica de cambio automático de estado
   useEffect(() => {
     // Solo cambiar si estado actual es 17 (INICIADA) y tenemos fechaSalida + puertoSalidaId
@@ -104,10 +104,10 @@ const DatosGeneralesFaenaPesca = ({
     const requiredFields = [
       fechaSalida,
       fechaDescarga,
-      fechaRetorno,
+      fechaHoraFondeo,
       puertoSalidaId,
       puertoDescargaId,
-      puertoRetornoId,
+      puertoFondeoId,
     ];
 
     return requiredFields.every(
@@ -116,10 +116,10 @@ const DatosGeneralesFaenaPesca = ({
   }, [
     fechaSalida,
     fechaDescarga,
-    fechaRetorno,
+    fechaHoraFondeo,
     puertoSalidaId,
     puertoDescargaId,
-    puertoRetornoId,
+    puertoFondeoId,
   ]);
 
   // Mostrar botón "Fin de Faena" solo cuando estado es EN ZARPE (18) y todos los campos están completos
@@ -410,16 +410,25 @@ const DatosGeneralesFaenaPesca = ({
             name="fechaDescarga"
             control={control}
             render={({ field }) => (
-              <Calendar
+              <InputText
                 id="fechaDescarga"
-                {...field}
-                showIcon
-                dateFormat="dd/mm/yy"
-                inputStyle={{ fontWeight: "bold", color: "#21962e" }}
-                disabled={loading || isReadOnly}
+                value={field.value ? 
+                  new Date(field.value).toLocaleString("es-PE", {
+                    day: "2-digit",
+                    month: "2-digit", 
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false
+                  }) : ""
+                }
+                readOnly
+                disabled
+                style={{ fontWeight: "bold", color: "#21962e", backgroundColor: "#f8f9fa" }}
                 className={classNames({
                   "p-invalid": errors.fechaDescarga,
                 })}
+                placeholder="Se actualiza automáticamente"
               />
             )}
           />
@@ -434,85 +443,88 @@ const DatosGeneralesFaenaPesca = ({
           <Controller
             name="puertoDescargaId"
             control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="puertoDescargaId"
-                {...field}
-                value={field.value}
-                options={puertos}
-                optionLabel="label"
-                optionValue="value"
-                pt={{
-                  input: { style: { color: "#21962e", fontWeight: "bold" } },
-                }}
-                placeholder="Seleccione zona"
-                required
-                disabled={loading || isReadOnly}
-                className={classNames({
-                  "p-invalid": errors.puertoDescargaId,
-                })}
-              />
-            )}
+            render={({ field }) => {
+              const puertoSeleccionado = puertos.find(p => Number(p.value) === Number(field.value));
+              console.log("puertoDescargaId - field.value:", field.value, "puertoSeleccionado:", puertoSeleccionado, "puertos disponibles:", puertos.length);
+              return (
+                <InputText
+                  id="puertoDescargaId"
+                  value={puertoSeleccionado ? puertoSeleccionado.label : ""}
+                  readOnly
+                  disabled
+                  style={{ fontWeight: "bold", color: "#21962e", backgroundColor: "#f8f9fa" }}
+                  className={classNames({
+                    "p-invalid": errors.puertoDescargaId,
+                  })}
+                  placeholder="Se actualiza automáticamente"
+                />
+              );
+            }}
           />
           {errors.puertoDescargaId && (
             <Message severity="error" text={errors.puertoDescargaId.message} />
           )}
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="fechaRetorno" style={{ color: "#c61515" }}>
-            Fecha Retorno*
+          <label htmlFor="fechaHoraFondeo" style={{ color: "#c61515" }}>
+            Fecha Hora Fondeo*
           </label>
           <Controller
-            name="fechaRetorno"
+            name="fechaHoraFondeo"
             control={control}
             render={({ field }) => (
-              <Calendar
-                id="fechaRetorno"
-                {...field}
-                showIcon
-                dateFormat="dd/mm/yy"
-                inputStyle={{ fontWeight: "bold", color: "#c61515" }}
-                disabled={loading || isReadOnly}
-                required
+              <InputText
+                id="fechaHoraFondeo"
+                value={field.value ? 
+                  new Date(field.value).toLocaleString("es-PE", {
+                    day: "2-digit",
+                    month: "2-digit", 
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false
+                  }) : ""
+                }
+                readOnly
+                disabled
+                style={{ fontWeight: "bold", color: "#c61515", backgroundColor: "#f8f9fa" }}
                 className={classNames({
-                  "p-invalid": errors.fechaRetorno,
+                  "p-invalid": errors.fechaHoraFondeo,
                 })}
+                placeholder="Se actualiza automáticamente"
               />
             )}
           />
-          {errors.fechaRetorno && (
-            <Message severity="error" text={errors.fechaRetorno.message} />
+          {errors.fechaHoraFondeo && (
+            <Message severity="error" text={errors.fechaHoraFondeo.message} />
           )}
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="puertoRetornoId" style={{ color: "#c61515" }}>
-            Puerto Retorno*
+          <label htmlFor="puertoFondeoId" style={{ color: "#c61515" }}>
+            Puerto Fondeo*
           </label>
           <Controller
-            name="puertoRetornoId"
+            name="puertoFondeoId"
             control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="puertoRetornoId"
-                {...field}
-                value={field.value}
-                options={puertos}
-                optionLabel="label"
-                optionValue="value"
-                pt={{
-                  input: { style: { color: "#c61515", fontWeight: "bold" } },
-                }}
-                placeholder="Seleccione puerto"
-                required
-                disabled={loading || isReadOnly}
-                className={classNames({
-                  "p-invalid": errors.puertoRetornoId,
-                })}
-              />
-            )}
+            render={({ field }) => {
+              const puertoSeleccionado = puertos.find(p => Number(p.value) === Number(field.value));
+              return (
+                <InputText
+                  id="puertoFondeoId"
+                  value={puertoSeleccionado ? puertoSeleccionado.label : ""}
+                  readOnly
+                  disabled
+                  style={{ fontWeight: "bold", color: "#c61515", backgroundColor: "#f8f9fa" }}
+                  className={classNames({
+                    "p-invalid": errors.puertoFondeoId,
+                  })}
+                  placeholder="Se actualiza automáticamente"
+                />
+              );
+            }}
           />
-          {errors.puertoRetornoId && (
-            <Message severity="error" text={errors.puertoRetornoId.message} />
+          {errors.puertoFondeoId && (
+            <Message severity="error" text={errors.puertoFondeoId.message} />
           )}
         </div>
       </div>

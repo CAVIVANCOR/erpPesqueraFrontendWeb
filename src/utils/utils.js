@@ -55,3 +55,62 @@ export const formatearFechaHora = (fechaHora, mensajePorDefecto = "Sin fecha") =
         minute: "2-digit",
     });
 };
+
+/**
+ * Función genérica para crear templates de porcentaje con colores de fondo
+ * @param {number} porcentaje - Valor del porcentaje
+ * @param {Array} rangos - Array de objetos con {limite, color} ordenados de menor a mayor
+ * @param {Object} opciones - Opciones de estilo adicionales
+ * @returns {Object} Objeto con el valor y estilos para usar en JSX
+ */
+export const createPorcentajeTemplate = (porcentaje, rangos = null, opciones = {}) => {
+    if (porcentaje === null || porcentaje === undefined || porcentaje === "") return null;
+    
+    const valor = Number(porcentaje);
+    
+    // Rangos por defecto para porcentaje de juveniles
+    const rangosPorDefecto = [
+        { limite: 10, color: "#2196F3" },  // Azul
+        { limite: 25, color: "#4CAF50" },  // Verde
+        { limite: 35, color: "#FF9800" },  // Naranja
+        { limite: Infinity, color: "#F44336" } // Rojo
+    ];
+    
+    const rangosAUsar = Array.isArray(rangos) ? rangos : rangosPorDefecto;
+    
+    // Encontrar el color correspondiente
+    let backgroundColor = "#666"; // Color por defecto
+    for (const rango of rangosAUsar) {
+        if (valor <= rango.limite) {
+            backgroundColor = rango.color;
+            break;
+        }
+    }
+    
+    // Opciones de estilo por defecto
+    const estilosPorDefecto = {
+        color: "white",
+        padding: "4px 8px",
+        borderRadius: "4px",
+        fontWeight: "bold",
+        display: "inline-block",
+        minWidth: "40px",
+        textAlign: "center",
+        fontSize: "0.9em"
+    };
+    
+    const estilosFinales = {
+        ...estilosPorDefecto,
+        backgroundColor,
+        ...opciones.estilos
+    };
+    
+    const sufijo = opciones.sufijo || "%";
+    const valorFormateado = opciones.decimales !== undefined ? valor.toFixed(opciones.decimales) : valor;
+    
+    return {
+        valor: valorFormateado,
+        estilos: estilosFinales,
+        sufijo: sufijo
+    };
+};

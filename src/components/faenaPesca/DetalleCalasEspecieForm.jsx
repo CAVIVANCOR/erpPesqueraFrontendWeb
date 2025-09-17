@@ -20,7 +20,7 @@ import { Dropdown } from "primereact/dropdown";
 import { Toast } from "primereact/toast";
 import { Toolbar } from "primereact/toolbar";
 import { Card } from "primereact/card";
-import { getResponsiveFontSize } from "../../utils/utils";
+import { getResponsiveFontSize, createPorcentajeTemplate } from "../../utils/utils";
 import { getEspecies } from "../../api/especie";
 import { 
   getDetalleCalaEspeciePorCala,
@@ -319,6 +319,18 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
     );
   };
 
+  const porcentajeJuvenilesTemplate = (rowData) => {
+    const templateData = createPorcentajeTemplate(rowData.porcentajeJuveniles);
+    
+    if (!templateData) return "-";
+    
+    return (
+      <span style={templateData.estilos}>
+        {templateData.valor}{templateData.sufijo}
+      </span>
+    );
+  };
+
   const header = (
     <div className="flex align-items-center gap-2">
       <div
@@ -344,7 +356,6 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
             tooltip="Agregar Especie"
             tooltipOptions={{ position: "top" }}
             raised
-            outlined
             severity="success"
           />
         </div>
@@ -427,11 +438,7 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
           header="% Juveniles"
           sortable
           style={{ minWidth: "6rem" }}
-          body={(rowData) =>
-            rowData.porcentajeJuveniles
-              ? `${rowData.porcentajeJuveniles}%`
-              : "-"
-          }
+          body={porcentajeJuvenilesTemplate}
         ></Column>
         <Column
           field="observaciones"
@@ -448,7 +455,7 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
       <Dialog
         visible={detalleDialog}
         style={{ width: "500px" }}
-        header={editingDetalle ? "Editar Especie" : "Agregar Especie"}
+        header={editingDetalle ? "Editar Captura Especie" : "Agregar Captura Especie"}
         modal
         className="p-fluid"
         footer={detalleDialogFooter}

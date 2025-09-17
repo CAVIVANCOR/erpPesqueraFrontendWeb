@@ -599,6 +599,7 @@ const DetalleCalasForm = ({
         globalFilter={globalFilter}
         header={header}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        onRowClick={(e) => editarCala(e.data)}
       >
         <Column
           field="id"

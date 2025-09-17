@@ -34,13 +34,13 @@ import {
 import { getCalasPorFaena } from "../../api/cala";
 import { getDetalleCalaEspeciePorCala } from "../../api/detalleCalaEspecie";
 import { getPuertosPesca } from "../../api/puertoPesca";
-import { getResponsiveFontSize } from "../../utils/utils";
+import { getResponsiveFontSize, createPorcentajeTemplate } from "../../utils/utils";
 
 // Esquema de validación
 const schema = yup.object().shape({
   descripcion: yup.string().required("La descripción es obligatoria"),
   fechaSalida: yup.date().required("La fecha de salida es obligatoria"),
-  fechaRetorno: yup.date().required("La fecha de retorno es obligatoria"),
+  fechaHoraFondeo: yup.date().nullable(),
   embarcacionId: yup.number().required("La embarcación es obligatoria"),
   bolicheId: yup.number().required("El boliche es obligatorio"),
   urlReporteFaenaCalas: yup.string().url("Debe ser una URL válida").nullable(),
@@ -113,7 +113,7 @@ const DetalleFaenasPescaCard = forwardRef(
     defaultValues: {
       descripcion: "",
       fechaSalida: null,
-      fechaRetorno: null,
+      fechaHoraFondeo: null,
       embarcacionId: null,
       bolicheId: null,
       urlReporteFaenaCalas: "",
@@ -190,7 +190,7 @@ const DetalleFaenasPescaCard = forwardRef(
     reset({
       descripcion: "",
       fechaSalida: null,
-      fechaRetorno: null,
+      fechaHoraFondeo: null,
       embarcacionId: null,
       bolicheId: null,
       urlReporteFaenaCalas: "",
@@ -212,7 +212,7 @@ const DetalleFaenasPescaCard = forwardRef(
     reset({
       descripcion: faena.descripcion || "",
       fechaSalida: faena.fechaSalida ? new Date(faena.fechaSalida) : null,
-      fechaRetorno: faena.fechaRetorno ? new Date(faena.fechaRetorno) : null,
+      fechaHoraFondeo: faena.fechaHoraFondeo ? new Date(faena.fechaHoraFondeo) : null,
       embarcacionId: faena.embarcacionId || null,
       bolicheRedId: faena.bolicheRedId || null,
       urlReporteFaenaCalas: faena.urlReporteFaenaCalas || "",
@@ -233,14 +233,14 @@ const DetalleFaenasPescaCard = forwardRef(
         temporadaId: temporadaPescaId, // Campo obligatorio
         descripcion: data.descripcion || "",
         fechaSalida: data.fechaSalida ? data.fechaSalida.toISOString() : null,
-        fechaRetorno: data.fechaRetorno ? data.fechaRetorno.toISOString() : null,
+        fechaHoraFondeo: data.fechaHoraFondeo ? data.fechaHoraFondeo.toISOString() : null,
         fechaDescarga: data.fechaDescarga ? data.fechaDescarga.toISOString() : null,
         embarcacionId: data.embarcacionId || null,
         bolicheRedId: data.bolicheRedId || null,
         patronId: data.patronId || null,
         motoristaId: data.motoristaId || null,
         puertoSalidaId: data.puertoSalidaId || null,
-        puertoRetornoId: data.puertoRetornoId || null,
+        puertoFondeoId: data.puertoFondeoId || null,
         puertoDescargaId: data.puertoDescargaId || null,
         bahiaId: data.bahiaId || null,
         estadoFaenaId: data.estadoFaenaId || null,
@@ -430,10 +430,19 @@ const DetalleFaenasPescaCard = forwardRef(
           : "-",
     },
     {
-      field: "puertoRetornoId",
-      header: "Puerto Retorno",
+      field: "fechaHoraFondeo",
+      header: "Fecha Fondeo",
       sortable: true,
-      body: (rowData) => obtenerNombrePuerto(rowData.puertoRetornoId),
+      body: (rowData) =>
+        rowData.fechaHoraFondeo
+          ? new Date(rowData.fechaHoraFondeo).toLocaleDateString()
+          : "-",
+    },
+    {
+      field: "puertoFondeoId",
+      header: "Puerto Fondeo",
+      sortable: true,
+      body: (rowData) => obtenerNombrePuerto(rowData.puertoFondeoId),
     },
     {
       field: "toneladasCapturadasFaena",
@@ -508,12 +517,7 @@ const DetalleFaenasPescaCard = forwardRef(
               header="% Juveniles"
               sortable
               style={{ minWidth: "8rem" }}
-              body={(rowData) => {
-                const porcentaje = rowData.porcentajeJuveniles
-                  ? parseFloat(rowData.porcentajeJuveniles).toFixed(2)
-                  : "0.00";
-                return `${porcentaje}%`;
-              }}
+              body={porcentajeJuvenilesTemplate}
             />
             <Column
               field="toneladas"
@@ -917,6 +921,19 @@ const DetalleFaenasPescaCard = forwardRef(
   // Función para actualizar trigger de faenas
   const handleFaenasChange = () => {
     setFaenasUpdateTrigger((prevTrigger) => prevTrigger + 1);
+  };
+
+  // Función para mostrar porcentaje de juveniles con colores
+  const porcentajeJuvenilesTemplate = (rowData) => {
+    const templateData = createPorcentajeTemplate(rowData.porcentajeJuveniles, null, { decimales: 2 });
+    
+    if (!templateData) return "-";
+    
+    return (
+      <span style={templateData.estilos}>
+        {templateData.valor}{templateData.sufijo}
+      </span>
+    );
   };
 
   return (

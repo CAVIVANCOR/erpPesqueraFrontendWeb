@@ -18,7 +18,7 @@ import { Toast } from "primereact/toast";
 import { Toolbar } from "primereact/toolbar";
 import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
-import { getResponsiveFontSize } from "../../utils/utils";
+import { getResponsiveFontSize, createPorcentajeTemplate } from "../../utils/utils";
 import DescargaFaenaPescaForm from "../descargaFaenaPesca/DescargaFaenaPescaForm";
 import {
   getAllDescargaFaenaPesca,
@@ -179,27 +179,53 @@ const DescargaFaenaPescaCard = ({
 
   const toneladasTemplate = (rowData) => {
     return rowData.toneladas
-      ? `${rowData.toneladas} Ton`
+      ? `${Number(rowData.toneladas).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       : "-";
   };
 
   const porcentajeJuvenilesTemplate = (rowData) => {
-    return rowData.porcentajeJuveniles
-      ? `${rowData.porcentajeJuveniles}%`
-      : "-";
+    const templateData = createPorcentajeTemplate(rowData.porcentajeJuveniles);
+    
+    if (!templateData) return "-";
+    
+    return (
+      <span style={templateData.estilos}>
+        {templateData.valor}{templateData.sufijo}
+      </span>
+    );
   };
-
 
   const fechaHoraTemplate = (field) => (rowData) => {
-    return rowData[field]
-      ? new Date(rowData[field]).toLocaleString("es-ES")
+    if (!rowData[field]) return "-";
+    
+    const fecha = new Date(rowData[field]);
+    const fechaStr = fecha.toLocaleDateString("es-ES");
+    const horaStr = fecha.toLocaleTimeString("es-ES", { hour: '2-digit', minute: '2-digit' });
+    const fontSize = getResponsiveFontSize();
+    
+    return (
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontWeight: "bold", fontSize: fontSize }}>{fechaStr}</div>
+        <div style={{ fontWeight: "bold", fontSize: `calc(${fontSize} * 0.9)`, color: "#666" }}>{horaStr}</div>
+      </div>
+    );
+  };
+
+  const fechaHoraFondeoTemplate = (rowData) => {
+    return rowData.fechaHoraFondeo 
+      ? new Date(rowData.fechaHoraFondeo).toLocaleString("es-PE", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
       : "-";
   };
 
-  const fechaTemplate = (field) => (rowData) => {
-    return rowData[field]
-      ? new Date(rowData[field]).toLocaleDateString("es-ES")
-      : "-";
+  const puertoFondeoTemplate = (rowData) => {
+    const puerto = puertos.find(p => p.id === rowData.puertoFondeoId);
+    return puerto ? puerto.nombre : "-";
   };
 
   const combustibleTemplate = (rowData) => {
@@ -233,7 +259,7 @@ const DescargaFaenaPescaCard = ({
       <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
         <h2>DESCARGA DE FAENA</h2>
       </div>
-      <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
+      <div style={{ flex: 0.5, display: "flex", flexDirection: "column" }}>
         <Button
           label="Nuevo"
           icon="pi pi-plus"
@@ -275,82 +301,91 @@ const DescargaFaenaPescaCard = ({
         size="small"
         stripedRows
         showGridlines
-        style={{ fontSize: getResponsiveFontSize() }}
+        style={{ fontSize: getResponsiveFontSize(), cursor: "pointer" }}
+        onRowClick={(e) => editDescarga(e.data)}
+        rowClassName={() => "align-top"}
       >
-        <Column field="id" header="ID" sortable style={{ minWidth: "80px" }} />
+        <Column field="id" header="ID" sortable style={{ minWidth: "80px", verticalAlign: "top" }} />
         <Column
           field="puertoDescarga"
           header="Puerto"
           body={puertoTemplate}
           sortable
-          style={{ minWidth: "120px" }}
-        />
-        <Column
-          field="fechaHoraArriboPuerto"
-          header="Arribo"
-          body={fechaHoraTemplate("fechaHoraArriboPuerto")}
-          sortable
-          style={{ minWidth: "140px" }}
+          style={{ minWidth: "120px", verticalAlign: "top" }}
         />
         <Column
           field="fechaHoraInicioDescarga"
           header="Inicio Descarga"
           body={fechaHoraTemplate("fechaHoraInicioDescarga")}
           sortable
-          style={{ minWidth: "140px" }}
+          style={{ minWidth: "60px", textAlign: "center", verticalAlign: "top" }}
         />
         <Column
           field="fechaHoraFinDescarga"
           header="Fin Descarga"
           body={fechaHoraTemplate("fechaHoraFinDescarga")}
           sortable
-          style={{ minWidth: "140px" }}
+          style={{ minWidth: "60px", textAlign: "center", verticalAlign: "top" }}
+        />
+        <Column
+          field="fechaHoraFondeo"
+          header="Fecha/Hora Fondeo"
+          body={fechaHoraFondeoTemplate}
+          sortable
+          style={{ minWidth: "120px", verticalAlign: "top" }}
+        />
+        <Column
+          field="puertoFondeo"
+          header="Puerto Fondeo"
+          body={puertoFondeoTemplate}
+          sortable
+          style={{ minWidth: "120px", verticalAlign: "top" }}
         />
         <Column
           field="cliente"
           header="Cliente"
           body={clienteTemplate}
           sortable
-          style={{ minWidth: "120px" }}
+          style={{ minWidth: "120px", verticalAlign: "top" }}
         />
         <Column
           field="especie"
           header="Especie"
           body={especieTemplate}
           sortable
-          style={{ minWidth: "120px" }}
+          style={{ minWidth: "120px", verticalAlign: "top" }}
         />
         <Column
           field="toneladas"
           header="Toneladas"
           body={toneladasTemplate}
           sortable
-          style={{ minWidth: "100px" }}
+          style={{ minWidth: "80px", verticalAlign: "top", fontWeight: "bold" }}
         />
         <Column
           field="porcentajeJuveniles"
-          header="Porcentaje Juveniles"
+          header="% Juveniles"
           body={porcentajeJuvenilesTemplate}
           sortable
-          style={{ minWidth: "100px" }}
+          style={{ minWidth: "60px", textAlign: "center", verticalAlign: "top" }}
         />
         <Column
           field="combustibleAbastecidoGalones"
           header="Combustible"
           body={combustibleTemplate}
           sortable
-          style={{ minWidth: "100px" }}
+          style={{ minWidth: "80px", verticalAlign: "top" }}
         />
         <Column
           field="numReporteRecepcion"
           header="Reporte Recepción"
           sortable
-          style={{ minWidth: "120px" }}
+          style={{ minWidth: "100px", verticalAlign: "top", fontWeight: "bold" }}
         />
         <Column
           body={actionBodyTemplate}
           header="Acciones"
-          style={{ minWidth: "100px" }}
+          style={{ minWidth: "100px", verticalAlign: "top" }}
         />
       </DataTable>
 

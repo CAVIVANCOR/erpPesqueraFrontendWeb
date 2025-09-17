@@ -278,6 +278,55 @@ const DescargaFaenaConsumo = () => {
     );
   };
 
+  const fechaHoraFondeoTemplate = (rowData) => {
+    if (!rowData.fechaHoraFondeo) return <span className="text-gray-400">No registrada</span>;
+    
+    return (
+      <div>
+        <div className="font-medium">{new Date(rowData.fechaHoraFondeo).toLocaleDateString('es-PE')}</div>
+        <div className="text-sm text-gray-600">{new Date(rowData.fechaHoraFondeo).toLocaleTimeString('es-PE')}</div>
+      </div>
+    );
+  };
+
+  const puertoFondeoTemplate = (rowData) => {
+    if (!rowData.puertoFondeoId) return <span className="text-gray-400">No especificado</span>;
+    
+    // Simulación de puerto de fondeo basado en ID
+    const puertos = {
+      1: { nombre: 'Puerto de Paita', codigo: 'PAITA' },
+      2: { nombre: 'Puerto de Chimbote', codigo: 'CHIMB' },
+      3: { nombre: 'Puerto del Callao', codigo: 'CALLA' },
+      4: { nombre: 'Puerto de Pisco', codigo: 'PISCO' }
+    };
+    
+    const puerto = puertos[rowData.puertoFondeoId] || { nombre: `Puerto ${rowData.puertoFondeoId}`, codigo: 'N/A' };
+    
+    return (
+      <div>
+        <div className="font-medium">{puerto.nombre}</div>
+        <div className="text-sm text-gray-600">{puerto.codigo}</div>
+      </div>
+    );
+  };
+
+  const coordenadasFondeoTemplate = (rowData) => {
+    if (!rowData.latitudFondeo || !rowData.longitudFondeo) {
+      return <span className="text-gray-400">No registradas</span>;
+    }
+    
+    return (
+      <div>
+        <div className="font-medium text-sm">
+          {rowData.latitudFondeo.toFixed(6)}°
+        </div>
+        <div className="text-sm text-gray-600">
+          {rowData.longitudFondeo.toFixed(6)}°
+        </div>
+      </div>
+    );
+  };
+
   const accionesTemplate = (rowData) => {
     // Solo mostrar botón eliminar para superusuario o admin
     const puedeEliminar = usuario?.esSuperUsuario || usuario?.esAdmin;
@@ -417,6 +466,25 @@ const DescargaFaenaConsumo = () => {
             body={observacionesTemplate}
             sortable 
             style={{ minWidth: '150px' }}
+          />
+          <Column 
+            field="fechaHoraFondeo" 
+            header="Fecha/Hora Fondeo" 
+            body={fechaHoraFondeoTemplate}
+            sortable 
+            style={{ width: '180px' }}
+          />
+          <Column 
+            field="puertoFondeoId" 
+            header="Puerto Fondeo" 
+            body={puertoFondeoTemplate}
+            sortable 
+            style={{ width: '180px' }}
+          />
+          <Column 
+            header="Coordenadas Fondeo" 
+            body={coordenadasFondeoTemplate}
+            style={{ width: '120px' }}
           />
           <Column
             header="Acciones"

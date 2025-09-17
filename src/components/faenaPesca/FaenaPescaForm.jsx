@@ -25,6 +25,7 @@ import { getDocumentacionesEmbarcacion } from "../../api/documentacionEmbarcacio
 import { getClientesPorEmpresa } from "../../api/entidadComercial"; 
 import { getEspeciesParaDropdown } from "../../api/especie";
 import { getPuertosActivos } from "../../api/puertoPesca";
+import { getFaenaPescaPorId } from "../../api/faenaPesca"; // Importar función para obtener faena por ID
 import logoEscudoPeru from "../../assets/logoEscudoPeru.png";
 
 export default function FaenaPescaForm({
@@ -52,6 +53,7 @@ export default function FaenaPescaForm({
   const [currentFaenaData, setCurrentFaenaData] = useState(defaultValues);
   const [isEditMode, setIsEditMode] = useState(isEdit || !!defaultValues.id); // Estado interno para controlar modo edición
   const [forceUpdate, setForceUpdate] = useState(0); // Estado para forzar re-render
+  const [lastDescargaUpdate, setLastDescargaUpdate] = useState(null); // Estado para controlar sincronización
   const toast = useRef(null);
 
   // Estados para datos del backend
@@ -83,25 +85,23 @@ export default function FaenaPescaForm({
     formState: { errors },
   } = useForm({
     defaultValues: {
-      id: null,
       temporadaId: null,
-      bahiaId: null,
-      motoristaId: null,
-      patronId: null,
-      descripcion: "",
-      fechaSalida: null,
-      fechaRetorno: null,
-      fechaDescarga: null,
-      puertoSalidaId: null,
-      puertoRetornoId: null,
-      puertoDescargaId: null,
       embarcacionId: null,
       bolicheRedId: null,
+      patronId: null,
+      motoristaId: null,
+      bahiaId: null,
+      fechaInicio: null,
+      fechaFin: null,
+      puertoSalidaId: null,
+      puertoFondeoId: null,
+      puertoDescargaId: null,
       urlInformeFaena: "",
-      urlReporteFaenaCalas: "",
-      urlDeclaracionDesembarqueArmador: "",
+      observaciones: "",
       estadoFaenaId: null,
-      toneladasCapturadasFaena: 0,
+      fechaHoraFondeo: null,
+      latitudFondeo: null,
+      longitudFondeo: null
     },
   });
 
@@ -170,8 +170,8 @@ export default function FaenaPescaForm({
       fechaSalida: defaultValues.fechaSalida
         ? new Date(defaultValues.fechaSalida)
         : null,
-      fechaRetorno: defaultValues.fechaRetorno
-        ? new Date(defaultValues.fechaRetorno)
+      fechaHoraFondeo: defaultValues.fechaHoraFondeo
+        ? new Date(defaultValues.fechaHoraFondeo)
         : null,
       fechaDescarga: defaultValues.fechaDescarga
         ? new Date(defaultValues.fechaDescarga)
@@ -188,6 +188,70 @@ export default function FaenaPescaForm({
     const id = watch("id");
     setForceUpdate((prev) => prev + 1);
   }, [watch("descripcion"), watch("id"), currentFaenaData.id, currentFaenaData.descripcion]);
+
+  useEffect(() => {
+    // Escuchar cambios en DescargaFaenaPesca
+    if (lastDescargaUpdate) {
+      const sincronizarCampos = async () => {
+        try {
+          const faenaId = currentFaenaData.id || defaultValues.id;
+          if (faenaId) {
+            // Recargar la faena actualizada desde el backend
+            const faenaActualizada = await getFaenaPescaPorId(faenaId);
+            console.log("Faena actualizada recibida:", faenaActualizada);
+            if (faenaActualizada) {
+              console.log("Datos a sincronizar:", {
+                fechaDescarga: faenaActualizada.fechaDescarga,
+                puertoDescargaId: faenaActualizada.puertoDescargaId,
+                fechaHoraFondeo: faenaActualizada.fechaHoraFondeo,
+                puertoFondeoId: faenaActualizada.puertoFondeoId
+              });
+              
+              // Actualizar los campos del formulario con los datos sincronizados
+              setValue("fechaDescarga", faenaActualizada.fechaDescarga ? new Date(faenaActualizada.fechaDescarga) : null);
+              setValue("puertoDescargaId", faenaActualizada.puertoDescargaId ? Number(faenaActualizada.puertoDescargaId) : null);
+              setValue("fechaHoraFondeo", faenaActualizada.fechaHoraFondeo ? new Date(faenaActualizada.fechaHoraFondeo) : null);
+              setValue("puertoFondeoId", faenaActualizada.puertoFondeoId ? Number(faenaActualizada.puertoFondeoId) : null);
+              
+              console.log("Campos actualizados con setValue");
+              console.log("Valores actuales del formulario:", {
+                fechaDescarga: getValues("fechaDescarga"),
+                puertoDescargaId: getValues("puertoDescargaId"),
+                fechaHoraFondeo: getValues("fechaHoraFondeo"),
+                puertoFondeoId: getValues("puertoFondeoId")
+              });
+              
+              // Actualizar currentFaenaData para forzar re-render completo
+              setCurrentFaenaData(prev => ({
+                ...prev,
+                fechaDescarga: faenaActualizada.fechaDescarga,
+                puertoDescargaId: faenaActualizada.puertoDescargaId,
+                fechaHoraFondeo: faenaActualizada.fechaHoraFondeo,
+                puertoFondeoId: faenaActualizada.puertoFondeoId
+              }));
+              
+              // Forzar actualización del DOM después de un pequeño delay
+              setTimeout(() => {
+                setForceUpdate(prev => prev + 1);
+              }, 100);
+              
+              // Mostrar notificación de sincronización
+              toast.current?.show({
+                severity: "info",
+                summary: "Sincronización",
+                detail: "Campos actualizados automáticamente desde la descarga",
+                life: 3000,
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Error al sincronizar campos de faena:", error);
+        }
+      };
+      
+      sincronizarCampos();
+    }
+  }, [lastDescargaUpdate, currentFaenaData.id, defaultValues.id, setValue]);
 
   const handleNavigateToCard = (cardName) => {
     setActiveCard(cardName);
@@ -557,6 +621,10 @@ export default function FaenaPescaForm({
             loading={loading}
             onDataChange={onDataChange}
             onFaenasChange={onFaenasChange}
+            onDescargaChange={async () => {
+              console.log("onDescargaChange ejecutado, triggering sincronización");
+              setLastDescargaUpdate(new Date().getTime());
+            }}
           />
         )}
 
