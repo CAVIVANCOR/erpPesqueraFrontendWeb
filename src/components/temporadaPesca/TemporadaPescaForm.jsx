@@ -19,8 +19,6 @@ import React, { useEffect, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
-import { Toolbar } from "primereact/toolbar";
-import { ButtonGroup } from "primereact/buttongroup";
 import { Tag } from "primereact/tag";
 import { Message } from "primereact/message";
 import { Toast } from "primereact/toast";
@@ -31,7 +29,6 @@ import {
   getPatrones,
 } from "../../api/personal";
 import { iniciarTemporada } from "../../api/temporadaPesca";
-import { getFaenasPesca } from "../../api/faenaPesca";
 import { getEstadosMultiFuncionParaTemporadaPesca } from "../../api/estadoMultiFuncion";
 import { getEmbarcaciones } from "../../api/embarcacion";
 import { getAllBolicheRed } from "../../api/bolicheRed";
@@ -40,6 +37,13 @@ import { getTemporadaPescaPorId } from "../../api/temporadaPesca"; // Importar f
 // Importar componentes de cards
 import DatosGeneralesTemporadaForm from "./DatosGeneralesTemporadaForm";
 import ResolucionPDFTemporadaForm from "./ResolucionPDFTemporadaForm";
+import EntregasARendirTemporadaCard from "./EntregasARendirTemporadaCard";
+import LiquidacionTemporadaCard from "./LiquidacionTemporadaCard";
+// Importar APIs adicionales
+import { getPersonal } from "../../api/personal";
+import { getCentrosCosto } from "../../api/centroCosto";
+import { getTiposMovEntregaRendir } from "../../api/tipoMovEntregaRendir";
+import { getEmpresas } from "../../api/empresa";
 
 /**
  * Componente de formulario para temporadas de pesca
@@ -59,17 +63,22 @@ const TemporadaPescaForm = ({
   const [motoristas, setMotoristas] = useState([]);
   const [patrones, setPatrones] = useState([]);
   const [estadosTemporada, setEstadosTemporada] = useState([]);
-  const [estadoDefaultId, setEstadoDefaultId] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [archivoSubido, setArchivoSubido] = useState(null);
-  const [validandoSuperposicion, setValidandoSuperposicion] = useState(false);
-  const [iniciandoTemporada, setIniciandoTemporada] = useState(false);
   const [embarcaciones, setEmbarcaciones] = useState([]);
   const [boliches, setBoliches] = useState([]);
   const [puertosPesca, setPuertosPesca] = useState([]);
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [validandoSuperposicion, setValidandoSuperposicion] = useState(false);
+  const [estadoDefaultId, setEstadoDefaultId] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [archivoSubido, setArchivoSubido] = useState(null);
+  const [iniciandoTemporada, setIniciandoTemporada] = useState(false);
   const [tieneFaenas, setTieneFaenas] = useState(false);
-  const [camposRequeridosCompletos, setCamposRequeridosCompletos] =
-    useState(false);
+  const [camposRequeridosCompletos, setCamposRequeridosCompletos] = useState(false);
+  // Estados para nuevos catálogos
+  const [personal, setPersonal] = useState([]);
+  const [centrosCosto, setCentrosCosto] = useState([]);
+  const [tiposMovimiento, setTiposMovimiento] = useState([]);
+  const [empresasList, setEmpresasList] = useState([]);
 
   // Ref para Toast
   const toast = useRef(null);
@@ -101,7 +110,7 @@ const TemporadaPescaForm = ({
   });
 
   // Observar cambios en empresa para filtrar bahías
-  const empresaSeleccionada = watch("empresaId");
+  const empresaSeleccionadaId = watch("empresaId");
   const fechaInicio = watch("fechaInicio");
   const fechaFin = watch("fechaFin");
   const estadoSeleccionado = watch("estadoTemporadaId");
@@ -112,18 +121,34 @@ const TemporadaPescaForm = ({
   useEffect(() => {
     const cargarDatos = async () => {
       try {
-        const [estadosData, embarcacionesData, bolichesData, puertosData] =
-          await Promise.all([
-            getEstadosMultiFuncionParaTemporadaPesca(),
-            getEmbarcaciones(),
-            getAllBolicheRed(),
-            getPuertosPesca(),
-          ]);
+        const [
+          estadosData,
+          embarcacionesData,
+          bolichesData,
+          puertosData,
+          personalData,
+          centrosCostoData,
+          tiposMovimientoData,
+          empresasData,
+        ] = await Promise.all([
+          getEstadosMultiFuncionParaTemporadaPesca(),
+          getEmbarcaciones(),
+          getAllBolicheRed(),
+          getPuertosPesca(),
+          getPersonal(),
+          getCentrosCosto(),
+          getTiposMovEntregaRendir(),
+          getEmpresas(),
+        ]);
 
         setEstadosTemporada(estadosData);
         setEmbarcaciones(embarcacionesData);
         setBoliches(bolichesData);
         setPuertosPesca(puertosData);
+        setPersonal(personalData);
+        setCentrosCosto(centrosCostoData);
+        setTiposMovimiento(tiposMovimientoData);
+        setEmpresasList(empresasData);
 
         // Encontrar y guardar el ID del estado por defecto
         const estadoDefault = estadosData.find(
@@ -155,7 +180,7 @@ const TemporadaPescaForm = ({
     const cargarResponsablesFaena = async () => {
       try {
         // Usar la empresa del editingItem o la primera empresa disponible
-        const empresaId = editingItem?.empresaId || empresas[0]?.id || null;
+        const empresaId = editingItem?.empresaId || empresasList[0]?.id || null;
 
         if (empresaId) {
           const [bahiasData, motoristasData, patronesData] = await Promise.all([
@@ -176,10 +201,10 @@ const TemporadaPescaForm = ({
       }
     };
 
-    if (editingItem?.empresaId || empresas.length > 0) {
+    if (editingItem?.empresaId || empresasList.length > 0) {
       cargarResponsablesFaena();
     }
-  }, [editingItem, empresas]);
+  }, [editingItem, empresasList]);
 
   /**
    * Verificar si la temporada ya fue iniciada
@@ -236,10 +261,10 @@ const TemporadaPescaForm = ({
    * Validar superposición cuando cambien fechas o estado
    */
   useEffect(() => {
-    if (fechaInicio && fechaFin && estadoSeleccionado && empresaSeleccionada) {
+    if (fechaInicio && fechaFin && estadoSeleccionado && empresaSeleccionadaId) {
       validarSuperposicionFechas();
     }
-  }, [fechaInicio, fechaFin, estadoSeleccionado, empresaSeleccionada]);
+  }, [fechaInicio, fechaFin, estadoSeleccionado, empresaSeleccionadaId]);
 
   /**
    * Validar superposición de fechas con otras temporadas
@@ -249,7 +274,7 @@ const TemporadaPescaForm = ({
       setValidandoSuperposicion(true);
 
       const datos = {
-        empresaId: Number(empresaSeleccionada),
+        empresaId: Number(empresaSeleccionadaId),
         estadoTemporadaId: Number(estadoSeleccionado),
         fechaInicio: fechaInicio,
         fechaFin: fechaFin,
@@ -440,6 +465,32 @@ const TemporadaPescaForm = ({
           type="button"
           size="small"
         />
+        <Button
+          icon="pi pi-file-excel"
+          tooltip="Entregas a Rendir"
+          tooltipOptions={{ position: "top" }}
+          className={
+            activeCard === "entregas-a-rendir"
+              ? "p-button-success"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("entregas-a-rendir")}
+          type="button"
+          size="small"
+        />
+        <Button
+          icon="pi pi-money-bill"
+          tooltip="Liquidación de Temporada"
+          tooltipOptions={{ position: "top" }}
+          className={
+            activeCard === "liquidacion-temporada"
+              ? "p-button-danger"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("liquidacion-temporada")}
+          type="button"
+          size="small"
+        />
       </div>
 
       {/* Botones de acción - lado derecho */}
@@ -562,7 +613,7 @@ const TemporadaPescaForm = ({
             setValue={setValue}
             watch={watch}
             getValues={getValues}
-            empresas={empresas}
+            empresas={empresasList}
             bahiasComerciales={bahiasComerciales}
             motoristas={motoristas}
             patrones={patrones}
@@ -585,6 +636,27 @@ const TemporadaPescaForm = ({
             watch={watch}
             getValues={getValues}
             defaultValues={getValues()}
+          />
+        )}
+        {activeCard === "entregas-a-rendir" && (
+          <EntregasARendirTemporadaCard
+            temporadaPescaId={editingItem?.id}
+            temporadaPescaIniciada={editingItem?.temporadaPescaIniciada || false}
+            personal={personal}
+            centrosCosto={centrosCosto}
+            tiposMovimiento={tiposMovimiento}
+            onDataChange={onTemporadaDataChange}
+          />
+        )}
+        {activeCard === "liquidacion-temporada" && (
+          <LiquidacionTemporadaCard
+            temporadaPescaId={editingItem?.id}
+            temporadaData={editingItem}
+            personal={personal}
+            centrosCosto={centrosCosto}
+            empresasList={empresasList}
+            loading={false}
+            onDataChange={onTemporadaDataChange}
           />
         )}
         {/* Indicador de validación de superposición */}

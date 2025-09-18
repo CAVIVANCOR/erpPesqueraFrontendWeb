@@ -8,7 +8,7 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import EntregaARendirForm from "../components/entregaARendir/EntregaARendirForm";
-import { getAllEntregaARendir, createEntregaARendir, updateEntregaARendir, deleteEntregaARendir } from "../api/entregaARendir";
+import { getAllEntregaARendir, crearEntregaARendir, actualizarEntregaARendir, eliminarEntregaARendir } from "../api/entregaARendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
 /**
@@ -60,7 +60,7 @@ export default function EntregaARendir() {
     if (!toDelete) return;
     setLoading(true);
     try {
-      await deleteEntregaARendir(toDelete.id);
+      await eliminarEntregaARendir(toDelete.id);
       toast.current.show({ severity: "success", summary: "Eliminado", detail: "Registro eliminado correctamente." });
       cargarItems();
     } catch (err) {
@@ -74,10 +74,10 @@ export default function EntregaARendir() {
     setLoading(true);
     try {
       if (editing && editing.id) {
-        await updateEntregaARendir(editing.id, data);
+        await actualizarEntregaARendir(editing.id, data);
         toast.current.show({ severity: "success", summary: "Actualizado", detail: "Registro actualizado." });
       } else {
-        await createEntregaARendir(data);
+        await crearEntregaARendir(data);
         toast.current.show({ severity: "success", summary: "Creado", detail: "Registro creado." });
       }
       setShowDialog(false);

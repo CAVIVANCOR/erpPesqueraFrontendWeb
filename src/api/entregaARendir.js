@@ -1,16 +1,16 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/entregas-a-rendir`;
 
 /**
  * Obtiene el token de autenticación desde el store de Zustand
  * @returns {string} Token JWT para autenticación
  */
-const getAuthToken = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
+function getAuthHeaders() {
+  const token = useAuthStore.getState().token;
+  return { Authorization: `Bearer ${token}` };
+}
 
 /**
  * Obtiene todas las entregas a rendir del sistema
@@ -18,14 +18,8 @@ const getAuthToken = () => {
  */
 export const getAllEntregaARendir = async () => {
   try {
-    const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/entrega-a-rendir`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return response.data;
+    const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+    return res.data;
   } catch (error) {
     console.error('Error al obtener entregas a rendir:', error);
     throw error;
@@ -39,12 +33,8 @@ export const getAllEntregaARendir = async () => {
  */
 export const crearEntregaARendir = async (entregaData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/entrega-a-rendir`, entregaData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.post(API_URL, entregaData, {
+      headers: getAuthHeaders()
     });
     return response.data;
   } catch (error) {
@@ -61,12 +51,8 @@ export const crearEntregaARendir = async (entregaData) => {
  */
 export const actualizarEntregaARendir = async (id, entregaData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/entrega-a-rendir/${id}`, entregaData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.put(`${API_URL}/${id}`, entregaData, {
+      headers: getAuthHeaders()
     });
     return response.data;
   } catch (error) {
@@ -82,12 +68,8 @@ export const actualizarEntregaARendir = async (id, entregaData) => {
  */
 export const eliminarEntregaARendir = async (id) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/entrega-a-rendir/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.delete(`${API_URL}/${id}`, {
+      headers: getAuthHeaders()
     });
     return response.data;
   } catch (error) {
@@ -95,9 +77,3 @@ export const eliminarEntregaARendir = async (id) => {
     throw error;
   }
 };
-
-// Aliases en inglés para compatibilidad
-export const getEntregaARendir = getAllEntregaARendir;
-export const createEntregaARendir = crearEntregaARendir;
-export const updateEntregaARendir = actualizarEntregaARendir;
-export const deleteEntregaARendir = eliminarEntregaARendir;

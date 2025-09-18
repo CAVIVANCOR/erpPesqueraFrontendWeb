@@ -215,20 +215,6 @@ const LiquidacionFaenaPescaCard = ({
     );
   };
 
-  const leftToolbarTemplate = () => {
-    return <div className="flex flex-wrap gap-2"></div>;
-  };
-
-  const rightToolbarTemplate = () => {
-    return (
-      <div className="flex align-items-center gap-2">
-        <span className="p-input-icon-left">
-          <i className="pi pi-search" />
-        </span>
-      </div>
-    );
-  };
-
   const header = (
     <div
       style={{

@@ -198,28 +198,14 @@ export default function FaenaPescaForm({
           if (faenaId) {
             // Recargar la faena actualizada desde el backend
             const faenaActualizada = await getFaenaPescaPorId(faenaId);
-            console.log("Faena actualizada recibida:", faenaActualizada);
             if (faenaActualizada) {
-              console.log("Datos a sincronizar:", {
-                fechaDescarga: faenaActualizada.fechaDescarga,
-                puertoDescargaId: faenaActualizada.puertoDescargaId,
-                fechaHoraFondeo: faenaActualizada.fechaHoraFondeo,
-                puertoFondeoId: faenaActualizada.puertoFondeoId
-              });
+
               
               // Actualizar los campos del formulario con los datos sincronizados
               setValue("fechaDescarga", faenaActualizada.fechaDescarga ? new Date(faenaActualizada.fechaDescarga) : null);
               setValue("puertoDescargaId", faenaActualizada.puertoDescargaId ? Number(faenaActualizada.puertoDescargaId) : null);
               setValue("fechaHoraFondeo", faenaActualizada.fechaHoraFondeo ? new Date(faenaActualizada.fechaHoraFondeo) : null);
               setValue("puertoFondeoId", faenaActualizada.puertoFondeoId ? Number(faenaActualizada.puertoFondeoId) : null);
-              
-              console.log("Campos actualizados con setValue");
-              console.log("Valores actuales del formulario:", {
-                fechaDescarga: getValues("fechaDescarga"),
-                puertoDescargaId: getValues("puertoDescargaId"),
-                fechaHoraFondeo: getValues("fechaHoraFondeo"),
-                puertoFondeoId: getValues("puertoFondeoId")
-              });
               
               // Actualizar currentFaenaData para forzar re-render completo
               setCurrentFaenaData(prev => ({
@@ -622,7 +608,6 @@ export default function FaenaPescaForm({
             onDataChange={onDataChange}
             onFaenasChange={onFaenasChange}
             onDescargaChange={async () => {
-              console.log("onDescargaChange ejecutado, triggering sincronización");
               setLastDescargaUpdate(new Date().getTime());
             }}
           />

@@ -14,7 +14,7 @@ const API_URL = import.meta.env.VITE_API_URL;
  */
 export const getTiposMovEntregaRendir = async () => {
   const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/tipo-mov-entrega-rendir`, {
+  const response = await axios.get(`${API_URL}/tipos-mov-entrega-rendir`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -37,7 +37,7 @@ export const getAllTipoMovEntregaRendir = async () => {
  */
 export const crearTipoMovEntregaRendir = async (tipoMovEntregaRendirData) => {
   const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/tipo-mov-entrega-rendir`, tipoMovEntregaRendirData, {
+  const response = await axios.post(`${API_URL}/tipos-mov-entrega-rendir`, tipoMovEntregaRendirData, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -53,7 +53,7 @@ export const crearTipoMovEntregaRendir = async (tipoMovEntregaRendirData) => {
  */
 export const actualizarTipoMovEntregaRendir = async (id, tipoMovEntregaRendirData) => {
   const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/tipo-mov-entrega-rendir/${id}`, tipoMovEntregaRendirData, {
+  const response = await axios.put(`${API_URL}/tipos-mov-entrega-rendir/${id}`, tipoMovEntregaRendirData, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -68,7 +68,7 @@ export const actualizarTipoMovEntregaRendir = async (id, tipoMovEntregaRendirDat
  */
 export const deleteTipoMovEntregaRendir = async (id) => {
   const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/tipo-mov-entrega-rendir/${id}`, {
+  const response = await axios.delete(`${API_URL}/tipos-mov-entrega-rendir/${id}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

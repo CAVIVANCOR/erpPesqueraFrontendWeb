@@ -15,7 +15,7 @@ function getAuthHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
-export async function getMovLiquidacionesTemporadaPesca() {
+export async function getAllMovLiquidacionTemporadaPesca() {
   const res = await axios.get(API_URL, { headers: getAuthHeaders() });
   return res.data;
 }
@@ -39,3 +39,6 @@ export async function eliminarMovLiquidacionTemporadaPesca(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+// Alias para compatibilidad
+export const getMovLiquidacionesTemporadaPesca = getAllMovLiquidacionTemporadaPesca;

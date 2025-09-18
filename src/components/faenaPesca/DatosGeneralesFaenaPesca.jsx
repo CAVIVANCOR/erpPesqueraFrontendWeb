@@ -445,7 +445,6 @@ const DatosGeneralesFaenaPesca = ({
             control={control}
             render={({ field }) => {
               const puertoSeleccionado = puertos.find(p => Number(p.value) === Number(field.value));
-              console.log("puertoDescargaId - field.value:", field.value, "puertoSeleccionado:", puertoSeleccionado, "puertos disponibles:", puertos.length);
               return (
                 <InputText
                   id="puertoDescargaId"

@@ -555,7 +555,7 @@ export default function MultiCrud() {
             items: [
               { label: "Movimientos de Caja", icon: "pi pi-money-bill", command: () => abrirModulo("movimientoCaja", "Movimientos de Caja") },
               { label: "Cuenta Corriente", icon: "pi pi-wallet", command: () => abrirModulo("cuentaCorriente", "Cuenta Corriente") },
-              { label: "Entregas a Rendir", icon: "pi pi-anchor", command: () => abrirModulo("tipoMovEntregaRendir", "Tipos Movimiento Entrega a Rendir") }
+              { label: "Tipos Movimiento Entregas a Rendir", icon: "pi pi-anchor", command: () => abrirModulo("tipoMovEntregaRendir", "Tipos Movimiento Entrega a Rendir") }
             ]
           },
           {

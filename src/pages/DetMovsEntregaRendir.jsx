@@ -8,7 +8,7 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import DetMovsEntregaRendirForm from "../components/detMovsEntregaRendir/DetMovsEntregaRendirForm";
-import { getAllDetMovsEntregaRendir, createDetMovsEntregaRendir, updateDetMovsEntregaRendir, deleteDetMovsEntregaRendir } from "../api/detMovsEntregaRendir";
+import { getAllDetMovsEntregaRendir, crearDetMovsEntregaRendir, actualizarDetMovsEntregaRendir, eliminarDetMovsEntregaRendir } from "../api/detMovsEntregaRendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
 /**
@@ -60,7 +60,7 @@ export default function DetMovsEntregaRendir() {
     if (!toDelete) return;
     setLoading(true);
     try {
-      await deleteDetMovsEntregaRendir(toDelete.id);
+      await eliminarDetMovsEntregaRendir(toDelete.id);
       toast.current.show({ severity: "success", summary: "Eliminado", detail: "Registro eliminado correctamente." });
       cargarItems();
     } catch (err) {
@@ -74,10 +74,10 @@ export default function DetMovsEntregaRendir() {
     setLoading(true);
     try {
       if (editing && editing.id) {
-        await updateDetMovsEntregaRendir(editing.id, data);
+        await actualizarDetMovsEntregaRendir(editing.id, data);
         toast.current.show({ severity: "success", summary: "Actualizado", detail: "Registro actualizado." });
       } else {
-        await createDetMovsEntregaRendir(data);
+        await crearDetMovsEntregaRendir(data);
         toast.current.show({ severity: "success", summary: "Creado", detail: "Registro creado." });
       }
       setShowDialog(false);

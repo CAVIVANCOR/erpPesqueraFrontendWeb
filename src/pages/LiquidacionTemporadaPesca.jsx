@@ -10,7 +10,7 @@ import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { useAuthStore } from '../shared/stores/useAuthStore';
-import { getLiquidacionesTemporadaPesca, eliminarLiquidacionTemporadaPesca } from '../api/liquidacionTemporadaPesca';
+import { getAllLiquidacionTemporadaPesca, eliminarLiquidacionTemporadaPesca } from '../api/liquidacionTemporadaPesca';
 import LiquidacionTemporadaPescaForm from '../components/liquidacionTemporadaPesca/LiquidacionTemporadaPescaForm';
 
 /**
@@ -33,7 +33,7 @@ const LiquidacionTemporadaPesca = () => {
   const cargarLiquidaciones = async () => {
     try {
       setLoading(true);
-      const data = await getLiquidacionesTemporadaPesca();
+      const data = await getAllLiquidacionTemporadaPesca();
       setLiquidaciones(data);
     } catch (error) {
       toast.current?.show({

@@ -5,7 +5,7 @@
 import axios from "axios";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
-const API_URL = `${import.meta.env.VITE_API_URL}/liquidaciones-temporada-pesca`;
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/liquidaciones-temporada`;
 
 /**
  * Obtiene el token JWT profesionalmente desde Zustand
@@ -15,7 +15,7 @@ function getAuthHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
-export async function getLiquidacionesTemporadaPesca() {
+export async function getAllLiquidacionTemporadaPesca() {
   const res = await axios.get(API_URL, { headers: getAuthHeaders() });
   return res.data;
 }
