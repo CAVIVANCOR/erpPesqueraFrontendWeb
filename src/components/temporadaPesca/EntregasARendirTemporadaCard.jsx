@@ -665,6 +665,7 @@ const EntregasARendirTemporadaCard = ({
               value={obtenerMovimientosFiltrados()}
               selection={selectedMovimientos}
               onSelectionChange={(e) => setSelectedMovimientos(e.value)}
+              onRowClick={(e) => handleEditarMovimiento(e.data)}
               dataKey="id"
               loading={loadingMovimientos}
               paginator
@@ -672,7 +673,8 @@ const EntregasARendirTemporadaCard = ({
               rowsPerPageOptions={[5, 10, 25]}
               className="p-datatable-sm"
               emptyMessage="No hay movimientos registrados"
-              style={{ fontSize: getResponsiveFontSize() }}
+              style={{ fontSize: getResponsiveFontSize(), cursor: 'pointer' }}
+              rowClassName={() => 'p-selectable-row'}
               header={
                 <div>
                   <div

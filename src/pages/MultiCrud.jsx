@@ -54,7 +54,6 @@ import DocumentoPesca from "./DocumentoPesca";
 import DocumentacionEmbarcacion from "./DocumentacionEmbarcacion";
 import AccesosUsuario from "./AccesosUsuario";
 import DescargaFaenaPesca from "./DescargaFaenaPesca";
-import LiquidacionFaenaPesca from "./LiquidacionFaenaPesca";
 import CotizacionVentas from './CotizacionVentas';
 import TipoProducto from './TipoProducto';
 import TipoEstadoProducto from './TipoEstadoProducto';
@@ -94,6 +93,7 @@ import UnidadMedida from "./UnidadMedida";
 import TipoMaterial from "./TipoMaterial";
 import Color from "./Color";
 import LiquidacionTemporadaPesca from "./LiquidacionTemporadaPesca";
+import MovLiquidacionTemporadaPesca from "./MovLiquidacionTemporadaPesca";
 import KardexAlmacen from "./KardexAlmacen";
 import SaldosProductoCliente from "./SaldosProductoCliente";
 import SaldosDetProductoCliente from "./SaldosDetProductoCliente";
@@ -110,8 +110,6 @@ import EmpresaCentroCosto from "./EmpresaCentroCosto";
 import DetalleDescargaFaena from "./DetalleDescargaFaena";
 import AccionesPreviasFaena from "./AccionesPreviasFaena";
 import DetAccionesPreviasFaena from "./DetAccionesPreviasFaena";
-import MovLiquidacionFaenaPesca from "./MovLiquidacionFaenaPesca";
-import MovLiquidacionTemporadaPesca from "./MovLiquidacionTemporadaPesca";
 import LiqNovedadPescaConsumo from "./LiqNovedadPescaConsumo";
 import MovLiqNovedadPescaConsumo from "./MovLiqNovedadPescaConsumo";
 import DetCotizacionVentas from "./DetCotizacionVentas";
@@ -135,8 +133,6 @@ import DetCalaPescaConsumo from "./DetCalaPescaConsumo";
 import DetDescargaFaenaConsumo from "./DetDescargaFaenaConsumo";
 import DetAccionesPreviasFaenaConsumo from "./DetAccionesPreviasFaenaConsumo";
 import DetMovsEntRendirPescaConsumo from "./DetMovsEntRendirPescaConsumo";
-import LiquidacionFaenaConsumo from "./LiquidacionFaenaConsumo";
-import MovLiquidacionFaenaConsumo from "./MovLiquidacionFaenaConsumo";
 import CotizacionCompra from "./CotizacionCompra";
 import DetCotizacionCompras from "./DetCotizacionCompras";
 import RequerimientoCompra from "./RequerimientoCompra";
@@ -193,8 +189,6 @@ export default function MultiCrud() {
     detalleOrdenCompra: { label: "Detalle Orden Compra", componente: <DetalleOrdenCompra /> },
     requerimientoCompra: { label: "Requerimiento Compra", componente: <RequerimientoCompra /> },
     detalleReqCompra: { label: "Detalle Requerimiento Compra", componente: <DetalleReqCompra /> },
-    movLiquidacionFaenaConsumo: { label: "Movimientos Liquidación Faena Novedad Pesca Consumo", componente: <MovLiquidacionFaenaConsumo /> },
-    liquidacionFaenaConsumo: { label: "Liquidación Faena Novedad Pesca Consumo", componente: <LiquidacionFaenaConsumo /> },
     detMovsEntRendirPescaConsumo: { label: "Detalle Movimientos Entrega a Rendir Novedad Pesca Consumo", componente: <DetMovsEntRendirPescaConsumo /> },
     detAccionesPreviasFaenaConsumo: { label: "Detalle Acciones Previas Faena Novedad Pesca Consumo", componente: <DetAccionesPreviasFaenaConsumo /> },
     detDescargaFaenaConsumo: { label: "Detalle Descargas Faena Novedad Pesca Consumo", componente: <DetDescargaFaenaConsumo /> },
@@ -259,8 +253,6 @@ export default function MultiCrud() {
     detalleDescargaFaena: { label: "Detalle Descarga Faena Temporada Pesca", componente: <DetalleDescargaFaena /> },
     accionesPreviasFaena: { label: "Acciones Previas Faena", componente: <AccionesPreviasFaena /> },
     detAccionesPreviasFaena: { label: "Detalle Acciones Previas Faena Temporada Pesca", componente: <DetAccionesPreviasFaena /> },
-    liquidacionFaenaPesca: { label: "Liquidación Faena Pesca", componente: <LiquidacionFaenaPesca /> },
-    movLiquidacionFaenaPesca: { label: "Movimientos Liquidación Faena", componente: <MovLiquidacionFaenaPesca /> },
     tipoEntidad: { label: "Tipos de Entidad", componente: <TipoEntidad /> },
     formaPago: { label: "Formas de Pago", componente: <FormaPago /> },
     agrupacionEntidad: { label: "Agrupaciones de Entidad Comercial", componente: <AgrupacionEntidad /> },

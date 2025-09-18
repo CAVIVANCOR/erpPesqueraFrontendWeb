@@ -15,7 +15,6 @@ import InformeFaenaPescaForm from "./InformeFaenaPescaForm";
 import DetalleDocTripulantesCard from "./DetalleDocTripulantesCard";
 import DetalleDocEmbarcacionCard from "./DetalleDocEmbarcacionCard";
 import DescargaFaenaPescaCard from "./DescargaFaenaPescaCard";
-import LiquidacionFaenaPescaCard from "./LiquidacionFaenaPescaCard";
 
 // API imports
 import { listarEstadosMultiFuncionFaenaPesca } from "../../api/estadoMultiFuncion";
@@ -610,17 +609,6 @@ export default function FaenaPescaForm({
             onDescargaChange={async () => {
               setLastDescargaUpdate(new Date().getTime());
             }}
-          />
-        )}
-
-        {activeCard === "liquidacion-faena" && (
-          <LiquidacionFaenaPescaCard
-            faenaPescaId={currentFaenaData.id || defaultValues.id}
-            temporadaData={temporadaData}
-            personal={personal}
-            loading={loading}
-            onDataChange={onDataChange}
-            onFaenasChange={onFaenasChange}
           />
         )}
 

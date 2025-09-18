@@ -104,7 +104,7 @@ const DetMovsEntregaRendirForm = ({
   const onSubmit = async (data, event) => {
     event?.preventDefault();
     event?.stopPropagation();
-    
+
     try {
       // Validaciones de negocio
       if (!data.monto || data.monto <= 0) {
@@ -138,7 +138,6 @@ const DetMovsEntregaRendirForm = ({
 
       // Pasar los datos al componente padre para que maneje la operación
       onGuardadoExitoso?.(datosNormalizados);
-      
     } catch (error) {
       console.error("Error al procesar datos:", error);
       toast.current?.show({
@@ -161,6 +160,20 @@ const DetMovsEntregaRendirForm = ({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Fecha de Creación
+            </label>
+            <InputText
+              value={
+                movimiento?.creadoEn
+                  ? new Date(movimiento.creadoEn).toLocaleString("es-PE")
+                  : ""
+              }
+              readOnly
+              className="p-inputtext-sm"
+            />
+          </div>
           <div style={{ flex: 1 }}>
             {/* Fecha del Movimiento */}
             <label
@@ -194,7 +207,7 @@ const DetMovsEntregaRendirForm = ({
             )}
           </div>
 
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 2 }}>
             {/* Responsable */}
             <label
               htmlFor="responsableId"
@@ -228,7 +241,7 @@ const DetMovsEntregaRendirForm = ({
               <Message severity="error" text={errors.responsableId.message} />
             )}
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 2 }}>
             {/* Tipo de Movimiento */}
             <label
               htmlFor="tipoMovimientoId"
@@ -332,7 +345,11 @@ const DetMovsEntregaRendirForm = ({
                   className={classNames({
                     "p-invalid": errors.descripcion,
                   })}
-                  style={{ fontWeight: "bold", textTransform: "uppercase", color: "red" }}
+                  style={{
+                    fontWeight: "bold",
+                    textTransform: "uppercase",
+                    color: "red",
+                  }}
                 />
               )}
             />
@@ -374,49 +391,20 @@ const DetMovsEntregaRendirForm = ({
               <Message severity="error" text={errors.monto.message} />
             )}
           </div>
-          {/* Información de solo lectura para edición */}
-          {isEditing && (
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">
-                  Fecha de Creación
-                </label>
-                <InputText
-                  value={
-                    movimiento.creadoEn
-                      ? new Date(movimiento.creadoEn).toLocaleString("es-PE")
-                      : ""
-                  }
-                  readOnly
-                  className="p-inputtext-sm"
-                  style={{ fontWeight: "bold" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">
-                  Última Actualización
-                </label>
-                <InputText
-                  value={
-                    movimiento.actualizadoEn
-                      ? new Date(movimiento.actualizadoEn).toLocaleString(
-                          "es-PE"
-                        )
-                      : ""
-                  }
-                  readOnly
-                  className="p-inputtext-sm"
-                  style={{ fontWeight: "bold" }}
-                />
-              </div>
-            </div>
-          )}
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Última Actualización
+            </label>
+            <InputText
+              value={
+                movimiento?.actualizadoEn
+                  ? new Date(movimiento.actualizadoEn).toLocaleString("es-PE")
+                  : ""
+              }
+              readOnly
+              className="p-inputtext-sm"
+            />
+          </div>
         </div>
 
         {/* Botones de acción */}
