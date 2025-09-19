@@ -13,6 +13,7 @@ import DatosGeneralesFaenaPesca from "./DatosGeneralesFaenaPesca";
 import DetalleAccionesPreviasForm from "./DetalleAccionesPreviasForm";
 import InformeFaenaPescaForm from "./InformeFaenaPescaForm";
 import DetalleDocTripulantesCard from "./DetalleDocTripulantesCard";
+import TripulantesFaenaPescaCard from "./TripulantesFaenaPescaCard";
 import DetalleDocEmbarcacionCard from "./DetalleDocEmbarcacionCard";
 import DescargaFaenaPescaCard from "./DescargaFaenaPescaCard";
 
@@ -415,15 +416,15 @@ export default function FaenaPescaForm({
         />
         <Button
           icon="pi pi-calculator"
-          tooltip="Liquidación de Faena"
-          label="Liquidación Faena"
+          tooltip="Tripulantes"
+          label="Tripulantes"
           tooltipOptions={{ position: "bottom" }}
           className={
-            activeCard === "liquidacion-faena"
+            activeCard === "tripulantes"
               ? "p-button-info"
               : "p-button-outlined"
           }
-          onClick={() => handleNavigateToCard("liquidacion-faena")}
+          onClick={() => handleNavigateToCard("tripulantes")}
           type="button"
           size="small"
           style={{ width: "100%", height: "100%" }}
@@ -611,13 +612,25 @@ export default function FaenaPescaForm({
             }}
           />
         )}
-
+        {activeCard === "tripulantes" && (
+          <TripulantesFaenaPescaCard
+            faenaPescaId={currentFaenaData.id || defaultValues.id}
+            temporadaData={temporadaData}
+            personal={personal}
+            documentosPesca={documentosPesca}
+            loading={loading}
+            onDataChange={onDataChange}
+            onFaenasChange={onFaenasChange}
+          />
+        )}
         {activeCard === "informe" && (
           <InformeFaenaPescaForm
             control={control}
             watch={watch}
             errors={errors}
             loading={loading}
+            setValue={setValue}
+            faenaData={currentFaenaData}
           />
         )}
       </div>

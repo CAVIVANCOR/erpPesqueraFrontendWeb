@@ -22,6 +22,7 @@ import { getResponsiveFontSize, createPorcentajeTemplate } from "../../utils/uti
 import DescargaFaenaPescaForm from "../descargaFaenaPesca/DescargaFaenaPescaForm";
 import {
   getAllDescargaFaenaPesca,
+  getDescargasPorFaena,
   crearDescargaFaenaPesca,
   actualizarDescargaFaenaPesca,
   eliminarDescargaFaenaPesca,
@@ -58,10 +59,17 @@ const DescargaFaenaPescaCard = ({
   }, [faenaPescaId]);
 
   const cargarDescargas = async () => {
+    if (!faenaPescaId) {
+      console.log('No hay faenaPescaId, no se cargan descargas');
+      return;
+    }
+
     try {
       setLoadingData(true);
-      const response = await getAllDescargaFaenaPesca({ faenaPescaId });
+      console.log('Cargando descargas para faenaPescaId:', faenaPescaId);
+      const response = await getDescargasPorFaena(faenaPescaId);
       setDescargas(response || []);
+      console.log('Descargas cargadas:', response?.length || 0);
     } catch (error) {
       console.error("Error al cargar descargas:", error);
       toast.current?.show({

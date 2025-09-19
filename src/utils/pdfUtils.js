@@ -33,6 +33,9 @@ export const abrirPdfEnNuevaPestana = async (urlPdf, toast, mensajeError = "No h
     } else if (urlPdf.startsWith("/uploads/documentacion-embarcacion/")) {
       const rutaArchivo = urlPdf.replace("/uploads/documentacion-embarcacion/", "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/documentaciones-embarcacion/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/comprobantes-det-movs-entrega-rendir/")) {
+      const rutaArchivo = urlPdf.replace("/uploads/comprobantes-det-movs-entrega-rendir/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir/archivo/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/fichas-tecnicas-boliches/")) {
       const rutaArchivo = urlPdf.replace("/uploads/fichas-tecnicas-boliches/", "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/ficha-tecnica-boliches/archivo/${rutaArchivo}`;
@@ -42,6 +45,14 @@ export const abrirPdfEnNuevaPestana = async (urlPdf, toast, mensajeError = "No h
     } else if (urlPdf.startsWith("/uploads/fichas-tecnicas/")) {
       const rutaArchivo = urlPdf.replace("/uploads/fichas-tecnicas/", "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/producto-ficha-tecnica/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/reportes-faena-calas/")) {
+      // Soporte para reportes de faena calas (ruta protegida con JWT)
+      const rutaArchivo = urlPdf.replace("/uploads/reportes-faena-calas/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/faenas-pesca/archivo-reporte-calas/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/declaraciones-desembarque/")) {
+      // Soporte para declaraciones de desembarque del armador (ruta protegida con JWT)
+      const rutaArchivo = urlPdf.replace("/uploads/declaraciones-desembarque/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/faenas-pesca/archivo-declaracion-desembarque/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/")) {
       // Para otros tipos de uploads (archivos de confirmación, etc.)
       urlCompleta = `${import.meta.env.VITE_API_URL}${urlPdf}`;

@@ -29,6 +29,23 @@ export const getAllDescargaFaenaPesca = async () => {
 };
 
 /**
+ * Obtiene las descargas de una faena específica
+ * @param {number} faenaPescaId - ID de la faena de pesca
+ * @returns {Promise<Array>} Lista de descargas de la faena específica
+ */
+export const getDescargasPorFaena = async (faenaPescaId) => {
+  try {
+    const response = await axios.get(`${API_URL}/faena/${faenaPescaId}`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener descargas por faena:', error);
+    throw error;
+  }
+};
+
+/**
  * Crea una nueva descarga de faena pesca
  * @param {Object} descargaData - Datos de la descarga de faena pesca
  * @returns {Promise<Object>} Descarga de faena pesca creada

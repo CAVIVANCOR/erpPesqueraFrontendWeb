@@ -9,7 +9,7 @@
  * @version 1.0.0
  */
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
@@ -20,6 +20,10 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Message } from "primereact/message";
 import { Toast } from "primereact/toast";
 import { classNames } from "primereact/utils";
+import DocumentoCapture from "../shared/DocumentoCapture";
+import PDFViewer from "../shared/PDFViewer";
+import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 import {
   crearDetMovsEntregaRendir,
   actualizarDetMovsEntregaRendir,
@@ -36,6 +40,10 @@ const DetMovsEntregaRendirForm = ({
 }) => {
   const toast = useRef(null);
   const isEditing = !!movimiento;
+  const { usuario } = useAuthStore();
+
+  // Estados para captura de comprobante
+  const [mostrarCaptura, setMostrarCaptura] = useState(false);
 
   // Configuración del formulario con react-hook-form
   const {
@@ -45,17 +53,27 @@ const DetMovsEntregaRendirForm = ({
     getValues,
     formState: { errors },
     reset,
+    watch,
   } = useForm({
     defaultValues: {
-      entregaARendirId: entregaARendirId || null,
-      responsableId: null,
+      entregaARendirId: entregaARendirId || "",
+      responsableId: "",
       fechaMovimiento: new Date(),
-      tipoMovimientoId: null,
+      tipoMovimientoId: "",
+      centroCostoId: "",
       monto: 0,
       descripcion: "",
-      centroCostoId: null,
+      urlComprobanteMovimiento: "",
+      validadoTesoreria: false,
+      fechaValidacionTesoreria: null,
     },
   });
+
+  // Observar cambios en urlComprobanteMovimiento
+  const urlComprobanteMovimiento = watch("urlComprobanteMovimiento");
+
+  // Observar cambios en validadoTesoreria
+  const validadoTesoreria = watch("validadoTesoreria");
 
   // Cargar datos del registro en edición
   useEffect(() => {
@@ -71,18 +89,36 @@ const DetMovsEntregaRendirForm = ({
         tipoMovimientoId: movimiento.tipoMovimientoId
           ? Number(movimiento.tipoMovimientoId)
           : null,
-        monto: Number(movimiento.monto) || 0,
-        descripcion: movimiento.descripcion || "",
         centroCostoId: movimiento.centroCostoId
           ? Number(movimiento.centroCostoId)
           : null,
+        monto: Number(movimiento.monto) || 0,
+        descripcion: movimiento.descripcion || "",
+        urlComprobanteMovimiento: movimiento.urlComprobanteMovimiento || "",
+        validadoTesoreria: movimiento.validadoTesoreria || false,
+        fechaValidacionTesoreria: movimiento.fechaValidacionTesoreria || null,
       });
     } else {
-      // Para nuevo registro, establecer entregaARendirId
+      // Para nuevo registro, establecer entregaARendirId y asignar responsable automáticamente
       setValue("entregaARendirId", Number(entregaARendirId));
       setValue("fechaMovimiento", new Date());
+      
+      // Asignar automáticamente el responsable basado en el usuario logueado
+      if (usuario?.personalId) {
+        setValue("responsableId", Number(usuario.personalId));
+        
+        // Mostrar toast informativo después de un breve delay
+        setTimeout(() => {
+          toast.current?.show({
+            severity: "info",
+            summary: "Responsable Asignado",
+            detail: "Se ha asignado automáticamente como responsable del movimiento",
+            life: 3000,
+          });
+        }, 500);
+      }
     }
-  }, [movimiento, isEditing, entregaARendirId, reset, setValue]);
+  }, [movimiento, isEditing, entregaARendirId, reset, setValue, usuario]);
 
   // Preparar opciones para dropdowns aplicando regla Number()
   const personalOptions = personal.map((p) => ({
@@ -119,7 +155,6 @@ const DetMovsEntregaRendirForm = ({
 
       // Normalizar datos aplicando regla Number() para IDs
       const datosNormalizados = {
-        ...data,
         entregaARendirId: Number(data.entregaARendirId),
         responsableId: data.responsableId ? Number(data.responsableId) : null,
         tipoMovimientoId: data.tipoMovimientoId
@@ -129,6 +164,9 @@ const DetMovsEntregaRendirForm = ({
         monto: Number(data.monto),
         fechaMovimiento: data.fechaMovimiento,
         descripcion: data.descripcion ? data.descripcion.toUpperCase() : null,
+        urlComprobanteMovimiento: data.urlComprobanteMovimiento?.trim() || null,
+        validadoTesoreria: data.validadoTesoreria,
+        fechaValidacionTesoreria: data.fechaValidacionTesoreria,
         actualizadoEn: new Date(),
       };
 
@@ -149,8 +187,101 @@ const DetMovsEntregaRendirForm = ({
     }
   };
 
+  // Función para ver PDF
+  const handleVerPDF = () => {
+    if (urlComprobanteMovimiento) {
+      abrirPdfEnNuevaPestana(
+        urlComprobanteMovimiento,
+        toast,
+        "No hay comprobante PDF disponible"
+      );
+    }
+  };
+
+  // Función para manejar comprobante subido
+  const handleComprobanteSubido = (urlDocumento) => {
+    setValue("urlComprobanteMovimiento", urlDocumento);
+    setMostrarCaptura(false);
+    toast.current?.show({
+      severity: "success",
+      summary: "Comprobante Subido",
+      detail: "El comprobante PDF se ha subido correctamente",
+      life: 3000,
+    });
+  };
+
+  // Función para validar tesorería
+  const handleValidarTesoreria = () => {
+    // Obtener valores actuales del formulario
+    const valores = getValues();
+    
+    // Validar campos obligatorios
+    const camposFaltantes = [];
+    
+    if (!valores.fechaMovimiento) {
+      camposFaltantes.push("Fecha del Movimiento");
+    }
+    
+    if (!valores.responsableId) {
+      camposFaltantes.push("Responsable");
+    }
+    
+    if (!valores.tipoMovimientoId) {
+      camposFaltantes.push("Tipo de Movimiento");
+    }
+    
+    if (!valores.centroCostoId) {
+      camposFaltantes.push("Centro de Costo");
+    }
+    
+    if (!valores.descripcion || valores.descripcion.trim() === "") {
+      camposFaltantes.push("Descripción");
+    }
+    
+    if (!valores.monto || Number(valores.monto) <= 0) {
+      camposFaltantes.push("Monto");
+    }
+    
+    // Verificar si faltan campos
+    if (camposFaltantes.length > 0) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Campos Incompletos",
+        detail: `Faltan los siguientes campos: ${camposFaltantes.join(", ")}`,
+        life: 5000,
+      });
+      return;
+    }
+    
+    // Verificar que existe el comprobante PDF
+    if (!valores.urlComprobanteMovimiento || valores.urlComprobanteMovimiento.trim() === "") {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Comprobante Requerido",
+        detail: "Debe adjuntar el comprobante para poder validar la Operación",
+        life: 5000,
+      });
+      return;
+    }
+    
+    // Si todas las validaciones pasan, proceder con la validación
+    setValue("validadoTesoreria", true);
+    setValue("fechaValidacionTesoreria", new Date());
+    
+    toast.current?.show({
+      severity: "success",
+      summary: "Validación Exitosa",
+      detail: "Operación validada Exitosamente",
+      life: 3000,
+    });
+  };
+
+  // Verificar si el formulario debe estar deshabilitado
+  const formularioDeshabilitado = getValues("validadoTesoreria");
+
   return (
     <div className="p-fluid">
+      <Toast ref={toast} />
       <form>
         <div
           style={{
@@ -168,7 +299,7 @@ const DetMovsEntregaRendirForm = ({
               value={
                 movimiento?.creadoEn
                   ? new Date(movimiento.creadoEn).toLocaleString("es-PE")
-                  : ""
+                  : new Date().toLocaleString("es-PE")
               }
               readOnly
               className="p-inputtext-sm"
@@ -193,12 +324,15 @@ const DetMovsEntregaRendirForm = ({
                   value={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   showIcon
+                  showTime
+                  hourFormat="24"
                   dateFormat="dd/mm/yy"
-                  placeholder="Seleccione fecha"
+                  placeholder="Seleccione fecha y hora"
                   className={classNames({
                     "p-invalid": errors.fechaMovimiento,
                   })}
                   inputStyle={{ fontWeight: "bold" }}
+                  disabled={formularioDeshabilitado}
                 />
               )}
             />
@@ -234,6 +368,7 @@ const DetMovsEntregaRendirForm = ({
                   filter
                   showClear
                   style={{ fontWeight: "bold" }}
+                  disabled={formularioDeshabilitado}
                 />
               )}
             />
@@ -268,6 +403,7 @@ const DetMovsEntregaRendirForm = ({
                   filter
                   showClear
                   style={{ fontWeight: "bold" }}
+                  disabled={formularioDeshabilitado}
                 />
               )}
             />
@@ -315,6 +451,7 @@ const DetMovsEntregaRendirForm = ({
                   filter
                   showClear
                   style={{ fontWeight: "bold" }}
+                  disabled={formularioDeshabilitado}
                 />
               )}
             />
@@ -350,6 +487,7 @@ const DetMovsEntregaRendirForm = ({
                     textTransform: "uppercase",
                     color: "red",
                   }}
+                  disabled={formularioDeshabilitado}
                 />
               )}
             />
@@ -384,6 +522,7 @@ const DetMovsEntregaRendirForm = ({
                     "p-invalid": errors.monto,
                   })}
                   inputStyle={{ fontWeight: "bold" }}
+                  disabled={formularioDeshabilitado}
                 />
               )}
             />
@@ -407,28 +546,199 @@ const DetMovsEntregaRendirForm = ({
           </div>
         </div>
 
-        {/* Botones de acción */}
-        <div className="flex justify-content-end gap-2 mt-4">
-          <Button
-            type="button"
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-text"
-            onClick={onCancelar}
-          />
-          <Button
-            type="button"
-            label={isEditing ? "Actualizar" : "Crear"}
-            icon={isEditing ? "pi pi-check" : "pi pi-plus"}
-            className="p-button-primary"
-            onClick={handleSubmit(onSubmit)}
-          />
+        {/* Sección de Comprobante PDF */}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginBottom: "0.5rem",
+            alignItems: "end",
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 2 }}>
+            <label
+              htmlFor="urlComprobanteMovimiento"
+              className="block text-900 font-medium mb-2"
+            >
+              Comprobante PDF
+            </label>
+            <Controller
+              name="urlComprobanteMovimiento"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  id="urlComprobanteMovimiento"
+                  {...field}
+                  placeholder="URL del comprobante PDF"
+                  className={classNames({
+                    "p-invalid": errors.urlComprobanteMovimiento,
+                  })}
+                  style={{ fontWeight: "bold" }}
+                  readOnly
+                  disabled={formularioDeshabilitado}
+                />
+              )}
+            />
+            {errors.urlComprobanteMovimiento && (
+              <Message
+                severity="error"
+                text={errors.urlComprobanteMovimiento.message}
+              />
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="flex gap-2 mt-4">
+              <Button
+                type="button"
+                label="Capturar/Subir"
+                icon="pi pi-camera"
+                className="p-button-info"
+                onClick={() => setMostrarCaptura(true)}
+                size="small"
+                disabled={formularioDeshabilitado}
+              />
+            </div>
+          </div>
+          <div style={{ flex: 1 }}>
+            {urlComprobanteMovimiento && (
+              <Button
+                type="button"
+                label="Ver PDF"
+                icon="pi pi-eye"
+                className="p-button-secondary"
+                onClick={handleVerPDF}
+                size="small"
+              />
+            )}
+          </div>
         </div>
+
+        {/* Sección de Validación de Tesorería */}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginBottom: "0.5rem",
+            alignItems: "end",
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Estado de Validación
+            </label>
+            <Button
+              type="button"
+              label={validadoTesoreria ? "VALIDADO" : "PENDIENTE"}
+              icon={validadoTesoreria ? "pi pi-check-circle" : "pi pi-clock"}
+              className={
+                validadoTesoreria ? "p-button-primary" : "p-button-danger"
+              }
+              disabled
+              size="small"
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Fecha de Validación
+            </label>
+            <Controller
+              name="fechaValidacionTesoreria"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  {...field}
+                  value={
+                    field.value
+                      ? new Date(field.value).toLocaleString("es-PE", {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: false,
+                        })
+                      : ""
+                  }
+                  placeholder="Pendiente"
+                  readOnly
+                  disabled
+                  className="p-inputtext-sm"
+                />
+              )}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            {!validadoTesoreria && (
+              <Button
+                type="button"
+                label={
+                  <span className="flex align-items-center gap-1">
+                    <i className="pi pi-check"></i>
+                    <i className="pi pi-dollar"></i>
+                    <span>Validar Movimiento</span>
+                  </span>
+                }
+                className="p-button-danger"
+                onClick={handleValidarTesoreria}
+                size="small"
+                severity="danger"
+                disabled={formularioDeshabilitado}
+              />
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              type="button"
+              label="Cancelar"
+              icon="pi pi-times"
+              className="p-button-warning"
+              size="small"
+              severity="warning"
+              onClick={onCancelar}
+              disabled={formularioDeshabilitado}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              type="button"
+              label={isEditing ? "Actualizar" : "Crear"}
+              icon={isEditing ? "pi pi-check" : "pi pi-plus"}
+              className="p-button-success"
+              size="small"
+              severity="success"
+              onClick={handleSubmit(onSubmit)}
+              disabled={formularioDeshabilitado}
+            />
+          </div>
+        </div>
+
+        {/* Botones de acción */}
+        <div className="flex justify-content-end gap-2 mt-4"></div>
       </form>
 
-      <Toast ref={toast} />
+      {/* Visor de PDF */}
+      {urlComprobanteMovimiento && (
+        <div style={{ marginTop: "1rem" }}>
+          <PDFViewer urlDocumento={urlComprobanteMovimiento} />
+        </div>
+      )}
+
+      {/* Modal de captura de comprobante */}
+      {mostrarCaptura && (
+        <DocumentoCapture
+          visible={mostrarCaptura}
+          onHide={() => setMostrarCaptura(false)}
+          onDocumentoSubido={handleComprobanteSubido}
+          endpoint="/api/det-movs-entrega-rendir/upload"
+          titulo="Capturar Comprobante de Movimiento"
+          toast={toast}
+          extraData={{ detMovsEntregaRendirId: movimiento?.id }}
+        />
+      )}
     </div>
   );
 };
-
 export default DetMovsEntregaRendirForm;

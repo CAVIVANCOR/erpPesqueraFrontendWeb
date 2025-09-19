@@ -46,6 +46,26 @@ const PDFViewer = ({ urlDocumento, tipoDocumento = "documentos-visitantes" }) =>
           // Soporte para documentación de embarcación
           const rutaArchivo = urlDocumento.replace('/uploads/documentacion-embarcacion/', '');
           urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/documentaciones-embarcacion/archivo/${rutaArchivo}`;
+        } else if (urlDocumento.startsWith('/uploads/comprobantes-mov-temporada/')) {
+          // Soporte para comprobantes de movimientos de liquidación de temporada
+          const rutaArchivo = urlDocumento.replace('/uploads/comprobantes-mov-temporada/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/movs-liquidacion-temporada/archivo/${rutaArchivo}`;
+        } else if (urlDocumento.startsWith('/uploads/comprobantes-det-movs-entrega-rendir/')) {
+          // Soporte para comprobantes de movimientos de entrega a rendir
+          console.log("URL del comprobante de movimientos de entrega a rendir:", urlDocumento);
+          const rutaArchivo = urlDocumento.replace('/uploads/comprobantes-det-movs-entrega-rendir/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir/archivo/${rutaArchivo}`;
+          console.log("URL completa del comprobante de movimientos de entrega a rendir:", urlCompleta);
+        } else if (urlDocumento.startsWith('/uploads/reportes-faena-calas/')) {
+          console.log("URL del reporte de faena calas:", urlDocumento);
+          // Soporte para reportes de faena calas (ruta protegida con JWT)
+          const rutaArchivo = urlDocumento.replace('/uploads/reportes-faena-calas/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/faenas-pesca/archivo-reporte-calas/${rutaArchivo}`;
+          console.log("URL completa del reporte de faena calas:", urlCompleta);
+        } else if (urlDocumento.startsWith('/uploads/declaraciones-desembarque/')) {
+          // Soporte para declaraciones de desembarque del armador (ruta protegida con JWT)
+          const rutaArchivo = urlDocumento.replace('/uploads/declaraciones-desembarque/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/faenas-pesca/archivo-declaracion-desembarque/${rutaArchivo}`;
         } else if (urlDocumento.startsWith('/api/')) {
           // Remover /api/ del inicio porque VITE_API_URL ya lo incluye
           const rutaSinApi = urlDocumento.substring(4);

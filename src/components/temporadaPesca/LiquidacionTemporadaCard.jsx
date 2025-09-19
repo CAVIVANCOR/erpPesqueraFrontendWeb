@@ -32,6 +32,12 @@ import {
   actualizarEntregaARendir,
   getAllEntregaARendir,
 } from "../../api/entregaARendir";
+import {
+  getAllMovLiquidacionTemporadaPesca,
+  crearMovLiquidacionTemporadaPesca,
+  actualizarMovLiquidacionTemporadaPesca,
+  eliminarMovLiquidacionTemporadaPesca,
+} from "../../api/movLiquidacionTemporadaPesca";
 import { Message } from "primereact/message";
 
 const LiquidacionTemporadaCard = ({
@@ -98,7 +104,7 @@ const LiquidacionTemporadaCard = ({
 
   const cargarMovimientos = async (liquidacionId) => {
     try {
-      const data = await getMovLiquidacionTemporadaPesca();
+      const data = await getAllMovLiquidacionTemporadaPesca();
       const movimientosFiltrados = data.filter(
         (mov) => Number(mov.liquidacionTemporadaId) === Number(liquidacionId)
       );
@@ -331,6 +337,16 @@ const LiquidacionTemporadaCard = ({
     );
   };
 
+  const tipoMovimientoTemplate = (rowData) => {
+    return `Tipo ${rowData.tipoMovimientoId}`;
+  };
+
+  const centroCostoTemplate = (rowData) => {
+    if (!rowData.centroCostoId) return "";
+    const centroCosto = centrosCosto.find(cc => Number(cc.id) === Number(rowData.centroCostoId));
+    return centroCosto ? `${centroCosto.Codigo} - ${centroCosto.Nombre}` : "";
+  };
+
   const actionBodyTemplate = (rowData, isMovimiento = false) => {
     return (
       <div className="flex gap-2">
@@ -509,6 +525,7 @@ const LiquidacionTemporadaCard = ({
             <Column 
               field="tipoMovimientoId" 
               header="Tipo" 
+              body={tipoMovimientoTemplate} 
               sortable 
               style={{ minWidth: "10rem" }} 
             />
@@ -525,6 +542,13 @@ const LiquidacionTemporadaCard = ({
               body={fechaHoraTemplate} 
               sortable 
               style={{ minWidth: "12rem" }} 
+            />
+            <Column 
+              field="centroCostoId" 
+              header="Centro de Costo" 
+              body={centroCostoTemplate} 
+              sortable 
+              style={{ minWidth: "15rem" }} 
             />
             <Column 
               body={(rowData) => actionBodyTemplate(rowData, true)} 

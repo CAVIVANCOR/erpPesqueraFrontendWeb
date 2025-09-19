@@ -294,7 +294,6 @@ const EntregasARendirTemporadaCard = ({
     const centro = centrosCosto.find(
       (c) => Number(c.id) === Number(rowData.centroCostoId)
     );
-    console.log("centro", centro);
     return centro ? centro.Codigo + " - " + centro.Nombre : "N/A";
   };
 
