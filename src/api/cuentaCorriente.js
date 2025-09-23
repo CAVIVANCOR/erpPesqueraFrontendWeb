@@ -1,16 +1,16 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/cuentas-corrientes`;
 
 /**
  * Obtiene el token de autenticación desde el store de Zustand
  * @returns {string} Token JWT para autenticación
  */
-const getAuthToken = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /**
  * Obtiene todas las cuentas corrientes del sistema
@@ -18,12 +18,8 @@ const getAuthToken = () => {
  */
 export const getAllCuentaCorriente = async () => {
   try {
-    const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/cuenta-corriente`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.get(`${API_URL}`, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -39,12 +35,8 @@ export const getAllCuentaCorriente = async () => {
  */
 export const crearCuentaCorriente = async (cuentaData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/cuenta-corriente`, cuentaData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.post(`${API_URL}`, cuentaData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -61,12 +53,8 @@ export const crearCuentaCorriente = async (cuentaData) => {
  */
 export const actualizarCuentaCorriente = async (id, cuentaData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/cuenta-corriente/${id}`, cuentaData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.put(`${API_URL}/${id}`, cuentaData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -82,12 +70,8 @@ export const actualizarCuentaCorriente = async (id, cuentaData) => {
  */
 export const eliminarCuentaCorriente = async (id) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/cuenta-corriente/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.delete(`${API_URL}/${id}`, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -95,9 +79,3 @@ export const eliminarCuentaCorriente = async (id) => {
     throw error;
   }
 };
-
-// Aliases en inglés para compatibilidad
-export const getCuentaCorriente = getAllCuentaCorriente;
-export const createCuentaCorriente = crearCuentaCorriente;
-export const updateCuentaCorriente = actualizarCuentaCorriente;
-export const deleteCuentaCorriente = eliminarCuentaCorriente;

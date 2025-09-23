@@ -3,20 +3,32 @@
 import React from 'react';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
+import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
 
-export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, loading }) {
+export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, loading, paises = [] }) {
   const [nombre, setNombre] = React.useState(defaultValues.nombre || '');
   const [codigoSwift, setCodigoSwift] = React.useState(defaultValues.codigoSwift || '');
   const [codigoBcrp, setCodigoBcrp] = React.useState(defaultValues.codigoBcrp || '');
-  const [paisId, setPaisId] = React.useState(defaultValues.paisId || '');
+  // Establecer Perú (ID=1) como valor por defecto para nuevos bancos
+  const [paisId, setPaisId] = React.useState(() => {
+    if (defaultValues.paisId !== undefined) {
+      return Number(defaultValues.paisId);
+    }
+    return 1; // Perú por defecto para nuevos bancos
+  });
   const [activo, setActivo] = React.useState(defaultValues.activo !== undefined ? !!defaultValues.activo : true);
 
   React.useEffect(() => {
     setNombre(defaultValues.nombre || '');
     setCodigoSwift(defaultValues.codigoSwift || '');
     setCodigoBcrp(defaultValues.codigoBcrp || '');
-    setPaisId(defaultValues.paisId || '');
+    // Solo actualizar paisId si hay un valor específico en defaultValues
+    if (defaultValues.paisId !== undefined) {
+      setPaisId(Number(defaultValues.paisId));
+    } else {
+      setPaisId(1); // Perú por defecto
+    }
     setActivo(defaultValues.activo !== undefined ? !!defaultValues.activo : true);
   }, [defaultValues]);
 
@@ -46,8 +58,21 @@ export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, l
         <InputText id="codigoBcrp" value={codigoBcrp} onChange={e => setCodigoBcrp(e.target.value)} disabled={loading} maxLength={20} />
       </div>
       <div className="p-field">
-        <label htmlFor="paisId">País (ID)</label>
-        <InputText id="paisId" value={paisId} onChange={e => setPaisId(e.target.value)} disabled={loading} />
+        <label htmlFor="paisId">País</label>
+        <Dropdown
+          id="paisId"
+          value={paisId}
+          options={paises.map((pais) => ({
+            label: pais.nombre,
+            value: Number(pais.id), // Asegurar que sea número
+          }))}
+          onChange={(e) => setPaisId(e.value)}
+          placeholder="Seleccione país"
+          disabled={loading}
+          filter
+          showClear
+          style={{ fontWeight: "bold" }}
+        />
       </div>
       <div className="p-field-checkbox">
         <Checkbox id="activo" checked={activo} onChange={e => setActivo(e.checked)} disabled={loading} />

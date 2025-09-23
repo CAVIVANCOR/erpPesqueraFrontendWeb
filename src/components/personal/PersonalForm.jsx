@@ -912,20 +912,20 @@ export default function PersonalForm({
             <Button
               label="Cancelar"
               icon="pi pi-times"
-              className="p-button-text"
               type="button"
               onClick={onCancel}
               disabled={loading}
-              severity="danger"
+              className="p-button-warning"
+              severity="warning"
               raised
               size="small"
             />
             <Button
               label={isEdit ? "Actualizar" : "Guardar"}
               icon="pi pi-check"
-              className="p-button-success"
               type="submit"
               loading={loading}
+              className="p-button-success"
               severity="success"
               raised
               size="small"

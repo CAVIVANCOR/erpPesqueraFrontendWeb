@@ -1,16 +1,16 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/movimientos-caja`;
 
 /**
  * Obtiene el token de autenticación desde el store de Zustand
  * @returns {string} Token JWT para autenticación
  */
-const getAuthToken = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /**
  * Obtiene todos los movimientos de caja del sistema
@@ -18,12 +18,8 @@ const getAuthToken = () => {
  */
 export const getAllMovimientoCaja = async () => {
   try {
-    const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/movimiento-caja`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.get(`${API_URL}`, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -39,12 +35,8 @@ export const getAllMovimientoCaja = async () => {
  */
 export const crearMovimientoCaja = async (movimientoData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/movimiento-caja`, movimientoData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.post(`${API_URL}`, movimientoData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -61,12 +53,8 @@ export const crearMovimientoCaja = async (movimientoData) => {
  */
 export const actualizarMovimientoCaja = async (id, movimientoData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/movimiento-caja/${id}`, movimientoData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.put(`${API_URL}/${id}`, movimientoData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -82,12 +70,8 @@ export const actualizarMovimientoCaja = async (id, movimientoData) => {
  */
 export const eliminarMovimientoCaja = async (id) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/movimiento-caja/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.delete(`${API_URL}/${id}`, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -95,9 +79,3 @@ export const eliminarMovimientoCaja = async (id) => {
     throw error;
   }
 };
-
-// Aliases en inglés para compatibilidad
-export const getMovimientoCaja = getAllMovimientoCaja;
-export const createMovimientoCaja = crearMovimientoCaja;
-export const updateMovimientoCaja = actualizarMovimientoCaja;
-export const deleteMovimientoCaja = eliminarMovimientoCaja;

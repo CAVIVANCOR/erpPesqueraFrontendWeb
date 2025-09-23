@@ -261,6 +261,64 @@ const EntregasARendirTemporadaCard = ({
     }
   };
 
+  // Función para procesar liquidación de la entrega a rendir
+  const handleProcesarLiquidacion = () => {
+    confirmDialog({
+      message: "¿Está seguro de procesar la liquidación? Esta acción no se puede deshacer y bloqueará todas las modificaciones futuras.",
+      header: "Confirmar Procesamiento de Liquidación",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
+      accept: async () => {
+        try {
+          const fechaActual = new Date();
+          
+          // Actualizar EntregaARendir
+          const entregaActualizada = {
+            ...entregaARendir,
+            entregaLiquidada: true,
+            fechaLiquidacion: fechaActual,
+            fechaActualizacion: fechaActual
+          };
+          
+          await actualizarEntregaARendir(entregaARendir.id, entregaActualizada);
+          
+          // Actualizar todos los movimientos DetMovsEntregaRendir
+          const promesasActualizacion = movimientos.map(movimiento => {
+            const movimientoActualizado = {
+              ...movimiento,
+              validadoTesoreria: true,
+              fechaValidacionTesoreria: fechaActual
+            };
+            return actualizarDetMovsEntregaRendir(movimiento.id, movimientoActualizado);
+          });
+          
+          await Promise.all(promesasActualizacion);
+          
+          toast.current?.show({
+            severity: "success",
+            summary: "Liquidación Procesada",
+            detail: "La entrega a rendir ha sido liquidada exitosamente",
+            life: 5000,
+          });
+          
+          // Recargar datos
+          cargarEntregaARendir();
+          cargarMovimientos();
+          onDataChange?.();
+          
+        } catch (error) {
+          console.error("Error al procesar liquidación:", error);
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "Error al procesar la liquidación",
+            life: 3000,
+          });
+        }
+      },
+    });
+  };
+
   // Templates para las columnas
   const fechaMovimientoTemplate = (rowData) => {
     return new Date(rowData.fechaMovimiento).toLocaleDateString("es-PE");
@@ -297,6 +355,32 @@ const EntregasARendirTemporadaCard = ({
     return centro ? centro.Codigo + " - " + centro.Nombre : "N/A";
   };
 
+  const validacionTesoreriaTemplate = (rowData) => {
+    return (
+      <div className="flex align-items-center gap-2">
+        <i 
+          className={`pi ${rowData.validadoTesoreria ? 'pi-check-circle' : 'pi-times-circle'}`}
+          style={{ 
+            color: rowData.validadoTesoreria ? '#28a745' : '#dc3545',
+            fontSize: '1.2rem'
+          }}
+        />
+        <span style={{ 
+          color: rowData.validadoTesoreria ? '#28a745' : '#dc3545',
+          fontWeight: 'bold'
+        }}>
+          {rowData.validadoTesoreria ? 'Validado' : 'Pendiente'}
+        </span>
+      </div>
+    );
+  };
+
+  const fechaValidacionTesoreriaTemplate = (rowData) => {
+    return rowData.fechaValidacionTesoreria 
+      ? new Date(rowData.fechaValidacionTesoreria).toLocaleDateString("es-PE")
+      : "N/A";
+  };
+
   const accionesTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
@@ -305,14 +389,14 @@ const EntregasARendirTemporadaCard = ({
           className="p-button-rounded p-button-text p-button-sm"
           onClick={() => handleEditarMovimiento(rowData)}
           tooltip="Editar"
-          disabled={!temporadaPescaIniciada}
+          disabled={!temporadaPescaIniciada || entregaARendir?.entregaLiquidada}
         />
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-text p-button-sm p-button-danger"
           onClick={() => handleEliminarMovimiento(rowData)}
           tooltip="Eliminar"
-          disabled={!temporadaPescaIniciada}
+          disabled={!temporadaPescaIniciada || entregaARendir?.entregaLiquidada}
         />
       </div>
     );
@@ -696,7 +780,7 @@ const EntregasARendirTemporadaCard = ({
                         className="p-button-success"
                         severity="success"
                         onClick={handleNuevoMovimiento}
-                        disabled={entregaARendir.entregaLiquidada}
+                        disabled={!temporadaPescaIniciada || !entregaARendir || entregaARendir?.entregaLiquidada}
                         type="button"
                       />
                     </div>
@@ -717,6 +801,16 @@ const EntregasARendirTemporadaCard = ({
                         className="p-button-sm p-button-outlined"
                         onClick={limpiarFiltros}
                         type="button"
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <Button
+                        label="Procesar Liquidación"
+                        icon="pi pi-check"
+                        className="p-button-sm p-button-outlined"
+                        onClick={handleProcesarLiquidacion}
+                        type="button"
+                        disabled={entregaARendir.entregaLiquidada}
                       />
                     </div>
                   </div>
@@ -791,6 +885,18 @@ const EntregasARendirTemporadaCard = ({
                 field="centroCostoId"
                 header="Centro de Costo"
                 body={centroCostoTemplate}
+                sortable
+              />
+              <Column
+                field="validadoTesoreria"
+                header="Validación Tesorería"
+                body={validacionTesoreriaTemplate}
+                sortable
+              />
+              <Column
+                field="fechaValidacionTesoreria"
+                header="Fecha Validación Tesorería"
+                body={fechaValidacionTesoreriaTemplate}
                 sortable
               />
               <Column field="descripcion" header="Descripción" sortable />

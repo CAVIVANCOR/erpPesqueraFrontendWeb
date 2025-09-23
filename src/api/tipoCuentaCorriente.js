@@ -1,16 +1,12 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/tipos-cuenta-corriente`;
 
-/**
- * Obtiene el token de autenticación desde el store de Zustand
- * @returns {string} Token JWT para autenticación
- */
-const getAuthToken = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /**
  * Obtiene todos los tipos de cuenta corriente del sistema
@@ -18,12 +14,8 @@ const getAuthToken = () => {
  */
 export const getAllTipoCuentaCorriente = async () => {
   try {
-    const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/tipo-cuenta-corriente`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.get(`${API_URL}`, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -39,12 +31,8 @@ export const getAllTipoCuentaCorriente = async () => {
  */
 export const crearTipoCuentaCorriente = async (tipoCuentaData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/tipo-cuenta-corriente`, tipoCuentaData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.post(`${API_URL}`, tipoCuentaData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -61,12 +49,8 @@ export const crearTipoCuentaCorriente = async (tipoCuentaData) => {
  */
 export const actualizarTipoCuentaCorriente = async (id, tipoCuentaData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/tipo-cuenta-corriente/${id}`, tipoCuentaData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.put(`${API_URL}/${id}`, tipoCuentaData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -82,12 +66,8 @@ export const actualizarTipoCuentaCorriente = async (id, tipoCuentaData) => {
  */
 export const eliminarTipoCuentaCorriente = async (id) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/tipo-cuenta-corriente/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.delete(`${API_URL}/${id}`, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -95,9 +75,3 @@ export const eliminarTipoCuentaCorriente = async (id) => {
     throw error;
   }
 };
-
-// Aliases en inglés para compatibilidad
-export const getTipoCuentaCorriente = getAllTipoCuentaCorriente;
-export const createTipoCuentaCorriente = crearTipoCuentaCorriente;
-export const updateTipoCuentaCorriente = actualizarTipoCuentaCorriente;
-export const deleteTipoCuentaCorriente = eliminarTipoCuentaCorriente;

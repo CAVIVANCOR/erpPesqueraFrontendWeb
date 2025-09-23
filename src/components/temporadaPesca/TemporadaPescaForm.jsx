@@ -38,7 +38,6 @@ import { getTemporadaPescaPorId } from "../../api/temporadaPesca"; // Importar f
 import DatosGeneralesTemporadaForm from "./DatosGeneralesTemporadaForm";
 import ResolucionPDFTemporadaForm from "./ResolucionPDFTemporadaForm";
 import EntregasARendirTemporadaCard from "./EntregasARendirTemporadaCard";
-import LiquidacionTemporadaCard from "./LiquidacionTemporadaCard";
 // Importar APIs adicionales
 import { getPersonal } from "../../api/personal";
 import { getCentrosCosto } from "../../api/centroCosto";
@@ -478,19 +477,6 @@ const TemporadaPescaForm = ({
           type="button"
           size="small"
         />
-        <Button
-          icon="pi pi-money-bill"
-          tooltip="Liquidación de Temporada"
-          tooltipOptions={{ position: "top" }}
-          className={
-            activeCard === "liquidacion-temporada"
-              ? "p-button-danger"
-              : "p-button-outlined"
-          }
-          onClick={() => handleNavigateToCard("liquidacion-temporada")}
-          type="button"
-          size="small"
-        />
       </div>
 
       {/* Botones de acción - lado derecho */}
@@ -648,17 +634,7 @@ const TemporadaPescaForm = ({
             onDataChange={onTemporadaDataChange}
           />
         )}
-        {activeCard === "liquidacion-temporada" && (
-          <LiquidacionTemporadaCard
-            temporadaPescaId={editingItem?.id}
-            temporadaData={editingItem}
-            personal={personal}
-            centrosCosto={centrosCosto}
-            empresasList={empresasList}
-            loading={false}
-            onDataChange={onTemporadaDataChange}
-          />
-        )}
+        
         {/* Indicador de validación de superposición */}
         {validandoSuperposicion && (
           <div className="col-12">

@@ -92,8 +92,6 @@ import SubfamiliaProducto from "./SubfamiliaProducto";
 import UnidadMedida from "./UnidadMedida";
 import TipoMaterial from "./TipoMaterial";
 import Color from "./Color";
-import LiquidacionTemporadaPesca from "./LiquidacionTemporadaPesca";
-import MovLiquidacionTemporadaPesca from "./MovLiquidacionTemporadaPesca";
 import KardexAlmacen from "./KardexAlmacen";
 import SaldosProductoCliente from "./SaldosProductoCliente";
 import SaldosDetProductoCliente from "./SaldosDetProductoCliente";
@@ -110,8 +108,6 @@ import EmpresaCentroCosto from "./EmpresaCentroCosto";
 import DetalleDescargaFaena from "./DetalleDescargaFaena";
 import AccionesPreviasFaena from "./AccionesPreviasFaena";
 import DetAccionesPreviasFaena from "./DetAccionesPreviasFaena";
-import LiqNovedadPescaConsumo from "./LiqNovedadPescaConsumo";
-import MovLiqNovedadPescaConsumo from "./MovLiqNovedadPescaConsumo";
 import DetCotizacionVentas from "./DetCotizacionVentas";
 import DetProductoFinalCotizacionCompras from "./DetProductoFinalCotizacionCompras";
 import EntregaARendirPCompras from "./EntregaARendirPCompras";
@@ -280,14 +276,10 @@ export default function MultiCrud() {
     tipoMaterial: { label: "Tipos de Material Producto", componente: <TipoMaterial /> },
     color: { label: "Colores Producto", componente: <Color /> },
     producto: { label: "Productos y Servicios", componente: <Producto /> },
-    liquidacionTemporadaPesca: { label: "Liquidaciones de Temporada", componente: <LiquidacionTemporadaPesca /> },
-    movLiquidacionTemporadaPesca: { label: "Movimientos de Liquidación", componente: <MovLiquidacionTemporadaPesca /> },
     kardexAlmacen: { label: "Kardex de Almacén", componente: <KardexAlmacen /> },
     saldosProductoCliente: { label: "Saldos de Productos-Cliente", componente: <SaldosProductoCliente /> },
     saldosDetProductoCliente: { label: "Saldos de Productos-Cliente Variables Control", componente: <SaldosDetProductoCliente /> },
     descargaFaenaConsumo: { label: "Descargas de Faena", componente: <DescargaFaenaConsumo /> },
-    liqNovedadPescaConsumo: { label: "Liquidaciones de Novedad Consumo", componente: <LiqNovedadPescaConsumo /> },
-    movLiqNovedadPescaConsumo: { label: "Movimientos Liquidación Novedad", componente: <MovLiqNovedadPescaConsumo /> },
     cotizacionVentas: { label: "Cotización de Ventas", componente: <CotizacionVentas /> },
     detCotizacionVentas: { label: "Detalle Cotización Ventas", componente: <DetCotizacionVentas /> },
     detDocsReqCotizaVentas: { label: "Documentos Requeridos Cotización Ventas", componente: <DetDocsReqCotizaVentas /> },
@@ -375,8 +367,19 @@ export default function MultiCrud() {
       items: [
         [
           {
+            label: "Pesca",
+            items: [
+              { label: "Pesca Industrial", icon: "pi pi-leaf", command: () => abrirModulo("temporadaPesca", "Pesca Industrial") },
+              { label: "Pesca de Consumo", icon: "pi pi-ship", command: () => abrirModulo("novedadPescaConsumo", "Pesca de Consumo") },
+            ]
+          }
+        ],
+        [
+          {
             label: "Tablas Maestras Pesca",
             items: [
+              { label: "Pesca Industrial", icon: "pi pi-leaf", command: () => abrirModulo("temporadaPesca", "Pesca Industrial") },
+              { label: "Pesca de Consumo", icon: "pi pi-ship", command: () => abrirModulo("novedadPescaConsumo", "Pesca de Consumo") },
               { label: "Especies", icon: "pi pi-leaf", command: () => abrirModulo("especie", "Especies") },
               { label: "Acciones Previas", icon: "pi pi-archive", command: () => abrirModulo("accionesPreviasFaena", "Acciones previas Faena") },
               { label: "Embarcaciones", icon: "pi pi-snowflake", command: () => abrirModulo("embarcacion", "Embarcaciones") },
@@ -388,27 +391,6 @@ export default function MultiCrud() {
               { label: "Puerto de Pesca", icon: "pi pi-anchor", command: () => abrirModulo("puertoPesca", "Puerto de Pesca") }
             ]
           }
-        ],
-        [
-          {
-            label: "Pesca Industrial",
-            items: [
-              { label: "Temporada Pesca", icon: "pi pi-leaf", command: () => abrirModulo("temporadaPesca", "Temporada Pesca") },
-              { label: "Entregas a Rendir", icon: "pi pi-snowflake", command: () => abrirModulo("entregaARendir", "Entregas a Rendir Temporada Pesca") },
-              { label: "Liquidaciones", icon: "pi pi-calendar", command: () => abrirModulo("liquidacionTemporadaPesca", "Liquidaciones Temporada Pesca") },
-            ]
-          },
-        ],
-        [
-          {
-            label: "Pesca Consumo",
-            items: [
-              { label: "Novedad Pesca Consumo", icon: "pi pi-ship", command: () => abrirModulo("novedadPescaConsumo", "Novedad Pesca Consumo") },
-              { label: "Entregas a Rendir Pesca Consumo", icon: "pi pi-leaf", command: () => abrirModulo("entregaARendirPescaConsumo", "Entregas a Rendir Pesca Consumo") },
-              { label: "Liquidación Consumo", icon: "pi pi-exclamation-circle", command: () => abrirModulo("liqNovedadPescaConsumo", "Liquidacion Novedad Pesca Consumo") }
-            ]
-          },
-
         ],
       ]
     },

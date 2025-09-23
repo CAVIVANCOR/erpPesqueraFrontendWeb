@@ -1,29 +1,24 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/tipos-referencia-movimiento-caja`;
 
 /**
  * Obtiene el token de autenticación desde el store de Zustand
  * @returns {string} Token JWT para autenticación
  */
-const getAuthToken = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
-
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 /**
  * Obtiene todos los tipos de referencia de movimiento de caja del sistema
  * @returns {Promise<Array>} Lista de tipos de referencia de movimiento de caja
  */
 export const getAllTipoReferenciaMovimientoCaja = async () => {
   try {
-    const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/tipo-referencia-movimiento-caja`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.get(`${API_URL}`, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -39,12 +34,8 @@ export const getAllTipoReferenciaMovimientoCaja = async () => {
  */
 export const crearTipoReferenciaMovimientoCaja = async (tipoReferenciaData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/tipo-referencia-movimiento-caja`, tipoReferenciaData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.post(`${API_URL}`, tipoReferenciaData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -61,12 +52,8 @@ export const crearTipoReferenciaMovimientoCaja = async (tipoReferenciaData) => {
  */
 export const actualizarTipoReferenciaMovimientoCaja = async (id, tipoReferenciaData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/tipo-referencia-movimiento-caja/${id}`, tipoReferenciaData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.put(`${API_URL}/${id}`, tipoReferenciaData, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -82,12 +69,8 @@ export const actualizarTipoReferenciaMovimientoCaja = async (id, tipoReferenciaD
  */
 export const eliminarTipoReferenciaMovimientoCaja = async (id) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/tipo-referencia-movimiento-caja/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const response = await axios.delete(`${API_URL}/${id}`, {
+      headers: getAuthHeader()
     });
     return response.data;
   } catch (error) {
@@ -95,9 +78,3 @@ export const eliminarTipoReferenciaMovimientoCaja = async (id) => {
     throw error;
   }
 };
-
-// Aliases en inglés para compatibilidad
-export const getTipoReferenciaMovimientoCaja = getAllTipoReferenciaMovimientoCaja;
-export const createTipoReferenciaMovimientoCaja = crearTipoReferenciaMovimientoCaja;
-export const updateTipoReferenciaMovimientoCaja = actualizarTipoReferenciaMovimientoCaja;
-export const deleteTipoReferenciaMovimientoCaja = eliminarTipoReferenciaMovimientoCaja;

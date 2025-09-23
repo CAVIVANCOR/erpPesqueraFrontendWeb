@@ -8,7 +8,7 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import TipoReferenciaMovimientoCajaForm from "../components/tipoReferenciaMovimientoCaja/TipoReferenciaMovimientoCajaForm";
-import { getAllTipoReferenciaMovimientoCaja, createTipoReferenciaMovimientoCaja, updateTipoReferenciaMovimientoCaja, deleteTipoReferenciaMovimientoCaja } from "../api/tipoReferenciaMovimientoCaja";
+import { getAllTipoReferenciaMovimientoCaja, crearTipoReferenciaMovimientoCaja, actualizarTipoReferenciaMovimientoCaja, eliminarTipoReferenciaMovimientoCaja } from "../api/tipoReferenciaMovimientoCaja";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
 /**
@@ -60,7 +60,7 @@ export default function TipoReferenciaMovimientoCaja() {
     if (!toDelete) return;
     setLoading(true);
     try {
-      await deleteTipoReferenciaMovimientoCaja(toDelete.id);
+      await eliminarTipoReferenciaMovimientoCaja(toDelete.id);
       toast.current.show({ severity: "success", summary: "Eliminado", detail: "Registro eliminado correctamente." });
       cargarItems();
     } catch (err) {
@@ -74,10 +74,10 @@ export default function TipoReferenciaMovimientoCaja() {
     setLoading(true);
     try {
       if (editing && editing.id) {
-        await updateTipoReferenciaMovimientoCaja(editing.id, data);
+        await actualizarTipoReferenciaMovimientoCaja(editing.id, data);
         toast.current.show({ severity: "success", summary: "Actualizado", detail: "Registro actualizado." });
       } else {
-        await createTipoReferenciaMovimientoCaja(data);
+        await crearTipoReferenciaMovimientoCaja(data);
         toast.current.show({ severity: "success", summary: "Creado", detail: "Registro creado." });
       }
       setShowDialog(false);

@@ -2,7 +2,7 @@
 // Página principal de gestión de personal en el ERP Megui.
 // Reutiliza patrones de Usuarios.jsx y documenta en español técnico.
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";

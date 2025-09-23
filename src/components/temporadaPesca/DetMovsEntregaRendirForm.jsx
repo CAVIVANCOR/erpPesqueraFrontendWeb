@@ -28,6 +28,7 @@ import {
   crearDetMovsEntregaRendir,
   actualizarDetMovsEntregaRendir,
 } from "../../api/detMovsEntregaRendir";
+import { getModulos } from "../../api/moduloSistema";
 
 const DetMovsEntregaRendirForm = ({
   movimiento = null,
@@ -44,6 +45,9 @@ const DetMovsEntregaRendirForm = ({
 
   // Estados para captura de comprobante
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
+  
+  // Estados para módulos del sistema
+  const [modulosPescaIndustrial, setModulosPescaIndustrial] = useState(null);
 
   // Configuración del formulario con react-hook-form
   const {
@@ -66,6 +70,10 @@ const DetMovsEntregaRendirForm = ({
       urlComprobanteMovimiento: "",
       validadoTesoreria: false,
       fechaValidacionTesoreria: null,
+      operacionSinFactura: false,
+      fechaOperacionMovCaja: null,
+      operacionMovCajaId: null,
+      moduloOrigenMovCajaId: 2, // Valor automático para "PESCA INDUSTRIAL"
     },
   });
 
@@ -74,6 +82,12 @@ const DetMovsEntregaRendirForm = ({
 
   // Observar cambios en validadoTesoreria
   const validadoTesoreria = watch("validadoTesoreria");
+
+  // Observar cambios en los nuevos campos
+  const operacionSinFactura = watch("operacionSinFactura");
+  const fechaOperacionMovCaja = watch("fechaOperacionMovCaja");
+  const operacionMovCajaId = watch("operacionMovCajaId");
+  const moduloOrigenMovCajaId = watch("moduloOrigenMovCajaId");
 
   // Cargar datos del registro en edición
   useEffect(() => {
@@ -97,11 +111,16 @@ const DetMovsEntregaRendirForm = ({
         urlComprobanteMovimiento: movimiento.urlComprobanteMovimiento || "",
         validadoTesoreria: movimiento.validadoTesoreria || false,
         fechaValidacionTesoreria: movimiento.fechaValidacionTesoreria || null,
+        operacionSinFactura: movimiento.operacionSinFactura || false,
+        fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja ? new Date(movimiento.fechaOperacionMovCaja) : null,
+        operacionMovCajaId: movimiento.operacionMovCajaId ? Number(movimiento.operacionMovCajaId) : null,
+        moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId ? Number(movimiento.moduloOrigenMovCajaId) : 2,
       });
     } else {
       // Para nuevo registro, establecer entregaARendirId y asignar responsable automáticamente
       setValue("entregaARendirId", Number(entregaARendirId));
       setValue("fechaMovimiento", new Date());
+      setValue("moduloOrigenMovCajaId", 2); // Establecer valor por defecto para PESCA INDUSTRIAL
       
       // Asignar automáticamente el responsable basado en el usuario logueado
       if (usuario?.personalId) {
@@ -120,6 +139,33 @@ const DetMovsEntregaRendirForm = ({
     }
   }, [movimiento, isEditing, entregaARendirId, reset, setValue, usuario]);
 
+  // Cargar módulo "PESCA INDUSTRIAL" al montar el componente
+  useEffect(() => {
+    const cargarModuloPescaIndustrial = async () => {
+      try {
+        const modulos = await getModulos();
+        const moduloPesca = modulos.find(m => m.nombre === "PESCA INDUSTRIAL");
+        if (moduloPesca) {
+          setModulosPescaIndustrial(moduloPesca);
+          // Solo establecer el valor si no estamos editando
+          if (!isEditing) {
+            setValue("moduloOrigenMovCajaId", Number(moduloPesca.id));
+          }
+        }
+      } catch (error) {
+        console.error("Error al cargar módulo PESCA INDUSTRIAL:", error);
+        toast.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "No se pudo cargar el módulo PESCA INDUSTRIAL",
+          life: 3000,
+        });
+      }
+    };
+
+    cargarModuloPescaIndustrial();
+  }, [setValue, isEditing]);
+
   // Preparar opciones para dropdowns aplicando regla Number()
   const personalOptions = personal.map((p) => ({
     label: p.nombreCompleto || `${p.nombres} ${p.apellidos}`,
@@ -135,6 +181,19 @@ const DetMovsEntregaRendirForm = ({
     label: tm.nombre || "N/A",
     value: Number(tm.id),
   }));
+
+  // Función para manejar el toggle de operacionSinFactura
+  const handleToggleOperacionSinFactura = () => {
+    const valorActual = getValues("operacionSinFactura");
+    setValue("operacionSinFactura", !valorActual);
+    
+    toast.current?.show({
+      severity: "info",
+      summary: "Estado Actualizado",
+      detail: !valorActual ? "Operación marcada como SIN FACTURA" : "Operación marcada como CON FACTURA",
+      life: 2000,
+    });
+  };
 
   // Función para manejar el envío del formulario
   const onSubmit = async (data, event) => {
@@ -167,6 +226,10 @@ const DetMovsEntregaRendirForm = ({
         urlComprobanteMovimiento: data.urlComprobanteMovimiento?.trim() || null,
         validadoTesoreria: data.validadoTesoreria,
         fechaValidacionTesoreria: data.fechaValidacionTesoreria,
+        operacionSinFactura: data.operacionSinFactura,
+        fechaOperacionMovCaja: data.fechaOperacionMovCaja,
+        operacionMovCajaId: data.operacionMovCajaId ? Number(data.operacionMovCajaId) : null,
+        moduloOrigenMovCajaId: data.moduloOrigenMovCajaId ? Number(data.moduloOrigenMovCajaId) : null,
         actualizadoEn: new Date(),
       };
 
@@ -711,6 +774,85 @@ const DetMovsEntregaRendirForm = ({
               severity="success"
               onClick={handleSubmit(onSubmit)}
               disabled={formularioDeshabilitado}
+            />
+          </div>
+        </div>
+
+        {/* Sección Movimiento de Caja */}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginBottom: "0.5rem",
+            alignItems: "end",
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Estado Facturación
+            </label>
+            <Button
+              type="button"
+              label={operacionSinFactura ? "S/FACTURA" : "C/FACTURA"}
+              icon={operacionSinFactura ? "pi pi-exclamation-triangle" : "pi pi-check-circle"}
+              className={operacionSinFactura ? "p-button-warning" : "p-button-primary"}
+              onClick={handleToggleOperacionSinFactura}
+              size="small"
+              style={{ width: "100%" }}
+              disabled={formularioDeshabilitado}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Fecha Operación Mov. Caja
+            </label>
+            <Controller
+              name="fechaOperacionMovCaja"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  value={
+                    field.value
+                      ? new Date(field.value).toLocaleString("es-PE")
+                      : ""
+                  }
+                  placeholder="Pendiente"
+                  readOnly
+                  disabled
+                  className="p-inputtext-sm"
+                />
+              )}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              ID Operación Mov. Caja
+            </label>
+            <Controller
+              name="operacionMovCajaId"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  value={field.value ? field.value.toString() : ""}
+                  placeholder="Pendiente"
+                  readOnly
+                  disabled
+                  className="p-inputtext-sm"
+                />
+              )}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Módulo Origen
+            </label>
+            <InputText
+              value={modulosPescaIndustrial ? `${modulosPescaIndustrial.id} - ${modulosPescaIndustrial.nombre}` : "2 - PESCA INDUSTRIAL"}
+              readOnly
+              disabled
+              className="p-inputtext-sm"
+              style={{ color: "#2196F3" }}
             />
           </div>
         </div>

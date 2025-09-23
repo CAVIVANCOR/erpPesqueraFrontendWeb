@@ -8,8 +8,15 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import BancoForm from "../components/banco/BancoForm";
-import { getBancos, crearBanco, actualizarBanco, eliminarBanco } from "../api/banco";
+import {
+  getBancos,
+  crearBanco,
+  actualizarBanco,
+  eliminarBanco,
+} from "../api/banco";
+import { getPaises } from "../api/pais";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Pantalla profesional para gestión de Bancos.
@@ -28,10 +35,12 @@ export default function Banco() {
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore(state => state.usuario);
+  const [paises, setPaises] = useState([]);
+  const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
     cargarItems();
+    cargarPaises();
   }, []);
 
   const cargarItems = async () => {
@@ -40,9 +49,26 @@ export default function Banco() {
       const data = await getBancos();
       setItems(data);
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar la lista." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar la lista.",
+      });
     }
     setLoading(false);
+  };
+
+  const cargarPaises = async () => {
+    try {
+      const data = await getPaises();
+      setPaises(data);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar la lista de países.",
+      });
+    }
   };
 
   const handleEdit = (rowData) => {
@@ -61,10 +87,18 @@ export default function Banco() {
     setLoading(true);
     try {
       await eliminarBanco(toDelete.id);
-      toast.current.show({ severity: "success", summary: "Eliminado", detail: "Registro eliminado correctamente." });
+      toast.current.show({
+        severity: "success",
+        summary: "Eliminado",
+        detail: "Registro eliminado correctamente.",
+      });
       cargarItems();
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo eliminar." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo eliminar.",
+      });
     }
     setLoading(false);
     setToDelete(null);
@@ -75,16 +109,28 @@ export default function Banco() {
     try {
       if (editing && editing.id) {
         await actualizarBanco(editing.id, data);
-        toast.current.show({ severity: "success", summary: "Actualizado", detail: "Registro actualizado." });
+        toast.current.show({
+          severity: "success",
+          summary: "Actualizado",
+          detail: "Registro actualizado.",
+        });
       } else {
         await crearBanco(data);
-        toast.current.show({ severity: "success", summary: "Creado", detail: "Registro creado." });
+        toast.current.show({
+          severity: "success",
+          summary: "Creado",
+          detail: "Registro creado.",
+        });
       }
       setShowDialog(false);
       setEditing(null);
       cargarItems();
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo guardar." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo guardar.",
+      });
     }
     setLoading(false);
   };
@@ -96,9 +142,19 @@ export default function Banco() {
 
   const actionBody = (rowData) => (
     <>
-      <Button icon="pi pi-pencil" className="p-button-text p-button-sm" onClick={() => handleEdit(rowData)} aria-label="Editar" />
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-text p-button-sm"
+        onClick={() => handleEdit(rowData)}
+        aria-label="Editar"
+      />
       {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger p-button-sm" onClick={() => handleDelete(rowData)} aria-label="Eliminar" />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger p-button-sm"
+          onClick={() => handleDelete(rowData)}
+          aria-label="Eliminar"
+        />
       )}
     </>
   );
@@ -106,27 +162,89 @@ export default function Banco() {
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
-      <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar este registro?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
-      <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
-        <h2>Gestión de Bancos</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
-      </div>
-      <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="nombre" header="Nombre" />
-        <Column field="codigoSwift" header="Código SWIFT" />
-        <Column field="codigoBcrp" header="Código BCRP" />
-        <Column field="paisId" header="País (ID)" />
-        <Column field="activo" header="Activo" body={rowData => rowData.activo ? "Sí" : "No"} />
-        <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
+      <ConfirmDialog
+        visible={showConfirm}
+        onHide={() => setShowConfirm(false)}
+        message="¿Está seguro que desea eliminar este registro?"
+        header="Confirmar eliminación"
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        accept={handleDeleteConfirm}
+        reject={() => setShowConfirm(false)}
+      />
+      <DataTable
+        value={items}
+        loading={loading}
+        dataKey="id"
+        paginator
+        rows={10}
+        onRowClick={(e) => handleEdit(e.data)}
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        header={
+          <div
+            style={{
+              alignItems: "center",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h2>Gestión de Bancos</h2>
+            </div>
+            <div style={{ flex: 2 }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                className="p-button-success"
+                size="small"
+                outlined
+                onClick={handleAdd}
+                disabled={loading}
+              />
+            </div>
+          </div>
+        }
+      >
+        <Column field="id" header="ID" sortable style={{ width: 80 }} />
+        <Column 
+          field="paisId" 
+          header="País" 
+          body={(rowData) => {
+            const pais = paises.find(p => Number(p.id) === Number(rowData.paisId));
+            return pais ? pais.nombre : rowData.paisId;
+          }}
+        />
+        <Column field="nombre" header="Nombre" sortable />
+        <Column field="codigoSwift" header="Código SWIFT" sortable />
+        <Column field="codigoBcrp" header="Código BCRP" sortable />
+
+        <Column
+          field="activo"
+          header="Activo"
+          body={(rowData) => (rowData.activo ? "Sí" : "No")}
+          sortable
+        />
+        <Column
+          body={actionBody}
+          header="Acciones"
+          style={{ width: 130, textAlign: "center" }}
+        />
       </DataTable>
-      <Dialog header={editing ? "Editar Banco" : "Nuevo Banco"} visible={showDialog} style={{ width: 500 }} onHide={() => setShowDialog(false)} modal>
+      <Dialog
+        header={editing ? "Editar Banco" : "Nuevo Banco"}
+        visible={showDialog}
+        style={{ width: 500 }}
+        onHide={() => setShowDialog(false)}
+        modal
+      >
         <BancoForm
           isEdit={!!editing}
           defaultValues={editing || {}}
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}
+          paises={paises}
         />
       </Dialog>
     </div>

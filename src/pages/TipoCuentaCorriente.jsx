@@ -8,7 +8,7 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import TipoCuentaCorrienteForm from "../components/tipoCuentaCorriente/TipoCuentaCorrienteForm";
-import { getAllTipoCuentaCorriente, createTipoCuentaCorriente, updateTipoCuentaCorriente, deleteTipoCuentaCorriente } from "../api/tipoCuentaCorriente";
+import { getAllTipoCuentaCorriente, crearTipoCuentaCorriente, actualizarTipoCuentaCorriente, eliminarTipoCuentaCorriente } from "../api/tipoCuentaCorriente";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
 /**
@@ -60,7 +60,7 @@ export default function TipoCuentaCorriente() {
     if (!toDelete) return;
     setLoading(true);
     try {
-      await deleteTipoCuentaCorriente(toDelete.id);
+      await eliminarTipoCuentaCorriente(toDelete.id);
       toast.current.show({ severity: "success", summary: "Eliminado", detail: "Registro eliminado correctamente." });
       cargarItems();
     } catch (err) {
@@ -74,10 +74,10 @@ export default function TipoCuentaCorriente() {
     setLoading(true);
     try {
       if (editing && editing.id) {
-        await updateTipoCuentaCorriente(editing.id, data);
+        await actualizarTipoCuentaCorriente(editing.id, data);
         toast.current.show({ severity: "success", summary: "Actualizado", detail: "Registro actualizado." });
       } else {
-        await createTipoCuentaCorriente(data);
+        await crearTipoCuentaCorriente(data);
         toast.current.show({ severity: "success", summary: "Creado", detail: "Registro creado." });
       }
       setShowDialog(false);
