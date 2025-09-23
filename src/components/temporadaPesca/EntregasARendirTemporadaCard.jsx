@@ -24,6 +24,7 @@ import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { InputNumber } from "primereact/inputnumber";
 import { Message } from "primereact/message";
+import { Badge } from "primereact/badge"; // Import Badge
 import EntregaARendirForm from "./EntregaARendirForm";
 import DetMovsEntregaRendirForm from "./DetMovsEntregaRendirForm";
 import { getResponsiveFontSize } from "../../utils/utils";
@@ -74,6 +75,8 @@ const EntregasARendirTemporadaCard = ({
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
   const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);
   const [filtroIngresoEgreso, setFiltroIngresoEgreso] = useState(null);
+  const [filtroValidacionTesoreria, setFiltroValidacionTesoreria] =
+    useState(null);
 
   // Cargar entrega a rendir de la temporada
   const cargarEntregaARendir = async () => {
@@ -264,48 +267,51 @@ const EntregasARendirTemporadaCard = ({
   // Función para procesar liquidación de la entrega a rendir
   const handleProcesarLiquidacion = () => {
     confirmDialog({
-      message: "¿Está seguro de procesar la liquidación? Esta acción no se puede deshacer y bloqueará todas las modificaciones futuras.",
+      message:
+        "¿Está seguro de procesar la liquidación? Esta acción no se puede deshacer y bloqueará todas las modificaciones futuras.",
       header: "Confirmar Procesamiento de Liquidación",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-danger",
       accept: async () => {
         try {
           const fechaActual = new Date();
-          
+
           // Actualizar EntregaARendir
           const entregaActualizada = {
             ...entregaARendir,
             entregaLiquidada: true,
             fechaLiquidacion: fechaActual,
-            fechaActualizacion: fechaActual
+            fechaActualizacion: fechaActual,
           };
-          
+
           await actualizarEntregaARendir(entregaARendir.id, entregaActualizada);
-          
+
           // Actualizar todos los movimientos DetMovsEntregaRendir
-          const promesasActualizacion = movimientos.map(movimiento => {
+          const promesasActualizacion = movimientos.map((movimiento) => {
             const movimientoActualizado = {
               ...movimiento,
               validadoTesoreria: true,
-              fechaValidacionTesoreria: fechaActual
+              fechaValidacionTesoreria: fechaActual,
             };
-            return actualizarDetMovsEntregaRendir(movimiento.id, movimientoActualizado);
+            return actualizarDetMovsEntregaRendir(
+              movimiento.id,
+              movimientoActualizado
+            );
           });
-          
+
           await Promise.all(promesasActualizacion);
-          
+
           toast.current?.show({
             severity: "success",
             summary: "Liquidación Procesada",
             detail: "La entrega a rendir ha sido liquidada exitosamente",
             life: 5000,
           });
-          
+
           // Recargar datos
           cargarEntregaARendir();
           cargarMovimientos();
           onDataChange?.();
-          
         } catch (error) {
           console.error("Error al procesar liquidación:", error);
           toast.current?.show({
@@ -345,7 +351,7 @@ const EntregasARendirTemporadaCard = ({
     const tipo = tiposMovimiento.find(
       (t) => Number(t.id) === Number(rowData.tipoMovimientoId)
     );
-    return tipo ? tipo.descripcion : "N/A";
+    return tipo ? tipo.nombre : "N/A";
   };
 
   const centroCostoTemplate = (rowData) => {
@@ -357,26 +363,17 @@ const EntregasARendirTemporadaCard = ({
 
   const validacionTesoreriaTemplate = (rowData) => {
     return (
-      <div className="flex align-items-center gap-2">
-        <i 
-          className={`pi ${rowData.validadoTesoreria ? 'pi-check-circle' : 'pi-times-circle'}`}
-          style={{ 
-            color: rowData.validadoTesoreria ? '#28a745' : '#dc3545',
-            fontSize: '1.2rem'
-          }}
+      <div className="text-center">
+        <Badge
+          value={rowData.validadoTesoreria ? "VALIDADO" : "PENDIENTE"}
+          severity={rowData.validadoTesoreria ? "success" : "danger"}
         />
-        <span style={{ 
-          color: rowData.validadoTesoreria ? '#28a745' : '#dc3545',
-          fontWeight: 'bold'
-        }}>
-          {rowData.validadoTesoreria ? 'Validado' : 'Pendiente'}
-        </span>
       </div>
     );
   };
 
   const fechaValidacionTesoreriaTemplate = (rowData) => {
-    return rowData.fechaValidacionTesoreria 
+    return rowData.fechaValidacionTesoreria
       ? new Date(rowData.fechaValidacionTesoreria).toLocaleDateString("es-PE")
       : "N/A";
   };
@@ -519,6 +516,12 @@ const EntregasARendirTemporadaCard = ({
       });
     }
 
+    if (filtroValidacionTesoreria !== null) {
+      movimientosFiltrados = movimientosFiltrados.filter(
+        (mov) => mov.validadoTesoreria === filtroValidacionTesoreria
+      );
+    }
+
     return movimientosFiltrados;
   };
 
@@ -526,6 +529,7 @@ const EntregasARendirTemporadaCard = ({
     setFiltroTipoMovimiento(null);
     setFiltroCentroCosto(null);
     setFiltroIngresoEgreso(null);
+    setFiltroValidacionTesoreria(null);
   };
 
   const alternarFiltroIngresoEgreso = () => {
@@ -538,6 +542,16 @@ const EntregasARendirTemporadaCard = ({
     }
   };
 
+  const alternarFiltroValidacionTesoreria = () => {
+    if (filtroValidacionTesoreria === null) {
+      setFiltroValidacionTesoreria(true); // Validados
+    } else if (filtroValidacionTesoreria === true) {
+      setFiltroValidacionTesoreria(false); // No validados
+    } else {
+      setFiltroValidacionTesoreria(null); // Todos
+    }
+  };
+
   const obtenerPropiedadesFiltroIngresoEgreso = () => {
     if (filtroIngresoEgreso === null) {
       return { label: "Todos", severity: "info" };
@@ -545,6 +559,16 @@ const EntregasARendirTemporadaCard = ({
       return { label: "Ingresos", severity: "success" };
     } else {
       return { label: "Egresos", severity: "danger" };
+    }
+  };
+
+  const obtenerPropiedadesFiltroValidacionTesoreria = () => {
+    if (filtroValidacionTesoreria === null) {
+      return { label: "Todos", severity: "info" };
+    } else if (filtroValidacionTesoreria === true) {
+      return { label: "Validados", severity: "success" };
+    } else {
+      return { label: "Pendientes", severity: "danger" };
     }
   };
 
@@ -756,42 +780,65 @@ const EntregasARendirTemporadaCard = ({
               rowsPerPageOptions={[5, 10, 25]}
               className="p-datatable-sm"
               emptyMessage="No hay movimientos registrados"
-              style={{ fontSize: getResponsiveFontSize(), cursor: 'pointer' }}
-              rowClassName={() => 'p-selectable-row'}
+              style={{ fontSize: getResponsiveFontSize(), cursor: "pointer" }}
+              rowClassName={() => "p-selectable-row"}
               header={
                 <div>
                   <div
                     style={{
                       display: "flex",
-                      justifyContent: "flex-end",
                       gap: 8,
+                      alignItems: "end",
                       marginTop: 18,
                     }}
                   >
                     <div style={{ flex: 1 }}>
-                      <h2 className="text-900 font-medium mb-3">
-                        Detalle de Movimientos
-                      </h2>
+                      <h3>Detalle Entrega a Rendir</h3>
                     </div>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 0.5 }}>
                       <Button
-                        label="Nuevo Movimiento"
+                        label="Nuevo"
                         icon="pi pi-plus"
                         className="p-button-success"
                         severity="success"
                         onClick={handleNuevoMovimiento}
-                        disabled={!temporadaPescaIniciada || !entregaARendir || entregaARendir?.entregaLiquidada}
+                        disabled={
+                          !temporadaPescaIniciada ||
+                          !entregaARendir ||
+                          entregaARendir?.entregaLiquidada
+                        }
                         type="button"
+                        size="small"
                       />
                     </div>
-                    <div style={{ flex: 1}}>
+                    <div style={{ flex: 1 }}>
+                      <label htmlFor="">Ingreso/Egreso</label>
                       <Button
                         label={obtenerPropiedadesFiltroIngresoEgreso().label}
                         icon="pi pi-filter"
                         className="p-button-sm"
                         onClick={alternarFiltroIngresoEgreso}
-                        severity={obtenerPropiedadesFiltroIngresoEgreso().severity}
+                        severity={
+                          obtenerPropiedadesFiltroIngresoEgreso().severity
+                        }
                         type="button"
+                        size="small"
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label htmlFor="">Validación Tesorería</label>
+                      <Button
+                        label={
+                          obtenerPropiedadesFiltroValidacionTesoreria().label
+                        }
+                        icon="pi pi-filter"
+                        className="p-button-sm"
+                        onClick={alternarFiltroValidacionTesoreria}
+                        severity={
+                          obtenerPropiedadesFiltroValidacionTesoreria().severity
+                        }
+                        type="button"
+                        size="small"
                       />
                     </div>
                     <div style={{ flex: 1 }}>
@@ -801,6 +848,7 @@ const EntregasARendirTemporadaCard = ({
                         className="p-button-sm p-button-outlined"
                         onClick={limpiarFiltros}
                         type="button"
+                        size="small"
                       />
                     </div>
                     <div style={{ flex: 1 }}>
@@ -811,10 +859,11 @@ const EntregasARendirTemporadaCard = ({
                         onClick={handleProcesarLiquidacion}
                         type="button"
                         disabled={entregaARendir.entregaLiquidada}
+                        size="small"
                       />
                     </div>
                   </div>
-                  
+
                   {/* Sección de Filtros */}
                   <div
                     style={{
@@ -822,10 +871,10 @@ const EntregasARendirTemporadaCard = ({
                       gap: 8,
                       marginTop: 10,
                       marginBottom: 10,
-                      flexWrap: "wrap"
+                      flexWrap: "wrap",
                     }}
                   >
-                    <div style={{ flex: 1}}>
+                    <div style={{ flex: 1 }}>
                       <Dropdown
                         value={filtroTipoMovimiento}
                         options={tiposMovimiento}
@@ -837,12 +886,12 @@ const EntregasARendirTemporadaCard = ({
                         showClear
                       />
                     </div>
-                    <div style={{ flex: 1}}>
+                    <div style={{ flex: 1 }}>
                       <Dropdown
                         value={filtroCentroCosto}
-                        options={centrosCosto.map(centro => ({
+                        options={centrosCosto.map((centro) => ({
                           ...centro,
-                          displayLabel: centro.Codigo + " - " + centro.Nombre
+                          displayLabel: centro.Codigo + " - " + centro.Nombre,
                         }))}
                         optionLabel="displayLabel"
                         optionValue="id"
@@ -852,7 +901,6 @@ const EntregasARendirTemporadaCard = ({
                         showClear
                       />
                     </div>
-                    
                   </div>
                 </div>
               }
@@ -895,7 +943,7 @@ const EntregasARendirTemporadaCard = ({
               />
               <Column
                 field="fechaValidacionTesoreria"
-                header="Fecha Validación Tesorería"
+                header="Fecha Validación"
                 body={fechaValidacionTesoreriaTemplate}
                 sortable
               />

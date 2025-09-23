@@ -8,7 +8,12 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import AsientoContableInterfazForm from "../components/asientoContableInterfaz/AsientoContableInterfazForm";
-import { getAllAsientoContableInterfaz, createAsientoContableInterfaz, updateAsientoContableInterfaz, deleteAsientoContableInterfaz } from "../api/asientoContableInterfaz";
+import {
+  getAllAsientoContableInterfaz,
+  crearAsientoContableInterfaz,
+  actualizarAsientoContableInterfaz,
+  eliminarAsientoContableInterfaz,
+} from "../api/asientoContableInterfaz";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
 /**
@@ -28,7 +33,7 @@ export default function AsientoContableInterfaz() {
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore(state => state.usuario);
+  const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
     cargarItems();
@@ -40,7 +45,11 @@ export default function AsientoContableInterfaz() {
       const data = await getAllAsientoContableInterfaz();
       setItems(data);
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar la lista." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar la lista.",
+      });
     }
     setLoading(false);
   };
@@ -60,11 +69,19 @@ export default function AsientoContableInterfaz() {
     if (!toDelete) return;
     setLoading(true);
     try {
-      await deleteAsientoContableInterfaz(toDelete.id);
-      toast.current.show({ severity: "success", summary: "Eliminado", detail: "Registro eliminado correctamente." });
+      await eliminarAsientoContableInterfaz(toDelete.id);
+      toast.current.show({
+        severity: "success",
+        summary: "Eliminado",
+        detail: "Registro eliminado correctamente.",
+      });
       cargarItems();
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo eliminar." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo eliminar.",
+      });
     }
     setLoading(false);
     setToDelete(null);
@@ -74,17 +91,29 @@ export default function AsientoContableInterfaz() {
     setLoading(true);
     try {
       if (editing && editing.id) {
-        await updateAsientoContableInterfaz(editing.id, data);
-        toast.current.show({ severity: "success", summary: "Actualizado", detail: "Registro actualizado." });
+        await actualizarAsientoContableInterfaz(editing.id, data);
+        toast.current.show({
+          severity: "success",
+          summary: "Actualizado",
+          detail: "Registro actualizado.",
+        });
       } else {
-        await createAsientoContableInterfaz(data);
-        toast.current.show({ severity: "success", summary: "Creado", detail: "Registro creado." });
+        await crearAsientoContableInterfaz(data);
+        toast.current.show({
+          severity: "success",
+          summary: "Creado",
+          detail: "Registro creado.",
+        });
       }
       setShowDialog(false);
       setEditing(null);
       cargarItems();
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo guardar." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo guardar.",
+      });
     }
     setLoading(false);
   };
@@ -96,9 +125,19 @@ export default function AsientoContableInterfaz() {
 
   const actionBody = (rowData) => (
     <>
-      <Button icon="pi pi-pencil" className="p-button-text p-button-sm" onClick={() => handleEdit(rowData)} aria-label="Editar" />
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-text p-button-sm"
+        onClick={() => handleEdit(rowData)}
+        aria-label="Editar"
+      />
       {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger p-button-sm" onClick={() => handleDelete(rowData)} aria-label="Eliminar" />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger p-button-sm"
+          onClick={() => handleDelete(rowData)}
+          aria-label="Eliminar"
+        />
       )}
     </>
   );
@@ -106,12 +145,40 @@ export default function AsientoContableInterfaz() {
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
-      <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar este registro?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
-      <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
+      <ConfirmDialog
+        visible={showConfirm}
+        onHide={() => setShowConfirm(false)}
+        message="¿Está seguro que desea eliminar este registro?"
+        header="Confirmar eliminación"
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        accept={handleDeleteConfirm}
+        reject={() => setShowConfirm(false)}
+      />
+      <div
+        className="p-d-flex p-jc-between p-ai-center"
+        style={{ marginBottom: 16 }}
+      >
         <h2>Gestión de Asientos Contables Interfaz</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
+        <Button
+          label="Nuevo"
+          icon="pi pi-plus"
+          className="p-button-success"
+          size="small"
+          outlined
+          onClick={handleAdd}
+          disabled={loading}
+        />
       </div>
-      <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
+      <DataTable
+        value={items}
+        loading={loading}
+        dataKey="id"
+        paginator
+        rows={10}
+        onRowClick={(e) => handleEdit(e.data)}
+        style={{ cursor: "pointer" }}
+      >
         <Column field="id" header="ID" style={{ width: 80 }} />
         <Column field="movimientoCajaId" header="Movimiento Caja" />
         <Column field="fechaContable" header="Fecha Contable" />
@@ -125,9 +192,19 @@ export default function AsientoContableInterfaz() {
         <Column field="tipoReferenciaId" header="Tipo Referencia" />
         <Column field="estado" header="Estado" />
         <Column field="fechaEnvio" header="Fecha Envío" />
-        <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
+        <Column
+          body={actionBody}
+          header="Acciones"
+          style={{ width: 130, textAlign: "center" }}
+        />
       </DataTable>
-      <Dialog header={editing ? "Editar Asiento" : "Nuevo Asiento"} visible={showDialog} style={{ width: 700 }} onHide={() => setShowDialog(false)} modal>
+      <Dialog
+        header={editing ? "Editar Asiento" : "Nuevo Asiento"}
+        visible={showDialog}
+        style={{ width: 700 }}
+        onHide={() => setShowDialog(false)}
+        modal
+      >
         <AsientoContableInterfazForm
           isEdit={!!editing}
           defaultValues={editing || {}}

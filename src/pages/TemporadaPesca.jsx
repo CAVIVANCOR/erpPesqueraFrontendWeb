@@ -653,7 +653,7 @@ const TemporadaPesca = () => {
               }}
             >
               <div style={{ flex: 2 }}>
-                <h2>Gestión de Temporadas de Pesca</h2>
+                <h2>Pesca Industrial</h2>
               </div>
               <div style={{ flex: 1 }}>
                 <Dropdown

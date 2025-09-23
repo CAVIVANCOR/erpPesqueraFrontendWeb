@@ -45,7 +45,7 @@ const DetMovsEntregaRendirForm = ({
 
   // Estados para captura de comprobante
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
-  
+
   // Estados para módulos del sistema
   const [modulosPescaIndustrial, setModulosPescaIndustrial] = useState(null);
 
@@ -112,26 +112,33 @@ const DetMovsEntregaRendirForm = ({
         validadoTesoreria: movimiento.validadoTesoreria || false,
         fechaValidacionTesoreria: movimiento.fechaValidacionTesoreria || null,
         operacionSinFactura: movimiento.operacionSinFactura || false,
-        fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja ? new Date(movimiento.fechaOperacionMovCaja) : null,
-        operacionMovCajaId: movimiento.operacionMovCajaId ? Number(movimiento.operacionMovCajaId) : null,
-        moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId ? Number(movimiento.moduloOrigenMovCajaId) : 2,
+        fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja
+          ? new Date(movimiento.fechaOperacionMovCaja)
+          : null,
+        operacionMovCajaId: movimiento.operacionMovCajaId
+          ? Number(movimiento.operacionMovCajaId)
+          : null,
+        moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId
+          ? Number(movimiento.moduloOrigenMovCajaId)
+          : 2,
       });
     } else {
       // Para nuevo registro, establecer entregaARendirId y asignar responsable automáticamente
       setValue("entregaARendirId", Number(entregaARendirId));
       setValue("fechaMovimiento", new Date());
       setValue("moduloOrigenMovCajaId", 2); // Establecer valor por defecto para PESCA INDUSTRIAL
-      
+
       // Asignar automáticamente el responsable basado en el usuario logueado
       if (usuario?.personalId) {
         setValue("responsableId", Number(usuario.personalId));
-        
+
         // Mostrar toast informativo después de un breve delay
         setTimeout(() => {
           toast.current?.show({
             severity: "info",
             summary: "Responsable Asignado",
-            detail: "Se ha asignado automáticamente como responsable del movimiento",
+            detail:
+              "Se ha asignado automáticamente como responsable del movimiento",
             life: 3000,
           });
         }, 500);
@@ -144,7 +151,9 @@ const DetMovsEntregaRendirForm = ({
     const cargarModuloPescaIndustrial = async () => {
       try {
         const modulos = await getModulos();
-        const moduloPesca = modulos.find(m => m.nombre === "PESCA INDUSTRIAL");
+        const moduloPesca = modulos.find(
+          (m) => m.nombre === "PESCA INDUSTRIAL"
+        );
         if (moduloPesca) {
           setModulosPescaIndustrial(moduloPesca);
           // Solo establecer el valor si no estamos editando
@@ -186,11 +195,13 @@ const DetMovsEntregaRendirForm = ({
   const handleToggleOperacionSinFactura = () => {
     const valorActual = getValues("operacionSinFactura");
     setValue("operacionSinFactura", !valorActual);
-    
+
     toast.current?.show({
       severity: "info",
       summary: "Estado Actualizado",
-      detail: !valorActual ? "Operación marcada como SIN FACTURA" : "Operación marcada como CON FACTURA",
+      detail: !valorActual
+        ? "Operación marcada como SIN FACTURA"
+        : "Operación marcada como CON FACTURA",
       life: 2000,
     });
   };
@@ -228,8 +239,12 @@ const DetMovsEntregaRendirForm = ({
         fechaValidacionTesoreria: data.fechaValidacionTesoreria,
         operacionSinFactura: data.operacionSinFactura,
         fechaOperacionMovCaja: data.fechaOperacionMovCaja,
-        operacionMovCajaId: data.operacionMovCajaId ? Number(data.operacionMovCajaId) : null,
-        moduloOrigenMovCajaId: data.moduloOrigenMovCajaId ? Number(data.moduloOrigenMovCajaId) : null,
+        operacionMovCajaId: data.operacionMovCajaId
+          ? Number(data.operacionMovCajaId)
+          : null,
+        moduloOrigenMovCajaId: data.moduloOrigenMovCajaId
+          ? Number(data.moduloOrigenMovCajaId)
+          : null,
         actualizadoEn: new Date(),
       };
 
@@ -277,34 +292,34 @@ const DetMovsEntregaRendirForm = ({
   const handleValidarTesoreria = () => {
     // Obtener valores actuales del formulario
     const valores = getValues();
-    
+
     // Validar campos obligatorios
     const camposFaltantes = [];
-    
+
     if (!valores.fechaMovimiento) {
       camposFaltantes.push("Fecha del Movimiento");
     }
-    
+
     if (!valores.responsableId) {
       camposFaltantes.push("Responsable");
     }
-    
+
     if (!valores.tipoMovimientoId) {
       camposFaltantes.push("Tipo de Movimiento");
     }
-    
+
     if (!valores.centroCostoId) {
       camposFaltantes.push("Centro de Costo");
     }
-    
+
     if (!valores.descripcion || valores.descripcion.trim() === "") {
       camposFaltantes.push("Descripción");
     }
-    
+
     if (!valores.monto || Number(valores.monto) <= 0) {
       camposFaltantes.push("Monto");
     }
-    
+
     // Verificar si faltan campos
     if (camposFaltantes.length > 0) {
       toast.current?.show({
@@ -315,9 +330,12 @@ const DetMovsEntregaRendirForm = ({
       });
       return;
     }
-    
+
     // Verificar que existe el comprobante PDF
-    if (!valores.urlComprobanteMovimiento || valores.urlComprobanteMovimiento.trim() === "") {
+    if (
+      !valores.urlComprobanteMovimiento ||
+      valores.urlComprobanteMovimiento.trim() === ""
+    ) {
       toast.current?.show({
         severity: "warn",
         summary: "Comprobante Requerido",
@@ -326,11 +344,11 @@ const DetMovsEntregaRendirForm = ({
       });
       return;
     }
-    
+
     // Si todas las validaciones pasan, proceder con la validación
     setValue("validadoTesoreria", true);
     setValue("fechaValidacionTesoreria", new Date());
-    
+
     toast.current?.show({
       severity: "success",
       summary: "Validación Exitosa",
@@ -595,16 +613,23 @@ const DetMovsEntregaRendirForm = ({
           </div>
           <div style={{ flex: 1 }}>
             <label className="block text-900 font-medium mb-2">
-              Última Actualización
+              Estado Facturación
             </label>
-            <InputText
-              value={
-                movimiento?.actualizadoEn
-                  ? new Date(movimiento.actualizadoEn).toLocaleString("es-PE")
-                  : ""
+            <Button
+              type="button"
+              label={operacionSinFactura ? "S/FACTURA" : "C/FACTURA"}
+              icon={
+                operacionSinFactura
+                  ? "pi pi-exclamation-triangle"
+                  : "pi pi-check-circle"
               }
-              readOnly
-              className="p-inputtext-sm"
+              className={
+                operacionSinFactura ? "p-button-warning" : "p-button-primary"
+              }
+              onClick={handleToggleOperacionSinFactura}
+              size="small"
+              style={{ width: "100%" }}
+              disabled={formularioDeshabilitado}
             />
           </div>
         </div>
@@ -650,7 +675,7 @@ const DetMovsEntregaRendirForm = ({
               />
             )}
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 0.5 }}>
             <div className="flex gap-2 mt-4">
               <Button
                 type="button"
@@ -663,7 +688,7 @@ const DetMovsEntregaRendirForm = ({
               />
             </div>
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 0.5 }}>
             {urlComprobanteMovimiento && (
               <Button
                 type="button"
@@ -675,22 +700,8 @@ const DetMovsEntregaRendirForm = ({
               />
             )}
           </div>
-        </div>
-
-        {/* Sección de Validación de Tesorería */}
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginBottom: "0.5rem",
-            alignItems: "end",
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
           <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">
-              Estado de Validación
-            </label>
+            <label className="block text-900 font-medium mb-2">Estado</label>
             <Button
               type="button"
               label={validadoTesoreria ? "VALIDADO" : "PENDIENTE"}
@@ -733,50 +744,9 @@ const DetMovsEntregaRendirForm = ({
               )}
             />
           </div>
-          <div style={{ flex: 1 }}>
-            {!validadoTesoreria && (
-              <Button
-                type="button"
-                label={
-                  <span className="flex align-items-center gap-1">
-                    <i className="pi pi-check"></i>
-                    <i className="pi pi-dollar"></i>
-                    <span>Validar Movimiento</span>
-                  </span>
-                }
-                className="p-button-danger"
-                onClick={handleValidarTesoreria}
-                size="small"
-                severity="danger"
-                disabled={formularioDeshabilitado}
-              />
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            <Button
-              type="button"
-              label="Cancelar"
-              icon="pi pi-times"
-              className="p-button-warning"
-              size="small"
-              severity="warning"
-              onClick={onCancelar}
-              disabled={formularioDeshabilitado}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <Button
-              type="button"
-              label={isEditing ? "Actualizar" : "Crear"}
-              icon={isEditing ? "pi pi-check" : "pi pi-plus"}
-              className="p-button-success"
-              size="small"
-              severity="success"
-              onClick={handleSubmit(onSubmit)}
-              disabled={formularioDeshabilitado}
-            />
-          </div>
         </div>
+
+        {/* Sección de Validación de Tesorería */}
 
         {/* Sección Movimiento de Caja */}
         <div
@@ -788,21 +758,6 @@ const DetMovsEntregaRendirForm = ({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">
-              Estado Facturación
-            </label>
-            <Button
-              type="button"
-              label={operacionSinFactura ? "S/FACTURA" : "C/FACTURA"}
-              icon={operacionSinFactura ? "pi pi-exclamation-triangle" : "pi pi-check-circle"}
-              className={operacionSinFactura ? "p-button-warning" : "p-button-primary"}
-              onClick={handleToggleOperacionSinFactura}
-              size="small"
-              style={{ width: "100%" }}
-              disabled={formularioDeshabilitado}
-            />
-          </div>
           <div style={{ flex: 1 }}>
             <label className="block text-900 font-medium mb-2">
               Fecha Operación Mov. Caja
@@ -848,17 +803,87 @@ const DetMovsEntregaRendirForm = ({
               Módulo Origen
             </label>
             <InputText
-              value={modulosPescaIndustrial ? `${modulosPescaIndustrial.id} - ${modulosPescaIndustrial.nombre}` : "2 - PESCA INDUSTRIAL"}
+              value={
+                modulosPescaIndustrial
+                  ? `${modulosPescaIndustrial.id} - ${modulosPescaIndustrial.nombre}`
+                  : "2 - PESCA INDUSTRIAL"
+              }
               readOnly
               disabled
               className="p-inputtext-sm"
               style={{ color: "#2196F3" }}
             />
           </div>
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Última Actualización
+            </label>
+            <InputText
+              value={
+                movimiento?.actualizadoEn
+                  ? new Date(movimiento.actualizadoEn).toLocaleString("es-PE")
+                  : ""
+              }
+              readOnly
+              className="p-inputtext-sm"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            {!validadoTesoreria && (
+              <Button
+                type="button"
+                label={
+                  <span className="flex align-items-center gap-1">
+                    <i className="pi pi-check"></i>
+                    <i className="pi pi-dollar"></i>
+                    <span>Validar</span>
+                  </span>
+                }
+                className="p-button-danger"
+                onClick={handleValidarTesoreria}
+                size="small"
+                severity="danger"
+                disabled={formularioDeshabilitado}
+              />
+            )}
+          </div>
         </div>
 
         {/* Botones de acción */}
-        <div className="flex justify-content-end gap-2 mt-4"></div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginBottom: "0.5rem",
+            alignItems: "end",
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <Button
+              type="button"
+              label="Cancelar"
+              icon="pi pi-times"
+              className="p-button-warning"
+              size="small"
+              severity="warning"
+              onClick={onCancelar}
+              disabled={formularioDeshabilitado}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              type="button"
+              label={isEditing ? "Actualizar" : "Crear"}
+              icon={isEditing ? "pi pi-check" : "pi pi-plus"}
+              className="p-button-success"
+              size="small"
+              severity="success"
+              onClick={handleSubmit(onSubmit)}
+              disabled={formularioDeshabilitado}
+            />
+          </div>
+        </div>
       </form>
 
       {/* Visor de PDF */}

@@ -1,16 +1,12 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/asientos-contables-interfaz`;
 
-/**
- * Obtiene el token de autenticación desde el store de Zustand
- * @returns {string} Token JWT para autenticación
- */
-const getAuthToken = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /**
  * Obtiene todos los asientos contables interfaz del sistema
@@ -18,13 +14,7 @@ const getAuthToken = () => {
  */
 export const getAllAsientoContableInterfaz = async () => {
   try {
-    const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/asiento-contable-interfaz`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    const response = await axios.get(API_URL, {headers: getAuthHeader()});
     return response.data;
   } catch (error) {
     console.error('Error al obtener asientos contables interfaz:', error);
@@ -39,13 +29,7 @@ export const getAllAsientoContableInterfaz = async () => {
  */
 export const crearAsientoContableInterfaz = async (asientoData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/asiento-contable-interfaz`, asientoData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    const response = await axios.post(API_URL, asientoData, {headers: getAuthHeader()});
     return response.data;
   } catch (error) {
     console.error('Error al crear asiento contable interfaz:', error);
@@ -61,13 +45,7 @@ export const crearAsientoContableInterfaz = async (asientoData) => {
  */
 export const actualizarAsientoContableInterfaz = async (id, asientoData) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/asiento-contable-interfaz/${id}`, asientoData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    const response = await axios.put(`${API_URL}/${id}`, asientoData, {headers: getAuthHeader()});
     return response.data;
   } catch (error) {
     console.error('Error al actualizar asiento contable interfaz:', error);
@@ -82,13 +60,7 @@ export const actualizarAsientoContableInterfaz = async (id, asientoData) => {
  */
 export const eliminarAsientoContableInterfaz = async (id) => {
   try {
-    const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/asiento-contable-interfaz/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    const response = await axios.delete(`${API_URL}/${id}`, {headers: getAuthHeader()});
     return response.data;
   } catch (error) {
     console.error('Error al eliminar asiento contable interfaz:', error);
@@ -96,8 +68,3 @@ export const eliminarAsientoContableInterfaz = async (id) => {
   }
 };
 
-// Aliases en inglés para compatibilidad
-export const getAsientoContableInterfaz = getAllAsientoContableInterfaz;
-export const createAsientoContableInterfaz = crearAsientoContableInterfaz;
-export const updateAsientoContableInterfaz = actualizarAsientoContableInterfaz;
-export const deleteAsientoContableInterfaz = eliminarAsientoContableInterfaz;

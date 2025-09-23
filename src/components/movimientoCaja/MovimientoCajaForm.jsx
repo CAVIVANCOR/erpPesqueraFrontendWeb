@@ -21,6 +21,7 @@ export default function MovimientoCajaForm({
   monedas = [],
   tipoReferenciaMovimientoCaja = [],
   cuentasCorrientes = [],
+  entidadesComerciales = [],
 }) {
   console.log("cuentasCorrientes", cuentasCorrientes);
   console.log("modulos", modulos);
@@ -46,6 +47,9 @@ export default function MovimientoCajaForm({
   );
   const [tipoMovimientoId, setTipoMovimientoId] = React.useState(
     defaultValues.tipoMovimientoId || ""
+  );
+  const [entidadComercialId, setEntidadComercialId] = React.useState(
+    defaultValues.entidadComercialId || ""
   );
   const [monto, setMonto] = React.useState(defaultValues.monto || 0);
   const [monedaId, setMonedaId] = React.useState(defaultValues.monedaId || "");
@@ -99,6 +103,7 @@ export default function MovimientoCajaForm({
     setCuentaCorrienteDestinoId(defaultValues.cuentaCorrienteDestinoId || "");
     setFecha(defaultValues.fecha ? new Date(defaultValues.fecha) : new Date());
     setTipoMovimientoId(defaultValues.tipoMovimientoId || "");
+    setEntidadComercialId(defaultValues.entidadComercialId || "");
     setMonto(defaultValues.monto || 0);
     setMonedaId(defaultValues.monedaId || "");
     setDescripcion(defaultValues.descripcion || "");
@@ -135,6 +140,7 @@ export default function MovimientoCajaForm({
         : null,
       fecha,
       tipoMovimientoId: tipoMovimientoId ? Number(tipoMovimientoId) : null,
+      entidadComercialId: entidadComercialId ? Number(entidadComercialId) : null,
       monto,
       monedaId: monedaId ? Number(monedaId) : null,
       descripcion,
@@ -282,6 +288,24 @@ export default function MovimientoCajaForm({
           />
         </div>
         <div style={{ flex: 1 }}>
+          <label htmlFor="entidadComercialId">Entidad Comercial*</label>
+          <Dropdown
+            id="entidadComercialId"
+            value={entidadComercialId}
+            options={entidadesComerciales.map((entidad) => ({
+              label: entidad.razonSocial,
+              value: entidad.id,
+            }))}
+            onChange={(e) => setEntidadComercialId(e.value)}
+            placeholder="Seleccione entidad comercial"
+            required
+            disabled={loading}
+            filter
+            showClear
+            style={{ fontWeight: "bold" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
           <label htmlFor="monto">Monto*</label>
           <InputNumber
             id="monto"
@@ -294,6 +318,15 @@ export default function MovimientoCajaForm({
             inputStyle={{ fontWeight: "bold" }}
           />
         </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 24,
+          marginTop: 8,
+        }}
+      >
         <div style={{ flex: 1 }}>
           <label htmlFor="monedaId">Moneda*</label>
           <Dropdown
@@ -312,15 +345,6 @@ export default function MovimientoCajaForm({
             style={{ fontWeight: "bold" }}
           />
         </div>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 24,
-          marginTop: 8,
-        }}
-      >
         <div style={{ flex: 1 }}>
           <label htmlFor="descripcion">Descripción</label>
           <InputText
@@ -358,6 +382,15 @@ export default function MovimientoCajaForm({
             style={{ fontWeight: "bold" }}
           />
         </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 24,
+          marginTop: 8,
+        }}
+      >
         <div style={{ flex: 1 }}>
           <label htmlFor="usuarioId">Usuario</label>
           <InputText
@@ -368,17 +401,17 @@ export default function MovimientoCajaForm({
             style={{ fontWeight: "bold" }}
           />
         </div>
-      </div>
-      <div className="p-field">
-        <label htmlFor="estadoId">Estado*</label>
-        <InputText
-          id="estadoId"
-          value={estadoId}
-          onChange={(e) => setEstadoId(e.target.value)}
-          required
-          disabled={loading}
-          style={{ fontWeight: "bold" }}
-        />
+        <div style={{ flex: 1 }}>
+          <label htmlFor="estadoId">Estado*</label>
+          <InputText
+            id="estadoId"
+            value={estadoId}
+            onChange={(e) => setEstadoId(e.target.value)}
+            required
+            disabled={loading}
+            style={{ fontWeight: "bold" }}
+          />
+        </div>
       </div>
 
       {/* Sección de Nuevos Campos - MovimientoCaja */}

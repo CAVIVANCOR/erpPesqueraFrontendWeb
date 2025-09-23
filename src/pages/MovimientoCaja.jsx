@@ -22,6 +22,7 @@ import { getTiposMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { getMonedas } from "../api/moneda";
 import { getAllTipoReferenciaMovimientoCaja } from "../api/tipoReferenciaMovimientoCaja";
 import { getAllCuentaCorriente } from "../api/cuentaCorriente";
+import { getEntidadesComerciales } from "../api/entidadComercial";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -49,8 +50,10 @@ export default function MovimientoCaja() {
   const [empresas, setEmpresas] = useState([]);
   const [tipoMovEntregaRendir, setTipoMovEntregaRendir] = useState([]);
   const [monedas, setMonedas] = useState([]);
-  const [tipoReferenciaMovimientoCaja, setTipoReferenciaMovimientoCaja] = useState([]);
+  const [tipoReferenciaMovimientoCaja, setTipoReferenciaMovimientoCaja] =
+    useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
+  const [entidadesComerciales, setEntidadesComerciales] = useState([]);
 
   useEffect(() => {
     cargarItems();
@@ -62,6 +65,7 @@ export default function MovimientoCaja() {
     cargarMonedas();
     cargarTipoReferenciaMovimientoCaja();
     cargarCuentasCorrientes();
+    cargarEntidadesComerciales();
   }, []);
 
   const cargarItems = async () => {
@@ -179,6 +183,19 @@ export default function MovimientoCaja() {
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar las cuentas corrientes.",
+      });
+    }
+  };
+
+  const cargarEntidadesComerciales = async () => {
+    try {
+      const data = await getEntidadesComerciales();
+      setEntidadesComerciales(data);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar las entidades comerciales.",
       });
     }
   };
@@ -325,13 +342,20 @@ export default function MovimientoCaja() {
         <Column field="cuentaCorrienteDestinoId" header="Cuenta Destino" />
         <Column field="fecha" header="Fecha" />
         <Column field="tipoMovimientoId" header="Tipo Movimiento" />
+        <Column
+          field="entidadComercialId"
+          header="Entidad Comercial"
+          body={(rowData) => {
+            const entidad = entidadesComerciales.find(
+              (e) => Number(e.id) === Number(rowData.entidadComercialId)
+            );
+            return entidad ? entidad.razonSocial : rowData.entidadComercialId;
+          }}
+        />
         <Column field="monto" header="Monto" />
         <Column field="monedaId" header="Moneda" />
         <Column field="descripcion" header="Descripción" />
-        <Column field="referenciaExtId" header="Referencia Ext" />
         <Column field="tipoReferenciaId" header="Tipo Referencia" />
-        <Column field="usuarioId" header="Usuario" />
-        <Column field="estadoId" header="Estado" />
         <Column
           body={actionBody}
           header="Acciones"
@@ -359,6 +383,7 @@ export default function MovimientoCaja() {
           monedas={monedas}
           tipoReferenciaMovimientoCaja={tipoReferenciaMovimientoCaja}
           cuentasCorrientes={cuentasCorrientes}
+          entidadesComerciales={entidadesComerciales}
         />
       </Dialog>
     </div>
