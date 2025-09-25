@@ -27,7 +27,6 @@ import ModulosSistema from "./ModulosSistema";
 import SubmodulosSistema from "./SubmodulosSistema";
 import DocumentacionPersonal from "./DocumentacionPersonal";
 import EntregaARendir from "./EntregaARendir";
-import DetMovsEntregaRendir from "./DetMovsEntregaRendir";
 import TipoMovEntregaRendir from "./TipoMovEntregaRendir";
 import DescargaFaenaConsumo from "./DescargaFaenaConsumo";
 import CuentaCorriente from "./CuentaCorriente";
@@ -240,7 +239,6 @@ export default function MultiCrud() {
     accesosUsuario: { label: "Accesos Usuario", componente: <AccesosUsuario /> },
     documentacionPersonal: { label: "Documentación Personal", componente: <DocumentacionPersonal /> },
     entregaARendir: { label: "Entrega a Rendir", componente: <EntregaARendir /> },
-    detMovsEntregaRendir: { label: "Detalle Movimientos Entrega a Rendir Temporada Pesca", componente: <DetMovsEntregaRendir /> },
     tipoMovEntregaRendir: { label: "Tipo Movimiento Entrega a Rendir", componente: <TipoMovEntregaRendir /> },
     centroCosto: { label: "Centro de Costo", componente: <CentroCosto /> },
     categoriaCCosto: { label: "Categoría Centro de Costo", componente: <CategoriaCCosto /> },

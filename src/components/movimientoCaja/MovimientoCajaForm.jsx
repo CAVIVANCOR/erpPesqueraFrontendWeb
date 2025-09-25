@@ -22,14 +22,20 @@ export default function MovimientoCajaForm({
   tipoReferenciaMovimientoCaja = [],
   cuentasCorrientes = [],
   entidadesComerciales = [],
+  selectedDetMovsIds = [], // Prop existente
+  detEntregasRendirSelect = [], // Nueva prop
 }) {
-  console.log("cuentasCorrientes", cuentasCorrientes);
-  console.log("modulos", modulos);
-  console.log("personal", personal);
-  console.log("empresas", empresas);
-  console.log("tipoMovEntregaRendir", tipoMovEntregaRendir);
-  console.log("monedas", monedas);
-  console.log("tipoReferenciaMovimientoCaja", tipoReferenciaMovimientoCaja);
+
+  // Debug: mostrar datos recibidos de DetEntregaRendir
+React.useEffect(() => {
+  if (detEntregasRendirSelect.length > 0) {
+    console.log("detEntregasRendirSelect:", detEntregasRendirSelect);
+    console.log("Monto total precargado:", defaultValues.monto);
+    console.log("Entidad comercial precargada:", defaultValues.entidadComercialId);
+    console.log("Módulo origen precargado:", defaultValues.moduloOrigenMovCajaId);
+  }
+}, [detEntregasRendirSelect, defaultValues]);
+
   const [empresaOrigenId, setEmpresaOrigenId] = React.useState(
     defaultValues.empresaOrigenId || ""
   );
@@ -78,7 +84,7 @@ export default function MovimientoCajaForm({
     defaultValues.centroCostoId || ""
   );
   const [moduloOrigenMotivoOperacionId, setModuloOrigenMotivoOperacionId] = React.useState(
-    defaultValues.moduloOrigenMotivoOperacionId || ""
+    defaultValues.moduloOrigenMovCajaId || defaultValues.moduloOrigenMotivoOperacionId || ""
   );
   const [origenMotivoOperacionId, setOrigenMotivoOperacionId] = React.useState(
     defaultValues.origenMotivoOperacionId || ""

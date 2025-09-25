@@ -29,6 +29,7 @@ import {
   actualizarDetMovsEntregaRendir,
 } from "../../api/detMovsEntregaRendir";
 import { getModulos } from "../../api/moduloSistema";
+import { getEntidadesComerciales } from "../../api/entidadComercial";
 
 const DetMovsEntregaRendirForm = ({
   movimiento = null,
@@ -36,6 +37,7 @@ const DetMovsEntregaRendirForm = ({
   personal = [],
   centrosCosto = [],
   tiposMovimiento = [],
+  entidadesComerciales = [], // Nueva prop
   onGuardadoExitoso,
   onCancelar,
 }) => {
@@ -67,6 +69,7 @@ const DetMovsEntregaRendirForm = ({
       centroCostoId: "",
       monto: 0,
       descripcion: "",
+      entidadComercialId: "", // Nuevo campo
       urlComprobanteMovimiento: "",
       validadoTesoreria: false,
       fechaValidacionTesoreria: null,
@@ -108,6 +111,9 @@ const DetMovsEntregaRendirForm = ({
           : null,
         monto: Number(movimiento.monto) || 0,
         descripcion: movimiento.descripcion || "",
+        entidadComercialId: movimiento.entidadComercialId
+          ? Number(movimiento.entidadComercialId)
+          : null, // Nuevo campo
         urlComprobanteMovimiento: movimiento.urlComprobanteMovimiento || "",
         validadoTesoreria: movimiento.validadoTesoreria || false,
         fechaValidacionTesoreria: movimiento.fechaValidacionTesoreria || null,
@@ -234,6 +240,7 @@ const DetMovsEntregaRendirForm = ({
         monto: Number(data.monto),
         fechaMovimiento: data.fechaMovimiento,
         descripcion: data.descripcion ? data.descripcion.toUpperCase() : null,
+        entidadComercialId: data.entidadComercialId ? Number(data.entidadComercialId) : null, // ← AGREGAR ESTA LÍNEA
         urlComprobanteMovimiento: data.urlComprobanteMovimiento?.trim() || null,
         validadoTesoreria: data.validadoTesoreria,
         fechaValidacionTesoreria: data.fechaValidacionTesoreria,
@@ -494,6 +501,51 @@ const DetMovsEntregaRendirForm = ({
                 text={errors.tipoMovimientoId.message}
               />
             )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginBottom: "0.5rem",
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            {/* Entidad Comercial */}
+            <div className="p-field">
+              <label htmlFor="entidadComercialId">
+                Entidad Comercial <span className="text-red-500">*</span>
+              </label>
+              <Controller
+                name="entidadComercialId"
+                control={control}
+                rules={{ required: "La entidad comercial es obligatoria" }}
+                render={({ field }) => (
+                  <Dropdown
+                    {...field}
+                    options={entidadesComerciales.map((entidad) => ({
+                      label: entidad.razonSocial,
+                      value: Number(entidad.id),
+                    }))}
+                    placeholder="Seleccione una entidad comercial"
+                    className={classNames({
+                      "p-invalid": errors.entidadComercialId,
+                    })}
+                    showClear
+                    filter
+                    filterBy="label"
+                  />
+                )}
+              />
+              {errors.entidadComercialId && (
+                <Message
+                  severity="error"
+                  text={errors.entidadComercialId.message}
+                />
+              )}
+            </div>
           </div>
         </div>
 

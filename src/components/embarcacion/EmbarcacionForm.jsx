@@ -8,7 +8,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "primereact/button";
 import { Toolbar } from "primereact/toolbar";
-import { ButtonGroup } from "primereact/buttongroup";
 import { Toast } from "primereact/toast";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { useForm } from "react-hook-form";
@@ -17,24 +16,7 @@ import * as yup from "yup";
 
 // Importar componentes de cards
 import DatosGeneralesEmbarcacionForm from "./DatosGeneralesEmbarcacionForm";
-import CertificadoDotacionMinimaSeguridadForm from "./CertificadoDotacionMinimaSeguridadForm";
-import CertificadoMatriculaForm from "./CertificadoMatriculaForm";
-import PermisoPescaForm from "./PermisoPescaForm";
-import CertificadoArqueoForm from "./CertificadoArqueoForm";
-import CertificadoFrancoBordoForm from "./CertificadoFrancoBordoForm";
-import CertificadoCompasForm from "./CertificadoCompasForm";
-import CertificadoRadioBalizaForm from "./CertificadoRadioBalizaForm";
-import CertificadoSeguridadForm from "./CertificadoSeguridadForm";
-import CertificadoHidroCarburosForm from "./CertificadoHidroCarburosForm";
-import CertificadoAguasSuciasForm from "./CertificadoAguasSuciasForm";
-import CertificadoBalsasSalvavidasForm from "./CertificadoBalsasSalvavidasForm";
-import CertificadoPaqueteEmergenciaForm from "./CertificadoPaqueteEmergenciaForm";
-import CertificadoExtinguidoresForm from "./CertificadoExtinguidoresForm";
-import CertificadoFumigacionForm from "./CertificadoFumigacionForm";
-import ConstanciaNoAdeudoFoncopesForm from "./ConstanciaNoAdeudoFoncopesForm";
-import CertificadoSimtracForm from "./CertificadoSimtracForm";
-import CertificadoGeolocalizadorForm from "./CertificadoGeolocalizadorForm";
-import CertificadoSanitarioSanipesForm from "./CertificadoSanitarioSanipesForm";
+import DetalleDocsEmbarcacionCard from "./DetalleDocsEmbarcacionCard";
 
 // APIs
 import { getActivos } from "../../api/activo";
@@ -58,8 +40,8 @@ export default function EmbarcacionForm({
   onCancelar,
 }) {
   const toast = useRef(null);
-  const [activeCard, setActiveCard] = useState("datos-generales");
   const [loading, setLoading] = useState(false);
+  const [activeCard, setActiveCard] = useState("datos-generales");
 
   // Estados para dropdowns
   const [activos, setActivos] = useState([]);
@@ -94,24 +76,6 @@ export default function EmbarcacionForm({
       tabletModelo: "",
       estadoActivoId: null,
       urlFotoEmbarcacion: "",
-      urlCertificadosDotacionMinimaSeguridad: "",
-      urlCertificadoMatricula: "",
-      urlPermisoPesca: "",
-      urlCertificadoArqueo: "",
-      urlCertificadoFrancoBordo: "",
-      urlCertificadoCompas: "",
-      urlCertificadoRadioBaliza: "",
-      urlCertificadoSeguridad: "",
-      urlCertificadoHidroCarburos: "",
-      urlCertificadoAguasSucias: "",
-      urlCertificadoBalsasSalvavidas: "",
-      urlCertificadoPaqueteEmergencia: "",
-      urlCertificadoExtinguidores: "",
-      urlCertificadoFumigacion: "",
-      urlConstanciaNoAdeudoFoncopes: "",
-      urlCertificadoSimtrac: "",
-      urlCertificadogeolocalizador: "",
-      urlCertificadoSanitarioSanipes: "",
     },
   });
 
@@ -145,8 +109,14 @@ export default function EmbarcacionForm({
       setValue("id", embarcacion.id);
       setValue("activoId", Number(embarcacion.activoId) || null);
       setValue("matricula", embarcacion.matricula || "");
-      setValue("tipoEmbarcacionId", Number(embarcacion.tipoEmbarcacionId) || null);
-      setValue("capacidadBodegaTon", Number(embarcacion.capacidadBodegaTon) || null);
+      setValue(
+        "tipoEmbarcacionId",
+        Number(embarcacion.tipoEmbarcacionId) || null
+      );
+      setValue(
+        "capacidadBodegaTon",
+        Number(embarcacion.capacidadBodegaTon) || null
+      );
       setValue("esloraM", Number(embarcacion.esloraM) || null);
       setValue("mangaM", Number(embarcacion.mangaM) || null);
       setValue("puntalM", Number(embarcacion.puntalM) || null);
@@ -158,24 +128,6 @@ export default function EmbarcacionForm({
       setValue("tabletModelo", embarcacion.tabletModelo || "");
       setValue("estadoActivoId", Number(embarcacion.estadoActivoId) || null);
       setValue("urlFotoEmbarcacion", embarcacion.urlFotoEmbarcacion || "");
-      setValue("urlCertificadosDotacionMinimaSeguridad", embarcacion.urlCertificadosDotacionMinimaSeguridad || "");
-      setValue("urlCertificadoMatricula", embarcacion.urlCertificadoMatricula || "");
-      setValue("urlPermisoPesca", embarcacion.urlPermisoPesca || "");
-      setValue("urlCertificadoArqueo", embarcacion.urlCertificadoArqueo || "");
-      setValue("urlCertificadoFrancoBordo", embarcacion.urlCertificadoFrancoBordo || "");
-      setValue("urlCertificadoCompas", embarcacion.urlCertificadoCompas || "");
-      setValue("urlCertificadoRadioBaliza", embarcacion.urlCertificadoRadioBaliza || "");
-      setValue("urlCertificadoSeguridad", embarcacion.urlCertificadoSeguridad || "");
-      setValue("urlCertificadoHidroCarburos", embarcacion.urlCertificadoHidroCarburos || "");
-      setValue("urlCertificadoAguasSucias", embarcacion.urlCertificadoAguasSucias || "");
-      setValue("urlCertificadoBalsasSalvavidas", embarcacion.urlCertificadoBalsasSalvavidas || "");
-      setValue("urlCertificadoPaqueteEmergencia", embarcacion.urlCertificadoPaqueteEmergencia || "");
-      setValue("urlCertificadoExtinguidores", embarcacion.urlCertificadoExtinguidores || "");
-      setValue("urlCertificadoFumigacion", embarcacion.urlCertificadoFumigacion || "");
-      setValue("urlConstanciaNoAdeudoFoncopes", embarcacion.urlConstanciaNoAdeudoFoncopes || "");
-      setValue("urlCertificadoSimtrac", embarcacion.urlCertificadoSimtrac || "");
-      setValue("urlCertificadogeolocalizador", embarcacion.urlCertificadogeolocalizador || "");
-      setValue("urlCertificadoSanitarioSanipes", embarcacion.urlCertificadoSanitarioSanipes || "");
     } else if (!embarcacion) {
       reset();
     }
@@ -221,134 +173,7 @@ export default function EmbarcacionForm({
     setActiveCard(cardName);
   };
 
-  // Configuración de cards
-  const certificateCards = [
-    {
-      key: "cert-dotacion",
-      label: "Certificado de Dotación Mínima de Seguridad",
-      icon: "pi pi-shield",
-    },
-    {
-      key: "cert-matricula",
-      label: "Certificado de Matrícula",
-      icon: "pi pi-id-card",
-    },
-    {
-      key: "cert-permiso-pesca",
-      label: "Certificado de Permiso de Pesca",
-      icon: "pi pi-bookmark",
-    },
-    {
-      key: "cert-arqueo",
-      label: "Certificado de Arqueo",
-      icon: "pi pi-calculator",
-    },
-    {
-      key: "cert-franco-bordo",
-      label: "Certificado de Franco Bordo",
-      icon: "pi pi-compass",
-    },
-    {
-      key: "cert-compas",
-      label: "Certificado de Compás",
-      icon: "pi pi-directions",
-    },
-    {
-      key: "cert-radio-baliza",
-      label: "Certificado de Radio Baliza",
-      icon: "pi pi-wifi",
-    },
-    {
-      key: "cert-seguridad",
-      label: "Certificado de Seguridad",
-      icon: "pi pi-lock",
-    },
-    {
-      key: "cert-hidrocarburos",
-      label: "Certificado de Hidrocarburos",
-      icon: "pi pi-circle-fill",
-    },
-    {
-      key: "cert-aguas-sucias",
-      label: "Certificado de Aguas Sucias",
-      icon: "pi pi-filter",
-    },
-    {
-      key: "cert-balsas",
-      label: "Certificado de Balsas Salvavidas",
-      icon: "pi pi-shield",
-    },
-    {
-      key: "cert-emergencia",
-      label: "Certificado de Paquete Emergencia",
-      icon: "pi pi-exclamation-triangle",
-    },
-    {
-      key: "cert-extinguidores",
-      label: "Certificado de Extinguidores",
-      icon: "pi pi-bolt",
-    },
-    {
-      key: "cert-fumigacion",
-      label: "Certificado de Fumigación",
-      icon: "pi pi-cloud",
-    },
-    {
-      key: "cert-foncopes",
-      label: "Certificado de No Adeudo FONCOPES",
-      icon: "pi pi-check-circle",
-    },
-    {
-      key: "cert-simtrac",
-      label: "Certificado de SIMTRAC",
-      icon: "pi pi-sitemap",
-    },
-    {
-      key: "cert-geolocalizador",
-      label: "Certificado de Geolocalizador",
-      icon: "pi pi-map-marker",
-    },
-    {
-      key: "cert-sanipes",
-      label: "Certificado Sanitario SANIPES",
-      icon: "pi pi-heart",
-    },
-  ];
-
-  const toolbarStart = (
-    <div className="flex flex-wrap gap-2">
-      <ButtonGroup>
-        <Button
-          type="button"
-          icon="pi pi-info-circle"
-          className={
-            activeCard === "datos-generales"
-              ? "p-button-info"
-              : "p-button-outlined"
-          }
-          onClick={() => handleNavigateToCard("datos-generales")}
-          size="small"
-          tooltip="Datos Generales"
-          tooltipOptions={{ position: "bottom" }}
-        />
-        {certificateCards.map((card) => (
-          <Button
-            key={card.key}
-            type="button"
-            icon={card.icon}
-            className={
-              activeCard === card.key ? "p-button-info" : "p-button-outlined"
-            }
-            onClick={() => handleNavigateToCard(card.key)}
-            size="small"
-            tooltip={card.label}
-            tooltipOptions={{ position: "bottom" }}
-          />
-        ))}
-      </ButtonGroup>
-    </div>
-  );
-
+  const toolbarStart = <div className="flex flex-wrap gap-2"></div>;
 
   if (loading) {
     return (
@@ -362,8 +187,6 @@ export default function EmbarcacionForm({
     <>
       <Toast ref={toast} />
       <form className="p-fluid" onSubmit={handleSubmit(onSubmitForm)}>
-        <Toolbar center={toolbarStart} className="mb-4" />
-
         {/* Renderizado condicional de cards */}
         {activeCard === "datos-generales" && (
           <DatosGeneralesEmbarcacionForm
@@ -379,235 +202,71 @@ export default function EmbarcacionForm({
           />
         )}
 
-        {activeCard === "cert-dotacion" && (
-          <CertificadoDotacionMinimaSeguridadForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
+        {activeCard === "documentacion" && (
+          <DetalleDocsEmbarcacionCard embarcacionId={embarcacion?.id} />
         )}
 
-        {activeCard === "cert-matricula" && (
-          <CertificadoMatriculaForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-permiso-pesca" && (
-          <PermisoPescaForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-arqueo" && (
-          <CertificadoArqueoForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-franco-bordo" && (
-          <CertificadoFrancoBordoForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-compas" && (
-          <CertificadoCompasForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-radio-baliza" && (
-          <CertificadoRadioBalizaForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-seguridad" && (
-          <CertificadoSeguridadForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-hidrocarburos" && (
-          <CertificadoHidroCarburosForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-aguas-sucias" && (
-          <CertificadoAguasSuciasForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-balsas" && (
-          <CertificadoBalsasSalvavidasForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-emergencia" && (
-          <CertificadoPaqueteEmergenciaForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-extinguidores" && (
-          <CertificadoExtinguidoresForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-fumigacion" && (
-          <CertificadoFumigacionForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-foncopes" && (
-          <ConstanciaNoAdeudoFoncopesForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-simtrac" && (
-          <CertificadoSimtracForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-geolocalizador" && (
-          <CertificadoGeolocalizadorForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
-
-        {activeCard === "cert-sanipes" && (
-          <CertificadoSanitarioSanipesForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={embarcacion || {}}
-          />
-        )}
         {/* Botones de acción */}
         <div
           style={{
+            alignItems: "center",
             display: "flex",
-            justifyContent: "center",
             gap: 10,
+            marginTop: "0.5rem",
             flexDirection: window.innerWidth < 768 ? "column" : "row",
-            marginBottom: 10,
-            marginTop: 10,
           }}
         >
-          <Button
-            type="button"
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-text"
-            onClick={onCancelar}
-            disabled={loading}
-            raised
-            outlined
-            size="small"
-          />
-          <Button
-            type="submit"
-            label={esEdicion ? "Actualizar" : "Crear"}
-            icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
-            loading={loading}
-            className="p-button-success"
-            raised
-            outlined
-            size="small"
-          />
+          <div style={{ flex: 1 }}>
+            <Button
+              type="button"
+              icon="pi pi-info-circle"
+              className={
+                activeCard === "datos-generales"
+                  ? "p-button-info"
+                  : "p-button-outlined"
+              }
+              onClick={() => handleNavigateToCard("datos-generales")}
+              size="small"
+              tooltip="Datos Generales"
+            />
+            <Button
+              type="button"
+              icon="pi pi-folder"
+              className={
+                activeCard === "documentacion"
+                  ? "p-button-info"
+                  : "p-button-outlined"
+              }
+              onClick={() => handleNavigateToCard("documentacion")}
+              size="small"
+              tooltip="Documentación"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              type="button"
+              label="Cancelar"
+              icon="pi pi-times"
+              className="p-button-text"
+              onClick={onCancelar}
+              disabled={loading}
+              raised
+              outlined
+              size="small"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              type="submit"
+              label={esEdicion ? "Actualizar" : "Crear"}
+              icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
+              loading={loading}
+              className="p-button-success"
+              raised
+              outlined
+              size="small"
+            />
+          </div>
         </div>
       </form>
     </>

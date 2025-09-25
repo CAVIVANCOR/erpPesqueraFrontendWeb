@@ -7,7 +7,9 @@ import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
+import { TabView, TabPanel } from "primereact/tabview";
 import MovimientoCajaForm from "../components/movimientoCaja/MovimientoCajaForm";
+import DetEntregaRendirPescaIndustrial from "../components/temporadaPesca/DetEntregaRendirPescaIndustrial";
 import {
   getAllMovimientoCaja,
   crearMovimientoCaja,
@@ -23,18 +25,11 @@ import { getMonedas } from "../api/moneda";
 import { getAllTipoReferenciaMovimientoCaja } from "../api/tipoReferenciaMovimientoCaja";
 import { getAllCuentaCorriente } from "../api/cuentaCorriente";
 import { getEntidadesComerciales } from "../api/entidadComercial";
+import { getAllDetMovsEntregaRendir } from "../api/detMovsEntregaRendir";
+import { getAllEntregaARendir } from "../api/entregaARendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
 
-/**
- * Pantalla profesional para gestión de Movimientos de Caja.
- * Cumple la regla transversal ERP Megui:
- * - Edición profesional por clic en fila (abre modal).
- * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin), usando useAuthStore.
- * - Confirmación de borrado con ConfirmDialog visual rojo.
- * - Feedback visual con Toast.
- * - Documentación de la regla en el encabezado.
- */
 export default function MovimientoCaja() {
   const toast = useRef(null);
   const [items, setItems] = useState([]);
@@ -55,6 +50,14 @@ export default function MovimientoCaja() {
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
 
+  // Estados para DetEntregaRendirPescaIndustrial
+  const [movimientosDetEntrega, setMovimientosDetEntrega] = useState([]);
+  const [entregasARendir, setEntregasARendir] = useState([]);
+  const [selectedMovimientosDetEntrega, setSelectedMovimientosDetEntrega] =
+    useState([]);
+  const [loadingDetEntrega, setLoadingDetEntrega] = useState(false);
+  const [selectedDetMovsIds, setSelectedDetMovsIds] = useState([]);
+
   useEffect(() => {
     cargarItems();
     cargarCentrosCosto();
@@ -66,6 +69,8 @@ export default function MovimientoCaja() {
     cargarTipoReferenciaMovimientoCaja();
     cargarCuentasCorrientes();
     cargarEntidadesComerciales();
+    cargarMovimientosDetEntrega();
+    cargarEntregasARendir();
   }, []);
 
   const cargarItems = async () => {
@@ -200,6 +205,35 @@ export default function MovimientoCaja() {
     }
   };
 
+  // Funciones para cargar datos de DetEntregaRendirPescaIndustrial
+  const cargarMovimientosDetEntrega = async () => {
+    setLoadingDetEntrega(true);
+    try {
+      const data = await getAllDetMovsEntregaRendir();
+      setMovimientosDetEntrega(data);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar los movimientos de entrega a rendir.",
+      });
+    }
+    setLoadingDetEntrega(false);
+  };
+
+  const cargarEntregasARendir = async () => {
+    try {
+      const data = await getAllEntregaARendir();
+      setEntregasARendir(data);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar las entregas a rendir.",
+      });
+    }
+  };
+
   const handleEdit = (rowData) => {
     setEditing(rowData);
     setShowDialog(true);
@@ -269,6 +303,62 @@ export default function MovimientoCaja() {
     setShowDialog(true);
   };
 
+  // Handler para aplicar movimientos seleccionados de DetEntregaRendir
+  const handleAplicarMovimientosSeleccionados = () => {
+    if (selectedDetMovsIds.length === 0) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe seleccionar al menos un movimiento.",
+      });
+      return;
+    }
+  
+    // Obtener los registros completos de los movimientos seleccionados
+    const detEntregasRendirSelect = movimientosDetEntrega.filter(mov => 
+      selectedDetMovsIds.includes(mov.id)
+    );
+  
+    // Validar que todos los registros tengan la misma entidadComercialId
+    const entidadesComerciales = detEntregasRendirSelect.map(mov => mov.entidadComercialId);
+    const entidadComercialUnica = entidadesComerciales[0];
+    
+    // Verificar si todas las entidades comerciales son iguales (incluyendo null/undefined)
+    const todasIguales = entidadesComerciales.every(entidad => entidad === entidadComercialUnica);
+    
+    if (!todasIguales) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error de Validación",
+        detail: "Los registros seleccionados deben ser de una misma Entidad Comercial.",
+        life: 5000
+      });
+      return;
+    }
+  
+    // Calcular la sumatoria de montos
+    const montoTotal = detEntregasRendirSelect.reduce((suma, mov) => suma + Number(mov.monto), 0);
+    
+    // Obtener el módulo origen (debe ser el mismo en todos)
+    const moduloOrigenMovCajaId = detEntregasRendirSelect[0]?.moduloOrigenMovCajaId;
+  
+    // Preparar datos para el formulario
+    const datosFormulario = {
+      selectedDetMovsIds,
+      detEntregasRendirSelect,
+      entidadComercialId: entidadComercialUnica,
+      monto: montoTotal,
+      moduloOrigenMovCajaId: moduloOrigenMovCajaId,
+      // Otros campos que puedan ser útiles
+      tipoMovimientoId: null, // Se definirá en el formulario
+      fechaMovimiento: new Date(),
+    };
+  
+    // Abrir el formulario de MovimientoCaja con los datos preparados
+    setEditing(datosFormulario);
+    setShowDialog(true);
+  };
+
   const actionBody = (rowData) => (
     <>
       <Button
@@ -301,6 +391,84 @@ export default function MovimientoCaja() {
         accept={handleDeleteConfirm}
         reject={() => setShowConfirm(false)}
       />
+
+      {/* TabView con 8 TabPanels */}
+      <TabView>
+        <TabPanel header="Pesca Industrial">
+          <div className="mb-4">
+            <DetEntregaRendirPescaIndustrial
+              entregaARendir={entregasARendir[0] || null}
+              movimientos={movimientosDetEntrega}
+              personal={personal}
+              centrosCosto={centrosCosto}
+              tiposMovimiento={tipoMovEntregaRendir}
+              entidadesComerciales={entidadesComerciales} // Nueva prop
+              temporadaPescaIniciada={true}
+              loading={loadingDetEntrega}
+              selectedMovimientos={selectedMovimientosDetEntrega}
+              onSelectionChange={(e) => {
+                setSelectedMovimientosDetEntrega(e.value);
+                setSelectedDetMovsIds(e.value.map((mov) => mov.id));
+              }}
+              onDataChange={() => {
+                cargarMovimientosDetEntrega();
+                cargarEntregasARendir();
+              }}
+            />
+          </div>
+        </TabPanel>
+
+        <TabPanel header="Pesca Consumo">
+          <div className="p-4">
+            <h3>Pesca Consumo</h3>
+            <p>Contenido para Pesca Consumo - En desarrollo</p>
+          </div>
+        </TabPanel>
+
+        <TabPanel header="Compras">
+          <div className="p-4">
+            <h3>Compras</h3>
+            <p>Contenido para Compras - En desarrollo</p>
+          </div>
+        </TabPanel>
+
+        <TabPanel header="Ventas">
+          <div className="p-4">
+            <h3>Ventas</h3>
+            <p>Contenido para Ventas - En desarrollo</p>
+          </div>
+        </TabPanel>
+
+        <TabPanel header="Producción">
+          <div className="p-4">
+            <h3>Producción</h3>
+            <p>Contenido para Producción - En desarrollo</p>
+          </div>
+        </TabPanel>
+
+        <TabPanel header="Almacén">
+          <div className="p-4">
+            <h3>Almacén</h3>
+            <p>Contenido para Almacén - En desarrollo</p>
+          </div>
+        </TabPanel>
+
+        <TabPanel header="Servicios">
+          <div className="p-4">
+            <h3>Servicios</h3>
+            <p>Contenido para Servicios - En desarrollo</p>
+          </div>
+        </TabPanel>
+
+        <TabPanel header="Mantenimiento">
+          <div className="p-4">
+            <h3>Mantenimiento</h3>
+            <p>Contenido para Mantenimiento - En desarrollo</p>
+          </div>
+        </TabPanel>
+      </TabView>
+
+      {/* DataTable CRUD original */}
       <DataTable
         value={items}
         loading={loading}
@@ -320,6 +488,15 @@ export default function MovimientoCaja() {
           >
             <div style={{ flex: 2 }}>
               <h2>Gestión de Movimientos de Caja</h2>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Aplicar"
+                icon="pi pi-check"
+                className="p-button-success"
+                onClick={handleAplicarMovimientosSeleccionados}
+                disabled={selectedDetMovsIds.length === 0}
+              />
             </div>
             <div style={{ flex: 1 }}>
               <Button
@@ -362,6 +539,7 @@ export default function MovimientoCaja() {
           style={{ width: 130, textAlign: "center" }}
         />
       </DataTable>
+
       <Dialog
         header={editing ? "Editar Movimiento" : "Nuevo Movimiento"}
         visible={showDialog}
@@ -384,6 +562,8 @@ export default function MovimientoCaja() {
           tipoReferenciaMovimientoCaja={tipoReferenciaMovimientoCaja}
           cuentasCorrientes={cuentasCorrientes}
           entidadesComerciales={entidadesComerciales}
+          selectedDetMovsIds={editing?.selectedDetMovsIds || []}
+          detEntregasRendirSelect={editing?.detEntregasRendirSelect || []}
         />
       </Dialog>
     </div>
