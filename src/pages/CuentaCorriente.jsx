@@ -20,6 +20,7 @@ import { getAllTipoCuentaCorriente } from "../api/tipoCuentaCorriente";
 import { getMonedas } from "../api/moneda";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
+import { Dropdown } from "primereact/dropdown";
 
 /**
  * Pantalla profesional para gestión de Cuentas Corrientes.
@@ -43,6 +44,9 @@ export default function CuentaCorriente() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const usuario = useAuthStore((state) => state.usuario);
+  // Estados para filtros
+  const [filtroEmpresa, setFiltroEmpresa] = useState(null);
+  const [filtroBanco, setFiltroBanco] = useState(null);
 
   useEffect(() => {
     cargarItems();
@@ -119,6 +123,41 @@ export default function CuentaCorriente() {
     }
   };
 
+  // Función para obtener datos filtrados
+  const getItemsFiltrados = () => {
+    return items.filter((item) => {
+      const cumpleFiltroEmpresa =
+        !filtroEmpresa || Number(item.empresaId) === Number(filtroEmpresa);
+      const cumpleFiltroBanco =
+        !filtroBanco || Number(item.bancoId) === Number(filtroBanco);
+
+      return cumpleFiltroEmpresa && cumpleFiltroBanco;
+    });
+  };
+
+  // Función para limpiar filtros
+  const limpiarFiltros = () => {
+    setFiltroEmpresa(null);
+    setFiltroBanco(null);
+  };
+
+  // Función para extraer mensaje de error del backend
+  const obtenerMensajeError = (error) => {
+    if (error.response?.data?.message) {
+      return error.response.data.message;
+    }
+    if (error.response?.data?.error) {
+      return error.response.data.error;
+    }
+    if (typeof error.response?.data === "string") {
+      return error.response.data;
+    }
+    if (error.message) {
+      return error.message;
+    }
+    return "Error desconocido";
+  };
+
   const handleEdit = (rowData) => {
     setEditing(rowData);
     setShowDialog(true);
@@ -174,10 +213,14 @@ export default function CuentaCorriente() {
       setEditing(null);
       cargarItems();
     } catch (err) {
+      console.error("Error al guardar cuenta corriente:", err);
+      const mensajeError = obtenerMensajeError(err);
+
       toast.current.show({
         severity: "error",
-        summary: "Error",
-        detail: "No se pudo guardar.",
+        summary: "Error al Guardar",
+        detail: mensajeError,
+        life: 5000,
       });
     }
     setLoading(false);
@@ -221,7 +264,7 @@ export default function CuentaCorriente() {
         reject={() => setShowConfirm(false)}
       />
       <DataTable
-        value={items}
+        value={getItemsFiltrados()}
         loading={loading}
         dataKey="id"
         paginator
@@ -231,34 +274,76 @@ export default function CuentaCorriente() {
         header={
           <div
             style={{
-              alignItems: "center",
               display: "flex",
+              alignItems: "end",
               gap: 10,
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
             <div style={{ flex: 1 }}>
-              <h2>Gestión de Cuentas Corrientes</h2>
+              <h2>Cuentas Corrientes</h2>
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 0.5 }}>
               <Button
                 label="Nuevo"
                 icon="pi pi-plus"
                 className="p-button-success"
                 size="small"
-                outlined
+                severity="success"
+                raised
                 onClick={handleAdd}
                 disabled={loading}
               />
             </div>
-            <div style={{ flex: 1 }}></div>
+            <div style={{ flex: 2 }}>
+              <label>Filtrar por Empresa:</label>
+              <Dropdown
+                value={filtroEmpresa}
+                options={empresas.map((emp) => ({
+                  label: emp.razonSocial,
+                  value: Number(emp.id),
+                }))}
+                onChange={(e) => setFiltroEmpresa(e.value)}
+                placeholder="Seleccionar empresa"
+                showClear
+                className="w-full"
+              />
+            </div>
+            <div style={{ flex: 1.5 }}>
+              <label>Filtrar por Banco:</label>
+              <Dropdown
+                value={filtroBanco}
+                options={bancos.map((banco) => ({
+                  label: banco.nombre,
+                  value: Number(banco.id),
+                }))}
+                onChange={(e) => setFiltroBanco(e.value)}
+                placeholder="Seleccionar banco"
+                showClear
+                className="w-full"
+              />
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <Button
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                className="p-button-secondary"
+                size="small"
+                severity="secondary"
+                raised
+                onClick={limpiarFiltros}
+                disabled={!filtroEmpresa && !filtroBanco}
+                tooltip="Limpiar filtros"
+              />
+            </div>
           </div>
         }
       >
-        <Column field="id" header="ID" style={{ width: 80 }} />
+        <Column field="id" header="ID" style={{ width: 80 }} sortable />
         <Column
           field="empresaId"
           header="Empresa"
+          sortable
           body={(rowData) => {
             const empresa = empresas.find(
               (e) => Number(e.id) === Number(rowData.empresaId)
@@ -269,6 +354,7 @@ export default function CuentaCorriente() {
         <Column
           field="bancoId"
           header="Banco"
+          sortable
           body={(rowData) => {
             const banco = bancos.find(
               (b) => Number(b.id) === Number(rowData.bancoId)
@@ -276,22 +362,31 @@ export default function CuentaCorriente() {
             return banco ? banco.nombre : rowData.bancoId;
           }}
         />
-        <Column field="descripcion" header="Descripción" />
+        <Column field="descripcion" header="Descripción" sortable />
         <Column
           field="monedaId"
           header="Moneda"
+          sortable
           body={(rowData) => {
+            // Usar la relación directa si está disponible
+            if (rowData.moneda) {
+              return `${rowData.moneda.simbolo} - ${rowData.moneda.nombre}`;
+            }
+            // Fallback al método anterior si no hay relación
             const moneda = monedas.find(
               (m) => Number(m.id) === Number(rowData.monedaId)
             );
-            return moneda ? moneda.simbolo : rowData.monedaId;
+            return moneda
+              ? `${moneda.simbolo} - ${moneda.nombre}`
+              : rowData.monedaId;
           }}
         />
-        <Column field="numeroCuenta" header="Número Cuenta" />
-        <Column field="numeroCuentaCCI" header="Número CCI" />
+        <Column field="numeroCuenta" header="Número Cuenta" sortable />
+        <Column field="numeroCuentaCCI" header="Número CCI" sortable />
         <Column
           field="tipoCuentaCorrienteId"
           header="Tipo Cuenta"
+          sortable
           body={(rowData) => {
             const tipo = tiposCuentaCorriente.find(
               (t) => Number(t.id) === Number(rowData.tipoCuentaCorrienteId)
@@ -303,11 +398,13 @@ export default function CuentaCorriente() {
         <Column
           field="activa"
           header="Activa"
+          sortable
           body={(rowData) => (rowData.activa ? "Sí" : "No")}
         />
         <Column
           body={actionBody}
           header="Acciones"
+          sortable
           style={{ width: 130, textAlign: "center" }}
         />
       </DataTable>

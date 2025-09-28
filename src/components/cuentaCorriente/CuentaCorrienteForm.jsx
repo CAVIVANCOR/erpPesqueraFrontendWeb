@@ -6,6 +6,7 @@ import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Checkbox } from "primereact/checkbox";
 
+
 export default function CuentaCorrienteForm({
   isEdit,
   defaultValues,
@@ -57,18 +58,22 @@ export default function CuentaCorrienteForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Validaciones básicas en frontend - solo return sin toast
+    if (!empresaId || !bancoId || !numeroCuenta) {
+      return; // Solo return, sin mostrar toast
+    }
+    
     onSubmit({
-      empresaId: empresaId ? Number(empresaId) : null,
-      bancoId: bancoId ? Number(bancoId) : null,
-      numeroCuenta,
-      tipoCuentaCorrienteId: tipoCuentaCorrienteId
-        ? Number(tipoCuentaCorrienteId)
-        : null,
+      empresaId: Number(empresaId),
+      bancoId: Number(bancoId),
+      numeroCuenta: numeroCuenta.trim(),
+      tipoCuentaCorrienteId: tipoCuentaCorrienteId ? Number(tipoCuentaCorrienteId) : null,
       monedaId: monedaId ? Number(monedaId) : null,
-      descripcion,
+      descripcion: descripcion.trim(),
       activa,
-      codigoSwift,
-      numeroCuentaCCI,
+      codigoSwift: codigoSwift.trim(),
+      numeroCuentaCCI: numeroCuentaCCI.trim(),
     });
   };
 

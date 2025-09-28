@@ -30,6 +30,8 @@ import {
 } from "../../api/detMovsEntregaRendir";
 import { getModulos } from "../../api/moduloSistema";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
+import { Card } from "primereact/card";
+import PdfDetMovEntregaRendirCard from "./pdfDetMovEntregaRendirCard";
 
 const DetMovsEntregaRendirForm = ({
   movimiento = null,
@@ -45,11 +47,11 @@ const DetMovsEntregaRendirForm = ({
   const isEditing = !!movimiento;
   const { usuario } = useAuthStore();
 
-  // Estados para captura de comprobante
-  const [mostrarCaptura, setMostrarCaptura] = useState(false);
-
   // Estados para módulos del sistema
   const [modulosPescaIndustrial, setModulosPescaIndustrial] = useState(null);
+
+  // Estados para navegación de cards
+  const [cardActiva, setCardActiva] = useState("datos"); // "datos" | "pdf"
 
   // Configuración del formulario con react-hook-form
   const {
@@ -181,6 +183,21 @@ const DetMovsEntregaRendirForm = ({
     cargarModuloPescaIndustrial();
   }, [setValue, isEditing]);
 
+  // Función para renderizar navegación de cards
+  const renderNavegacionCards = () => (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        gap: "1rem",
+        marginBottom: "1rem",
+        padding: "1rem",
+        backgroundColor: "#f8f9fa",
+        borderRadius: "8px",
+      }}
+    ></div>
+  );
+
   // Preparar opciones para dropdowns aplicando regla Number()
   const personalOptions = personal.map((p) => ({
     label: p.nombreCompleto || `${p.nombres} ${p.apellidos}`,
@@ -240,7 +257,9 @@ const DetMovsEntregaRendirForm = ({
         monto: Number(data.monto),
         fechaMovimiento: data.fechaMovimiento,
         descripcion: data.descripcion ? data.descripcion.toUpperCase() : null,
-        entidadComercialId: data.entidadComercialId ? Number(data.entidadComercialId) : null, // ← AGREGAR ESTA LÍNEA
+        entidadComercialId: data.entidadComercialId
+          ? Number(data.entidadComercialId)
+          : null, // ← AGREGAR ESTA LÍNEA
         urlComprobanteMovimiento: data.urlComprobanteMovimiento?.trim() || null,
         validadoTesoreria: data.validadoTesoreria,
         fechaValidacionTesoreria: data.fechaValidacionTesoreria,
@@ -270,29 +289,6 @@ const DetMovsEntregaRendirForm = ({
         life: 3000,
       });
     }
-  };
-
-  // Función para ver PDF
-  const handleVerPDF = () => {
-    if (urlComprobanteMovimiento) {
-      abrirPdfEnNuevaPestana(
-        urlComprobanteMovimiento,
-        toast,
-        "No hay comprobante PDF disponible"
-      );
-    }
-  };
-
-  // Función para manejar comprobante subido
-  const handleComprobanteSubido = (urlDocumento) => {
-    setValue("urlComprobanteMovimiento", urlDocumento);
-    setMostrarCaptura(false);
-    toast.current?.show({
-      severity: "success",
-      summary: "Comprobante Subido",
-      detail: "El comprobante PDF se ha subido correctamente",
-      life: 3000,
-    });
   };
 
   // Función para validar tesorería
@@ -370,593 +366,590 @@ const DetMovsEntregaRendirForm = ({
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
-      <form>
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginBottom: "0.5rem",
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
+      {/* Card de Datos Generales */}
+      {cardActiva === "datos" && (
+        <Card
+          title="Datos Generales del Movimiento"
+          className="mb-4"
+          pt={{
+            header: { className: "pb-0" },
+            content: { className: "pt-2" },
           }}
         >
-          <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">
-              Fecha de Creación
-            </label>
-            <InputText
-              value={
-                movimiento?.creadoEn
-                  ? new Date(movimiento.creadoEn).toLocaleString("es-PE")
-                  : new Date().toLocaleString("es-PE")
-              }
-              readOnly
-              className="p-inputtext-sm"
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            {/* Fecha del Movimiento */}
-            <label
-              htmlFor="fechaMovimiento"
-              className="block text-900 font-medium mb-2"
+          <form>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
             >
-              Fecha del Movimiento *
-            </label>
-            <Controller
-              name="fechaMovimiento"
-              control={control}
-              rules={{ required: "La fecha es obligatoria" }}
-              render={({ field }) => (
-                <Calendar
-                  id="fechaMovimiento"
-                  {...field}
-                  value={field.value}
-                  onChange={(e) => field.onChange(e.value)}
-                  showIcon
-                  showTime
-                  hourFormat="24"
-                  dateFormat="dd/mm/yy"
-                  placeholder="Seleccione fecha y hora"
-                  className={classNames({
-                    "p-invalid": errors.fechaMovimiento,
-                  })}
-                  inputStyle={{ fontWeight: "bold" }}
-                  disabled={formularioDeshabilitado}
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Fecha de Creación
+                </label>
+                <InputText
+                  value={
+                    movimiento?.creadoEn
+                      ? new Date(movimiento.creadoEn).toLocaleString("es-PE")
+                      : new Date().toLocaleString("es-PE")
+                  }
+                  readOnly
+                  className="p-inputtext-sm"
                 />
-              )}
-            />
-            {errors.fechaMovimiento && (
-              <Message severity="error" text={errors.fechaMovimiento.message} />
-            )}
-          </div>
-
-          <div style={{ flex: 2 }}>
-            {/* Responsable */}
-            <label
-              htmlFor="responsableId"
-              className="block text-900 font-medium mb-2"
-            >
-              Responsable *
-            </label>
-            <Controller
-              name="responsableId"
-              control={control}
-              rules={{ required: "El responsable es obligatorio" }}
-              render={({ field }) => (
-                <Dropdown
-                  id="responsableId"
-                  {...field}
-                  value={field.value}
-                  options={personalOptions}
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Seleccione responsable"
-                  className={classNames({
-                    "p-invalid": errors.responsableId,
-                  })}
-                  filter
-                  showClear
-                  style={{ fontWeight: "bold" }}
-                  disabled={formularioDeshabilitado}
+              </div>
+              <div style={{ flex: 1 }}>
+                {/* Fecha del Movimiento */}
+                <label
+                  htmlFor="fechaMovimiento"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Fecha del Movimiento *
+                </label>
+                <Controller
+                  name="fechaMovimiento"
+                  control={control}
+                  rules={{ required: "La fecha es obligatoria" }}
+                  render={({ field }) => (
+                    <Calendar
+                      id="fechaMovimiento"
+                      {...field}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      showIcon
+                      showTime
+                      hourFormat="24"
+                      dateFormat="dd/mm/yy"
+                      placeholder="Seleccione fecha y hora"
+                      className={classNames({
+                        "p-invalid": errors.fechaMovimiento,
+                      })}
+                      inputStyle={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
                 />
-              )}
-            />
-            {errors.responsableId && (
-              <Message severity="error" text={errors.responsableId.message} />
-            )}
-          </div>
-          <div style={{ flex: 2 }}>
-            {/* Tipo de Movimiento */}
-            <label
-              htmlFor="tipoMovimientoId"
-              className="block text-900 font-medium mb-2"
-            >
-              Tipo de Movimiento *
-            </label>
-            <Controller
-              name="tipoMovimientoId"
-              control={control}
-              rules={{ required: "El tipo de movimiento es obligatorio" }}
-              render={({ field }) => (
-                <Dropdown
-                  id="tipoMovimientoId"
-                  {...field}
-                  value={field.value}
-                  options={tipoMovimientoOptions}
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Seleccione tipo"
-                  className={classNames({
-                    "p-invalid": errors.tipoMovimientoId,
-                  })}
-                  filter
-                  showClear
-                  style={{ fontWeight: "bold" }}
-                  disabled={formularioDeshabilitado}
-                />
-              )}
-            />
-            {errors.tipoMovimientoId && (
-              <Message
-                severity="error"
-                text={errors.tipoMovimientoId.message}
-              />
-            )}
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginBottom: "0.5rem",
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            {/* Entidad Comercial */}
-            <div className="p-field">
-              <label htmlFor="entidadComercialId">
-                Entidad Comercial <span className="text-red-500">*</span>
-              </label>
-              <Controller
-                name="entidadComercialId"
-                control={control}
-                rules={{ required: "La entidad comercial es obligatoria" }}
-                render={({ field }) => (
-                  <Dropdown
-                    {...field}
-                    options={entidadesComerciales.map((entidad) => ({
-                      label: entidad.razonSocial,
-                      value: Number(entidad.id),
-                    }))}
-                    placeholder="Seleccione una entidad comercial"
-                    className={classNames({
-                      "p-invalid": errors.entidadComercialId,
-                    })}
-                    showClear
-                    filter
-                    filterBy="label"
+                {errors.fechaMovimiento && (
+                  <Message
+                    severity="error"
+                    text={errors.fechaMovimiento.message}
                   />
                 )}
-              />
-              {errors.entidadComercialId && (
-                <Message
-                  severity="error"
-                  text={errors.entidadComercialId.message}
+              </div>
+
+              <div style={{ flex: 2 }}>
+                {/* Responsable */}
+                <label
+                  htmlFor="responsableId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Responsable *
+                </label>
+                <Controller
+                  name="responsableId"
+                  control={control}
+                  rules={{ required: "El responsable es obligatorio" }}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="responsableId"
+                      {...field}
+                      value={field.value}
+                      options={personalOptions}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione responsable"
+                      className={classNames({
+                        "p-invalid": errors.responsableId,
+                      })}
+                      filter
+                      showClear
+                      style={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
                 />
-              )}
+                {errors.responsableId && (
+                  <Message
+                    severity="error"
+                    text={errors.responsableId.message}
+                  />
+                )}
+              </div>
+              <div style={{ flex: 2 }}>
+                {/* Tipo de Movimiento */}
+                <label
+                  htmlFor="tipoMovimientoId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Tipo de Movimiento *
+                </label>
+                <Controller
+                  name="tipoMovimientoId"
+                  control={control}
+                  rules={{ required: "El tipo de movimiento es obligatorio" }}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="tipoMovimientoId"
+                      {...field}
+                      value={field.value}
+                      options={tipoMovimientoOptions}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione tipo"
+                      className={classNames({
+                        "p-invalid": errors.tipoMovimientoId,
+                      })}
+                      filter
+                      showClear
+                      style={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.tipoMovimientoId && (
+                  <Message
+                    severity="error"
+                    text={errors.tipoMovimientoId.message}
+                  />
+                )}
+              </div>
             </div>
-          </div>
-        </div>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginBottom: "0.5rem",
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 2 }}>
-            {/* Centro de Costo */}
-            <label
-              htmlFor="centroCostoId"
-              className="block text-900 font-medium mb-2"
-            >
-              Centro de Costo *
-            </label>
-            <Controller
-              name="centroCostoId"
-              control={control}
-              rules={{ required: "El centro de costo es obligatorio" }}
-              render={({ field }) => (
-                <Dropdown
-                  id="centroCostoId"
-                  {...field}
-                  value={field.value}
-                  options={centroCostoOptions}
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Seleccione centro de costo"
-                  className={classNames({
-                    "p-invalid": errors.centroCostoId,
-                  })}
-                  filter
-                  showClear
-                  style={{ fontWeight: "bold" }}
-                  disabled={formularioDeshabilitado}
-                />
-              )}
-            />
-            {errors.centroCostoId && (
-              <Message severity="error" text={errors.centroCostoId.message} />
-            )}
-          </div>
-
-          <div style={{ flex: 3 }}>
-            {/* Descripción */}
-            <label
-              htmlFor="descripcion"
-              className="block text-900 font-medium mb-2"
-            >
-              Descripción
-            </label>
-            <Controller
-              name="descripcion"
-              control={control}
-              render={({ field }) => (
-                <InputTextarea
-                  id="descripcion"
-                  {...field}
-                  value={field.value}
-                  onChange={(e) => field.onChange(e.target.value)}
-                  rows={1}
-                  placeholder="Ingrese una descripción del movimiento"
-                  className={classNames({
-                    "p-invalid": errors.descripcion,
-                  })}
-                  style={{
-                    fontWeight: "bold",
-                    textTransform: "uppercase",
-                    color: "red",
-                  }}
-                  disabled={formularioDeshabilitado}
-                />
-              )}
-            />
-            {errors.descripcion && (
-              <Message severity="error" text={errors.descripcion.message} />
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            {/* Monto */}
-            <label htmlFor="monto" className="block text-900 font-medium mb-2">
-              Monto (S/) *
-            </label>
-            <Controller
-              name="monto"
-              control={control}
-              rules={{
-                required: "El monto es obligatorio",
-                min: { value: 0.01, message: "El monto debe ser mayor a cero" },
+            {/* Entidad Comercial */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
-              render={({ field }) => (
-                <InputNumber
-                  id="monto"
-                  value={field.value || null}
-                  onValueChange={(e) => field.onChange(e.value)}
-                  mode="currency"
-                  currency="PEN"
-                  locale="es-PE"
-                  minFractionDigits={2}
-                  maxFractionDigits={2}
-                  min={0}
-                  className={classNames({
-                    "p-invalid": errors.monto,
-                  })}
-                  inputStyle={{ fontWeight: "bold" }}
-                  disabled={formularioDeshabilitado}
-                />
-              )}
-            />
-            {errors.monto && (
-              <Message severity="error" text={errors.monto.message} />
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">
-              Estado Facturación
-            </label>
-            <Button
-              type="button"
-              label={operacionSinFactura ? "S/FACTURA" : "C/FACTURA"}
-              icon={
-                operacionSinFactura
-                  ? "pi pi-exclamation-triangle"
-                  : "pi pi-check-circle"
-              }
-              className={
-                operacionSinFactura ? "p-button-warning" : "p-button-primary"
-              }
-              onClick={handleToggleOperacionSinFactura}
-              size="small"
-              style={{ width: "100%" }}
-              disabled={formularioDeshabilitado}
-            />
-          </div>
-        </div>
-
-        {/* Sección de Comprobante PDF */}
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginBottom: "0.5rem",
-            alignItems: "end",
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 2 }}>
-            <label
-              htmlFor="urlComprobanteMovimiento"
-              className="block text-900 font-medium mb-2"
             >
-              Comprobante PDF
-            </label>
-            <Controller
-              name="urlComprobanteMovimiento"
-              control={control}
-              render={({ field }) => (
-                <InputText
-                  id="urlComprobanteMovimiento"
-                  {...field}
-                  placeholder="URL del comprobante PDF"
-                  className={classNames({
-                    "p-invalid": errors.urlComprobanteMovimiento,
-                  })}
-                  style={{ fontWeight: "bold" }}
-                  readOnly
+              <div style={{ flex: 1 }}>
+                {/* Entidad Comercial */}
+                <div className="p-field">
+                  <label htmlFor="entidadComercialId">
+                    Entidad Comercial <span className="text-red-500">*</span>
+                  </label>
+                  <Controller
+                    name="entidadComercialId"
+                    control={control}
+                    rules={{ required: "La entidad comercial es obligatoria" }}
+                    render={({ field }) => (
+                      <Dropdown
+                        {...field}
+                        options={entidadesComerciales.map((entidad) => ({
+                          label: entidad.razonSocial,
+                          value: Number(entidad.id),
+                        }))}
+                        placeholder="Seleccione una entidad comercial"
+                        className={classNames({
+                          "p-invalid": errors.entidadComercialId,
+                        })}
+                        showClear
+                        filter
+                        filterBy="label"
+                      />
+                    )}
+                  />
+                  {errors.entidadComercialId && (
+                    <Message
+                      severity="error"
+                      text={errors.entidadComercialId.message}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                {/* Centro de Costo */}
+                <label
+                  htmlFor="centroCostoId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Centro de Costo *
+                </label>
+                <Controller
+                  name="centroCostoId"
+                  control={control}
+                  rules={{ required: "El centro de costo es obligatorio" }}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="centroCostoId"
+                      {...field}
+                      value={field.value}
+                      options={centroCostoOptions}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione centro de costo"
+                      className={classNames({
+                        "p-invalid": errors.centroCostoId,
+                      })}
+                      filter
+                      showClear
+                      style={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.centroCostoId && (
+                  <Message
+                    severity="error"
+                    text={errors.centroCostoId.message}
+                  />
+                )}
+              </div>
+
+              <div style={{ flex: 3 }}>
+                {/* Descripción */}
+                <label
+                  htmlFor="descripcion"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Descripción
+                </label>
+                <Controller
+                  name="descripcion"
+                  control={control}
+                  render={({ field }) => (
+                    <InputTextarea
+                      id="descripcion"
+                      {...field}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      rows={1}
+                      placeholder="Ingrese una descripción del movimiento"
+                      className={classNames({
+                        "p-invalid": errors.descripcion,
+                      })}
+                      style={{
+                        fontWeight: "bold",
+                        textTransform: "uppercase",
+                        color: "red",
+                      }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.descripcion && (
+                  <Message severity="error" text={errors.descripcion.message} />
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                {/* Monto */}
+                <label
+                  htmlFor="monto"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Monto (S/) *
+                </label>
+                <Controller
+                  name="monto"
+                  control={control}
+                  rules={{
+                    required: "El monto es obligatorio",
+                    min: {
+                      value: 0.01,
+                      message: "El monto debe ser mayor a cero",
+                    },
+                  }}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="monto"
+                      value={field.value || null}
+                      onValueChange={(e) => field.onChange(e.value)}
+                      mode="currency"
+                      currency="PEN"
+                      locale="es-PE"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
+                      min={0}
+                      className={classNames({
+                        "p-invalid": errors.monto,
+                      })}
+                      inputStyle={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.monto && (
+                  <Message severity="error" text={errors.monto.message} />
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Estado Facturación
+                </label>
+                <Button
+                  type="button"
+                  label={operacionSinFactura ? "S/FACTURA" : "C/FACTURA"}
+                  icon={
+                    operacionSinFactura
+                      ? "pi pi-exclamation-triangle"
+                      : "pi pi-check-circle"
+                  }
+                  className={
+                    operacionSinFactura
+                      ? "p-button-warning"
+                      : "p-button-primary"
+                  }
+                  onClick={handleToggleOperacionSinFactura}
+                  size="small"
+                  style={{ width: "100%" }}
                   disabled={formularioDeshabilitado}
                 />
-              )}
-            />
-            {errors.urlComprobanteMovimiento && (
-              <Message
-                severity="error"
-                text={errors.urlComprobanteMovimiento.message}
-              />
-            )}
-          </div>
-          <div style={{ flex: 0.5 }}>
-            <div className="flex gap-2 mt-4">
-              <Button
-                type="button"
-                label="Capturar/Subir"
-                icon="pi pi-camera"
-                className="p-button-info"
-                onClick={() => setMostrarCaptura(true)}
-                size="small"
-                disabled={formularioDeshabilitado}
-              />
+              </div>
             </div>
-          </div>
-          <div style={{ flex: 0.5 }}>
-            {urlComprobanteMovimiento && (
-              <Button
-                type="button"
-                label="Ver PDF"
-                icon="pi pi-eye"
-                className="p-button-secondary"
-                onClick={handleVerPDF}
-                size="small"
-              />
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">Estado</label>
-            <Button
-              type="button"
-              label={validadoTesoreria ? "VALIDADO" : "PENDIENTE"}
-              icon={validadoTesoreria ? "pi pi-check-circle" : "pi pi-clock"}
-              className={
-                validadoTesoreria ? "p-button-primary" : "p-button-danger"
-              }
-              disabled
-              size="small"
-              style={{ width: "100%" }}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">
-              Fecha de Validación
-            </label>
-            <Controller
-              name="fechaValidacionTesoreria"
-              control={control}
-              render={({ field }) => (
+
+            {/* Sección de Comprobante PDF */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                alignItems: "end",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Estado
+                </label>
+                <Button
+                  type="button"
+                  label={validadoTesoreria ? "VALIDADO" : "PENDIENTE"}
+                  icon={
+                    validadoTesoreria ? "pi pi-check-circle" : "pi pi-clock"
+                  }
+                  className={
+                    validadoTesoreria ? "p-button-primary" : "p-button-danger"
+                  }
+                  disabled
+                  size="small"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Fecha de Validación
+                </label>
+                <Controller
+                  name="fechaValidacionTesoreria"
+                  control={control}
+                  render={({ field }) => (
+                    <InputText
+                      {...field}
+                      value={
+                        field.value
+                          ? new Date(field.value).toLocaleString("es-PE", {
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: false,
+                            })
+                          : ""
+                      }
+                      placeholder="Pendiente"
+                      readOnly
+                      disabled
+                      className="p-inputtext-sm"
+                    />
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Sección de Validación de Tesorería */}
+
+            {/* Sección Movimiento de Caja */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                alignItems: "end",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Fecha Operación Mov. Caja
+                </label>
+                <Controller
+                  name="fechaOperacionMovCaja"
+                  control={control}
+                  render={({ field }) => (
+                    <InputText
+                      value={
+                        field.value
+                          ? new Date(field.value).toLocaleString("es-PE")
+                          : ""
+                      }
+                      placeholder="Pendiente"
+                      readOnly
+                      disabled
+                      className="p-inputtext-sm"
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  ID Operación Mov. Caja
+                </label>
+                <Controller
+                  name="operacionMovCajaId"
+                  control={control}
+                  render={({ field }) => (
+                    <InputText
+                      value={field.value ? field.value.toString() : ""}
+                      placeholder="Pendiente"
+                      readOnly
+                      disabled
+                      className="p-inputtext-sm"
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Módulo Origen
+                </label>
                 <InputText
-                  {...field}
                   value={
-                    field.value
-                      ? new Date(field.value).toLocaleString("es-PE", {
-                          year: "numeric",
-                          month: "2-digit",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: false,
-                        })
+                    modulosPescaIndustrial
+                      ? `${modulosPescaIndustrial.id} - ${modulosPescaIndustrial.nombre}`
+                      : "2 - PESCA INDUSTRIAL"
+                  }
+                  readOnly
+                  disabled
+                  className="p-inputtext-sm"
+                  style={{ color: "#2196F3" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Última Actualización
+                </label>
+                <InputText
+                  value={
+                    movimiento?.actualizadoEn
+                      ? new Date(movimiento.actualizadoEn).toLocaleString(
+                          "es-PE"
+                        )
                       : ""
                   }
-                  placeholder="Pendiente"
                   readOnly
-                  disabled
                   className="p-inputtext-sm"
                 />
-              )}
-            />
-          </div>
-        </div>
-
-        {/* Sección de Validación de Tesorería */}
-
-        {/* Sección Movimiento de Caja */}
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginBottom: "0.5rem",
-            alignItems: "end",
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">
-              Fecha Operación Mov. Caja
-            </label>
-            <Controller
-              name="fechaOperacionMovCaja"
-              control={control}
-              render={({ field }) => (
-                <InputText
-                  value={
-                    field.value
-                      ? new Date(field.value).toLocaleString("es-PE")
-                      : ""
-                  }
-                  placeholder="Pendiente"
-                  readOnly
-                  disabled
-                  className="p-inputtext-sm"
-                />
-              )}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">
-              ID Operación Mov. Caja
-            </label>
-            <Controller
-              name="operacionMovCajaId"
-              control={control}
-              render={({ field }) => (
-                <InputText
-                  value={field.value ? field.value.toString() : ""}
-                  placeholder="Pendiente"
-                  readOnly
-                  disabled
-                  className="p-inputtext-sm"
-                />
-              )}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">
-              Módulo Origen
-            </label>
-            <InputText
-              value={
-                modulosPescaIndustrial
-                  ? `${modulosPescaIndustrial.id} - ${modulosPescaIndustrial.nombre}`
-                  : "2 - PESCA INDUSTRIAL"
-              }
-              readOnly
-              disabled
-              className="p-inputtext-sm"
-              style={{ color: "#2196F3" }}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">
-              Última Actualización
-            </label>
-            <InputText
-              value={
-                movimiento?.actualizadoEn
-                  ? new Date(movimiento.actualizadoEn).toLocaleString("es-PE")
-                  : ""
-              }
-              readOnly
-              className="p-inputtext-sm"
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            {!validadoTesoreria && (
-              <Button
-                type="button"
-                label={
-                  <span className="flex align-items-center gap-1">
-                    <i className="pi pi-check"></i>
-                    <i className="pi pi-dollar"></i>
-                    <span>Validar</span>
-                  </span>
-                }
-                className="p-button-danger"
-                onClick={handleValidarTesoreria}
-                size="small"
-                severity="danger"
-                disabled={formularioDeshabilitado}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Botones de acción */}
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginBottom: "0.5rem",
-            alignItems: "end",
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <Button
-              type="button"
-              label="Cancelar"
-              icon="pi pi-times"
-              className="p-button-warning"
-              size="small"
-              severity="warning"
-              onClick={onCancelar}
-              disabled={formularioDeshabilitado}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <Button
-              type="button"
-              label={isEditing ? "Actualizar" : "Crear"}
-              icon={isEditing ? "pi pi-check" : "pi pi-plus"}
-              className="p-button-success"
-              size="small"
-              severity="success"
-              onClick={handleSubmit(onSubmit)}
-              disabled={formularioDeshabilitado}
-            />
-          </div>
-        </div>
-      </form>
-
-      {/* Visor de PDF */}
-      {urlComprobanteMovimiento && (
-        <div style={{ marginTop: "1rem" }}>
-          <PDFViewer urlDocumento={urlComprobanteMovimiento} />
-        </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                {!validadoTesoreria && (
+                  <Button
+                    type="button"
+                    label={
+                      <span className="flex align-items-center gap-1">
+                        <i className="pi pi-check"></i>
+                        <i className="pi pi-dollar"></i>
+                        <span>Validar</span>
+                      </span>
+                    }
+                    className="p-button-danger"
+                    onClick={handleValidarTesoreria}
+                    size="small"
+                    severity="danger"
+                    disabled={formularioDeshabilitado}
+                  />
+                )}
+              </div>
+            </div>
+          </form>
+        </Card>
       )}
 
-      {/* Modal de captura de comprobante */}
-      {mostrarCaptura && (
-        <DocumentoCapture
-          visible={mostrarCaptura}
-          onHide={() => setMostrarCaptura(false)}
-          onDocumentoSubido={handleComprobanteSubido}
-          endpoint="/api/det-movs-entrega-rendir/upload"
-          titulo="Capturar Comprobante de Movimiento"
+      {/* Card de PDF */}
+      {cardActiva === "pdf" && (
+        <PdfDetMovEntregaRendirCard
+          control={control}
+          errors={errors}
+          urlComprobanteMovimiento={urlComprobanteMovimiento}
           toast={toast}
-          extraData={{ detMovsEntregaRendirId: movimiento?.id }}
+          setValue={setValue}
+          movimiento={movimiento} // Agregar esta línea
         />
       )}
+      {/* Botones de Cards */}
+
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          marginBottom: "0.5rem",
+          alignItems: "center",
+          marginTop: "0.5rem",
+          justifyContent: "space-between", // Agregar esta línea
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        {/* Grupo de botones de navegación - Izquierda */}
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <Button
+            icon="pi pi-file-edit"
+            className={
+              cardActiva === "datos" ? "p-button-primary" : "p-button-outlined"
+            }
+            onClick={() => setCardActiva("datos")}
+            size="small"
+            tooltip="Datos Generales"
+            raised
+          />
+          <Button
+            icon="pi pi-file-pdf"
+            className={
+              cardActiva === "pdf" ? "p-button-primary" : "p-button-outlined"
+            }
+            onClick={() => setCardActiva("pdf")}
+            size="small"
+            tooltip="Comprobante PDF"
+            raised
+          />
+        </div>
+
+        {/* Grupo de botones de acción - Derecha */}
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <Button
+            type="button"
+            label="Cancelar"
+            icon="pi pi-times"
+            className="p-button-warning"
+            size="small"
+            severity="warning"
+            onClick={onCancelar}
+            disabled={formularioDeshabilitado}
+          />
+          <Button
+            type="button"
+            label={isEditing ? "Actualizar" : "Crear"}
+            icon={isEditing ? "pi pi-check" : "pi pi-plus"}
+            className="p-button-success"
+            size="small"
+            severity="success"
+            onClick={handleSubmit(onSubmit)}
+            disabled={formularioDeshabilitado}
+          />
+        </div>
+      </div>
     </div>
   );
 };

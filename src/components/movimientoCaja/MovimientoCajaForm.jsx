@@ -12,6 +12,8 @@ export default function MovimientoCajaForm({
   defaultValues,
   onSubmit,
   onCancel,
+  onValidarMovimiento, // Agregar
+  onGenerarAsiento, // Agregar
   loading,
   centrosCosto = [],
   modulos = [],
@@ -24,18 +26,8 @@ export default function MovimientoCajaForm({
   entidadesComerciales = [],
   selectedDetMovsIds = [], // Prop existente
   detEntregasRendirSelect = [], // Nueva prop
+  estadosMultiFuncion = [], // Agregar esta línea
 }) {
-
-  // Debug: mostrar datos recibidos de DetEntregaRendir
-React.useEffect(() => {
-  if (detEntregasRendirSelect.length > 0) {
-    console.log("detEntregasRendirSelect:", detEntregasRendirSelect);
-    console.log("Monto total precargado:", defaultValues.monto);
-    console.log("Entidad comercial precargada:", defaultValues.entidadComercialId);
-    console.log("Módulo origen precargado:", defaultValues.moduloOrigenMovCajaId);
-  }
-}, [detEntregasRendirSelect, defaultValues]);
-
   const [empresaOrigenId, setEmpresaOrigenId] = React.useState(
     defaultValues.empresaOrigenId || ""
   );
@@ -45,9 +37,8 @@ React.useEffect(() => {
   const [empresaDestinoId, setEmpresaDestinoId] = React.useState(
     defaultValues.empresaDestinoId || ""
   );
-  const [cuentaCorrienteDestinoId, setCuentaCorrienteDestinoId] = React.useState(
-    defaultValues.cuentaCorrienteDestinoId || ""
-  );
+  const [cuentaCorrienteDestinoId, setCuentaCorrienteDestinoId] =
+    React.useState(defaultValues.cuentaCorrienteDestinoId || "");
   const [fecha, setFecha] = React.useState(
     defaultValues.fecha ? new Date(defaultValues.fecha) : new Date()
   );
@@ -75,28 +66,38 @@ React.useEffect(() => {
 
   // Estados para los 9 nuevos campos
   const [fechaCreacion, setFechaCreacion] = React.useState(
-    defaultValues.fechaCreacion ? new Date(defaultValues.fechaCreacion) : new Date()
+    defaultValues.fechaCreacion
+      ? new Date(defaultValues.fechaCreacion)
+      : new Date()
   );
   const [fechaActualizacion, setFechaActualizacion] = React.useState(
-    defaultValues.fechaActualizacion ? new Date(defaultValues.fechaActualizacion) : new Date()
+    defaultValues.fechaActualizacion
+      ? new Date(defaultValues.fechaActualizacion)
+      : new Date()
   );
   const [centroCostoId, setCentroCostoId] = React.useState(
     defaultValues.centroCostoId || ""
   );
-  const [moduloOrigenMotivoOperacionId, setModuloOrigenMotivoOperacionId] = React.useState(
-    defaultValues.moduloOrigenMovCajaId || defaultValues.moduloOrigenMotivoOperacionId || ""
-  );
+  const [moduloOrigenMotivoOperacionId, setModuloOrigenMotivoOperacionId] =
+    React.useState(
+      defaultValues.moduloOrigenMovCajaId ||
+        defaultValues.moduloOrigenMotivoOperacionId ||
+        ""
+    );
   const [origenMotivoOperacionId, setOrigenMotivoOperacionId] = React.useState(
     defaultValues.origenMotivoOperacionId || ""
   );
   const [fechaMotivoOperacion, setFechaMotivoOperacion] = React.useState(
-    defaultValues.fechaMotivoOperacion ? new Date(defaultValues.fechaMotivoOperacion) : null
+    defaultValues.fechaMotivoOperacion
+      ? new Date(defaultValues.fechaMotivoOperacion)
+      : null
   );
-  const [usuarioMotivoOperacionId, setUsuarioMotivoOperacionId] = React.useState(
-    defaultValues.usuarioMotivoOperacionId || ""
-  );
+  const [usuarioMotivoOperacionId, setUsuarioMotivoOperacionId] =
+    React.useState(defaultValues.usuarioMotivoOperacionId || "");
   const [fechaOperacionMovCaja, setFechaOperacionMovCaja] = React.useState(
-    defaultValues.fechaOperacionMovCaja ? new Date(defaultValues.fechaOperacionMovCaja) : new Date()
+    defaultValues.fechaOperacionMovCaja
+      ? new Date(defaultValues.fechaOperacionMovCaja)
+      : new Date()
   );
   const [operacionSinFactura, setOperacionSinFactura] = React.useState(
     defaultValues.operacionSinFactura || false
@@ -118,23 +119,81 @@ React.useEffect(() => {
     setUsuarioId(defaultValues.usuarioId || "");
     setEstadoId(defaultValues.estadoId || "");
 
-    setFechaCreacion(defaultValues.fechaCreacion ? new Date(defaultValues.fechaCreacion) : new Date());
-    setFechaActualizacion(defaultValues.fechaActualizacion ? new Date(defaultValues.fechaActualizacion) : new Date());
+    setFechaCreacion(
+      defaultValues.fechaCreacion
+        ? new Date(defaultValues.fechaCreacion)
+        : new Date()
+    );
+    setFechaActualizacion(
+      defaultValues.fechaActualizacion
+        ? new Date(defaultValues.fechaActualizacion)
+        : new Date()
+    );
     setCentroCostoId(defaultValues.centroCostoId || "");
-    setModuloOrigenMotivoOperacionId(defaultValues.moduloOrigenMotivoOperacionId || "");
+    setModuloOrigenMotivoOperacionId(
+      defaultValues.moduloOrigenMotivoOperacionId || ""
+    );
     setOrigenMotivoOperacionId(defaultValues.origenMotivoOperacionId || "");
-    setFechaMotivoOperacion(defaultValues.fechaMotivoOperacion ? new Date(defaultValues.fechaMotivoOperacion) : null);
+    setFechaMotivoOperacion(
+      defaultValues.fechaMotivoOperacion
+        ? new Date(defaultValues.fechaMotivoOperacion)
+        : null
+    );
     setUsuarioMotivoOperacionId(defaultValues.usuarioMotivoOperacionId || "");
-    setFechaOperacionMovCaja(defaultValues.fechaOperacionMovCaja ? new Date(defaultValues.fechaOperacionMovCaja) : new Date());
+    setFechaOperacionMovCaja(
+      defaultValues.fechaOperacionMovCaja
+        ? new Date(defaultValues.fechaOperacionMovCaja)
+        : new Date()
+    );
     setOperacionSinFactura(defaultValues.operacionSinFactura || false);
   }, [defaultValues]);
 
+  // Filtrar cuentas corrientes por empresa origen
+  const cuentasOrigenFiltradas = React.useMemo(() => {
+    if (!empresaOrigenId) return [];
+    return cuentasCorrientes.filter(
+      (cuenta) => Number(cuenta.empresaId) === Number(empresaOrigenId)
+    );
+  }, [cuentasCorrientes, empresaOrigenId]);
+
+  // Filtrar cuentas corrientes por empresa destino
+  const cuentasDestinoFiltradas = React.useMemo(() => {
+    if (!empresaDestinoId) return [];
+    return cuentasCorrientes.filter(
+      (cuenta) => Number(cuenta.empresaId) === Number(empresaDestinoId)
+    );
+  }, [cuentasCorrientes, empresaDestinoId]);
+
+  // Efecto para limpiar cuenta origen cuando cambie la empresa origen
+  React.useEffect(() => {
+    if (empresaOrigenId && cuentaCorrienteOrigenId) {
+      const cuentaValida = cuentasOrigenFiltradas.find(
+        (cuenta) => Number(cuenta.id) === Number(cuentaCorrienteOrigenId)
+      );
+      if (!cuentaValida) {
+        setCuentaCorrienteOrigenId("");
+      }
+    }
+  }, [empresaOrigenId, cuentaCorrienteOrigenId, cuentasOrigenFiltradas]);
+
+  // Efecto para limpiar cuenta destino cuando cambie la empresa destino
+  React.useEffect(() => {
+    if (empresaDestinoId && cuentaCorrienteDestinoId) {
+      const cuentaValida = cuentasDestinoFiltradas.find(
+        (cuenta) => Number(cuenta.id) === Number(cuentaCorrienteDestinoId)
+      );
+      if (!cuentaValida) {
+        setCuentaCorrienteDestinoId("");
+      }
+    }
+  }, [empresaDestinoId, cuentaCorrienteDestinoId, cuentasDestinoFiltradas]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     // Actualizar fechaActualizacion automáticamente
     const fechaActual = new Date();
-    
+
     onSubmit({
       empresaOrigenId: empresaOrigenId ? Number(empresaOrigenId) : null,
       cuentaCorrienteOrigenId: cuentaCorrienteOrigenId
@@ -146,7 +205,9 @@ React.useEffect(() => {
         : null,
       fecha,
       tipoMovimientoId: tipoMovimientoId ? Number(tipoMovimientoId) : null,
-      entidadComercialId: entidadComercialId ? Number(entidadComercialId) : null,
+      entidadComercialId: entidadComercialId
+        ? Number(entidadComercialId)
+        : null,
       monto,
       monedaId: monedaId ? Number(monedaId) : null,
       descripcion,
@@ -161,7 +222,9 @@ React.useEffect(() => {
       moduloOrigenMotivoOperacionId: moduloOrigenMotivoOperacionId
         ? Number(moduloOrigenMotivoOperacionId)
         : null,
-      origenMotivoOperacionId: origenMotivoOperacionId ? Number(origenMotivoOperacionId) : null,
+      origenMotivoOperacionId: origenMotivoOperacionId
+        ? Number(origenMotivoOperacionId)
+        : null,
       fechaMotivoOperacion,
       usuarioMotivoOperacionId: usuarioMotivoOperacionId
         ? Number(usuarioMotivoOperacionId)
@@ -204,8 +267,10 @@ React.useEffect(() => {
           <Dropdown
             id="cuentaCorrienteOrigenId"
             value={cuentaCorrienteOrigenId}
-            options={cuentasCorrientes.map((cuenta) => ({
-              label: cuenta.numero,
+            options={cuentasOrigenFiltradas.map((cuenta) => ({
+              label: `${cuenta.banco.nombre} - ${cuenta.numeroCuenta} - ${
+                cuenta.tipoCuentaCorriente.nombre
+              } - ${cuenta.moneda?.simbolo || "N/A"}`,
               value: cuenta.id,
             }))}
             onChange={(e) => setCuentaCorrienteOrigenId(e.value)}
@@ -217,6 +282,16 @@ React.useEffect(() => {
             style={{ fontWeight: "bold" }}
           />
         </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 24,
+          marginTop: 8,
+        }}
+      >
         <div style={{ flex: 1 }}>
           <label htmlFor="empresaDestinoId">Empresa Destino*</label>
           <Dropdown
@@ -240,8 +315,10 @@ React.useEffect(() => {
           <Dropdown
             id="cuentaCorrienteDestinoId"
             value={cuentaCorrienteDestinoId}
-            options={cuentasCorrientes.map((cuenta) => ({
-              label: cuenta.numero,
+            options={cuentasDestinoFiltradas.map((cuenta) => ({
+              label: `${cuenta.banco.nombre} - ${cuenta.numeroCuenta} - ${
+                cuenta.tipoCuentaCorriente.nombre
+              } - ${cuenta.moneda?.simbolo || "N/A"}`,
               value: cuenta.id,
             }))}
             onChange={(e) => setCuentaCorrienteDestinoId(e.value)}
@@ -254,6 +331,7 @@ React.useEffect(() => {
           />
         </div>
       </div>
+
       <div
         style={{
           display: "flex",
@@ -311,19 +389,6 @@ React.useEffect(() => {
             style={{ fontWeight: "bold" }}
           />
         </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="monto">Monto*</label>
-          <InputNumber
-            id="monto"
-            value={monto}
-            onValueChange={(e) => setMonto(e.value)}
-            mode="decimal"
-            minFractionDigits={2}
-            required
-            disabled={loading}
-            inputStyle={{ fontWeight: "bold" }}
-          />
-        </div>
       </div>
       <div
         style={{
@@ -352,13 +417,16 @@ React.useEffect(() => {
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="descripcion">Descripción</label>
-          <InputText
-            id="descripcion"
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
+          <label htmlFor="monto">Monto*</label>
+          <InputNumber
+            id="monto"
+            value={monto}
+            onValueChange={(e) => setMonto(e.value)}
+            mode="decimal"
+            minFractionDigits={2}
+            required
             disabled={loading}
-            style={{ fontWeight: "bold" }}
+            inputStyle={{ fontWeight: "bold" }}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -398,23 +466,30 @@ React.useEffect(() => {
         }}
       >
         <div style={{ flex: 1 }}>
-          <label htmlFor="usuarioId">Usuario</label>
+          <label htmlFor="descripcion">Descripción</label>
           <InputText
-            id="usuarioId"
-            value={usuarioId}
-            onChange={(e) => setUsuarioId(e.target.value)}
+            id="descripcion"
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
             disabled={loading}
             style={{ fontWeight: "bold" }}
           />
         </div>
         <div style={{ flex: 1 }}>
           <label htmlFor="estadoId">Estado*</label>
-          <InputText
+          <Dropdown
             id="estadoId"
             value={estadoId}
-            onChange={(e) => setEstadoId(e.target.value)}
+            options={estadosMultiFuncion.map((estado) => ({
+              label: estado.descripcion || `ID: ${estado.id}`,
+              value: Number(estado.id),
+            }))}
+            onChange={(e) => setEstadoId(e.value)}
+            placeholder="Seleccione estado"
             required
             disabled={loading}
+            filter
+            showClear
             style={{ fontWeight: "bold" }}
           />
         </div>
@@ -489,7 +564,9 @@ React.useEffect(() => {
             value={
               moduloOrigenMotivoOperacionId
                 ? `${moduloOrigenMotivoOperacionId} - ${
-                    modulos.find((m) => m.id === Number(moduloOrigenMotivoOperacionId))?.nombre || ""
+                    modulos.find(
+                      (m) => m.id === Number(moduloOrigenMotivoOperacionId)
+                    )?.nombre || ""
                   }`
                 : ""
             }
@@ -542,14 +619,26 @@ React.useEffect(() => {
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="usuarioMotivoOperacionId">Usuario Motivo Operación</label>
+          <label htmlFor="usuarioMotivoOperacionId">
+            Usuario Motivo Operación
+          </label>
           <InputText
             id="usuarioMotivoOperacionId"
             value={
               usuarioMotivoOperacionId
                 ? `${usuarioMotivoOperacionId} - ${
-                    personal.find((p) => p.id === Number(usuarioMotivoOperacionId))
-                      ? `${personal.find((p) => p.id === Number(usuarioMotivoOperacionId)).nombres} ${personal.find((p) => p.id === Number(usuarioMotivoOperacionId)).apellidos}`
+                    personal.find(
+                      (p) => p.id === Number(usuarioMotivoOperacionId)
+                    )
+                      ? `${
+                          personal.find(
+                            (p) => p.id === Number(usuarioMotivoOperacionId)
+                          ).nombres
+                        } ${
+                          personal.find(
+                            (p) => p.id === Number(usuarioMotivoOperacionId)
+                          ).apellidos
+                        }`
                       : ""
                   }`
                 : ""
@@ -565,8 +654,14 @@ React.useEffect(() => {
           <Button
             type="button"
             label={operacionSinFactura ? "S/FACTURA" : "C/FACTURA"}
-            icon={operacionSinFactura ? "pi pi-exclamation-triangle" : "pi pi-check-circle"}
-            className={operacionSinFactura ? "p-button-warning" : "p-button-primary"}
+            icon={
+              operacionSinFactura
+                ? "pi pi-exclamation-triangle"
+                : "pi pi-check-circle"
+            }
+            className={
+              operacionSinFactura ? "p-button-warning" : "p-button-primary"
+            }
             severity={operacionSinFactura ? "warning" : "primary"}
             onClick={() => setOperacionSinFactura(!operacionSinFactura)}
             size="small"
@@ -579,31 +674,84 @@ React.useEffect(() => {
       <div
         style={{
           display: "flex",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
+          alignItems: "center",
           gap: 8,
           marginTop: 18,
         }}
       >
-        <Button
-          type="button"
-          label="Cancelar"
-          onClick={onCancel}
-          disabled={loading}
-          className="p-button-warning"
-          severity="warning"
-          raised
-          size="small"
-        />
-        <Button
-          type="submit"
-          label={isEdit ? "Actualizar" : "Crear"}
-          icon="pi pi-save"
-          loading={loading}
-          className="p-button-success"
-          severity="success"
-          raised
-          size="small"
-        />
+        {/* Botones de acciones - Alineados a la izquierda */}
+        <div style={{ display: "flex", gap: 8 }}>
+          {/* Botón Validar Movimiento - Solo si está en estado PENDIENTE */}
+          {isEdit &&
+            estadosMultiFuncion.find(
+              (e) =>
+                Number(e.id) === Number(defaultValues.estadoId) &&
+                e.descripcion?.toUpperCase().includes("PENDIENTE")
+            ) && (
+              <Button
+                type="button"
+                label="Validar Movimiento"
+                icon="pi pi-check-circle"
+                onClick={() =>
+                  onValidarMovimiento && onValidarMovimiento(defaultValues)
+                }
+                disabled={loading}
+                className="p-button-warning"
+                severity="warning"
+                raised
+                outlined
+                size="small"
+              />
+            )}
+
+          {/* Botón Generar Asiento - Solo si está en estado VALIDADO */}
+          {isEdit &&
+            estadosMultiFuncion.find(
+              (e) =>
+                Number(e.id) === Number(defaultValues.estadoId) &&
+                e.descripcion?.toUpperCase().includes("VALIDADO")
+            ) && (
+              <Button
+                type="button"
+                label="Generar Asiento Contable"
+                icon="pi pi-file-edit"
+                onClick={() =>
+                  onGenerarAsiento && onGenerarAsiento(defaultValues)
+                }
+                disabled={loading}
+                className="p-button-info"
+                severity="info"
+                raised
+                outlined
+                size="small"
+              />
+            )}
+        </div>
+
+        {/* Botones de formulario - Alineados a la derecha */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button
+            type="button"
+            label="Cancelar"
+            onClick={onCancel}
+            disabled={loading}
+            className="p-button-warning"
+            severity="warning"
+            raised
+            size="small"
+          />
+          <Button
+            type="submit"
+            label={isEdit ? "Actualizar" : "Crear"}
+            icon="pi pi-save"
+            loading={loading}
+            className="p-button-success"
+            severity="success"
+            raised
+            size="small"
+          />
+        </div>
       </div>
     </form>
   );

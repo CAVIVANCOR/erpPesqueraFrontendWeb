@@ -22,10 +22,15 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
-import { getEstadosMultiFuncion, eliminarEstadoMultiFuncion } from "../api/estadoMultiFuncion";
+import {
+  getEstadosMultiFuncion,
+  eliminarEstadoMultiFuncion,
+} from "../api/estadoMultiFuncion";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import EstadoMultiFuncionForm from "../components/estadoMultiFuncion/EstadoMultiFuncionForm";
 import { getResponsiveFontSize } from "../utils/utils";
+import { getTiposProvieneDe } from "../api/tipoProvieneDe"; // Agregar esta línea
+import { Dropdown } from "primereact/dropdown"; // Agregar esta línea
 
 const EstadoMultiFuncion = () => {
   const [estadosMultiFuncion, setEstadosMultiFuncion] = useState([]);
@@ -37,9 +42,21 @@ const EstadoMultiFuncion = () => {
   const toast = useRef(null);
   const { usuario } = useAuthStore();
   const [globalFilter, setGlobalFilter] = useState("");
+  const [tiposProvieneDe, setTiposProvieneDe] = useState([]); // Agregar
+  const [filtroTipoProvieneDe, setFiltroTipoProvieneDe] = useState(null); // Agregar
+
+  const cargarTiposProvieneDe = async () => {
+    try {
+      const data = await getTiposProvieneDe();
+      setTiposProvieneDe(data);
+    } catch (error) {
+      console.error("Error al cargar tipos proviene de:", error);
+    }
+  };
 
   useEffect(() => {
     cargarEstadosMultiFuncion();
+    cargarTiposProvieneDe(); // Agregar esta línea
   }, []);
 
   const cargarEstadosMultiFuncion = async () => {
@@ -57,6 +74,11 @@ const EstadoMultiFuncion = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const limpiarFiltros = () => {
+    setGlobalFilter("");
+    setFiltroTipoProvieneDe(null);
   };
 
   const abrirDialogoNuevo = () => {
@@ -94,7 +116,9 @@ const EstadoMultiFuncion = () => {
     try {
       await eliminarEstadoMultiFuncion(estadoAEliminar.id);
       setEstadosMultiFuncion(
-        estadosMultiFuncion.filter((e) => Number(e.id) !== Number(estadoAEliminar.id))
+        estadosMultiFuncion.filter(
+          (e) => Number(e.id) !== Number(estadoAEliminar.id)
+        )
       );
       toast.current.show({
         severity: "success",
@@ -117,16 +141,16 @@ const EstadoMultiFuncion = () => {
 
   const idTemplate = (rowData) => {
     return (
-      <span style={{ fontWeight: "bold", color: "#1976d2" }}>
-        {rowData.id}
-      </span>
+      <span style={{ fontWeight: "bold", color: "#1976d2" }}>{rowData.id}</span>
     );
   };
 
   const descripcionTemplate = (rowData) => {
     return (
       <span style={{ fontWeight: "500" }}>
-        {rowData.descripcion || <em style={{ color: "#999" }}>Sin descripción</em>}
+        {rowData.descripcion || (
+          <em style={{ color: "#999" }}>Sin descripción</em>
+        )}
       </span>
     );
   };
@@ -134,8 +158,10 @@ const EstadoMultiFuncion = () => {
   const tipoProvieneDeTemplate = (rowData) => {
     return (
       <span>
-        {rowData.tipoProvieneDe?.nombre || rowData.tipoProvieneDe?.descripcion || 
-         <em style={{ color: "#999" }}>No especificado</em>}
+        {rowData.tipoProvieneDe?.nombre ||
+          rowData.tipoProvieneDe?.descripcion || (
+            <em style={{ color: "#999" }}>No especificado</em>
+          )}
       </span>
     );
   };
@@ -186,60 +212,105 @@ const EstadoMultiFuncion = () => {
         rowsPerPageOptions={[5, 10, 25, 50]}
         onRowClick={(e) => abrirDialogoEdicion(e.data)}
         selectionMode="single"
-        className="p-datatable-hover cursor-pointer"
+        className="p-datatable-hover cursor-pointer p-datatable-sm"
         emptyMessage="No se encontraron estados multifunción"
         globalFilter={globalFilter}
-        globalFilterFields={['descripcion', 'tipoProvieneDe.nombre', 'tipoProvieneDe.descripcion']}
+        globalFilterFields={[
+          "descripcion",
+          "tipoProvieneDe.nombre",
+          "tipoProvieneDe.descripcion",
+        ]}
+        filters={{
+          "tipoProvieneDe.id": {
+            value: filtroTipoProvieneDe ? Number(filtroTipoProvieneDe) : null,
+            matchMode: "equals",
+          },
+        }}
         header={
-          <div className="flex align-items-center gap-2">
-            <h2>Gestión de Estados Multifunción</h2>
-            <Button
-              label="Nuevo"
-              icon="pi pi-plus"
-              size="small"
-              raised
-              tooltip="Nuevo Estado Multifunción"
-              outlined
-              className="p-button-success"
-              onClick={abrirDialogoNuevo}
-            />
-            <span className="p-input-icon-left">
+          <div
+            style={{
+              alignItems: "center",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h2>Gestión de Estados Multifunción</h2>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                size="small"
+                raised
+                tooltip="Nuevo Estado Multifunción"
+                className="p-button-success"
+                severity="success"
+                onClick={abrirDialogoNuevo}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Dropdown
+                value={filtroTipoProvieneDe}
+                options={tiposProvieneDe.map((tipo) => ({
+                  label: tipo.descripcion || `ID: ${tipo.id}`,
+                  value: Number(tipo.id),
+                }))}
+                onChange={(e) => setFiltroTipoProvieneDe(e.value)}
+                placeholder="Filtrar por Tipo Proviene"
+                showClear
+                style={{ width: "200px" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
               <InputText
                 value={globalFilter}
                 onChange={(e) => setGlobalFilter(e.target.value)}
                 placeholder="Buscar estados multifunción..."
                 style={{ width: "300px" }}
               />
-            </span>
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                className="p-button-secondary"
+                size="small"
+                onClick={limpiarFiltros}
+                disabled={!globalFilter && !filtroTipoProvieneDe}
+              />
+            </div>
           </div>
         }
         scrollable
         scrollHeight="600px"
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
-        <Column 
-          field="id" 
-          header="ID" 
+        <Column
+          field="id"
+          header="ID"
           body={idTemplate}
-          sortable 
+          sortable
           style={{ width: "80px" }}
         />
-        <Column 
-          field="descripcion" 
-          header="Descripción" 
+        <Column
+          field="descripcion"
+          header="Descripción"
           body={descripcionTemplate}
-          sortable 
+          sortable
         />
-        <Column 
-          field="tipoProvieneDe" 
-          header="Tipo Proviene De" 
+        <Column
+          field="tipoProvieneDe"
+          header="Tipo Proviene De"
           body={tipoProvieneDeTemplate}
-          sortable 
+          sortable
         />
-        <Column 
-          header="Estado" 
+        <Column
+          header="Estado"
           body={cesadoTemplate}
-          sortable 
+          sortable
           style={{ width: "120px" }}
         />
         <Column
@@ -270,7 +341,9 @@ const EstadoMultiFuncion = () => {
       <ConfirmDialog
         visible={confirmVisible}
         onHide={() => setConfirmVisible(false)}
-        message={`¿Está seguro de eliminar el estado multifunción "${estadoAEliminar?.descripcion || `ID: ${estadoAEliminar?.id}`}"?`}
+        message={`¿Está seguro de eliminar el estado multifunción "${
+          estadoAEliminar?.descripcion || `ID: ${estadoAEliminar?.id}`
+        }"?`}
         header="Confirmar Eliminación"
         icon="pi pi-exclamation-triangle"
         accept={eliminar}
