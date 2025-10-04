@@ -10,6 +10,10 @@ import { Dropdown } from 'primereact/dropdown';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Toast } from 'primereact/toast';
 import { createTripulanteFaenaConsumo, updateTripulanteFaenaConsumo } from '../../api/tripulanteFaenaConsumo';
+// Importar APIs necesarias según tabla de equivalencias
+import { getFaenasPescaConsumo } from '../../api/faenaPescaConsumo';
+import { getPersonal } from '../../api/personal';
+import { getAllCargos } from '../../api/cargos';
 
 /**
  * Formulario para gestión de TripulanteFaenaConsumo
@@ -57,45 +61,47 @@ const TripulanteFaenaConsumoForm = ({ tripulante, onSave, onCancel }) => {
 
   const cargarDatosIniciales = async () => {
     try {
-      // TODO: Implementar APIs para cargar datos de combos
-      // Datos de ejemplo mientras se implementan las APIs
-      setFaenas([
-        { id: 1, descripcion: 'Faena Anchoveta - Paracas 001', fechaSalida: '2024-01-15' },
-        { id: 2, descripcion: 'Faena Jurel - Chimbote 002', fechaSalida: '2024-01-16' },
-        { id: 3, descripcion: 'Faena Caballa - Callao 003', fechaSalida: '2024-01-17' }
-      ]);
-      
-      setPersonal([
-        { id: 1, nombres: 'Carlos', apellidos: 'Mendoza García', cargo: 'Marinero' },
-        { id: 2, nombres: 'Luis', apellidos: 'Rodríguez Silva', cargo: 'Motorista' },
-        { id: 3, nombres: 'Miguel', apellidos: 'Torres López', cargo: 'Cocinero' },
-        { id: 4, nombres: 'José', apellidos: 'Vargas Ruiz', cargo: 'Patrón' },
-        { id: 5, nombres: 'Pedro', apellidos: 'García Pérez', cargo: 'Marinero' },
-        { id: 6, nombres: 'Juan', apellidos: 'López Martín', cargo: 'Pescador' }
-      ]);
+      setLoading(true);
 
-      setCargos([
-        { id: 1, nombre: 'Patrón', descripcion: 'Capitán de la embarcación' },
-        { id: 2, nombre: 'Motorista', descripcion: 'Encargado de motores' },
-        { id: 3, nombre: 'Marinero', descripcion: 'Tripulante general' },
-        { id: 4, nombre: 'Pescador', descripcion: 'Especialista en pesca' },
-        { id: 5, nombre: 'Cocinero', descripcion: 'Encargado de alimentación' },
-        { id: 6, nombre: 'Ayudante', descripcion: 'Asistente general' }
-      ]);
+      // Cargar FaenaPescaConsumo desde API
+      const faenasData = await getFaenasPescaConsumo();
+      setFaenas(faenasData.map(f => ({
+        label: `${f.id} - ${f.descripcion || `Faena ${f.id}`}`,
+        value: Number(f.id)
+      })));
+      
+      // Cargar Personal desde API
+      const personalData = await getPersonal();
+      setPersonal(personalData.map(p => ({
+        label: `${p.nombres} ${p.apellidos} - ${p.cargo?.nombre || 'Sin cargo'}`,
+        value: Number(p.id),
+        nombres: p.nombres,
+        apellidos: p.apellidos
+      })));
+
+      // Cargar Cargos desde API
+      const cargosData = await getAllCargos();
+      setCargos(cargosData.map(c => ({
+        label: `${c.nombre} - ${c.descripcion || ''}`,
+        value: Number(c.id)
+      })));
       
     } catch (error) {
+      console.error('Error al cargar datos iniciales:', error);
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
-        detail: 'Error al cargar datos iniciales'
+        detail: 'Error al cargar datos desde las APIs'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   // Auto-completar nombres cuando se selecciona personal registrado
   useEffect(() => {
     if (personalId) {
-      const personalSeleccionado = personal.find(p => p.id === personalId);
+      const personalSeleccionado = personal.find(p => p.value === personalId);
       if (personalSeleccionado) {
         reset(prev => ({
           ...prev,
@@ -171,13 +177,9 @@ const TripulanteFaenaConsumoForm = ({ tripulante, onSave, onCancel }) => {
                       id="faenaPescaConsumoId"
                       value={field.value ? Number(field.value) : null}
                       onChange={(e) => field.onChange(e.value)}
-                      options={faenas.map(f => ({ 
-                        ...f, 
-                        id: Number(f.id),
-                        nombreCompleto: `${f.id} - ${f.descripcion}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
+                      options={faenas}
+                      optionLabel="label"
+                      optionValue="value"
                       placeholder="Seleccione una faena"
                       className={errors.faenaPescaConsumoId ? 'p-invalid' : ''}
                       filter
@@ -202,13 +204,9 @@ const TripulanteFaenaConsumoForm = ({ tripulante, onSave, onCancel }) => {
                       id="personalId"
                       value={field.value ? Number(field.value) : null}
                       onChange={(e) => field.onChange(e.value)}
-                      options={personal.map(p => ({ 
-                        ...p, 
-                        id: Number(p.id),
-                        nombreCompleto: `${p.nombres} ${p.apellidos} (${p.cargo})`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
+                      options={personal}
+                      optionLabel="label"
+                      optionValue="value"
                       placeholder="Seleccione personal registrado o deje vacío para tripulante externo"
                       showClear
                       filter
@@ -233,13 +231,9 @@ const TripulanteFaenaConsumoForm = ({ tripulante, onSave, onCancel }) => {
                       id="cargoId"
                       value={field.value ? Number(field.value) : null}
                       onChange={(e) => field.onChange(e.value)}
-                      options={cargos.map(c => ({ 
-                        ...c, 
-                        id: Number(c.id),
-                        nombreCompleto: `${c.nombre} - ${c.descripcion}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
+                      options={cargos}
+                      optionLabel="label"
+                      optionValue="value"
                       placeholder="Seleccione un cargo"
                       showClear
                       filter
@@ -321,56 +315,6 @@ const TripulanteFaenaConsumoForm = ({ tripulante, onSave, onCancel }) => {
                     />
                   )}
                 />
-              </div>
-            </div>
-          </TabPanel>
-
-          {/* Pestaña 3: Resumen */}
-          <TabPanel header="Resumen">
-            <div className="grid">
-              <div className="col-12">
-                <div className="card p-4 bg-gray-50">
-                  <h5 className="mb-3">Resumen del Tripulante</h5>
-                  <div className="grid">
-                    <div className="col-6">
-                      <strong>Faena:</strong> {
-                        faenas.find(f => f.id === watch('faenaPescaConsumoId'))?.descripcion || 'Sin seleccionar'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Tipo:</strong> {
-                        personalId ? 'Personal Registrado' : 'Tripulante Externo'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Nombres:</strong> {watch('nombres') || 'Sin definir'}
-                    </div>
-                    <div className="col-6">
-                      <strong>Apellidos:</strong> {watch('apellidos') || 'Sin definir'}
-                    </div>
-                    <div className="col-6">
-                      <strong>Cargo:</strong> {
-                        cargos.find(c => c.id === watch('cargoId'))?.nombre || 'Sin asignar'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Personal Registrado:</strong> {
-                        personalId ? personal.find(p => p.id === personalId)?.nombres || 'Sí' : 'No'
-                      }
-                    </div>
-                  </div>
-                  
-                  {personalId && (
-                    <div className="mt-3 p-3 bg-blue-50 border-round">
-                      <div className="flex align-items-center">
-                        <i className="pi pi-info-circle text-blue-600 mr-2"></i>
-                        <span className="text-blue-800">
-                          Este tripulante está vinculado al personal registrado en el sistema
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           </TabPanel>

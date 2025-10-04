@@ -11,26 +11,35 @@ import { Dropdown } from 'primereact/dropdown';
 import { Calendar } from 'primereact/calendar';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Toast } from 'primereact/toast';
-import { createDescargaFaenaConsumo, updateDescargaFaenaConsumo } from '../../api/descargaFaenaConsumo';
+import { crearDescargaFaenaConsumo, actualizarDescargaFaenaConsumo } from '../../api/descargaFaenaConsumo';
+// Importar APIs necesarias según tabla de equivalencias
+import { getFaenasPescaConsumo } from '../../api/faenaPescaConsumo';
+import { getEmbarcaciones } from '../../api/embarcacion';
+import { getPuertosPesca } from '../../api/puertoPesca';
+import { getEmpresas } from '../../api/empresa';
+import { getPersonal } from '../../api/personal';
+// Importar API centralizada de estados
+import { getEstadosMultiFuncion } from '../../api/estadoMultiFuncion';
 
 /**
  * Formulario para gestión de DescargaFaenaConsumo
  * Organizado en pestañas para mejor UX
  */
 const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
-  const { control, handleSubmit, reset, watch, formState: { errors } } = useForm();
+  const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm();
   const [loading, setLoading] = useState(false);
   const [faenas, setFaenas] = useState([]);
   const [embarcaciones, setEmbarcaciones] = useState([]);
   const [puertos, setPuertos] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [personal, setPersonal] = useState([]);
+  const [estadosProducto, setEstadosProducto] = useState([]);
+  const [calidadesProducto, setCalidadesProducto] = useState([]);
+  const [estadosDescarga, setEstadosDescarga] = useState([]);
   const toast = useRef(null);
 
   const pesoTotalDescargado = watch('pesoTotalDescargado');
   const pesoTotalDeclarado = watch('pesoTotalDeclarado');
-  const latitudFondeo = watch('latitudFondeo');
-  const longitudFondeo = watch('longitudFondeo');
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -44,19 +53,21 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
         puertoDescargaId: descarga.puertoDescargaId ? Number(descarga.puertoDescargaId) : null,
         empresaId: descarga.empresaId ? Number(descarga.empresaId) : null,
         numeroDescarga: descarga.numeroDescarga || '',
-        fechaDescarga: descarga.fechaDescarga ? new Date(descarga.fechaDescarga) : null,
         pesoTotalDescargado: descarga.pesoTotalDescargado || null,
         pesoTotalDeclarado: descarga.pesoTotalDeclarado || null,
         temperaturaProducto: descarga.temperaturaProducto || null,
-        estadoProducto: descarga.estadoProducto || 'FRESCO',
-        calidadProducto: descarga.calidadProducto || 'PRIMERA',
+        estadoProductoId: descarga.estadoProductoId ? Number(descarga.estadoProductoId) : null,
+        calidadProductoId: descarga.calidadProductoId ? Number(descarga.calidadProductoId) : null,
         observaciones: descarga.observaciones || '',
-        estadoDescarga: descarga.estadoDescarga || 'PENDIENTE',
-        // Nuevos campos de fondeo
+        estadoDescargaId: descarga.estadoDescargaId ? Number(descarga.estadoDescargaId) : null,
         fechaHoraFondeo: descarga.fechaHoraFondeo ? new Date(descarga.fechaHoraFondeo) : null,
         latitudFondeo: descarga.latitudFondeo || null,
         longitudFondeo: descarga.longitudFondeo || null,
-        puertoFondeoId: descarga.puertoFondeoId ? Number(descarga.puertoFondeoId) : null
+        puertoFondeoId: descarga.puertoFondeoId ? Number(descarga.puertoFondeoId) : null,
+        fechaHoraArriboPuerto: descarga.fechaHoraArriboPuerto ? new Date(descarga.fechaHoraArriboPuerto) : null,
+        fechaHoraLlegadaPuerto: descarga.fechaHoraLlegadaPuerto ? new Date(descarga.fechaHoraLlegadaPuerto) : null,
+        fechaHoraInicioDescarga: descarga.fechaHoraInicioDescarga ? new Date(descarga.fechaHoraInicioDescarga) : null,
+        fechaHoraFinDescarga: descarga.fechaHoraFinDescarga ? new Date(descarga.fechaHoraFinDescarga) : null
       });
     } else {
       reset({
@@ -65,182 +76,174 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
         puertoDescargaId: null,
         empresaId: null,
         numeroDescarga: '',
-        fechaDescarga: new Date(),
         pesoTotalDescargado: null,
         pesoTotalDeclarado: null,
         temperaturaProducto: null,
-        estadoProducto: 'FRESCO',
-        calidadProducto: 'PRIMERA',
+        estadoProductoId: null,
+        calidadProductoId: null,
         observaciones: '',
-        estadoDescarga: 'PENDIENTE',
-        // Nuevos campos de fondeo
+        estadoDescargaId: null,
         fechaHoraFondeo: null,
         latitudFondeo: null,
         longitudFondeo: null,
-        puertoFondeoId: null
+        puertoFondeoId: null,
+        fechaHoraArriboPuerto: null,
+        fechaHoraLlegadaPuerto: null,
+        fechaHoraInicioDescarga: null,
+        fechaHoraFinDescarga: null
       });
     }
   }, [descarga, reset]);
 
   const cargarDatosIniciales = async () => {
     try {
-      setFaenas([
-        { id: 1, numeroFaena: 'FAE-2024-001', fechaInicio: '2024-01-15', embarcacion: 'Don Lucho I' },
-        { id: 2, numeroFaena: 'FAE-2024-002', fechaInicio: '2024-01-18', embarcacion: 'María del Carmen' }
-      ]);
+      setLoading(true);
 
-      setEmbarcaciones([
-        { id: 1, nombre: 'Don Lucho I', matricula: 'CO-12345-PM', tipoEmbarcacion: 'Cerquero' },
-        { id: 2, nombre: 'María del Carmen', matricula: 'CO-67890-PM', tipoEmbarcacion: 'Bolichero' }
-      ]);
+      // Cargar FaenaPescaConsumo desde API
+      const faenasData = await getFaenasPescaConsumo();
+      setFaenas(faenasData.map(f => ({
+        label: `${f.numeroFaena || `Faena ${f.id}`} - ${f.embarcacion?.nombre || ''}`,
+        value: Number(f.id)
+      })));
 
-      setPuertos([
-        { id: 1, nombre: 'Puerto de Paita', codigo: 'PAITA', region: 'Piura' },
-        { id: 2, nombre: 'Puerto de Chimbote', codigo: 'CHIMB', region: 'Áncash' }
-      ]);
+      // Cargar Embarcaciones desde API
+      const embarcacionesData = await getEmbarcaciones();
+      setEmbarcaciones(embarcacionesData.map(e => ({
+        label: `${e.nombre} - ${e.matricula || ''}`,
+        value: Number(e.id)
+      })));
 
-      setEmpresas([
-        { id: 1, razonSocial: 'Pesquera del Norte S.A.C.', nombreComercial: 'PENORTE', ruc: '20123456789' },
-        { id: 2, razonSocial: 'Industrias Marinas del Sur S.A.', nombreComercial: 'IMASUR', ruc: '20987654321' }
-      ]);
+      // Cargar Puertos desde API
+      const puertosData = await getPuertosPesca();
+      setPuertos(puertosData.map(p => ({
+        label: `${p.nombre} - ${p.codigo || ''}`,
+        value: Number(p.id)
+      })));
 
-      setPersonal([
-        { id: 1, nombres: 'Carlos', apellidos: 'Mendoza Ríos', cargo: 'Capitán' },
-        { id: 2, nombres: 'Ana', apellidos: 'García López', cargo: 'Supervisor de Descarga' }
-      ]);
+      // Cargar Empresas desde API
+      const empresasData = await getEmpresas();
+      setEmpresas(empresasData.map(e => ({
+        label: `${e.razonSocial} - ${e.ruc || ''}`,
+        value: Number(e.id)
+      })));
+
+      // Cargar Personal desde API
+      const personalData = await getPersonal();
+      setPersonal(personalData.map(p => ({
+        label: `${p.nombres} ${p.apellidos}`,
+        value: Number(p.id)
+      })));
+
+      // Cargar Estados de Producto desde EstadoMultiFuncion
+      const estadosProductoData = await getEstadosMultiFuncion('ESTADO_PRODUCTO');
+      setEstadosProducto(estadosProductoData.map(ep => ({
+        label: ep.nombre,
+        value: Number(ep.id)
+      })));
+
+      // Cargar Calidades de Producto desde EstadoMultiFuncion
+      const calidadesProductoData = await getEstadosMultiFuncion('CALIDAD_PRODUCTO');
+      setCalidadesProducto(calidadesProductoData.map(cp => ({
+        label: cp.nombre,
+        value: Number(cp.id)
+      })));
+
+      // Cargar Estados de Descarga desde EstadoMultiFuncion
+      const estadosDescargaData = await getEstadosMultiFuncion('ESTADO_DESCARGA');
+      setEstadosDescarga(estadosDescargaData.map(ed => ({
+        label: ed.nombre,
+        value: Number(ed.id)
+      })));
+
     } catch (error) {
+      console.error('Error al cargar datos iniciales:', error);
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
-        detail: 'Error al cargar datos iniciales'
+        detail: 'Error al cargar datos desde las APIs'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const calcularDiferenciaPeso = () => {
-    if (!pesoTotalDescargado || !pesoTotalDeclarado) return null;
-    return pesoTotalDescargado - pesoTotalDeclarado;
-  };
-
-  const formatearPeso = (peso) => {
-    if (!peso) return '0.00 kg';
-    return new Intl.NumberFormat('es-PE', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(peso) + ' kg';
-  };
-
-  const capturarFechaHoraActualFondeo = () => {
-    const fechaHoraActual = new Date();
-    reset(prev => ({
-      ...prev,
-      fechaHoraFondeo: fechaHoraActual
-    }));
+  // Funciones para botones de fecha automática
+  const actualizarFechaArriboPuerto = () => {
+    const ahora = new Date();
+    setValue('fechaHoraArriboPuerto', ahora);
     toast.current?.show({
-      severity: 'success',
-      summary: 'Fecha/Hora Capturada',
-      detail: `Fecha y hora de fondeo: ${fechaHoraActual.toLocaleString('es-PE')}`
+      severity: 'info',
+      summary: 'Fecha Actualizada',
+      detail: `Arribo a Puerto: ${ahora.toLocaleString('es-PE')}`
     });
   };
 
-  const capturarGPSFondeo = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          reset(prev => ({
-            ...prev,
-            latitudFondeo: latitude,
-            longitudFondeo: longitude
-          }));
-          toast.current?.show({
-            severity: 'success',
-            summary: 'GPS Capturado',
-            detail: `Coordenadas de fondeo obtenidas: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-          });
-        },
-        (error) => {
-          toast.current?.show({
-            severity: 'error',
-            summary: 'Error GPS',
-            detail: 'No se pudo obtener la ubicación GPS'
-          });
-        }
-      );
-    } else {
-      toast.current?.show({
-        severity: 'warn',
-        summary: 'GPS No Disponible',
-        detail: 'El navegador no soporta geolocalización'
-      });
-    }
+  const actualizarFechaLlegadaPuerto = () => {
+    const ahora = new Date();
+    setValue('fechaHoraLlegadaPuerto', ahora);
+    toast.current?.show({
+      severity: 'info',
+      summary: 'Fecha Actualizada',
+      detail: `Llegada a Puerto: ${ahora.toLocaleString('es-PE')}`
+    });
   };
 
-  const convertirADMS = (decimal) => {
-    if (!decimal) return '';
-    const abs = Math.abs(decimal);
-    const grados = Math.floor(abs);
-    const minutos = Math.floor((abs - grados) * 60);
-    const segundos = ((abs - grados) * 60 - minutos) * 60;
-    const direccion = decimal >= 0 ? (decimal === latitudFondeo ? 'N' : 'E') : (decimal === latitudFondeo ? 'S' : 'W');
-    return `${grados}° ${minutos}' ${segundos.toFixed(2)}" ${direccion}`;
+  const actualizarFechaInicioDescarga = () => {
+    const ahora = new Date();
+    setValue('fechaHoraInicioDescarga', ahora);
+    toast.current?.show({
+      severity: 'success',
+      summary: 'Fecha Actualizada',
+      detail: `Inicio Descarga: ${ahora.toLocaleString('es-PE')}`
+    });
+  };
+
+  const actualizarFechaFinDescarga = () => {
+    const ahora = new Date();
+    setValue('fechaHoraFinDescarga', ahora);
+    toast.current?.show({
+      severity: 'success',
+      summary: 'Fecha Actualizada',
+      detail: `Fin Descarga: ${ahora.toLocaleString('es-PE')}`
+    });
   };
 
   const onSubmit = async (data) => {
     try {
       setLoading(true);
       
-      if (!data.numeroDescarga?.trim()) {
-        toast.current?.show({
-          severity: 'warn',
-          summary: 'Validación',
-          detail: 'El número de descarga es obligatorio'
-        });
-        return;
-      }
-      
-      if (!data.pesoTotalDescargado || data.pesoTotalDescargado <= 0) {
-        toast.current?.show({
-          severity: 'warn',
-          summary: 'Validación',
-          detail: 'El peso total descargado debe ser mayor a cero'
-        });
-        return;
-      }
-      
       const payload = {
         faenaPescaConsumoId: Number(data.faenaPescaConsumoId),
-        embarcacionId: Number(data.embarcacionId),
-        puertoDescargaId: Number(data.puertoDescargaId),
-        empresaId: Number(data.empresaId),
-        numeroDescarga: data.numeroDescarga.trim(),
-        fechaDescarga: data.fechaDescarga,
-        pesoTotalDescargado: Number(data.pesoTotalDescargado),
-        pesoTotalDeclarado: data.pesoTotalDeclarado ? Number(data.pesoTotalDeclarado) : null,
-        temperaturaProducto: data.temperaturaProducto ? Number(data.temperaturaProducto) : null,
-        estadoProducto: data.estadoProducto || 'FRESCO',
-        calidadProducto: data.calidadProducto || 'PRIMERA',
+        embarcacionId: data.embarcacionId ? Number(data.embarcacionId) : null,
+        puertoDescargaId: data.puertoDescargaId ? Number(data.puertoDescargaId) : null,
+        empresaId: data.empresaId ? Number(data.empresaId) : null,
+        numeroDescarga: data.numeroDescarga?.trim() || null,
+        pesoTotalDescargado: data.pesoTotalDescargado || null,
+        pesoTotalDeclarado: data.pesoTotalDeclarado || null,
+        temperaturaProducto: data.temperaturaProducto || null,
+        estadoProductoId: data.estadoProductoId ? Number(data.estadoProductoId) : null,
+        calidadProductoId: data.calidadProductoId ? Number(data.calidadProductoId) : null,
         observaciones: data.observaciones?.trim() || null,
-        estadoDescarga: data.estadoDescarga || 'PENDIENTE',
-        // Nuevos campos de fondeo
-        fechaHoraFondeo: data.fechaHoraFondeo,
-        latitudFondeo: data.latitudFondeo,
-        longitudFondeo: data.longitudFondeo,
-        puertoFondeoId: data.puertoFondeoId ? Number(data.puertoFondeoId) : null
+        estadoDescargaId: data.estadoDescargaId ? Number(data.estadoDescargaId) : null,
+        fechaHoraFondeo: data.fechaHoraFondeo ? data.fechaHoraFondeo.toISOString() : null,
+        latitudFondeo: data.latitudFondeo || null,
+        longitudFondeo: data.longitudFondeo || null,
+        puertoFondeoId: data.puertoFondeoId ? Number(data.puertoFondeoId) : null,
+        fechaHoraArriboPuerto: data.fechaHoraArriboPuerto ? data.fechaHoraArriboPuerto.toISOString() : null,
+        fechaHoraLlegadaPuerto: data.fechaHoraLlegadaPuerto ? data.fechaHoraLlegadaPuerto.toISOString() : null,
+        fechaHoraInicioDescarga: data.fechaHoraInicioDescarga ? data.fechaHoraInicioDescarga.toISOString() : null,
+        fechaHoraFinDescarga: data.fechaHoraFinDescarga ? data.fechaHoraFinDescarga.toISOString() : null
       };
 
-      if (payload.pesoTotalDeclarado) {
-        payload.diferenciaPeso = payload.pesoTotalDescargado - payload.pesoTotalDeclarado;
-      }
       if (descarga?.id) {
-        await updateDescargaFaenaConsumo(descarga.id, payload);
+        await actualizarDescargaFaenaConsumo(descarga.id, payload);
         toast.current?.show({
           severity: 'success',
           summary: 'Éxito',
           detail: 'Descarga actualizada correctamente'
         });
       } else {
-        await createDescargaFaenaConsumo(payload);
+        await crearDescargaFaenaConsumo(payload);
         toast.current?.show({
           severity: 'success',
           summary: 'Éxito',
@@ -250,6 +253,7 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
       
       onSave();
     } catch (error) {
+      console.error('Error al guardar descarga:', error);
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
@@ -266,59 +270,13 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
       
       <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
         <TabView>
+          {/* Pestaña 1: Información General */}
           <TabPanel header="Información General">
             <div className="grid">
-              <div className="col-12 md:col-6">
-                <label htmlFor="numeroDescarga" className="block text-900 font-medium mb-2">
-                  Número de Descarga *
-                </label>
-                <Controller
-                  name="numeroDescarga"
-                  control={control}
-                  rules={{ required: 'El número de descarga es obligatorio' }}
-                  render={({ field }) => (
-                    <InputText
-                      id="numeroDescarga"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      placeholder="Ej: DESC-2024-001"
-                      className={errors.numeroDescarga ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.numeroDescarga && (
-                  <small className="p-error">{errors.numeroDescarga.message}</small>
-                )}
-              </div>
-
-              <div className="col-12 md:col-6">
-                <label htmlFor="fechaDescarga" className="block text-900 font-medium mb-2">
-                  Fecha de Descarga *
-                </label>
-                <Controller
-                  name="fechaDescarga"
-                  control={control}
-                  rules={{ required: 'La fecha de descarga es obligatoria' }}
-                  render={({ field }) => (
-                    <Calendar
-                      id="fechaDescarga"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      dateFormat="dd/mm/yy"
-                      placeholder="Seleccione fecha"
-                      className={errors.fechaDescarga ? 'p-invalid' : ''}
-                      showIcon
-                    />
-                  )}
-                />
-                {errors.fechaDescarga && (
-                  <small className="p-error">{errors.fechaDescarga.message}</small>
-                )}
-              </div>
-
+              {/* Faena de Pesca Consumo */}
               <div className="col-12">
                 <label htmlFor="faenaPescaConsumoId" className="block text-900 font-medium mb-2">
-                  Faena de Pesca *
+                  Faena de Pesca Consumo *
                 </label>
                 <Controller
                   name="faenaPescaConsumoId"
@@ -329,13 +287,9 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
                       id="faenaPescaConsumoId"
                       value={field.value ? Number(field.value) : null}
                       onChange={(e) => field.onChange(e.value)}
-                      options={faenas.map(f => ({ 
-                        ...f, 
-                        id: Number(f.id),
-                        nombreCompleto: `${f.numeroFaena} - ${f.embarcacion} (${f.fechaInicio})`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
+                      options={faenas}
+                      optionLabel="label"
+                      optionValue="value"
                       placeholder="Seleccione una faena"
                       className={errors.faenaPescaConsumoId ? 'p-invalid' : ''}
                       filter
@@ -347,102 +301,123 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
                 )}
               </div>
 
+              {/* Embarcación */}
               <div className="col-12 md:col-6">
                 <label htmlFor="embarcacionId" className="block text-900 font-medium mb-2">
-                  Embarcación *
+                  Embarcación
                 </label>
                 <Controller
                   name="embarcacionId"
                   control={control}
-                  rules={{ required: 'La embarcación es obligatoria' }}
                   render={({ field }) => (
                     <Dropdown
                       id="embarcacionId"
                       value={field.value ? Number(field.value) : null}
                       onChange={(e) => field.onChange(e.value)}
-                      options={embarcaciones.map(e => ({ 
-                        ...e, 
-                        id: Number(e.id),
-                        nombreCompleto: `${e.nombre} (${e.matricula}) - ${e.tipoEmbarcacion}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
+                      options={embarcaciones}
+                      optionLabel="label"
+                      optionValue="value"
                       placeholder="Seleccione embarcación"
-                      className={errors.embarcacionId ? 'p-invalid' : ''}
                       filter
                     />
                   )}
                 />
-                {errors.embarcacionId && (
-                  <small className="p-error">{errors.embarcacionId.message}</small>
-                )}
               </div>
 
+              {/* Puerto de Descarga */}
               <div className="col-12 md:col-6">
                 <label htmlFor="puertoDescargaId" className="block text-900 font-medium mb-2">
-                  Puerto de Descarga *
+                  Puerto de Descarga
                 </label>
                 <Controller
                   name="puertoDescargaId"
                   control={control}
-                  rules={{ required: 'El puerto es obligatorio' }}
                   render={({ field }) => (
                     <Dropdown
                       id="puertoDescargaId"
                       value={field.value ? Number(field.value) : null}
                       onChange={(e) => field.onChange(e.value)}
-                      options={puertos.map(p => ({ 
-                        ...p, 
-                        id: Number(p.id),
-                        nombreCompleto: `${p.nombre} (${p.codigo}) - ${p.region}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
+                      options={puertos}
+                      optionLabel="label"
+                      optionValue="value"
                       placeholder="Seleccione puerto"
-                      className={errors.puertoDescargaId ? 'p-invalid' : ''}
                       filter
                     />
                   )}
                 />
-                {errors.puertoDescargaId && (
-                  <small className="p-error">{errors.puertoDescargaId.message}</small>
-                )}
+              </div>
+
+              {/* Empresa */}
+              <div className="col-12 md:col-6">
+                <label htmlFor="empresaId" className="block text-900 font-medium mb-2">
+                  Empresa
+                </label>
+                <Controller
+                  name="empresaId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="empresaId"
+                      value={field.value ? Number(field.value) : null}
+                      onChange={(e) => field.onChange(e.value)}
+                      options={empresas}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione empresa"
+                      filter
+                    />
+                  )}
+                />
+              </div>
+
+              {/* Número de Descarga */}
+              <div className="col-12 md:col-6">
+                <label htmlFor="numeroDescarga" className="block text-900 font-medium mb-2">
+                  Número de Descarga
+                </label>
+                <Controller
+                  name="numeroDescarga"
+                  control={control}
+                  render={({ field }) => (
+                    <InputText
+                      id="numeroDescarga"
+                      value={field.value || ''}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      placeholder="Número de descarga"
+                    />
+                  )}
+                />
               </div>
             </div>
           </TabPanel>
 
-          <TabPanel header="Pesos y Calidad">
+          {/* Pestaña 2: Producto y Estados */}
+          <TabPanel header="Producto y Estados">
             <div className="grid">
-              <div className="col-12 md:col-4">
+              {/* Peso Total Descargado */}
+              <div className="col-12 md:col-6">
                 <label htmlFor="pesoTotalDescargado" className="block text-900 font-medium mb-2">
-                  Peso Total Descargado (kg) *
+                  Peso Total Descargado (kg)
                 </label>
                 <Controller
                   name="pesoTotalDescargado"
                   control={control}
-                  rules={{ 
-                    required: 'El peso descargado es obligatorio',
-                    min: { value: 0.01, message: 'El peso debe ser mayor a cero' }
-                  }}
                   render={({ field }) => (
                     <InputNumber
                       id="pesoTotalDescargado"
                       value={field.value}
                       onValueChange={(e) => field.onChange(e.value)}
-                      placeholder="0.00"
-                      min={0}
+                      mode="decimal"
+                      minFractionDigits={2}
                       maxFractionDigits={2}
-                      suffix=" kg"
-                      className={errors.pesoTotalDescargado ? 'p-invalid' : ''}
+                      placeholder="0.00"
                     />
                   )}
                 />
-                {errors.pesoTotalDescargado && (
-                  <small className="p-error">{errors.pesoTotalDescargado.message}</small>
-                )}
               </div>
 
-              <div className="col-12 md:col-4">
+              {/* Peso Total Declarado */}
+              <div className="col-12 md:col-6">
                 <label htmlFor="pesoTotalDeclarado" className="block text-900 font-medium mb-2">
                   Peso Total Declarado (kg)
                 </label>
@@ -454,79 +429,19 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
                       id="pesoTotalDeclarado"
                       value={field.value}
                       onValueChange={(e) => field.onChange(e.value)}
-                      placeholder="0.00"
-                      min={0}
+                      mode="decimal"
+                      minFractionDigits={2}
                       maxFractionDigits={2}
-                      suffix=" kg"
+                      placeholder="0.00"
                     />
                   )}
                 />
               </div>
 
-              <div className="col-12 md:col-4">
-                <label className="block text-900 font-medium mb-2">
-                  Diferencia de Peso (kg)
-                </label>
-                <div className="p-inputtext p-component p-filled">
-                  <span className={`font-bold ${calcularDiferenciaPeso() > 0 ? 'text-green-600' : calcularDiferenciaPeso() < 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                    {calcularDiferenciaPeso() !== null ? formatearPeso(calcularDiferenciaPeso()) : '0.00 kg'}
-                  </span>
-                </div>
-                <small className="text-blue-600">
-                  Calculado automáticamente
-                </small>
-              </div>
-
-              <div className="col-12 md:col-4">
-                <label htmlFor="estadoProducto" className="block text-900 font-medium mb-2">
-                  Estado del Producto
-                </label>
-                <Controller
-                  name="estadoProducto"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="estadoProducto"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={[
-                        { label: 'Fresco', value: 'FRESCO' },
-                        { label: 'Refrigerado', value: 'REFRIGERADO' },
-                        { label: 'Congelado', value: 'CONGELADO' }
-                      ]}
-                      placeholder="Seleccione estado"
-                    />
-                  )}
-                />
-              </div>
-
-              <div className="col-12 md:col-4">
-                <label htmlFor="calidadProducto" className="block text-900 font-medium mb-2">
-                  Calidad del Producto
-                </label>
-                <Controller
-                  name="calidadProducto"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="calidadProducto"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={[
-                        { label: 'Premium', value: 'PREMIUM' },
-                        { label: 'Primera', value: 'PRIMERA' },
-                        { label: 'Segunda', value: 'SEGUNDA' },
-                        { label: 'Tercera', value: 'TERCERA' }
-                      ]}
-                      placeholder="Seleccione calidad"
-                    />
-                  )}
-                />
-              </div>
-
+              {/* Temperatura del Producto */}
               <div className="col-12 md:col-4">
                 <label htmlFor="temperaturaProducto" className="block text-900 font-medium mb-2">
-                  Temperatura del Producto (°C)
+                  Temperatura (°C)
                 </label>
                 <Controller
                   name="temperaturaProducto"
@@ -536,14 +451,221 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
                       id="temperaturaProducto"
                       value={field.value}
                       onValueChange={(e) => field.onChange(e.value)}
-                      placeholder="0.0"
+                      mode="decimal"
+                      minFractionDigits={1}
                       maxFractionDigits={1}
-                      suffix="°C"
+                      placeholder="0.0"
+                      suffix=" °C"
                     />
                   )}
                 />
               </div>
 
+              {/* Estado del Producto */}
+              <div className="col-12 md:col-4">
+                <label htmlFor="estadoProductoId" className="block text-900 font-medium mb-2">
+                  Estado del Producto
+                </label>
+                <Controller
+                  name="estadoProductoId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="estadoProductoId"
+                      value={field.value ? Number(field.value) : null}
+                      onChange={(e) => field.onChange(e.value)}
+                      options={estadosProducto}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione estado"
+                    />
+                  )}
+                />
+              </div>
+
+              {/* Calidad del Producto */}
+              <div className="col-12 md:col-4">
+                <label htmlFor="calidadProductoId" className="block text-900 font-medium mb-2">
+                  Calidad del Producto
+                </label>
+                <Controller
+                  name="calidadProductoId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="calidadProductoId"
+                      value={field.value ? Number(field.value) : null}
+                      onChange={(e) => field.onChange(e.value)}
+                      options={calidadesProducto}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione calidad"
+                    />
+                  )}
+                />
+              </div>
+
+              {/* Estado de Descarga */}
+              <div className="col-12">
+                <label htmlFor="estadoDescargaId" className="block text-900 font-medium mb-2">
+                  Estado de Descarga
+                </label>
+                <Controller
+                  name="estadoDescargaId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="estadoDescargaId"
+                      value={field.value ? Number(field.value) : null}
+                      onChange={(e) => field.onChange(e.value)}
+                      options={estadosDescarga}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione estado de descarga"
+                    />
+                  )}
+                />
+              </div>
+            </div>
+          </TabPanel>
+
+          {/* Pestaña 3: Fechas Automáticas */}
+          <TabPanel header="Fechas Automáticas">
+            <div className="grid">
+              {/* Botones de Fecha Automática */}
+              <div className="col-12">
+                <h5 className="mb-3">Actualizar Fechas Automáticamente</h5>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Button
+                    type="button"
+                    label="Arribar a Puerto"
+                    icon="pi pi-clock"
+                    size="small"
+                    className="p-button-info"
+                    onClick={actualizarFechaArriboPuerto}
+                    disabled={loading}
+                  />
+                  <Button
+                    type="button"
+                    label="Llego a Puerto"
+                    icon="pi pi-clock"
+                    size="small"
+                    className="p-button-info"
+                    onClick={actualizarFechaLlegadaPuerto}
+                    disabled={loading}
+                  />
+                  <Button
+                    type="button"
+                    label="Iniciar Descarga"
+                    icon="pi pi-clock"
+                    size="small"
+                    className="p-button-success"
+                    onClick={actualizarFechaInicioDescarga}
+                    disabled={loading}
+                  />
+                  <Button
+                    type="button"
+                    label="Fin Descarga"
+                    icon="pi pi-clock"
+                    size="small"
+                    className="p-button-success"
+                    onClick={actualizarFechaFinDescarga}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              {/* Fechas de Puerto */}
+              <div className="col-12 md:col-6">
+                <label htmlFor="fechaHoraArriboPuerto" className="block text-900 font-medium mb-2">
+                  Fecha/Hora Arribo Puerto
+                </label>
+                <Controller
+                  name="fechaHoraArriboPuerto"
+                  control={control}
+                  render={({ field }) => (
+                    <Calendar
+                      id="fechaHoraArriboPuerto"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      placeholder="Fecha/hora arribo"
+                      dateFormat="dd/mm/yy"
+                      showTime
+                      hourFormat="24"
+                      showIcon
+                    />
+                  )}
+                />
+              </div>
+
+              <div className="col-12 md:col-6">
+                <label htmlFor="fechaHoraLlegadaPuerto" className="block text-900 font-medium mb-2">
+                  Fecha/Hora Llegada Puerto
+                </label>
+                <Controller
+                  name="fechaHoraLlegadaPuerto"
+                  control={control}
+                  render={({ field }) => (
+                    <Calendar
+                      id="fechaHoraLlegadaPuerto"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      placeholder="Fecha/hora llegada"
+                      dateFormat="dd/mm/yy"
+                      showTime
+                      hourFormat="24"
+                      showIcon
+                    />
+                  )}
+                />
+              </div>
+
+              {/* Fechas de Descarga */}
+              <div className="col-12 md:col-6">
+                <label htmlFor="fechaHoraInicioDescarga" className="block text-900 font-medium mb-2">
+                  Fecha/Hora Inicio Descarga
+                </label>
+                <Controller
+                  name="fechaHoraInicioDescarga"
+                  control={control}
+                  render={({ field }) => (
+                    <Calendar
+                      id="fechaHoraInicioDescarga"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      placeholder="Fecha/hora inicio"
+                      dateFormat="dd/mm/yy"
+                      showTime
+                      hourFormat="24"
+                      showIcon
+                    />
+                  )}
+                />
+              </div>
+
+              <div className="col-12 md:col-6">
+                <label htmlFor="fechaHoraFinDescarga" className="block text-900 font-medium mb-2">
+                  Fecha/Hora Fin Descarga
+                </label>
+                <Controller
+                  name="fechaHoraFinDescarga"
+                  control={control}
+                  render={({ field }) => (
+                    <Calendar
+                      id="fechaHoraFinDescarga"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      placeholder="Fecha/hora fin"
+                      dateFormat="dd/mm/yy"
+                      showTime
+                      hourFormat="24"
+                      showIcon
+                    />
+                  )}
+                />
+              </div>
+
+              {/* Observaciones */}
               <div className="col-12">
                 <label htmlFor="observaciones" className="block text-900 font-medium mb-2">
                   Observaciones
@@ -557,123 +679,10 @@ const DescargaFaenaConsumoForm = ({ descarga, onSave, onCancel }) => {
                       value={field.value || ''}
                       onChange={(e) => field.onChange(e.target.value)}
                       rows={4}
-                      placeholder="Observaciones sobre la descarga: condiciones, incidencias, calidad, etc."
+                      placeholder="Observaciones sobre la descarga..."
                     />
                   )}
                 />
-              </div>
-            </div>
-          </TabPanel>
-
-          <TabPanel header="Fondeo">
-            <div className="grid">
-              <div className="col-12 md:col-6">
-                <label htmlFor="fechaHoraFondeo" className="block text-900 font-medium mb-2">
-                  Fecha y Hora de Fondeo
-                </label>
-                <Controller
-                  name="fechaHoraFondeo"
-                  control={control}
-                  render={({ field }) => (
-                    <Calendar
-                      id="fechaHoraFondeo"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      dateFormat="dd/mm/yy hh:mm"
-                      placeholder="Seleccione fecha y hora"
-                      showIcon
-                    />
-                  )}
-                />
-                <Button
-                  type="button"
-                  label="Capturar Fecha/Hora Actual"
-                  icon="pi pi-clock"
-                  className="p-button-secondary"
-                  onClick={capturarFechaHoraActualFondeo}
-                />
-              </div>
-
-              <div className="col-12 md:col-6">
-                <label htmlFor="latitudFondeo" className="block text-900 font-medium mb-2">
-                  Latitud de Fondeo
-                </label>
-                <Controller
-                  name="latitudFondeo"
-                  control={control}
-                  render={({ field }) => (
-                    <InputNumber
-                      id="latitudFondeo"
-                      value={field.value}
-                      onValueChange={(e) => field.onChange(e.value)}
-                      placeholder="0.000000"
-                      maxFractionDigits={6}
-                    />
-                  )}
-                />
-                <Button
-                  type="button"
-                  label="Capturar GPS"
-                  icon="pi pi-map-marker"
-                  className="p-button-secondary"
-                  onClick={capturarGPSFondeo}
-                />
-              </div>
-
-              <div className="col-12 md:col-6">
-                <label htmlFor="longitudFondeo" className="block text-900 font-medium mb-2">
-                  Longitud de Fondeo
-                </label>
-                <Controller
-                  name="longitudFondeo"
-                  control={control}
-                  render={({ field }) => (
-                    <InputNumber
-                      id="longitudFondeo"
-                      value={field.value}
-                      onValueChange={(e) => field.onChange(e.value)}
-                      placeholder="0.000000"
-                      maxFractionDigits={6}
-                    />
-                  )}
-                />
-              </div>
-
-              <div className="col-12 md:col-6">
-                <label htmlFor="puertoFondeoId" className="block text-900 font-medium mb-2">
-                  Puerto de Fondeo
-                </label>
-                <Controller
-                  name="puertoFondeoId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="puertoFondeoId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={puertos.map(p => ({ 
-                        ...p, 
-                        id: Number(p.id),
-                        nombreCompleto: `${p.nombre} (${p.codigo}) - ${p.region}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione puerto"
-                      filter
-                    />
-                  )}
-                />
-              </div>
-
-              <div className="col-12">
-                <label className="block text-900 font-medium mb-2">
-                  Coordenadas de Fondeo (DMS)
-                </label>
-                <div className="p-inputtext p-component p-filled">
-                  <span className="font-bold">
-                    {convertirADMS(latitudFondeo)} {convertirADMS(longitudFondeo)}
-                  </span>
-                </div>
               </div>
             </div>
           </TabPanel>

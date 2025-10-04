@@ -11,7 +11,7 @@ import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Tag } from 'primereact/tag';
 import { useAuthStore } from '../shared/stores/useAuthStore';
-import { getAllDetCalaPescaConsumo, deleteDetCalaPescaConsumo } from '../api/detCalaPescaConsumo';
+import { getDetCalaPescaConsumo, eliminarDetCalaPescaConsumo } from '../api/detCalaPescaConsumo';
 import DetCalaPescaConsumoForm from '../components/detCalaPescaConsumo/DetCalaPescaConsumoForm';
 
 /**
@@ -34,7 +34,7 @@ const DetCalaPescaConsumo = () => {
   const cargarDetalles = async () => {
     try {
       setLoading(true);
-      const data = await getAllDetCalaPescaConsumo();
+      const data = await getDetCalaPescaConsumo();
       setDetalles(data);
     } catch (error) {
       toast.current?.show({
@@ -79,7 +79,7 @@ const DetCalaPescaConsumo = () => {
 
   const eliminarDetalle = async (id) => {
     try {
-      await deleteDetCalaPescaConsumo(id);
+      await eliminarDetCalaPescaConsumo(id);
       toast.current?.show({
         severity: 'success',
         summary: 'Éxito',

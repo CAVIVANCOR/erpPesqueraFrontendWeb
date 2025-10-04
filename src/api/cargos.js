@@ -16,7 +16,7 @@ function getAuthHeader() {
  * Obtiene todos los cargos para uso en combos.
  * @returns {Promise<Array>} Lista de cargos
  */
-export const getCargos = async () => {
+export const getAllCargos = async () => {
   const res = await axios.get(API_URL, { headers: getAuthHeader() });
   return res.data;
 };

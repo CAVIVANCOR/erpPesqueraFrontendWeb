@@ -11,7 +11,10 @@ import { Dropdown } from 'primereact/dropdown';
 import { Calendar } from 'primereact/calendar';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Toast } from 'primereact/toast';
-import { createDetMovsEntRendirPescaConsumo, updateDetMovsEntRendirPescaConsumo } from '../../api/detMovsEntRendirPescaConsumo';
+import { crearDetMovEntRendirPescaConsumo, actualizarDetMovEntRendirPescaConsumo } from '../../api/detMovsEntRendirPescaConsumo';
+// Importar APIs necesarias
+import { getEntregasARendirPescaConsumo } from '../../api/entregaARendirPescaConsumo';
+import { getTiposMovimiento } from '../../api/tipoMovimiento';
 
 /**
  * Formulario para gestión de DetMovsEntRendirPescaConsumo
@@ -25,9 +28,8 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const toast = useRef(null);
 
-  // Observar tipo de movimiento para cambiar UI
-  const tipoMovimiento = watch('tipoMovimiento');
-  const monto = watch('monto');
+  // Observar tipo de movimiento para mostrar información adicional
+  const tipoMovimientoSeleccionado = watch('tipoMovimientoId');
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -38,8 +40,7 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
       // Reset del formulario con datos de edición, normalizando IDs
       reset({
         entregaARendirPescaConsumoId: movimiento.entregaARendirPescaConsumoId ? Number(movimiento.entregaARendirPescaConsumoId) : null,
-        tipoMovEntregaRendirId: movimiento.tipoMovEntregaRendirId ? Number(movimiento.tipoMovEntregaRendirId) : null,
-        tipoMovimiento: movimiento.tipoMovimiento || '',
+        tipoMovimientoId: movimiento.tipoMovimientoId ? Number(movimiento.tipoMovimientoId) : null,
         concepto: movimiento.concepto || '',
         monto: movimiento.monto || 0,
         fechaMovimiento: movimiento.fechaMovimiento ? new Date(movimiento.fechaMovimiento) : new Date(),
@@ -49,8 +50,7 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
       // Reset para nuevo registro
       reset({
         entregaARendirPescaConsumoId: null,
-        tipoMovEntregaRendirId: null,
-        tipoMovimiento: '',
+        tipoMovimientoId: null,
         concepto: '',
         monto: 0,
         fechaMovimiento: new Date(),
@@ -61,32 +61,34 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
 
   const cargarDatosIniciales = async () => {
     try {
-      // TODO: Implementar APIs para cargar datos de combos
-      // Datos de ejemplo mientras se implementan las APIs
-      setEntregasARendir([
-        { id: 1, descripcion: 'Entrega Novedad Anchoveta - Enero 2024', estado: 'Pendiente' },
-        { id: 2, descripcion: 'Entrega Novedad Jurel - Enero 2024', estado: 'Liquidada' },
-        { id: 3, descripcion: 'Entrega Novedad Caballa - Enero 2024', estado: 'Pendiente' },
-        { id: 4, descripcion: 'Entrega Novedad Perico - Enero 2024', estado: 'Pendiente' }
-      ]);
+      setLoading(true);
 
-      setTiposMovimiento([
-        { id: 1, codigo: 'ING001', descripcion: 'Ingreso por Venta de Pescado', tipoMovimiento: 'INGRESO' },
-        { id: 2, codigo: 'EGR001', descripcion: 'Egreso por Combustible', tipoMovimiento: 'EGRESO' },
-        { id: 3, codigo: 'EGR002', descripcion: 'Egreso por Víveres', tipoMovimiento: 'EGRESO' },
-        { id: 4, codigo: 'EGR003', descripcion: 'Egreso por Hielo', tipoMovimiento: 'EGRESO' },
-        { id: 5, codigo: 'EGR004', descripcion: 'Egreso por Reparaciones', tipoMovimiento: 'EGRESO' },
-        { id: 6, codigo: 'TRF001', descripcion: 'Transferencia entre Entregas', tipoMovimiento: 'TRANSFERENCIA' },
-        { id: 7, codigo: 'AJU001', descripcion: 'Ajuste por Diferencia', tipoMovimiento: 'AJUSTE' },
-        { id: 8, codigo: 'ING002', descripcion: 'Ingreso por Bonificación', tipoMovimiento: 'INGRESO' }
-      ]);
+      // Cargar Entregas a Rendir desde API
+      const entregasData = await getEntregasARendirPescaConsumo();
+      setEntregasARendir(entregasData.map(entrega => ({
+        id: Number(entrega.id),
+        descripcion: entrega.descripcion || `Entrega ${entrega.id}`,
+        estado: entrega.entregaLiquidada ? 'Liquidada' : 'Pendiente'
+      })));
+
+      // Cargar Tipos de Movimiento desde API
+      const tiposData = await getTiposMovimiento();
+      setTiposMovimiento(tiposData.map(tipo => ({
+        id: Number(tipo.id),
+        codigo: tipo.codigo,
+        descripcion: tipo.descripcion,
+        tipoMovimiento: tipo.tipoMovimiento || tipo.tipo
+      })));
       
     } catch (error) {
+      console.error('Error al cargar datos iniciales:', error);
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
         detail: 'Error al cargar datos iniciales'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -100,49 +102,48 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
     return colores[tipo] || 'text-gray-600';
   };
 
-  const formatearMoneda = (valor) => {
-    if (!valor) return 'S/ 0.00';
-    return new Intl.NumberFormat('es-PE', {
-      style: 'currency',
-      currency: 'PEN'
-    }).format(valor);
-  };
-
   const onSubmit = async (data) => {
     try {
       setLoading(true);
       
-      // Validar monto
-      if (!data.monto || data.monto <= 0) {
-        toast.current?.show({
-          severity: 'warn',
-          summary: 'Validación',
-          detail: 'El monto debe ser mayor a cero'
-        });
-        return;
-      }
-      
       // Preparar payload con tipos correctos
       const payload = {
         entregaARendirPescaConsumoId: Number(data.entregaARendirPescaConsumoId),
-        tipoMovEntregaRendirId: Number(data.tipoMovEntregaRendirId),
-        tipoMovimiento: data.tipoMovimiento,
+        tipoMovimientoId: Number(data.tipoMovimientoId),
         concepto: data.concepto?.trim() || null,
         monto: Number(data.monto),
         fechaMovimiento: data.fechaMovimiento ? data.fechaMovimiento.toISOString() : new Date().toISOString(),
         observaciones: data.observaciones?.trim() || null
       };
 
+      // Validaciones adicionales
+      if (payload.monto === 0) {
+        toast.current?.show({
+          severity: 'warn',
+          summary: 'Validación',
+          detail: 'El monto debe ser diferente de cero'
+        });
+        return;
+      }
+
+      if (!payload.concepto) {
+        toast.current?.show({
+          severity: 'warn',
+          summary: 'Validación',
+          detail: 'El concepto es obligatorio'
+        });
+        return;
+      }
 
       if (movimiento?.id) {
-        await updateDetMovsEntRendirPescaConsumo(movimiento.id, payload);
+        await actualizarDetMovEntRendirPescaConsumo(movimiento.id, payload);
         toast.current?.show({
           severity: 'success',
           summary: 'Éxito',
           detail: 'Movimiento actualizado correctamente'
         });
       } else {
-        await createDetMovsEntRendirPescaConsumo(payload);
+        await crearDetMovEntRendirPescaConsumo(payload);
         toast.current?.show({
           severity: 'success',
           summary: 'Éxito',
@@ -168,8 +169,8 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
       
       <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
         <TabView>
-          {/* Pestaña 1: Información General */}
-          <TabPanel header="Información General">
+          {/* Pestaña 1: Información Principal */}
+          <TabPanel header="Información Principal">
             <div className="grid">
               {/* Entrega a Rendir */}
               <div className="col-12">
@@ -185,10 +186,10 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
                       id="entregaARendirPescaConsumoId"
                       value={field.value ? Number(field.value) : null}
                       onChange={(e) => field.onChange(e.value)}
-                      options={entregasARendir.map(ear => ({ 
-                        ...ear, 
-                        id: Number(ear.id),
-                        nombreCompleto: `${ear.id} - ${ear.descripcion} (${ear.estado})`
+                      options={entregasARendir.map(entrega => ({ 
+                        ...entrega, 
+                        id: Number(entrega.id),
+                        nombreCompleto: `${entrega.id} - ${entrega.descripcion} (${entrega.estado})`
                       }))}
                       optionLabel="nombreCompleto"
                       optionValue="id"
@@ -203,113 +204,38 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
                 )}
               </div>
 
-              {/* Tipo de Movimiento de Entrega a Rendir */}
+              {/* Tipo de Movimiento */}
               <div className="col-12">
-                <label htmlFor="tipoMovEntregaRendirId" className="block text-900 font-medium mb-2">
+                <label htmlFor="tipoMovimientoId" className="block text-900 font-medium mb-2">
                   Tipo de Movimiento *
                 </label>
                 <Controller
-                  name="tipoMovEntregaRendirId"
+                  name="tipoMovimientoId"
                   control={control}
                   rules={{ required: 'El tipo de movimiento es obligatorio' }}
                   render={({ field }) => (
                     <Dropdown
-                      id="tipoMovEntregaRendirId"
+                      id="tipoMovimientoId"
                       value={field.value ? Number(field.value) : null}
-                      onChange={(e) => {
-                        field.onChange(e.value);
-                        // Auto-completar tipo de movimiento basado en la selección
-                        const tipoSeleccionado = tiposMovimiento.find(tm => tm.id === e.value);
-                        if (tipoSeleccionado) {
-                          reset(prev => ({
-                            ...prev,
-                            tipoMovEntregaRendirId: e.value,
-                            tipoMovimiento: tipoSeleccionado.tipoMovimiento,
-                            concepto: tipoSeleccionado.descripcion
-                          }));
-                        }
-                      }}
-                      options={tiposMovimiento.map(tm => ({ 
-                        ...tm, 
-                        id: Number(tm.id),
-                        nombreCompleto: `${tm.codigo} - ${tm.descripcion} (${tm.tipoMovimiento})`
+                      onChange={(e) => field.onChange(e.value)}
+                      options={tiposMovimiento.map(tipo => ({ 
+                        ...tipo, 
+                        id: Number(tipo.id),
+                        nombreCompleto: `${tipo.codigo} - ${tipo.descripcion} (${tipo.tipoMovimiento})`
                       }))}
                       optionLabel="nombreCompleto"
                       optionValue="id"
-                      placeholder="Seleccione tipo de movimiento"
-                      className={errors.tipoMovEntregaRendirId ? 'p-invalid' : ''}
+                      placeholder="Seleccione un tipo de movimiento"
+                      className={errors.tipoMovimientoId ? 'p-invalid' : ''}
                       filter
                     />
                   )}
                 />
-                {errors.tipoMovEntregaRendirId && (
-                  <small className="p-error">{errors.tipoMovEntregaRendirId.message}</small>
+                {errors.tipoMovimientoId && (
+                  <small className="p-error">{errors.tipoMovimientoId.message}</small>
                 )}
               </div>
 
-              {/* Tipo de Movimiento (Auto-completado) */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="tipoMovimiento" className="block text-900 font-medium mb-2">
-                  Clasificación *
-                </label>
-                <Controller
-                  name="tipoMovimiento"
-                  control={control}
-                  rules={{ required: 'La clasificación es obligatoria' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="tipoMovimiento"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={[
-                        { label: 'Ingreso', value: 'INGRESO' },
-                        { label: 'Egreso', value: 'EGRESO' },
-                        { label: 'Transferencia', value: 'TRANSFERENCIA' },
-                        { label: 'Ajuste', value: 'AJUSTE' }
-                      ]}
-                      placeholder="Seleccione clasificación"
-                      className={errors.tipoMovimiento ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.tipoMovimiento && (
-                  <small className="p-error">{errors.tipoMovimiento.message}</small>
-                )}
-              </div>
-
-              {/* Fecha de Movimiento */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="fechaMovimiento" className="block text-900 font-medium mb-2">
-                  Fecha de Movimiento *
-                </label>
-                <Controller
-                  name="fechaMovimiento"
-                  control={control}
-                  rules={{ required: 'La fecha es obligatoria' }}
-                  render={({ field }) => (
-                    <Calendar
-                      id="fechaMovimiento"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      placeholder="Seleccione fecha"
-                      dateFormat="dd/mm/yy"
-                      showTime
-                      hourFormat="24"
-                      showIcon
-                      className={errors.fechaMovimiento ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.fechaMovimiento && (
-                  <small className="p-error">{errors.fechaMovimiento.message}</small>
-                )}
-              </div>
-            </div>
-          </TabPanel>
-
-          {/* Pestaña 2: Concepto y Monto */}
-          <TabPanel header="Concepto y Monto">
-            <div className="grid">
               {/* Concepto */}
               <div className="col-12">
                 <label htmlFor="concepto" className="block text-900 font-medium mb-2">
@@ -324,7 +250,7 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
                       id="concepto"
                       value={field.value || ''}
                       onChange={(e) => field.onChange(e.target.value)}
-                      placeholder="Descripción del movimiento"
+                      placeholder="Ingrese el concepto del movimiento"
                       className={errors.concepto ? 'p-invalid' : ''}
                     />
                   )}
@@ -335,16 +261,16 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
               </div>
 
               {/* Monto */}
-              <div className="col-12 md:col-6">
+              <div className="col-6">
                 <label htmlFor="monto" className="block text-900 font-medium mb-2">
-                  Monto (S/) *
+                  Monto *
                 </label>
                 <Controller
                   name="monto"
                   control={control}
                   rules={{ 
                     required: 'El monto es obligatorio',
-                    min: { value: 0.01, message: 'El monto debe ser mayor a cero' }
+                    validate: value => value !== 0 || 'El monto debe ser diferente de cero'
                   }}
                   render={({ field }) => (
                     <InputNumber
@@ -356,8 +282,6 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
                       locale="es-PE"
                       placeholder="0.00"
                       className={errors.monto ? 'p-invalid' : ''}
-                      min={0}
-                      maxFractionDigits={2}
                     />
                   )}
                 />
@@ -366,23 +290,80 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
                 )}
               </div>
 
-              {/* Vista previa del monto */}
-              {monto > 0 && (
-                <div className="col-12 md:col-6">
+              {/* Fecha del Movimiento */}
+              <div className="col-6">
+                <label htmlFor="fechaMovimiento" className="block text-900 font-medium mb-2">
+                  Fecha del Movimiento *
+                </label>
+                <Controller
+                  name="fechaMovimiento"
+                  control={control}
+                  rules={{ required: 'La fecha del movimiento es obligatoria' }}
+                  render={({ field }) => (
+                    <Calendar
+                      id="fechaMovimiento"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      placeholder="Seleccione fecha del movimiento"
+                      dateFormat="dd/mm/yy"
+                      showTime
+                      hourFormat="24"
+                      showIcon
+                      className={errors.fechaMovimiento ? 'p-invalid' : ''}
+                    />
+                  )}
+                />
+                {errors.fechaMovimiento && (
+                  <small className="p-error">{errors.fechaMovimiento.message}</small>
+                )}
+              </div>
+
+              {/* Información del Tipo de Movimiento */}
+              {tipoMovimientoSeleccionado && (
+                <div className="col-12">
                   <div className="card p-3 bg-blue-50">
-                    <h6 className="mb-2 text-blue-800">Vista Previa</h6>
-                    <div className={`text-xl font-bold ${getTipoMovimientoColor(tipoMovimiento)}`}>
-                      {tipoMovimiento === 'EGRESO' ? '- ' : '+ '}
-                      {formatearMoneda(monto)}
-                    </div>
-                    <div className="text-sm text-blue-600">
-                      {tipoMovimiento || 'Sin clasificar'}
+                    <h6 className="mb-2 text-blue-800">Información del Tipo de Movimiento</h6>
+                    <div className="grid">
+                      <div className="col-4">
+                        <strong>Código:</strong>
+                        <div className="text-lg font-bold text-blue-600">
+                          {(() => {
+                            const tipo = tiposMovimiento.find(t => t.id === tipoMovimientoSeleccionado);
+                            return tipo ? tipo.codigo : 'N/A';
+                          })()}
+                        </div>
+                      </div>
+                      <div className="col-4">
+                        <strong>Descripción:</strong>
+                        <div className="text-lg font-bold text-gray-600">
+                          {(() => {
+                            const tipo = tiposMovimiento.find(t => t.id === tipoMovimientoSeleccionado);
+                            return tipo ? tipo.descripcion : 'N/A';
+                          })()}
+                        </div>
+                      </div>
+                      <div className="col-4">
+                        <strong>Tipo:</strong>
+                        <div className={`text-lg font-bold ${(() => {
+                          const tipo = tiposMovimiento.find(t => t.id === tipoMovimientoSeleccionado);
+                          return tipo ? getTipoMovimientoColor(tipo.tipoMovimiento) : 'text-gray-600';
+                        })()}`}>
+                          {(() => {
+                            const tipo = tiposMovimiento.find(t => t.id === tipoMovimientoSeleccionado);
+                            return tipo ? tipo.tipoMovimiento : 'N/A';
+                          })()}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
+            </div>
+          </TabPanel>
 
-              {/* Observaciones */}
+          {/* Pestaña 2: Observaciones */}
+          <TabPanel header="Observaciones">
+            <div className="grid">
               <div className="col-12">
                 <label htmlFor="observaciones" className="block text-900 font-medium mb-2">
                   Observaciones
@@ -395,8 +376,8 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
                       id="observaciones"
                       value={field.value || ''}
                       onChange={(e) => field.onChange(e.target.value)}
-                      rows={4}
-                      placeholder="Observaciones adicionales sobre el movimiento..."
+                      rows={5}
+                      placeholder="Ingrese observaciones adicionales sobre el movimiento..."
                     />
                   )}
                 />
@@ -412,43 +393,59 @@ const DetMovsEntRendirPescaConsumoForm = ({ movimiento, onSave, onCancel }) => {
                   <h5 className="mb-3">Resumen del Movimiento</h5>
                   <div className="grid">
                     <div className="col-6">
-                      <strong>Entrega:</strong> {
-                        entregasARendir.find(ear => ear.id === watch('entregaARendirPescaConsumoId'))?.descripcion || 'Sin seleccionar'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Tipo:</strong> {
+                      <strong>Entrega a Rendir:</strong> {
                         (() => {
-                          const tm = tiposMovimiento.find(t => t.id === watch('tipoMovEntregaRendirId'));
-                          return tm ? `${tm.codigo} - ${tm.descripcion}` : 'Sin seleccionar';
+                          const entrega = entregasARendir.find(e => e.id === watch('entregaARendirPescaConsumoId'));
+                          return entrega ? entrega.descripcion : 'Sin seleccionar';
                         })()
                       }
                     </div>
                     <div className="col-6">
-                      <strong>Clasificación:</strong> 
-                      <span className={`ml-2 font-bold ${getTipoMovimientoColor(tipoMovimiento)}`}>
-                        {tipoMovimiento || 'Sin definir'}
-                      </span>
+                      <strong>Tipo de Movimiento:</strong> {
+                        (() => {
+                          const tipo = tiposMovimiento.find(t => t.id === watch('tipoMovimientoId'));
+                          return tipo ? `${tipo.codigo} - ${tipo.descripcion}` : 'Sin seleccionar';
+                        })()
+                      }
+                    </div>
+                    <div className="col-6">
+                      <strong>Concepto:</strong> {watch('concepto') || 'Sin especificar'}
+                    </div>
+                    <div className="col-6">
+                      <strong>Monto:</strong> {
+                        new Intl.NumberFormat('es-PE', {
+                          style: 'currency',
+                          currency: 'PEN'
+                        }).format(watch('monto') || 0)
+                      }
                     </div>
                     <div className="col-6">
                       <strong>Fecha:</strong> {
                         watch('fechaMovimiento') ? 
                         watch('fechaMovimiento').toLocaleString('es-PE') : 
-                        'Sin definir'
+                        'Sin especificar'
                       }
                     </div>
-                    <div className="col-12">
-                      <strong>Concepto:</strong> {watch('concepto') || 'Sin definir'}
+                    <div className="col-6">
+                      <strong>Clasificación:</strong> 
+                      <span className={`ml-2 font-bold ${(() => {
+                        const tipo = tiposMovimiento.find(t => t.id === watch('tipoMovimientoId'));
+                        return tipo ? getTipoMovimientoColor(tipo.tipoMovimiento) : 'text-gray-600';
+                      })()}`}>
+                        {(() => {
+                          const tipo = tiposMovimiento.find(t => t.id === watch('tipoMovimientoId'));
+                          return tipo ? tipo.tipoMovimiento : 'Sin clasificar';
+                        })()}
+                      </span>
                     </div>
-                    <div className="col-12">
-                      <div className="text-2xl font-bold">
-                        <strong>Monto:</strong> 
-                        <span className={`ml-2 ${getTipoMovimientoColor(tipoMovimiento)}`}>
-                          {tipoMovimiento === 'EGRESO' ? '- ' : '+ '}
-                          {formatearMoneda(monto)}
-                        </span>
+                    {watch('observaciones') && (
+                      <div className="col-12">
+                        <strong>Observaciones:</strong>
+                        <div className="mt-2 p-2 bg-white border-round">
+                          {watch('observaciones')}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>

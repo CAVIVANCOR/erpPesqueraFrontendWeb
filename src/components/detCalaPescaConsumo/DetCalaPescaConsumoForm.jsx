@@ -9,7 +9,10 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Toast } from 'primereact/toast';
-import { createDetCalaPescaConsumo, updateDetCalaPescaConsumo } from '../../api/detCalaPescaConsumo';
+import { crearDetCalaPescaConsumo, actualizarDetCalaPescaConsumo } from '../../api/detCalaPescaConsumo';
+// Importar APIs necesarias
+import { getCalasFaenaConsumo } from '../../api/calaFaenaConsumo';
+import { getEspecies } from '../../api/especie';
 
 /**
  * Formulario para gestión de DetCalaPescaConsumo
@@ -23,7 +26,7 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
   const [especies, setEspecies] = useState([]);
   const toast = useRef(null);
 
-  // Observar peso para calcular porcentaje automáticamente
+  // Observar cambios para cálculos automáticos
   const pesoEspecie = watch('pesoEspecie');
 
   useEffect(() => {
@@ -58,32 +61,35 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
 
   const cargarDatosIniciales = async () => {
     try {
-      // TODO: Implementar APIs para cargar datos de combos
-      // Datos de ejemplo mientras se implementan las APIs
-      setCalas([
-        { id: 1, numeroCala: 'CALA-001', faenaDescripcion: 'Faena Anchoveta - Paracas 001', pesoTotal: 1500.50 },
-        { id: 2, numeroCala: 'CALA-002', faenaDescripcion: 'Faena Jurel - Chimbote 002', pesoTotal: 2200.75 },
-        { id: 3, numeroCala: 'CALA-003', faenaDescripcion: 'Faena Caballa - Callao 003', pesoTotal: 1800.25 },
-        { id: 4, numeroCala: 'CALA-004', faenaDescripcion: 'Faena Perico - Paita 004', pesoTotal: 950.00 }
-      ]);
+      setLoading(true);
 
-      setEspecies([
-        { id: 1, nombreCientifico: 'Engraulis ringens', nombreComun: 'Anchoveta', familia: 'Engraulidae' },
-        { id: 2, nombreCientifico: 'Trachurus murphyi', nombreComun: 'Jurel', familia: 'Carangidae' },
-        { id: 3, nombreCientifico: 'Scomber japonicus', nombreComun: 'Caballa', familia: 'Scombridae' },
-        { id: 4, nombreCientifico: 'Coryphaena hippurus', nombreComun: 'Perico', familia: 'Coryphaenidae' },
-        { id: 5, nombreCientifico: 'Sarda chiliensis', nombreComun: 'Bonito', familia: 'Scombridae' },
-        { id: 6, nombreCientifico: 'Sardinops sagax', nombreComun: 'Sardina', familia: 'Clupeidae' },
-        { id: 7, nombreCientifico: 'Merluccius gayi', nombreComun: 'Merluza', familia: 'Merlucciidae' },
-        { id: 8, nombreCientifico: 'Thunnus albacares', nombreComun: 'Atún Aleta Amarilla', familia: 'Scombridae' }
-      ]);
+      // Cargar Calas desde API
+      const calasData = await getCalasFaenaConsumo();
+      setCalas(calasData.map(cala => ({
+        id: Number(cala.id),
+        numeroCala: cala.numeroCala || `CALA-${cala.id}`,
+        faenaDescripcion: cala.faenaPescaConsumo?.descripcion || `Faena ${cala.faenaPescaConsumoId}`,
+        pesoTotal: Number(cala.pesoTotal) || 0
+      })));
+
+      // Cargar Especies desde API
+      const especiesData = await getEspecies();
+      setEspecies(especiesData.map(especie => ({
+        id: Number(especie.id),
+        nombreCientifico: especie.nombreCientifico,
+        nombreComun: especie.nombreComun,
+        familia: especie.familia || 'Sin clasificar'
+      })));
       
     } catch (error) {
+      console.error('Error al cargar datos iniciales:', error);
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
         detail: 'Error al cargar datos iniciales'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -91,80 +97,66 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
     const calaSeleccionada = calas.find(c => c.id === watch('calaFaenaConsumoId'));
     if (!calaSeleccionada || !pesoEspecie || !calaSeleccionada.pesoTotal) return null;
     
-    return (pesoEspecie / calaSeleccionada.pesoTotal) * 100;
-  };
-
-  const getEstadoFrescuraColor = (estado) => {
-    const colores = {
-      'EXCELENTE': 'text-green-600',
-      'BUENO': 'text-blue-600',
-      'REGULAR': 'text-orange-600',
-      'MALO': 'text-red-600'
-    };
-    return colores[estado] || 'text-gray-600';
-  };
-
-  const formatearPeso = (peso) => {
-    if (!peso) return '0.00 kg';
-    return new Intl.NumberFormat('es-PE', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(peso) + ' kg';
-  };
-
-  const formatearPorcentaje = (porcentaje) => {
-    if (!porcentaje) return '0.00%';
-    return new Intl.NumberFormat('es-PE', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(porcentaje) + '%';
+    const porcentaje = (pesoEspecie / calaSeleccionada.pesoTotal) * 100;
+    return Math.round(porcentaje * 100) / 100; // Redondear a 2 decimales
   };
 
   const onSubmit = async (data) => {
     try {
       setLoading(true);
       
-      // Validar peso
-      if (!data.pesoEspecie || data.pesoEspecie <= 0) {
-        toast.current?.show({
-          severity: 'warn',
-          summary: 'Validación',
-          detail: 'El peso de la especie debe ser mayor a cero'
-        });
-        return;
-      }
-      
       // Preparar payload con tipos correctos
       const payload = {
         calaFaenaConsumoId: Number(data.calaFaenaConsumoId),
         especieId: Number(data.especieId),
         pesoEspecie: Number(data.pesoEspecie),
-        porcentajeEspecie: data.porcentajeEspecie ? Number(data.porcentajeEspecie) : null,
+        porcentajeEspecie: data.porcentajeEspecie ? Number(data.porcentajeEspecie) : calcularPorcentajeAutomatico(),
         tallaPromedio: data.tallaPromedio ? Number(data.tallaPromedio) : null,
-        estadoFrescura: data.estadoFrescura || null,
+        estadoFrescura: data.estadoFrescura?.trim() || null,
         observaciones: data.observaciones?.trim() || null
       };
 
-      // Si no se especificó porcentaje, calcularlo automáticamente
-      if (!payload.porcentajeEspecie) {
-        const porcentajeCalculado = calcularPorcentajeAutomatico();
-        if (porcentajeCalculado) {
-          payload.porcentajeEspecie = Number(porcentajeCalculado.toFixed(2));
-        }
+      // Validaciones adicionales
+      if (payload.pesoEspecie <= 0) {
+        toast.current?.show({
+          severity: 'warn',
+          summary: 'Validación',
+          detail: 'El peso de la especie debe ser mayor a 0'
+        });
+        return;
       }
+
+      if (payload.porcentajeEspecie && (payload.porcentajeEspecie < 0 || payload.porcentajeEspecie > 100)) {
+        toast.current?.show({
+          severity: 'warn',
+          summary: 'Validación',
+          detail: 'El porcentaje debe estar entre 0 y 100'
+        });
+        return;
+      }
+
+      if (payload.tallaPromedio && payload.tallaPromedio <= 0) {
+        toast.current?.show({
+          severity: 'warn',
+          summary: 'Validación',
+          detail: 'La talla promedio debe ser mayor a 0'
+        });
+        return;
+      }
+
       if (detalle?.id) {
-        await updateDetCalaPescaConsumo(detalle.id, payload);
+        await actualizarDetCalaPescaConsumo(detalle.id, payload);
         toast.current?.show({
           severity: 'success',
           summary: 'Éxito',
-          detail: 'Detalle actualizado correctamente'
+          detail: 'Detalle de cala actualizado correctamente'
         });
       } else {
-        await createDetCalaPescaConsumo(payload);
+        await crearDetCalaPescaConsumo(payload);
         toast.current?.show({
           severity: 'success',
           summary: 'Éxito',
-          detail: 'Detalle creado correctamente'
+          detail: 'Detalle de cala creado correctamente'
         });
       }
       
@@ -173,7 +165,7 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
-        detail: 'Error al guardar el detalle'
+        detail: 'Error al guardar el detalle de cala'
       });
     } finally {
       setLoading(false);
@@ -186,8 +178,8 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
       
       <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
         <TabView>
-          {/* Pestaña 1: Información General */}
-          <TabPanel header="Información General">
+          {/* Pestaña 1: Información Principal */}
+          <TabPanel header="Información Principal">
             <div className="grid">
               {/* Cala de Faena Consumo */}
               <div className="col-12">
@@ -197,20 +189,20 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
                 <Controller
                   name="calaFaenaConsumoId"
                   control={control}
-                  rules={{ required: 'La cala es obligatoria' }}
+                  rules={{ required: 'La cala de faena es obligatoria' }}
                   render={({ field }) => (
                     <Dropdown
                       id="calaFaenaConsumoId"
                       value={field.value ? Number(field.value) : null}
                       onChange={(e) => field.onChange(e.value)}
-                      options={calas.map(c => ({ 
-                        ...c, 
-                        id: Number(c.id),
-                        nombreCompleto: `${c.numeroCala} - ${c.faenaDescripcion} (${formatearPeso(c.pesoTotal)})`
+                      options={calas.map(cala => ({ 
+                        ...cala, 
+                        id: Number(cala.id),
+                        nombreCompleto: `${cala.numeroCala} - ${cala.faenaDescripcion} (${cala.pesoTotal} kg)`
                       }))}
                       optionLabel="nombreCompleto"
                       optionValue="id"
-                      placeholder="Seleccione una cala"
+                      placeholder="Seleccione una cala de faena"
                       className={errors.calaFaenaConsumoId ? 'p-invalid' : ''}
                       filter
                     />
@@ -235,10 +227,10 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
                       id="especieId"
                       value={field.value ? Number(field.value) : null}
                       onChange={(e) => field.onChange(e.value)}
-                      options={especies.map(e => ({ 
-                        ...e, 
-                        id: Number(e.id),
-                        nombreCompleto: `${e.nombreComun} (${e.nombreCientifico}) - ${e.familia}`
+                      options={especies.map(especie => ({ 
+                        ...especie, 
+                        id: Number(especie.id),
+                        nombreCompleto: `${especie.nombreComun} (${especie.nombreCientifico}) - ${especie.familia}`
                       }))}
                       optionLabel="nombreCompleto"
                       optionValue="id"
@@ -252,14 +244,9 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
                   <small className="p-error">{errors.especieId.message}</small>
                 )}
               </div>
-            </div>
-          </TabPanel>
 
-          {/* Pestaña 2: Peso y Porcentaje */}
-          <TabPanel header="Peso y Porcentaje">
-            <div className="grid">
               {/* Peso de la Especie */}
-              <div className="col-12 md:col-6">
+              <div className="col-6">
                 <label htmlFor="pesoEspecie" className="block text-900 font-medium mb-2">
                   Peso de la Especie (kg) *
                 </label>
@@ -267,18 +254,19 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
                   name="pesoEspecie"
                   control={control}
                   rules={{ 
-                    required: 'El peso es obligatorio',
-                    min: { value: 0.01, message: 'El peso debe ser mayor a cero' }
+                    required: 'El peso de la especie es obligatorio',
+                    min: { value: 0.01, message: 'El peso debe ser mayor a 0' }
                   }}
                   render={({ field }) => (
                     <InputNumber
                       id="pesoEspecie"
                       value={field.value}
                       onValueChange={(e) => field.onChange(e.value)}
-                      placeholder="0.00"
-                      min={0}
+                      mode="decimal"
+                      minFractionDigits={2}
                       maxFractionDigits={2}
-                      suffix=" kg"
+                      min={0}
+                      placeholder="0.00"
                       className={errors.pesoEspecie ? 'p-invalid' : ''}
                     />
                   )}
@@ -289,7 +277,7 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
               </div>
 
               {/* Porcentaje de la Especie */}
-              <div className="col-12 md:col-6">
+              <div className="col-6">
                 <label htmlFor="porcentajeEspecie" className="block text-900 font-medium mb-2">
                   Porcentaje de la Especie (%)
                 </label>
@@ -299,63 +287,25 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
                   render={({ field }) => (
                     <InputNumber
                       id="porcentajeEspecie"
-                      value={field.value}
+                      value={field.value || calcularPorcentajeAutomatico()}
                       onValueChange={(e) => field.onChange(e.value)}
-                      placeholder="0.00"
+                      mode="decimal"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
                       min={0}
                       max={100}
-                      maxFractionDigits={2}
+                      placeholder="0.00"
                       suffix="%"
                     />
                   )}
                 />
                 <small className="text-blue-600">
-                  Si no se especifica, se calculará automáticamente basado en el peso total de la cala
+                  Se calcula automáticamente si no se especifica
                 </small>
               </div>
 
-              {/* Cálculo Automático de Porcentaje */}
-              {pesoEspecie && watch('calaFaenaConsumoId') && (
-                <div className="col-12">
-                  <div className="card p-3 bg-blue-50">
-                    <h6 className="mb-2 text-blue-800">Cálculo Automático</h6>
-                    <div className="grid">
-                      <div className="col-4">
-                        <strong>Peso Especie:</strong>
-                        <div className="text-lg font-bold text-green-600">
-                          {formatearPeso(pesoEspecie)}
-                        </div>
-                      </div>
-                      <div className="col-4">
-                        <strong>Peso Total Cala:</strong>
-                        <div className="text-lg font-bold text-blue-600">
-                          {(() => {
-                            const cala = calas.find(c => c.id === watch('calaFaenaConsumoId'));
-                            return cala ? formatearPeso(cala.pesoTotal) : '0.00 kg';
-                          })()}
-                        </div>
-                      </div>
-                      <div className="col-4">
-                        <strong>Porcentaje Calculado:</strong>
-                        <div className="text-lg font-bold text-orange-600">
-                          {(() => {
-                            const porcentaje = calcularPorcentajeAutomatico();
-                            return porcentaje ? formatearPorcentaje(porcentaje) : '0.00%';
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </TabPanel>
-
-          {/* Pestaña 3: Características Biológicas */}
-          <TabPanel header="Características Biológicas">
-            <div className="grid">
               {/* Talla Promedio */}
-              <div className="col-12 md:col-6">
+              <div className="col-6">
                 <label htmlFor="tallaPromedio" className="block text-900 font-medium mb-2">
                   Talla Promedio (cm)
                 </label>
@@ -367,9 +317,11 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
                       id="tallaPromedio"
                       value={field.value}
                       onValueChange={(e) => field.onChange(e.value)}
-                      placeholder="0.0"
-                      min={0}
+                      mode="decimal"
+                      minFractionDigits={1}
                       maxFractionDigits={1}
+                      min={0}
+                      placeholder="0.0"
                       suffix=" cm"
                     />
                   )}
@@ -377,7 +329,7 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
               </div>
 
               {/* Estado de Frescura */}
-              <div className="col-12 md:col-6">
+              <div className="col-6">
                 <label htmlFor="estadoFrescura" className="block text-900 font-medium mb-2">
                   Estado de Frescura
                 </label>
@@ -400,28 +352,12 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
                   )}
                 />
               </div>
+            </div>
+          </TabPanel>
 
-              {/* Información del Estado de Frescura */}
-              {watch('estadoFrescura') && (
-                <div className="col-12">
-                  <div className="card p-3 bg-green-50">
-                    <h6 className="mb-2 text-green-800">Estado de Frescura</h6>
-                    <div className={`text-xl font-bold ${getEstadoFrescuraColor(watch('estadoFrescura'))}`}>
-                      {(() => {
-                        const estados = {
-                          'EXCELENTE': 'Excelente - Pescado fresco, ideal para consumo',
-                          'BUENO': 'Bueno - Pescado en buen estado, apto para consumo',
-                          'REGULAR': 'Regular - Pescado aceptable, requiere procesamiento rápido',
-                          'MALO': 'Malo - Pescado deteriorado, no apto para consumo humano'
-                        };
-                        return estados[watch('estadoFrescura')] || watch('estadoFrescura');
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Observaciones */}
+          {/* Pestaña 2: Observaciones */}
+          <TabPanel header="Observaciones">
+            <div className="grid">
               <div className="col-12">
                 <label htmlFor="observaciones" className="block text-900 font-medium mb-2">
                   Observaciones
@@ -434,8 +370,8 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
                       id="observaciones"
                       value={field.value || ''}
                       onChange={(e) => field.onChange(e.target.value)}
-                      rows={4}
-                      placeholder="Observaciones sobre la especie: tamaño, calidad, condiciones especiales, etc."
+                      rows={5}
+                      placeholder="Ingrese observaciones adicionales sobre el detalle de la cala..."
                     />
                   )}
                 />
@@ -443,12 +379,12 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
             </div>
           </TabPanel>
 
-          {/* Pestaña 4: Resumen */}
+          {/* Pestaña 3: Resumen */}
           <TabPanel header="Resumen">
             <div className="grid">
               <div className="col-12">
                 <div className="card p-4 bg-gray-50">
-                  <h5 className="mb-3">Resumen del Detalle de Especie</h5>
+                  <h5 className="mb-3">Resumen del Detalle de Cala</h5>
                   <div className="grid">
                     <div className="col-6">
                       <strong>Cala:</strong> {
@@ -467,28 +403,27 @@ const DetCalaPescaConsumoForm = ({ detalle, onSave, onCancel }) => {
                       }
                     </div>
                     <div className="col-6">
-                      <strong>Peso:</strong> {formatearPeso(pesoEspecie)}
+                      <strong>Peso:</strong> {watch('pesoEspecie') || 0} kg
                     </div>
                     <div className="col-6">
                       <strong>Porcentaje:</strong> {
-                        watch('porcentajeEspecie') ? 
-                        formatearPorcentaje(watch('porcentajeEspecie')) : 
-                        (calcularPorcentajeAutomatico() ? 
-                          `${formatearPorcentaje(calcularPorcentajeAutomatico())} (calculado)` : 
-                          'Sin definir')
-                      }
+                        watch('porcentajeEspecie') || calcularPorcentajeAutomatico() || 0
+                      }%
                     </div>
                     <div className="col-6">
-                      <strong>Talla Promedio:</strong> {
-                        watch('tallaPromedio') ? `${watch('tallaPromedio')} cm` : 'Sin definir'
-                      }
+                      <strong>Talla Promedio:</strong> {watch('tallaPromedio') || 'N/A'} cm
                     </div>
                     <div className="col-6">
-                      <strong>Frescura:</strong> 
-                      <span className={`ml-2 font-bold ${getEstadoFrescuraColor(watch('estadoFrescura'))}`}>
-                        {watch('estadoFrescura') || 'Sin definir'}
-                      </span>
+                      <strong>Estado de Frescura:</strong> {watch('estadoFrescura') || 'Sin especificar'}
                     </div>
+                    {watch('observaciones') && (
+                      <div className="col-12">
+                        <strong>Observaciones:</strong>
+                        <div className="mt-2 p-2 bg-white border-round">
+                          {watch('observaciones')}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

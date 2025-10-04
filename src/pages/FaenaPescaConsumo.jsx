@@ -11,7 +11,7 @@ import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Tag } from 'primereact/tag';
 import { useAuthStore } from '../shared/stores/useAuthStore';
-import { getAllFaenaPescaConsumo, deleteFaenaPescaConsumo } from '../api/faenaPescaConsumo';
+import { getFaenasPescaConsumo, eliminarFaenaPescaConsumo } from '../api/faenaPescaConsumo';
 import FaenaPescaConsumoForm from '../components/faenaPescaConsumo/FaenaPescaConsumoForm';
 
 /**
@@ -34,7 +34,7 @@ const FaenaPescaConsumo = () => {
   const cargarFaenas = async () => {
     try {
       setLoading(true);
-      const data = await getAllFaenaPescaConsumo();
+      const data = await getFaenasPescaConsumo();
       setFaenas(data);
     } catch (error) {
       toast.current?.show({
@@ -79,7 +79,7 @@ const FaenaPescaConsumo = () => {
 
   const eliminarFaena = async (id) => {
     try {
-      await deleteFaenaPescaConsumo(id);
+      await eliminarFaenaPescaConsumo(id);
       toast.current?.show({
         severity: 'success',
         summary: 'Éxito',

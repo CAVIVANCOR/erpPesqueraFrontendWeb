@@ -11,7 +11,9 @@ import { Dropdown } from 'primereact/dropdown';
 import { Calendar } from 'primereact/calendar';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Toast } from 'primereact/toast';
-import { createCalaFaenaConsumo, updateCalaFaenaConsumo } from '../../api/calaFaenaConsumo';
+import { crearCalaFaenaConsumo, actualizarCalaFaenaConsumo } from '../../api/calaFaenaConsumo';
+// Importar API necesaria según tabla de equivalencias
+import { getFaenasPescaConsumo } from '../../api/faenaPescaConsumo';
 
 /**
  * Formulario para gestión de CalaFaenaConsumo
@@ -66,21 +68,28 @@ const CalaFaenaConsumoForm = ({ cala, onSave, onCancel }) => {
 
   const cargarDatosIniciales = async () => {
     try {
-      // TODO: Implementar APIs para cargar datos de combos
-      // Datos de ejemplo mientras se implementan las APIs
-      setFaenas([
-        { id: 1, descripcion: 'Faena Anchoveta - Paracas 001', fechaSalida: '2024-01-15', embarcacion: 'Don José I' },
-        { id: 2, descripcion: 'Faena Jurel - Chimbote 002', fechaSalida: '2024-01-16', embarcacion: 'María Fernanda' },
-        { id: 3, descripcion: 'Faena Caballa - Callao 003', fechaSalida: '2024-01-17', embarcacion: 'San Pedro II' },
-        { id: 4, descripcion: 'Faena Perico - Paita 004', fechaSalida: '2024-01-18', embarcacion: 'Estrella del Mar' }
-      ]);
+      setLoading(true);
+
+      // Cargar FaenaPescaConsumo desde API
+      const faenasData = await getFaenasPescaConsumo();
+      const faenasFormateadas = faenasData.map(f => ({
+        id: Number(f.id),
+        descripcion: f.descripcion || `Faena ${f.id}`,
+        fechaSalida: f.fechaSalida,
+        embarcacion: f.embarcacion?.nombre || 'Sin embarcación',
+        nombreCompleto: `${f.id} - ${f.descripcion || `Faena ${f.id}`} (${f.embarcacion?.nombre || 'Sin embarcación'})`
+      }));
+      setFaenas(faenasFormateadas);
       
     } catch (error) {
+      console.error('Error al cargar datos iniciales:', error);
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
-        detail: 'Error al cargar datos iniciales'
+        detail: 'Error al cargar datos desde las APIs'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -168,14 +177,14 @@ const CalaFaenaConsumoForm = ({ cala, onSave, onCancel }) => {
         observaciones: data.observaciones?.trim() || null
       };
       if (cala?.id) {
-        await updateCalaFaenaConsumo(cala.id, payload);
+        await actualizarCalaFaenaConsumo(cala.id, payload);
         toast.current?.show({
           severity: 'success',
           summary: 'Éxito',
           detail: 'Cala actualizada correctamente'
         });
       } else {
-        await createCalaFaenaConsumo(payload);
+        await crearCalaFaenaConsumo(payload);
         toast.current?.show({
           severity: 'success',
           summary: 'Éxito',
@@ -218,11 +227,7 @@ const CalaFaenaConsumoForm = ({ cala, onSave, onCancel }) => {
                       id="faenaPescaConsumoId"
                       value={field.value ? Number(field.value) : null}
                       onChange={(e) => field.onChange(e.value)}
-                      options={faenas.map(f => ({ 
-                        ...f, 
-                        id: Number(f.id),
-                        nombreCompleto: `${f.id} - ${f.descripcion} (${f.embarcacion})`
-                      }))}
+                      options={faenas}
                       optionLabel="nombreCompleto"
                       optionValue="id"
                       placeholder="Seleccione una faena"

@@ -1,74 +1,76 @@
-import axios from 'axios';
-import { useAuthStore } from '../shared/stores/useAuthStore';
+// src/api/detCalaPescaConsumo.js
+// Funciones de integración API REST para DetCalaPescaConsumo. Usa JWT desde Zustand.
+// Documentado en español técnico.
 
-const API_URL = import.meta.env.VITE_API_URL;
+import axios from "axios";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/det-cala-pesca-consumo`;
 
 /**
- * API para gestión de Detalle Cala Pesca Consumo
- * Proporciona funciones para operaciones CRUD en el módulo de detalles de calas de pesca de consumo
+ * Obtiene el token JWT profesionalmente desde Zustand
  */
-
-/**
- * Obtiene todos los detalles de calas de pesca de consumo
- * @returns {Promise} Lista de detalles de calas de pesca de consumo
- */
-export const getAllDetCalaPescaConsumo = async () => {
+function getAuthHeaders() {
   const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/det-cala-pesca-consumo`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+  return { Authorization: `Bearer ${token}` };
+}
 
 /**
- * Crea un nuevo detalle de cala de pesca de consumo
- * @param {Object} detCalaPescaConsumoData - Datos del detalle de cala de pesca de consumo
- * @returns {Promise} Detalle de cala de pesca de consumo creado
+ * Obtiene todos los detalles de cala de pesca consumo
+ * @returns {Promise} Lista de detalles de cala de pesca consumo
  */
-export const crearDetCalaPescaConsumo = async (detCalaPescaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/det-cala-pesca-consumo`, detCalaPescaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function getDetCalaPescaConsumo() {
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  return res.data;
+}
 
 /**
- * Actualiza un detalle de cala de pesca de consumo existente
- * @param {number} id - ID del detalle de cala de pesca de consumo
- * @param {Object} detCalaPescaConsumoData - Datos actualizados
- * @returns {Promise} Detalle de cala de pesca de consumo actualizado
+ * Obtiene un detalle de cala de pesca consumo por su ID
+ * @param {number} id - ID del detalle de cala de pesca consumo
+ * @returns {Promise} Detalle de cala de pesca consumo
  */
-export const actualizarDetCalaPescaConsumo = async (id, detCalaPescaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/det-cala-pesca-consumo/${id}`, detCalaPescaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function getDetCalaPescaConsumoPorId(id) {
+  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
 
 /**
- * Elimina un detalle de cala de pesca de consumo
- * @param {number} id - ID del detalle de cala de pesca de consumo a eliminar
+ * Crea un nuevo detalle de cala de pesca consumo
+ * @param {Object} data - Datos del detalle de cala de pesca consumo
+ * @returns {Promise} Detalle de cala de pesca consumo creado
+ */
+export async function crearDetCalaPescaConsumo(data) {
+  const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Actualiza un detalle de cala de pesca consumo existente
+ * @param {number} id - ID del detalle de cala de pesca consumo
+ * @param {Object} data - Datos actualizados
+ * @returns {Promise} Detalle de cala de pesca consumo actualizado
+ */
+export async function actualizarDetCalaPescaConsumo(id, data) {
+  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Elimina un detalle de cala de pesca consumo
+ * @param {number} id - ID del detalle de cala de pesca consumo a eliminar
  * @returns {Promise} Confirmación de eliminación
  */
-export const deleteDetCalaPescaConsumo = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/det-cala-pesca-consumo/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function eliminarDetCalaPescaConsumo(id) {
+  const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
 
-// Aliases en inglés para compatibilidad
-export const createDetCalaPescaConsumo = crearDetCalaPescaConsumo;
-export const updateDetCalaPescaConsumo = actualizarDetCalaPescaConsumo;
-export const eliminarDetCalaPescaConsumo = deleteDetCalaPescaConsumo;
+/**
+ * Obtiene todos los detalles de cala de pesca consumo por cala específica
+ * @param {number} calaId - ID de la cala de faena consumo
+ * @returns {Promise} Lista de detalles de la cala
+ */
+export async function getDetCalaPescaConsumoPorCala(calaId) {
+  const res = await axios.get(`${API_URL}/cala/${calaId}`, { headers: getAuthHeaders() });
+  return res.data;
+}

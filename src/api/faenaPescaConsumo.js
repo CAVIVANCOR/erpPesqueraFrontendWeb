@@ -1,74 +1,84 @@
-import axios from 'axios';
-import { useAuthStore } from '../shared/stores/useAuthStore';
+// src/api/faenaPescaConsumo.js
+// Funciones de integración API REST para FaenaPescaConsumo. Usa JWT desde Zustand.
+// Documentado en español técnico.
 
-const API_URL = import.meta.env.VITE_API_URL;
+import axios from "axios";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/faenas-pesca-consumo`;
 
 /**
- * API para gestión de Faena Pesca Consumo
- * Proporciona funciones para operaciones CRUD en el módulo de faenas de pesca de consumo
+ * Obtiene el token JWT profesionalmente desde Zustand
  */
-
-/**
- * Obtiene todas las faenas de pesca de consumo
- * @returns {Promise} Lista de faenas de pesca de consumo
- */
-export const getAllFaenaPescaConsumo = async () => {
+function getAuthHeaders() {
   const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/faena-pesca-consumo`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+  return { Authorization: `Bearer ${token}` };
+}
 
 /**
- * Crea una nueva faena de pesca de consumo
- * @param {Object} faenaPescaConsumoData - Datos de la faena de pesca de consumo
- * @returns {Promise} Faena de pesca de consumo creada
+ * Obtiene todas las faenas de pesca consumo
+ * @returns {Promise} Lista de faenas de pesca consumo
  */
-export const crearFaenaPescaConsumo = async (faenaPescaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/faena-pesca-consumo`, faenaPescaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function getFaenasPescaConsumo() {
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  return res.data;
+}
 
 /**
- * Actualiza una faena de pesca de consumo existente
- * @param {number} id - ID de la faena de pesca de consumo
- * @param {Object} faenaPescaConsumoData - Datos actualizados
- * @returns {Promise} Faena de pesca de consumo actualizada
+ * Obtiene una faena de pesca consumo por su ID
+ * @param {number} id - ID de la faena de pesca consumo
+ * @returns {Promise} Faena de pesca consumo
  */
-export const actualizarFaenaPescaConsumo = async (id, faenaPescaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/faena-pesca-consumo/${id}`, faenaPescaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function getFaenaPescaConsumoPorId(id) {
+  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
 
 /**
- * Elimina una faena de pesca de consumo
- * @param {number} id - ID de la faena de pesca de consumo a eliminar
+ * Crea una nueva faena de pesca consumo
+ * @param {Object} data - Datos de la faena de pesca consumo
+ * @returns {Promise} Faena de pesca consumo creada
+ */
+export async function crearFaenaPescaConsumo(data) {
+  const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Actualiza una faena de pesca consumo existente
+ * @param {number} id - ID de la faena de pesca consumo
+ * @param {Object} data - Datos actualizados
+ * @returns {Promise} Faena de pesca consumo actualizada
+ */
+export async function actualizarFaenaPescaConsumo(id, data) {
+  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Elimina una faena de pesca consumo
+ * @param {number} id - ID de la faena de pesca consumo a eliminar
  * @returns {Promise} Confirmación de eliminación
  */
-export const deleteFaenaPescaConsumo = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/faena-pesca-consumo/${id}`, {
+export async function eliminarFaenaPescaConsumo(id) {
+  const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Sube documento de faena de pesca consumo
+ * @param {File} file - Archivo a subir
+ * @returns {Promise} Respuesta con URL del documento subido
+ */
+export async function subirDocumentoFaenaConsumo(file) {
+  const formData = new FormData();
+  formData.append('informeFaena', file);
+  const API_DOCUMENTO = `${import.meta.env.VITE_API_URL}/faena-pesca-consumo-documento/upload`;
+  const res = await axios.post(API_DOCUMENTO, formData, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      ...getAuthHeaders(),
+      'Content-Type': 'multipart/form-data',
     },
   });
-  return response.data;
-};
-
-// Aliases en inglés para compatibilidad
-export const createFaenaPescaConsumo = crearFaenaPescaConsumo;
-export const updateFaenaPescaConsumo = actualizarFaenaPescaConsumo;
-export const eliminarFaenaPescaConsumo = deleteFaenaPescaConsumo;
+  return res.data;
+}

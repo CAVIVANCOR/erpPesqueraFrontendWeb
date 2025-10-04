@@ -11,7 +11,7 @@ import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Tag } from 'primereact/tag';
 import { useAuthStore } from '../shared/stores/useAuthStore';
-import { getAllEntregaARendirPescaConsumo, deleteEntregaARendirPescaConsumo } from '../api/entregaARendirPescaConsumo';
+import { getEntregasARendirPescaConsumo, eliminarEntregaARendirPescaConsumo } from '../api/entregaARendirPescaConsumo';
 import EntregaARendirPescaConsumoForm from '../components/entregaARendirPescaConsumo/EntregaARendirPescaConsumoForm';
 
 /**
@@ -34,7 +34,7 @@ const EntregaARendirPescaConsumo = () => {
   const cargarEntregas = async () => {
     try {
       setLoading(true);
-      const data = await getAllEntregaARendirPescaConsumo();
+      const data = await getEntregasARendirPescaConsumo();
       setEntregas(data);
     } catch (error) {
       toast.current?.show({
@@ -79,7 +79,7 @@ const EntregaARendirPescaConsumo = () => {
 
   const eliminarEntrega = async (id) => {
     try {
-      await deleteEntregaARendirPescaConsumo(id);
+      await eliminarEntregaARendirPescaConsumo(id);
       toast.current?.show({
         severity: 'success',
         summary: 'Éxito',

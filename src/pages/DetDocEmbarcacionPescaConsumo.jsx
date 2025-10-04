@@ -11,7 +11,7 @@ import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Tag } from 'primereact/tag';
 import { useAuthStore } from '../shared/stores/useAuthStore';
-import { getAllDetDocEmbarcacionPescaConsumo, deleteDetDocEmbarcacionPescaConsumo } from '../api/detDocEmbarcacionPescaConsumo';
+import { getDetDocEmbarcacionPescaConsumo, eliminarDetDocEmbarcacionPescaConsumo } from '../api/detDocEmbarcacionPescaConsumo';
 import DetDocEmbarcacionPescaConsumoForm from '../components/detDocEmbarcacionPescaConsumo/DetDocEmbarcacionPescaConsumoForm';
 
 /**
@@ -34,7 +34,7 @@ const DetDocEmbarcacionPescaConsumo = () => {
   const cargarDocumentos = async () => {
     try {
       setLoading(true);
-      const data = await getAllDetDocEmbarcacionPescaConsumo();
+      const data = await getDetDocEmbarcacionPescaConsumo();
       setDocumentos(data);
     } catch (error) {
       toast.current?.show({
@@ -79,7 +79,7 @@ const DetDocEmbarcacionPescaConsumo = () => {
 
   const eliminarDocumento = async (id) => {
     try {
-      await deleteDetDocEmbarcacionPescaConsumo(id);
+      await eliminarDetDocEmbarcacionPescaConsumo(id);
       toast.current?.show({
         severity: 'success',
         summary: 'Éxito',

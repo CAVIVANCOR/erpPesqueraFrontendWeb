@@ -1,7 +1,12 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/novedades-pesca-consumo`;
+
+function getAuthHeader() {
+  const token = useAuthStore.getState().token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /**
  * API para gestión de Novedad Pesca Consumo
@@ -13,11 +18,20 @@ const API_URL = import.meta.env.VITE_API_URL;
  * @returns {Promise} Lista de novedades de pesca de consumo
  */
 export const getAllNovedadPescaConsumo = async () => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/novedad-pesca-consumo`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+  const response = await axios.get(API_URL, {
+    headers: getAuthHeader(),
+  });
+  return response.data;
+};
+
+/**
+ * Obtiene una novedad de pesca de consumo por ID
+ * @param {number} id - ID de la novedad de pesca de consumo
+ * @returns {Promise} Novedad de pesca de consumo
+ */
+export const getNovedadPescaConsumoPorId = async (id) => {
+  const response = await axios.get(`${API_URL}/${id}`, {
+    headers: getAuthHeader(),
   });
   return response.data;
 };
@@ -28,11 +42,8 @@ export const getAllNovedadPescaConsumo = async () => {
  * @returns {Promise} Novedad de pesca de consumo creada
  */
 export const crearNovedadPescaConsumo = async (novedadPescaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/novedad-pesca-consumo`, novedadPescaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+  const response = await axios.post(API_URL, novedadPescaConsumoData, {
+    headers: getAuthHeader(),
   });
   return response.data;
 };
@@ -44,11 +55,8 @@ export const crearNovedadPescaConsumo = async (novedadPescaConsumoData) => {
  * @returns {Promise} Novedad de pesca de consumo actualizada
  */
 export const actualizarNovedadPescaConsumo = async (id, novedadPescaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/novedad-pesca-consumo/${id}`, novedadPescaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+  const response = await axios.put(`${API_URL}/${id}`, novedadPescaConsumoData, {
+    headers: getAuthHeader(),
   });
   return response.data;
 };
@@ -59,16 +67,39 @@ export const actualizarNovedadPescaConsumo = async (id, novedadPescaConsumoData)
  * @returns {Promise} Confirmación de eliminación
  */
 export const deleteNovedadPescaConsumo = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/novedad-pesca-consumo/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+  const response = await axios.delete(`${API_URL}/${id}`, {
+    headers: getAuthHeader(),
   });
   return response.data;
 };
 
-// Aliases en inglés para compatibilidad
-export const createNovedadPescaConsumo = crearNovedadPescaConsumo;
-export const updateNovedadPescaConsumo = actualizarNovedadPescaConsumo;
-export const eliminarNovedadPescaConsumo = deleteNovedadPescaConsumo;
+/**
+ * Sube documento PDF de resolución para novedad de pesca consumo
+ * @param {File} file - Archivo PDF a subir
+ * @returns {Promise} Respuesta con URL del documento subido
+ */
+export async function subirDocumentoNovedad(file) {
+  const formData = new FormData();
+  formData.append('resolucionPdf', file);
+  const API_RESOLUCION = `${API_URL}/resolucion/upload`;
+  const token = useAuthStore.getState().token;
+  const res = await axios.post(API_RESOLUCION, formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return res.data;
+}
+
+/**
+ * Inicia una novedad de pesca consumo
+ * @param {number} novedadId - ID de la novedad a iniciar
+ * @returns {Promise} Respuesta de la operación
+ */
+export async function iniciarNovedadPescaConsumo(novedadId) {
+  const res = await axios.post(`${API_URL}/${novedadId}/iniciar`, {}, { 
+    headers: getAuthHeader() 
+  });
+  return res.data;
+}

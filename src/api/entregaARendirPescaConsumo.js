@@ -1,74 +1,76 @@
-import axios from 'axios';
-import { useAuthStore } from '../shared/stores/useAuthStore';
+// src/api/entregaARendirPescaConsumo.js
+// Funciones de integración API REST para EntregaARendirPescaConsumo. Usa JWT desde Zustand.
+// Documentado en español técnico.
 
-const API_URL = import.meta.env.VITE_API_URL;
+import axios from "axios";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/entregas-a-rendir-pesca-consumo`;
 
 /**
- * API para gestión de Entrega a Rendir Pesca Consumo
- * Proporciona funciones para operaciones CRUD en el módulo de entregas a rendir de pesca de consumo
+ * Obtiene el token JWT profesionalmente desde Zustand
  */
-
-/**
- * Obtiene todas las entregas a rendir de pesca de consumo
- * @returns {Promise} Lista de entregas a rendir de pesca de consumo
- */
-export const getAllEntregaARendirPescaConsumo = async () => {
+function getAuthHeaders() {
   const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/entrega-a-rendir-pesca-consumo`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+  return { Authorization: `Bearer ${token}` };
+}
 
 /**
- * Crea una nueva entrega a rendir de pesca de consumo
- * @param {Object} entregaARendirPescaConsumoData - Datos de la entrega a rendir de pesca de consumo
- * @returns {Promise} Entrega a rendir de pesca de consumo creada
+ * Obtiene todas las entregas a rendir pesca consumo
+ * @returns {Promise} Lista de entregas a rendir
  */
-export const crearEntregaARendirPescaConsumo = async (entregaARendirPescaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/entrega-a-rendir-pesca-consumo`, entregaARendirPescaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function getEntregasARendirPescaConsumo() {
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  return res.data;
+}
 
 /**
- * Actualiza una entrega a rendir de pesca de consumo existente
- * @param {number} id - ID de la entrega a rendir de pesca de consumo
- * @param {Object} entregaARendirPescaConsumoData - Datos actualizados
- * @returns {Promise} Entrega a rendir de pesca de consumo actualizada
+ * Obtiene una entrega a rendir por su ID
+ * @param {number} id - ID de la entrega a rendir
+ * @returns {Promise} Entrega a rendir
  */
-export const actualizarEntregaARendirPescaConsumo = async (id, entregaARendirPescaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/entrega-a-rendir-pesca-consumo/${id}`, entregaARendirPescaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function getEntregaARendirPescaConsumoPorId(id) {
+  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
 
 /**
- * Elimina una entrega a rendir de pesca de consumo
- * @param {number} id - ID de la entrega a rendir de pesca de consumo a eliminar
+ * Crea una nueva entrega a rendir
+ * @param {Object} data - Datos de la entrega a rendir
+ * @returns {Promise} Entrega a rendir creada
+ */
+export async function crearEntregaARendirPescaConsumo(data) {
+  const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Actualiza una entrega a rendir existente
+ * @param {number} id - ID de la entrega a rendir
+ * @param {Object} data - Datos actualizados
+ * @returns {Promise} Entrega a rendir actualizada
+ */
+export async function actualizarEntregaARendirPescaConsumo(id, data) {
+  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Elimina una entrega a rendir
+ * @param {number} id - ID de la entrega a rendir a eliminar
  * @returns {Promise} Confirmación de eliminación
  */
-export const deleteEntregaARendirPescaConsumo = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/entrega-a-rendir-pesca-consumo/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function eliminarEntregaARendirPescaConsumo(id) {
+  const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
 
-// Aliases en inglés para compatibilidad
-export const createEntregaARendirPescaConsumo = crearEntregaARendirPescaConsumo;
-export const updateEntregaARendirPescaConsumo = actualizarEntregaARendirPescaConsumo;
-export const eliminarEntregaARendirPescaConsumo = deleteEntregaARendirPescaConsumo;
+/**
+ * Liquida una entrega de pesca consumo
+ * @param {number} id - ID de la entrega a liquidar
+ * @returns {Promise} Confirmación de liquidación
+ */
+export async function liquidarEntregaPescaConsumo(id) {
+  const res = await axios.post(`${API_URL}/${id}/liquidar`, {}, { headers: getAuthHeaders() });
+  return res.data;
+}

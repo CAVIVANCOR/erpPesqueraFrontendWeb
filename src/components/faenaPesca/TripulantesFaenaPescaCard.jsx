@@ -177,17 +177,7 @@ const TripulantesFaenaPescaCard = ({
       ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${rowData.personal.urlFotoPersona}`
       : undefined;
     
-    // Debug: mostrar la URL en consola
-    console.log('Avatar data for tripulante:', {
-      id: rowData.id,
-      nombres: rowData.nombres,
-      apellidos: rowData.apellidos,
-      personalId: rowData.personalId,
-      urlFotoPersona: rowData.personal?.urlFotoPersona,
-      urlFotoCompleta: urlFoto,
-      personal: rowData.personal
-    });
-    
+  
     // Si hay foto, muestra el avatar con imagen; si no, iniciales
     if (urlFoto) {
       return (

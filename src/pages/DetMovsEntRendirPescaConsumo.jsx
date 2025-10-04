@@ -11,7 +11,7 @@ import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Tag } from 'primereact/tag';
 import { useAuthStore } from '../shared/stores/useAuthStore';
-import { getAllDetMovsEntRendirPescaConsumo, deleteDetMovsEntRendirPescaConsumo } from '../api/detMovsEntRendirPescaConsumo';
+import { getDetMovsEntRendirPescaConsumo, eliminarDetMovEntRendirPescaConsumo } from '../api/detMovsEntRendirPescaConsumo';
 import DetMovsEntRendirPescaConsumoForm from '../components/detMovsEntRendirPescaConsumo/DetMovsEntRendirPescaConsumoForm';
 
 /**
@@ -34,7 +34,7 @@ const DetMovsEntRendirPescaConsumo = () => {
   const cargarMovimientos = async () => {
     try {
       setLoading(true);
-      const data = await getAllDetMovsEntRendirPescaConsumo();
+      const data = await getDetMovsEntRendirPescaConsumo();
       setMovimientos(data);
     } catch (error) {
       toast.current?.show({
@@ -79,7 +79,7 @@ const DetMovsEntRendirPescaConsumo = () => {
 
   const eliminarMovimiento = async (id) => {
     try {
-      await deleteDetMovsEntRendirPescaConsumo(id);
+      await eliminarDetMovEntRendirPescaConsumo(id);
       toast.current?.show({
         severity: 'success',
         summary: 'Éxito',

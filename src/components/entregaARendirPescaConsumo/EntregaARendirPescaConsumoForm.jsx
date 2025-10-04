@@ -9,7 +9,11 @@ import { Calendar } from 'primereact/calendar';
 import { Checkbox } from 'primereact/checkbox';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Toast } from 'primereact/toast';
-import { createEntregaARendirPescaConsumo, updateEntregaARendirPescaConsumo } from '../../api/entregaARendirPescaConsumo';
+import { crearEntregaARendirPescaConsumo, actualizarEntregaARendirPescaConsumo } from '../../api/entregaARendirPescaConsumo';
+// Importar APIs necesarias
+import { getAllNovedadPescaConsumo } from '../../api/novedadPescaConsumo';
+import { getPersonal } from '../../api/personal';
+import { getCentrosCosto } from '../../api/centroCosto';
 
 /**
  * Formulario para gestión de EntregaARendirPescaConsumo
@@ -55,37 +59,43 @@ const EntregaARendirPescaConsumoForm = ({ entrega, onSave, onCancel }) => {
 
   const cargarDatosIniciales = async () => {
     try {
-      // TODO: Implementar APIs para cargar datos de combos
-      // Datos de ejemplo mientras se implementan las APIs
-      setNovedadesPesca([
-        { id: 1, descripcion: 'Novedad Anchoveta - Enero 2024', fechaNovedad: '2024-01-15' },
-        { id: 2, descripcion: 'Novedad Jurel - Enero 2024', fechaNovedad: '2024-01-16' },
-        { id: 3, descripcion: 'Novedad Caballa - Enero 2024', fechaNovedad: '2024-01-17' },
-        { id: 4, descripcion: 'Novedad Perico - Enero 2024', fechaNovedad: '2024-01-18' }
-      ]);
+      setLoading(true);
 
-      setResponsables([
-        { id: 1, nombres: 'Carlos', apellidos: 'Mendoza García', cargo: 'Supervisor de Flota' },
-        { id: 2, nombres: 'Ana', apellidos: 'Torres López', cargo: 'Jefe de Operaciones' },
-        { id: 3, nombres: 'Luis', apellidos: 'Ramírez Silva', cargo: 'Coordinador de Pesca' },
-        { id: 4, nombres: 'María', apellidos: 'Vásquez Ruiz', cargo: 'Supervisora de Calidad' },
-        { id: 5, nombres: 'Jorge', apellidos: 'Castillo Morales', cargo: 'Jefe de Producción' }
-      ]);
+      // Cargar Novedades de Pesca Consumo desde API
+      const novedadesData = await getAllNovedadPescaConsumo();
+      setNovedadesPesca(novedadesData.map(novedad => ({
+        id: Number(novedad.id),
+        descripcion: novedad.descripcion || `Novedad ${novedad.id}`,
+        fechaNovedad: novedad.fechaNovedad || novedad.fechaCreacion
+      })));
 
-      setCentrosCosto([
-        { id: 1, codigo: 'CC001', descripcion: 'Flota Pesquera Norte', activo: true },
-        { id: 2, codigo: 'CC002', descripcion: 'Flota Pesquera Centro', activo: true },
-        { id: 3, codigo: 'CC003', descripcion: 'Flota Pesquera Sur', activo: true },
-        { id: 4, codigo: 'CC004', descripcion: 'Operaciones Portuarias', activo: true },
-        { id: 5, codigo: 'CC005', descripcion: 'Administración General', activo: true }
-      ]);
+      // Cargar Personal (Responsables) desde API
+      const personalData = await getPersonal();
+      setResponsables(personalData.map(persona => ({
+        id: Number(persona.id),
+        nombres: persona.nombres,
+        apellidos: persona.apellidos,
+        cargo: persona.cargo?.nombre || 'Sin cargo'
+      })));
+
+      // Cargar Centros de Costo desde API
+      const centrosCostoData = await getCentrosCosto();
+      setCentrosCosto(centrosCostoData.map(centro => ({
+        id: Number(centro.id),
+        codigo: centro.codigo,
+        descripcion: centro.descripcion,
+        activo: centro.activo !== false // Por defecto true si no está definido
+      })));
       
     } catch (error) {
+      console.error('Error al cargar datos iniciales:', error);
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
         detail: 'Error al cargar datos iniciales'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -122,14 +132,14 @@ const EntregaARendirPescaConsumoForm = ({ entrega, onSave, onCancel }) => {
         payload.fechaLiquidacion = null;
       }
       if (entrega?.id) {
-        await updateEntregaARendirPescaConsumo(entrega.id, payload);
+        await actualizarEntregaARendirPescaConsumo(entrega.id, payload);
         toast.current?.show({
           severity: 'success',
           summary: 'Éxito',
           detail: 'Entrega actualizada correctamente'
         });
       } else {
-        await createEntregaARendirPescaConsumo(payload);
+        await crearEntregaARendirPescaConsumo(payload);
         toast.current?.show({
           severity: 'success',
           summary: 'Éxito',

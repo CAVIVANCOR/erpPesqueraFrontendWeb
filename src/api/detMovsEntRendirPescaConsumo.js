@@ -1,74 +1,83 @@
-import axios from 'axios';
-import { useAuthStore } from '../shared/stores/useAuthStore';
+// src/api/detMovsEntRendirPescaConsumo.js
+// Funciones de integración API REST para DetMovsEntRendirPescaConsumo. Usa JWT desde Zustand.
+// Documentado en español técnico.
 
-const API_URL = import.meta.env.VITE_API_URL;
+import axios from "axios";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/movs-entregarendir-pesca-consumo`;
 
 /**
- * API para gestión de Detalle Movimientos Entrega Rendir Pesca Consumo
- * Proporciona funciones para operaciones CRUD en el módulo de detalles de movimientos de entregas a rendir de pesca de consumo
+ * Obtiene el token JWT profesionalmente desde Zustand
  */
-
-/**
- * Obtiene todos los detalles de movimientos de entregas a rendir de pesca de consumo
- * @returns {Promise} Lista de detalles de movimientos de entregas a rendir de pesca de consumo
- */
-export const getAllDetMovsEntRendirPescaConsumo = async () => {
+function getAuthHeaders() {
   const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/det-movs-ent-rendir-pesca-consumo`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+  return { Authorization: `Bearer ${token}` };
+}
 
 /**
- * Crea un nuevo detalle de movimiento de entrega a rendir de pesca de consumo
- * @param {Object} detMovsEntRendirPescaConsumoData - Datos del detalle de movimiento de entrega a rendir de pesca de consumo
- * @returns {Promise} Detalle de movimiento de entrega a rendir de pesca de consumo creado
+ * Obtiene todos los detalles de movimientos de entrega a rendir pesca consumo
+ * @returns {Promise} Lista de detalles de movimientos
  */
-export const crearDetMovsEntRendirPescaConsumo = async (detMovsEntRendirPescaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/det-movs-ent-rendir-pesca-consumo`, detMovsEntRendirPescaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function getDetMovsEntRendirPescaConsumo() {
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  return res.data;
+}
 
 /**
- * Actualiza un detalle de movimiento de entrega a rendir de pesca de consumo existente
- * @param {number} id - ID del detalle de movimiento de entrega a rendir de pesca de consumo
- * @param {Object} detMovsEntRendirPescaConsumoData - Datos actualizados
- * @returns {Promise} Detalle de movimiento de entrega a rendir de pesca de consumo actualizado
+ * Obtiene un detalle de movimiento por su ID
+ * @param {number} id - ID del detalle de movimiento
+ * @returns {Promise} Detalle de movimiento
  */
-export const actualizarDetMovsEntRendirPescaConsumo = async (id, detMovsEntRendirPescaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/det-movs-ent-rendir-pesca-consumo/${id}`, detMovsEntRendirPescaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function getDetMovEntRendirPescaConsumoPorId(id) {
+  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
 
 /**
- * Elimina un detalle de movimiento de entrega a rendir de pesca de consumo
- * @param {number} id - ID del detalle de movimiento de entrega a rendir de pesca de consumo a eliminar
+ * Crea un nuevo detalle de movimiento de entrega a rendir
+ * @param {Object} data - Datos del detalle de movimiento
+ * @returns {Promise} Detalle de movimiento creado
+ */
+export async function crearDetMovEntRendirPescaConsumo(data) {
+  const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Actualiza un detalle de movimiento existente
+ * @param {number} id - ID del detalle de movimiento
+ * @param {Object} data - Datos actualizados
+ * @returns {Promise} Detalle de movimiento actualizado
+ */
+export async function actualizarDetMovEntRendirPescaConsumo(id, data) {
+  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Elimina un detalle de movimiento
+ * @param {number} id - ID del detalle de movimiento a eliminar
  * @returns {Promise} Confirmación de eliminación
  */
-export const deleteDetMovsEntRendirPescaConsumo = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/det-movs-ent-rendir-pesca-consumo/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function eliminarDetMovEntRendirPescaConsumo(id) {
+  const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
 
-// Aliases en inglés para compatibilidad
-export const createDetMovsEntRendirPescaConsumo = crearDetMovsEntRendirPescaConsumo;
-export const updateDetMovsEntRendirPescaConsumo = actualizarDetMovsEntRendirPescaConsumo;
-export const eliminarDetMovsEntRendirPescaConsumo = deleteDetMovsEntRendirPescaConsumo;
+// Funciones con nombres que incluyen 's' en 'Movs' para compatibilidad con componentes
+export async function getAllDetMovsEntRendirPescaConsumo() {
+  return await getDetMovsEntRendirPescaConsumo();
+}
+
+export async function crearDetMovsEntRendirPescaConsumo(data) {
+  return await crearDetMovEntRendirPescaConsumo(data);
+}
+
+export async function actualizarDetMovsEntRendirPescaConsumo(id, data) {
+  return await actualizarDetMovEntRendirPescaConsumo(id, data);
+}
+
+export async function eliminarDetMovsEntRendirPescaConsumo(id) {
+  return await eliminarDetMovEntRendirPescaConsumo(id);
+}

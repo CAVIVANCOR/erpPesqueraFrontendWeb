@@ -1,74 +1,66 @@
-import axios from 'axios';
-import { useAuthStore } from '../shared/stores/useAuthStore';
+// src/api/tripulanteFaenaConsumo.js
+// Funciones de integración API REST para TripulanteFaenaConsumo. Usa JWT desde Zustand.
+// Documentado en español técnico.
 
-const API_URL = import.meta.env.VITE_API_URL;
+import axios from "axios";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/tripulantes-faena-consumo`;
 
 /**
- * API para gestión de Tripulante Faena Consumo
- * Proporciona funciones para operaciones CRUD en el módulo de tripulantes de faenas de consumo
+ * Obtiene el token JWT profesionalmente desde Zustand
  */
-
-/**
- * Obtiene todos los tripulantes de faenas de consumo
- * @returns {Promise} Lista de tripulantes de faenas de consumo
- */
-export const getAllTripulanteFaenaConsumo = async () => {
+function getAuthHeaders() {
   const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/tripulante-faena-consumo`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+  return { Authorization: `Bearer ${token}` };
+}
 
 /**
- * Crea un nuevo tripulante de faena de consumo
- * @param {Object} tripulanteFaenaConsumoData - Datos del tripulante de faena de consumo
- * @returns {Promise} Tripulante de faena de consumo creado
+ * Obtiene todos los tripulantes de faena consumo
+ * @returns {Promise} Lista de tripulantes de faena consumo
  */
-export const crearTripulanteFaenaConsumo = async (tripulanteFaenaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/tripulante-faena-consumo`, tripulanteFaenaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function getTripulantesFaenaConsumo() {
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  return res.data;
+}
 
 /**
- * Actualiza un tripulante de faena de consumo existente
- * @param {number} id - ID del tripulante de faena de consumo
- * @param {Object} tripulanteFaenaConsumoData - Datos actualizados
- * @returns {Promise} Tripulante de faena de consumo actualizado
+ * Obtiene un tripulante de faena consumo por su ID
+ * @param {number} id - ID del tripulante de faena consumo
+ * @returns {Promise} Tripulante de faena consumo
  */
-export const actualizarTripulanteFaenaConsumo = async (id, tripulanteFaenaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/tripulante-faena-consumo/${id}`, tripulanteFaenaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function getTripulanteFaenaConsumoPorId(id) {
+  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
 
 /**
- * Elimina un tripulante de faena de consumo
- * @param {number} id - ID del tripulante de faena de consumo a eliminar
+ * Crea un nuevo tripulante de faena consumo
+ * @param {Object} data - Datos del tripulante de faena consumo
+ * @returns {Promise} Tripulante de faena consumo creado
+ */
+export async function createTripulanteFaenaConsumo(data) {
+  const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Actualiza un tripulante de faena consumo existente
+ * @param {number} id - ID del tripulante de faena consumo
+ * @param {Object} data - Datos actualizados
+ * @returns {Promise} Tripulante de faena consumo actualizado
+ */
+export async function updateTripulanteFaenaConsumo(id, data) {
+  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Elimina un tripulante de faena consumo
+ * @param {number} id - ID del tripulante de faena consumo a eliminar
  * @returns {Promise} Confirmación de eliminación
  */
-export const deleteTripulanteFaenaConsumo = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/tripulante-faena-consumo/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
-
-// Aliases en inglés para compatibilidad
-export const createTripulanteFaenaConsumo = crearTripulanteFaenaConsumo;
-export const updateTripulanteFaenaConsumo = actualizarTripulanteFaenaConsumo;
-export const eliminarTripulanteFaenaConsumo = deleteTripulanteFaenaConsumo;
+export async function eliminarTripulanteFaenaConsumo(id) {
+  const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}

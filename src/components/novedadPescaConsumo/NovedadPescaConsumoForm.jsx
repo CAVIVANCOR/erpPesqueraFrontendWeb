@@ -1,398 +1,535 @@
-// src/components/novedadPescaConsumo/NovedadPescaConsumoForm.jsx
-// Formulario profesional para NovedadPescaConsumo. Cumple regla transversal ERP Megui:
-// - Campos controlados, validación, normalización de IDs en combos, envío con JWT desde Zustand
-import React, { useState, useEffect, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
-import { Dropdown } from 'primereact/dropdown';
-import { Calendar } from 'primereact/calendar';
-import { TabView, TabPanel } from 'primereact/tabview';
-import { Toast } from 'primereact/toast';
-import { createNovedadPescaConsumo, updateNovedadPescaConsumo } from '../../api/novedadPescaConsumo';
+/**
+ * Formulario para gestión de Novedades de Pesca Consumo
+ *
+ * Características:
+ * - Formulario con validaciones usando React Hook Form
+ * - Sistema de Cards navegables como TemporadaPescaForm
+ * - Combos relacionales con empresas, personal con cargo BAHIA COMERCIAL y estados
+ * - Control de fechas de inicio y fin con validaciones
+ * - Normalización de IDs numéricos según regla ERP Megui
+ * - Integración de CRUD de FaenaPescaConsumo en DatosGeneralesNovedadForm
+ *
+ * @author ERP Megui
+ * @version 2.0.0
+ */
+
+import React, { useEffect, useState, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { Dialog } from "primereact/dialog";
+import { Button } from "primereact/button";
+import { Tag } from "primereact/tag";
+import { Message } from "primereact/message";
+import { Toast } from "primereact/toast";
+import { confirmDialog } from "primereact/confirmdialog";
+import {
+  getBahiasComerciales,
+  getMotoristas,
+  getPatrones,
+} from "../../api/personal";
+import { iniciarNovedadPescaConsumo } from "../../api/novedadPescaConsumo";
+import { getEstadosMultiFuncionParaNovedadPescaConsumo } from "../../api/estadoMultiFuncion";
+import { getEmbarcaciones } from "../../api/embarcacion";
+import { getAllBolicheRed } from "../../api/bolicheRed";
+import { getPuertosPesca } from "../../api/puertoPesca";
+import { getNovedadPescaConsumoPorId } from "../../api/novedadPescaConsumo";
+// Importar componentes de cards
+import DatosGeneralesNovedadForm from "./DatosGeneralesNovedadForm";
+import EntregasARendirNovedadCard from "./EntregasARendirNovedadCard";
+// Importar APIs adicionales
+import { getPersonal } from "../../api/personal";
+import { getCentrosCosto } from "../../api/centroCosto";
+import { getTiposMovEntregaRendir } from "../../api/tipoMovEntregaRendir";
+import { getEmpresas } from "../../api/empresa";
 
 /**
- * Formulario para gestión de NovedadPescaConsumo
- * Maneja creación y edición con validaciones y combos normalizados
- * Organizado en pestañas para mejor UX
+ * Componente de formulario para novedades de pesca consumo
+ * Implementa las reglas de validación y normalización del ERP Megui
  */
-const NovedadPescaConsumoForm = ({ novedad, onSave, onCancel }) => {
-  const { control, handleSubmit, reset, watch, formState: { errors } } = useForm();
-  const [loading, setLoading] = useState(false);
-  const [empresas, setEmpresas] = useState([]);
-  const [bahias, setBahias] = useState([]);
+const NovedadPescaConsumoForm = ({
+  visible,
+  onHide,
+  onSave,
+  editingItem,
+  empresas = [],
+  onNovedadDataChange, // Callback para notificar cambios en datos de novedad
+}) => {
+  // Estados principales
+  const [activeCard, setActiveCard] = useState("datos-generales");
+  const [bahiasComerciales, setBahiasComerciales] = useState([]);
+  const [motoristas, setMotoristas] = useState([]);
+  const [patrones, setPatrones] = useState([]);
+  const [estadosNovedad, setEstadosNovedad] = useState([]);
+  const [embarcaciones, setEmbarcaciones] = useState([]);
+  const [boliches, setBoliches] = useState([]);
+  const [puertosPesca, setPuertosPesca] = useState([]);
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [validandoSuperposicion, setValidandoSuperposicion] = useState(false);
+  const [estadoDefaultId, setEstadoDefaultId] = useState(null);
+  const [iniciandoNovedadPesca, setIniciandoNovedadPesca] = useState(false);
+  const [tieneFaenas, setTieneFaenas] = useState(false);
+  const [camposRequeridosCompletos, setCamposRequeridosCompletos] =
+    useState(false);
+  // Estados para nuevos catálogos
+  const [personal, setPersonal] = useState([]);
+  const [centrosCosto, setCentrosCosto] = useState([]);
+  const [tiposMovimiento, setTiposMovimiento] = useState([]);
+  const [empresasList, setEmpresasList] = useState([]);
+
+  // Ref para Toast
   const toast = useRef(null);
 
-  // Observar fechas para validación
-  const fechaInicio = watch('fechaInicio');
-  const fechaFin = watch('fechaFin');
+  // Configuración del formulario con React Hook Form
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    getValues,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      id: null,
+      empresaId: null,
+      BahiaId: null,
+      estadoNovedadPescaConsumoId: null,
+      nombre: "",
+      fechaInicio: null,
+      fechaFin: null,
+      toneladasCapturadas: null,
+      novedadPescaConsumoIniciada: false,
+    },
+  });
 
+  // Cargar estados de novedad al montar
   useEffect(() => {
-    cargarDatosIniciales();
+    const cargarEstados = async () => {
+      try {
+        const estadosData =
+          await getEstadosMultiFuncionParaNovedadPescaConsumo();
+        setEstadosNovedad(estadosData);
+
+        // Buscar estado por defecto "EN ESPERA DE INICIO"
+        const estadoDefault = estadosData.find(
+          (estado) =>
+            estado.descripcion === "EN ESPERA DE INICIO" &&
+            Number(estado.tipoProvieneDeId) === 7 // NOVEDAD PESCA CONSUMO
+        );
+
+        if (estadoDefault) {
+          setEstadoDefaultId(Number(estadoDefault.id));
+        }
+      } catch (error) {
+        console.error("Error cargando estados:", error);
+      }
+    };
+
+    cargarEstados();
   }, []);
 
+  // Cargar catálogos al montar
   useEffect(() => {
-    if (novedad) {
-      // Reset del formulario con datos de edición, normalizando IDs
-      reset({
-        empresaId: novedad.empresaId ? Number(novedad.empresaId) : null,
-        BahiaId: novedad.BahiaId ? Number(novedad.BahiaId) : null,
-        nombre: novedad.nombre || '',
-        fechaInicio: novedad.fechaInicio ? new Date(novedad.fechaInicio) : null,
-        fechaFin: novedad.fechaFin ? new Date(novedad.fechaFin) : null
-      });
-    } else {
-      // Reset para nuevo registro
-      reset({
-        empresaId: null,
-        BahiaId: null,
-        nombre: '',
-        fechaInicio: null,
-        fechaFin: null
-      });
-    }
-  }, [novedad, reset]);
+    const cargarCatalogos = async () => {
+      try {
+        const [
+          embarcacionesRes,
+          bolichesRes,
+          puertosRes,
+          personalRes,
+          centrosRes,
+          tiposMovRes,
+          empresasRes,
+        ] = await Promise.allSettled([
+          getEmbarcaciones(),
+          getAllBolicheRed(),
+          getPuertosPesca(),
+          getPersonal(),
+          getCentrosCosto(),
+          getTiposMovEntregaRendir(),
+          getEmpresas(),
+        ]);
 
-  const cargarDatosIniciales = async () => {
-    try {
-      // TODO: Implementar APIs para cargar datos de combos
-      // Datos de ejemplo mientras se implementan las APIs
-      setEmpresas([
-        { id: 1, razonSocial: 'Pesquera del Pacífico S.A.', ruc: '20123456789' },
-        { id: 2, razonSocial: 'Industrias Marinas del Sur S.A.C.', ruc: '20987654321' },
-        { id: 3, razonSocial: 'Compañía Pesquera Norteña S.A.', ruc: '20456789123' }
-      ]);
-      
-      setBahias([
-        { id: 1, nombre: 'Bahía de Paracas', codigo: 'PAR' },
-        { id: 2, nombre: 'Bahía de Chimbote', codigo: 'CHI' },
-        { id: 3, nombre: 'Bahía de Callao', codigo: 'CAL' },
-        { id: 4, nombre: 'Bahía de Paita', codigo: 'PAI' },
-        { id: 5, nombre: 'Bahía de Ilo', codigo: 'ILO' }
-      ]);
-      
-    } catch (error) {
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al cargar datos iniciales'
-      });
-    }
-  };
-
-  const validarFechas = () => {
-    if (fechaInicio && fechaFin && fechaInicio >= fechaFin) {
-      return 'La fecha de fin debe ser posterior a la fecha de inicio';
-    }
-    return true;
-  };
-
-  const calcularDuracion = () => {
-    if (!fechaInicio || !fechaFin) return '';
-    
-    const diferencia = fechaFin - fechaInicio;
-    const dias = Math.ceil(diferencia / (1000 * 60 * 60 * 24));
-    
-    return `${dias} día${dias !== 1 ? 's' : ''}`;
-  };
-
-  const onSubmit = async (data) => {
-    try {
-      setLoading(true);
-      
-      // Validar fechas
-      const validacionFechas = validarFechas();
-      if (validacionFechas !== true) {
-        toast.current?.show({
-          severity: 'warn',
-          summary: 'Validación',
-          detail: validacionFechas
-        });
-        return;
+        if (embarcacionesRes.status === "fulfilled") {
+          setEmbarcaciones(
+            embarcacionesRes.value.map((e) => ({
+              label: e.activo?.descripcion || e.matricula,
+              value: Number(e.id),
+            }))
+          );
+        }
+        if (bolichesRes.status === "fulfilled") {
+          setBoliches(
+            bolichesRes.value.map((b) => ({
+              label: b.activo?.descripcion || b.descripcion,
+              value: Number(b.id),
+            }))
+          );
+        }
+        if (puertosRes.status === "fulfilled") {
+          setPuertosPesca(
+            puertosRes.value.map((p) => ({
+              label: p.nombre,
+              value: Number(p.id),
+            }))
+          );
+        }
+        if (personalRes.status === "fulfilled") setPersonal(personalRes.value);
+        if (centrosRes.status === "fulfilled") setCentrosCosto(centrosRes.value);
+        if (tiposMovRes.status === "fulfilled") setTiposMovimiento(tiposMovRes.value);
+        if (empresasRes.status === "fulfilled") setEmpresasList(empresasRes.value);
+      } catch (error) {
+        console.error("Error cargando catálogos:", error);
       }
-      
-      // Preparar payload con tipos correctos
-      const payload = {
+    };
+
+    cargarCatalogos();
+  }, []);
+
+  // Cargar personal por empresa
+  useEffect(() => {
+    const cargarPersonalPorEmpresa = async () => {
+      try {
+        const empresaId = editingItem?.empresaId || empresas[0]?.id || null;
+        if (!empresaId) return;
+
+        const [bahiasData, motoristasData, patronesData] = await Promise.all([
+          getBahiasComerciales(Number(empresaId), "BAHIA COMERCIAL"),
+          getMotoristas(Number(empresaId), "MOTORISTA EMBARCACION"),
+          getPatrones(Number(empresaId), "PATRON EMBARCACION"),
+        ]);
+
+        setBahiasComerciales(
+          bahiasData.map((p) => ({
+            label: `${p.nombres} ${p.apellidos}`.trim(),
+            value: Number(p.id),
+          }))
+        );
+        setMotoristas(
+          motoristasData.map((p) => ({
+            label: `${p.nombres} ${p.apellidos}`.trim(),
+            value: Number(p.id),
+          }))
+        );
+        setPatrones(
+          patronesData.map((p) => ({
+            label: `${p.nombres} ${p.apellidos}`.trim(),
+            value: Number(p.id),
+          }))
+        );
+      } catch (error) {
+        console.error("Error cargando personal:", error);
+      }
+    };
+
+    if (editingItem?.empresaId || empresas.length > 0) {
+      cargarPersonalPorEmpresa();
+    }
+  }, [editingItem, empresas]);
+
+  // Manejar navegación entre cards
+  const handleNavigateToCard = (cardName) => {
+    setActiveCard(cardName);
+  };
+
+  // Manejar envío del formulario
+  const handleFormSubmit = async (data) => {
+    try {
+      const normalizedData = {
+        ...data,
+        id: data.id ? Number(data.id) : undefined,
         empresaId: Number(data.empresaId),
         BahiaId: Number(data.BahiaId),
-        nombre: data.nombre.trim(),
-        fechaInicio: data.fechaInicio.toISOString(),
-        fechaFin: data.fechaFin.toISOString()
+        estadoNovedadPescaConsumoId: Number(data.estadoNovedadPescaConsumoId),
       };
-      if (novedad?.id) {
-        await updateNovedadPescaConsumo(novedad.id, payload);
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Novedad actualizada correctamente'
-        });
-      } else {
-        await createNovedadPescaConsumo(payload);
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Novedad creada correctamente'
-        });
-      }
-      
-      onSave();
+
+      await onSave(normalizedData);
     } catch (error) {
+      console.error("Error guardando novedad:", error);
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al guardar la novedad'
+        severity: "error",
+        summary: "Error",
+        detail: "Error al guardar la novedad",
+        life: 3000,
       });
-    } finally {
-      setLoading(false);
     }
   };
 
-  return (
-    <div className="novedad-pesca-consumo-form">
-      <Toast ref={toast} />
-      
-      <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
-        <TabView>
-          {/* Pestaña 1: Información General */}
-          <TabPanel header="Información General">
-            <div className="grid">
-              {/* Nombre */}
-              <div className="col-12">
-                <label htmlFor="nombre" className="block text-900 font-medium mb-2">
-                  Nombre de la Novedad *
-                </label>
-                <Controller
-                  name="nombre"
-                  control={control}
-                  rules={{ 
-                    required: 'El nombre es obligatorio',
-                    minLength: { value: 3, message: 'El nombre debe tener al menos 3 caracteres' },
-                    maxLength: { value: 100, message: 'El nombre no puede exceder 100 caracteres' }
-                  }}
-                  render={({ field }) => (
-                    <InputText
-                      id="nombre"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      placeholder="Ej: Temporada de Anchoveta 2024-I"
-                      className={errors.nombre ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.nombre && (
-                  <small className="p-error">{errors.nombre.message}</small>
-                )}
-              </div>
+  // Manejar inicio de novedad
+  const handleIniciarNovedad = () => {
+    confirmDialog({
+      message:
+        "¿Está seguro de iniciar esta novedad de pesca? Esta acción creará los registros necesarios para faenas y entregas a rendir.",
+      header: "Confirmar Inicio de Novedad",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-success",
+      rejectClassName: "p-button-secondary",
+      acceptLabel: "Sí, Iniciar",
+      rejectLabel: "Cancelar",
+      accept: async () => {
+        try {
+          setIniciandoNovedadPesca(true);
+          await iniciarNovedadPescaConsumo(editingItem.id);
 
-              {/* Empresa */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="empresaId" className="block text-900 font-medium mb-2">
-                  Empresa *
-                </label>
-                <Controller
-                  name="empresaId"
-                  control={control}
-                  rules={{ required: 'La empresa es obligatoria' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="empresaId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={empresas.map(emp => ({ 
-                        ...emp, 
-                        id: Number(emp.id),
-                        nombreCompleto: `${emp.ruc} - ${emp.razonSocial}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione una empresa"
-                      className={errors.empresaId ? 'p-invalid' : ''}
-                      filter
-                    />
-                  )}
-                />
-                {errors.empresaId && (
-                  <small className="p-error">{errors.empresaId.message}</small>
-                )}
-              </div>
+          toast.current?.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: "Novedad de pesca iniciada correctamente",
+            life: 3000,
+          });
 
-              {/* Bahía */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="BahiaId" className="block text-900 font-medium mb-2">
-                  Bahía *
-                </label>
-                <Controller
-                  name="BahiaId"
-                  control={control}
-                  rules={{ required: 'La bahía es obligatoria' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="BahiaId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={bahias.map(bahia => ({ 
-                        ...bahia, 
-                        id: Number(bahia.id),
-                        nombreCompleto: `${bahia.codigo} - ${bahia.nombre}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione una bahía"
-                      className={errors.BahiaId ? 'p-invalid' : ''}
-                      filter
-                    />
-                  )}
-                />
-                {errors.BahiaId && (
-                  <small className="p-error">{errors.BahiaId.message}</small>
-                )}
-              </div>
-            </div>
-          </TabPanel>
+          // Notificar cambios al componente padre
+          if (onNovedadDataChange) {
+            const novedadActualizada = {
+              ...editingItem,
+              novedadPescaConsumoIniciada: true,
+            };
+            onNovedadDataChange(novedadActualizada);
+          }
 
-          {/* Pestaña 2: Fechas y Duración */}
-          <TabPanel header="Fechas y Duración">
-            <div className="grid">
-              {/* Fecha Inicio */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="fechaInicio" className="block text-900 font-medium mb-2">
-                  Fecha de Inicio *
-                </label>
-                <Controller
-                  name="fechaInicio"
-                  control={control}
-                  rules={{ required: 'La fecha de inicio es obligatoria' }}
-                  render={({ field }) => (
-                    <Calendar
-                      id="fechaInicio"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      placeholder="Seleccione fecha de inicio"
-                      dateFormat="dd/mm/yy"
-                      showIcon
-                      className={errors.fechaInicio ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.fechaInicio && (
-                  <small className="p-error">{errors.fechaInicio.message}</small>
-                )}
-              </div>
+          // Disparar eventos para actualizar otros componentes
+          window.dispatchEvent(
+            new CustomEvent("refreshFaenas", {
+              detail: { novedadId: editingItem.id },
+            })
+          );
+        } catch (error) {
+          console.error("Error iniciando novedad:", error);
 
-              {/* Fecha Fin */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="fechaFin" className="block text-900 font-medium mb-2">
-                  Fecha de Fin *
-                </label>
-                <Controller
-                  name="fechaFin"
-                  control={control}
-                  rules={{ required: 'La fecha de fin es obligatoria' }}
-                  render={({ field }) => (
-                    <Calendar
-                      id="fechaFin"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      placeholder="Seleccione fecha de fin"
-                      dateFormat="dd/mm/yy"
-                      showIcon
-                      minDate={fechaInicio}
-                      className={errors.fechaFin ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.fechaFin && (
-                  <small className="p-error">{errors.fechaFin.message}</small>
-                )}
-              </div>
+          // Extraer el mensaje de error del backend
+          let mensajeError = "Error al iniciar la novedad de pesca";
 
-              {/* Duración Calculada */}
-              {fechaInicio && fechaFin && (
-                <div className="col-12">
-                  <div className="card p-3 bg-blue-50">
-                    <h5 className="mb-2 text-blue-800">Información de Duración</h5>
-                    <div className="grid">
-                      <div className="col-6">
-                        <strong>Duración Total:</strong> {calcularDuracion()}
-                      </div>
-                      <div className="col-6">
-                        <strong>Estado Actual:</strong> 
-                        {(() => {
-                          const ahora = new Date();
-                          if (ahora < fechaInicio) return ' Programada';
-                          if (ahora >= fechaInicio && ahora <= fechaFin) return ' En Curso';
-                          return ' Finalizada';
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </TabPanel>
+          if (error.response?.data?.message) {
+            mensajeError = error.response.data.message;
+          } else if (error.message) {
+            mensajeError = error.message;
+          }
 
-          {/* Pestaña 3: Resumen */}
-          <TabPanel header="Resumen">
-            <div className="grid">
-              <div className="col-12">
-                <div className="card p-4 bg-gray-50">
-                  <h5 className="mb-3">Resumen de la Novedad</h5>
-                  <div className="grid">
-                    <div className="col-12">
-                      <strong>Nombre:</strong> {watch('nombre') || 'Sin definir'}
-                    </div>
-                    <div className="col-6">
-                      <strong>Empresa:</strong> {
-                        empresas.find(e => e.id === watch('empresaId'))?.razonSocial || 'Sin seleccionar'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Bahía:</strong> {
-                        bahias.find(b => b.id === watch('BahiaId'))?.nombre || 'Sin seleccionar'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Fecha Inicio:</strong> {
-                        fechaInicio ? fechaInicio.toLocaleDateString('es-PE') : 'Sin definir'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Fecha Fin:</strong> {
-                        fechaFin ? fechaFin.toLocaleDateString('es-PE') : 'Sin definir'
-                      }
-                    </div>
-                    {fechaInicio && fechaFin && (
-                      <div className="col-12">
-                        <div className="text-lg font-bold text-primary">
-                          <strong>Duración: {calcularDuracion()}</strong>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </TabPanel>
-        </TabView>
+          toast.current?.show({
+            severity: "error",
+            summary: "Error al Iniciar Novedad",
+            detail: mensajeError,
+            life: 5000,
+          });
+        } finally {
+          setIniciandoNovedadPesca(false);
+        }
+      },
+    });
+  };
 
-        <div className="flex justify-content-end gap-2 mt-4">
+  // Verificar si la novedad ya fue iniciada
+  const verificarNovedadIniciada = async (novedadId) => {
+    try {
+      const novedad = await getNovedadPescaConsumoPorId(novedadId);
+      setTieneFaenas(novedad.novedadPescaConsumoIniciada || false);
+    } catch (error) {
+      console.error("Error verificando novedad iniciada:", error);
+      setTieneFaenas(false);
+    }
+  };
+
+  // Manejar cierre del diálogo
+  const handleHide = () => {
+    reset();
+    setActiveCard("datos-generales");
+    onHide();
+  };
+
+  // Footer del diálogo con botones de navegación y acciones
+  const dialogFooter = (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 8,
+        marginTop: 2,
+      }}
+    >
+      {/* Botones de navegación de Cards - lado izquierdo */}
+      <div className="flex gap-1">
+        <Button
+          icon="pi pi-info-circle"
+          tooltip="Novedad de Pesca y Detalle de Faenas"
+          tooltipOptions={{ position: "top" }}
+          className={
+            activeCard === "datos-generales"
+              ? "p-button-primary"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("datos-generales")}
+          type="button"
+          size="small"
+        />
+        <Button
+          icon="pi pi-file-excel"
+          tooltip="Entregas a Rendir"
+          tooltipOptions={{ position: "top" }}
+          className={
+            activeCard === "entregas-a-rendir"
+              ? "p-button-success"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("entregas-a-rendir")}
+          type="button"
+          size="small"
+          disabled={!editingItem?.id}
+        />
+      </div>
+
+      {/* Botones de acción - lado derecho */}
+      <div className="flex gap-2">
+        {editingItem && (
           <Button
+            label="Iniciar Novedad"
+            icon="pi pi-play"
+            className="p-button-success"
+            onClick={handleIniciarNovedad}
+            disabled={
+              editingItem?.novedadPescaConsumoIniciada || iniciandoNovedadPesca
+            }
+            loading={iniciandoNovedadPesca}
             type="button"
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-secondary"
-            onClick={onCancel}
+            size="small"
+            tooltip={
+              editingItem?.novedadPescaConsumoIniciada
+                ? "La novedad ya fue iniciada"
+                : "Iniciar novedad de pesca"
+            }
           />
-          <Button
-            type="submit"
-            label={novedad?.id ? 'Actualizar' : 'Crear'}
-            icon="pi pi-check"
-            loading={loading}
-            className="p-button-primary"
-          />
-        </div>
-      </form>
+        )}
+        <Button
+          label="Cancelar"
+          icon="pi pi-times"
+          outlined
+          onClick={handleHide}
+        />
+        <Button
+          label={editingItem ? "Actualizar" : "Crear"}
+          icon="pi pi-check"
+          onClick={handleSubmit(handleFormSubmit)}
+          loading={validandoSuperposicion}
+        />
+      </div>
     </div>
+  );
+
+  useEffect(() => {    
+    if (editingItem) {
+      
+      reset({
+        id: Number(editingItem.id) || null,
+        empresaId: Number(editingItem.empresaId) || null,
+        BahiaId: Number(editingItem.BahiaId) || null,
+        estadoNovedadPescaConsumoId:
+          Number(editingItem.estadoNovedadPescaConsumoId) || estadoDefaultId,
+        nombre: editingItem.nombre || "",
+        fechaInicio: editingItem.fechaInicio
+          ? new Date(editingItem.fechaInicio)
+          : null,
+        fechaFin: editingItem.fechaFin ? new Date(editingItem.fechaFin) : null,
+        toneladasCapturadas: editingItem.toneladasCapturadas || null,
+        novedadPescaConsumoIniciada: editingItem.novedadPescaConsumoIniciada || false,
+      });
+    } else {
+      reset({
+        id: null,
+        empresaId: null,
+        BahiaId: null,
+        estadoNovedadPescaConsumoId: Number(estadoDefaultId),
+        nombre: "",
+        fechaInicio: null,
+        fechaFin: null,
+        toneladasCapturadas: null,
+        novedadPescaConsumoIniciada: false,
+      });
+    }
+  }, [editingItem, reset, estadoDefaultId]);
+  // Verificar si la novedad ya fue iniciada cuando editingItem cambie
+  useEffect(() => {
+    if (editingItem?.id) {
+      verificarNovedadIniciada(editingItem.id);
+    } else {
+      setTieneFaenas(false);
+    }
+  }, [editingItem?.id]);
+
+  return (
+    <Dialog
+      visible={visible}
+      style={{ width: "1300px" }}
+      headerStyle={{ display: "none" }}
+      modal
+      footer={dialogFooter}
+      onHide={handleHide}
+      className="p-fluid"
+    >
+      {/* Mostrar nombre de novedad con Tag */}
+      <div className="flex justify-content-center mb-4">
+        <Tag
+          value={watch("nombre") || "Nueva Novedad de Pesca Consumo"}
+          severity="info"
+          style={{
+            fontSize: "1.1rem",
+            padding: "0.75rem 0.5rem",
+            textTransform: "uppercase",
+            fontWeight: "bold",
+            textAlign: "center",
+            width: "100%",
+            marginTop: "0.5rem",
+          }}
+        />
+      </div>
+
+      <form onSubmit={handleSubmit(handleFormSubmit)}>
+        {activeCard === "datos-generales" && (
+          <DatosGeneralesNovedadForm
+            control={control}
+            errors={errors}
+            setValue={setValue}
+            watch={watch}
+            getValues={getValues}
+            empresas={empresasList}
+            bahiasComerciales={bahiasComerciales}
+            motoristas={motoristas}
+            patrones={patrones}
+            estadosNovedad={estadosNovedad}
+            empresaSeleccionada={empresaSeleccionada}
+            defaultValues={getValues()}
+            embarcaciones={embarcaciones}
+            boliches={boliches}
+            puertos={puertosPesca}
+            novedadData={editingItem}
+            onNovedadDataChange={onNovedadDataChange}
+          />
+        )}
+
+        {activeCard === "entregas-a-rendir" && (
+          <EntregasARendirNovedadCard
+            novedadPescaConsumoId={editingItem?.id}
+            novedadPescaConsumoIniciada={
+              editingItem?.novedadPescaConsumoIniciada || false
+            }
+            personal={personal}
+            centrosCosto={centrosCosto}
+            tiposMovimiento={tiposMovimiento}
+            onDataChange={onNovedadDataChange}
+          />
+        )}
+
+        {/* Indicador de validación de superposición */}
+        {validandoSuperposicion && (
+          <div className="col-12">
+            <Message
+              severity="info"
+              text="Validando superposición de fechas con otras novedades..."
+              className="w-full"
+            />
+          </div>
+        )}
+      </form>
+      <Toast ref={toast} />
+    </Dialog>
   );
 };
 

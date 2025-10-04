@@ -11,7 +11,7 @@ import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Tag } from 'primereact/tag';
 import { useAuthStore } from '../shared/stores/useAuthStore';
-import { getAllDetAccionesPreviasFaenaConsumo, deleteDetAccionesPreviasFaenaConsumo } from '../api/detAccionesPreviasFaenaConsumo';
+import { getDetAccionesPreviasFaenaConsumo, eliminarDetAccionesPreviasFaenaConsumo } from '../api/detAccionesPreviasFaenaConsumo';
 import DetAccionesPreviasFaenaConsumoForm from '../components/detAccionesPreviasFaenaConsumo/DetAccionesPreviasFaenaConsumoForm';
 
 /**
@@ -34,7 +34,7 @@ const DetAccionesPreviasFaenaConsumo = () => {
   const cargarAcciones = async () => {
     try {
       setLoading(true);
-      const data = await getAllDetAccionesPreviasFaenaConsumo();
+      const data = await getDetAccionesPreviasFaenaConsumo();
       setAcciones(data);
     } catch (error) {
       toast.current?.show({
@@ -79,7 +79,7 @@ const DetAccionesPreviasFaenaConsumo = () => {
 
   const eliminarAccion = async (id) => {
     try {
-      await deleteDetAccionesPreviasFaenaConsumo(id);
+      await eliminarDetAccionesPreviasFaenaConsumo(id);
       toast.current?.show({
         severity: 'success',
         summary: 'Éxito',

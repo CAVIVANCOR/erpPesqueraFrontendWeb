@@ -171,3 +171,27 @@ export const getPatrones = async (empresaId,descripcionCargo) => {
   const patrones = res.data.filter(persona => !persona.cesado);
   return patrones;
 };
+
+/**
+ * Obtiene el único personal de Bahía Comercial para una empresa específica
+ * Valida que hay exactamente 1 registro activo con paraPescaConsumo=true
+ * @param {number} empresaId - ID de la empresa
+ * @returns {Promise<Object>} Personal de Bahía Comercial único
+ * @throws {Error} Si no hay exactamente 1 registro
+ */
+export const getBahiaComercialUnicoPorEmpresa = async (empresaId) => {
+  const bahias = await getBahiasComerciales(empresaId, "BAHIA COMERCIAL");
+  
+  // Filtrar adicional por paraPescaConsumo=true
+  const bahiasParaConsumo = bahias.filter(persona => persona.paraPescaConsumo === true);
+  
+  if (bahiasParaConsumo.length === 0) {
+    throw new Error("No se encontró personal de Bahía Comercial activo para pesca consumo en esta empresa");
+  }
+  
+  if (bahiasParaConsumo.length > 1) {
+    throw new Error(`Se encontraron ${bahiasParaConsumo.length} personas de Bahía Comercial para pesca consumo. Debe haber exactamente 1`);
+  }
+  
+  return bahiasParaConsumo[0];
+};

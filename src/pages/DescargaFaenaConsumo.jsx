@@ -11,7 +11,7 @@ import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Tag } from 'primereact/tag';
 import { useAuthStore } from '../shared/stores/useAuthStore';
-import { getAllDescargaFaenaConsumo, deleteDescargaFaenaConsumo } from '../api/descargaFaenaConsumo';
+import { getDescargasFaenaConsumo, eliminarDescargaFaenaConsumo } from '../api/descargaFaenaConsumo';
 import DescargaFaenaConsumoForm from '../components/descargaFaenaConsumo/DescargaFaenaConsumoForm';
 
 /**
@@ -34,7 +34,7 @@ const DescargaFaenaConsumo = () => {
   const cargarDescargas = async () => {
     try {
       setLoading(true);
-      const data = await getAllDescargaFaenaConsumo();
+      const data = await getDescargasFaenaConsumo();
       setDescargas(data);
     } catch (error) {
       toast.current?.show({
@@ -79,7 +79,7 @@ const DescargaFaenaConsumo = () => {
 
   const eliminarDescarga = async (id) => {
     try {
-      await deleteDescargaFaenaConsumo(id);
+      await eliminarDescargaFaenaConsumo(id);
       toast.current?.show({
         severity: 'success',
         summary: 'Éxito',

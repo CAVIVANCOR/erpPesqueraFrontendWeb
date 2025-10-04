@@ -15,16 +15,30 @@ function getAuthHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
+/**
+ * Obtiene todos los estados multifunción
+ * @returns {Promise} Lista de estados multifunción
+ */
 export async function getEstadosMultiFuncion() {
   const res = await axios.get(API_URL, { headers: getAuthHeaders() });
   return res.data;
 }
 
+/**
+ * Obtiene un estado multifunción por su ID
+ * @param {number} id - ID del estado multifunción
+ * @returns {Promise} Estado multifunción
+ */
 export async function getEstadoMultiFuncionPorId(id) {
   const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
 
+/**
+ * Obtiene estados multifunción por tipo proviene de
+ * @param {number} tipoProvieneDeId - ID del tipo proviene de
+ * @returns {Promise} Lista de estados multifunción filtrados
+ */
 export async function getEstadosMultiFuncionPorTipoProvieneDe(tipoProvieneDeId) {
   const res = await axios.get(`${API_URL}?tipoProvieneDeId=${tipoProvieneDeId}`, { headers: getAuthHeaders() });
   return res.data;
@@ -66,17 +80,53 @@ export async function listarEstadosMultiFuncionFaenaPesca() {
   return res.data;
 }
 
+/**
+ * Obtiene estados multifunción específicamente para faenas de pesca consumo
+ * Filtra por TipoProvieneDe con descripción "FAENA PESCA CONSUMO"
+ */
+export async function listarEstadosMultiFuncionFaenaPescaConsumo() {
+  const res = await axios.get(`${API_URL}/faena-pesca-consumo`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Crea un nuevo estado multifunción
+ * @param {Object} data - Datos del estado multifunción
+ * @returns {Promise} Estado multifunción creado
+ */
 export async function crearEstadoMultiFuncion(data) {
   const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
   return res.data;
 }
 
+/**
+ * Actualiza un estado multifunción existente
+ * @param {number} id - ID del estado multifunción
+ * @param {Object} data - Datos actualizados
+ * @returns {Promise} Estado multifunción actualizado
+ */
 export async function actualizarEstadoMultiFuncion(id, data) {
   const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
   return res.data;
 }
 
+/**
+ * Elimina un estado multifunción
+ * @param {number} id - ID del estado multifunción a eliminar
+ * @returns {Promise} Confirmación de eliminación
+ */
 export async function eliminarEstadoMultiFuncion(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
+}
+
+/**
+ * Obtiene estados multifunción específicamente para novedad pesca consumo
+ * Filtra por TipoProvieneDe con ID = 7 ("NOVEDAD PESCA CONSUMO")
+ */
+export async function getEstadosMultiFuncionParaNovedadPescaConsumo() {
+  const res = await axios.get(`${API_URL}`, { headers: getAuthHeaders() });
+  // Filtrar en frontend ya que el backend no maneja el query param correctamente
+  const estadosFiltrados = res.data.filter(estado => Number(estado.tipoProvieneDeId) === 7);
+  return estadosFiltrados;
 }

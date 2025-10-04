@@ -11,7 +11,10 @@ import { Calendar } from 'primereact/calendar';
 import { Checkbox } from 'primereact/checkbox';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Toast } from 'primereact/toast';
-import { createDetDocEmbarcacionPescaConsumo, updateDetDocEmbarcacionPescaConsumo } from '../../api/detDocEmbarcacionPescaConsumo';
+import { crearDetDocEmbarcacionPescaConsumo, actualizarDetDocEmbarcacionPescaConsumo } from '../../api/detDocEmbarcacionPescaConsumo';
+// Importar APIs necesarias según tabla de equivalencias
+import { getFaenasPescaConsumo } from '../../api/faenaPescaConsumo';
+import { getDocumentosPesca } from '../../api/documentoPesca';
 
 /**
  * Formulario para gestión de DetDocEmbarcacionPescaConsumo
@@ -63,31 +66,31 @@ const DetDocEmbarcacionPescaConsumoForm = ({ documento, onSave, onCancel }) => {
 
   const cargarDatosIniciales = async () => {
     try {
-      // TODO: Implementar APIs para cargar datos de combos
-      // Datos de ejemplo mientras se implementan las APIs
-      setFaenas([
-        { id: 1, descripcion: 'Faena Anchoveta - Paracas 001', fechaSalida: '2024-01-15' },
-        { id: 2, descripcion: 'Faena Jurel - Chimbote 002', fechaSalida: '2024-01-16' },
-        { id: 3, descripcion: 'Faena Caballa - Callao 003', fechaSalida: '2024-01-17' }
-      ]);
+      setLoading(true);
 
-      setTiposDocumentoPesca([
-        { id: 1, nombre: 'Matrícula de Embarcación', descripcion: 'Documento de registro oficial' },
-        { id: 2, nombre: 'Certificado de Seguridad', descripcion: 'Certificado de seguridad marítima' },
-        { id: 3, nombre: 'Permiso de Pesca', descripcion: 'Autorización para actividades pesqueras' },
-        { id: 4, nombre: 'Certificado de Arqueo', descripcion: 'Certificado de tonelaje y arqueo' },
-        { id: 5, nombre: 'Seguro de Embarcación', descripcion: 'Póliza de seguro marítimo' },
-        { id: 6, nombre: 'Certificado Sanitario', descripcion: 'Certificado de condiciones sanitarias' },
-        { id: 7, nombre: 'Inspección Técnica', descripción: 'Certificado de inspección técnica' },
-        { id: 8, nombre: 'Radio Licencia', descripcion: 'Licencia de equipos de comunicación' }
-      ]);
+      // Cargar FaenaPescaConsumo desde API
+      const faenasData = await getFaenasPescaConsumo();
+      setFaenas(faenasData.map(f => ({
+        label: `${f.id} - ${f.descripcion || `Faena ${f.id}`}`,
+        value: Number(f.id)
+      })));
+
+      // Cargar DocumentoPesca desde API
+      const tiposDocumentoPescaData = await getDocumentosPesca();
+      setTiposDocumentoPesca(tiposDocumentoPescaData.map(tdp => ({
+        label: `${tdp.nombre} - ${tdp.descripcion || ''}`,
+        value: Number(tdp.id)
+      })));
       
     } catch (error) {
+      console.error('Error al cargar datos iniciales:', error);
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
-        detail: 'Error al cargar datos iniciales'
+        detail: 'Error al cargar datos desde las APIs'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -142,14 +145,14 @@ const DetDocEmbarcacionPescaConsumoForm = ({ documento, onSave, onCancel }) => {
         verificado: Boolean(data.verificado)
       };
       if (documento?.id) {
-        await updateDetDocEmbarcacionPescaConsumo(documento.id, payload);
+        await actualizarDetDocEmbarcacionPescaConsumo(documento.id, payload);
         toast.current?.show({
           severity: 'success',
           summary: 'Éxito',
           detail: 'Documento actualizado correctamente'
         });
       } else {
-        await createDetDocEmbarcacionPescaConsumo(payload);
+        await crearDetDocEmbarcacionPescaConsumo(payload);
         toast.current?.show({
           severity: 'success',
           summary: 'Éxito',
@@ -192,13 +195,9 @@ const DetDocEmbarcacionPescaConsumoForm = ({ documento, onSave, onCancel }) => {
                       id="faenaPescaConsumoId"
                       value={field.value ? Number(field.value) : null}
                       onChange={(e) => field.onChange(e.value)}
-                      options={faenas.map(f => ({ 
-                        ...f, 
-                        id: Number(f.id),
-                        nombreCompleto: `${f.id} - ${f.descripcion}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
+                      options={faenas}
+                      optionLabel="label"
+                      optionValue="value"
                       placeholder="Seleccione una faena"
                       className={errors.faenaPescaConsumoId ? 'p-invalid' : ''}
                       filter
@@ -224,13 +223,9 @@ const DetDocEmbarcacionPescaConsumoForm = ({ documento, onSave, onCancel }) => {
                       id="documentoPescaId"
                       value={field.value ? Number(field.value) : null}
                       onChange={(e) => field.onChange(e.value)}
-                      options={tiposDocumentoPesca.map(tdp => ({ 
-                        ...tdp, 
-                        id: Number(tdp.id),
-                        nombreCompleto: `${tdp.nombre} - ${tdp.descripcion}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
+                      options={tiposDocumentoPesca}
+                      optionLabel="label"
+                      optionValue="value"
                       placeholder="Seleccione tipo de documento"
                       className={errors.documentoPescaId ? 'p-invalid' : ''}
                       filter
@@ -397,52 +392,6 @@ const DetDocEmbarcacionPescaConsumoForm = ({ documento, onSave, onCancel }) => {
                     />
                   )}
                 />
-              </div>
-            </div>
-          </TabPanel>
-
-          {/* Pestaña 4: Resumen */}
-          <TabPanel header="Resumen">
-            <div className="grid">
-              <div className="col-12">
-                <div className="card p-4 bg-gray-50">
-                  <h5 className="mb-3">Resumen del Documento</h5>
-                  <div className="grid">
-                    <div className="col-6">
-                      <strong>Faena:</strong> {
-                        faenas.find(f => f.id === watch('faenaPescaConsumoId'))?.descripcion || 'Sin seleccionar'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Tipo Documento:</strong> {
-                        tiposDocumentoPesca.find(tdp => tdp.id === watch('documentoPescaId'))?.nombre || 'Sin seleccionar'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Número:</strong> {watch('numeroDocumento') || 'Sin definir'}
-                    </div>
-                    <div className="col-6">
-                      <strong>Verificado:</strong> {watch('verificado') ? 'Sí' : 'No'}
-                    </div>
-                    <div className="col-6">
-                      <strong>F. Emisión:</strong> {
-                        fechaEmision ? fechaEmision.toLocaleDateString('es-PE') : 'Sin definir'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>F. Vencimiento:</strong> {
-                        fechaVencimiento ? fechaVencimiento.toLocaleDateString('es-PE') : 'Sin definir'
-                      }
-                    </div>
-                    {fechaVencimiento && (
-                      <div className="col-12">
-                        <div className="text-lg font-bold">
-                          <strong>Estado:</strong> {calcularVigencia()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
               </div>
             </div>
           </TabPanel>

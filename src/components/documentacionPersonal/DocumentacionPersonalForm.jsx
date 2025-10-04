@@ -40,7 +40,6 @@ const schema = Yup.object().shape({
     ),
   urlDocPdf: Yup.string()
     .nullable()
-    .matches(/^\/.*$/, "Debe ser una ruta relativa válida")
     .max(500, "La URL no puede exceder 500 caracteres"),
   docVencido: Yup.boolean(),
   cesado: Yup.boolean(),

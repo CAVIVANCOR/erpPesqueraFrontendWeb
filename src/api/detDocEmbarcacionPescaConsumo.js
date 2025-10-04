@@ -1,74 +1,54 @@
-import axios from 'axios';
-import { useAuthStore } from '../shared/stores/useAuthStore';
+// src/api/detDocEmbarcacionPescaConsumo.js
+// Funciones de integración API REST para DetDocEmbarcacionPescaConsumo. Usa JWT desde Zustand.
+// Documentado en español técnico.
 
-const API_URL = import.meta.env.VITE_API_URL;
+import axios from "axios";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/det-doc-embarcacion-pesca-consumo`;
 
 /**
- * API para gestión de Detalle Documentación Embarcación Pesca Consumo
- * Proporciona funciones para operaciones CRUD en el módulo de detalles de documentación de embarcaciones de pesca de consumo
+ * Obtiene el token JWT profesionalmente desde Zustand
  */
-
-/**
- * Obtiene todos los detalles de documentación de embarcaciones de pesca de consumo
- * @returns {Promise} Lista de detalles de documentación de embarcaciones de pesca de consumo
- */
-export const getAllDetDocEmbarcacionPescaConsumo = async () => {
+function getAuthHeaders() {
   const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/det-doc-embarcacion-pesca-consumo`, {
+  return { Authorization: `Bearer ${token}` };
+}
+
+export async function getDetDocEmbarcacionPescaConsumo() {
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function getDetDocEmbarcacionPescaConsumoPorId(id) {
+  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function crearDetDocEmbarcacionPescaConsumo(data) {
+  const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function actualizarDetDocEmbarcacionPescaConsumo(id, data) {
+  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function eliminarDetDocEmbarcacionPescaConsumo(id) {
+  const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function subirDocumentoEmbarcacionConsumo(file) {
+  const formData = new FormData();
+  formData.append('documentoEmbarcacion', file);
+  const API_DOCUMENTO = `${import.meta.env.VITE_API_URL}/det-doc-embarcacion-pesca-consumo/upload`;
+  const res = await axios.post(API_DOCUMENTO, formData, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      ...getAuthHeaders(),
+      'Content-Type': 'multipart/form-data',
     },
   });
-  return response.data;
-};
-
-/**
- * Crea un nuevo detalle de documentación de embarcación de pesca de consumo
- * @param {Object} detDocEmbarcacionPescaConsumoData - Datos del detalle de documentación de embarcación de pesca de consumo
- * @returns {Promise} Detalle de documentación de embarcación de pesca de consumo creado
- */
-export const crearDetDocEmbarcacionPescaConsumo = async (detDocEmbarcacionPescaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/det-doc-embarcacion-pesca-consumo`, detDocEmbarcacionPescaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
-
-/**
- * Actualiza un detalle de documentación de embarcación de pesca de consumo existente
- * @param {number} id - ID del detalle de documentación de embarcación de pesca de consumo
- * @param {Object} detDocEmbarcacionPescaConsumoData - Datos actualizados
- * @returns {Promise} Detalle de documentación de embarcación de pesca de consumo actualizado
- */
-export const actualizarDetDocEmbarcacionPescaConsumo = async (id, detDocEmbarcacionPescaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/det-doc-embarcacion-pesca-consumo/${id}`, detDocEmbarcacionPescaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
-
-/**
- * Elimina un detalle de documentación de embarcación de pesca de consumo
- * @param {number} id - ID del detalle de documentación de embarcación de pesca de consumo a eliminar
- * @returns {Promise} Confirmación de eliminación
- */
-export const deleteDetDocEmbarcacionPescaConsumo = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/det-doc-embarcacion-pesca-consumo/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
-
-// Aliases en inglés para compatibilidad
-export const createDetDocEmbarcacionPescaConsumo = crearDetDocEmbarcacionPescaConsumo;
-export const updateDetDocEmbarcacionPescaConsumo = actualizarDetDocEmbarcacionPescaConsumo;
-export const eliminarDetDocEmbarcacionPescaConsumo = deleteDetDocEmbarcacionPescaConsumo;
+  return res.data;
+}

@@ -11,7 +11,7 @@ import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Tag } from 'primereact/tag';
 import { useAuthStore } from '../shared/stores/useAuthStore';
-import { getAllCalaFaenaConsumo, deleteCalaFaenaConsumo } from '../api/calaFaenaConsumo';
+import { getCalasFaenaConsumo, eliminarCalaFaenaConsumo } from '../api/calaFaenaConsumo';
 import CalaFaenaConsumoForm from '../components/calaFaenaConsumo/CalaFaenaConsumoForm';
 
 /**
@@ -34,7 +34,7 @@ const CalaFaenaConsumo = () => {
   const cargarCalas = async () => {
     try {
       setLoading(true);
-      const data = await getAllCalaFaenaConsumo();
+      const data = await getCalasFaenaConsumo();
       setCalas(data);
     } catch (error) {
       toast.current?.show({
@@ -79,7 +79,7 @@ const CalaFaenaConsumo = () => {
 
   const eliminarCala = async (id) => {
     try {
-      await deleteCalaFaenaConsumo(id);
+      await eliminarCalaFaenaConsumo(id);
       toast.current?.show({
         severity: 'success',
         summary: 'Éxito',

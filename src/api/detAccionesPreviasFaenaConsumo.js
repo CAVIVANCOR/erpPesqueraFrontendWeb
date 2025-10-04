@@ -1,74 +1,53 @@
-import axios from 'axios';
-import { useAuthStore } from '../shared/stores/useAuthStore';
+// src/api/detAccionesPreviasFaenaConsumo.js
+// Funciones de integración API REST para DetAccionesPreviasFaenaConsumo. Usa JWT desde Zustand.
+// Documentado en español técnico.
 
-const API_URL = import.meta.env.VITE_API_URL;
+import axios from "axios";
+import { useAuthStore } from "../shared/stores/useAuthStore";
 
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/det-acciones-previas-faena-consumo`;
 /**
- * API para gestión de Detalle Acciones Previas Faena Consumo
- * Proporciona funciones para operaciones CRUD en el módulo de detalles de acciones previas de faenas de consumo
+ * Obtiene el token JWT profesionalmente desde Zustand
  */
-
-/**
- * Obtiene todos los detalles de acciones previas de faenas de consumo
- * @returns {Promise} Lista de detalles de acciones previas de faenas de consumo
- */
-export const getAllDetAccionesPreviasFaenaConsumo = async () => {
+function getAuthHeaders() {
   const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/det-acciones-previas-faena-consumo`, {
+  return { Authorization: `Bearer ${token}` };
+}
+
+export async function getDetAccionesPreviasFaenaConsumo() {
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function getDetAccionesPreviasFaenaConsumoPorId(id) {
+  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function crearDetAccionesPreviasFaenaConsumo(data) {
+  const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function actualizarDetAccionesPreviasFaenaConsumo(id, data) {
+  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function eliminarDetAccionesPreviasFaenaConsumo(id) {
+  const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function subirConfirmaAccionConsumo(file) {
+  const formData = new FormData();
+  formData.append('confirmaAccion', file);
+  const API_CONFIRMA = `${import.meta.env.VITE_API_URL}/det-accion-previas-faena-consumo/upload`;
+  const res = await axios.post(API_CONFIRMA, formData, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      ...getAuthHeaders(),
+      'Content-Type': 'multipart/form-data',
     },
   });
-  return response.data;
-};
-
-/**
- * Crea un nuevo detalle de acciones previas de faena de consumo
- * @param {Object} detAccionesPreviasFaenaConsumoData - Datos del detalle de acciones previas de faena de consumo
- * @returns {Promise} Detalle de acciones previas de faena de consumo creado
- */
-export const crearDetAccionesPreviasFaenaConsumo = async (detAccionesPreviasFaenaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/det-acciones-previas-faena-consumo`, detAccionesPreviasFaenaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
-
-/**
- * Actualiza un detalle de acciones previas de faena de consumo existente
- * @param {number} id - ID del detalle de acciones previas de faena de consumo
- * @param {Object} detAccionesPreviasFaenaConsumoData - Datos actualizados
- * @returns {Promise} Detalle de acciones previas de faena de consumo actualizado
- */
-export const actualizarDetAccionesPreviasFaenaConsumo = async (id, detAccionesPreviasFaenaConsumoData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/det-acciones-previas-faena-consumo/${id}`, detAccionesPreviasFaenaConsumoData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
-
-/**
- * Elimina un detalle de acciones previas de faena de consumo
- * @param {number} id - ID del detalle de acciones previas de faena de consumo a eliminar
- * @returns {Promise} Confirmación de eliminación
- */
-export const deleteDetAccionesPreviasFaenaConsumo = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/det-acciones-previas-faena-consumo/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
-
-// Aliases en inglés para compatibilidad
-export const createDetAccionesPreviasFaenaConsumo = crearDetAccionesPreviasFaenaConsumo;
-export const updateDetAccionesPreviasFaenaConsumo = actualizarDetAccionesPreviasFaenaConsumo;
-export const eliminarDetAccionesPreviasFaenaConsumo = deleteDetAccionesPreviasFaenaConsumo;
+  return res.data;
+}

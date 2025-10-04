@@ -1,686 +1,611 @@
 // src/components/faenaPescaConsumo/FaenaPescaConsumoForm.jsx
-// Formulario profesional para FaenaPescaConsumo. Cumple regla transversal ERP Megui:
-// - Campos controlados, validación, normalización de IDs en combos, envío con JWT desde Zustand
-import React, { useState, useEffect, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { Dropdown } from 'primereact/dropdown';
-import { Calendar } from 'primereact/calendar';
-import { TabView, TabPanel } from 'primereact/tabview';
-import { Toast } from 'primereact/toast';
-import { createFaenaPescaConsumo, updateFaenaPescaConsumo } from '../../api/faenaPescaConsumo';
+// Formulario profesional para FaenaPescaConsumo. Cumple la regla transversal ERP Megui.
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { ButtonGroup } from "primereact/buttongroup";
+import { Toast } from "primereact/toast";
+import { Tag } from "primereact/tag";
 
-/**
- * Formulario para gestión de FaenaPescaConsumo
- * Maneja creación y edición con validaciones y combos normalizados
- * Organizado en pestañas para mejor UX
- */
-const FaenaPescaConsumoForm = ({ faena, onSave, onCancel }) => {
-  const { control, handleSubmit, reset, watch, formState: { errors } } = useForm();
-  const [loading, setLoading] = useState(false);
-  const [novedades, setNovedades] = useState([]);
-  const [bahias, setBahias] = useState([]);
-  const [personal, setPersonal] = useState([]);
-  const [puertos, setPuertos] = useState([]);
-  const [embarcaciones, setEmbarcaciones] = useState([]);
-  const [boliches, setBoliches] = useState([]);
+// Componentes de cards
+import DatosGeneralesFaenaPescaConsumo from "./DatosGeneralesFaenaPescaConsumo";
+import DetalleAccionesPreviasConsumoCard from "./DetalleAccionesPreviasConsumoCard";
+import InformeFaenaPescaConsumoForm from "./InformeFaenaPescaConsumoForm";
+import DetalleDocTripulantesConsumoCard from "./DetalleDocTripulantesConsumoCard";
+import TripulantesFaenaPescaConsumoCard from "./TripulantesFaenaPescaConsumoCard";
+import DetalleDocEmbarcacionConsumoCard from "./DetalleDocEmbarcacionConsumoCard";
+import DescargaFaenaConsumoCard from "./DescargaFaenaConsumoCard";
+import CalasConsumoCard from "./CalasConsumoCard";
+
+// API imports
+import { listarEstadosMultiFuncionFaenaPescaConsumo } from "../../api/estadoMultiFuncion";
+import { getPersonal } from "../../api/personal";
+import { getDocumentosPesca } from "../../api/documentoPesca";
+import { getDocumentacionesEmbarcacion } from "../../api/documentacionEmbarcacion";
+import { getClientesPorEmpresa } from "../../api/entidadComercial";
+import { getEspeciesParaDropdown } from "../../api/especie";
+import { getPuertosActivos } from "../../api/puertoPesca";
+import { getFaenaPescaConsumoPorId } from "../../api/faenaPescaConsumo";
+import logoEscudoPeru from "../../assets/logoEscudoPeru.png";
+
+export default function FaenaPescaConsumoForm({
+  visible,
+  onHide,
+  isEdit = false,
+  defaultValues = {},
+  onSubmit,
+  loading = false,
+  novedadData,
+  embarcacionesOptions = [],
+  bolichesOptions = [],
+  bahiasComercialesOptions = [],
+  motoristasOptions = [],
+  patronesOptions = [],
+  puertosOptions = [],
+  onDataChange,
+  onNovedadDataChange,
+  onFaenasChange,
+  faenaCreatedSuccessfully = false,
+  setFaenaCreatedSuccessfully,
+}) {
+  // Estados principales
+  const [activeCard, setActiveCard] = useState("datos-generales");
+  const [currentFaenaData, setCurrentFaenaData] = useState(defaultValues);
+  const [isEditMode, setIsEditMode] = useState(isEdit || !!defaultValues.id);
+  const [forceUpdate, setForceUpdate] = useState(0);
+  const [lastDescargaUpdate, setLastDescargaUpdate] = useState(null);
   const toast = useRef(null);
+  const previousDefaultValuesId = useRef(null);
 
-  // Observar fechas para validación
-  const fechaSalida = watch('fechaSalida');
-  const fechaHoraFondeo = watch('fechaHoraFondeo');
+  // Estados para datos del backend
+  const [estadosFaena, setEstadosFaena] = useState([]);
+  const [personal, setPersonal] = useState([]);
+  const [documentacionEmbarcacion, setDocumentacionEmbarcacion] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [especies, setEspecies] = useState([]);
+  const [puertosDescarga, setPuertosDescarga] = useState([]);
+  const [documentosPesca, setDocumentosPesca] = useState([]);
 
+  // Estados para novedad
+  const [novedad, setNovedad] = useState(null);
+
+  // Configuración del formulario con React Hook Form
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    getValues,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      novedadPescaConsumoId: null,
+      embarcacionId: null,
+      bolicheRedId: null,
+      patronId: null,
+      motoristaId: null,
+      bahiaId: null,
+      fechaSalida: null,
+      fechaDescarga: null,
+      puertoSalidaId: null,
+      puertoFondeoId: null,
+      puertoDescargaId: null,
+      urlInformeFaena: "",
+      observaciones: "",
+      estadoFaenaId: null,
+      toneladasCapturadasFaena: null,
+      fechaHoraFondeo: null,
+    },
+  });
+
+  // Cargar datos iniciales
   useEffect(() => {
     cargarDatosIniciales();
   }, []);
 
+  // Actualizar cuando cambia novedadData
   useEffect(() => {
-    if (faena) {
-      // Reset del formulario con datos de edición, normalizando IDs
-      reset({
-        novedadPescaConsumoId: faena.novedadPescaConsumoId ? Number(faena.novedadPescaConsumoId) : null,
-        bahiaId: faena.bahiaId ? Number(faena.bahiaId) : null,
-        motoristaId: faena.motoristaId ? Number(faena.motoristaId) : null,
-        patronId: faena.patronId ? Number(faena.patronId) : null,
-        descripcion: faena.descripcion || '',
-        fechaSalida: faena.fechaSalida ? new Date(faena.fechaSalida) : null,
-        fechaHoraFondeo: faena.fechaHoraFondeo ? new Date(faena.fechaHoraFondeo) : null,
-        puertoSalidaId: faena.puertoSalidaId ? Number(faena.puertoSalidaId) : null,
-        puertoFondeoId: faena.puertoFondeoId ? Number(faena.puertoFondeoId) : null,
-        puertoDescargaId: faena.puertoDescargaId ? Number(faena.puertoDescargaId) : null,
-        embarcacionId: faena.embarcacionId ? Number(faena.embarcacionId) : null,
-        bolicheRedId: faena.bolicheRedId ? Number(faena.bolicheRedId) : null,
-        urlInformeFaena: faena.urlInformeFaena || ''
-      });
-    } else {
-      // Reset para nuevo registro
-      reset({
-        novedadPescaConsumoId: null,
-        bahiaId: null,
-        motoristaId: null,
-        patronId: null,
-        descripcion: '',
-        fechaSalida: null,
-        fechaHoraFondeo: null,
-        puertoSalidaId: null,
-        puertoFondeoId: null,
-        puertoDescargaId: null,
-        embarcacionId: null,
-        bolicheRedId: null,
-        urlInformeFaena: ''
-      });
+    if (novedadData) {
+      setNovedad(novedadData);
+      setValue("novedadPescaConsumoId", Number(novedadData.id));
     }
-  }, [faena, reset]);
+  }, [novedadData, setValue]);
+
+  // Actualizar cuando cambian defaultValues
+  useEffect(() => {
+    if (defaultValues?.id && defaultValues.id !== previousDefaultValuesId.current) {
+      previousDefaultValuesId.current = defaultValues.id;
+      setCurrentFaenaData(defaultValues);
+      setIsEditMode(true);
+      reset({
+        ...defaultValues,
+        novedadPescaConsumoId: defaultValues.novedadPescaConsumoId
+          ? Number(defaultValues.novedadPescaConsumoId)
+          : null,
+        embarcacionId: defaultValues.embarcacionId
+          ? Number(defaultValues.embarcacionId)
+          : null,
+        bolicheRedId: defaultValues.bolicheRedId
+          ? Number(defaultValues.bolicheRedId)
+          : null,
+        patronId: defaultValues.patronId ? Number(defaultValues.patronId) : null,
+        motoristaId: defaultValues.motoristaId
+          ? Number(defaultValues.motoristaId)
+          : null,
+        bahiaId: defaultValues.bahiaId ? Number(defaultValues.bahiaId) : null,
+        puertoSalidaId: defaultValues.puertoSalidaId
+          ? Number(defaultValues.puertoSalidaId)
+          : null,
+        puertoFondeoId: defaultValues.puertoFondeoId
+          ? Number(defaultValues.puertoFondeoId)
+          : null,
+        puertoDescargaId: defaultValues.puertoDescargaId
+          ? Number(defaultValues.puertoDescargaId)
+          : null,
+        estadoFaenaId: defaultValues.estadoFaenaId
+          ? Number(defaultValues.estadoFaenaId)
+          : null,
+        fechaSalida: defaultValues.fechaSalida
+          ? new Date(defaultValues.fechaSalida)
+          : null,
+        fechaDescarga: defaultValues.fechaDescarga
+          ? new Date(defaultValues.fechaDescarga)
+          : null,
+        fechaHoraFondeo: defaultValues.fechaHoraFondeo
+          ? new Date(defaultValues.fechaHoraFondeo)
+          : null,
+      });
+    } else if (!defaultValues?.id && previousDefaultValuesId.current !== null) {
+      previousDefaultValuesId.current = null;
+      setIsEditMode(false);
+      setCurrentFaenaData({});
+    }
+  }, [defaultValues?.id, reset]);
+  
+  // Recargar faena cuando se crea exitosamente
+  useEffect(() => {
+    if (faenaCreatedSuccessfully && currentFaenaData?.id) {
+      recargarFaena();
+      setFaenaCreatedSuccessfully?.(false);
+    }
+  }, [faenaCreatedSuccessfully, currentFaenaData?.id, setFaenaCreatedSuccessfully]);
 
   const cargarDatosIniciales = async () => {
     try {
-      // TODO: Implementar APIs para cargar datos de combos
-      // Datos de ejemplo mientras se implementan las APIs
-      setNovedades([
-        { id: 1, nombre: 'Temporada Anchoveta 2024-I' },
-        { id: 2, nombre: 'Temporada Jurel 2024-I' },
-        { id: 3, nombre: 'Temporada Caballa 2024-I' }
-      ]);
-      
-      setBahias([
-        { id: 1, nombre: 'Bahía de Paracas', codigo: 'PAR' },
-        { id: 2, nombre: 'Bahía de Chimbote', codigo: 'CHI' },
-        { id: 3, nombre: 'Bahía de Callao', codigo: 'CAL' }
-      ]);
+      const estadosData = await listarEstadosMultiFuncionFaenaPescaConsumo();
+      setEstadosFaena(estadosData);
 
-      setPersonal([
-        { id: 1, nombres: 'Carlos', apellidos: 'Mendoza García', cargo: 'Motorista' },
-        { id: 2, nombres: 'Luis', apellidos: 'Rodríguez Silva', cargo: 'Patrón' },
-        { id: 3, nombres: 'Miguel', apellidos: 'Torres López', cargo: 'Motorista' },
-        { id: 4, nombres: 'José', apellidos: 'Vargas Ruiz', cargo: 'Patrón' }
-      ]);
+      const personalData = await getPersonal();
+      setPersonal(personalData);
 
-      setPuertos([
-        { id: 1, nombre: 'Puerto de Paracas', codigo: 'PAR' },
-        { id: 2, nombre: 'Puerto de Chimbote', codigo: 'CHI' },
-        { id: 3, nombre: 'Puerto del Callao', codigo: 'CAL' },
-        { id: 4, nombre: 'Puerto de Paita', codigo: 'PAI' }
-      ]);
+      const documentosData = await getDocumentosPesca();
+      setDocumentosPesca(documentosData);
 
-      setEmbarcaciones([
-        { id: 1, nombre: 'Don Pescador I', matricula: 'CO-12345-PM' },
-        { id: 2, nombre: 'Mar Azul II', matricula: 'CO-67890-PM' },
-        { id: 3, nombre: 'Estrella del Mar', matricula: 'CO-11111-PM' }
-      ]);
+      const docEmbarcacionData = await getDocumentacionesEmbarcacion();
+      setDocumentacionEmbarcacion(docEmbarcacionData);
 
-      setBoliches([
-        { id: 1, nombre: 'Red Boliche Premium', codigo: 'RBP-001' },
-        { id: 2, nombre: 'Red Boliche Estándar', codigo: 'RBE-002' },
-        { id: 3, nombre: 'Red Boliche Especial', codigo: 'RBE-003' }
-      ]);
-      
+      if (novedadData?.empresaId) {
+        const clientesData = await getClientesPorEmpresa(novedadData.empresaId);
+        setClientes(clientesData);
+      }
+
+      const especiesData = await getEspeciesParaDropdown();
+      setEspecies(especiesData);
+
+      const puertosDescargaData = await getPuertosActivos();
+      setPuertosDescarga(puertosDescargaData);
     } catch (error) {
+      console.error("Error al cargar datos iniciales:", error);
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al cargar datos iniciales'
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar datos del formulario",
+        life: 3000,
       });
     }
   };
 
-  const validarFechas = () => {
-    if (fechaSalida && fechaHoraFondeo && fechaSalida >= fechaHoraFondeo) {
-      return 'La fecha de fondeo debe ser posterior a la fecha de salida';
-    }
-    return true;
-  };
+  const recargarFaena = async () => {
+    if (!currentFaenaData?.id) return;
 
-  const calcularDuracion = () => {
-    if (!fechaSalida || !fechaHoraFondeo) return '';
-    
-    const diferencia = fechaHoraFondeo - fechaSalida;
-    const horas = Math.round(diferencia / (1000 * 60 * 60));
-    
-    if (horas < 24) {
-      return `${horas} horas`;
-    } else {
-      const dias = Math.floor(horas / 24);
-      const horasRestantes = horas % 24;
-      return `${dias} días ${horasRestantes} horas`;
-    }
-  };
-
-  const onSubmit = async (data) => {
     try {
-      setLoading(true);
-      
-      // Validar fechas
-      const validacionFechas = validarFechas();
-      if (validacionFechas !== true) {
-        toast.current?.show({
-          severity: 'warn',
-          summary: 'Validación',
-          detail: validacionFechas
-        });
-        return;
-      }
-      
-      // Preparar payload con tipos correctos
-      const payload = {
-        novedadPescaConsumoId: Number(data.novedadPescaConsumoId),
-        bahiaId: Number(data.bahiaId),
-        motoristaId: Number(data.motoristaId),
-        patronId: Number(data.patronId),
-        descripcion: data.descripcion?.trim() || null,
-        fechaSalida: data.fechaSalida.toISOString(),
-        fechaHoraFondeo: data.fechaHoraFondeo.toISOString(),
-        puertoSalidaId: Number(data.puertoSalidaId),
-        puertoFondeoId: Number(data.puertoFondeoId),
-        puertoDescargaId: Number(data.puertoDescargaId),
-        embarcacionId: data.embarcacionId ? Number(data.embarcacionId) : null,
-        bolicheRedId: data.bolicheRedId ? Number(data.bolicheRedId) : null,
-        urlInformeFaena: data.urlInformeFaena?.trim() || null
-      };
-      if (faena?.id) {
-        await updateFaenaPescaConsumo(faena.id, payload);
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Faena actualizada correctamente'
-        });
-      } else {
-        await createFaenaPescaConsumo(payload);
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Faena creada correctamente'
-        });
-      }
-      
-      onSave();
+      const faenaActualizada = await getFaenaPescaConsumoPorId(
+        currentFaenaData.id
+      );
+      setCurrentFaenaData(faenaActualizada);
+      setForceUpdate((prev) => prev + 1);
     } catch (error) {
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al guardar la faena'
-      });
-    } finally {
-      setLoading(false);
+      console.error("Error al recargar faena:", error);
     }
   };
 
-  return (
-    <div className="faena-pesca-consumo-form">
-      <Toast ref={toast} />
+  const handleFaenaDataChange = (updatedData) => {
+    const newData = { ...currentFaenaData, ...updatedData };
+    setCurrentFaenaData(newData);
+    onDataChange?.(newData);
+    
+    // Si se creó una nueva faena, actualizar el modo de edición
+    if (updatedData?.id && !currentFaenaData?.id) {
+      setIsEditMode(true);
+      setFaenaCreatedSuccessfully?.(true);
+    }
+  };
+  const handleDescargaUpdate = () => {
+    setLastDescargaUpdate(Date.now());
+    recargarFaena();
+  };
+
+  const handleNavigateToCard = (cardId) => {
+    setActiveCard(cardId);
+  };
+
+  const handleHide = () => {
+    onHide();
+  };
+
+  const handleFormSubmit = async (data) => {
+    try {
+      const resultado = await onSubmit(data);
       
-      <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
-        <TabView>
-          {/* Pestaña 1: Información General */}
-          <TabPanel header="Información General">
-            <div className="grid">
-              {/* Novedad */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="novedadPescaConsumoId" className="block text-900 font-medium mb-2">
-                  Novedad de Pesca *
-                </label>
-                <Controller
-                  name="novedadPescaConsumoId"
-                  control={control}
-                  rules={{ required: 'La novedad es obligatoria' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="novedadPescaConsumoId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={novedades.map(n => ({ ...n, id: Number(n.id) }))}
-                      optionLabel="nombre"
-                      optionValue="id"
-                      placeholder="Seleccione una novedad"
-                      className={errors.novedadPescaConsumoId ? 'p-invalid' : ''}
-                      filter
-                    />
-                  )}
-                />
-                {errors.novedadPescaConsumoId && (
-                  <small className="p-error">{errors.novedadPescaConsumoId.message}</small>
-                )}
-              </div>
+      if (!isEditMode && resultado?.id) {
+        // Generar descripción automática
+        const descripcionGenerada = `Faena ${resultado.id} Novedad ${novedadData?.numeroNovedad || 'S/N'}`;
+        
+        const nuevaFaenaData = { 
+          ...data, 
+          id: resultado.id,
+          descripcion: descripcionGenerada
+        };
+        setCurrentFaenaData(nuevaFaenaData);
+        
+        // Actualizar el formulario con el nuevo ID ANTES de cambiar isEditMode
+        reset({
+          ...data,
+          id: resultado.id,
+          descripcion: descripcionGenerada
+        });
+        
+        // Cambiar a modo edición inmediatamente
+        setIsEditMode(true);
+        
+        // Forzar actualización después de un pequeño delay
+        setTimeout(() => {
+          setForceUpdate(prev => prev + 1);
+        }, 100);
+        
+        // Actualizar la prop faenaCreatedSuccessfully
+        setFaenaCreatedSuccessfully?.(true);
+        
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Faena creada correctamente. Ahora puede acceder a todas las funciones.",
+          life: 4000,
+        });
+      } else if (isEditMode) {
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito", 
+          detail: "Faena actualizada correctamente",
+          life: 3000,
+        });
+      }
+      
+    } catch (error) {
+      console.error("❌ Error en handleFormSubmit:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al guardar la faena",
+        life: 3000,
+      });
+    }
+  };
+  const commonProps = {
+    control,
+    errors,
+    setValue,
+    getValues,
+    watch,
+    faenaData: currentFaenaData,
+    novedadData: novedad,
+    onFaenaDataChange: handleFaenaDataChange,
+    onNovedadDataChange,
+    estadosFaena,
+    embarcaciones: embarcacionesOptions,
+    boliches: bolichesOptions,
+    bahias: bahiasComercialesOptions,
+    motoristas: motoristasOptions,
+    patrones: patronesOptions,
+    puertos: puertosOptions,
+    puertosDescarga,
+    personal,
+    documentosPesca,
+    documentacionEmbarcacion,
+    clientes,
+    especies,
+  };
 
-              {/* Bahía */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="bahiaId" className="block text-900 font-medium mb-2">
-                  Bahía *
-                </label>
-                <Controller
-                  name="bahiaId"
-                  control={control}
-                  rules={{ required: 'La bahía es obligatoria' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="bahiaId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={bahias.map(b => ({ 
-                        ...b, 
-                        id: Number(b.id),
-                        nombreCompleto: `${b.codigo} - ${b.nombre}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione una bahía"
-                      className={errors.bahiaId ? 'p-invalid' : ''}
-                      filter
-                    />
-                  )}
-                />
-                {errors.bahiaId && (
-                  <small className="p-error">{errors.bahiaId.message}</small>
-                )}
-              </div>
-
-              {/* Motorista */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="motoristaId" className="block text-900 font-medium mb-2">
-                  Motorista *
-                </label>
-                <Controller
-                  name="motoristaId"
-                  control={control}
-                  rules={{ required: 'El motorista es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="motoristaId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={personal.filter(p => p.cargo === 'Motorista').map(p => ({ 
-                        ...p, 
-                        id: Number(p.id),
-                        nombreCompleto: `${p.nombres} ${p.apellidos}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione un motorista"
-                      className={errors.motoristaId ? 'p-invalid' : ''}
-                      filter
-                    />
-                  )}
-                />
-                {errors.motoristaId && (
-                  <small className="p-error">{errors.motoristaId.message}</small>
-                )}
-              </div>
-
-              {/* Patrón */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="patronId" className="block text-900 font-medium mb-2">
-                  Patrón *
-                </label>
-                <Controller
-                  name="patronId"
-                  control={control}
-                  rules={{ required: 'El patrón es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="patronId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={personal.filter(p => p.cargo === 'Patrón').map(p => ({ 
-                        ...p, 
-                        id: Number(p.id),
-                        nombreCompleto: `${p.nombres} ${p.apellidos}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione un patrón"
-                      className={errors.patronId ? 'p-invalid' : ''}
-                      filter
-                    />
-                  )}
-                />
-                {errors.patronId && (
-                  <small className="p-error">{errors.patronId.message}</small>
-                )}
-              </div>
-
-              {/* Descripción */}
-              <div className="col-12">
-                <label htmlFor="descripcion" className="block text-900 font-medium mb-2">
-                  Descripción
-                </label>
-                <Controller
-                  name="descripcion"
-                  control={control}
-                  render={({ field }) => (
-                    <InputTextarea
-                      id="descripcion"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      rows={3}
-                      placeholder="Descripción de la faena de pesca..."
-                    />
-                  )}
-                />
-              </div>
-            </div>
-          </TabPanel>
-
-          {/* Pestaña 2: Fechas y Puertos */}
-          <TabPanel header="Fechas y Puertos">
-            <div className="grid">
-              {/* Fecha Salida */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="fechaSalida" className="block text-900 font-medium mb-2">
-                  Fecha y Hora de Salida *
-                </label>
-                <Controller
-                  name="fechaSalida"
-                  control={control}
-                  rules={{ required: 'La fecha de salida es obligatoria' }}
-                  render={({ field }) => (
-                    <Calendar
-                      id="fechaSalida"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      placeholder="Seleccione fecha y hora"
-                      dateFormat="dd/mm/yy"
-                      showTime
-                      hourFormat="24"
-                      showIcon
-                      className={errors.fechaSalida ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.fechaSalida && (
-                  <small className="p-error">{errors.fechaSalida.message}</small>
-                )}
-              </div>
-
-              {/* Fecha Hora Fondeo */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="fechaHoraFondeo" className="block text-900 font-medium mb-2">
-                  Fecha y Hora de Fondeo *
-                </label>
-                <Controller
-                  name="fechaHoraFondeo"
-                  control={control}
-                  rules={{ required: 'La fecha de fondeo es obligatoria' }}
-                  render={({ field }) => (
-                    <Calendar
-                      id="fechaHoraFondeo"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      placeholder="Seleccione fecha y hora"
-                      dateFormat="dd/mm/yy"
-                      showTime
-                      hourFormat="24"
-                      showIcon
-                      minDate={fechaSalida}
-                      className={errors.fechaHoraFondeo ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.fechaHoraFondeo && (
-                  <small className="p-error">{errors.fechaHoraFondeo.message}</small>
-                )}
-              </div>
-
-              {/* Puerto Salida */}
-              <div className="col-12 md:col-4">
-                <label htmlFor="puertoSalidaId" className="block text-900 font-medium mb-2">
-                  Puerto de Salida *
-                </label>
-                <Controller
-                  name="puertoSalidaId"
-                  control={control}
-                  rules={{ required: 'El puerto de salida es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="puertoSalidaId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={puertos.map(p => ({ 
-                        ...p, 
-                        id: Number(p.id),
-                        nombreCompleto: `${p.codigo} - ${p.nombre}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione puerto"
-                      className={errors.puertoSalidaId ? 'p-invalid' : ''}
-                      filter
-                    />
-                  )}
-                />
-                {errors.puertoSalidaId && (
-                  <small className="p-error">{errors.puertoSalidaId.message}</small>
-                )}
-              </div>
-
-              {/* Puerto Fondeo */}
-              <div className="col-12 md:col-4">
-                <label htmlFor="puertoFondeoId" className="block text-900 font-medium mb-2">
-                  Puerto de Fondeo *
-                </label>
-                <Controller
-                  name="puertoFondeoId"
-                  control={control}
-                  rules={{ required: 'El puerto de fondeo es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="puertoFondeoId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={puertos.map(p => ({ 
-                        ...p, 
-                        id: Number(p.id),
-                        nombreCompleto: `${p.codigo} - ${p.nombre}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione puerto"
-                      className={errors.puertoFondeoId ? 'p-invalid' : ''}
-                      filter
-                    />
-                  )}
-                />
-                {errors.puertoFondeoId && (
-                  <small className="p-error">{errors.puertoFondeoId.message}</small>
-                )}
-              </div>
-
-              {/* Puerto Descarga */}
-              <div className="col-12 md:col-4">
-                <label htmlFor="puertoDescargaId" className="block text-900 font-medium mb-2">
-                  Puerto de Descarga *
-                </label>
-                <Controller
-                  name="puertoDescargaId"
-                  control={control}
-                  rules={{ required: 'El puerto de descarga es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="puertoDescargaId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={puertos.map(p => ({ 
-                        ...p, 
-                        id: Number(p.id),
-                        nombreCompleto: `${p.codigo} - ${p.nombre}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione puerto"
-                      className={errors.puertoDescargaId ? 'p-invalid' : ''}
-                      filter
-                    />
-                  )}
-                />
-                {errors.puertoDescargaId && (
-                  <small className="p-error">{errors.puertoDescargaId.message}</small>
-                )}
-              </div>
-
-              {/* Duración Calculada */}
-              {fechaSalida && fechaHoraFondeo && (
-                <div className="col-12">
-                  <div className="card p-3 bg-blue-50">
-                    <h5 className="mb-2 text-blue-800">Información de Duración</h5>
-                    <div className="text-lg font-bold text-primary">
-                      <strong>Duración Total: {calcularDuracion()}</strong>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </TabPanel>
-
-          {/* Pestaña 3: Embarcación y Equipos */}
-          <TabPanel header="Embarcación y Equipos">
-            <div className="grid">
-              {/* Embarcación */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="embarcacionId" className="block text-900 font-medium mb-2">
-                  Embarcación
-                </label>
-                <Controller
-                  name="embarcacionId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="embarcacionId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={embarcaciones.map(e => ({ 
-                        ...e, 
-                        id: Number(e.id),
-                        nombreCompleto: `${e.matricula} - ${e.nombre}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione una embarcación"
-                      showClear
-                      filter
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Boliche/Red */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="bolicheRedId" className="block text-900 font-medium mb-2">
-                  Boliche/Red
-                </label>
-                <Controller
-                  name="bolicheRedId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="bolicheRedId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={boliches.map(b => ({ 
-                        ...b, 
-                        id: Number(b.id),
-                        nombreCompleto: `${b.codigo} - ${b.nombre}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione un boliche"
-                      showClear
-                      filter
-                    />
-                  )}
-                />
-              </div>
-
-              {/* URL Informe */}
-              <div className="col-12">
-                <label htmlFor="urlInformeFaena" className="block text-900 font-medium mb-2">
-                  URL del Informe de Faena
-                </label>
-                <Controller
-                  name="urlInformeFaena"
-                  control={control}
-                  render={({ field }) => (
-                    <InputText
-                      id="urlInformeFaena"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      placeholder="https://ejemplo.com/informe-faena.pdf"
-                    />
-                  )}
-                />
-              </div>
-            </div>
-          </TabPanel>
-
-          {/* Pestaña 4: Resumen */}
-          <TabPanel header="Resumen">
-            <div className="grid">
-              <div className="col-12">
-                <div className="card p-4 bg-gray-50">
-                  <h5 className="mb-3">Resumen de la Faena</h5>
-                  <div className="grid">
-                    <div className="col-6">
-                      <strong>Novedad:</strong> {
-                        novedades.find(n => n.id === watch('novedadPescaConsumoId'))?.nombre || 'Sin seleccionar'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Bahía:</strong> {
-                        bahias.find(b => b.id === watch('bahiaId'))?.nombre || 'Sin seleccionar'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Motorista:</strong> {
-                        personal.find(p => p.id === watch('motoristaId'))?.nombres || 'Sin seleccionar'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Patrón:</strong> {
-                        personal.find(p => p.id === watch('patronId'))?.nombres || 'Sin seleccionar'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Fecha Salida:</strong> {
-                        fechaSalida ? fechaSalida.toLocaleString('es-PE') : 'Sin definir'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Fecha Hora Fondeo:</strong> {
-                        fechaHoraFondeo ? fechaHoraFondeo.toLocaleString('es-PE') : 'Sin definir'
-                      }
-                    </div>
-                    {fechaSalida && fechaHoraFondeo && (
-                      <div className="col-12">
-                        <div className="text-lg font-bold text-primary">
-                          <strong>Duración: {calcularDuracion()}</strong>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </TabPanel>
-        </TabView>
-
-        <div className="flex justify-content-end gap-2 mt-4">
-          <Button
-            type="button"
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-secondary"
-            onClick={onCancel}
+  const dialogFooter = (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "stretch",
+        gap: 8,
+        marginTop: 2,
+      }}
+    >
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+        <Button
+          icon="pi pi-list"
+          tooltip="Acciones Previas"
+          label="Previas"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "acciones-previas"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("acciones-previas")}
+          type="button"
+          size="small"
+          style={{ width: "100%", height: "100%" }}
+          disabled={!currentFaenaData?.id}
+        />
+        <Button
+          icon="pi pi-info-circle"
+          tooltip="Datos Generales y Detalle de Calas"
+          label="Generales y Calas"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "datos-generales"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("datos-generales")}
+          type="button"
+          size="small"
+          style={{ width: "100%", height: "100%" }}
+        />
+      </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+        <Button
+          icon="pi pi-users"
+          tooltip="Documentos de Tripulantes"
+          label="Dcmto Tripulantes"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "documentos-tripulantes"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("documentos-tripulantes")}
+          type="button"
+          size="small"
+          style={{ width: "100%", height: "100%" }}
+          disabled={!currentFaenaData?.id}
+        />
+        <Button
+          icon="pi pi-id-card"
+          tooltip="Documentos de Embarcación"
+          label="Dcmto Embarcación"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "documentos-embarcacion"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("documentos-embarcacion")}
+          type="button"
+          size="small"
+          style={{ width: "100%", height: "100%" }}
+          disabled={!currentFaenaData?.id}
+        />
+      </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+        <Button
+          icon="pi pi-download"
+          tooltip="Descarga de Faena"
+          label="Descarga Faena"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "descarga"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("descarga")}
+          type="button"
+          size="small"
+          style={{ width: "100%", height: "100%" }}
+          disabled={!currentFaenaData?.id}
+        />
+        <Button
+          icon="pi pi-calculator"
+          tooltip="Tripulantes"
+          label="Tripulantes"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "tripulantes"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("tripulantes")}
+          type="button"
+          size="small"
+          style={{ width: "100%", height: "100%" }}
+          disabled={!currentFaenaData?.id}
+        />
+      </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        <Button
+          tooltip="Reporte de Faenas y Calas PRODUCE"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "informe" ? "p-button-info" : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("informe")}
+          type="button"
+          style={{ fontWeight: "bold", width: "100%" }}
+          size="small"
+          disabled={!currentFaenaData?.id}
+        >
+          <img
+            src={logoEscudoPeru}
+            alt="Escudo Perú"
+            style={{
+              width: "16px",
+              height: "16px",
+              marginRight: "0.5rem",
+              filter:
+                activeCard === "informe" ? "brightness(0) invert(1)" : "none",
+            }}
           />
-          <Button
-            type="submit"
-            label={faena?.id ? 'Actualizar' : 'Crear'}
-            icon="pi pi-check"
-            loading={loading}
-            className="p-button-primary"
-          />
-        </div>
-      </form>
+          PRODUCE
+        </Button>
+      </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        <Button
+          label="Cancelar"
+          icon="pi pi-times"
+          onClick={handleHide}
+          className="p-button-text"
+          severity="danger"
+          raised
+          outlined
+          size="small"
+          type="button"
+        />
+        <Button
+          key={`button-${isEditMode}-${forceUpdate}`}
+          label={isEditMode ? "Actualizar" : "Crear"}
+          icon="pi pi-check"
+          onClick={handleSubmit(handleFormSubmit)}
+          className="p-button-success"
+          loading={loading}
+          severity="success"
+          raised
+          outlined
+          size="small"
+          type="button"
+        />
+      </div>
     </div>
   );
-};
 
-export default FaenaPescaConsumoForm;
+  return (
+    <Dialog
+      visible={visible}
+      style={{ width: "1300px" }}
+      headerStyle={{ display: "none" }}
+      modal
+      maximizable
+      footer={dialogFooter}
+      onHide={handleHide}
+    >
+      <Toast ref={toast} />
+      {/* Mostrar descripción de faena con Tag */}
+      <div className="flex justify-content-center mb-4">
+        <Tag
+          key={`tag-${isEditMode}-${faenaCreatedSuccessfully}-${currentFaenaData?.id}-${forceUpdate}`}
+          value={(() => {
+            const faenaId = currentFaenaData?.id;
+            const novedadNumero = novedadData?.numeroNovedad || 'S/N';
+            let descripcionBase = "";
+            
+            if (faenaId) {
+              descripcionBase = `Faena ${faenaId} Novedad ${novedadNumero}`;
+            } else {
+              descripcionBase = `Nueva Faena Novedad ${novedadNumero}`;
+            }
+            
+            let resultado = "";
+            if (isEditMode) {
+              resultado = `EDITAR: ${descripcionBase}`;
+            } else if (faenaCreatedSuccessfully) {
+              resultado = `CREADA: ${descripcionBase}`;
+            } else {
+              resultado = descripcionBase;
+            }
+            
+            return resultado;
+          })()}
+          severity={isEditMode ? "warning" : faenaCreatedSuccessfully ? "success" : "info"}
+          style={{
+            fontSize: "1.1rem",
+            padding: "0.75rem 1.25rem",
+            textTransform: "uppercase",
+            fontWeight: "bold",
+            textAlign: "center",
+            width: "100%",
+            marginTop: "0.5rem",
+          }}
+        />
+      </div>
+      {/* Contenido de Cards */}
+      <div className="p-fluid">
+        {activeCard === "datos-generales" && (
+          <DatosGeneralesFaenaPescaConsumo {...commonProps} />
+        )}
+
+        {activeCard === "acciones-previas" && (
+          <DetalleAccionesPreviasConsumoCard
+            faenaPescaConsumoId={currentFaenaData?.id}
+            personal={personal}
+            onDataChange={handleFaenaDataChange}
+          />
+        )}
+
+        {activeCard === "documentos-embarcacion" && (
+          <DetalleDocEmbarcacionConsumoCard
+            faenaPescaConsumoId={currentFaenaData?.id}
+            documentacionEmbarcacion={documentacionEmbarcacion}
+            onDataChange={handleFaenaDataChange}
+          />
+        )}
+
+        {activeCard === "tripulantes" && (
+          <TripulantesFaenaPescaConsumoCard
+            faenaPescaConsumoId={currentFaenaData?.id}
+            personal={personal}
+            onDataChange={handleFaenaDataChange}
+          />
+        )}
+
+        {activeCard === "documentos-tripulantes" && (
+          <DetalleDocTripulantesConsumoCard
+            faenaPescaConsumoId={currentFaenaData?.id}
+            documentosPesca={documentosPesca}
+            personal={personal}
+            onDataChange={handleFaenaDataChange}
+          />
+        )}
+
+        {activeCard === "descarga" && (
+          <DescargaFaenaConsumoCard
+            faenaPescaConsumoId={currentFaenaData?.id}
+            novedadPescaConsumoId={novedad?.id}
+            bahias={bahiasComercialesOptions}
+            motoristas={motoristasOptions}
+            patrones={patronesOptions}
+            puertosDescarga={puertosDescarga}
+            clientes={clientes}
+            especies={especies}
+            onDataChange={handleDescargaUpdate}
+            lastUpdate={lastDescargaUpdate}
+          />
+        )}
+
+        {activeCard === "informe" && (
+          <InformeFaenaPescaConsumoForm
+            faenaData={currentFaenaData}
+            novedadData={novedad}
+            onFaenaDataChange={handleFaenaDataChange}
+          />
+        )}
+      </div>
+    </Dialog>
+  );
+}

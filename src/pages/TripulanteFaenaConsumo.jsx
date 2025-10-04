@@ -11,7 +11,7 @@ import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Tag } from 'primereact/tag';
 import { useAuthStore } from '../shared/stores/useAuthStore';
-import { getAllTripulanteFaenaConsumo, deleteTripulanteFaenaConsumo } from '../api/tripulanteFaenaConsumo';
+import { getTripulantesFaenaConsumo, eliminarTripulanteFaenaConsumo } from '../api/tripulanteFaenaConsumo';
 import TripulanteFaenaConsumoForm from '../components/tripulanteFaenaConsumo/TripulanteFaenaConsumoForm';
 
 /**
@@ -34,7 +34,7 @@ const TripulanteFaenaConsumo = () => {
   const cargarTripulantes = async () => {
     try {
       setLoading(true);
-      const data = await getAllTripulanteFaenaConsumo();
+      const data = await getTripulantesFaenaConsumo();
       setTripulantes(data);
     } catch (error) {
       toast.current?.show({
@@ -80,7 +80,7 @@ const TripulanteFaenaConsumo = () => {
 
   const eliminarTripulante = async (id) => {
     try {
-      await deleteTripulanteFaenaConsumo(id);
+      await eliminarTripulanteFaenaConsumo(id);
       toast.current?.show({
         severity: 'success',
         summary: 'Éxito',

@@ -1,510 +1,569 @@
 // src/components/detDocTripulantesFaenaConsumo/DetDocTripulantesFaenaConsumoForm.jsx
-// Formulario profesional para DetDocTripulantesFaenaConsumo. Cumple regla transversal ERP Megui:
-// - Campos controlados, validación, normalización de IDs en combos, envío con JWT desde Zustand
-import React, { useState, useEffect, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { Dropdown } from 'primereact/dropdown';
-import { Calendar } from 'primereact/calendar';
-import { Checkbox } from 'primereact/checkbox';
-import { TabView, TabPanel } from 'primereact/tabview';
-import { Toast } from 'primereact/toast';
-import { createDetDocTripulantesFaenaConsumo, updateDetDocTripulantesFaenaConsumo } from '../../api/detDocTripulantesFaenaConsumo';
+// Formulario profesional para DetDocTripulantesFaenaConsumo - ERP Megui
+// Maneja creación y edición con validaciones, combos dependientes y reglas de negocio
+// Documentado en español técnico para mantenibilidad
+
+import React, { useState, useEffect, useRef } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { InputTextarea } from "primereact/inputtextarea";
+import { Dropdown } from "primereact/dropdown";
+import { Calendar } from "primereact/calendar";
+import { classNames } from "primereact/utils";
+import PDFViewer from "../shared/PDFViewer";
+import { abrirPdfEnNuevaPestana, descargarPdf } from "../../utils/pdfUtils";
+import { Toast } from "primereact/toast";
+
+import {
+  crearDetDocTripulantesFaenaConsumo,
+  actualizarDetDocTripulantesFaenaConsumo,
+} from "../../api/detDocTripulantesFaenaConsumo";
 
 /**
- * Formulario para gestión de DetDocTripulantesFaenaConsumo
- * Maneja creación y edición con validaciones y combos normalizados
- * Organizado en pestañas para mejor UX
+ * Formulario DetDocTripulantesFaenaConsumoForm
+ *
+ * Formulario profesional para gestión de documentos de tripulantes de faenas de consumo.
+ * Características:
+ * - Validaciones robustas con react-hook-form
+ * - Combos normalizados (IDs numéricos)
+ * - Campos de fecha con validaciones
+ * - Upload de documentos PDF
+ * - Estado de verificación
+ * - Validaciones de fechas (vencimiento > emisión)
  */
-const DetDocTripulantesFaenaConsumoForm = ({ documento, onSave, onCancel }) => {
-  const { control, handleSubmit, reset, watch, formState: { errors } } = useForm();
+export default function DetDocTripulantesFaenaConsumoForm({
+  documento,
+  tripulantes = [],
+  documentos = [],
+  onGuardadoExitoso,
+  onCancelar,
+}) {
+  // Estados para loading
   const [loading, setLoading] = useState(false);
-  const [faenas, setFaenas] = useState([]);
-  const [tripulantes, setTripulantes] = useState([]);
-  const [tiposDocumento, setTiposDocumento] = useState([]);
-  const toast = useRef(null);
 
-  // Observar fechas para validación
-  const fechaEmision = watch('fechaEmision');
-  const fechaVencimiento = watch('fechaVencimiento');
+  // Configuración del formulario
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+    watch,
+  } = useForm({
+    defaultValues: {
+      faenaPescaConsumoId: null,
+      tripulanteId: null,
+      documentoId: null,
+      numeroDocumento: "",
+      fechaEmision: null,
+      fechaVencimiento: null,
+      urlDocTripulantePdf: "",
+      observaciones: "",
+      verificado: false,
+      docVencido: false,
+    },
+  });
 
-  useEffect(() => {
-    cargarDatosIniciales();
-  }, []);
+  // Observar fechas para validaciones
+  const fechaEmision = watch("fechaEmision");
 
+  // Observar cambios en urlDocTripulantePdf
+  const urlDocTripulantePdf = watch("urlDocTripulantePdf");
+
+  // Cargar datos del registro a editar cuando cambie documento
   useEffect(() => {
     if (documento) {
-      // Reset del formulario con datos de edición, normalizando IDs
       reset({
-        faenaPescaConsumoId: documento.faenaPescaConsumoId ? Number(documento.faenaPescaConsumoId) : null,
-        tripulanteId: documento.tripulanteId ? Number(documento.tripulanteId) : null,
+        faenaPescaConsumoId: documento.faenaPescaConsumoId
+          ? Number(documento.faenaPescaConsumoId)
+          : null,
+        tripulanteId: documento.tripulanteId
+          ? Number(documento.tripulanteId)
+          : null,
         documentoId: documento.documentoId ? Number(documento.documentoId) : null,
-        numeroDocumento: documento.numeroDocumento || '',
-        fechaEmision: documento.fechaEmision ? new Date(documento.fechaEmision) : null,
-        fechaVencimiento: documento.fechaVencimiento ? new Date(documento.fechaVencimiento) : null,
-        urlDocTripulantePdf: documento.urlDocTripulantePdf || '',
-        observaciones: documento.observaciones || '',
-        verificado: documento.verificado || false
+        numeroDocumento: documento.numeroDocumento || "",
+        fechaEmision: documento.fechaEmision
+          ? new Date(documento.fechaEmision)
+          : null,
+        fechaVencimiento: documento.fechaVencimiento
+          ? new Date(documento.fechaVencimiento)
+          : null,
+        urlDocTripulantePdf: documento.urlDocTripulantePdf || "",
+        observaciones: documento.observaciones || "",
+        verificado: documento.verificado || false,
+        docVencido: documento.docVencido || false,
       });
     } else {
-      // Reset para nuevo registro
+      // Resetear para nuevo registro
       reset({
         faenaPescaConsumoId: null,
         tripulanteId: null,
         documentoId: null,
-        numeroDocumento: '',
+        numeroDocumento: "",
         fechaEmision: null,
         fechaVencimiento: null,
-        urlDocTripulantePdf: '',
-        observaciones: '',
-        verificado: false
+        urlDocTripulantePdf: "",
+        observaciones: "",
+        verificado: false,
+        docVencido: false,
       });
     }
   }, [documento, reset]);
 
-  const cargarDatosIniciales = async () => {
-    try {
-      // TODO: Implementar APIs para cargar datos de combos
-      // Datos de ejemplo mientras se implementan las APIs
-      setFaenas([
-        { id: 1, descripcion: 'Faena Anchoveta - Paracas 001', fechaSalida: '2024-01-15' },
-        { id: 2, descripcion: 'Faena Jurel - Chimbote 002', fechaSalida: '2024-01-16' },
-        { id: 3, descripcion: 'Faena Caballa - Callao 003', fechaSalida: '2024-01-17' }
-      ]);
-      
-      setTripulantes([
-        { id: 1, nombres: 'Carlos', apellidos: 'Mendoza García', cargo: 'Marinero' },
-        { id: 2, nombres: 'Luis', apellidos: 'Rodríguez Silva', cargo: 'Motorista' },
-        { id: 3, nombres: 'Miguel', apellidos: 'Torres López', cargo: 'Cocinero' },
-        { id: 4, nombres: 'José', apellidos: 'Vargas Ruiz', cargo: 'Patrón' },
-        { id: 5, nombres: 'Pedro', apellidos: 'García Pérez', cargo: 'Marinero' }
-      ]);
-
-      setTiposDocumento([
-        { id: 1, nombre: 'DNI', descripcion: 'Documento Nacional de Identidad' },
-        { id: 2, nombre: 'Libreta de Mar', descripcion: 'Libreta de Embarque Marítimo' },
-        { id: 3, nombre: 'Certificado Médico', descripcion: 'Certificado de Aptitud Médica' },
-        { id: 4, nombre: 'Certificado STCW', descripcion: 'Certificado de Competencia Marítima' },
-        { id: 5, nombre: 'Licencia de Pesca', descripcion: 'Licencia para Actividades Pesqueras' },
-        { id: 6, nombre: 'Seguro de Vida', descripcion: 'Póliza de Seguro de Vida' },
-        { id: 7, nombre: 'Certificado Seguridad', descripcion: 'Certificado de Seguridad Marítima' }
-      ]);
-      
-    } catch (error) {
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al cargar datos iniciales'
-      });
-    }
-  };
-
-  const validarFechas = () => {
-    if (fechaEmision && fechaVencimiento && fechaEmision >= fechaVencimiento) {
-      return 'La fecha de vencimiento debe ser posterior a la fecha de emisión';
-    }
-    return true;
-  };
-
-  const calcularVigencia = () => {
-    if (!fechaVencimiento) return '';
-    
-    const ahora = new Date();
-    const diasRestantes = Math.ceil((fechaVencimiento - ahora) / (1000 * 60 * 60 * 24));
-    
-    if (diasRestantes < 0) {
-      return `Vencido hace ${Math.abs(diasRestantes)} días`;
-    } else if (diasRestantes === 0) {
-      return 'Vence hoy';
-    } else if (diasRestantes <= 30) {
-      return `Vence en ${diasRestantes} días (Próximo a vencer)`;
-    } else {
-      return `Vigente por ${diasRestantes} días`;
-    }
-  };
-
+  /**
+   * Maneja el envío del formulario
+   */
   const onSubmit = async (data) => {
     try {
       setLoading(true);
-      
-      // Validar fechas
-      const validacionFechas = validarFechas();
-      if (validacionFechas !== true) {
-        toast.current?.show({
-          severity: 'warn',
-          summary: 'Validación',
-          detail: validacionFechas
-        });
-        return;
-      }
-      
-      // Preparar payload con tipos correctos
+
       const payload = {
-        faenaPescaConsumoId: Number(data.faenaPescaConsumoId),
+        faenaPescaConsumoId: data.faenaPescaConsumoId ? Number(data.faenaPescaConsumoId) : null,
         tripulanteId: data.tripulanteId ? Number(data.tripulanteId) : null,
         documentoId: data.documentoId ? Number(data.documentoId) : null,
         numeroDocumento: data.numeroDocumento?.trim() || null,
-        fechaEmision: data.fechaEmision ? data.fechaEmision.toISOString() : null,
-        fechaVencimiento: data.fechaVencimiento ? data.fechaVencimiento.toISOString() : null,
+        fechaEmision: data.fechaEmision
+          ? data.fechaEmision.toISOString()
+          : null,
+        fechaVencimiento: data.fechaVencimiento
+          ? data.fechaVencimiento.toISOString()
+          : null,
         urlDocTripulantePdf: data.urlDocTripulantePdf?.trim() || null,
         observaciones: data.observaciones?.trim() || null,
-        verificado: Boolean(data.verificado)
+        verificado: Boolean(data.verificado),
+        docVencido: Boolean(data.docVencido),
       };
+
       if (documento?.id) {
-        await updateDetDocTripulantesFaenaConsumo(documento.id, payload);
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Documento actualizado correctamente'
-        });
+        await actualizarDetDocTripulantesFaenaConsumo(documento.id, payload);
       } else {
-        await createDetDocTripulantesFaenaConsumo(payload);
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Documento creado correctamente'
-        });
+        await crearDetDocTripulantesFaenaConsumo(payload);
       }
-      
-      onSave();
+
+      onGuardadoExitoso?.();
     } catch (error) {
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al guardar el documento'
-      });
+      console.error("Error al guardar documento:", error);
+      // Aquí podrías mostrar un toast de error si tienes acceso
     } finally {
       setLoading(false);
     }
   };
 
+  /**
+   * Obtiene el mensaje de error para un campo
+   */
+  const getFormErrorMessage = (name) => {
+    return (
+      errors[name] && <small className="p-error">{errors[name].message}</small>
+    );
+  };
+
+  /**
+   * Función para obtener clases de error
+   */
+  const getFieldClass = (fieldName) => {
+    return errors[fieldName] ? "p-invalid" : "";
+  };
+
+  const handleVerPDF = () => {
+    if (urlDocTripulantePdf) {
+      abrirPdfEnNuevaPestana(urlDocTripulantePdf);
+    }
+  };
+
+  const toast = useRef(null);
+
+  const handleDescargarPDF = () => {
+    if (urlDocTripulantePdf) {
+      descargarPdf(
+        urlDocTripulantePdf,
+        toast,
+        `documento-tripulante-${documento?.tripulanteId || "sin-id"}-${
+          documento?.documentoId || "sin-doc"
+        }.pdf`,
+        "documentacion-personal"
+      );
+    }
+  };
+
   return (
-    <div className="det-doc-tripulantes-faena-consumo-form">
+    <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
       <Toast ref={toast} />
-      
-      <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
-        <TabView>
-          {/* Pestaña 1: Información General */}
-          <TabPanel header="Información General">
-            <div className="grid">
-              {/* Faena */}
-              <div className="col-12">
-                <label htmlFor="faenaPescaConsumoId" className="block text-900 font-medium mb-2">
-                  Faena de Pesca *
-                </label>
-                <Controller
-                  name="faenaPescaConsumoId"
-                  control={control}
-                  rules={{ required: 'La faena es obligatoria' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="faenaPescaConsumoId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={faenas.map(f => ({ 
-                        ...f, 
-                        id: Number(f.id),
-                        nombreCompleto: `${f.id} - ${f.descripcion}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione una faena"
-                      className={errors.faenaPescaConsumoId ? 'p-invalid' : ''}
-                      filter
-                    />
-                  )}
-                />
-                {errors.faenaPescaConsumoId && (
-                  <small className="p-error">{errors.faenaPescaConsumoId.message}</small>
-                )}
-              </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "end",
+          gap: 10,
+          marginBottom: "0.5rem",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          {/* Tripulante */}
+          <label
+            htmlFor="tripulanteId"
+            className="block text-900 font-medium mb-2"
+          >
+            Tripulante
+          </label>
+          <Controller
+            name="tripulanteId"
+            control={control}
+            rules={{ required: "El tripulante es obligatorio" }}
+            render={({ field }) => (
+              <Dropdown
+                id="tripulanteId"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={tripulantes}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccione un tripulante"
+                filter
+                showClear
+                disabled
+                style={{ fontWeight: "bold" }}
+                className={classNames({ "p-invalid": errors.tripulanteId })}
+              />
+            )}
+          />
+          {getFormErrorMessage("tripulanteId")}
+        </div>
+        <div style={{ flex: 1 }}>
+          {/* Tipo de Documento */}
+          <label
+            htmlFor="documentoId"
+            className="block text-900 font-medium mb-2"
+          >
+            Tipo de Documento
+          </label>
+          <Controller
+            name="documentoId"
+            control={control}
+            rules={{ required: "El tipo de documento es obligatorio" }}
+            render={({ field }) => (
+              <Dropdown
+                id="documentoId"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={documentos}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccione tipo de documento"
+                filter
+                showClear
+                disabled
+                style={{ fontWeight: "bold" }}
+                className={classNames({ "p-invalid": errors.documentoId })}
+              />
+            )}
+          />
+          {getFormErrorMessage("documentoId")}
+        </div>
+        <div style={{ flex: 1 }}>
+          {/* Número de Documento */}
+          <label
+            htmlFor="numeroDocumento"
+            className="block text-900 font-medium mb-2"
+          >
+            Número de Documento
+          </label>
+          <Controller
+            name="numeroDocumento"
+            control={control}
+            render={({ field }) => (
+              <InputText
+                id="numeroDocumento"
+                value={field.value || ""}
+                onChange={field.onChange}
+                placeholder="Ej: DOC-2024-001"
+                disabled
+                style={{ fontWeight: "bold" }}
+              />
+            )}
+          />
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "end",
+          gap: 10,
+          marginBottom: "0.5rem",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          {/* Fecha de Emisión */}
+          <label
+            htmlFor="fechaEmision"
+            className="block text-900 font-medium mb-2"
+          >
+            Fecha de Emisión
+          </label>
+          <Controller
+            name="fechaEmision"
+            control={control}
+            render={({ field }) => (
+              <Calendar
+                id="fechaEmision"
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="dd/mm/aaaa"
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled
+                inputStyle={{ fontWeight: "bold" }}
+              />
+            )}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label
+            htmlFor="fechaVencimiento"
+            className="block text-900 font-medium mb-2"
+          >
+            Fecha de Vencimiento
+          </label>
+          <Controller
+            name="fechaVencimiento"
+            control={control}
+            rules={{
+              validate: (value) => {
+                if (value && fechaEmision && value <= fechaEmision) {
+                  return "La fecha de vencimiento debe ser posterior a la fecha de emisión";
+                }
+                return true;
+              },
+            }}
+            render={({ field }) => (
+              <Calendar
+                id="fechaVencimiento"
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="dd/mm/aaaa"
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled
+                inputStyle={{ fontWeight: "bold" }}
+                className={classNames({ "p-invalid": errors.fechaVencimiento })}
+              />
+            )}
+          />
+          {getFormErrorMessage("fechaVencimiento")}
+        </div>
+        <div style={{ flex: 1 }}>
+          <Controller
+            name="verificado"
+            control={control}
+            render={({ field }) => (
+              <Button
+                id="verificado"
+                label={field.value ? "VERIFICADO" : "VERIFICAR"}
+                icon={field.value ? "pi pi-check" : "pi pi-times"}
+                disabled
+                className={field.value ? "p-button-success" : "p-button-danger"}
+              />
+            )}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Controller
+            name="docVencido"
+            control={control}
+            render={({ field }) => (
+              <Button
+                id="docVencido"
+                label={field.value ? "VENCIDO" : "VIGENTE"}
+                icon={field.value ? "pi pi-times" : "pi pi-check"}
+                disabled
+                className={field.value ? "p-button-danger" : "p-button-success"}
+              />
+            )}
+          />
+        </div>
+        <div style={{ flex: 2 }}>
+          {/* Observaciones */}
+          <label
+            htmlFor="observaciones"
+            className="block text-900 font-medium mb-2"
+          >
+            Observaciones
+          </label>
+          <Controller
+            name="observaciones"
+            control={control}
+            render={({ field }) => (
+              <InputTextarea
+                id="observaciones"
+                value={field.value || ""}
+                onChange={field.onChange}
+                rows={1}
+                placeholder="Observaciones adicionales"
+                style={{
+                  fontWeight: "bold",
+                  color: "red",
+                  fontStyle: "italic",
+                  textTransform: "uppercase",
+                }}
+              />
+            )}
+          />
+        </div>
+      </div>
 
-              {/* Tripulante */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="tripulanteId" className="block text-900 font-medium mb-2">
-                  Tripulante
-                </label>
-                <Controller
-                  name="tripulanteId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="tripulanteId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={tripulantes.map(t => ({ 
-                        ...t, 
-                        id: Number(t.id),
-                        nombreCompleto: `${t.nombres} ${t.apellidos} (${t.cargo})`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione un tripulante"
-                      showClear
-                      filter
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Tipo de Documento */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="documentoId" className="block text-900 font-medium mb-2">
-                  Tipo de Documento
-                </label>
-                <Controller
-                  name="documentoId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="documentoId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={tiposDocumento.map(td => ({ 
-                        ...td, 
-                        id: Number(td.id),
-                        nombreCompleto: `${td.nombre} - ${td.descripcion}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione tipo de documento"
-                      showClear
-                      filter
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Número de Documento */}
-              <div className="col-12">
-                <label htmlFor="numeroDocumento" className="block text-900 font-medium mb-2">
-                  Número de Documento
-                </label>
-                <Controller
-                  name="numeroDocumento"
-                  control={control}
-                  render={({ field }) => (
-                    <InputText
-                      id="numeroDocumento"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      placeholder="Ej: 12345678, LM-2024-001, CM-2024-123"
-                    />
-                  )}
-                />
-              </div>
-            </div>
-          </TabPanel>
-
-          {/* Pestaña 2: Fechas y Vigencia */}
-          <TabPanel header="Fechas y Vigencia">
-            <div className="grid">
-              {/* Fecha de Emisión */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="fechaEmision" className="block text-900 font-medium mb-2">
-                  Fecha de Emisión
-                </label>
-                <Controller
-                  name="fechaEmision"
-                  control={control}
-                  render={({ field }) => (
-                    <Calendar
-                      id="fechaEmision"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      placeholder="Seleccione fecha de emisión"
-                      dateFormat="dd/mm/yy"
-                      showIcon
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Fecha de Vencimiento */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="fechaVencimiento" className="block text-900 font-medium mb-2">
-                  Fecha de Vencimiento
-                </label>
-                <Controller
-                  name="fechaVencimiento"
-                  control={control}
-                  render={({ field }) => (
-                    <Calendar
-                      id="fechaVencimiento"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      placeholder="Seleccione fecha de vencimiento"
-                      dateFormat="dd/mm/yy"
-                      showIcon
-                      minDate={fechaEmision}
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Estado de Verificación */}
-              <div className="col-12">
-                <div className="field-checkbox">
+      <div className="grid">
+        {/* URL del Documento PDF */}
+        <div className="col-12">
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "end",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <label
+                htmlFor="urlDocTripulantePdf"
+                className="block text-900 font-medium mb-2"
+              >
+                Documento PDF
+              </label>
+              <div className="grid">
+                <div className="col-12 md:col-8">
                   <Controller
-                    name="verificado"
+                    name="urlDocTripulantePdf"
                     control={control}
                     render={({ field }) => (
-                      <Checkbox
-                        inputId="verificado"
-                        checked={field.value || false}
-                        onChange={(e) => field.onChange(e.checked)}
+                      <InputText
+                        id="urlDocTripulantePdf"
+                        {...field}
+                        placeholder="URL del documento PDF"
+                        className={getFieldClass("urlDocTripulantePdf")}
+                        disabled
+                        style={{ fontWeight: "bold" }}
+                        maxLength={500}
+                        readOnly
                       />
                     )}
                   />
-                  <label htmlFor="verificado" className="ml-2">
-                    Documento Verificado
-                  </label>
+                  {errors.urlDocTripulantePdf && (
+                    <small className="p-error">
+                      {errors.urlDocTripulantePdf.message}
+                    </small>
+                  )}
                 </div>
               </div>
-
-              {/* Información de Vigencia */}
-              {fechaVencimiento && (
-                <div className="col-12">
-                  <div className="card p-3 bg-blue-50">
-                    <h5 className="mb-2 text-blue-800">Estado de Vigencia</h5>
-                    <div className="text-lg font-bold">
-                      {(() => {
-                        const vigencia = calcularVigencia();
-                        const esVencido = vigencia.includes('Vencido');
-                        const esPorVencer = vigencia.includes('Próximo a vencer');
-                        
-                        return (
-                          <span className={
-                            esVencido ? 'text-red-600' : 
-                            esPorVencer ? 'text-orange-600' : 
-                            'text-green-600'
-                          }>
-                            {vigencia}
-                          </span>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                </div>
+            </div>
+            <div style={{ flex: 1 }}>
+              {urlDocTripulantePdf && (
+                <Button
+                  type="button"
+                  label="Ver PDF"
+                  icon="pi pi-eye"
+                  className="p-button-secondary"
+                  onClick={handleVerPDF}
+                  disabled={loading}
+                  size="small"
+                />
               )}
             </div>
-          </TabPanel>
-
-          {/* Pestaña 3: Documentación y Observaciones */}
-          <TabPanel header="Documentación y Observaciones">
-            <div className="grid">
-              {/* URL del Documento PDF */}
-              <div className="col-12">
-                <label htmlFor="urlDocTripulantePdf" className="block text-900 font-medium mb-2">
-                  URL del Documento (PDF)
-                </label>
-                <Controller
-                  name="urlDocTripulantePdf"
-                  control={control}
-                  render={({ field }) => (
-                    <InputText
-                      id="urlDocTripulantePdf"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      placeholder="https://ejemplo.com/documento-tripulante.pdf"
-                    />
-                  )}
+            <div style={{ flex: 1 }}>
+              {urlDocTripulantePdf && (
+                <Button
+                  type="button"
+                  label="Descargar"
+                  icon="pi pi-download"
+                  className="p-button-outlined p-button-sm"
+                  style={{ minWidth: "80px" }}
+                  onClick={() =>
+                    descargarPdf(
+                      urlDocTripulantePdf,
+                      toast,
+                      `documento-tripulante-${
+                        documento?.tripulanteId || "sin-id"
+                      }-${documento?.documentoId || "sin-doc"}.pdf`,
+                      "documentacion-personal"
+                    )
+                  }
+                  tooltip="Descargar PDF del documento"
+                  tooltipOptions={{ position: "top" }}
                 />
-              </div>
-
-              {/* Observaciones */}
-              <div className="col-12">
-                <label htmlFor="observaciones" className="block text-900 font-medium mb-2">
-                  Observaciones
-                </label>
-                <Controller
-                  name="observaciones"
-                  control={control}
-                  render={({ field }) => (
-                    <InputTextarea
-                      id="observaciones"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      rows={5}
-                      placeholder="Observaciones sobre el documento del tripulante..."
-                    />
-                  )}
-                />
-              </div>
+              )}
             </div>
-          </TabPanel>
-
-          {/* Pestaña 4: Resumen */}
-          <TabPanel header="Resumen">
-            <div className="grid">
-              <div className="col-12">
-                <div className="card p-4 bg-gray-50">
-                  <h5 className="mb-3">Resumen del Documento</h5>
-                  <div className="grid">
-                    <div className="col-6">
-                      <strong>Faena:</strong> {
-                        faenas.find(f => f.id === watch('faenaPescaConsumoId'))?.descripcion || 'Sin seleccionar'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Tripulante:</strong> {
-                        tripulantes.find(t => t.id === watch('tripulanteId'))?.nombres || 'Sin seleccionar'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Tipo Documento:</strong> {
-                        tiposDocumento.find(td => td.id === watch('documentoId'))?.nombre || 'Sin seleccionar'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Número:</strong> {watch('numeroDocumento') || 'Sin definir'}
-                    </div>
-                    <div className="col-6">
-                      <strong>F. Emisión:</strong> {
-                        fechaEmision ? fechaEmision.toLocaleDateString('es-PE') : 'Sin definir'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>F. Vencimiento:</strong> {
-                        fechaVencimiento ? fechaVencimiento.toLocaleDateString('es-PE') : 'Sin definir'
-                      }
-                    </div>
-                    <div className="col-6">
-                      <strong>Verificado:</strong> {watch('verificado') ? 'Sí' : 'No'}
-                    </div>
-                    {fechaVencimiento && (
-                      <div className="col-6">
-                        <strong>Estado:</strong> {calcularVigencia()}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </TabPanel>
-        </TabView>
-
-        <div className="flex justify-content-end gap-2 mt-4">
-          <Button
-            type="button"
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-secondary"
-            onClick={onCancel}
-          />
-          <Button
-            type="submit"
-            label={documento?.id ? 'Actualizar' : 'Crear'}
-            icon="pi pi-check"
-            loading={loading}
-            className="p-button-primary"
-          />
+          </div>
         </div>
-      </form>
-    </div>
-  );
-};
+      </div>
 
-export default DetDocTripulantesFaenaConsumoForm;
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+          marginTop: "0.5rem",
+        }}
+      >
+        {/* Visor de PDF */}
+        {urlDocTripulantePdf && (
+          <div style={{ flex: 1 }}>
+            <PDFViewer urlDocumento={urlDocTripulantePdf} />
+          </div>
+        )}
+
+        {/* Mensaje cuando no hay documento */}
+        {!urlDocTripulantePdf && documento?.id && (
+          <div className="field col-12">
+            <div
+              className="text-center p-4"
+              style={{ backgroundColor: "#f8f9fa", borderRadius: "6px" }}
+            >
+              <i
+                className="pi pi-file-pdf text-gray-400"
+                style={{ fontSize: "3rem" }}
+              ></i>
+              <p className="text-600 mt-3 mb-2">No hay documento PDF cargado</p>
+              <small className="text-500">
+                Use el botón "Capturar/Subir" para agregar el documento del
+                tripulante
+              </small>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Botones de acción */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: 8,
+          marginTop: 18,
+        }}
+      >
+        <Button
+          type="button"
+          label="Cancelar"
+          icon="pi pi-times"
+          className="p-button-warning"
+          onClick={onCancelar}
+          disabled={loading}
+          severity="warning"
+          raised
+          size="small"
+        />
+        <Button
+          type="submit"
+          label={documento?.id ? "Actualizar" : "Guardar"}
+          icon="pi pi-check"
+          loading={loading}
+          className="p-button-success"
+          severity="success"
+          raised
+          size="small"
+        />
+      </div>
+    </form>
+  );
+}

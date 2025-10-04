@@ -60,16 +60,13 @@ const DescargaFaenaPescaCard = ({
 
   const cargarDescargas = async () => {
     if (!faenaPescaId) {
-      console.log('No hay faenaPescaId, no se cargan descargas');
       return;
     }
 
     try {
       setLoadingData(true);
-      console.log('Cargando descargas para faenaPescaId:', faenaPescaId);
       const response = await getDescargasPorFaena(faenaPescaId);
       setDescargas(response || []);
-      console.log('Descargas cargadas:', response?.length || 0);
     } catch (error) {
       console.error("Error al cargar descargas:", error);
       toast.current?.show({
