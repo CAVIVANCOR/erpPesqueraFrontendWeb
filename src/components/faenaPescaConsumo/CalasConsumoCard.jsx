@@ -243,12 +243,14 @@ export default function CalasConsumoCard({
   };
 
   const guardarCala = async () => {
+    
     // Obtener valores directamente desde faenaData para evitar problemas de asincronía
     const bahiaIdNum = faenaData?.bahiaId ? Number(faenaData.bahiaId) : null;
     const motoristaIdNum = faenaData?.motoristaId ? Number(faenaData.motoristaId) : null;
     const patronIdNum = faenaData?.patronId ? Number(faenaData.patronId) : null;
     const embarcacionIdNum = faenaData?.embarcacionId ? Number(faenaData.embarcacionId) : null;
-
+  
+  
     const data = {
       bahiaId: bahiaIdNum,
       motoristaId: motoristaIdNum,
@@ -262,8 +264,7 @@ export default function CalasConsumoCard({
       toneladasCapturadas: controlCala._formValues.toneladasCapturadas,
       observaciones: controlCala._formValues.observaciones,
     };
-
-    console.log("📤 Datos a enviar:", data); // Para debug
+  
     await onSubmitCala(data);
   };
 
@@ -480,8 +481,8 @@ export default function CalasConsumoCard({
         label="Guardar"
         icon="pi pi-check"
         className="p-button-text"
-        onClick={handleSubmitCala(onSubmitCala)}
-      />
+        onClick={guardarCala}  // ✅ CAMBIAR AQUÍ: igual que DetalleCalasForm
+        />
     </>
   );
 

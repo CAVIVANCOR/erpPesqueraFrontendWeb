@@ -41,6 +41,7 @@ export default function DatosGeneralesNovedadForm({
   novedadData = null,
   onNovedadDataChange, // Callback para notificar cambios en datos de novedad
 }) {
+
   const detalleFaenasRef = useRef(null);
 
   // Estado para controlar actualizaciones de faenas
@@ -209,10 +210,10 @@ export default function DatosGeneralesNovedadForm({
                 <InputText
                   id="nombre"
                   value={field.value || ""}
-                  onChange={(e) => field.onChange(e.target.value)}
+                  onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                   placeholder="Nombre de la novedad"
                   className={classNames({ "p-invalid": errors.nombre })}
-                  style={{ fontWeight: "bold" }}
+                  style={{ textTransform: 'uppercase', fontWeight: 'bold' }}
                 />
               )}
             />
@@ -321,7 +322,7 @@ export default function DatosGeneralesNovedadForm({
           <div className="col-12">
             <DetalleFaenasConsumoCard
               ref={detalleFaenasRef}
-              novedadPescaConsumoId={novedadData.id}
+              novedadPescaConsumo={novedadData}
               novedadPescaConsumoIniciada={
                 novedadData.novedadPescaConsumoIniciada || false
               }

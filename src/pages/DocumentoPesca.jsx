@@ -38,6 +38,7 @@ export default function DocumentoPesca() {
   const [toDelete, setToDelete] = useState(null);
   const usuario = useAuthStore((state) => state.usuario);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("todos"); // ✅ Estado para filtro de tipo
 
   useEffect(() => {
     cargarItems();
@@ -190,6 +191,68 @@ export default function DocumentoPesca() {
     </>
   );
 
+  // ✅ Función para limpiar filtros
+  const limpiarFiltros = () => {
+    setFiltroTipo("todos");
+    setGlobalFilter("");
+  };
+
+  // ✅ Función para cambiar filtro de tipo
+  const cambiarFiltroTipo = () => {
+    const tipos = ["todos", "embarcacion", "tripulantes", "operacionFaena"];
+    const indiceActual = tipos.indexOf(filtroTipo);
+    const siguienteIndice = (indiceActual + 1) % tipos.length;
+    setFiltroTipo(tipos[siguienteIndice]);
+  };
+
+  // ✅ Función para obtener configuración del filtro de tipo
+  const obtenerConfigFiltroTipo = () => {
+    switch (filtroTipo) {
+      case "embarcacion":
+        return {
+          label: "EMBARCACIÓN",
+          icon: "pi pi-compass",
+          className: "p-button-info",
+          tooltip: "Mostrando documentos para embarcación",
+        };
+      case "tripulantes":
+        return {
+          label: "TRIPULANTES",
+          icon: "pi pi-users",
+          className: "p-button-warning",
+          tooltip: "Mostrando documentos para tripulantes",
+        };
+      case "operacionFaena":
+        return {
+          label: "OPERACIÓN FAENA",
+          icon: "pi pi-briefcase",
+          className: "p-button-success",
+          tooltip: "Mostrando documentos para operación faena",
+        };
+      default:
+        return {
+          label: "TODOS",
+          icon: "pi pi-list",
+          className: "p-button-secondary",
+          tooltip: "Mostrando todos los documentos",
+        };
+    }
+  };
+
+  // ✅ Filtrar datos según el tipo seleccionado
+  const itemsFiltrados = items.filter((item) => {
+    switch (filtroTipo) {
+      case "embarcacion":
+        return item.paraEmbarcacion === true;
+      case "tripulantes":
+        return item.paraTripulantes === true;
+      case "operacionFaena":
+        return item.paraOperacionFaena === true;
+      default:
+        return true; // "todos"
+    }
+  });
+
   return (
     <div className="p-m-4">
       <Toast ref={toast} />
@@ -204,33 +267,60 @@ export default function DocumentoPesca() {
         reject={() => setShowConfirm(false)}
       />
       <DataTable
-        value={items}
+        value={itemsFiltrados}
         loading={loading}
         dataKey="id"
         paginator
         rows={10}
         onRowClick={(e) => handleEdit(e.data)}
         header={
-          <div className="flex align-items-center gap-2">
-            <h2>Gestión de Documentos de Pesca</h2>
-            <Button
-              label="Nuevo"
-              icon="pi pi-plus"
-              className="p-button-success"
-              size="small"
-              outlined
-              raised
-              onClick={handleAdd}
-              disabled={loading}
-            />
-            <span className="p-input-icon-left">
-              <InputText
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Buscar ..."
-                style={{ width: "300px" }}
-              />
-            </span>
+          <div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "end",
+                gap: 8,
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <h2>DOCUMENTOS DE PESCA</h2>
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Nuevo"
+                  icon="pi pi-plus"
+                  className="p-button-success"
+                  onClick={handleAdd}
+                  disabled={loading}
+                  style={{ fontSize: "0.875rem" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  {...obtenerConfigFiltroTipo()}
+                  onClick={cambiarFiltroTipo}
+                  style={{ fontSize: "0.875rem" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  type="button"
+                  icon="pi pi-filter-slash"
+                  label="Limpiar Filtros"
+                  outlined
+                  onClick={limpiarFiltros}
+                  style={{ fontSize: "0.875rem" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <InputText
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  placeholder="Buscar..."
+                  className="w-full"
+                />
+              </div>
+            </div>
           </div>
         }
         globalFilter={globalFilter}

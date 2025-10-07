@@ -1,13 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { useAuthStore } from '../../shared/stores/useAuthStore';
-import { ProgressSpinner } from 'primereact/progressspinner';
-
 /**
- * Componente genérico para visualizar PDFs protegidos con autenticación JWT
- * @param {string} urlDocumento - URL del documento PDF a mostrar
- * @param {string} tipoDocumento - Tipo de documento para construcción de URL (opcional)
+ * PDFViewer.jsx
+ * 
+ * Componente para visualizar documentos PDF en línea.
+ * Soporta múltiples rutas de archivos protegidas con JWT.
+ * 
+ * @author ERP Megui
+ * @version 2.0.0
  */
-const PDFViewer = ({ urlDocumento, tipoDocumento = "documentos-visitantes" }) => {
+
+import React, { useState, useEffect } from 'react';
+import { ProgressSpinner } from 'primereact/progressspinner';
+import { Message } from 'primereact/message';
+import { useAuthStore } from '../../shared/stores/useAuthStore';
+
+const PDFViewer = ({ urlDocumento, altura = '600px' }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,6 +21,7 @@ const PDFViewer = ({ urlDocumento, tipoDocumento = "documentos-visitantes" }) =>
   useEffect(() => {
     if (!urlDocumento) {
       setLoading(false);
+      setError('No se proporcionó URL del documento');
       return;
     }
 
@@ -23,25 +30,17 @@ const PDFViewer = ({ urlDocumento, tipoDocumento = "documentos-visitantes" }) =>
         setLoading(true);
         setError(null);
 
-        // Construir URL completa si es relativa
-        let urlCompleta;
+        let urlCompleta = '';
 
-        // Construcción de URL basada en el tipo de documento
-        if (urlDocumento.startsWith(`/uploads/${tipoDocumento}/`)) {
-          const rutaArchivo = urlDocumento.replace(`/uploads/${tipoDocumento}/`, '');
-          urlCompleta = `${import.meta.env.VITE_API_URL}/${tipoDocumento}/archivo/${rutaArchivo}`;
-        } else if (urlDocumento.startsWith('/uploads/documentos-visitantes/')) {
-          // Mantener compatibilidad con formato antiguo
-          const rutaArchivo = urlDocumento.replace('/uploads/documentos-visitantes/', '');
-          urlCompleta = `${import.meta.env.VITE_API_URL}/documentos-visitantes/archivo/${rutaArchivo}`;
+        // Determinar la URL completa según el tipo de documento
+        if (urlDocumento.startsWith('/uploads/documentos-visitante/')) {
+          // Soporte para documentos de visitante
+          const rutaArchivo = urlDocumento.replace('/uploads/documentos-visitante/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/acceso-instalaciones/documentos-visitante/archivo/${rutaArchivo}`;
         } else if (urlDocumento.startsWith('/uploads/confirmaciones-acciones-previas/')) {
           // Soporte para confirmaciones de acciones previas
           const rutaArchivo = urlDocumento.replace('/uploads/confirmaciones-acciones-previas/', '');
-          urlCompleta = `${import.meta.env.VITE_API_URL}/confirmaciones-acciones-previas/archivo/${rutaArchivo}`;
-        } else if (urlDocumento.startsWith('/uploads/confirmaciones-acciones-previas-consumo/')) {
-          // Soporte para confirmaciones de acciones previas de Faena Consumo
-          const rutaArchivo = urlDocumento.replace('/uploads/confirmaciones-acciones-previas-consumo/', '');
-          urlCompleta = `${import.meta.env.VITE_API_URL}/confirmaciones-acciones-previas-consumo/archivo/${rutaArchivo}`;
+          urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/confirmaciones-acciones-previas/archivo/${rutaArchivo}`;
         } else if (urlDocumento.startsWith('/uploads/documentacion-personal/')) {
           // Soporte para documentación personal
           const rutaArchivo = urlDocumento.replace('/uploads/documentacion-personal/', '');
@@ -66,6 +65,10 @@ const PDFViewer = ({ urlDocumento, tipoDocumento = "documentos-visitantes" }) =>
           // Soporte para declaraciones de desembarque del armador (ruta protegida con JWT)
           const rutaArchivo = urlDocumento.replace('/uploads/declaraciones-desembarque/', '');
           urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/faenas-pesca/archivo-declaracion-desembarque/${rutaArchivo}`;
+        } else if (urlDocumento.startsWith('/uploads/informes-faena-consumo/')) {
+          // ✅ NUEVO: Soporte para informes de faena consumo (ruta protegida con JWT)
+          const rutaArchivo = urlDocumento.replace('/uploads/informes-faena-consumo/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/faenas-pesca-consumo/archivo-informe-faena/${rutaArchivo}`;
         } else if (urlDocumento.startsWith('/api/')) {
           // Remover /api/ del inicio porque VITE_API_URL ya lo incluye
           const rutaSinApi = urlDocumento.substring(4);
@@ -121,23 +124,22 @@ const PDFViewer = ({ urlDocumento, tipoDocumento = "documentos-visitantes" }) =>
         URL.revokeObjectURL(pdfUrl);
       }
     };
-  }, [urlDocumento, tipoDocumento]);
-
-  // Cleanup adicional cuando cambia pdfUrl
-  useEffect(() => {
-    return () => {
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
-      }
-    };
-  }, [pdfUrl]);
+  }, [urlDocumento]);
 
   if (loading) {
     return (
-      <div className="flex justify-content-center align-items-center" style={{ height: '600px' }}>
-        <div className="text-center">
-          <ProgressSpinner size="50" strokeWidth="4" />
-          <p className="mt-3 text-600">Cargando documento...</p>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: altura,
+        border: '1px solid #dee2e6',
+        borderRadius: '6px',
+        backgroundColor: '#f8f9fa'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <ProgressSpinner style={{ width: '50px', height: '50px' }} />
+          <p style={{ marginTop: '1rem', color: '#6c757d' }}>Cargando documento...</p>
         </div>
       </div>
     );
@@ -145,45 +147,43 @@ const PDFViewer = ({ urlDocumento, tipoDocumento = "documentos-visitantes" }) =>
 
   if (error) {
     return (
-      <div className="flex justify-content-center align-items-center" style={{ height: '600px' }}>
-        <div className="text-center">
-          <i className="pi pi-exclamation-triangle text-red-500" style={{ fontSize: '3rem' }}></i>
-          <p className="mt-3 text-600">Error al cargar el documento</p>
-          <p className="text-sm text-500">{error}</p>
-        </div>
+      <div style={{ padding: '1rem' }}>
+        <Message 
+          severity="error" 
+          text={error}
+          style={{ width: '100%' }}
+        />
       </div>
     );
   }
 
   if (!pdfUrl) {
     return (
-      <div className="flex justify-content-center align-items-center" style={{ height: '600px' }}>
-        <div className="text-center">
-          <i className="pi pi-file-pdf text-gray-400" style={{ fontSize: '3rem' }}></i>
-          <p className="mt-3 text-600">No hay documento para mostrar</p>
-        </div>
+      <div style={{ padding: '1rem' }}>
+        <Message 
+          severity="warn" 
+          text="No hay documento para mostrar"
+          style={{ width: '100%' }}
+        />
       </div>
     );
   }
 
   return (
-    <div>
+    <div style={{ 
+      border: '1px solid #dee2e6',
+      borderRadius: '6px',
+      overflow: 'hidden',
+      backgroundColor: '#fff'
+    }}>
       <iframe
-        src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-        width="100%"
-        height="600px"
-        style={{ 
-          border: "none", 
-          borderRadius: "6px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+        src={pdfUrl}
+        style={{
+          width: '100%',
+          height: altura,
+          border: 'none'
         }}
-        title="Documento PDF"
-        onLoad={() => {
-        }}
-        onError={() => {
-          console.error('❌ Error mostrando PDF en iframe');
-          setError('Error al mostrar el documento en el navegador');
-        }}
+        title="Visor de PDF"
       />
     </div>
   );

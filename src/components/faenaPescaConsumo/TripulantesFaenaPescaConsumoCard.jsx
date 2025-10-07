@@ -1,438 +1,413 @@
-// src/components/faenaPescaConsumo/TripulantesFaenaPescaConsumoCard.jsx
-// Card para gestionar tripulantes de FaenaPescaConsumo
+/**
+ * TripulantesFaenaPescaConsumoCard.jsx
+ *
+ * Componente para mostrar y gestionar los tripulantes de una faena de pesca consumo.
+ * Permite listar y ver detalles de tripulantes (solo lectura).
+ * Los tripulantes se crean automáticamente al iniciar la novedad.
+ *
+ * @author ERP Megui
+ * @version 1.0.0
+ */
+
 import React, { useState, useEffect, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import { Tag } from "primereact/tag";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
+import { Toolbar } from "primereact/toolbar";
 import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
-import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
-import { confirmDialog } from "primereact/confirmdialog";
-import { Controller, useForm } from "react-hook-form";
+import { Avatar } from "primereact/avatar";
+import { getResponsiveFontSize } from "../../utils/utils";
+import TripulanteFaenaConsumoForm from "./TripulanteFaenaConsumoForm";
 import {
-    getTripulantesFaenaConsumo,
-  createTripulanteFaenaConsumo,
+  getTripulantesPorFaena,
   updateTripulanteFaenaConsumo,
-  eliminarTripulanteFaenaConsumo,
+  regenerarTripulantes,
 } from "../../api/tripulanteFaenaConsumo";
-import { getCargosPersonal } from "../../api/cargosPersonal";
 
-export default function TripulantesFaenaPescaConsumoCard({
+const TripulantesFaenaPescaConsumoCard = ({
   faenaPescaConsumoId,
+  novedadData,
   personal = [],
+  loading = false,
   onDataChange,
-}) {
+  onTripulantesChange, // Callback para notificar cambios
+  onFaenasChange, // Callback para notificar cambios en faenas
+}) => {
   const [tripulantes, setTripulantes] = useState([]);
-  const [cargos, setCargos] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [dialogVisible, setDialogVisible] = useState(false);
+  const [selectedTripulante, setSelectedTripulante] = useState(null);
+  const [tripulanteDialog, setTripulanteDialog] = useState(false);
   const [editingTripulante, setEditingTripulante] = useState(null);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [loadingTripulantes, setLoadingTripulantes] = useState(false);
   const toast = useRef(null);
 
-  const { control, handleSubmit, reset, watch, formState: { errors } } = useForm();
-
-  const personalIdWatch = watch("personalId");
-
+  // Cargar tripulantes al montar el componente o cambiar faenaPescaConsumoId
   useEffect(() => {
     if (faenaPescaConsumoId) {
       cargarTripulantes();
-      cargarCargos();
     }
   }, [faenaPescaConsumoId]);
 
-  // Auto-completar nombres cuando se selecciona personal
-  useEffect(() => {
-    if (personalIdWatch) {
-      const personaSeleccionada = personal.find(
-        (p) => Number(p.id) === Number(personalIdWatch)
-      );
-      if (personaSeleccionada) {
-        reset((formValues) => ({
-          ...formValues,
-          nombres: personaSeleccionada.nombres,
-          apellidos: personaSeleccionada.apellidos,
-          cargoId: personaSeleccionada.cargoId
-            ? Number(personaSeleccionada.cargoId)
-            : null,
-        }));
-      }
-    }
-  }, [personalIdWatch, personal, reset]);
-
   const cargarTripulantes = async () => {
+    if (!faenaPescaConsumoId) return;
+
+    setLoadingTripulantes(true);
     try {
-      setLoading(true);
-      const data = await getTripulantesFaenaConsumo();
-      const tripulantesFaena = data.filter(
-        (t) => Number(t.faenaPescaConsumoId) === Number(faenaPescaConsumoId)
-      );
-      setTripulantes(tripulantesFaena);
+      const data = await getTripulantesPorFaena(faenaPescaConsumoId);
+      setTripulantes(data || []);
+
+      // Notificar cambios al componente padre
+      if (onTripulantesChange) {
+        onTripulantesChange(data || []);
+      }
     } catch (error) {
       console.error("Error al cargar tripulantes:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar tripulantes",
+        detail: "Error al cargar los tripulantes de la faena",
         life: 3000,
       });
     } finally {
-      setLoading(false);
+      setLoadingTripulantes(false);
     }
   };
 
-  const cargarCargos = async () => {
+  const handleRegenerarTripulantes = async () => {
+    if (!faenaPescaConsumoId) return;
+
+    setLoadingTripulantes(true);
     try {
-      const data = await getCargosPersonal();
-      setCargos(data);
+      const resultado = await regenerarTripulantes(faenaPescaConsumoId);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: `Tripulantes actualizados: ${resultado.creados} creados, ${resultado.actualizados} actualizados`,
+        life: 5000,
+      });
+
+      // Recargar tripulantes
+      await cargarTripulantes();
     } catch (error) {
-      console.error("Error al cargar cargos:", error);
-    }
-  };
-
-  const handleNuevo = () => {
-    setEditingTripulante(null);
-    reset({
-      personalId: null,
-      cargoId: null,
-      nombres: "",
-      apellidos: "",
-      observaciones: "",
-    });
-    setDialogVisible(true);
-  };
-
-  const handleEditar = (tripulante) => {
-    setEditingTripulante(tripulante);
-    reset({
-      personalId: tripulante.personalId ? Number(tripulante.personalId) : null,
-      cargoId: tripulante.cargoId ? Number(tripulante.cargoId) : null,
-      nombres: tripulante.nombres || "",
-      apellidos: tripulante.apellidos || "",
-      observaciones: tripulante.observaciones || "",
-    });
-    setDialogVisible(true);
-  };
-
-  const handleEliminar = (tripulante) => {
-    confirmDialog({
-      message: `¿Está seguro de eliminar al tripulante ${tripulante.nombres} ${tripulante.apellidos}?`,
-      header: "Confirmar Eliminación",
-      icon: "pi pi-exclamation-triangle",
-      acceptClassName: "p-button-danger",
-      accept: async () => {
-        try {
-          await eliminarTripulanteFaenaConsumo(tripulante.id);
-          toast.current?.show({
-            severity: "success",
-            summary: "Éxito",
-            detail: "Tripulante eliminado correctamente",
-            life: 3000,
-          });
-          cargarTripulantes();
-          onDataChange?.();
-        } catch (error) {
-          console.error("Error al eliminar tripulante:", error);
-          toast.current?.show({
-            severity: "error",
-            summary: "Error",
-            detail: "Error al eliminar el tripulante",
-            life: 3000,
-          });
-        }
-      },
-    });
-  };
-
-  const onSubmit = async (data) => {
-    try {
-      const payload = {
-        faenaPescaConsumoId: Number(faenaPescaConsumoId),
-        personalId: data.personalId ? Number(data.personalId) : null,
-        cargoId: data.cargoId ? Number(data.cargoId) : null,
-        nombres: data.nombres?.trim() || null,
-        apellidos: data.apellidos?.trim() || null,
-        observaciones: data.observaciones?.trim() || null,
-      };
-
-      if (editingTripulante) {
-        await updateTripulanteFaenaConsumo(editingTripulante.id, payload);
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Tripulante actualizado correctamente",
-          life: 3000,
-        });
-      } else {
-        await createTripulanteFaenaConsumo(payload);
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Tripulante agregado correctamente",
-          life: 3000,
-        });
-      }
-
-      setDialogVisible(false);
-      cargarTripulantes();
-      onDataChange?.();
-    } catch (error) {
-      console.error("Error al guardar tripulante:", error);
+      console.error("Error al regenerar tripulantes:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al guardar el tripulante",
+        detail: "Error al regenerar los tripulantes de la faena",
+        life: 3000,
+      });
+    } finally {
+      setLoadingTripulantes(false);
+    }
+  };
+
+  const handleVerTripulante = (tripulante) => {
+    setEditingTripulante(tripulante);
+    setTripulanteDialog(true);
+  };
+
+  const handleGuardarTripulante = async (datosActualizados) => {
+    try {
+      await updateTripulanteFaenaConsumo(
+        editingTripulante.id,
+        datosActualizados
+      );
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Observaciones del tripulante actualizadas correctamente",
+        life: 3000,
+      });
+
+      // Recargar datos
+      await cargarTripulantes();
+      setTripulanteDialog(false);
+      setEditingTripulante(null);
+
+      // Notificar cambios
+      if (onDataChange) onDataChange();
+    } catch (error) {
+      console.error("Error al actualizar tripulante:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al actualizar las observaciones del tripulante",
         life: 3000,
       });
     }
   };
 
-  // Templates
-  const personalTemplate = (rowData) => {
-    if (rowData.personalId) {
-      const persona = personal.find(
-        (p) => Number(p.id) === Number(rowData.personalId)
+  // Template para mostrar el cargo
+  const cargoBodyTemplate = (rowData) => {
+    const cargoMap = {
+      14: { label: "Motorista", severity: "info" },
+      21: { label: "Tripulante", severity: "success" },
+      22: { label: "Patrón", severity: "warning" },
+    };
+
+    const cargo = cargoMap[rowData.cargoId] || {
+      label: "Sin Cargo",
+      severity: "secondary",
+    };
+
+    return (
+      <Tag
+        value={cargo.label}
+        severity={cargo.severity}
+        style={{ fontSize: getResponsiveFontSize() }}
+      />
+    );
+  };
+
+  // Template para mostrar nombre completo
+  const nombreCompletoBodyTemplate = (rowData) => {
+    return (
+      `${rowData.apellidos || ""} ${rowData.nombres || ""}`.trim() ||
+      "Sin nombre"
+    );
+  };
+
+  // Template para observaciones
+  const observacionesBodyTemplate = (rowData) => {
+    if (!rowData.observaciones) {
+      return (
+        <span style={{ color: "#6c757d", fontStyle: "italic" }}>
+          Sin observaciones
+        </span>
       );
-      return persona ? `${persona.nombres} ${persona.apellidos}` : "N/A";
     }
-    return `${rowData.nombres || ""} ${rowData.apellidos || ""}`.trim() || "N/A";
+
+    const texto =
+      rowData.observaciones.length > 50
+        ? `${rowData.observaciones.substring(0, 50)}...`
+        : rowData.observaciones;
+
+    return <span title={rowData.observaciones}>{texto}</span>;
   };
 
-  const cargoTemplate = (rowData) => {
-    const cargo = cargos.find((c) => Number(c.id) === Number(rowData.cargoId));
-    return cargo ? cargo.descripcion : "N/A";
+  // Template para fecha de creación
+  const fechaCreacionBodyTemplate = (rowData) => {
+    return rowData.createdAt
+      ? new Date(rowData.createdAt).toLocaleString("es-PE")
+      : "-";
   };
 
-  const accionesTemplate = (rowData) => {
-    return (
-      <div className="flex gap-2">
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-text p-button-sm"
-          onClick={() => handleEditar(rowData)}
-          tooltip="Editar"
-        />
-        <Button
-          icon="pi pi-trash"
-          className="p-button-text p-button-danger p-button-sm"
-          onClick={() => handleEliminar(rowData)}
-          tooltip="Eliminar"
-        />
-      </div>
-    );
+  // Template para avatar
+  const avatarBodyTemplate = (rowData) => {
+    const nombres = rowData.nombres || "";
+    const apellidos = rowData.apellidos || "";
+    const nombreCompleto = `${nombres} ${apellidos}`.trim();
+
+    // Construir URL completa igual que en Personal.jsx
+    const urlFoto = rowData.personal?.urlFotoPersona
+      ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${
+          rowData.personal.urlFotoPersona
+        }`
+      : undefined;
+
+    // Si hay foto, muestra el avatar con imagen; si no, iniciales
+    if (urlFoto) {
+      return (
+        <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
+          <Avatar
+            image={urlFoto}
+            shape="circle"
+            size="large"
+            alt="Foto"
+            style={{ width: "40px", height: "40px" }}
+            onImageError={(e) => {
+              console.error("Error cargando imagen avatar:", urlFoto, e);
+            }}
+          />
+        </span>
+      );
+    } else {
+      // Avatar con iniciales si no hay foto
+      const iniciales = `${nombres.charAt(0)}${apellidos.charAt(
+        0
+      )}`.toUpperCase();
+      return (
+        <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
+          <Avatar
+            label={iniciales}
+            shape="circle"
+            size="large"
+            style={{
+              backgroundColor: "#2196F3",
+              color: "#fff",
+              width: "40px",
+              height: "40px",
+              fontWeight: "bold",
+              fontSize: 16,
+            }}
+          />
+        </span>
+      );
+    }
   };
 
-  if (!faenaPescaConsumoId) {
-    return (
-      <Card title="Tripulantes">
-        <p className="text-center text-500">
-          Debe crear la faena primero para gestionar tripulantes
-        </p>
-      </Card>
-    );
-  }
+  // Template para tipo documento
+  const tipoDocumentoBodyTemplate = (rowData) => {
+    return rowData.personal?.tipoDocIdentidad?.codigo || "Sin tipo";
+  };
+
+  // Template para número documento
+  const numeroDocumentoBodyTemplate = (rowData) => {
+    return rowData.personal?.numeroDocumento || "Sin número";
+  };
+
+  // Template para teléfono
+  const telefonoBodyTemplate = (rowData) => {
+    return rowData.personal?.telefono || "Sin teléfono";
+  };
 
   return (
-    <>
-      <Card
-        title="Tripulantes de la Faena"
-        subTitle="Gestión de tripulantes que participan en la faena"
-      >
-        <div className="flex justify-content-end mb-3">
-          <Button
-            label="Nuevo Tripulante"
-            icon="pi pi-plus"
-            onClick={handleNuevo}
-            severity="success"
-            size="small"
-          />
-        </div>
-
-        <DataTable
-          value={tripulantes}
-          loading={loading}
-          emptyMessage="No hay tripulantes registrados"
-          paginator
-          rows={5}
-          rowsPerPageOptions={[5, 10, 25]}
-          className="p-datatable-sm"
-        >
-          <Column field="id" header="ID" sortable style={{ width: "80px" }} />
-          <Column
-            field="personalId"
-            header="Tripulante"
-            body={personalTemplate}
-            sortable
-          />
-          <Column
-            field="cargoId"
-            header="Cargo"
-            body={cargoTemplate}
-            sortable
-          />
-          <Column field="observaciones" header="Observaciones" sortable />
-          <Column
-            header="Acciones"
-            body={accionesTemplate}
-            style={{ width: "120px" }}
-          />
-        </DataTable>
+    <div className="tripulantes-faena-card">
+      <Toast ref={toast} />
+      <Card>
+        {!faenaPescaConsumoId ? (
+          <div className="text-center p-4">
+            <i className="pi pi-info-circle text-4xl text-blue-500 mb-3"></i>
+            <p className="text-lg">
+              Seleccione una faena para ver sus tripulantes
+            </p>
+          </div>
+        ) : (
+          <DataTable
+            value={tripulantes}
+            loading={loadingTripulantes || loading}
+            paginator
+            rows={20}
+            showGridlines
+            emptyMessage="No hay tripulantes registrados para esta faena"
+            className="p-datatable-sm"
+            onRowClick={(e) => handleVerTripulante(e.data)}
+            style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+            globalFilter={globalFilter}
+            header={
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <h2 className="m-0">Tripulantes de la Faena</h2>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <InputText
+                    type="search"
+                    value={globalFilter}
+                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    placeholder="Buscar tripulante..."
+                    size="small"
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Actualizar"
+                    icon="pi pi-refresh"
+                    className="p-button-outlined"
+                    onClick={handleRegenerarTripulantes}
+                    size="small"
+                    loading={loadingTripulantes}
+                  />
+                </div>
+              </div>
+            }
+            dataKey="id"
+          >
+            <Column
+              field="avatar"
+              header="Avatar"
+              body={avatarBodyTemplate}
+              sortable
+              style={{ width: "120px" }}
+            />
+            <Column
+              field="cargoId"
+              header="Cargo"
+              body={cargoBodyTemplate}
+              sortable
+              style={{ width: "120px" }}
+            />
+            <Column
+              header="Nombre Completo"
+              body={nombreCompletoBodyTemplate}
+              sortable
+              style={{ minWidth: "200px" }}
+            />
+            <Column
+              field="tipoDocumentoId"
+              header="Tipo Documento"
+              body={tipoDocumentoBodyTemplate}
+              sortable
+              style={{ width: "150px" }}
+            />
+            <Column
+              field="numeroDocumento"
+              header="Número Documento"
+              body={numeroDocumentoBodyTemplate}
+              sortable
+              style={{ width: "150px" }}
+            />
+            <Column
+              field="telefono"
+              header="Teléfono"
+              body={telefonoBodyTemplate}
+              sortable
+              style={{ width: "150px" }}
+            />
+            <Column
+              field="observaciones"
+              header="Observaciones"
+              body={observacionesBodyTemplate}
+              style={{ minWidth: "200px" }}
+            />
+            <Column
+              field="createdAt"
+              header="Fecha Registro"
+              body={fechaCreacionBodyTemplate}
+              sortable
+              style={{ width: "150px" }}
+            />
+          </DataTable>
+        )}
       </Card>
 
+      {/* Diálogo para ver/editar tripulante */}
       <Dialog
-        visible={dialogVisible}
-        onHide={() => setDialogVisible(false)}
-        header={editingTripulante ? "Editar Tripulante" : "Nuevo Tripulante"}
-        style={{ width: "700px" }}
+        visible={tripulanteDialog}
+        style={{ width: "600px" }}
+        header="Detalles del Tripulante"
         modal
-        className="p-fluid"
+        onHide={() => {
+          setTripulanteDialog(false);
+          setEditingTripulante(null);
+        }}
       >
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid">
-            {/* Personal */}
-            <div className="col-12">
-              <label htmlFor="personalId" className="block font-medium mb-2">
-                Seleccionar Personal (Opcional)
-              </label>
-              <Controller
-                name="personalId"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    id="personalId"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    options={personal.map((p) => ({
-                      label: `${p.nombres} ${p.apellidos}`,
-                      value: Number(p.id),
-                    }))}
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Seleccione personal"
-                    filter
-                    showClear
-                  />
-                )}
-              />
-              <small className="text-500">
-                Si selecciona personal, los datos se completarán automáticamente
-              </small>
-            </div>
-
-            {/* Nombres */}
-            <div className="col-12 md:col-6">
-              <label htmlFor="nombres" className="block font-medium mb-2">
-                Nombres *
-              </label>
-              <Controller
-                name="nombres"
-                control={control}
-                rules={{ required: "Los nombres son obligatorios" }}
-                render={({ field }) => (
-                  <InputText
-                    id="nombres"
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    placeholder="Nombres del tripulante"
-                    className={errors.nombres ? "p-invalid" : ""}
-                  />
-                )}
-              />
-              {errors.nombres && (
-                <small className="p-error">{errors.nombres.message}</small>
-              )}
-            </div>
-
-            {/* Apellidos */}
-            <div className="col-12 md:col-6">
-              <label htmlFor="apellidos" className="block font-medium mb-2">
-                Apellidos *
-              </label>
-              <Controller
-                name="apellidos"
-                control={control}
-                rules={{ required: "Los apellidos son obligatorios" }}
-                render={({ field }) => (
-                  <InputText
-                    id="apellidos"
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    placeholder="Apellidos del tripulante"
-                    className={errors.apellidos ? "p-invalid" : ""}
-                  />
-                )}
-              />
-              {errors.apellidos && (
-                <small className="p-error">{errors.apellidos.message}</small>
-              )}
-            </div>
-
-            {/* Cargo */}
-            <div className="col-12">
-              <label htmlFor="cargoId" className="block font-medium mb-2">
-                Cargo
-              </label>
-              <Controller
-                name="cargoId"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    id="cargoId"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    options={cargos}
-                    optionLabel="descripcion"
-                    optionValue="id"
-                    placeholder="Seleccione cargo"
-                    filter
-                    showClear
-                  />
-                )}
-              />
-            </div>
-
-            {/* Observaciones */}
-            <div className="col-12">
-              <label htmlFor="observaciones" className="block font-medium mb-2">
-                Observaciones
-              </label>
-              <Controller
-                name="observaciones"
-                control={control}
-                render={({ field }) => (
-                  <InputTextarea
-                    id="observaciones"
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    rows={3}
-                    placeholder="Observaciones..."
-                  />
-                )}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-content-end gap-2 mt-4">
-            <Button
-              type="button"
-              label="Cancelar"
-              icon="pi pi-times"
-              onClick={() => setDialogVisible(false)}
-              className="p-button-text"
-            />
-            <Button
-              type="submit"
-              label="Guardar"
-              icon="pi pi-check"
-              severity="success"
-            />
-          </div>
-        </form>
+        {editingTripulante && (
+          <TripulanteFaenaConsumoForm
+            tripulante={editingTripulante}
+            personal={personal}
+            onGuardadoExitoso={handleGuardarTripulante}
+            onCancelar={() => {
+              setTripulanteDialog(false);
+              setEditingTripulante(null);
+            }}
+          />
+        )}
       </Dialog>
-
-      <Toast ref={toast} />
-    </>
+    </div>
   );
-}
+};
+
+export default TripulantesFaenaPescaConsumoCard;

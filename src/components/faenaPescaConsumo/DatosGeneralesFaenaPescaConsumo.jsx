@@ -111,13 +111,13 @@ export default function DatosGeneralesFaenaPescaConsumo({
         </div>
 
         <div style={{ flex: 1 }}>
-          <label htmlFor="bolicheId">Boliche</label>
+          <label htmlFor="bolicheRedId">Boliche</label>
           <Controller
-            name="bolicheId"
+            name="bolicheRedId"
             control={control}
             render={({ field }) => (
               <Dropdown
-                id="bolicheId"
+                id="bolicheRedId"
                 value={field.value}
                 onChange={(e) => field.onChange(e.value)}
                 options={boliches}
@@ -127,12 +127,12 @@ export default function DatosGeneralesFaenaPescaConsumo({
                 placeholder="Seleccione boliche"
                 filter
                 showClear
-                className={classNames({ "p-invalid": errors.bolicheId })}
+                className={classNames({ "p-invalid": errors.bolicheRedId })}
               />
             )}
           />
-          {errors.bolicheId && (
-            <small className="p-error">{errors.bolicheId.message}</small>
+          {errors.bolicheRedId && (
+            <small className="p-error">{errors.bolicheRedId.message}</small>
           )}
         </div>
 

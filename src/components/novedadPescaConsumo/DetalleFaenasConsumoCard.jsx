@@ -57,7 +57,7 @@ const schema = yup.object().shape({
 /**
  * Componente DetalleFaenasConsumoCard
  * @param {Object} props - Props del componente
- * @param {number} props.novedadPescaConsumoId - ID de la novedad de pesca consumo
+ * @param {number} props.novedadPescaConsumo - objeto novedad de pesca consumo
  * @param {boolean} props.novedadPescaConsumoIniciada - Si la novedad está iniciada
  * @param {Array} props.embarcaciones - Lista de embarcaciones disponibles
  * @param {Array} props.boliches - Lista de boliches disponibles
@@ -70,7 +70,7 @@ const schema = yup.object().shape({
 const DetalleFaenasConsumoCard = forwardRef(
   (
     {
-      novedadPescaConsumoId,
+      novedadPescaConsumo,
       novedadPescaConsumoIniciada = false,
       embarcaciones = [],
       boliches = [],
@@ -125,10 +125,10 @@ const DetalleFaenasConsumoCard = forwardRef(
 
     // Cargar faenas cuando cambie el ID de novedad o el trigger
     useEffect(() => {
-      if (novedadPescaConsumoId) {
+      if (novedadPescaConsumo.id) {
         cargarFaenas();
       }
-    }, [novedadPescaConsumoId, updateTrigger]);
+    }, [novedadPescaConsumo.id, updateTrigger]);
 
     // Función para cargar puertos
     const cargarPuertos = async () => {
@@ -147,7 +147,7 @@ const DetalleFaenasConsumoCard = forwardRef(
 
     // Función para cargar faenas
     const cargarFaenas = async () => {
-      if (!novedadPescaConsumoId) return;
+      if (!novedadPescaConsumo.id) return;
 
       try {
         setLoading(true);
@@ -155,7 +155,7 @@ const DetalleFaenasConsumoCard = forwardRef(
         const faenasFiltradas = faenasData.filter(
           (faena) =>
             Number(faena.novedadPescaConsumoId) ===
-            Number(novedadPescaConsumoId)
+            Number(novedadPescaConsumo.id)
         );
         setFaenas(faenasFiltradas);
       } catch (error) {
@@ -234,7 +234,7 @@ const DetalleFaenasConsumoCard = forwardRef(
       try {
         const faenaData = {
           ...data,
-          novedadPescaConsumoId: Number(novedadPescaConsumoId),
+          novedadPescaConsumoId: Number(novedadPescaConsumo.id),
         };
 
         let resultado;
@@ -459,7 +459,7 @@ const DetalleFaenasConsumoCard = forwardRef(
             onHide={() => setDialogVisible(false)}
             isEdit={!!editingFaena}
             defaultValues={editingFaena || {}}
-            novedadData={{ id: novedadPescaConsumoId }}
+            novedadData={novedadPescaConsumo}
             embarcacionesOptions={embarcaciones}
             bolichesOptions={boliches}
             bahiasComercialesOptions={bahiasComerciales}

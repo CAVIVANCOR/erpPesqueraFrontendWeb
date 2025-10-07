@@ -5,7 +5,7 @@
 import axios from "axios";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
-const API_URL = `${import.meta.env.VITE_API_URL}/pesca/descarga-faena-consumo`;
+const API_URL = `${import.meta.env.VITE_API_URL}/pesca/descargas-faena-consumo`;
 
 /**
  * Obtiene el token JWT profesionalmente desde Zustand
@@ -79,13 +79,12 @@ export async function subirInformeDescarga(file) {
   return res.data;
 }
 
-// Agregar esta función en descargaFaenaConsumo.js
+// Función para obtener descargas por faena (retorna array)
 export async function getDescargaPorFaena(faenaPescaConsumoId) {
   const res = await axios.get(`${API_URL}`, { headers: getAuthHeaders() });
   const descargas = res.data;
-  // Buscar la descarga de esta faena específica
-  const descarga = descargas.find(
+  // Filtrar las descargas de esta faena específica
+  return descargas.filter(
     (d) => Number(d.faenaPescaConsumoId) === Number(faenaPescaConsumoId)
   );
-  return descarga || null;
 }

@@ -1,154 +1,120 @@
-// src/components/faenaPescaConsumo/DescargaFaenaConsumoCard.jsx
-// Card para gestionar descarga de FaenaPescaConsumo
+/**
+ * DescargaFaenaConsumoCard.jsx
+ *
+ * Componente para mostrar y gestionar la descarga de una faena de pesca consumo.
+ * Permite listar, crear y editar registros de DescargaFaenaConsumo.
+ *
+ * @author ERP Megui
+ * @version 1.0.0
+ */
+
 import React, { useState, useEffect, useRef } from "react";
-import { Card } from "primereact/card";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Tag } from "primereact/tag";
 import { Button } from "primereact/button";
-import { InputText } from "primereact/inputtext";
-import { InputNumber } from "primereact/inputnumber";
-import { InputTextarea } from "primereact/inputtextarea";
-import { Dropdown } from "primereact/dropdown";
-import { Calendar } from "primereact/calendar";
+import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
-import { Message } from "primereact/message";
-import { Divider } from "primereact/divider";
-import { Controller, useForm } from "react-hook-form";
+import { Toolbar } from "primereact/toolbar";
+import { Card } from "primereact/card";
+import { InputText } from "primereact/inputtext";
+import { getResponsiveFontSize, createPorcentajeTemplate } from "../../utils/utils";
+import DescargaFaenaConsumoForm from "../descargaFaenaConsumo/DescargaFaenaConsumoForm";
 import {
-  getDescargasFaenaConsumo,
+  getDescargaPorFaena,
   crearDescargaFaenaConsumo,
   actualizarDescargaFaenaConsumo,
+  eliminarDescargaFaenaConsumo,
 } from "../../api/descargaFaenaConsumo";
 
-export default function DescargaFaenaConsumoCard({
+const DescargaFaenaConsumoCard = ({
   faenaPescaConsumoId,
-  novedadPescaConsumoId,
-  bahias = [],
-  motoristas = [],
+  novedadData,
+  faenaData,
+  faenaDescripcion,
+  puertos = [],
   patrones = [],
-  puertosDescarga = [],
+  motoristas = [],
+  bahias = [],
   clientes = [],
   especies = [],
+  loading = false,
   onDataChange,
-  lastUpdate,
-}) {
-  const [descarga, setDescarga] = useState(null);
-  const [loading, setLoading] = useState(false);
+  onDescargaChange, // Callback para notificar cambios
+  onFaenasChange, // Callback para notificar cambios en faenas
+}) => {
+  const [descargas, setDescargas] = useState([]);
+  const [selectedDescarga, setSelectedDescarga] = useState(null);
+  const [descargaDialog, setDescargaDialog] = useState(false);
+  const [editingDescarga, setEditingDescarga] = useState(null);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [loadingData, setLoadingData] = useState(false);
   const toast = useRef(null);
-
-  const { control, handleSubmit, reset, formState: { errors } } = useForm();
-
   useEffect(() => {
     if (faenaPescaConsumoId) {
-      cargarDescarga();
+      cargarDescargas();
     }
-  }, [faenaPescaConsumoId, lastUpdate]);
+  }, [faenaPescaConsumoId]);
 
-  const cargarDescarga = async () => {
+  const cargarDescargas = async () => {
+    if (!faenaPescaConsumoId) {
+      return;
+    }
+
     try {
-      setLoading(true);
-      const data = await getDescargasFaenaConsumo();
-      const descargaEncontrada = data.find(
-        (d) => Number(d.faenaPescaConsumoId) === Number(faenaPescaConsumoId)
-      );
-      if (descargaEncontrada) {
-        setDescarga(descargaEncontrada);
-        reset({
-          puertoDescargaId: descargaEncontrada.puertoDescargaId
-            ? Number(descargaEncontrada.puertoDescargaId)
-            : null,
-          fechaHoraArriboPuerto: descargaEncontrada.fechaHoraArriboPuerto
-            ? new Date(descargaEncontrada.fechaHoraArriboPuerto)
-            : null,
-          fechaHoraLlegadaPuerto: descargaEncontrada.fechaHoraLlegadaPuerto
-            ? new Date(descargaEncontrada.fechaHoraLlegadaPuerto)
-            : null,
-          clienteId: descargaEncontrada.clienteId ? Number(descargaEncontrada.clienteId) : null,
-          numPlataformaDescarga: descargaEncontrada.numPlataformaDescarga || "",
-          turnoPlataformaDescarga: descargaEncontrada.turnoPlataformaDescarga || "",
-          fechaHoraInicioDescarga: descargaEncontrada.fechaHoraInicioDescarga
-            ? new Date(descargaEncontrada.fechaHoraInicioDescarga)
-            : null,
-          fechaHoraFinDescarga: descargaEncontrada.fechaHoraFinDescarga
-            ? new Date(descargaEncontrada.fechaHoraFinDescarga)
-            : null,
-          numWinchaPesaje: descargaEncontrada.numWinchaPesaje || "",
-          urlComprobanteWincha: descargaEncontrada.urlComprobanteWincha || "",
-          patronId: descargaEncontrada.patronId ? Number(descargaEncontrada.patronId) : null,
-          motoristaId: descargaEncontrada.motoristaId ? Number(descargaEncontrada.motoristaId) : null,
-          bahiaId: descargaEncontrada.bahiaId ? Number(descargaEncontrada.bahiaId) : null,
-          latitud: descargaEncontrada.latitud || null,
-          longitud: descargaEncontrada.longitud || null,
-          combustibleAbastecidoGalones: descargaEncontrada.combustibleAbastecidoGalones || null,
-          urlValeAbastecimiento: descargaEncontrada.urlValeAbastecimiento || "",
-          urlInformeDescargaProduce: descargaEncontrada.urlInformeDescargaProduce || "",
-          observaciones: descargaEncontrada.observaciones || "",
-          especieId: descargaEncontrada.especieId ? Number(descargaEncontrada.especieId) : null,
-          toneladas: descargaEncontrada.toneladas || null,
-          porcentajeJuveniles: descargaEncontrada.porcentajeJuveniles || null,
-          fechaHoraFondeo: descargaEncontrada.fechaHoraFondeo
-            ? new Date(descargaEncontrada.fechaHoraFondeo)
-            : null,
-          latitudFondeo: descargaEncontrada.latitudFondeo || null,
-          longitudFondeo: descargaEncontrada.longitudFondeo || null,
-          puertoFondeoId: descargaEncontrada.puertoFondeoId
-            ? Number(descargaEncontrada.puertoFondeoId)
-            : null,
-        });
-      }
+      setLoadingData(true);
+      const response = await getDescargaPorFaena(faenaPescaConsumoId);
+      setDescargas(response || []);
     } catch (error) {
-      console.error("Error al cargar descarga:", error);
+      console.error("Error al cargar descargas:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar las descargas",
+        life: 3000,
+      });
     } finally {
-      setLoading(false);
+      setLoadingData(false);
     }
   };
 
-  const onSubmit = async (data) => {
-    try {
-      setLoading(true);
+  const openNew = () => {
+    setEditingDescarga(null);
+    setDescargaDialog(true);
+  };
 
-      const payload = {
+  const editDescarga = (descarga) => {
+    setEditingDescarga(descarga);
+    setDescargaDialog(true);
+  };
+
+  const hideDialog = () => {
+    setDescargaDialog(false);
+    setEditingDescarga(null);
+  };
+
+  const saveDescarga = async (descargaData) => {
+    try {
+      setLoadingData(true);
+
+      const dataToSend = {
+        ...descargaData,
         faenaPescaConsumoId: Number(faenaPescaConsumoId),
-        puertoDescargaId: data.puertoDescargaId
-          ? Number(data.puertoDescargaId)
+        puertoDescargaId: descargaData.puertoDescargaId
+          ? Number(descargaData.puertoDescargaId)
           : null,
-        fechaHoraArriboPuerto: data.fechaHoraArriboPuerto
-          ? new Date(data.fechaHoraArriboPuerto).toISOString()
+        patronId: descargaData.patronId ? Number(descargaData.patronId) : null,
+        motoristaId: descargaData.motoristaId
+          ? Number(descargaData.motoristaId)
           : null,
-        fechaHoraLlegadaPuerto: data.fechaHoraLlegadaPuerto
-          ? new Date(data.fechaHoraLlegadaPuerto).toISOString()
+        bahiaId: descargaData.bahiaId ? Number(descargaData.bahiaId) : null,
+        clienteId: descargaData.clienteId
+          ? Number(descargaData.clienteId)
           : null,
-        clienteId: data.clienteId ? Number(data.clienteId) : null,
-        numPlataformaDescarga: data.numPlataformaDescarga?.trim() || null,
-        turnoPlataformaDescarga: data.turnoPlataformaDescarga?.trim() || null,
-        fechaHoraInicioDescarga: data.fechaHoraInicioDescarga
-          ? new Date(data.fechaHoraInicioDescarga).toISOString()
-          : null,
-        fechaHoraFinDescarga: data.fechaHoraFinDescarga
-          ? new Date(data.fechaHoraFinDescarga).toISOString()
-          : null,
-        numWinchaPesaje: data.numWinchaPesaje?.trim() || null,
-        urlComprobanteWincha: data.urlComprobanteWincha?.trim() || null,
-        patronId: data.patronId ? Number(data.patronId) : null,
-        motoristaId: data.motoristaId ? Number(data.motoristaId) : null,
-        bahiaId: data.bahiaId ? Number(data.bahiaId) : null,
-        latitud: data.latitud || null,
-        longitud: data.longitud || null,
-        combustibleAbastecidoGalones: data.combustibleAbastecidoGalones || null,
-        urlValeAbastecimiento: data.urlValeAbastecimiento?.trim() || null,
-        urlInformeDescargaProduce: data.urlInformeDescargaProduce?.trim() || null,
-        observaciones: data.observaciones?.trim() || null,
-        especieId: data.especieId ? Number(data.especieId) : null,
-        toneladas: data.toneladas || null,
-        porcentajeJuveniles: data.porcentajeJuveniles || null,
-        fechaHoraFondeo: data.fechaHoraFondeo
-          ? new Date(data.fechaHoraFondeo).toISOString()
-          : null,
-        latitudFondeo: data.latitudFondeo || null,
-        longitudFondeo: data.longitudFondeo || null,
-        puertoFondeoId: data.puertoFondeoId ? Number(data.puertoFondeoId) : null,
       };
 
-      if (descarga?.id) {
-        await actualizarDescargaFaenaConsumo(descarga.id, payload);
+      if (editingDescarga) {
+        await actualizarDescargaFaenaConsumo(editingDescarga.id, dataToSend);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -156,7 +122,7 @@ export default function DescargaFaenaConsumoCard({
           life: 3000,
         });
       } else {
-        await crearDescargaFaenaConsumo(payload);
+        await crearDescargaFaenaConsumo(dataToSend);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -165,708 +131,297 @@ export default function DescargaFaenaConsumoCard({
         });
       }
 
-      cargarDescarga();
-      onDataChange?.();
+      await cargarDescargas();
+      hideDialog();
+
+      // Notificar cambios al componente padre
+      if (onDescargaChange) {
+        onDescargaChange();
+      }
     } catch (error) {
       console.error("Error al guardar descarga:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.message || "Error al guardar la descarga",
-        life: 5000,
+        detail: "No se pudo guardar la descarga",
+        life: 3000,
       });
     } finally {
-      setLoading(false);
+      setLoadingData(false);
     }
   };
 
-  if (!faenaPescaConsumoId) {
+  // Templates para las columnas
+  const puertoTemplate = (rowData) => {
+    const puerto = puertos.find(p => Number(p.id) === Number(rowData.puertoDescargaId));
     return (
-      <Card title="Descarga de Faena">
-        <p className="text-center text-500">
-          Debe crear la faena primero para gestionar la descarga
-        </p>
-      </Card>
+      <span style={{ fontWeight: "bold" }}>
+        {puerto?.nombre || "N/A"}
+      </span>
     );
-  }
+  };
+
+  const clienteTemplate = (rowData) => {
+    const cliente = clientes.find(c => Number(c.id) === Number(rowData.clienteId));
+    return (
+      <span style={{ fontWeight: "bold" }}>
+        {cliente?.razonSocial || "N/A"}
+      </span>
+    );
+  };
+
+  const especieTemplate = (rowData) => {
+    const especie = especies.find(e => Number(e.id) === Number(rowData.especieId));
+    return (
+      <span style={{ fontWeight: "bold" }}>
+        {especie?.nombre || "N/A"}
+      </span>
+    );
+  };
+
+  const toneladasTemplate = (rowData) => {
+    return rowData.toneladas
+      ? `${Number(rowData.toneladas).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : "-";
+  };
+
+  const porcentajeJuvenilesTemplate = (rowData) => {
+    const templateData = createPorcentajeTemplate(rowData.porcentajeJuveniles);
+    
+    if (!templateData) return "-";
+    
+    return (
+      <span style={templateData.estilos}>
+        {templateData.valor}{templateData.sufijo}
+      </span>
+    );
+  };
+
+  const fechaHoraTemplate = (field) => (rowData) => {
+    if (!rowData[field]) return "-";
+    
+    const fecha = new Date(rowData[field]);
+    const fechaStr = fecha.toLocaleDateString("es-ES");
+    const horaStr = fecha.toLocaleTimeString("es-ES", { hour: '2-digit', minute: '2-digit' });
+    const fontSize = getResponsiveFontSize();
+    
+    return (
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontWeight: "bold", fontSize: fontSize }}>{fechaStr}</div>
+        <div style={{ fontWeight: "bold", fontSize: `calc(${fontSize} * 0.9)`, color: "#666" }}>{horaStr}</div>
+      </div>
+    );
+  };
+
+  const fechaHoraFondeoTemplate = (rowData) => {
+    return rowData.fechaHoraFondeo 
+      ? new Date(rowData.fechaHoraFondeo).toLocaleString("es-PE", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "-";
+  };
+
+  const puertoFondeoTemplate = (rowData) => {
+    const puerto = puertos.find(p => p.id === rowData.puertoFondeoId);
+    return puerto ? puerto.nombre : "-";
+  };
+
+  const combustibleTemplate = (rowData) => {
+    return rowData.combustibleAbastecidoGalones
+      ? `${rowData.combustibleAbastecidoGalones} gal.`
+      : "-";
+  };
+
+  const actionBodyTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-rounded p-button-success p-button-sm"
+          onClick={() => editDescarga(rowData)}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+        />
+      </div>
+    );
+  };
+
+  const header = (
+    <div
+      style={{
+        alignItems: "center",
+        display: "flex",
+        gap: 10,
+        flexDirection: window.innerWidth < 768 ? "column" : "row",
+      }}
+    >
+      <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
+        <h2>DESCARGA DE FAENA</h2>
+      </div>
+      <div style={{ flex: 0.5, display: "flex", flexDirection: "column" }}>
+        <Button
+          label="Nuevo"
+          icon="pi pi-plus"
+          className="p-button-success"
+          onClick={openNew}
+          size="small"
+          disabled={!faenaPescaConsumoId}
+        />
+      </div>
+      <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
+        <InputText
+          type="search"
+          value={globalFilter}
+          onChange={(e) => setGlobalFilter(e.target.value)}
+          placeholder="Buscar descargas..."
+        />{" "}
+      </div>
+    </div>
+  );
 
   return (
-    <>
-      <Card
-        title="Descarga de Faena"
-        subTitle="Información completa de la descarga de la faena"
+    <Card>
+      <Toast ref={toast} />
+      <DataTable
+        value={descargas}
+        selection={selectedDescarga}
+        onSelectionChange={(e) => setSelectedDescarga(e.value)}
+        dataKey="id"
+        paginator
+        rows={10}
+        rowsPerPageOptions={[5, 10, 25]}
+        className="datatable-responsive"
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} descargas"
+        globalFilter={globalFilter}
+        emptyMessage="No se encontraron descargas."
+        header={header}
+        loading={loadingData}
+        size="small"
+        stripedRows
+        showGridlines
+        style={{ fontSize: getResponsiveFontSize(), cursor: "pointer" }}
+        onRowClick={(e) => editDescarga(e.data)}
+        rowClassName={() => "align-top"}
       >
-        <Toast ref={toast} />
+        <Column field="id" header="ID" sortable style={{ minWidth: "80px", verticalAlign: "top" }} />
+        <Column
+          field="puertoDescarga"
+          header="Puerto"
+          body={puertoTemplate}
+          sortable
+          style={{ minWidth: "120px", verticalAlign: "top" }}
+        />
+        <Column
+          field="fechaHoraInicioDescarga"
+          header="Inicio Descarga"
+          body={fechaHoraTemplate("fechaHoraInicioDescarga")}
+          sortable
+          style={{ minWidth: "60px", textAlign: "center", verticalAlign: "top" }}
+        />
+        <Column
+          field="fechaHoraFinDescarga"
+          header="Fin Descarga"
+          body={fechaHoraTemplate("fechaHoraFinDescarga")}
+          sortable
+          style={{ minWidth: "60px", textAlign: "center", verticalAlign: "top" }}
+        />
+        <Column
+          field="fechaHoraFondeo"
+          header="Fecha/Hora Fondeo"
+          body={fechaHoraFondeoTemplate}
+          sortable
+          style={{ minWidth: "120px", verticalAlign: "top" }}
+        />
+        <Column
+          field="puertoFondeo"
+          header="Puerto Fondeo"
+          body={puertoFondeoTemplate}
+          sortable
+          style={{ minWidth: "120px", verticalAlign: "top" }}
+        />
+        <Column
+          field="cliente"
+          header="Cliente"
+          body={clienteTemplate}
+          sortable
+          style={{ minWidth: "120px", verticalAlign: "top" }}
+        />
+        <Column
+          field="especie"
+          header="Especie"
+          body={especieTemplate}
+          sortable
+          style={{ minWidth: "120px", verticalAlign: "top" }}
+        />
+        <Column
+          field="toneladas"
+          header="Toneladas"
+          body={toneladasTemplate}
+          sortable
+          style={{ minWidth: "80px", verticalAlign: "top", fontWeight: "bold" }}
+        />
+        <Column
+          field="porcentajeJuveniles"
+          header="% Juveniles"
+          body={porcentajeJuvenilesTemplate}
+          sortable
+          style={{ minWidth: "60px", textAlign: "center", verticalAlign: "top" }}
+        />
+        <Column
+          field="combustibleAbastecidoGalones"
+          header="Combustible"
+          body={combustibleTemplate}
+          sortable
+          style={{ minWidth: "80px", verticalAlign: "top" }}
+        />
+        <Column
+          body={actionBodyTemplate}
+          header="Acciones"
+          style={{ minWidth: "100px", verticalAlign: "top" }}
+        />
+      </DataTable>
 
-        {!descarga && (
-          <Message
-            severity="info"
-            text="Complete los datos de descarga y guarde"
-            className="mb-3"
+      <Dialog
+        visible={descargaDialog}
+        style={{ width: "1300px" }}
+        header={
+          editingDescarga
+            ? "Editar Descarga de Faena"
+            : "Nueva Descarga de Faena"
+        }
+        modal
+        className="p-fluid"
+        onHide={hideDialog}
+        breakpoints={{ "960px": "90vw", "641px": "95vw" }}
+      >
+        {descargaDialog && (
+          <DescargaFaenaConsumoForm
+            detalle={editingDescarga}
+            puertos={puertos}
+            clientes={clientes}
+            bahiaId={faenaData?.bahiaId ? Number(faenaData.bahiaId) : null}
+            motoristaId={faenaData?.motoristaId ? Number(faenaData.motoristaId) : null}
+            patronId={faenaData?.patronId ? Number(faenaData.patronId) : null}
+            faenaPescaConsumoId={faenaPescaConsumoId ? Number(faenaPescaConsumoId) : null}
+            especies={especies}
+            onGuardadoExitoso={() => {
+              cargarDescargas();
+              hideDialog();
+              if (onDescargaChange) {
+                onDescargaChange();
+              }
+            }}
+            onCancelar={hideDialog}
           />
         )}
-
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid">
-            {/* SECCIÓN: ARRIBO Y LLEGADA */}
-            <div className="col-12">
-              <h4>Arribo y Llegada</h4>
-            </div>
-
-            <div className="col-12 md:col-4">
-              <label htmlFor="puertoDescargaId" className="block font-medium mb-2">
-                Puerto de Descarga
-              </label>
-              <Controller
-                name="puertoDescargaId"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    id="puertoDescargaId"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    options={puertosDescarga}
-                    optionLabel="nombre"
-                    optionValue="id"
-                    placeholder="Seleccione puerto"
-                    filter
-                    showClear
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-4">
-              <label
-                htmlFor="fechaHoraArriboPuerto"
-                className="block font-medium mb-2"
-              >
-                Fecha/Hora Arribo
-              </label>
-              <Controller
-                name="fechaHoraArriboPuerto"
-                control={control}
-                render={({ field }) => (
-                  <Calendar
-                    id="fechaHoraArriboPuerto"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    dateFormat="dd/mm/yy"
-                    showTime
-                    hourFormat="24"
-                    showIcon
-                    placeholder="Seleccione fecha y hora"
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-4">
-              <label
-                htmlFor="fechaHoraLlegadaPuerto"
-                className="block font-medium mb-2"
-              >
-                Fecha/Hora Llegada
-              </label>
-              <Controller
-                name="fechaHoraLlegadaPuerto"
-                control={control}
-                render={({ field }) => (
-                  <Calendar
-                    id="fechaHoraLlegadaPuerto"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    dateFormat="dd/mm/yy"
-                    showTime
-                    hourFormat="24"
-                    showIcon
-                    placeholder="Seleccione fecha y hora"
-                  />
-                )}
-              />
-            </div>
-
-            <Divider />
-
-            {/* SECCIÓN: PLATAFORMA Y DESCARGA */}
-            <div className="col-12">
-              <h4>Plataforma y Descarga</h4>
-            </div>
-
-            <div className="col-12 md:col-4">
-              <label htmlFor="clienteId" className="block font-medium mb-2">
-                Cliente
-              </label>
-              <Controller
-                name="clienteId"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    id="clienteId"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    options={clientes}
-                    optionLabel="razonSocial"
-                    optionValue="id"
-                    placeholder="Seleccione cliente"
-                    filter
-                    showClear
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-4">
-              <label
-                htmlFor="numPlataformaDescarga"
-                className="block font-medium mb-2"
-              >
-                Nº Plataforma
-              </label>
-              <Controller
-                name="numPlataformaDescarga"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="numPlataformaDescarga"
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    placeholder="Número de plataforma"
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-4">
-              <label
-                htmlFor="turnoPlataformaDescarga"
-                className="block font-medium mb-2"
-              >
-                Turno Plataforma
-              </label>
-              <Controller
-                name="turnoPlataformaDescarga"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="turnoPlataformaDescarga"
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    placeholder="Turno"
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-6">
-              <label
-                htmlFor="fechaHoraInicioDescarga"
-                className="block font-medium mb-2"
-              >
-                Fecha/Hora Inicio Descarga
-              </label>
-              <Controller
-                name="fechaHoraInicioDescarga"
-                control={control}
-                render={({ field }) => (
-                  <Calendar
-                    id="fechaHoraInicioDescarga"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    dateFormat="dd/mm/yy"
-                    showTime
-                    hourFormat="24"
-                    showIcon
-                    placeholder="Seleccione fecha y hora"
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-6">
-              <label
-                htmlFor="fechaHoraFinDescarga"
-                className="block font-medium mb-2"
-              >
-                Fecha/Hora Fin Descarga
-              </label>
-              <Controller
-                name="fechaHoraFinDescarga"
-                control={control}
-                render={({ field }) => (
-                  <Calendar
-                    id="fechaHoraFinDescarga"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    dateFormat="dd/mm/yy"
-                    showTime
-                    hourFormat="24"
-                    showIcon
-                    placeholder="Seleccione fecha y hora"
-                  />
-                )}
-              />
-            </div>
-
-            <Divider />
-
-            {/* SECCIÓN: WINCHA Y PESAJE */}
-            <div className="col-12">
-              <h4>Wincha y Pesaje</h4>
-            </div>
-
-            <div className="col-12 md:col-6">
-              <label htmlFor="numWinchaPesaje" className="block font-medium mb-2">
-                Nº Wincha de Pesaje
-              </label>
-              <Controller
-                name="numWinchaPesaje"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="numWinchaPesaje"
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    placeholder="Número de wincha"
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-6">
-              <label
-                htmlFor="urlComprobanteWincha"
-                className="block font-medium mb-2"
-              >
-                URL Comprobante Wincha
-              </label>
-              <Controller
-                name="urlComprobanteWincha"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="urlComprobanteWincha"
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    placeholder="https://..."
-                  />
-                )}
-              />
-            </div>
-
-            <Divider />
-
-            {/* SECCIÓN: PERSONAL */}
-            <div className="col-12">
-              <h4>Personal</h4>
-            </div>
-
-            <div className="col-12 md:col-4">
-              <label htmlFor="patronId" className="block font-medium mb-2">
-                Patrón
-              </label>
-              <Controller
-                name="patronId"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    id="patronId"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    options={patrones}
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Seleccione patrón"
-                    filter
-                    showClear
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-4">
-              <label htmlFor="motoristaId" className="block font-medium mb-2">
-                Motorista
-              </label>
-              <Controller
-                name="motoristaId"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    id="motoristaId"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    options={motoristas}
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Seleccione motorista"
-                    filter
-                    showClear
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-4">
-              <label htmlFor="bahiaId" className="block font-medium mb-2">
-                Bahía Comercial
-              </label>
-              <Controller
-                name="bahiaId"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    id="bahiaId"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    options={bahias}
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Seleccione bahía"
-                    filter
-                    showClear
-                  />
-                )}
-              />
-            </div>
-
-            <Divider />
-
-            {/* SECCIÓN: COORDENADAS DESCARGA */}
-            <div className="col-12">
-              <h4>Coordenadas de Descarga</h4>
-            </div>
-
-            <div className="col-12 md:col-6">
-              <label htmlFor="latitud" className="block font-medium mb-2">
-                Latitud
-              </label>
-              <Controller
-                name="latitud"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="latitud"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={6}
-                    maxFractionDigits={6}
-                    placeholder="0.000000"
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-6">
-              <label htmlFor="longitud" className="block font-medium mb-2">
-                Longitud
-              </label>
-              <Controller
-                name="longitud"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="longitud"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={6}
-                    maxFractionDigits={6}
-                    placeholder="0.000000"
-                  />
-                )}
-              />
-            </div>
-
-            <Divider />
-
-            {/* SECCIÓN: FONDEO */}
-            <div className="col-12">
-              <h4>Datos de Fondeo</h4>
-            </div>
-
-            <div className="col-12 md:col-3">
-              <label htmlFor="fechaHoraFondeo" className="block font-medium mb-2">
-                Fecha/Hora Fondeo
-              </label>
-              <Controller
-                name="fechaHoraFondeo"
-                control={control}
-                render={({ field }) => (
-                  <Calendar
-                    id="fechaHoraFondeo"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    dateFormat="dd/mm/yy"
-                    showTime
-                    hourFormat="24"
-                    showIcon
-                    placeholder="Seleccione fecha y hora"
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-3">
-              <label htmlFor="puertoFondeoId" className="block font-medium mb-2">
-                Puerto de Fondeo
-              </label>
-              <Controller
-                name="puertoFondeoId"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    id="puertoFondeoId"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    options={puertosDescarga}
-                    optionLabel="nombre"
-                    optionValue="id"
-                    placeholder="Seleccione puerto"
-                    filter
-                    showClear
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-3">
-              <label htmlFor="latitudFondeo" className="block font-medium mb-2">
-                Latitud Fondeo
-              </label>
-              <Controller
-                name="latitudFondeo"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="latitudFondeo"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={6}
-                    maxFractionDigits={6}
-                    placeholder="0.000000"
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-3">
-              <label htmlFor="longitudFondeo" className="block font-medium mb-2">
-                Longitud Fondeo
-              </label>
-              <Controller
-                name="longitudFondeo"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="longitudFondeo"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={6}
-                    maxFractionDigits={6}
-                    placeholder="0.000000"
-                  />
-                )}
-              />
-            </div>
-
-            <Divider />
-
-            {/* SECCIÓN: COMBUSTIBLE */}
-            <div className="col-12">
-              <h4>Combustible</h4>
-            </div>
-
-            <div className="col-12 md:col-6">
-              <label
-                htmlFor="combustibleAbastecidoGalones"
-                className="block font-medium mb-2"
-              >
-                Combustible Abastecido (Galones)
-              </label>
-              <Controller
-                name="combustibleAbastecidoGalones"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="combustibleAbastecidoGalones"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    suffix=" gal"
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-6">
-              <label
-                htmlFor="urlValeAbastecimiento"
-                className="block font-medium mb-2"
-              >
-                URL Vale de Abastecimiento
-              </label>
-              <Controller
-                name="urlValeAbastecimiento"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="urlValeAbastecimiento"
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    placeholder="https://..."
-                  />
-                )}
-              />
-            </div>
-
-            <Divider />
-
-            {/* SECCIÓN: ESPECIE PRINCIPAL */}
-            <div className="col-12">
-              <h4>Especie Principal Descargada</h4>
-            </div>
-
-            <div className="col-12 md:col-4">
-              <label htmlFor="especieId" className="block font-medium mb-2">
-                Especie
-              </label>
-              <Controller
-                name="especieId"
-                control={control}
-                render={({ field }) => (
-                  <Dropdown
-                    id="especieId"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    options={especies}
-                    optionLabel="nombreCientifico"
-                    optionValue="id"
-                    placeholder="Seleccione especie"
-                    filter
-                    showClear
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-4">
-              <label htmlFor="toneladas" className="block font-medium mb-2">
-                Toneladas
-              </label>
-              <Controller
-                name="toneladas"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="toneladas"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    suffix=" TM"
-                  />
-                )}
-              />
-            </div>
-
-            <div className="col-12 md:col-4">
-              <label
-                htmlFor="porcentajeJuveniles"
-                className="block font-medium mb-2"
-              >
-                % Juveniles
-              </label>
-              <Controller
-                name="porcentajeJuveniles"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="porcentajeJuveniles"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    max={100}
-                    placeholder="0.00"
-                    suffix=" %"
-                  />
-                )}
-              />
-            </div>
-
-            <Divider />
-
-            {/* SECCIÓN: DOCUMENTOS */}
-            <div className="col-12">
-              <h4>Documentos</h4>
-            </div>
-
-            <div className="col-12">
-              <label
-                htmlFor="urlInformeDescargaProduce"
-                className="block font-medium mb-2"
-              >
-                URL Informe Descarga Produce
-              </label>
-              <Controller
-                name="urlInformeDescargaProduce"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="urlInformeDescargaProduce"
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    placeholder="https://..."
-                  />
-                )}
-              />
-            </div>
-
-            {/* Observaciones */}
-            <div className="col-12">
-              <label htmlFor="observaciones" className="block font-medium mb-2">
-                Observaciones
-              </label>
-              <Controller
-                name="observaciones"
-                control={control}
-                render={({ field }) => (
-                  <InputTextarea
-                    id="observaciones"
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    rows={4}
-                    placeholder="Observaciones sobre la descarga..."
-                  />
-                )}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-content-end mt-4">
-            <Button
-              type="submit"
-              label={descarga ? "Actualizar Descarga" : "Crear Descarga"}
-              icon="pi pi-save"
-              loading={loading}
-              severity="success"
-            />
-          </div>
-        </form>
-      </Card>
-    </>
+      </Dialog>
+    </Card>
   );
-}
+};
+
+export default DescargaFaenaConsumoCard;

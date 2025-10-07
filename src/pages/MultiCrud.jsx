@@ -119,7 +119,6 @@ import TripulanteFaenaConsumo from "./TripulanteFaenaConsumo";
 import FaenaPesca from "./FaenaPesca";
 import FaenaPescaConsumo from "./FaenaPescaConsumo";
 import EntregaARendirPescaConsumo from "./EntregaARendirPescaConsumo";
-import DetDocEmbarcacionPescaConsumo from "./DetDocEmbarcacionPescaConsumo";
 import Cala from "./Cala";
 import DetalleCalaEspecie from "./DetalleCalaEspecie";
 import CalaFaenaConsumo from "./CalaFaenaConsumo";
@@ -187,10 +186,8 @@ export default function MultiCrud() {
     detAccionesPreviasFaenaConsumo: { label: "Detalle Acciones Previas Faena Novedad Pesca Consumo", componente: <DetAccionesPreviasFaenaConsumo /> },
     detDescargaFaenaConsumo: { label: "Detalle Descargas Faena Novedad Pesca Consumo", componente: <DetDescargaFaenaConsumo /> },
     detCalaPescaConsumo: { label: "Detalle Cala Faena Novedad Pesca Consumo", componente: <DetCalaPescaConsumo /> },
-    calaFaenaConsumo: { label: "Cala Faena Novedad Pesca Consumo", componente: <CalaFaenaConsumo /> },
     detalleCalaEspecie: { label: "Detalle Cala Faena Temporada Pesca", componente: <DetalleCalaEspecie /> },
     cala: { label: "Cala Faena Temporada Pesca", componente: <Cala /> },
-    detDocEmbarcacionPescaConsumo: { label: "Documentación Embarcación Novedad Pesca Consumo", componente: <DetDocEmbarcacionPescaConsumo /> },
     entregaARendirPescaConsumo: { label: "Entrega a Rendir Novedad Pesca Consumo", componente: <EntregaARendirPescaConsumo /> },
     faenaPescaConsumo: { label: "Faena Novedad Pesca Consumo", componente: <FaenaPescaConsumo /> },
     faenaPesca: { label: "Faena Temporada Pesca", componente: <FaenaPesca /> },

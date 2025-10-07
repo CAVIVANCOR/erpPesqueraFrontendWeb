@@ -15,11 +15,9 @@ import { Tag } from "primereact/tag";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
-import { Toolbar } from "primereact/toolbar";
 import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
-import { SelectButton } from "primereact/selectbutton";
 import { getResponsiveFontSize } from "../../utils/utils";
 import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
 import DetalleDocTripulantesForm from "../detalleDocTripulantes/DetalleDocTripulantesForm";
@@ -29,6 +27,7 @@ import {
   actualizarDetalleDocTripulantes,
   eliminarDetalleDocTripulantes,
 } from "../../api/detalleDocTripulantes";
+import { getAllDocumentacionPersonal } from "../../api/documentacionPersonal";
 
 const DetalleDocTripulantesCard = ({
   faenaPescaId,
@@ -65,18 +64,6 @@ const DetalleDocTripulantesCard = ({
   // Estados para props normalizadas
   const [tripulantesNormalizados, setTripulantesNormalizados] = useState([]);
   const [documentosNormalizados, setDocumentosNormalizados] = useState([]);
-
-  // Opciones fijas para el SelectButton de estado
-  const opcionesEstado = [
-    { label: "PENDIENTE", value: false },
-    { label: "VERIFICADO", value: true },
-  ];
-
-  // Opciones para filtro de vencidos
-  const opcionesVencidos = [
-    { label: "VENCIDOS", value: true },
-    { label: "VIGENTES", value: false },
-  ];
 
   useEffect(() => {
     if (faenaPescaId) {
@@ -154,14 +141,178 @@ const DetalleDocTripulantesCard = ({
   const cargarDocTripulantes = async () => {
     try {
       setLoadingData(true);
-      const response = await getDetallesDocTripulantes({ faenaPescaId });
-      setDocTripulantes(response || []);
+      const data = await getDetallesDocTripulantes();
+      const documentosFiltrados = data.filter(
+        (doc) => Number(doc.faenaPescaId) === Number(faenaPescaId)
+      );
+      setDocTripulantes(documentosFiltrados);
     } catch (error) {
       console.error("Error al cargar documentos de tripulantes:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudieron cargar los documentos de tripulantes",
+        detail: "Error al cargar los documentos de tripulantes",
+        life: 3000,
+      });
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  const cargarDocumentosTripulantes = async () => {
+    try {
+      setLoadingData(true);
+
+      // Validar que exista temporadaData y empresaId
+      if (!temporadaData || !temporadaData.empresaId) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "No se encontró información de la temporada o empresaId",
+          life: 3000,
+        });
+        return;
+      }
+
+      // 1. Filtrar personal (tripulantes de la embarcación) según especificaciones:
+      // Personal.empresaId = FaenaPesca.temporada.empresaId
+      // Personal.cargoId IN (21, 22, 14)
+      // Personal.cesado = false
+      // Personal.paraTemporadaPesca = true
+      const tripulantesEmbarcacion = personal.filter(
+        (p) =>
+          Number(p.empresaId) === Number(temporadaData.empresaId) &&
+          (Number(p.cargoId) === 21 || // TRIPULANTE EMBARCACION
+            Number(p.cargoId) === 22 || // PATRON EMBARCACION
+            Number(p.cargoId) === 14) && // MOTORISTA EMBARCACION
+          p.cesado === false &&
+          p.paraTemporadaPesca === true
+      );
+
+      if (tripulantesEmbarcacion.length === 0) {
+        toast.current?.show({
+          severity: "info",
+          summary: "Sin Tripulantes",
+          detail: "No se encontraron tripulantes disponibles para temporada de pesca",
+          life: 3000,
+        });
+        return;
+      }
+
+      // 2. Obtener IDs de los tripulantes filtrados
+      const tripulantesIds = tripulantesEmbarcacion.map((t) => Number(t.id));
+
+      // 3. Obtener todos los documentos de personal
+      const todosLosDocumentos = await getAllDocumentacionPersonal();
+
+      // 4. Filtrar documentos que pertenecen a los tripulantes
+      // DocumentacionPersonal.personalId IN (tripulantesIds)
+      const documentosTripulantes = todosLosDocumentos.filter((doc) =>
+        tripulantesIds.includes(Number(doc.personalId))
+      );
+
+      if (documentosTripulantes.length === 0) {
+        toast.current?.show({
+          severity: "info",
+          summary: "Sin Documentos",
+          detail: "No se encontraron documentos para los tripulantes",
+          life: 3000,
+        });
+        return;
+      }
+
+      // 5. Obtener documentos existentes en DetalleDocTripulantes para esta faena
+      const todosDocTripulantes = await getDetallesDocTripulantes();
+      const documentosExistentes = todosDocTripulantes.filter(
+        (d) => Number(d.faenaPescaId) === Number(faenaPescaId)
+      );
+
+      // 6. Crear o actualizar registros
+      let creados = 0;
+      let actualizados = 0;
+      let errores = 0;
+
+      for (const docPersonal of documentosTripulantes) {
+        try {
+          // Calcular docVencido evaluando fechaVencimiento
+          const fechaActual = new Date();
+          const fechaVencimiento = docPersonal.fechaVencimiento
+            ? new Date(docPersonal.fechaVencimiento)
+            : null;
+          const docVencido = !fechaVencimiento || fechaVencimiento < fechaActual;
+
+          // Mapeo de campos según especificaciones:
+          const dataToSend = {
+            faenaPescaId: Number(faenaPescaId),
+            tripulanteId: Number(docPersonal.personalId),
+            documentoId: Number(docPersonal.documentoPescaId),
+            numeroDocumento: docPersonal.numeroDocumento || null,
+            fechaEmision: docPersonal.fechaEmision || null,
+            fechaVencimiento: docPersonal.fechaVencimiento || null,
+            urlDocTripulantePdf: docPersonal.urlDocPdf || null,
+            docVencido: docVencido,
+            verificado: false,
+            observaciones: docPersonal.observaciones || null,
+          };
+
+          // Verificar si ya existe el documento para esta faena, tripulante y tipo de documento
+          const documentoExistente = documentosExistentes.find(
+            (d) =>
+              Number(d.faenaPescaId) === Number(faenaPescaId) &&
+              Number(d.tripulanteId) === Number(docPersonal.personalId) &&
+              Number(d.documentoId) === Number(docPersonal.documentoPescaId)
+          );
+
+          if (documentoExistente) {
+            // Si existe: ACTUALIZAR
+            await actualizarDetalleDocTripulantes(
+              documentoExistente.id,
+              dataToSend
+            );
+            actualizados++;
+          } else {
+            // Si no existe: CREAR
+            await crearDetalleDocTripulantes(dataToSend);
+            creados++;
+          }
+        } catch (error) {
+          console.error("Error al procesar documento:", error);
+          errores++;
+        }
+      }
+
+      // 7. Mostrar resultado
+      if (creados > 0 || actualizados > 0) {
+        toast.current?.show({
+          severity: "success",
+          summary: "Documentos Procesados",
+          detail: `${creados} creado(s), ${actualizados} actualizado(s)${
+            errores > 0 ? `. ${errores} error(es)` : ""
+          }`,
+          life: 4000,
+        });
+
+        // Recargar la tabla
+        await cargarDocTripulantes();
+
+        // Notificar cambios al componente padre
+        if (onDataChange) {
+          onDataChange();
+        }
+      } else {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudo procesar ningún documento",
+          life: 3000,
+        });
+      }
+    } catch (error) {
+      console.error("Error al cargar documentos de tripulantes:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al procesar los documentos de tripulantes",
         life: 3000,
       });
     } finally {
@@ -220,79 +371,7 @@ const DetalleDocTripulantesCard = ({
     }
   };
 
-  const saveDocTripulante = async (docTripulanteData) => {
-    try {
-      setLoadingData(true);
-
-      // Calcular docVencido basado en fechaVencimiento
-      const fechaActual = new Date();
-      const fechaVencimiento = docTripulanteData.fechaVencimiento
-        ? new Date(docTripulanteData.fechaVencimiento)
-        : null;
-
-      // Si fechaVencimiento es null, se considera vencido (true)
-      // Si fechaVencimiento < fechaActual, se considera vencido (true)
-      const docVencido = !fechaVencimiento || fechaVencimiento < fechaActual;
-
-      const dataToSend = {
-        ...docTripulanteData,
-        faenaPescaId: Number(faenaPescaId),
-        tripulanteId: docTripulanteData.tripulanteId
-          ? Number(docTripulanteData.tripulanteId)
-          : null,
-        documentoId: docTripulanteData.documentoId
-          ? Number(docTripulanteData.documentoId)
-          : null,
-        docVencido: docVencido,
-      };
-
-      if (editingDocTripulante) {
-        await actualizarDetalleDocTripulantes(
-          editingDocTripulante.id,
-          dataToSend
-        );
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Documento de tripulante actualizado correctamente",
-          life: 3000,
-        });
-      } else {
-        await crearDetalleDocTripulantes(dataToSend);
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Documento de tripulante creado correctamente",
-          life: 3000,
-        });
-      }
-
-      await cargarDocTripulantes();
-      hideDialog();
-
-      // Notificar cambios al componente padre
-      if (onDocTripulantesChange) {
-        onDocTripulantesChange();
-      }
-    } catch (error) {
-      console.error("Error al guardar documento de tripulante:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo guardar el documento de tripulante",
-        life: 3000,
-      });
-    } finally {
-      setLoadingData(false);
-    }
-  };
-
-  const confirmDeleteDocTripulante = (docTripulante) => {
-    setSelectedDocTripulante(docTripulante);
-    // Implementar confirmación de eliminación si es necesario
-  };
-
-  // Función para filtrar datos
+  // Datos filtrados
   const datosFiltrados = docTripulantes.filter((doc) => {
     const cumpleFiltroEstado =
       filtroEstado === null || doc.verificado === filtroEstado;
@@ -303,18 +382,14 @@ const DetalleDocTripulantesCard = ({
       filtroDocumento === null ||
       Number(doc.documentoId) === Number(filtroDocumento);
 
-    // Filtro por vencidos - evaluar fechaVencimiento vs fecha actual
+    // Filtro por vencidos
     let cumpleFiltroVencidos = true;
     if (filtroVencidos !== null) {
       const fechaActual = new Date();
       const fechaVencimiento = doc.fechaVencimiento
         ? new Date(doc.fechaVencimiento)
         : null;
-
-      // Si fechaVencimiento es null, se considera vencido (true)
-      // Si fechaVencimiento < fechaActual, se considera vencido (true)
       const estaVencido = !fechaVencimiento || fechaVencimiento < fechaActual;
-
       cumpleFiltroVencidos = estaVencido === filtroVencidos;
     }
 
@@ -337,11 +412,11 @@ const DetalleDocTripulantesCard = ({
   // Funciones para el filtro toggle de Estado
   const handleToggleEstado = () => {
     if (filtroEstado === null) {
-      setFiltroEstado(false); // Mostrar solo pendientes
+      setFiltroEstado(false);
     } else if (filtroEstado === false) {
-      setFiltroEstado(true); // Mostrar solo verificados
+      setFiltroEstado(true);
     } else {
-      setFiltroEstado(null); // Mostrar todos
+      setFiltroEstado(null);
     }
   };
 
@@ -374,6 +449,30 @@ const DetalleDocTripulantesCard = ({
       >
         <div style={{ flex: 1 }}>
           <h2>DOCUMENTOS TRIPULACION</h2>
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            type="button"
+            icon="pi pi-download"
+            label="Cargar Documentos Tripulantes"
+            className="p-button-info"
+            onClick={cargarDocumentosTripulantes}
+            disabled={loadingData || !temporadaData}
+            tooltip="Cargar documentos de los tripulantes"
+            tooltipOptions={{ position: "top" }}
+            style={{ fontSize: "0.875rem" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            type="button"
+            icon="pi pi-plus"
+            label="Nuevo"
+            className="p-button-success"
+            onClick={openNew}
+            disabled={loadingData}
+            style={{ fontSize: "0.875rem" }}
+          />
         </div>
         <div style={{ flex: 1 }}>
           <InputText
@@ -455,7 +554,7 @@ const DetalleDocTripulantesCard = ({
           <Button
             label={
               filtroVencidos === null
-                ? "Todos"
+                ? "TODOS"
                 : filtroVencidos === true
                 ? "VENCIDOS"
                 : "VIGENTES"
@@ -476,11 +575,11 @@ const DetalleDocTripulantesCard = ({
             }`}
             onClick={() => {
               if (filtroVencidos === null) {
-                setFiltroVencidos(true); // Primero mostrar vencidos
+                setFiltroVencidos(true);
               } else if (filtroVencidos === true) {
-                setFiltroVencidos(false); // Luego mostrar vigentes
+                setFiltroVencidos(false);
               } else {
-                setFiltroVencidos(null); // Finalmente mostrar todos
+                setFiltroVencidos(null);
               }
             }}
             style={{ fontSize: "0.875rem" }}
@@ -599,9 +698,6 @@ const DetalleDocTripulantesCard = ({
             const fechaVencimiento = rowData.fechaVencimiento
               ? new Date(rowData.fechaVencimiento)
               : null;
-
-            // Si fechaVencimiento es null, se considera vencido (true)
-            // Si fechaVencimiento < fechaActual, se considera vencido (true)
             const estaVencido =
               !fechaVencimiento || fechaVencimiento < fechaActual;
 
@@ -656,13 +752,14 @@ const DetalleDocTripulantesCard = ({
                 icon="pi pi-file-pdf"
                 className="p-button-rounded p-button-text"
                 disabled={!rowData.urlDocTripulantePdf}
-                onClick={() =>
+                onClick={(e) => {
+                  e.stopPropagation();
                   abrirPdfEnNuevaPestana(
                     rowData.urlDocTripulantePdf,
                     toast,
                     "No hay PDF disponible"
-                  )
-                }
+                  );
+                }}
                 tooltip={
                   rowData.urlDocTripulantePdf
                     ? "Ver PDF del documento"
@@ -673,7 +770,10 @@ const DetalleDocTripulantesCard = ({
               <Button
                 icon="pi pi-file-edit"
                 className="p-button-rounded p-button-outlined p-button-sm"
-                onClick={() => editDocTripulante(rowData)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  editDocTripulante(rowData);
+                }}
                 tooltip="Editar"
                 tooltipOptions={{ position: "top" }}
               />
@@ -682,7 +782,10 @@ const DetalleDocTripulantesCard = ({
                 className={`p-button-rounded ${
                   rowData.verificado ? "p-button-warning" : "p-button-success"
                 }`}
-                onClick={() => verificarDocumento(rowData)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  verificarDocumento(rowData);
+                }}
                 tooltip={
                   rowData.verificado ? "Marcar como pendiente" : "Verificar"
                 }

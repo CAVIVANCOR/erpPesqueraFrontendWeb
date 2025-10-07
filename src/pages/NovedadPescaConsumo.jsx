@@ -396,7 +396,24 @@ const NovedadPescaConsumo = () => {
 
     return <Tag value={estado} severity={severity} />;
   };
+  /**
+   * Template para estado de la novedad (del campo estadoNovedadPescaConsumoId)
+   */
+  const estadoNovedadTemplate = (rowData) => {
+    const descripcion = getEstadoDescripcion(rowData.estadoNovedadPescaConsumoId);
+    
+    // Definir severidad según el estado
+    let severity = "info";
+    if (descripcion.toLowerCase().includes("activ") || descripcion.toLowerCase().includes("curso")) {
+      severity = "success";
+    } else if (descripcion.toLowerCase().includes("finaliz") || descripcion.toLowerCase().includes("cerrad")) {
+      severity = "secondary";
+    } else if (descripcion.toLowerCase().includes("cancelad")) {
+      severity = "danger";
+    }
 
+    return <Tag value={descripcion} severity={severity} />;
+  };
   /**
    * Template para duración de la novedad
    */
@@ -596,8 +613,10 @@ const NovedadPescaConsumo = () => {
             className="text-center"
           />
           <Column
+            field="estadoNovedadPescaConsumoId"
             header="Estado"
-            body={estadoTemplate}
+            body={estadoNovedadTemplate}
+            sortable
             style={{ width: "120px" }}
             className="text-center"
           />

@@ -35,6 +35,16 @@ export async function getTripulanteFaenaConsumoPorId(id) {
 }
 
 /**
+ * Obtiene tripulantes de faena consumo por faenaPescaConsumoId
+ * @param {number} faenaPescaConsumoId - ID de la faena de pesca consumo
+ * @returns {Promise} Lista de tripulantes de la faena
+ */
+export async function getTripulantesPorFaena(faenaPescaConsumoId) {
+  const res = await axios.get(`${API_URL}/faena/${faenaPescaConsumoId}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
  * Crea un nuevo tripulante de faena consumo
  * @param {Object} data - Datos del tripulante de faena consumo
  * @returns {Promise} Tripulante de faena consumo creado
@@ -62,5 +72,15 @@ export async function updateTripulanteFaenaConsumo(id, data) {
  */
 export async function eliminarTripulanteFaenaConsumo(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Regenera los tripulantes de una faena consumo
+ * @param {number} faenaPescaConsumoId - ID de la faena de pesca consumo
+ * @returns {Promise} Resultado de la regeneración
+ */
+export async function regenerarTripulantes(faenaPescaConsumoId) {
+  const res = await axios.post(`${API_URL}/regenerar/${faenaPescaConsumoId}`, {}, { headers: getAuthHeaders() });
   return res.data;
 }

@@ -163,19 +163,24 @@ const CalaFaenaConsumoForm = ({ cala, onSave, onCancel }) => {
         return;
       }
       
-      // Preparar payload con tipos correctos
+      // Preparar payload con TODOS los campos obligatorios del modelo
       const payload = {
         faenaPescaConsumoId: Number(data.faenaPescaConsumoId),
-        numeroCala: data.numeroCala?.trim() || null,
+        novedadPescaConsumoId: Number(data.novedadPescaConsumoId),
+        bahiaId: Number(data.bahiaId),
+        motoristaId: Number(data.motoristaId),
+        patronId: Number(data.patronId),
+        embarcacionId: Number(data.embarcacionId),
         fechaHoraInicio: data.fechaHoraInicio ? data.fechaHoraInicio.toISOString() : null,
         fechaHoraFin: data.fechaHoraFin ? data.fechaHoraFin.toISOString() : null,
         latitud: data.latitud ? Number(data.latitud) : null,
         longitud: data.longitud ? Number(data.longitud) : null,
-        profundidad: data.profundidad ? Number(data.profundidad) : null,
-        temperatura: data.temperatura !== null && data.temperatura !== undefined ? Number(data.temperatura) : null,
-        pesoTotal: data.pesoTotal ? Number(data.pesoTotal) : null,
+        profundidadM: data.profundidadM ? Number(data.profundidadM) : null,
+        toneladasCapturadas: data.toneladasCapturadas ? Number(data.toneladasCapturadas) : null,
         observaciones: data.observaciones?.trim() || null
       };
+
+
       if (cala?.id) {
         await actualizarCalaFaenaConsumo(cala.id, payload);
         toast.current?.show({

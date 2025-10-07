@@ -48,6 +48,7 @@ export default function DocumentacionEmbarcacion() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [filtroEmbarcacion, setFiltroEmbarcacion] = useState(null);
   const [filtroDocumentoPesca, setFiltroDocumentoPesca] = useState(null);
+  const [filtroEstadoDoc, setFiltroEstadoDoc] = useState("todos");
 
   // Estados para combos de referencia
   const [embarcaciones, setEmbarcaciones] = useState([]);
@@ -104,7 +105,7 @@ export default function DocumentacionEmbarcacion() {
         const documentosData = documentosPescaRes.value.map((d) => ({
           ...d,
           id: Number(d.id),
-          label: d.descripcion,
+          label: d.nombre,
         }));
         setDocumentosPesca(documentosData);
       }
@@ -118,12 +119,11 @@ export default function DocumentacionEmbarcacion() {
 
   // Templates profesionales para visualización
   const embarcacionTemplate = (rowData) => {
-    const embarcacion = embarcaciones.find(
-      (e) => Number(e.id) === Number(rowData.embarcacionId)
-    );
+    const embarcacion = rowData.embarcacion;
     const activo = activos.find(
       (a) => Number(a.id) === Number(embarcacion?.activoId)
     );
+
     return embarcacion ? (
       <div>
         <strong style={{ color: "#2196F3" }}>{embarcacion.matricula}</strong>
@@ -139,6 +139,7 @@ export default function DocumentacionEmbarcacion() {
     const documento = documentosPesca.find(
       (d) => Number(d.id) === Number(rowData.documentoPescaId)
     );
+
     return documento ? (
       <div>
         <strong>{documento.nombre}</strong>
@@ -159,7 +160,14 @@ export default function DocumentacionEmbarcacion() {
       hour: "2-digit",
       minute: "2-digit",
     });
-    return `${fechaFormateada} ${horaFormateada}`;
+    return (
+      <div>
+        <div style={{ fontSize: getResponsiveFontSize() }}>
+          {fechaFormateada}
+        </div>
+        <small style={{ color: "#666" }}>{horaFormateada}</small>
+      </div>
+    );
   };
 
   const fechaVencimientoBodyTemplate = (rowData) => {
@@ -170,396 +178,333 @@ export default function DocumentacionEmbarcacion() {
       hour: "2-digit",
       minute: "2-digit",
     });
-    return `${fechaFormateada} ${horaFormateada}`;
+    const hoy = new Date();
+    const estaVencido = fecha < hoy;
+    return (
+      <div>
+        <div style={{ fontSize: getResponsiveFontSize() }}>
+          {fechaFormateada}
+        </div>
+        <small style={{ color: "#666" }}>{horaFormateada}</small>
+        <br />
+        <Tag
+          severity={estaVencido ? "danger" : "success"}
+          value={estaVencido ? "VENCIDO" : "VIGENTE"}
+          style={{ marginTop: "4px" }}
+        />
+      </div>
+    );
   };
 
-  const fechaUpdateBodyTemplate = (rowData) => {
-    if (!rowData.updatedAt) return "";
-    const fecha = new Date(rowData.updatedAt);
-    const fechaFormateada = fecha.toLocaleDateString("es-PE");
-    const horaFormateada = fecha.toLocaleTimeString("es-PE", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    return `${fechaFormateada} ${horaFormateada}`;
-  };
-
-  const docVencidoTemplate = (rowData) => {
-    const esVencido = rowData.docVencido;
-
+  const docVencidoBodyTemplate = (rowData) => {
     return (
       <Tag
-        severity={esVencido ? "danger" : "success"}
-        value={esVencido ? "VENCIDO" : "VIGENTE"}
-        icon={esVencido ? "pi pi-times" : "pi pi-check"}
-        style={{ fontWeight: "bold" }}
+        severity={rowData.docVencido ? "danger" : "success"}
+        value={rowData.docVencido ? "VENCIDO" : "VIGENTE"}
+        style={{
+          fontSize: getResponsiveFontSize(),
+          fontWeight: "bold",
+        }}
       />
     );
   };
 
-  // Renderizado de botones de acción
-  const actionBodyTemplate = (rowData) => (
-    <div className="flex gap-2">
-      <Button
-        icon="pi pi-pencil"
-        className="p-button-text p-button-rounded"
-        onClick={(ev) => {
-          ev.stopPropagation();
-          onEdit(rowData);
+  const cesadoBodyTemplate = (rowData) => {
+    return (
+      <Tag
+        severity={rowData.cesado ? "danger" : "success"}
+        value={rowData.cesado ? "CESADO" : "ACTIVO"}
+        style={{
+          fontSize: getResponsiveFontSize(),
+          fontWeight: "bold",
         }}
-        tooltip="Editar"
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button
-          icon="pi pi-trash"
-          className="p-button-text p-button-danger p-button-rounded"
-          onClick={(ev) => {
-            ev.stopPropagation();
-            onDelete(rowData);
-          }}
-          tooltip="Eliminar Registro"
-        />
-      )}
-    </div>
-  );
-
-  // Lógica para alta y edición
-  const onNew = () => {
-    setSelected(null);
-    setIsEdit(false);
-    setShowForm(true);
+    );
   };
 
-  const onEdit = (row) => {
-    setSelected(row);
+  const actionBodyTemplate = (rowData) => {
+    const puedeEliminar = usuario?.esSuperUsuario || usuario?.esAdmin;
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-rounded p-button-text"
+          onClick={() => handleEdit(rowData)}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+        />
+        {puedeEliminar && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-rounded p-button-text p-button-danger"
+            onClick={() => handleDelete(rowData)}
+            tooltip="Eliminar"
+            tooltipOptions={{ position: "top" }}
+          />
+        )}
+      </div>
+    );
+  };
+
+  const handleEdit = (rowData) => {
+    setSelected(rowData);
     setIsEdit(true);
     setShowForm(true);
   };
 
-  const [confirmState, setConfirmState] = useState({
-    visible: false,
-    row: null,
-  });
-
-  const onDelete = (row) => {
-    setConfirmState({ visible: true, row });
+  const handleDelete = (rowData) => {
+    setSelected(rowData);
+    // Implementar confirmación de eliminación
   };
 
-  const handleConfirmDelete = async () => {
-    const row = confirmState.row;
-    if (!row) return;
-
-    const embarcacion = embarcaciones.find(
-      (e) => Number(e.id) === Number(row.embarcacionId)
-    );
-    const documento = documentosPesca.find(
-      (d) => Number(d.id) === Number(row.documentoPescaId)
-    );
-    const activo = activos.find(
-      (a) => Number(a.id) === Number(embarcacion?.activoId)
-    );
-    const descripcion = `${
-      activo?.descripcion || `Embarcación ${row.embarcacionId}`
-    } - ${documento?.descripcion || "Documento"}`;
-
-    setConfirmState({ visible: false, row: null });
-    setLoading(true);
-    try {
-      await eliminarDocumentacionEmbarcacion(row.id);
-      toast?.show({
-        severity: "success",
-        summary: "Documentación eliminada",
-        detail: `La documentación ${descripcion} fue eliminada correctamente.`,
-      });
-      await cargarDocumentaciones();
-    } catch (err) {
-      if (err?.response?.data) {
-        console.error(
-          "[DocumentacionEmbarcacion] Error backend al eliminar:",
-          JSON.stringify(err.response.data)
-        );
-        toast?.show({
-          severity: "error",
-          summary: "Error",
-          detail:
-            err.response.data?.message ||
-            "No se pudo eliminar la documentación.",
-        });
-      } else {
-        console.error("[DocumentacionEmbarcacion] Error inesperado:", err);
-        toast?.show({
-          severity: "error",
-          summary: "Error",
-          detail: "No se pudo eliminar la documentación.",
-        });
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onCancel = () => {
-    setShowForm(false);
+  const handleNew = () => {
     setSelected(null);
     setIsEdit(false);
+    setShowForm(true);
   };
 
-  const onSubmit = async (data) => {
-    setLoading(true);
+  const handleSave = async (data) => {
     try {
-      const payload = {
-        embarcacionId: Number(data.embarcacionId),
-        documentoPescaId: Number(data.documentoPescaId),
-        numeroDocumento: data.numeroDocumento || null,
-        fechaEmision: data.fechaEmision || null,
-        fechaVencimiento: data.fechaVencimiento || null,
-        urlDocPdf: data.urlDocPdf || null,
-        docVencido: data.docVencido || false,
-        observaciones: data.observaciones || null,
-      };
-
-
-      if (isEdit && selected) {
-        const resultado = await actualizarDocumentacionEmbarcacion(selected.id, payload);
+      if (isEdit) {
+        await actualizarDocumentacionEmbarcacion(selected.id, data);
         toast?.show({
           severity: "success",
-          summary: "Documentación actualizada",
-          detail: "La documentación fue actualizada correctamente.",
+          summary: "Éxito",
+          detail: "Documentación actualizada correctamente",
         });
       } else {
-        const resultado = await crearDocumentacionEmbarcacion(payload);
+        await crearDocumentacionEmbarcacion(data);
         toast?.show({
           severity: "success",
-          summary: "Documentación creada",
-          detail: "La documentación fue registrada correctamente.",
+          summary: "Éxito",
+          detail: "Documentación creada correctamente",
         });
       }
       setShowForm(false);
-      setSelected(null);
-      setIsEdit(false);
       cargarDocumentaciones();
     } catch (err) {
-      console.error("[DocumentacionEmbarcacion] Error completo:", err);
-      if (err?.response?.data) {
-        console.error(
-          "[DocumentacionEmbarcacion] Respuesta de error backend:",
-          JSON.stringify(err.response.data)
-        );
-      }
       toast?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo guardar la documentación.",
+        detail: "No se pudo guardar la documentación",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   const limpiarFiltros = () => {
     setFiltroEmbarcacion(null);
     setFiltroDocumentoPesca(null);
+    setFiltroEstadoDoc("todos");
     setGlobalFilter("");
   };
 
   const recalcularEstados = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       await recalcularDocEmbarcacionVencidos();
       toast?.show({
         severity: "success",
-        summary: "Estados recalculados",
-        detail: "Los estados de vencimiento fueron recalculados correctamente.",
+        summary: "Estados Recalculados",
+        detail: "Los estados de vencimiento fueron recalculados correctamente",
+        life: 3000,
       });
       await cargarDocumentaciones();
-    } catch (err) {
-      console.error("[DocumentacionEmbarcacion] Error al recalcular estados:", err);
+    } catch (error) {
+      console.error("Error al recalcular estados:", error);
       toast?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo recalcular los estados de vencimiento.",
+        detail: "No se pudo recalcular los estados de vencimiento",
+        life: 3000,
       });
     } finally {
       setLoading(false);
     }
   };
 
-  // Conversión profesional de campos para edición
-  const selectedDocumentacion = selected
-    ? {
-        ...selected,
-        embarcacionId: selected.embarcacionId
-          ? Number(selected.embarcacionId)
-          : null,
-        documentoPescaId: selected.documentoPescaId
-          ? Number(selected.documentoPescaId)
-          : null,
-        observaciones: selected.observaciones || "",
-      }
-    : {};
+  const cambiarFiltroEstadoDoc = () => {
+    const estados = ["todos", "vencidos", "vigentes"];
+    const indiceActual = estados.indexOf(filtroEstadoDoc);
+    const siguienteIndice = (indiceActual + 1) % estados.length;
+    setFiltroEstadoDoc(estados[siguienteIndice]);
+  };
 
+  const obtenerConfigFiltroEstado = () => {
+    switch (filtroEstadoDoc) {
+      case "vencidos":
+        return {
+          label: "VENCIDOS",
+          icon: "pi pi-times-circle",
+          className: "p-button-danger",
+          tooltip: "Mostrando solo documentos vencidos",
+        };
+      case "vigentes":
+        return {
+          label: "VIGENTES",
+          icon: "pi pi-check-circle",
+          className: "p-button-success",
+          tooltip: "Mostrando solo documentos vigentes",
+        };
+      default:
+        return {
+          label: "TODOS",
+          icon: "pi pi-list",
+          className: "p-button-secondary",
+          tooltip: "Mostrando todos los documentos",
+        };
+    }
+  };
+
+  // Filtrar datos
   const documentacionesFiltradas = documentaciones.filter((doc) => {
-    const embarcacion = embarcaciones.find(
-      (e) => Number(e.id) === Number(doc.embarcacionId)
-    );
-    const documento = documentosPesca.find(
-      (d) => Number(d.id) === Number(doc.documentoPescaId)
-    );
-    const activo = activos.find(
-      (a) => Number(a.id) === Number(embarcacion?.activoId)
-    );
+    const cumpleFiltroEmbarcacion =
+      filtroEmbarcacion === null ||
+      Number(doc.embarcacionId) === Number(filtroEmbarcacion);
+    const cumpleFiltroDocumento =
+      filtroDocumentoPesca === null ||
+      Number(doc.documentoPescaId) === Number(filtroDocumentoPesca);
 
-    const filtroEmbarcacionId = filtroEmbarcacion
-      ? Number(filtroEmbarcacion)
-      : null;
-    const filtroDocumentoPescaId = filtroDocumentoPesca
-      ? Number(filtroDocumentoPesca)
-      : null;
+    // Aplicar filtro de estado de documento
+    const filtroEstadoMatch =
+      filtroEstadoDoc === "todos" ||
+      (filtroEstadoDoc === "vencidos" && doc.docVencido) ||
+      (filtroEstadoDoc === "vigentes" && !doc.docVencido);
 
-    const matchEmbarcacion = filtroEmbarcacionId
-      ? Number(doc.embarcacionId) === filtroEmbarcacionId
-      : true;
-    const matchDocumentoPesca = filtroDocumentoPescaId
-      ? Number(doc.documentoPescaId) === filtroDocumentoPescaId
-      : true;
-    const matchGlobalFilter = globalFilter
-      ? doc.observaciones?.toLowerCase().includes(globalFilter.toLowerCase())
-      : true;
-
-    return matchEmbarcacion && matchDocumentoPesca && matchGlobalFilter;
+    return cumpleFiltroEmbarcacion && cumpleFiltroDocumento && filtroEstadoMatch;
   });
 
+  const header = (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "end",
+          gap: 8,
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <h2>DOCUMENTACIÓN EMBARCACIONES</h2>
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            label="Nuevo"
+            icon="pi pi-plus"
+            onClick={handleNew}
+            className="p-button-success"
+            style={{ fontSize: "0.875rem" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            label="Recalcular Estados"
+            icon="pi pi-refresh"
+            className="p-button-info"
+            onClick={recalcularEstados}
+            tooltip="Recalcular Estados de Vencimiento"
+            tooltipOptions={{ position: "top" }}
+            style={{ fontSize: "0.875rem" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            {...obtenerConfigFiltroEstado()}
+            onClick={cambiarFiltroEstadoDoc}
+            style={{ fontSize: "0.875rem" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <InputText
+            type="search"
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            placeholder="Buscar..."
+            className="w-full"
+          />
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "end",
+          gap: 8,
+          marginTop: "0.5rem",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label
+            className="block text-900 font-medium mb-1"
+            style={{ fontSize: "0.875rem" }}
+          >
+            Filtrar por Embarcación
+          </label>
+          <Dropdown
+            value={filtroEmbarcacion}
+            onChange={(e) => setFiltroEmbarcacion(e.value)}
+            options={embarcaciones}
+            optionLabel="label"
+            optionValue="id"
+            placeholder="Todas las embarcaciones"
+            showClear
+            filter
+            className="w-full"
+            style={{ fontSize: "0.875rem" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label
+            className="block text-900 font-medium mb-1"
+            style={{ fontSize: "0.875rem" }}
+          >
+            Filtrar por Documento
+          </label>
+          <Dropdown
+            value={filtroDocumentoPesca}
+            onChange={(e) => setFiltroDocumentoPesca(e.value)}
+            options={documentosPesca}
+            optionLabel="label"
+            optionValue="id"
+            placeholder="Todos los documentos"
+            showClear
+            filter
+            className="w-full"
+            style={{ fontSize: "0.875rem" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            type="button"
+            icon="pi pi-filter-slash"
+            label="Limpiar Filtros"
+            outlined
+            onClick={limpiarFiltros}
+            style={{ fontSize: "0.875rem" }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="p-m-4">
+    <div>
       <Toast ref={setToast} />
-      <ConfirmDialog
-        visible={confirmState.visible}
-        onHide={() => setConfirmState({ visible: false, row: null })}
-        message={
-          <span style={{ color: "#b71c1c", fontWeight: 600 }}>
-            ¿Está seguro que desea{" "}
-            <span style={{ color: "#b71c1c" }}>eliminar</span> esta
-            documentación?
-            <br />
-            <span style={{ fontWeight: 400, color: "#b71c1c" }}>
-              Esta acción no se puede deshacer.
-            </span>
-          </span>
-        }
-        header={<span style={{ color: "#b71c1c" }}>Confirmar eliminación</span>}
-        icon="pi pi-exclamation-triangle"
-        acceptClassName="p-button-danger"
-        acceptLabel="Eliminar"
-        rejectLabel="Cancelar"
-        accept={handleConfirmDelete}
-        reject={() => setConfirmState({ visible: false, row: null })}
-        style={{ minWidth: 400 }}
-      />
+      <ConfirmDialog />
       <DataTable
         value={documentacionesFiltradas}
         loading={loading}
+        header={header}
+        globalFilter={globalFilter}
+        globalFilterFields={["numeroDocumento", "observaciones"]} // ✅ Agregar esta línea
         paginator
         rows={10}
-        selectionMode="single"
-        selection={selected}
-        onSelectionChange={(e) => setSelected(e.value)}
-        sortField="id"
-        sortOrder={-1}
-        header={
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginTop: 10,
-              gap: 5,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 2 }}>
-              <h2>Documentación Embarcaciones</h2>
-            </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                label="Nuevo"
-                icon="pi pi-plus"
-                className="p-button-success"
-                size="small"
-                raised
-                tooltip="Nueva Documentación"
-                onClick={onNew}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Dropdown
-                value={filtroEmbarcacion}
-                onChange={(e) => setFiltroEmbarcacion(Number(e.value))}
-                options={embarcaciones}
-                optionLabel="label"
-                optionValue="id"
-                placeholder="Filtrar Embarcación"
-                showClear
-                style={{ width: "250px", fontWeight: "bold" }}
-                filter
-                filterBy="label"
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Dropdown
-                value={filtroDocumentoPesca}
-                onChange={(e) => setFiltroDocumentoPesca(Number(e.value))}
-                options={documentosPesca}
-                optionLabel="label"
-                optionValue="id"
-                placeholder="Filtrar Documento"
-                showClear
-                style={{ width: "250px", fontWeight: "bold" }}
-                filter
-                filterBy="label"
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                label="Limpiar Filtros"
-                icon="pi pi-filter-slash"
-                className="p-button-secondary"
-                size="small"
-                raised
-                tooltip="Limpiar Filtros"
-                outlined
-                onClick={limpiarFiltros}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                label="Recalculo Estados"
-                icon="pi pi-refresh"
-                className="p-button-info"
-                size="small"
-                raised
-                tooltip="Recalcular Estados de Vencimiento"
-                onClick={recalcularEstados}
-              />
-            </div>
-          </div>
-        }
-        onRowClick={(e) => onEdit(e.data)}
-        globalFilter={globalFilter}
-        globalFilterFields={["observaciones"]}
-        emptyMessage="No se encontraron registros que coincidan con la búsqueda."
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        emptyMessage="No se encontraron documentaciones"
+        responsiveLayout="scroll"
+        stripedRows
+        showGridlines
+        size="small"
+        style={{ fontSize: getResponsiveFontSize() }}
       >
-        <Column
-          field="id"
-          header="ID"
-          sortable
-          style={{ width: 80 }}
-          body={(rowData) => (
-            <span style={{ fontWeight: "bold", color: "#2196F3" }}>
-              {rowData.id}
-            </span>
-          )}
-        />
+        <Column field="id" header="ID" sortable style={{ minWidth: "80px" }} />
         <Column
           header="Embarcación"
           body={embarcacionTemplate}
@@ -573,55 +518,55 @@ export default function DocumentacionEmbarcacion() {
           style={{ minWidth: "200px" }}
         />
         <Column
-          field="fechaEmision"
-          header="Fecha Emisión"
+          field="numeroDocumento"
+          header="Número"
           sortable
-          body={fechaEmisionBodyTemplate}
+          style={{ minWidth: "150px" }}
         />
         <Column
-          field="fechaVencimiento"
-          header="Fecha Vencimiento"
+          header="F. Emisión"
+          body={fechaEmisionBodyTemplate}
+          sortable
+          style={{ minWidth: "150px" }}
+        />
+        <Column
+          header="F. Vencimiento"
           body={fechaVencimientoBodyTemplate}
           sortable
-          style={{ width: 120 }}
+          style={{ minWidth: "150px" }}
         />
         <Column
           header="Estado"
-          body={docVencidoTemplate}
+          body={docVencidoBodyTemplate}
           sortable
-          field="docVencido"
-          style={{ minWidth: "120px", textAlign: "center" }}
+          style={{ minWidth: "100px" }}
         />
         <Column
-          field="updatedAt"
-          header="Actualizado"
-          body={fechaUpdateBodyTemplate}
+          header="Cesado"
+          body={cesadoBodyTemplate}
           sortable
-          style={{ width: 120 }}
+          style={{ minWidth: "100px" }}
         />
         <Column
-          body={actionBodyTemplate}
           header="Acciones"
-          style={{ width: 130, textAlign: "center" }}
+          body={actionBodyTemplate}
+          style={{ minWidth: "120px" }}
         />
       </DataTable>
 
       <Dialog
-        header={isEdit ? "Editar Documentación" : "Nueva Documentación"}
         visible={showForm}
-        style={{ width: "1300px" }}
+        onHide={() => setShowForm(false)}
+        header={isEdit ? "Editar Documentación" : "Nueva Documentación"}
+        style={{ width: "90vw", maxWidth: "1200px" }}
         modal
-        className="p-fluid"
-        onHide={onCancel}
-        closeOnEscape
-        dismissableMask
       >
         <DocumentacionEmbarcacionForm
-          isEdit={isEdit}
-          defaultValues={selectedDocumentacion}
-          onSubmit={onSubmit}
-          onCancel={onCancel}
-          loading={loading}
+          documentacion={selected}
+          embarcaciones={embarcaciones}
+          documentosPesca={documentosPesca}
+          onSave={handleSave}
+          onCancel={() => setShowForm(false)}
         />
       </Dialog>
     </div>

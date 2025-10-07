@@ -16,7 +16,6 @@ import DetalleDocTripulantesConsumoCard from "./DetalleDocTripulantesConsumoCard
 import TripulantesFaenaPescaConsumoCard from "./TripulantesFaenaPescaConsumoCard";
 import DetalleDocEmbarcacionConsumoCard from "./DetalleDocEmbarcacionConsumoCard";
 import DescargaFaenaConsumoCard from "./DescargaFaenaConsumoCard";
-import CalasConsumoCard from "./CalasConsumoCard";
 
 // API imports
 import { listarEstadosMultiFuncionFaenaPescaConsumo } from "../../api/estadoMultiFuncion";
@@ -115,7 +114,10 @@ export default function FaenaPescaConsumoForm({
 
   // Actualizar cuando cambian defaultValues
   useEffect(() => {
-    if (defaultValues?.id && defaultValues.id !== previousDefaultValuesId.current) {
+    if (
+      defaultValues?.id &&
+      defaultValues.id !== previousDefaultValuesId.current
+    ) {
       previousDefaultValuesId.current = defaultValues.id;
       setCurrentFaenaData(defaultValues);
       setIsEditMode(true);
@@ -130,7 +132,9 @@ export default function FaenaPescaConsumoForm({
         bolicheRedId: defaultValues.bolicheRedId
           ? Number(defaultValues.bolicheRedId)
           : null,
-        patronId: defaultValues.patronId ? Number(defaultValues.patronId) : null,
+        patronId: defaultValues.patronId
+          ? Number(defaultValues.patronId)
+          : null,
         motoristaId: defaultValues.motoristaId
           ? Number(defaultValues.motoristaId)
           : null,
@@ -163,14 +167,18 @@ export default function FaenaPescaConsumoForm({
       setCurrentFaenaData({});
     }
   }, [defaultValues?.id, reset]);
-  
+
   // Recargar faena cuando se crea exitosamente
   useEffect(() => {
     if (faenaCreatedSuccessfully && currentFaenaData?.id) {
       recargarFaena();
       setFaenaCreatedSuccessfully?.(false);
     }
-  }, [faenaCreatedSuccessfully, currentFaenaData?.id, setFaenaCreatedSuccessfully]);
+  }, [
+    faenaCreatedSuccessfully,
+    currentFaenaData?.id,
+    setFaenaCreatedSuccessfully,
+  ]);
 
   const cargarDatosIniciales = async () => {
     try {
@@ -225,7 +233,7 @@ export default function FaenaPescaConsumoForm({
     const newData = { ...currentFaenaData, ...updatedData };
     setCurrentFaenaData(newData);
     onDataChange?.(newData);
-    
+
     // Si se creó una nueva faena, actualizar el modo de edición
     if (updatedData?.id && !currentFaenaData?.id) {
       setIsEditMode(true);
@@ -248,51 +256,53 @@ export default function FaenaPescaConsumoForm({
   const handleFormSubmit = async (data) => {
     try {
       const resultado = await onSubmit(data);
-      
+
       if (!isEditMode && resultado?.id) {
         // Generar descripción automática
-        const descripcionGenerada = `Faena ${resultado.id} Novedad ${novedadData?.numeroNovedad || 'S/N'}`;
-        
-        const nuevaFaenaData = { 
-          ...data, 
+        const descripcionGenerada = `Faena ${resultado.id} Novedad ${
+          novedadData?.numeroNovedad || "S/N"
+        }`;
+
+        const nuevaFaenaData = {
+          ...data,
           id: resultado.id,
-          descripcion: descripcionGenerada
+          descripcion: descripcionGenerada,
         };
         setCurrentFaenaData(nuevaFaenaData);
-        
+
         // Actualizar el formulario con el nuevo ID ANTES de cambiar isEditMode
         reset({
           ...data,
           id: resultado.id,
-          descripcion: descripcionGenerada
+          descripcion: descripcionGenerada,
         });
-        
+
         // Cambiar a modo edición inmediatamente
         setIsEditMode(true);
-        
+
         // Forzar actualización después de un pequeño delay
         setTimeout(() => {
-          setForceUpdate(prev => prev + 1);
+          setForceUpdate((prev) => prev + 1);
         }, 100);
-        
+
         // Actualizar la prop faenaCreatedSuccessfully
         setFaenaCreatedSuccessfully?.(true);
-        
+
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
-          detail: "Faena creada correctamente. Ahora puede acceder a todas las funciones.",
+          detail:
+            "Faena creada correctamente. Ahora puede acceder a todas las funciones.",
           life: 4000,
         });
       } else if (isEditMode) {
         toast.current?.show({
           severity: "success",
-          summary: "Éxito", 
+          summary: "Éxito",
           detail: "Faena actualizada correctamente",
           life: 3000,
         });
       }
-      
     } catch (error) {
       console.error("❌ Error en handleFormSubmit:", error);
       toast.current?.show({
@@ -338,7 +348,14 @@ export default function FaenaPescaConsumoForm({
         marginTop: 2,
       }}
     >
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: "4px",
+        }}
+      >
         <Button
           icon="pi pi-list"
           tooltip="Acciones Previas"
@@ -371,7 +388,14 @@ export default function FaenaPescaConsumoForm({
           style={{ width: "100%", height: "100%" }}
         />
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: "4px",
+        }}
+      >
         <Button
           icon="pi pi-users"
           tooltip="Documentos de Tripulantes"
@@ -405,16 +429,21 @@ export default function FaenaPescaConsumoForm({
           disabled={!currentFaenaData?.id}
         />
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: "4px",
+        }}
+      >
         <Button
           icon="pi pi-download"
           tooltip="Descarga de Faena"
           label="Descarga Faena"
           tooltipOptions={{ position: "bottom" }}
           className={
-            activeCard === "descarga"
-              ? "p-button-info"
-              : "p-button-outlined"
+            activeCard === "descarga" ? "p-button-info" : "p-button-outlined"
           }
           onClick={() => handleNavigateToCard("descarga")}
           type="button"
@@ -428,9 +457,7 @@ export default function FaenaPescaConsumoForm({
           label="Tripulantes"
           tooltipOptions={{ position: "bottom" }}
           className={
-            activeCard === "tripulantes"
-              ? "p-button-info"
-              : "p-button-outlined"
+            activeCard === "tripulantes" ? "p-button-info" : "p-button-outlined"
           }
           onClick={() => handleNavigateToCard("tripulantes")}
           type="button"
@@ -439,7 +466,14 @@ export default function FaenaPescaConsumoForm({
           disabled={!currentFaenaData?.id}
         />
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}
+      >
         <Button
           tooltip="Reporte de Faenas y Calas PRODUCE"
           tooltipOptions={{ position: "bottom" }}
@@ -466,7 +500,14 @@ export default function FaenaPescaConsumoForm({
           PRODUCE
         </Button>
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}
+      >
         <Button
           label="Cancelar"
           icon="pi pi-times"
@@ -512,15 +553,15 @@ export default function FaenaPescaConsumoForm({
           key={`tag-${isEditMode}-${faenaCreatedSuccessfully}-${currentFaenaData?.id}-${forceUpdate}`}
           value={(() => {
             const faenaId = currentFaenaData?.id;
-            const novedadNumero = novedadData?.numeroNovedad || 'S/N';
+            const novedadNumero = novedadData?.numeroNovedad || "S/N";
             let descripcionBase = "";
-            
+
             if (faenaId) {
               descripcionBase = `Faena ${faenaId} Novedad ${novedadNumero}`;
             } else {
               descripcionBase = `Nueva Faena Novedad ${novedadNumero}`;
             }
-            
+
             let resultado = "";
             if (isEditMode) {
               resultado = `EDITAR: ${descripcionBase}`;
@@ -529,10 +570,16 @@ export default function FaenaPescaConsumoForm({
             } else {
               resultado = descripcionBase;
             }
-            
+
             return resultado;
           })()}
-          severity={isEditMode ? "warning" : faenaCreatedSuccessfully ? "success" : "info"}
+          severity={
+            isEditMode
+              ? "warning"
+              : faenaCreatedSuccessfully
+              ? "success"
+              : "info"
+          }
           style={{
             fontSize: "1.1rem",
             padding: "0.75rem 1.25rem",
@@ -561,6 +608,7 @@ export default function FaenaPescaConsumoForm({
         {activeCard === "documentos-embarcacion" && (
           <DetalleDocEmbarcacionConsumoCard
             faenaPescaConsumoId={currentFaenaData?.id}
+            faenaData={currentFaenaData} // ✅ Agregar esta línea
             documentacionEmbarcacion={documentacionEmbarcacion}
             onDataChange={handleFaenaDataChange}
           />
@@ -577,6 +625,7 @@ export default function FaenaPescaConsumoForm({
         {activeCard === "documentos-tripulantes" && (
           <DetalleDocTripulantesConsumoCard
             faenaPescaConsumoId={currentFaenaData?.id}
+            novedadData={novedad}
             documentosPesca={documentosPesca}
             personal={personal}
             onDataChange={handleFaenaDataChange}
@@ -586,11 +635,12 @@ export default function FaenaPescaConsumoForm({
         {activeCard === "descarga" && (
           <DescargaFaenaConsumoCard
             faenaPescaConsumoId={currentFaenaData?.id}
-            novedadPescaConsumoId={novedad?.id}
-            bahias={bahiasComercialesOptions}
-            motoristas={motoristasOptions}
+            novedadData={novedad}
+            faenaData={currentFaenaData}
+            puertos={puertosDescarga} // ✅ CORREGIDO: era puertosDescarga={puertosDescarga}
             patrones={patronesOptions}
-            puertosDescarga={puertosDescarga}
+            motoristas={motoristasOptions}
+            bahias={bahiasComercialesOptions}
             clientes={clientes}
             especies={especies}
             onDataChange={handleDescargaUpdate}
@@ -600,9 +650,12 @@ export default function FaenaPescaConsumoForm({
 
         {activeCard === "informe" && (
           <InformeFaenaPescaConsumoForm
+            control={control}
+            watch={watch}
+            errors={errors}
+            loading={loading}
+            setValue={setValue}
             faenaData={currentFaenaData}
-            novedadData={novedad}
-            onFaenaDataChange={handleFaenaDataChange}
           />
         )}
       </div>

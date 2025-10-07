@@ -73,6 +73,10 @@ export const abrirPdfEnNuevaPestana = async (urlPdf, toast, mensajeError = "No h
       // Soporte para declaraciones de desembarque de Novedad Pesca Consumo
       const rutaArchivo = urlPdf.replace("/uploads/declaraciones-desembarque-consumo/", "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/faenas-pesca-consumo/archivo-declaracion-desembarque/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/informes-faena-consumo/")) {
+      // ✅ NUEVO: Soporte para informes de faena consumo (ruta protegida con JWT)
+      const rutaArchivo = urlPdf.replace("/uploads/informes-faena-consumo/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/faenas-pesca-consumo/archivo-informe-faena/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/")) {
       // Para otros tipos de uploads (archivos de confirmación, etc.)
       urlCompleta = `${import.meta.env.VITE_API_URL}${urlPdf}`;

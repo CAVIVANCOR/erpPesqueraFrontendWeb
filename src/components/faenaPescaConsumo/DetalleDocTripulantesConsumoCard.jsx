@@ -19,6 +19,7 @@ import {
   actualizarDetDocTripulantesFaenaConsumo,
   eliminarDetDocTripulantesFaenaConsumo,
 } from "../../api/detDocTripulantesFaenaConsumo";
+import { getAllDocumentacionPersonal } from "../../api/documentacionPersonal";
 import DetDocTripulantesFaenaConsumoForm from "../detDocTripulantesFaenaConsumo/DetDocTripulantesFaenaConsumoForm";
 
 export default function DetalleDocTripulantesConsumoCard({
@@ -146,6 +147,147 @@ export default function DetalleDocTripulantesConsumoCard({
     }
   };
 
+  const cargarDocumentosTripulantes = async () => {
+    try {
+      setLoadingData(true);
+  
+      // 1. Filtrar personal por paraPescaConsumo=true, cargoId y cesado=false
+      const tripulantesEmbarcacion = personal.filter(
+        (p) =>
+          p.paraPescaConsumo === true &&
+          (Number(p.cargoId) === 21 || // TRIPULANTE EMBARCACION
+            Number(p.cargoId) === 22 || // PATRON EMBARCACION
+            Number(p.cargoId) === 14) && // MOTORISTA EMBARCACION
+          p.cesado === false
+      );
+  
+      if (tripulantesEmbarcacion.length === 0) {
+        toast.current?.show({
+          severity: "info",
+          summary: "Sin Tripulantes",
+          detail: "No se encontraron tripulantes disponibles para pesca consumo",
+          life: 3000,
+        });
+        return;
+      }
+  
+      // 2. Obtener IDs de los tripulantes filtrados
+      const tripulantesIds = tripulantesEmbarcacion.map((t) => Number(t.id));
+  
+      // 3. Obtener todos los documentos de personal
+      const todosLosDocumentos = await getAllDocumentacionPersonal();
+  
+      // 4. Filtrar documentos que pertenecen a los tripulantes
+      const documentosTripulantes = todosLosDocumentos.filter((doc) =>
+        tripulantesIds.includes(Number(doc.personalId))
+      );
+  
+      if (documentosTripulantes.length === 0) {
+        toast.current?.show({
+          severity: "info",
+          summary: "Sin Documentos",
+          detail: "No se encontraron documentos para los tripulantes",
+          life: 3000,
+        });
+        return;
+      }
+  
+      // 5. Obtener documentos existentes en DetDocTripulantesFaenaConsumo
+      const documentosExistentes = await getDetDocTripulantesFaenaConsumo({
+        faenaPescaConsumoId,
+      });
+  
+      // 6. Crear o actualizar registros
+      let creados = 0;
+      let actualizados = 0;
+      let errores = 0;
+  
+      for (const docPersonal of documentosTripulantes) {
+        try {
+          // Calcular docVencido
+          const fechaActual = new Date();
+          const fechaVencimiento = docPersonal.fechaVencimiento
+            ? new Date(docPersonal.fechaVencimiento)
+            : null;
+          const docVencido =
+            !fechaVencimiento || fechaVencimiento < fechaActual;
+  
+          const dataToSend = {
+            faenaPescaConsumoId: Number(faenaPescaConsumoId),
+            tripulanteId: Number(docPersonal.personalId),
+            documentoId: Number(docPersonal.documentoPescaId),
+            numeroDocumento: docPersonal.numeroDocumento || null,
+            fechaEmision: docPersonal.fechaEmision || null,
+            fechaVencimiento: docPersonal.fechaVencimiento || null,
+            urlDocTripulantePdf: docPersonal.urlDocPdf || null,
+            docVencido: docVencido,
+            verificado: false,
+            observaciones: docPersonal.observaciones || null,
+          };
+  
+          // Verificar si ya existe el documento
+          const documentoExistente = documentosExistentes.find(
+            (d) =>
+              Number(d.faenaPescaConsumoId) === Number(faenaPescaConsumoId) &&
+              Number(d.tripulanteId) === Number(docPersonal.personalId) &&
+              Number(d.documentoId) === Number(docPersonal.documentoPescaId)
+          );
+  
+          if (documentoExistente) {
+            // Actualizar documento existente
+            await actualizarDetDocTripulantesFaenaConsumo(
+              documentoExistente.id,
+              dataToSend
+            );
+            actualizados++;
+          } else {
+            // Crear nuevo documento
+            await crearDetDocTripulantesFaenaConsumo(dataToSend);
+            creados++;
+          }
+        } catch (error) {
+          console.error("Error al procesar documento:", error);
+          errores++;
+        }
+      }
+  
+      // 7. Mostrar resultado
+      if (creados > 0 || actualizados > 0) {
+        toast.current?.show({
+          severity: "success",
+          summary: "Documentos Procesados",
+          detail: `${creados} creado(s), ${actualizados} actualizado(s)${
+            errores > 0 ? `. ${errores} error(es)` : ""
+          }`,
+          life: 4000,
+        });
+  
+        await cargarDocumentos();
+  
+        if (onDataChange) {
+          onDataChange();
+        }
+      } else {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudo procesar ningún documento",
+          life: 3000,
+        });
+      }
+    } catch (error) {
+      console.error("Error al cargar documentos de tripulantes:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar los documentos de los tripulantes",
+        life: 3000,
+      });
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
   const openNew = () => {
     setEditingDocumento(null);
     setDialogVisible(true);
@@ -238,11 +380,11 @@ export default function DetalleDocTripulantesConsumoCard({
   // Funciones para el filtro toggle de Estado
   const handleToggleEstado = () => {
     if (filtroEstado === null) {
-      setFiltroEstado(false); // Mostrar solo pendientes
+      setFiltroEstado(false);
     } else if (filtroEstado === false) {
-      setFiltroEstado(true); // Mostrar solo verificados
+      setFiltroEstado(true);
     } else {
-      setFiltroEstado(null); // Mostrar todos
+      setFiltroEstado(null);
     }
   };
 
@@ -275,6 +417,30 @@ export default function DetalleDocTripulantesConsumoCard({
       >
         <div style={{ flex: 1 }}>
           <h2>DOCUMENTOS TRIPULACION</h2>
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            type="button"
+            icon="pi pi-download"
+            label="Cargar Documentos Tripulantes"
+            className="p-button-info"
+            onClick={cargarDocumentosTripulantes}
+            disabled={loadingData}
+            tooltip="Cargar documentos de los tripulantes"
+            tooltipOptions={{ position: "top" }}
+            style={{ fontSize: "0.875rem" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            type="button"
+            icon="pi pi-plus"
+            label="Nuevo"
+            className="p-button-success"
+            onClick={openNew}
+            disabled={loadingData}
+            style={{ fontSize: "0.875rem" }}
+          />
         </div>
         <div style={{ flex: 1 }}>
           <InputText

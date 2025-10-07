@@ -82,7 +82,6 @@ export async function getProveedoresPorEmpresa(empresaId) {
 export async function getClientesPorEmpresa(empresaId) {
   // Obtener todos los registros de EntidadComercial
   const res = await axios.get(API_URL, { headers: getAuthHeaders() });
-  
   // Filtrar localmente según los criterios especificados
   const clientesFiltrados = res.data.filter(entidad => 
     Number(entidad.empresaId) === Number(empresaId) &&
