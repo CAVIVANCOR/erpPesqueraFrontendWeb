@@ -20,6 +20,7 @@ import { classNames } from "primereact/utils";
 import { Controller } from "react-hook-form";
 import { Message } from "primereact/message";
 import DetalleFaenasConsumoCard from "./DetalleFaenasConsumoCard";
+import { getNovedadPescaConsumoPorId } from "../../api/novedadPescaConsumo";
 
 export default function DatosGeneralesNovedadForm({
   control,
@@ -41,14 +42,97 @@ export default function DatosGeneralesNovedadForm({
   novedadData = null,
   onNovedadDataChange, // Callback para notificar cambios en datos de novedad
 }) {
-
   const detalleFaenasRef = useRef(null);
 
   // Estado para controlar actualizaciones de faenas
   const [faenasUpdateTrigger, setFaenasUpdateTrigger] = useState(0);
 
   const empresaWatched = watch("empresaId");
-  const fechaInicioWatched = watch("fechaInicio");
+
+  // Watch para generar nombre automáticamente
+  const idWatched = watch("id");
+  const numeroResolucionWatched = watch("numeroResolucion");
+
+  // Watch para toneladas capturadas
+  const toneladasCapturadas = watch("toneladasCapturadas");
+
+  // Autocompletar BahiaId cuando cambie la empresa
+  useEffect(() => {
+    if (empresaWatched) {
+      autocompletarBahiaId(empresaWatched);
+    } else {
+      setValue("BahiaId", null);
+    }
+  }, [empresaWatched, setValue, bahiasComerciales]);
+
+  // Generar nombre automáticamente cuando cambien id o numeroResolucion
+  useEffect(() => {
+    if (idWatched && numeroResolucionWatched) {
+      const nombreGenerado = `Novedad Pesca Consumo - ${idWatched} - ${numeroResolucionWatched}`;
+      setValue("nombre", nombreGenerado);
+    } else if (numeroResolucionWatched && numeroResolucionWatched.trim()) {
+      // Para nuevas novedades sin ID, usar solo numeroResolucion
+      const nombreGenerado = `Novedad Pesca Consumo - ${numeroResolucionWatched}`;
+      setValue("nombre", nombreGenerado);
+    } else if (idWatched) {
+      const nombreGenerado = `Novedad Pesca Consumo - ${idWatched}`;
+      setValue("nombre", nombreGenerado);
+    }
+  }, [idWatched, numeroResolucionWatched, setValue]);
+
+  const autocompletarBahiaId = async (empresaId) => {
+    try {
+      // Solo autocompletar si no hay valor previo
+      const valorActual = getValues("BahiaId");
+      if (valorActual) return;
+
+      // Usar directamente el prop bahiasComerciales en lugar de filtrar personal
+      if (bahiasComerciales.length === 1) {
+        const valorCalculado = Number(bahiasComerciales[0].value);
+        setValue("BahiaId", valorCalculado);
+      }
+    } catch (error) {
+      console.error("Error al autocompletar BahiaId:", error);
+    }
+  };
+
+  // Función para recargar datos de novedad
+  const recargarDatosNovedad = async () => {
+    if (!novedadData?.id) {
+      return;
+    }
+
+    try {
+      const novedadActualizada = await getNovedadPescaConsumoPorId(
+        novedadData.id
+      );
+      const valorASetear = novedadActualizada.toneladasCapturadas || 0;
+      setValue("toneladasCapturadas", valorASetear);
+
+      // Verificar si se actualizó
+      const valorActual = getValues("toneladasCapturadas");
+
+      // Notificar al componente padre sobre los cambios
+      if (onNovedadDataChange) {
+        onNovedadDataChange(novedadActualizada);
+      }
+    } catch (error) {
+      console.error("Error al recargar datos de novedad:", error);
+    }
+  };
+
+  // Escuchar evento personalizado para recargar datos
+  useEffect(() => {
+    const handleRefreshFaenas = () => {
+      recargarDatosNovedad();
+    };
+
+    window.addEventListener("refreshFaenas", handleRefreshFaenas);
+
+    return () => {
+      window.removeEventListener("refreshFaenas", handleRefreshFaenas);
+    };
+  }, [novedadData?.id]);
 
   // Función para formatear opciones de empresa
   const formatearOpcionesEmpresa = (empresas) => {
@@ -67,6 +151,7 @@ export default function DatosGeneralesNovedadForm({
     }));
     return estadosFormateados;
   };
+
   return (
     <Card
       title="Datos Generales de la Novedad"
@@ -132,9 +217,9 @@ export default function DatosGeneralesNovedadForm({
                   id="BahiaId"
                   value={field.value ? Number(field.value) : null}
                   onChange={(e) => field.onChange(e.value)}
-                  options={bahiasComerciales} // ← Usar directamente sin formatear
+                  options={bahiasComerciales}
                   optionLabel="label"
-                  optionValue="value" // ← CAMBIAR de "id" a "value"
+                  optionValue="value"
                   placeholder="Seleccione una bahía"
                   className={classNames({ "p-invalid": errors.BahiaId })}
                   filter
@@ -184,7 +269,8 @@ export default function DatosGeneralesNovedadForm({
             )}
           </div>
         </div>
-        {/* Segunda fila: Nombre, Fecha Inicio, Fecha Fin */}
+
+        {/* Segunda fila: Número de Resolución, Fecha Inicio, Fecha Fin */}
         <div
           style={{
             display: "flex",
@@ -192,33 +278,36 @@ export default function DatosGeneralesNovedadForm({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="nombre" className="block text-900 font-medium mb-2">
-              Nombre de la Novedad *
+          {/* Número de Resolución */}
+          <div style={{ flex: 1.5 }}>
+            <label
+              htmlFor="numeroResolucion"
+              className="block text-900 font-medium mb-2"
+            >
+              Número de Resolución *
             </label>
             <Controller
-              name="nombre"
+              name="numeroResolucion"
               control={control}
-              rules={{
-                required: "El nombre es obligatorio",
-                minLength: {
-                  value: 5,
-                  message: "El nombre debe tener al menos 5 caracteres",
-                },
-              }}
+              rules={{ required: "El número de resolución es obligatorio" }}
               render={({ field }) => (
                 <InputText
-                  id="nombre"
-                  value={field.value || ""}
+                  id="numeroResolucion"
+                  {...field}
+                  value={field.value?.toUpperCase() || ""}
                   onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                  placeholder="Nombre de la novedad"
-                  className={classNames({ "p-invalid": errors.nombre })}
-                  style={{ textTransform: 'uppercase', fontWeight: 'bold' }}
+                  placeholder="Ej: R.M. N° 123-2024-PRODUCE"
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({
+                    "p-invalid": errors.numeroResolucion,
+                  })}
                 />
               )}
             />
-            {errors.nombre && (
-              <small className="p-error">{errors.nombre.message}</small>
+            {errors.numeroResolucion && (
+              <small className="p-error">
+                {errors.numeroResolucion.message}
+              </small>
             )}
           </div>
 
@@ -282,6 +371,44 @@ export default function DatosGeneralesNovedadForm({
               <small className="p-error">{errors.fechaFin.message}</small>
             )}
           </div>
+          {/* Cuota Propia */}
+          <div style={{ flex: 1 }}>
+            <label
+              htmlFor="cuotaPropiaTon"
+              className="block text-900 font-medium mb-2"
+            >
+              Cuota Propia
+            </label>
+            <Controller
+              name="cuotaPropiaTon"
+              control={control}
+              rules={{
+                min: { value: 0, message: "La cuota no puede ser negativa" },
+              }}
+              render={({ field }) => (
+                <InputNumber
+                  id="cuotaPropiaTon"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  placeholder="0.00"
+                  mode="decimal"
+                  minFractionDigits={0}
+                  maxFractionDigits={2}
+                  inputStyle={{ fontWeight: "bold" }}
+                  min={0}
+                  suffix=" Ton"
+                  className={classNames({
+                    "p-invalid": errors.cuotaPropiaTon,
+                  })}
+                />
+              )}
+            />
+            {errors.cuotaPropiaTon && (
+              <small className="p-error">{errors.cuotaPropiaTon.message}</small>
+            )}
+          </div>
+
+          {/* Toneladas Capturadas */}
           <div style={{ flex: 1 }}>
             <label
               htmlFor="toneladasCapturadas"
@@ -294,29 +421,24 @@ export default function DatosGeneralesNovedadForm({
               control={control}
               render={({ field }) => (
                 <InputNumber
+                  key={`toneladas-${faenasUpdateTrigger}`}
                   id="toneladasCapturadas"
                   value={field.value}
                   onValueChange={(e) => field.onChange(e.value)}
+                  placeholder="0.000"
                   mode="decimal"
-                  minFractionDigits={2}
-                  maxFractionDigits={2}
-                  min={0}
-                  placeholder="0.00"
-                  suffix=" TM"
-                  className={classNames({
-                    "p-invalid": errors.toneladasCapturadas,
-                  })}
+                  minFractionDigits={3}
+                  maxFractionDigits={3}
                   inputStyle={{ fontWeight: "bold" }}
+                  min={0}
+                  suffix=" Ton"
+                  disabled
                 />
               )}
             />
-            {errors.toneladasCapturadas && (
-              <small className="p-error">
-                {errors.toneladasCapturadas.message}
-              </small>
-            )}
           </div>
         </div>
+
         {/* Card de Detalle de Faenas (solo si hay ID) - Integrado como en TemporadaPesca */}
         {novedadData?.id && (
           <div className="col-12">
@@ -331,9 +453,11 @@ export default function DatosGeneralesNovedadForm({
               puertos={puertos}
               motoristas={motoristas}
               patrones={patrones}
-              bahiasComerciales={bahiasComerciales} // ← AGREGAR
+              bahiasComerciales={bahiasComerciales}
               onDataChange={onNovedadDataChange}
               updateTrigger={faenasUpdateTrigger}
+              faenasUpdateTrigger={faenasUpdateTrigger}
+              setFaenasUpdateTrigger={setFaenasUpdateTrigger}
             />
           </div>
         )}

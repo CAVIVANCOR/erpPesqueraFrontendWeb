@@ -40,6 +40,7 @@ import { getPersonal } from "../../api/personal";
 import { getCentrosCosto } from "../../api/centroCosto";
 import { getTiposMovEntregaRendir } from "../../api/tipoMovEntregaRendir";
 import { getEmpresas } from "../../api/empresa";
+import ResolucionPDFNovedadForm from "./ResolucionPDFNovedadForm";
 
 /**
  * Componente de formulario para novedades de pesca consumo
@@ -94,10 +95,14 @@ const NovedadPescaConsumoForm = ({
       BahiaId: null,
       estadoNovedadPescaConsumoId: null,
       nombre: "",
+      numeroResolucion: "",
       fechaInicio: null,
       fechaFin: null,
+      cuotaPropiaTon: null,
+      cuotaAlquiladaTon: null,
       toneladasCapturadas: null,
       novedadPescaConsumoIniciada: false,
+      urlResolucionPdf: "",
     },
   });
 
@@ -174,9 +179,12 @@ const NovedadPescaConsumoForm = ({
           );
         }
         if (personalRes.status === "fulfilled") setPersonal(personalRes.value);
-        if (centrosRes.status === "fulfilled") setCentrosCosto(centrosRes.value);
-        if (tiposMovRes.status === "fulfilled") setTiposMovimiento(tiposMovRes.value);
-        if (empresasRes.status === "fulfilled") setEmpresasList(empresasRes.value);
+        if (centrosRes.status === "fulfilled")
+          setCentrosCosto(centrosRes.value);
+        if (tiposMovRes.status === "fulfilled")
+          setTiposMovimiento(tiposMovRes.value);
+        if (empresasRes.status === "fulfilled")
+          setEmpresasList(empresasRes.value);
       } catch (error) {
         console.error("Error cargando catálogos:", error);
       }
@@ -240,6 +248,8 @@ const NovedadPescaConsumoForm = ({
         empresaId: Number(data.empresaId),
         BahiaId: Number(data.BahiaId),
         estadoNovedadPescaConsumoId: Number(data.estadoNovedadPescaConsumoId),
+        cuotaPropiaTon: data.cuotaPropiaTon ? Number(data.cuotaPropiaTon) : null,
+        cuotaAlquiladaTon: data.cuotaAlquiladaTon ? Number(data.cuotaAlquiladaTon) : null,
       };
 
       await onSave(normalizedData);
@@ -362,6 +372,20 @@ const NovedadPescaConsumoForm = ({
           size="small"
         />
         <Button
+          icon="pi pi-file-pdf"
+          tooltip="Resolución Ministerial PDF"
+          tooltipOptions={{ position: "top" }}
+          className={
+            activeCard === "resolucion-pdf"
+              ? "p-button-help"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("resolucion-pdf")}
+          type="button"
+          size="small"
+          disabled={!editingItem?.id}
+        />
+        <Button
           icon="pi pi-file-excel"
           tooltip="Entregas a Rendir"
           tooltipOptions={{ position: "top" }}
@@ -414,9 +438,8 @@ const NovedadPescaConsumoForm = ({
     </div>
   );
 
-  useEffect(() => {    
+  useEffect(() => {
     if (editingItem) {
-      
       reset({
         id: Number(editingItem.id) || null,
         empresaId: Number(editingItem.empresaId) || null,
@@ -424,12 +447,17 @@ const NovedadPescaConsumoForm = ({
         estadoNovedadPescaConsumoId:
           Number(editingItem.estadoNovedadPescaConsumoId) || estadoDefaultId,
         nombre: editingItem.nombre || "",
+        numeroResolucion: editingItem.numeroResolucion || "",
         fechaInicio: editingItem.fechaInicio
           ? new Date(editingItem.fechaInicio)
           : null,
         fechaFin: editingItem.fechaFin ? new Date(editingItem.fechaFin) : null,
+        cuotaPropiaTon: editingItem.cuotaPropiaTon || null,
+        cuotaAlquiladaTon: editingItem.cuotaAlquiladaTon || null,
         toneladasCapturadas: editingItem.toneladasCapturadas || null,
-        novedadPescaConsumoIniciada: editingItem.novedadPescaConsumoIniciada || false,
+        novedadPescaConsumoIniciada:
+          editingItem.novedadPescaConsumoIniciada || false,
+        urlResolucionPdf: editingItem.urlResolucionPdf || "",
       });
     } else {
       reset({
@@ -438,13 +466,18 @@ const NovedadPescaConsumoForm = ({
         BahiaId: null,
         estadoNovedadPescaConsumoId: Number(estadoDefaultId),
         nombre: "",
+        numeroResolucion: "",
         fechaInicio: null,
         fechaFin: null,
+        cuotaPropiaTon: null,
+        cuotaAlquiladaTon: null,
         toneladasCapturadas: null,
         novedadPescaConsumoIniciada: false,
+        urlResolucionPdf: "",
       });
     }
   }, [editingItem, reset, estadoDefaultId]);
+  
   // Verificar si la novedad ya fue iniciada cuando editingItem cambie
   useEffect(() => {
     if (editingItem?.id) {
@@ -503,7 +536,16 @@ const NovedadPescaConsumoForm = ({
             onNovedadDataChange={onNovedadDataChange}
           />
         )}
-
+        {activeCard === "resolucion-pdf" && (
+          <ResolucionPDFNovedadForm
+            control={control}
+            errors={errors}
+            setValue={setValue}
+            watch={watch}
+            getValues={getValues}
+            defaultValues={getValues()}
+          />
+        )}
         {activeCard === "entregas-a-rendir" && (
           <EntregasARendirNovedadCard
             novedadPescaConsumoId={editingItem?.id}

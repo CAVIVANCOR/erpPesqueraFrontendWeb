@@ -17,25 +17,40 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { InputNumber } from "primereact/inputnumber";
 import { InputTextarea } from "primereact/inputtextarea";
-import { Checkbox } from "primereact/checkbox";
 import { Message } from "primereact/message";
 import { Toast } from "primereact/toast";
-import { Card } from "primereact/card";
 import { classNames } from "primereact/utils";
+import DocumentoCapture from "../shared/DocumentoCapture";
+import PDFViewer from "../shared/PDFViewer";
+import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import {
+  crearDetMovsEntRendirPescaConsumo,
+  actualizarDetMovsEntRendirPescaConsumo,
+} from "../../api/detMovsEntRendirPescaConsumo";
+import { getModulos } from "../../api/moduloSistema";
+import { Card } from "primereact/card";
+import PdfDetMovEntRendirNovedadCard from "./pdfDetMovEntRendirNovedadCard";
 
 const DetMovsEntRendirNovedadForm = ({
   movimiento = null,
+  entregaARendirPescaConsumoId,
   personal = [],
   centrosCosto = [],
   tiposMovimiento = [],
   entidadesComerciales = [],
-  onSave,
-  onCancel,
+  onGuardadoExitoso,
+  onCancelar,
 }) => {
   const toast = useRef(null);
   const isEditing = !!movimiento;
   const { usuario } = useAuthStore();
+
+  // Estados para módulos del sistema
+  const [modulosNovedadConsumo, setModulosNovedadConsumo] = useState(null);
+
+  // Estados para navegación de cards
+  const [cardActiva, setCardActiva] = useState("datos"); // "datos" | "pdf"
 
   // Configuración del formulario con react-hook-form
   const {
@@ -48,48 +63,139 @@ const DetMovsEntRendirNovedadForm = ({
     watch,
   } = useForm({
     defaultValues: {
-      personalId: null,
+      entregaARendirPescaConsumoId: entregaARendirPescaConsumoId || "",
+      responsableId: "",
       fechaMovimiento: new Date(),
-      tipoMovimientoId: null,
-      centroCostoId: null,
+      tipoMovimientoId: "",
+      centroCostoId: "",
       monto: 0,
       descripcion: "",
-      entidadComercialId: null,
+      entidadComercialId: "",
       urlComprobanteMovimiento: "",
       validadoTesoreria: false,
       fechaValidacionTesoreria: null,
       operacionSinFactura: false,
       fechaOperacionMovCaja: null,
       operacionMovCajaId: null,
-      moduloOrigenMovCajaId: 3, // Valor para "NOVEDAD PESCA CONSUMO"
+      moduloOrigenMovCajaId: 3, // Valor automático para "NOVEDAD PESCA CONSUMO"
     },
   });
 
+  // Observar cambios en urlComprobanteMovimiento
+  const urlComprobanteMovimiento = watch("urlComprobanteMovimiento");
+
   // Observar cambios en validadoTesoreria
   const validadoTesoreria = watch("validadoTesoreria");
+
+  // Observar cambios en los nuevos campos
   const operacionSinFactura = watch("operacionSinFactura");
+  const fechaOperacionMovCaja = watch("fechaOperacionMovCaja");
+  const operacionMovCajaId = watch("operacionMovCajaId");
+  const moduloOrigenMovCajaId = watch("moduloOrigenMovCajaId");
 
   // Cargar datos del registro en edición
   useEffect(() => {
     if (isEditing && movimiento) {
       reset({
-        personalId: movimiento.personalId ? Number(movimiento.personalId) : null,
-        fechaMovimiento: movimiento.fechaMovimiento ? new Date(movimiento.fechaMovimiento) : new Date(),
-        tipoMovimientoId: movimiento.tipoMovimientoId ? Number(movimiento.tipoMovimientoId) : null,
-        centroCostoId: movimiento.centroCostoId ? Number(movimiento.centroCostoId) : null,
-        monto: movimiento.monto || 0,
+        entregaARendirPescaConsumoId: Number(movimiento.entregaARendirPescaConsumoId),
+        responsableId: movimiento.responsableId
+          ? Number(movimiento.responsableId)
+          : null,
+        fechaMovimiento: movimiento.fechaMovimiento
+          ? new Date(movimiento.fechaMovimiento)
+          : new Date(),
+        tipoMovimientoId: movimiento.tipoMovimientoId
+          ? Number(movimiento.tipoMovimientoId)
+          : null,
+        centroCostoId: movimiento.centroCostoId
+          ? Number(movimiento.centroCostoId)
+          : null,
+        monto: Number(movimiento.monto) || 0,
         descripcion: movimiento.descripcion || "",
-        entidadComercialId: movimiento.entidadComercialId ? Number(movimiento.entidadComercialId) : null,
+        entidadComercialId: movimiento.entidadComercialId
+          ? Number(movimiento.entidadComercialId)
+          : null,
         urlComprobanteMovimiento: movimiento.urlComprobanteMovimiento || "",
         validadoTesoreria: movimiento.validadoTesoreria || false,
-        fechaValidacionTesoreria: movimiento.fechaValidacionTesoreria ? new Date(movimiento.fechaValidacionTesoreria) : null,
+        fechaValidacionTesoreria: movimiento.fechaValidacionTesoreria || null,
         operacionSinFactura: movimiento.operacionSinFactura || false,
-        fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja ? new Date(movimiento.fechaOperacionMovCaja) : null,
-        operacionMovCajaId: movimiento.operacionMovCajaId || null,
-        moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId || 3,
+        fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja
+          ? new Date(movimiento.fechaOperacionMovCaja)
+          : null,
+        operacionMovCajaId: movimiento.operacionMovCajaId
+          ? Number(movimiento.operacionMovCajaId)
+          : null,
+        moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId
+          ? Number(movimiento.moduloOrigenMovCajaId)
+          : 3,
       });
+    } else {
+      // Para nuevo registro, establecer entregaARendirPescaConsumoId y asignar responsable automáticamente
+      setValue("entregaARendirPescaConsumoId", Number(entregaARendirPescaConsumoId));
+      setValue("fechaMovimiento", new Date());
+      setValue("moduloOrigenMovCajaId", 3); // Establecer valor por defecto para NOVEDAD PESCA CONSUMO
+
+      // Asignar automáticamente el responsable basado en el usuario logueado
+      if (usuario?.personalId) {
+        setValue("responsableId", Number(usuario.personalId));
+
+        // Mostrar toast informativo después de un breve delay
+        setTimeout(() => {
+          toast.current?.show({
+            severity: "info",
+            summary: "Responsable Asignado",
+            detail:
+              "Se ha asignado automáticamente como responsable del movimiento",
+            life: 3000,
+          });
+        }, 500);
+      }
     }
-  }, [movimiento, isEditing, reset]);
+  }, [movimiento, isEditing, entregaARendirPescaConsumoId, reset, setValue, usuario]);
+
+  // Cargar módulo "NOVEDAD PESCA CONSUMO" al montar el componente
+  useEffect(() => {
+    const cargarModuloNovedadConsumo = async () => {
+      try {
+        const modulos = await getModulos();
+        const moduloNovedad = modulos.find(
+          (m) => m.nombre === "NOVEDAD PESCA CONSUMO"
+        );
+        if (moduloNovedad) {
+          setModulosNovedadConsumo(moduloNovedad);
+          // Solo establecer el valor si no estamos editando
+          if (!isEditing) {
+            setValue("moduloOrigenMovCajaId", Number(moduloNovedad.id));
+          }
+        }
+      } catch (error) {
+        console.error("Error al cargar módulo NOVEDAD PESCA CONSUMO:", error);
+        toast.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "No se pudo cargar el módulo NOVEDAD PESCA CONSUMO",
+          life: 3000,
+        });
+      }
+    };
+
+    cargarModuloNovedadConsumo();
+  }, [setValue, isEditing]);
+
+  // Función para renderizar navegación de cards
+  const renderNavegacionCards = () => (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        gap: "1rem",
+        marginBottom: "1rem",
+        padding: "1rem",
+        backgroundColor: "#f8f9fa",
+        borderRadius: "8px",
+      }}
+    ></div>
+  );
 
   // Preparar opciones para dropdowns aplicando regla Number()
   const personalOptions = personal.map((p) => ({
@@ -98,424 +204,752 @@ const DetMovsEntRendirNovedadForm = ({
   }));
 
   const centroCostoOptions = centrosCosto.map((cc) => ({
-    label: `${cc.Codigo} - ${cc.Nombre}` || cc.descripcion || cc.nombre,
+    label: cc.Codigo + " - " + cc.Nombre || "N/A",
     value: Number(cc.id),
   }));
 
   const tipoMovimientoOptions = tiposMovimiento.map((tm) => ({
-    label: tm.descripcion,
+    label: tm.nombre || "N/A",
     value: Number(tm.id),
-    esIngreso: tm.esIngreso,
   }));
 
-  const entidadComercialOptions = entidadesComerciales.map((ec) => ({
-    label: `${ec.ruc} - ${ec.razonSocial}`,
-    value: Number(ec.id),
-  }));
+  // Función para manejar el toggle de operacionSinFactura
+  const handleToggleOperacionSinFactura = () => {
+    const valorActual = getValues("operacionSinFactura");
+    setValue("operacionSinFactura", !valorActual);
+
+    toast.current?.show({
+      severity: "info",
+      summary: "Estado Actualizado",
+      detail: !valorActual
+        ? "Operación marcada como SIN FACTURA"
+        : "Operación marcada como CON FACTURA",
+      life: 2000,
+    });
+  };
 
   // Función para manejar el envío del formulario
-  const onSubmit = async (data) => {
+  const onSubmit = async (data, event) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+
     try {
+      // Validaciones de negocio
+      if (!data.monto || data.monto <= 0) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error de Validación",
+          detail: "El monto debe ser mayor a cero",
+          life: 3000,
+        });
+        return;
+      }
+
       // Normalizar datos aplicando regla Number() para IDs
       const datosNormalizados = {
-        ...data,
-        personalId: data.personalId ? Number(data.personalId) : null,
-        tipoMovimientoId: data.tipoMovimientoId ? Number(data.tipoMovimientoId) : null,
+        entregaARendirPescaConsumoId: Number(data.entregaARendirPescaConsumoId),
+        responsableId: data.responsableId ? Number(data.responsableId) : null,
+        tipoMovimientoId: data.tipoMovimientoId
+          ? Number(data.tipoMovimientoId)
+          : null,
         centroCostoId: data.centroCostoId ? Number(data.centroCostoId) : null,
-        entidadComercialId: data.entidadComercialId ? Number(data.entidadComercialId) : null,
-        monto: Number(data.monto) || 0,
-        fechaMovimiento: data.fechaMovimiento || new Date(),
-        fechaValidacionTesoreria: data.validadoTesoreria ? data.fechaValidacionTesoreria || new Date() : null,
-        fechaOperacionMovCaja: data.fechaOperacionMovCaja || null,
-        operacionMovCajaId: data.operacionMovCajaId || null,
-        moduloOrigenMovCajaId: Number(data.moduloOrigenMovCajaId) || 3,
-        fechaActualizacion: new Date().toISOString(),
+        monto: Number(data.monto),
+        fechaMovimiento: data.fechaMovimiento,
+        descripcion: data.descripcion ? data.descripcion.toUpperCase() : null,
+        entidadComercialId: data.entidadComercialId
+          ? Number(data.entidadComercialId)
+          : null,
+        urlComprobanteMovimiento: data.urlComprobanteMovimiento?.trim() || null,
+        validadoTesoreria: data.validadoTesoreria,
+        fechaValidacionTesoreria: data.fechaValidacionTesoreria,
+        operacionSinFactura: data.operacionSinFactura,
+        fechaOperacionMovCaja: data.fechaOperacionMovCaja,
+        operacionMovCajaId: data.operacionMovCajaId
+          ? Number(data.operacionMovCajaId)
+          : null,
+        moduloOrigenMovCajaId: data.moduloOrigenMovCajaId
+          ? Number(data.moduloOrigenMovCajaId)
+          : null,
+        actualizadoEn: new Date(),
       };
 
       if (!isEditing) {
-        datosNormalizados.fechaCreacion = new Date().toISOString();
+        datosNormalizados.creadoEn = new Date();
       }
 
-      await onSave(datosNormalizados);
-
-      toast.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: `Movimiento ${isEditing ? "actualizado" : "creado"} correctamente`,
-        life: 3000,
-      });
+      // Pasar los datos al componente padre para que maneje la operación
+      onGuardadoExitoso?.(datosNormalizados);
     } catch (error) {
-      console.error("Error al guardar movimiento:", error);
+      console.error("Error al procesar datos:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: `Error al ${isEditing ? "actualizar" : "crear"} el movimiento`,
+        detail: "Error al procesar los datos del formulario",
         life: 3000,
       });
     }
   };
 
+  // Función para validar tesorería
+  const handleValidarTesoreria = () => {
+    // Obtener valores actuales del formulario
+    const valores = getValues();
+
+    // Validar campos obligatorios
+    const camposFaltantes = [];
+
+    if (!valores.fechaMovimiento) {
+      camposFaltantes.push("Fecha del Movimiento");
+    }
+
+    if (!valores.responsableId) {
+      camposFaltantes.push("Responsable");
+    }
+
+    if (!valores.tipoMovimientoId) {
+      camposFaltantes.push("Tipo de Movimiento");
+    }
+
+    if (!valores.centroCostoId) {
+      camposFaltantes.push("Centro de Costo");
+    }
+
+    if (!valores.descripcion || valores.descripcion.trim() === "") {
+      camposFaltantes.push("Descripción");
+    }
+
+    if (!valores.monto || Number(valores.monto) <= 0) {
+      camposFaltantes.push("Monto");
+    }
+
+    // Verificar si faltan campos
+    if (camposFaltantes.length > 0) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Campos Incompletos",
+        detail: `Faltan los siguientes campos: ${camposFaltantes.join(", ")}`,
+        life: 5000,
+      });
+      return;
+    }
+
+    // Verificar que existe el comprobante PDF
+    if (
+      !valores.urlComprobanteMovimiento ||
+      valores.urlComprobanteMovimiento.trim() === ""
+    ) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Comprobante Requerido",
+        detail: "Debe adjuntar el comprobante para poder validar la Operación",
+        life: 5000,
+      });
+      return;
+    }
+
+    // Si todas las validaciones pasan, proceder con la validación
+    setValue("validadoTesoreria", true);
+    setValue("fechaValidacionTesoreria", new Date());
+
+    toast.current?.show({
+      severity: "success",
+      summary: "Validación Exitosa",
+      detail: "Operación validada Exitosamente",
+      life: 3000,
+    });
+  };
+
+  // Verificar si el formulario debe estar deshabilitado
+  const formularioDeshabilitado = getValues("validadoTesoreria");
+
   return (
     <div className="p-fluid">
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="grid">
-          {/* Personal Responsable */}
-          <div className="col-12 md:col-6">
-            <label htmlFor="personalId" className="block text-900 font-medium mb-2">
-              Personal Responsable *
-            </label>
-            <Controller
-              name="personalId"
-              control={control}
-              rules={{ required: "El personal responsable es obligatorio" }}
-              render={({ field }) => (
-                <Dropdown
-                  id="personalId"
-                  {...field}
-                  value={field.value}
-                  options={personalOptions}
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Seleccione personal"
-                  className={classNames({
-                    "p-invalid": errors.personalId,
-                  })}
-                  filter
-                  showClear
-                />
-              )}
-            />
-            {errors.personalId && (
-              <Message severity="error" text={errors.personalId.message} />
-            )}
-          </div>
-
-          {/* Fecha de Movimiento */}
-          <div className="col-12 md:col-6">
-            <label htmlFor="fechaMovimiento" className="block text-900 font-medium mb-2">
-              Fecha de Movimiento *
-            </label>
-            <Controller
-              name="fechaMovimiento"
-              control={control}
-              rules={{ required: "La fecha de movimiento es obligatoria" }}
-              render={({ field }) => (
-                <Calendar
-                  id="fechaMovimiento"
-                  {...field}
-                  value={field.value}
-                  onChange={(e) => field.onChange(e.value)}
-                  showIcon
-                  dateFormat="dd/mm/yy"
-                  placeholder="Seleccione fecha"
-                  className={classNames({
-                    "p-invalid": errors.fechaMovimiento,
-                  })}
-                />
-              )}
-            />
-            {errors.fechaMovimiento && (
-              <Message severity="error" text={errors.fechaMovimiento.message} />
-            )}
-          </div>
-
-          {/* Tipo de Movimiento */}
-          <div className="col-12 md:col-6">
-            <label htmlFor="tipoMovimientoId" className="block text-900 font-medium mb-2">
-              Tipo de Movimiento *
-            </label>
-            <Controller
-              name="tipoMovimientoId"
-              control={control}
-              rules={{ required: "El tipo de movimiento es obligatorio" }}
-              render={({ field }) => (
-                <Dropdown
-                  id="tipoMovimientoId"
-                  {...field}
-                  value={field.value}
-                  options={tipoMovimientoOptions}
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Seleccione tipo"
-                  className={classNames({
-                    "p-invalid": errors.tipoMovimientoId,
-                  })}
-                  filter
-                  showClear
-                />
-              )}
-            />
-            {errors.tipoMovimientoId && (
-              <Message severity="error" text={errors.tipoMovimientoId.message} />
-            )}
-          </div>
-
-          {/* Centro de Costo */}
-          <div className="col-12 md:col-6">
-            <label htmlFor="centroCostoId" className="block text-900 font-medium mb-2">
-              Centro de Costo *
-            </label>
-            <Controller
-              name="centroCostoId"
-              control={control}
-              rules={{ required: "El centro de costo es obligatorio" }}
-              render={({ field }) => (
-                <Dropdown
-                  id="centroCostoId"
-                  {...field}
-                  value={field.value}
-                  options={centroCostoOptions}
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Seleccione centro de costo"
-                  className={classNames({
-                    "p-invalid": errors.centroCostoId,
-                  })}
-                  filter
-                  showClear
-                />
-              )}
-            />
-            {errors.centroCostoId && (
-              <Message severity="error" text={errors.centroCostoId.message} />
-            )}
-          </div>
-
-          {/* Monto */}
-          <div className="col-12 md:col-6">
-            <label htmlFor="monto" className="block text-900 font-medium mb-2">
-              Monto *
-            </label>
-            <Controller
-              name="monto"
-              control={control}
-              rules={{ 
-                required: "El monto es obligatorio",
-                min: { value: 0, message: "El monto debe ser mayor o igual a 0" }
+      <Toast ref={toast} />
+      {/* Card de Datos Generales */}
+      {cardActiva === "datos" && (
+        <Card
+          title="Datos Generales del Movimiento"
+          className="mb-4"
+          pt={{
+            header: { className: "pb-0" },
+            content: { className: "pt-2" },
+          }}
+        >
+          <form>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
-              render={({ field }) => (
-                <InputNumber
-                  id="monto"
-                  {...field}
-                  value={field.value}
-                  onValueChange={(e) => field.onChange(e.value)}
-                  mode="currency"
-                  currency="PEN"
-                  locale="es-PE"
-                  placeholder="0.00"
-                  className={classNames({
-                    "p-invalid": errors.monto,
-                  })}
-                />
-              )}
-            />
-            {errors.monto && (
-              <Message severity="error" text={errors.monto.message} />
-            )}
-          </div>
-
-          {/* Entidad Comercial */}
-          <div className="col-12 md:col-6">
-            <label htmlFor="entidadComercialId" className="block text-900 font-medium mb-2">
-              Entidad Comercial
-            </label>
-            <Controller
-              name="entidadComercialId"
-              control={control}
-              render={({ field }) => (
-                <Dropdown
-                  id="entidadComercialId"
-                  {...field}
-                  value={field.value}
-                  options={entidadComercialOptions}
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Seleccione entidad comercial"
-                  className={classNames({
-                    "p-invalid": errors.entidadComercialId,
-                  })}
-                  filter
-                  showClear
-                />
-              )}
-            />
-            {errors.entidadComercialId && (
-              <Message severity="error" text={errors.entidadComercialId.message} />
-            )}
-          </div>
-
-          {/* Descripción */}
-          <div className="col-12">
-            <label htmlFor="descripcion" className="block text-900 font-medium mb-2">
-              Descripción *
-            </label>
-            <Controller
-              name="descripcion"
-              control={control}
-              rules={{ required: "La descripción es obligatoria" }}
-              render={({ field }) => (
-                <InputTextarea
-                  id="descripcion"
-                  {...field}
-                  value={field.value}
-                  onChange={(e) => field.onChange(e.target.value)}
-                  rows={3}
-                  placeholder="Ingrese descripción del movimiento"
-                  className={classNames({
-                    "p-invalid": errors.descripcion,
-                  })}
-                />
-              )}
-            />
-            {errors.descripcion && (
-              <Message severity="error" text={errors.descripcion.message} />
-            )}
-          </div>
-
-          {/* URL Comprobante */}
-          <div className="col-12">
-            <label htmlFor="urlComprobanteMovimiento" className="block text-900 font-medium mb-2">
-              URL Comprobante
-            </label>
-            <Controller
-              name="urlComprobanteMovimiento"
-              control={control}
-              render={({ field }) => (
-                <InputText
-                  id="urlComprobanteMovimiento"
-                  {...field}
-                  value={field.value}
-                  onChange={(e) => field.onChange(e.target.value)}
-                  placeholder="URL del comprobante del movimiento"
-                  className={classNames({
-                    "p-invalid": errors.urlComprobanteMovimiento,
-                  })}
-                />
-              )}
-            />
-            {errors.urlComprobanteMovimiento && (
-              <Message severity="error" text={errors.urlComprobanteMovimiento.message} />
-            )}
-          </div>
-
-          {/* Validación Tesorería */}
-          <div className="col-12 md:col-6">
-            <div className="field-checkbox">
-              <Controller
-                name="validadoTesoreria"
-                control={control}
-                render={({ field }) => (
-                  <Checkbox
-                    inputId="validadoTesoreria"
-                    checked={field.value}
-                    onChange={(e) => field.onChange(e.checked)}
-                  />
-                )}
-              />
-              <label htmlFor="validadoTesoreria" className="ml-2">
-                Validado por Tesorería
-              </label>
-            </div>
-          </div>
-
-          {/* Fecha Validación Tesorería - Solo si está validado */}
-          {validadoTesoreria && (
-            <div className="col-12 md:col-6">
-              <label htmlFor="fechaValidacionTesoreria" className="block text-900 font-medium mb-2">
-                Fecha Validación Tesorería
-              </label>
-              <Controller
-                name="fechaValidacionTesoreria"
-                control={control}
-                render={({ field }) => (
-                  <Calendar
-                    id="fechaValidacionTesoreria"
-                    {...field}
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.value)}
-                    showIcon
-                    dateFormat="dd/mm/yy"
-                    placeholder="Seleccione fecha"
-                    className={classNames({
-                      "p-invalid": errors.fechaValidacionTesoreria,
-                    })}
-                  />
-                )}
-              />
-              {errors.fechaValidacionTesoreria && (
-                <Message severity="error" text={errors.fechaValidacionTesoreria.message} />
-              )}
-            </div>
-          )}
-
-          {/* Operación Sin Factura */}
-          <div className="col-12 md:col-6">
-            <div className="field-checkbox">
-              <Controller
-                name="operacionSinFactura"
-                control={control}
-                render={({ field }) => (
-                  <Checkbox
-                    inputId="operacionSinFactura"
-                    checked={field.value}
-                    onChange={(e) => field.onChange(e.checked)}
-                  />
-                )}
-              />
-              <label htmlFor="operacionSinFactura" className="ml-2">
-                Operación Sin Factura
-              </label>
-            </div>
-          </div>
-
-          {/* Información de solo lectura para edición */}
-          {isEditing && movimiento && (
-            <>
-              <div className="col-6">
+            >
+              <div style={{ flex: 1 }}>
                 <label className="block text-900 font-medium mb-2">
                   Fecha de Creación
                 </label>
                 <InputText
-                  value={movimiento.fechaCreacion ? new Date(movimiento.fechaCreacion).toLocaleString("es-PE") : ""}
+                  value={
+                    movimiento?.creadoEn
+                      ? new Date(movimiento.creadoEn).toLocaleString("es-PE")
+                      : new Date().toLocaleString("es-PE")
+                  }
                   readOnly
                   className="p-inputtext-sm"
                 />
               </div>
-              <div className="col-6">
+              <div style={{ flex: 1 }}>
+                {/* Fecha del Movimiento */}
+                <label
+                  htmlFor="fechaMovimiento"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Fecha del Movimiento *
+                </label>
+                <Controller
+                  name="fechaMovimiento"
+                  control={control}
+                  rules={{ required: "La fecha es obligatoria" }}
+                  render={({ field }) => (
+                    <Calendar
+                      id="fechaMovimiento"
+                      {...field}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      showIcon
+                      showTime
+                      hourFormat="24"
+                      dateFormat="dd/mm/yy"
+                      placeholder="Seleccione fecha y hora"
+                      className={classNames({
+                        "p-invalid": errors.fechaMovimiento,
+                      })}
+                      inputStyle={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.fechaMovimiento && (
+                  <Message
+                    severity="error"
+                    text={errors.fechaMovimiento.message}
+                  />
+                )}
+              </div>
+
+              <div style={{ flex: 2 }}>
+                {/* Responsable */}
+                <label
+                  htmlFor="responsableId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Responsable *
+                </label>
+                <Controller
+                  name="responsableId"
+                  control={control}
+                  rules={{ required: "El responsable es obligatorio" }}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="responsableId"
+                      {...field}
+                      value={field.value}
+                      options={personalOptions}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione responsable"
+                      className={classNames({
+                        "p-invalid": errors.responsableId,
+                      })}
+                      filter
+                      showClear
+                      style={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.responsableId && (
+                  <Message
+                    severity="error"
+                    text={errors.responsableId.message}
+                  />
+                )}
+              </div>
+              <div style={{ flex: 2 }}>
+                {/* Tipo de Movimiento */}
+                <label
+                  htmlFor="tipoMovimientoId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Tipo de Movimiento *
+                </label>
+                <Controller
+                  name="tipoMovimientoId"
+                  control={control}
+                  rules={{ required: "El tipo de movimiento es obligatorio" }}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="tipoMovimientoId"
+                      {...field}
+                      value={field.value}
+                      options={tipoMovimientoOptions}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione tipo"
+                      className={classNames({
+                        "p-invalid": errors.tipoMovimientoId,
+                      })}
+                      filter
+                      showClear
+                      style={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.tipoMovimientoId && (
+                  <Message
+                    severity="error"
+                    text={errors.tipoMovimientoId.message}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Entidad Comercial */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                {/* Entidad Comercial */}
+                <div className="p-field">
+                  <label htmlFor="entidadComercialId">
+                    Entidad Comercial <span className="text-red-500">*</span>
+                  </label>
+                  <Controller
+                    name="entidadComercialId"
+                    control={control}
+                    rules={{ required: "La entidad comercial es obligatoria" }}
+                    render={({ field }) => (
+                      <Dropdown
+                        {...field}
+                        options={entidadesComerciales.map((entidad) => ({
+                          label: entidad.razonSocial,
+                          value: Number(entidad.id),
+                        }))}
+                        placeholder="Seleccione una entidad comercial"
+                        className={classNames({
+                          "p-invalid": errors.entidadComercialId,
+                        })}
+                        showClear
+                        filter
+                        filterBy="label"
+                      />
+                    )}
+                  />
+                  {errors.entidadComercialId && (
+                    <Message
+                      severity="error"
+                      text={errors.entidadComercialId.message}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                {/* Centro de Costo */}
+                <label
+                  htmlFor="centroCostoId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Centro de Costo *
+                </label>
+                <Controller
+                  name="centroCostoId"
+                  control={control}
+                  rules={{ required: "El centro de costo es obligatorio" }}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="centroCostoId"
+                      {...field}
+                      value={field.value}
+                      options={centroCostoOptions}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione centro de costo"
+                      className={classNames({
+                        "p-invalid": errors.centroCostoId,
+                      })}
+                      filter
+                      showClear
+                      style={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.centroCostoId && (
+                  <Message
+                    severity="error"
+                    text={errors.centroCostoId.message}
+                  />
+                )}
+              </div>
+
+              <div style={{ flex: 3 }}>
+                {/* Descripción */}
+                <label
+                  htmlFor="descripcion"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Descripción
+                </label>
+                <Controller
+                  name="descripcion"
+                  control={control}
+                  render={({ field }) => (
+                    <InputTextarea
+                      id="descripcion"
+                      {...field}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      rows={1}
+                      placeholder="Ingrese una descripción del movimiento"
+                      className={classNames({
+                        "p-invalid": errors.descripcion,
+                      })}
+                      style={{
+                        fontWeight: "bold",
+                        textTransform: "uppercase",
+                        color: "red",
+                      }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.descripcion && (
+                  <Message severity="error" text={errors.descripcion.message} />
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                {/* Monto */}
+                <label
+                  htmlFor="monto"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Monto (S/) *
+                </label>
+                <Controller
+                  name="monto"
+                  control={control}
+                  rules={{
+                    required: "El monto es obligatorio",
+                    min: {
+                      value: 0.01,
+                      message: "El monto debe ser mayor a cero",
+                    },
+                  }}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="monto"
+                      value={field.value || null}
+                      onValueChange={(e) => field.onChange(e.value)}
+                      mode="currency"
+                      currency="PEN"
+                      locale="es-PE"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
+                      min={0}
+                      className={classNames({
+                        "p-invalid": errors.monto,
+                      })}
+                      inputStyle={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.monto && (
+                  <Message severity="error" text={errors.monto.message} />
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Estado Facturación
+                </label>
+                <Button
+                  type="button"
+                  label={operacionSinFactura ? "S/FACTURA" : "C/FACTURA"}
+                  icon={
+                    operacionSinFactura
+                      ? "pi pi-exclamation-triangle"
+                      : "pi pi-check-circle"
+                  }
+                  className={
+                    operacionSinFactura
+                      ? "p-button-warning"
+                      : "p-button-primary"
+                  }
+                  onClick={handleToggleOperacionSinFactura}
+                  size="small"
+                  style={{ width: "100%" }}
+                  disabled={formularioDeshabilitado}
+                />
+              </div>
+            </div>
+
+            {/* Sección de Comprobante PDF */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                alignItems: "end",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Estado
+                </label>
+                <Button
+                  type="button"
+                  label={validadoTesoreria ? "VALIDADO" : "PENDIENTE"}
+                  icon={
+                    validadoTesoreria ? "pi pi-check-circle" : "pi pi-clock"
+                  }
+                  className={
+                    validadoTesoreria ? "p-button-primary" : "p-button-danger"
+                  }
+                  disabled
+                  size="small"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Fecha de Validación
+                </label>
+                <Controller
+                  name="fechaValidacionTesoreria"
+                  control={control}
+                  render={({ field }) => (
+                    <InputText
+                      {...field}
+                      value={
+                        field.value
+                          ? new Date(field.value).toLocaleString("es-PE", {
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: false,
+                            })
+                          : ""
+                      }
+                      placeholder="Pendiente"
+                      readOnly
+                      disabled
+                      className="p-inputtext-sm"
+                    />
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Sección de Validación de Tesorería */}
+
+            {/* Sección Movimiento de Caja */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                alignItems: "end",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Fecha Operación Mov. Caja
+                </label>
+                <Controller
+                  name="fechaOperacionMovCaja"
+                  control={control}
+                  render={({ field }) => (
+                    <InputText
+                      value={
+                        field.value
+                          ? new Date(field.value).toLocaleString("es-PE")
+                          : ""
+                      }
+                      placeholder="Pendiente"
+                      readOnly
+                      disabled
+                      className="p-inputtext-sm"
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  ID Operación Mov. Caja
+                </label>
+                <Controller
+                  name="operacionMovCajaId"
+                  control={control}
+                  render={({ field }) => (
+                    <InputText
+                      value={field.value ? field.value.toString() : ""}
+                      placeholder="Pendiente"
+                      readOnly
+                      disabled
+                      className="p-inputtext-sm"
+                    />
+                  )}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Módulo Origen
+                </label>
+                <InputText
+                  value={
+                    modulosNovedadConsumo
+                      ? `${modulosNovedadConsumo.id} - ${modulosNovedadConsumo.nombre}`
+                      : "3 - NOVEDAD PESCA CONSUMO"
+                  }
+                  readOnly
+                  disabled
+                  className="p-inputtext-sm"
+                  style={{ color: "#2196F3" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
                 <label className="block text-900 font-medium mb-2">
                   Última Actualización
                 </label>
                 <InputText
-                  value={movimiento.fechaActualizacion ? new Date(movimiento.fechaActualizacion).toLocaleString("es-PE") : ""}
+                  value={
+                    movimiento?.actualizadoEn
+                      ? new Date(movimiento.actualizadoEn).toLocaleString(
+                          "es-PE"
+                        )
+                      : ""
+                  }
                   readOnly
                   className="p-inputtext-sm"
                 />
               </div>
-            </>
-          )}
+              <div style={{ flex: 1 }}>
+                {!validadoTesoreria && (
+                  <Button
+                    type="button"
+                    label={
+                      <span className="flex align-items-center gap-1">
+                        <i className="pi pi-check"></i>
+                        <i className="pi pi-dollar"></i>
+                        <span>Validar</span>
+                      </span>
+                    }
+                    className="p-button-danger"
+                    onClick={handleValidarTesoreria}
+                    size="small"
+                    severity="danger"
+                    disabled={formularioDeshabilitado}
+                  />
+                )}
+              </div>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {/* Card de PDF */}
+      {cardActiva === "pdf" && (
+        <PdfDetMovEntRendirNovedadCard
+          control={control}
+          errors={errors}
+          urlComprobanteMovimiento={urlComprobanteMovimiento}
+          toast={toast}
+          setValue={setValue}
+          movimiento={movimiento}
+        />
+      )}
+      {/* Botones de Cards */}
+
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          marginBottom: "0.5rem",
+          alignItems: "center",
+          marginTop: "0.5rem",
+          justifyContent: "space-between",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        {/* Grupo de botones de navegación - Izquierda */}
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <Button
+            icon="pi pi-file-edit"
+            className={
+              cardActiva === "datos" ? "p-button-primary" : "p-button-outlined"
+            }
+            onClick={() => setCardActiva("datos")}
+            size="small"
+            tooltip="Datos Generales"
+            raised
+          />
+          <Button
+            icon="pi pi-file-pdf"
+            className={
+              cardActiva === "pdf" ? "p-button-primary" : "p-button-outlined"
+            }
+            onClick={() => setCardActiva("pdf")}
+            size="small"
+            tooltip="Comprobante PDF"
+            raised
+          />
         </div>
 
-        {/* Botones de acción */}
-        <div className="flex justify-content-end gap-2 mt-4">
+        {/* Grupo de botones de acción - Derecha */}
+        <div style={{ display: "flex", gap: "0.5rem" }}>
           <Button
             type="button"
             label="Cancelar"
             icon="pi pi-times"
-            className="p-button-text"
-            onClick={onCancel}
+            className="p-button-warning"
+            size="small"
+            severity="warning"
+            onClick={onCancelar}
+            disabled={formularioDeshabilitado}
           />
           <Button
-            type="submit"
+            type="button"
             label={isEditing ? "Actualizar" : "Crear"}
             icon={isEditing ? "pi pi-check" : "pi pi-plus"}
-            className="p-button-primary"
+            className="p-button-success"
+            size="small"
+            severity="success"
+            onClick={handleSubmit(onSubmit)}
+            disabled={formularioDeshabilitado}
           />
         </div>
-      </form>
-
-      <Toast ref={toast} />
+      </div>
     </div>
   );
 };
-
 export default DetMovsEntRendirNovedadForm;

@@ -57,6 +57,10 @@ const PDFViewer = ({ urlDocumento, altura = '600px' }) => {
           // Soporte para comprobantes de movimientos de entrega a rendir
           const rutaArchivo = urlDocumento.replace('/uploads/comprobantes-det-movs-entrega-rendir/', '');
           urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir/archivo/${rutaArchivo}`;
+        } else if (urlDocumento.startsWith('/uploads/comprobantes-det-movs-pesca-consumo/')) {
+          // Soporte para comprobantes de movimientos de Novedad Pesca Consumo
+          const rutaArchivo = urlDocumento.replace('/uploads/comprobantes-det-movs-pesca-consumo/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/movs-entregarendir-pesca-consumo/archivo/${rutaArchivo}`;
         } else if (urlDocumento.startsWith('/uploads/reportes-faena-calas/')) {
           // Soporte para reportes de faena calas (ruta protegida con JWT)
           const rutaArchivo = urlDocumento.replace('/uploads/reportes-faena-calas/', '');

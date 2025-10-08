@@ -44,10 +44,10 @@ export const abrirPdfEnNuevaPestana = async (urlPdf, toast, mensajeError = "No h
     } else if (urlPdf.startsWith("/uploads/comprobantes-det-movs-entrega-rendir/")) {
       const rutaArchivo = urlPdf.replace("/uploads/comprobantes-det-movs-entrega-rendir/", "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir/archivo/${rutaArchivo}`;
-    } else if (urlPdf.startsWith("/uploads/comprobantes-det-movs-entrega-rendir-consumo/")) {
+    } else if (urlPdf.startsWith("/uploads/comprobantes-det-movs-pesca-consumo/")) {
       // Soporte para comprobantes de movimientos de Novedad Pesca Consumo
-      const rutaArchivo = urlPdf.replace("/uploads/comprobantes-det-movs-entrega-rendir-consumo/", "");
-      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir-pesca-consumo/archivo/${rutaArchivo}`;
+      const rutaArchivo = urlPdf.replace("/uploads/comprobantes-det-movs-pesca-consumo/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/movs-entregarendir-pesca-consumo/archivo/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/fichas-tecnicas-boliches/")) {
       const rutaArchivo = urlPdf.replace("/uploads/fichas-tecnicas-boliches/", "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/ficha-tecnica-boliches/archivo/${rutaArchivo}`;
@@ -176,10 +176,12 @@ export const descargarPdf = async (urlPdf, toast, nombreArchivo = "documento.pdf
     } else if (urlPdf.startsWith("/uploads/documentacion-embarcacion/")) {
       const rutaArchivo = urlPdf.replace("/uploads/documentacion-embarcacion/", "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/documentaciones-embarcacion/archivo/${rutaArchivo}`;
-    } else if (urlPdf.startsWith("/uploads/comprobantes-det-movs-entrega-rendir-consumo/")) {
+
+    } else if (urlPdf.startsWith("/uploads/comprobantes-det-movs-pesca-consumo/")) {
       // Soporte para comprobantes de movimientos de Novedad Pesca Consumo
-      const rutaArchivo = urlPdf.replace("/uploads/comprobantes-det-movs-entrega-rendir-consumo/", "");
-      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir-pesca-consumo/archivo/${rutaArchivo}`;
+      const rutaArchivo = urlPdf.replace("/uploads/comprobantes-det-movs-pesca-consumo/", "");
+      urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/movs-entregarendir-pesca-consumo/archivo/${rutaArchivo}`;
+      
     } else if (urlPdf.startsWith("/uploads/fichas-tecnicas-boliches/")) {
       const rutaArchivo = urlPdf.replace("/uploads/fichas-tecnicas-boliches/", "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/ficha-tecnica-boliches/archivo/${rutaArchivo}`;

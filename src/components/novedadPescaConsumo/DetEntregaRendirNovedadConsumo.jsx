@@ -1,14 +1,6 @@
-/**
- * DetEntregaRendirNovedadConsumo.jsx
- *
- * Componente para gestión de detalle de entregas a rendir en novedad pesca consumo.
- * Maneja los movimientos DetMovsEntRendirPescaConsumo asociados a una EntregaARendirPescaConsumo.
- *
- * @author ERP Megui
- * @version 1.0.0
- */
-
-import React, { useState, useEffect, useRef } from "react";
+// src/components/novedadPescaConsumo/DetEntregaRendirNovedadConsumo.jsx
+// Componente autónomo para gestión de detalle de entregas a rendir en pesca consumo
+import React, { useState, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -17,32 +9,34 @@ import { Badge } from "primereact/badge";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { confirmDialog } from "primereact/confirmdialog";
-import { Toolbar } from "primereact/toolbar";
-import { Tag } from "primereact/tag";
-import { InputNumber } from "primereact/inputnumber";
 import DetMovsEntRendirNovedadForm from "./DetMovsEntRendirNovedadForm";
 import { getResponsiveFontSize } from "../../utils/utils";
 import {
-  getAllDetMovsEntRendirPescaConsumo,
   crearDetMovsEntRendirPescaConsumo,
   actualizarDetMovsEntRendirPescaConsumo,
   eliminarDetMovsEntRendirPescaConsumo,
 } from "../../api/detMovsEntRendirPescaConsumo";
+import { actualizarEntregaARendirPescaConsumo } from "../../api/entregaARendirPescaConsumo";
 
 export default function DetEntregaRendirNovedadConsumo({
-  entregaARendirPescaConsumoId,
+  // Props de datos
+  entregaARendirPescaConsumo,
+  movimientos = [],
   personal = [],
   centrosCosto = [],
   tiposMovimiento = [],
   entidadesComerciales = [],
+
+  // Props de estado
+  novedadPescaConsumoIniciada = false,
+  loading = false,
+  selectedMovimientos = [],
+
+  // Props de callbacks
+  onSelectionChange,
   onDataChange,
 }) {
-  // Estados locales
-  const [movimientos, setMovimientos] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedMovimientos, setSelectedMovimientos] = useState([]);
-
-  // Estados para filtros
+  // Estados locales para filtros
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
   const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);
   const [filtroIngresoEgreso, setFiltroIngresoEgreso] = useState(null);
@@ -54,38 +48,6 @@ export default function DetEntregaRendirNovedadConsumo({
   const [editingMovimiento, setEditingMovimiento] = useState(null);
 
   const toast = useRef(null);
-
-  // Cargar movimientos
-  useEffect(() => {
-    if (entregaARendirPescaConsumoId) {
-      cargarMovimientos();
-    }
-  }, [entregaARendirPescaConsumoId]);
-
-  const cargarMovimientos = async () => {
-    if (!entregaARendirPescaConsumoId) return;
-
-    try {
-      setLoading(true);
-      const movimientosData = await getAllDetMovsEntRendirPescaConsumo();
-      const movimientosFiltrados = movimientosData.filter(
-        (mov) =>
-          Number(mov.entregaARendirPescaConsumoId) ===
-          Number(entregaARendirPescaConsumoId)
-      );
-      setMovimientos(movimientosFiltrados);
-    } catch (error) {
-      console.error("Error al cargar movimientos:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Error al cargar los movimientos",
-        life: 3000,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Función para obtener movimientos filtrados
   const obtenerMovimientosFiltrados = () => {
@@ -149,7 +111,27 @@ export default function DetEntregaRendirNovedadConsumo({
     }
   };
 
-  // Handlers CRUD
+  const obtenerPropiedadesFiltroIngresoEgreso = () => {
+    if (filtroIngresoEgreso === null) {
+      return { label: "Todos", severity: "info" };
+    } else if (filtroIngresoEgreso === true) {
+      return { label: "Ingresos", severity: "success" };
+    } else {
+      return { label: "Egresos", severity: "danger" };
+    }
+  };
+
+  const obtenerPropiedadesFiltroValidacionTesoreria = () => {
+    if (filtroValidacionTesoreria === null) {
+      return { label: "Todos", severity: "info" };
+    } else if (filtroValidacionTesoreria === true) {
+      return { label: "Validados", severity: "success" };
+    } else {
+      return { label: "Pendientes", severity: "danger" };
+    }
+  };
+
+  // Handlers internos
   const handleNuevoMovimiento = () => {
     setEditingMovimiento(null);
     setShowMovimientoForm(true);
@@ -160,47 +142,10 @@ export default function DetEntregaRendirNovedadConsumo({
     setShowMovimientoForm(true);
   };
 
-  const handleEliminarMovimiento = (movimiento) => {
-    confirmDialog({
-      message: "¿Está seguro de eliminar este movimiento?",
-      header: "Confirmar Eliminación",
-      icon: "pi pi-exclamation-triangle",
-      accept: async () => {
-        try {
-          await eliminarDetMovsEntRendirPescaConsumo(movimiento.id);
-          toast.current?.show({
-            severity: "success",
-            summary: "Éxito",
-            detail: "Movimiento eliminado correctamente",
-            life: 3000,
-          });
-          cargarMovimientos();
-          onDataChange?.();
-        } catch (error) {
-          console.error("Error al eliminar movimiento:", error);
-          toast.current?.show({
-            severity: "error",
-            summary: "Error",
-            detail: "Error al eliminar el movimiento",
-            life: 3000,
-          });
-        }
-      },
-    });
-  };
-
   const handleGuardarMovimiento = async (data) => {
     try {
-      const movimientoData = {
-        ...data,
-        entregaARendirPescaConsumoId: Number(entregaARendirPescaConsumoId),
-      };
-
       if (editingMovimiento) {
-        await actualizarDetMovsEntRendirPescaConsumo(
-          editingMovimiento.id,
-          movimientoData
-        );
+        await actualizarDetMovsEntRendirPescaConsumo(editingMovimiento.id, data);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -208,7 +153,7 @@ export default function DetEntregaRendirNovedadConsumo({
           life: 3000,
         });
       } else {
-        await crearDetMovsEntRendirPescaConsumo(movimientoData);
+        await crearDetMovsEntRendirPescaConsumo(data);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -218,81 +163,171 @@ export default function DetEntregaRendirNovedadConsumo({
       }
 
       setShowMovimientoForm(false);
-      cargarMovimientos();
-      onDataChange?.();
+      setEditingMovimiento(null);
+      onDataChange?.(); // Notificar al padre que recargue datos
     } catch (error) {
       console.error("Error al guardar movimiento:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al guardar el movimiento",
+        detail: "Error al guardar movimiento",
         life: 3000,
       });
     }
   };
 
-  // Templates para columnas
-  const tipoMovimientoTemplate = (rowData) => {
-    const tipo = tiposMovimiento.find(
-      (t) => Number(t.id) === Number(rowData.tipoMovimientoId)
-    );
-    return tipo ? tipo.descripcion : "-";
+  const handleEliminarMovimiento = (movimiento) => {
+    confirmDialog({
+      message: `¿Está seguro de eliminar el movimiento del ${new Date(
+        movimiento.fechaMovimiento
+      ).toLocaleDateString()}?`,
+      header: "Confirmar Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
+      accept: async () => {
+        try {
+          await eliminarDetMovsEntRendirPescaConsumo(movimiento.id);
+          toast.current?.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: "Movimiento eliminado correctamente",
+            life: 3000,
+          });
+          onDataChange?.(); // Notificar al padre que recargue datos
+        } catch (error) {
+          console.error("Error al eliminar movimiento:", error);
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "Error al eliminar movimiento",
+            life: 3000,
+          });
+        }
+      },
+    });
   };
 
-  const centroCostoTemplate = (rowData) => {
-    const centro = centrosCosto.find(
-      (c) => Number(c.id) === Number(rowData.centroCostoId)
-    );
-    return centro ? `${centro.Codigo} - ${centro.Nombre}` : "-";
+  const handleProcesarLiquidacion = () => {
+    confirmDialog({
+      message:
+        "¿Está seguro de procesar la liquidación? Esta acción no se puede deshacer y bloqueará todas las modificaciones futuras.",
+      header: "Confirmar Procesamiento de Liquidación",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
+      accept: async () => {
+        try {
+          const fechaActual = new Date();
+
+          // Actualizar EntregaARendirPescaConsumo
+          const entregaActualizada = {
+            ...entregaARendirPescaConsumo,
+            entregaLiquidada: true,
+            fechaLiquidacion: fechaActual,
+            fechaActualizacion: fechaActual,
+          };
+
+          await actualizarEntregaARendirPescaConsumo(
+            entregaARendirPescaConsumo.id,
+            entregaActualizada
+          );
+
+          // Actualizar todos los movimientos DetMovsEntRendirPescaConsumo
+          const promesasActualizacion = movimientos.map((movimiento) => {
+            const movimientoActualizado = {
+              ...movimiento,
+              validadoTesoreria: true,
+              fechaValidacionTesoreria: fechaActual,
+            };
+            return actualizarDetMovsEntRendirPescaConsumo(
+              movimiento.id,
+              movimientoActualizado
+            );
+          });
+
+          await Promise.all(promesasActualizacion);
+
+          toast.current?.show({
+            severity: "success",
+            summary: "Liquidación Procesada",
+            detail: "La entrega a rendir ha sido liquidada exitosamente",
+            life: 5000,
+          });
+
+          onDataChange?.(); // Notificar al padre que recargue datos
+        } catch (error) {
+          console.error("Error al procesar liquidación:", error);
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "Error al procesar la liquidación",
+            life: 5000,
+          });
+        }
+      },
+    });
   };
 
-  const personalTemplate = (rowData) => {
-    const persona = personal.find(
-      (p) => Number(p.id) === Number(rowData.personalId)
-    );
-    return persona ? `${persona.nombres} ${persona.apellidos}` : "-";
-  };
-
-  const entidadComercialTemplate = (rowData) => {
-    const entidad = entidadesComerciales.find(
-      (e) => Number(e.id) === Number(rowData.entidadComercialId)
-    );
-    return entidad ? entidad.razonSocial : "-";
+  // Templates para las columnas
+  const fechaMovimientoTemplate = (rowData) => {
+    return new Date(rowData.fechaMovimiento).toLocaleDateString("es-PE");
   };
 
   const montoTemplate = (rowData) => {
     return new Intl.NumberFormat("es-PE", {
       style: "currency",
       currency: "PEN",
-    }).format(rowData.monto || 0);
+    }).format(rowData.monto);
   };
 
-  const fechaTemplate = (rowData, field) => {
-    const fecha = rowData[field.field];
-    return fecha ? new Date(fecha).toLocaleDateString("es-PE") : "-";
+  const responsableTemplate = (rowData) => {
+    const responsable = personal.find(
+      (p) => Number(p.id) === Number(rowData.responsableId)
+    );
+    return responsable
+      ? responsable.nombreCompleto ||
+          `${responsable.nombres} ${responsable.apellidos}`
+      : "N/A";
   };
 
-  const ingresoEgresoTemplate = (rowData) => {
+  const tipoMovimientoTemplate = (rowData) => {
     const tipo = tiposMovimiento.find(
       (t) => Number(t.id) === Number(rowData.tipoMovimientoId)
     );
-    if (!tipo) return "-";
+    return tipo ? tipo.nombre : "N/A";
+  };
 
-    return (
-      <Tag
-        value={tipo.esIngreso ? "INGRESO" : "EGRESO"}
-        severity={tipo.esIngreso ? "success" : "danger"}
-      />
+  const centroCostoTemplate = (rowData) => {
+    const centro = centrosCosto.find(
+      (c) => Number(c.id) === Number(rowData.centroCostoId)
     );
+    return centro ? centro.Codigo + " - " + centro.Nombre : "N/A";
+  };
+
+  // Template para mostrar entidad comercial
+  const entidadComercialTemplate = (rowData) => {
+    if (!rowData.entidadComercialId) return "N/A";
+
+    const entidad = entidadesComerciales.find(
+      (e) => Number(e.id) === Number(rowData.entidadComercialId)
+    );
+    return entidad ? entidad.razonSocial : "N/A";
   };
 
   const validacionTesoreriaTemplate = (rowData) => {
     return (
-      <Tag
-        value={rowData.validadoTesoreria ? "VALIDADO" : "PENDIENTE"}
-        severity={rowData.validadoTesoreria ? "success" : "warning"}
-      />
+      <div className="text-center">
+        <Badge
+          value={rowData.validadoTesoreria ? "VALIDADO" : "PENDIENTE"}
+          severity={rowData.validadoTesoreria ? "success" : "danger"}
+        />
+      </div>
     );
+  };
+
+  const fechaValidacionTesoreriaTemplate = (rowData) => {
+    return rowData.fechaValidacionTesoreria
+      ? new Date(rowData.fechaValidacionTesoreria).toLocaleDateString("es-PE")
+      : "N/A";
   };
 
   const accionesTemplate = (rowData) => {
@@ -300,54 +335,50 @@ export default function DetEntregaRendirNovedadConsumo({
       <div className="flex gap-2">
         <Button
           icon="pi pi-pencil"
-          className="p-button-rounded p-button-text p-button-sm"
+          className="p-button-text p-button-sm"
           onClick={() => handleEditarMovimiento(rowData)}
-          tooltip="Editar movimiento"
+          aria-label="Editar"
         />
         <Button
           icon="pi pi-trash"
-          className="p-button-rounded p-button-text p-button-sm p-button-danger"
+          className="p-button-text p-button-danger p-button-sm"
           onClick={() => handleEliminarMovimiento(rowData)}
-          tooltip="Eliminar movimiento"
+          aria-label="Eliminar"
         />
       </div>
     );
   };
 
-  // Preparar opciones para filtros
-  const tipoMovimientoOptions = tiposMovimiento.map((t) => ({
-    label: t.descripcion,
-    value: Number(t.id),
-  }));
-
-  const centroCostoOptions = centrosCosto.map((c) => ({
-    label: `${c.Codigo} - ${c.Nombre}`,
-    value: Number(c.id),
-  }));
-
-  const movimientosFiltrados = obtenerMovimientosFiltrados();
+  if (!entregaARendirPescaConsumo) {
+    return null;
+  }
 
   return (
     <>
-      <div className="card">
+      <div className="mt-4">
         <DataTable
-          value={movimientosFiltrados}
-          loading={loading}
+          value={obtenerMovimientosFiltrados()}
           selection={selectedMovimientos}
-          onSelectionChange={(e) => setSelectedMovimientos(e.value)}
-          emptyMessage="No hay movimientos registrados"
+          onSelectionChange={onSelectionChange}
+          selectionMode="multiple"
+          onRowClick={(e) => handleEditarMovimiento(e.data)}
+          dataKey="id"
+          loading={loading}
           paginator
           rows={5}
           rowsPerPageOptions={[5, 10, 25]}
           className="p-datatable-sm"
+          emptyMessage="No hay movimientos registrados"
           style={{ fontSize: getResponsiveFontSize(), cursor: "pointer" }}
+          rowClassName={() => "p-selectable-row"}
           header={
             <div>
               <div
                 style={{
                   display: "flex",
                   gap: 8,
-                  alignItems: "center",
+                  alignItems: "end",
+                  marginTop: 18,
                 }}
               >
                 <div style={{ flex: 1 }}>
@@ -357,169 +388,190 @@ export default function DetEntregaRendirNovedadConsumo({
                   <Button
                     label="Nuevo"
                     icon="pi pi-plus"
-                    onClick={handleNuevoMovimiento}
                     className="p-button-success"
                     severity="success"
+                    onClick={handleNuevoMovimiento}
+                    disabled={
+                      !novedadPescaConsumoIniciada ||
+                      !entregaARendirPescaConsumo ||
+                      entregaARendirPescaConsumo?.entregaLiquidada
+                    }
                     type="button"
-                    raised
                     size="small"
                   />
                 </div>
                 <div style={{ flex: 1 }}>
+                  <label htmlFor="">Ingreso/Egreso</label>
                   <Button
-                    label={
-                      filtroIngresoEgreso === null
-                        ? "Todos"
-                        : filtroIngresoEgreso
-                        ? "Ingresos"
-                        : "Egresos"
-                    }
+                    label={obtenerPropiedadesFiltroIngresoEgreso().label}
                     icon="pi pi-filter"
+                    className="p-button-sm"
                     onClick={alternarFiltroIngresoEgreso}
-                    className="p-button-outlined"
+                    severity={obtenerPropiedadesFiltroIngresoEgreso().severity}
                     type="button"
                     size="small"
-                    raised
                   />
                 </div>
                 <div style={{ flex: 1 }}>
+                  <label htmlFor="">Validación Tesorería</label>
                   <Button
-                    label={
-                      filtroValidacionTesoreria === null
-                        ? "Todos"
-                        : filtroValidacionTesoreria
-                        ? "Validados"
-                        : "Pendientes"
-                    }
-                    icon="pi pi-check-circle"
-                    className="p-button-outlined p-button-sm"
+                    label={obtenerPropiedadesFiltroValidacionTesoreria().label}
+                    icon="pi pi-filter"
+                    className="p-button-sm"
                     onClick={alternarFiltroValidacionTesoreria}
-                  />
-                </div>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "center",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <Dropdown
-                    value={filtroTipoMovimiento}
-                    options={tipoMovimientoOptions}
-                    onChange={(e) => setFiltroTipoMovimiento(e.value)}
-                    placeholder="Filtrar por tipo"
-                    showClear
-                    className="w-12rem"
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <Dropdown
-                    value={filtroCentroCosto}
-                    options={centroCostoOptions}
-                    onChange={(e) => setFiltroCentroCosto(e.value)}
-                    placeholder="Filtrar por centro"
-                    showClear
-                    className="w-12rem"
+                    severity={
+                      obtenerPropiedadesFiltroValidacionTesoreria().severity
+                    }
+                    type="button"
+                    size="small"
                   />
                 </div>
                 <div style={{ flex: 1 }}>
                   <Button
                     label="Limpiar"
-                    icon="pi pi-times"
-                    className="p-button-text p-button-sm"
+                    icon="pi pi-filter-slash"
+                    className="p-button-sm p-button-outlined"
                     onClick={limpiarFiltros}
+                    type="button"
+                    size="small"
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Procesar Liquidación"
+                    icon="pi pi-check"
+                    className="p-button-sm p-button-outlined"
+                    onClick={handleProcesarLiquidacion}
+                    type="button"
+                    disabled={entregaARendirPescaConsumo.entregaLiquidada}
+                    size="small"
+                  />
+                </div>
+              </div>
+
+              {/* Sección de Filtros */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  marginTop: 10,
+                  marginBottom: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <Dropdown
+                    value={filtroTipoMovimiento}
+                    options={tiposMovimiento}
+                    optionLabel="nombre"
+                    optionValue="id"
+                    placeholder="Filtrar por Tipo de Movimiento"
+                    onChange={(e) => setFiltroTipoMovimiento(e.value)}
+                    className="w-full"
+                    showClear
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Dropdown
+                    value={filtroCentroCosto}
+                    options={centrosCosto.map((centro) => ({
+                      ...centro,
+                      displayLabel: centro.Codigo + " - " + centro.Nombre,
+                    }))}
+                    optionLabel="displayLabel"
+                    optionValue="id"
+                    placeholder="Filtrar por Centro de Costo"
+                    onChange={(e) => setFiltroCentroCosto(e.value)}
+                    className="w-full"
+                    showClear
                   />
                 </div>
               </div>
             </div>
           }
         >
-          <Column selectionMode="multiple" style={{ width: "3rem" }} />
-          <Column field="id" header="ID" style={{ width: "80px" }} sortable />
+          <Column
+            selectionMode="multiple"
+            headerStyle={{ width: "3rem" }}
+          ></Column>
+          <Column
+            field="fechaMovimiento"
+            header="Fecha"
+            body={fechaMovimientoTemplate}
+            sortable
+          />
+          <Column
+            field="responsableId"
+            header="Responsable"
+            body={responsableTemplate}
+            sortable
+          />
           <Column
             field="tipoMovimientoId"
             header="Tipo"
             body={tipoMovimientoTemplate}
             sortable
-            style={{ minWidth: "150px" }}
+          />
+          <Column field="monto" header="Monto" body={montoTemplate} sortable />
+          <Column
+            field="centroCostoId"
+            header="Centro de Costo"
+            body={centroCostoTemplate}
+            sortable
           />
           <Column
-            field="descripcion"
-            header="Descripción"
+            field="validadoTesoreria"
+            header="Validación Tesorería"
+            body={validacionTesoreriaTemplate}
+            sortable
+          />
+          <Column
+            field="fechaValidacionTesoreria"
+            header="Fecha Validación"
+            body={fechaValidacionTesoreriaTemplate}
+            sortable
+          />
+          <Column field="descripcion" header="Descripción" sortable />
+          <Column
+            field="entidadComercialId"
+            header="Entidad Comercial"
+            body={entidadComercialTemplate}
             sortable
             style={{ minWidth: "200px" }}
           />
           <Column
-            field="monto"
-            header="Monto"
-            body={montoTemplate}
-            sortable
-            style={{ width: "120px" }}
-          />
-          <Column
-            field="tipoMovimientoId"
-            header="Tipo Mov."
-            body={ingresoEgresoTemplate}
-            sortable
-            style={{ width: "100px" }}
-          />
-          <Column
-            field="centroCostoId"
-            header="Centro Costo"
-            body={centroCostoTemplate}
-            sortable
-            style={{ minWidth: "150px" }}
-          />
-          <Column
-            field="personalId"
-            header="Personal"
-            body={personalTemplate}
-            sortable
-            style={{ minWidth: "150px" }}
-          />
-          <Column
-            field="fechaMovimiento"
-            header="Fecha"
-            body={(rowData) =>
-              fechaTemplate(rowData, { field: "fechaMovimiento" })
-            }
-            sortable
-            style={{ width: "100px" }}
-          />
-          <Column
-            field="validadoTesoreria"
-            header="Validación"
-            body={validacionTesoreriaTemplate}
-            sortable
-            style={{ width: "100px" }}
-          />
-          <Column
             header="Acciones"
             body={accionesTemplate}
-            style={{ width: "120px" }}
+            headerStyle={{ width: "8rem", textAlign: "center" }}
+            bodyStyle={{ textAlign: "center" }}
           />
         </DataTable>
       </div>
 
-      {/* Dialog para formulario de movimiento */}
+      {/* Dialog para DetMovsEntRendirPescaConsumo */}
       <Dialog
         visible={showMovimientoForm}
-        style={{ width: "800px" }}
+        style={{ width: "1300px" }}
         header={editingMovimiento ? "Editar Movimiento" : "Nuevo Movimiento"}
         modal
-        onHide={() => setShowMovimientoForm(false)}
         className="p-fluid"
+        onHide={() => {
+          setShowMovimientoForm(false);
+          setEditingMovimiento(null);
+        }}
       >
         <DetMovsEntRendirNovedadForm
           movimiento={editingMovimiento}
+          entregaARendirPescaConsumoId={entregaARendirPescaConsumo?.id}
           personal={personal}
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           entidadesComerciales={entidadesComerciales}
-          onSave={handleGuardarMovimiento}
-          onCancel={() => setShowMovimientoForm(false)}
+          onGuardadoExitoso={handleGuardarMovimiento}
+          onCancelar={() => {
+            setShowMovimientoForm(false);
+            setEditingMovimiento(null);
+          }}
         />
       </Dialog>
 

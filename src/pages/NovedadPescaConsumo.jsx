@@ -13,6 +13,7 @@ import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
+import { Badge } from "primereact/badge";
 import { Dropdown } from "primereact/dropdown";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import {
@@ -376,44 +377,40 @@ const NovedadPescaConsumo = () => {
   };
 
   /**
-   * Template para estado dinámico basado en fechas
-   */
-  const estadoTemplate = (rowData) => {
-    const ahora = new Date();
-    const inicio = new Date(rowData.fechaInicio);
-    const fin = new Date(rowData.fechaFin);
-
-    let estado = "Programada";
-    let severity = "info";
-
-    if (ahora >= inicio && ahora <= fin) {
-      estado = "En Curso";
-      severity = "success";
-    } else if (ahora > fin) {
-      estado = "Finalizada";
-      severity = "secondary";
-    }
-
-    return <Tag value={estado} severity={severity} />;
-  };
-  /**
    * Template para estado de la novedad (del campo estadoNovedadPescaConsumoId)
    */
   const estadoNovedadTemplate = (rowData) => {
-    const descripcion = getEstadoDescripcion(rowData.estadoNovedadPescaConsumoId);
-    
+    const descripcion = getEstadoDescripcion(
+      rowData.estadoNovedadPescaConsumoId
+    );
+
     // Definir severidad según el estado
     let severity = "info";
-    if (descripcion.toLowerCase().includes("activ") || descripcion.toLowerCase().includes("curso")) {
+    let icon = "pi pi-question-circle";
+
+    if (
+      descripcion.toLowerCase().includes("activ") ||
+      descripcion.toLowerCase().includes("curso")
+    ) {
       severity = "success";
-    } else if (descripcion.toLowerCase().includes("finaliz") || descripcion.toLowerCase().includes("cerrad")) {
+      icon = "pi pi-check-circle";
+    } else if (
+      descripcion.toLowerCase().includes("finaliz") ||
+      descripcion.toLowerCase().includes("cerrad")
+    ) {
       severity = "secondary";
+      icon = "pi pi-flag";
     } else if (descripcion.toLowerCase().includes("cancelad")) {
       severity = "danger";
+      icon = "pi pi-times-circle";
+    } else if (descripcion.toLowerCase().includes("espera")) {
+      severity = "warning";
+      icon = "pi pi-clock";
     }
 
-    return <Tag value={descripcion} severity={severity} />;
+    return <Tag value={descripcion} severity={severity} icon={icon} />;
   };
+
   /**
    * Template para duración de la novedad
    */
@@ -432,33 +429,124 @@ const NovedadPescaConsumo = () => {
    * Template para toneladas capturadas
    */
   const toneladasTemplate = (rowData) => {
-    if (!rowData.toneladasCapturadas) return "-";
-    return `${Number(rowData.toneladasCapturadas).toLocaleString("es-PE", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })} Tn`;
+    const valorNumerico = Number(rowData.toneladasCapturadas) || 0;
+    return (
+      <div className="text-right">
+        <Badge
+          value={`${valorNumerico.toFixed(2)} Ton`}
+          severity={valorNumerico > 0 ? "success" : "secondary"}
+        />
+      </div>
+    );
+  };
+
+  /**
+   * Template para cuotas en toneladas
+   */
+  const cuotaTemplate = (rowData, field) => {
+    const valor = rowData[field];
+
+    if (!valor) return "-";
+
+    return (
+      <div className="text-right">
+        <Badge value={`${Number(valor).toFixed(2)} Ton`} severity="info" />
+      </div>
+    );
+  };
+
+  /**
+   * Template para cuota total (suma de cuota propia + alquilada)
+   */
+  const cuotaTotalTemplate = (rowData) => {
+    const cuotaPropia = Number(rowData.cuotaPropiaTon) || 0;
+    const cuotaAlquilada = Number(rowData.cuotaAlquiladaTon) || 0;
+    const total = cuotaPropia + cuotaAlquilada;
+
+    return (
+      <div className="text-right">
+        <Badge
+          value={`${total.toFixed(2)} Ton`}
+          severity={total > 0 ? "info" : "secondary"}
+        />
+      </div>
+    );
+  };
+
+  /**
+   * Template para toneladas pendientes
+   */
+  const toneladasPendientesTemplate = (rowData) => {
+    const cuotaPropia = Number(rowData.cuotaPropiaTon) || 0;
+    const cuotaAlquilada = Number(rowData.cuotaAlquiladaTon) || 0;
+    const cuotaTotal = cuotaPropia + cuotaAlquilada;
+    const capturadas = Number(rowData.toneladasCapturadas) || 0;
+    const pendientes = Math.max(0, cuotaTotal - capturadas);
+
+    return (
+      <div className="text-right">
+        <Badge
+          value={`${pendientes.toFixed(2)} Ton`}
+          severity={pendientes > 0 ? "warning" : "success"}
+        />
+      </div>
+    );
+  };
+
+  /**
+   * Template para porcentaje avanzado
+   */
+  const porcentajeAvanzadoTemplate = (rowData) => {
+    const cuotaPropia = Number(rowData.cuotaPropiaTon) || 0;
+    const cuotaAlquilada = Number(rowData.cuotaAlquiladaTon) || 0;
+    const cuotaTotal = cuotaPropia + cuotaAlquilada;
+    const capturadas = Number(rowData.toneladasCapturadas) || 0;
+
+    if (cuotaTotal === 0) {
+      return (
+        <div className="text-center">
+          <Badge value="0%" severity="secondary" />
+        </div>
+      );
+    }
+
+    const porcentaje = (capturadas / cuotaTotal) * 100;
+    let severity = "secondary";
+
+    if (porcentaje >= 100) {
+      severity = "success";
+    } else if (porcentaje >= 75) {
+      severity = "info";
+    } else if (porcentaje >= 50) {
+      severity = "warning";
+    } else {
+      severity = "danger";
+    }
+
+    return (
+      <div className="text-center">
+        <Badge value={`${porcentaje.toFixed(1)}%`} severity={severity} />
+      </div>
+    );
   };
 
   /**
    * Template para resolución PDF
    */
   const resolucionTemplate = (rowData) => {
-    if (!rowData.numeroResolucion) return "-";
+    if (!rowData.urlResolucionPdf) return "-";
 
     return (
       <div className="flex align-items-center gap-2">
-        <span className="font-semibold">{rowData.numeroResolucion}</span>
-        {rowData.urlResolucionPdf && (
-          <Button
-            icon="pi pi-file-pdf"
-            className="p-button-rounded p-button-text p-button-sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              window.open(rowData.urlResolucionPdf, "_blank");
-            }}
-            tooltip="Ver PDF"
-          />
-        )}
+        <Button
+          icon="pi pi-file-pdf"
+          className="p-button-rounded p-button-text p-button-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            window.open(rowData.urlResolucionPdf, "_blank");
+          }}
+          tooltip="Ver PDF"
+        />
       </div>
     );
   };
@@ -531,7 +619,7 @@ const NovedadPescaConsumo = () => {
                   placeholder="Filtrar por empresa"
                   className="w-12rem"
                   showClear
-                  filter // ← Agrega esto para habilitar búsqueda
+                  filter
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -617,13 +705,37 @@ const NovedadPescaConsumo = () => {
             header="Estado"
             body={estadoNovedadTemplate}
             sortable
-            style={{ width: "120px" }}
+            style={{ width: "150px" }}
             className="text-center"
           />
           <Column
-            header="Toneladas"
+            field="cuotaTotal"
+            header="Cuota Total"
+            body={cuotaTotalTemplate}
+            sortable
+            style={{ minWidth: "130px" }}
+            className="text-right"
+          />
+          <Column
+            header="Toneladas Capturadas"
             body={toneladasTemplate}
-            style={{ width: "120px" }}
+            style={{ minWidth: "130px" }}
+            className="text-right"
+          />
+          <Column
+            field="toneladasPendientes"
+            header="Toneladas Pendientes"
+            body={toneladasPendientesTemplate}
+            sortable
+            style={{ minWidth: "130px" }}
+            className="text-right"
+          />
+          <Column
+            field="porcentajeAvanzado"
+            header="Porcentaje Avanzado"
+            body={porcentajeAvanzadoTemplate}
+            sortable
+            style={{ minWidth: "120px" }}
             className="text-right"
           />
           <Column

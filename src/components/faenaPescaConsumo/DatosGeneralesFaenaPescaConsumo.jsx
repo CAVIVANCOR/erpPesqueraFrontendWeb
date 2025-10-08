@@ -9,9 +9,7 @@ import { InputNumber } from "primereact/inputnumber";
 import { Message } from "primereact/message";
 import { classNames } from "primereact/utils";
 import CalasConsumoCard from "./CalasConsumoCard";
-import {
-  getFaenaPescaConsumoPorId,
-} from "../../api/faenaPescaConsumo";
+import { getFaenaPescaConsumoPorId } from "../../api/faenaPescaConsumo";
 
 export default function DatosGeneralesFaenaPescaConsumo({
   control,
@@ -65,7 +63,6 @@ export default function DatosGeneralesFaenaPescaConsumo({
       value: Number(estado.id),
     })) || [];
 
-
   return (
     <div className="card">
       {!faenaData?.id && (
@@ -109,7 +106,6 @@ export default function DatosGeneralesFaenaPescaConsumo({
             <small className="p-error">{errors.embarcacionId.message}</small>
           )}
         </div>
-
         <div style={{ flex: 1 }}>
           <label htmlFor="bolicheRedId">Boliche</label>
           <Controller
@@ -135,7 +131,57 @@ export default function DatosGeneralesFaenaPescaConsumo({
             <small className="p-error">{errors.bolicheRedId.message}</small>
           )}
         </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="estadoFaenaId">Estado Faena</label>
+          <Controller
+            name="estadoFaenaId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="estadoFaenaId"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={estadosFaenaOptions}
+                optionLabel="label"
+                optionValue="value"
+                style={{ fontWeight: "bold" }}
+                placeholder="Seleccione estado"
+                disabled
+              />
+            )}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="toneladasCapturadasFaena">Toneladas Capturadas</label>
+          <Controller
+            name="toneladasCapturadasFaena"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="toneladasCapturadasFaena"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="decimal"
+                minFractionDigits={0}
+                maxFractionDigits={3}
+                suffix=" Ton"
+                style={{ fontWeight: "bold", backgroundColor: "#f7ee88" }}
+                disabled
+              />
+            )}
+          />
+        </div>
+      </div>
 
+      <div
+        style={{
+          display: "flex",
+          alignItems: "end",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+          marginTop: 10,
+        }}
+      >
         <div style={{ flex: 1 }}>
           <label htmlFor="bahiaId">Bahía</label>
           <Controller
@@ -161,7 +207,6 @@ export default function DatosGeneralesFaenaPescaConsumo({
             <small className="p-error">{errors.bahiaId.message}</small>
           )}
         </div>
-
         <div style={{ flex: 1 }}>
           <label htmlFor="motoristaId">Motorista</label>
           <Controller
@@ -187,17 +232,6 @@ export default function DatosGeneralesFaenaPescaConsumo({
             <small className="p-error">{errors.motoristaId.message}</small>
           )}
         </div>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "end",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-          marginTop: 10,
-        }}
-      >
         <div style={{ flex: 1 }}>
           <label htmlFor="patronId">Patrón</label>
           <Controller
@@ -224,8 +258,20 @@ export default function DatosGeneralesFaenaPescaConsumo({
           )}
         </div>
 
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaSalida">Fecha Salida</label>
+
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "end",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+          marginTop: 10,
+        }}
+      >
+                <div style={{ flex: 1 }}>
+          <label htmlFor="fechaSalida">Fecha Zarpe</label>
           <Controller
             name="fechaSalida"
             control={control}
@@ -249,7 +295,7 @@ export default function DatosGeneralesFaenaPescaConsumo({
         </div>
 
         <div style={{ flex: 1 }}>
-          <label htmlFor="puertoSalidaId">Puerto Salida</label>
+          <label htmlFor="puertoSalidaId">Puerto Zarpe</label>
           <Controller
             name="puertoSalidaId"
             control={control}
@@ -297,17 +343,6 @@ export default function DatosGeneralesFaenaPescaConsumo({
             <small className="p-error">{errors.fechaDescarga.message}</small>
           )}
         </div>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "end",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-          marginTop: 10,
-        }}
-      >
         <div style={{ flex: 1 }}>
           <label htmlFor="puertoDescargaId">Puerto Descarga</label>
           <Controller
@@ -332,9 +367,7 @@ export default function DatosGeneralesFaenaPescaConsumo({
             )}
           />
           {errors.puertoDescargaId && (
-            <small className="p-error">
-              {errors.puertoDescargaId.message}
-            </small>
+            <small className="p-error">{errors.puertoDescargaId.message}</small>
           )}
         </div>
 
@@ -360,9 +393,7 @@ export default function DatosGeneralesFaenaPescaConsumo({
             )}
           />
           {errors.fechaHoraFondeo && (
-            <small className="p-error">
-              {errors.fechaHoraFondeo.message}
-            </small>
+            <small className="p-error">{errors.fechaHoraFondeo.message}</small>
           )}
         </div>
 
@@ -391,27 +422,6 @@ export default function DatosGeneralesFaenaPescaConsumo({
             <small className="p-error">{errors.puertoFondeoId.message}</small>
           )}
         </div>
-
-        <div style={{ flex: 1 }}>
-          <label htmlFor="estadoFaenaId">Estado Faena</label>
-          <Controller
-            name="estadoFaenaId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="estadoFaenaId"
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                options={estadosFaenaOptions}
-                optionLabel="label"
-                optionValue="value"
-                style={{ fontWeight: "bold" }}
-                placeholder="Seleccione estado"
-                disabled
-              />
-            )}
-          />
-        </div>
       </div>
 
       <div
@@ -423,28 +433,7 @@ export default function DatosGeneralesFaenaPescaConsumo({
           marginTop: 10,
         }}
       >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="toneladasCapturadasFaena">
-            Toneladas Capturadas
-          </label>
-          <Controller
-            name="toneladasCapturadasFaena"
-            control={control}
-            render={({ field }) => (
-              <InputNumber
-                id="toneladasCapturadasFaena"
-                value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
-                mode="decimal"
-                minFractionDigits={0}
-                maxFractionDigits={3}
-                suffix=" Ton"
-                style={{ fontWeight: "bold", backgroundColor: "#f7ee88" }}
-                disabled
-              />
-            )}
-          />
-        </div>
+
 
         <div style={{ flex: 2 }}>
           <label htmlFor="descripcion">Descripción</label>

@@ -376,12 +376,21 @@ const EntregasARendirNovedadCard = ({
 
         {/* Sección de DetMovsEntRendirPescaConsumo */}
         <DetEntregaRendirNovedadConsumo
-          entregaARendirPescaConsumoId={entregaARendir?.id}
+          entregaARendirPescaConsumo={entregaARendir}
+          movimientos={movimientos}
           personal={personal}
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           entidadesComerciales={entidadesComerciales}
-          onDataChange={onDataChange}
+          novedadPescaConsumoIniciada={novedadPescaConsumoIniciada}
+          loading={loadingMovimientos}
+          selectedMovimientos={selectedMovimientos}
+          onSelectionChange={(e) => setSelectedMovimientos(e.value)}
+          onDataChange={() => {
+            cargarMovimientos();
+            cargarEntregaARendir();
+            onDataChange?.();
+          }}
         />
       </Card>
 

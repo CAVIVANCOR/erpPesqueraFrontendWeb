@@ -10,6 +10,7 @@ import { Dialog } from "primereact/dialog";
 import { TabView, TabPanel } from "primereact/tabview";
 import MovimientoCajaForm from "../components/movimientoCaja/MovimientoCajaForm";
 import DetEntregaRendirPescaIndustrial from "../components/temporadaPesca/DetEntregaRendirPescaIndustrial";
+import DetEntregaRendirNovedadConsumo from "../components/novedadPescaConsumo/DetEntregaRendirNovedadConsumo";
 import {
   getAllMovimientoCaja,
   crearMovimientoCaja,
@@ -27,9 +28,11 @@ import { getAllCuentaCorriente } from "../api/cuentaCorriente";
 import { getEntidadesComerciales } from "../api/entidadComercial";
 import { getAllDetMovsEntregaRendir } from "../api/detMovsEntregaRendir";
 import { getAllEntregaARendir } from "../api/entregaARendir";
+import { getAllDetMovsEntRendirPescaConsumo } from "../api/detMovsEntRendirPescaConsumo";
+import { getEntregasARendirPescaConsumo } from "../api/entregaARendirPescaConsumo";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
-import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion"; // Agregar esta línea
+import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 
 export default function MovimientoCaja() {
   const toast = useRef(null);
@@ -58,7 +61,15 @@ export default function MovimientoCaja() {
     useState([]);
   const [loadingDetEntrega, setLoadingDetEntrega] = useState(false);
   const [selectedDetMovsIds, setSelectedDetMovsIds] = useState([]);
-  const [estadosMultiFuncion, setEstadosMultiFuncion] = useState([]); // Agregar esta línea
+  const [estadosMultiFuncion, setEstadosMultiFuncion] = useState([]);
+
+  // Estados para DetEntregaRendirNovedadConsumo (Pesca Consumo)
+  const [movimientosDetEntregaConsumo, setMovimientosDetEntregaConsumo] = useState([]);
+  const [entregasARendirConsumo, setEntregasARendirConsumo] = useState([]);
+  const [selectedMovimientosDetEntregaConsumo, setSelectedMovimientosDetEntregaConsumo] =
+    useState([]);
+  const [loadingDetEntregaConsumo, setLoadingDetEntregaConsumo] = useState(false);
+  const [selectedDetMovsIdsConsumo, setSelectedDetMovsIdsConsumo] = useState([]);
 
   const cargarEstadosMultiFuncion = async () => {
     try {
@@ -90,7 +101,9 @@ export default function MovimientoCaja() {
     cargarEntidadesComerciales();
     cargarMovimientosDetEntrega();
     cargarEntregasARendir();
-    cargarEstadosMultiFuncion(); // Agregar esta línea
+    cargarMovimientosDetEntregaConsumo();
+    cargarEntregasARendirConsumo();
+    cargarEstadosMultiFuncion();
   }, []);
 
   const cargarItems = async () => {
@@ -102,7 +115,7 @@ export default function MovimientoCaja() {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo cargar la lista.",
+        detail: "No se pudo cargar los movimientos de caja.",
       });
     }
     setLoading(false);
@@ -168,7 +181,7 @@ export default function MovimientoCaja() {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo cargar los tipos de movimiento entrega/rendir.",
+        detail: "No se pudo cargar los tipos de movimiento.",
       });
     }
   };
@@ -194,7 +207,7 @@ export default function MovimientoCaja() {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo cargar los tipos de referencia movimiento caja.",
+        detail: "No se pudo cargar los tipos de referencia.",
       });
     }
   };
@@ -250,6 +263,35 @@ export default function MovimientoCaja() {
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar las entregas a rendir.",
+      });
+    }
+  };
+
+  // Funciones para cargar datos de DetEntregaRendirNovedadConsumo (Pesca Consumo)
+  const cargarMovimientosDetEntregaConsumo = async () => {
+    setLoadingDetEntregaConsumo(true);
+    try {
+      const data = await getAllDetMovsEntRendirPescaConsumo();
+      setMovimientosDetEntregaConsumo(data);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar los movimientos de entrega a rendir de pesca consumo.",
+      });
+    }
+    setLoadingDetEntregaConsumo(false);
+  };
+
+  const cargarEntregasARendirConsumo = async () => {
+    try {
+      const data = await getEntregasARendirPescaConsumo();
+      setEntregasARendirConsumo(data);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar las entregas a rendir de pesca consumo.",
       });
     }
   };
@@ -318,199 +360,21 @@ export default function MovimientoCaja() {
     setLoading(false);
   };
 
-  const handleAdd = () => {
-    setEditing(null);
-    setShowDialog(true);
-  };
-
-  // Handler para aplicar movimientos seleccionados de DetEntregaRendir
-  const handleAplicarMovimientosSeleccionados = () => {
-    if (selectedDetMovsIds.length === 0) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "Debe seleccionar al menos un movimiento.",
-      });
-      return;
-    }
-
-    // Obtener los registros completos de los movimientos seleccionados
-    const detEntregasRendirSelect = movimientosDetEntrega.filter((mov) =>
-      selectedDetMovsIds.includes(mov.id)
-    );
-
-    // Validar que todos los registros tengan la misma entidadComercialId
-    const entidadesComerciales = detEntregasRendirSelect.map(
-      (mov) => mov.entidadComercialId
-    );
-    const entidadComercialUnica = entidadesComerciales[0];
-
-    // Verificar si todas las entidades comerciales son iguales (incluyendo null/undefined)
-    const todasIguales = entidadesComerciales.every(
-      (entidad) => entidad === entidadComercialUnica
-    );
-
-    if (!todasIguales) {
-      toast.current.show({
-        severity: "error",
-        summary: "Error de Validación",
-        detail:
-          "Los registros seleccionados deben ser de una misma Entidad Comercial.",
-        life: 5000,
-      });
-      return;
-    }
-
-    // Calcular la sumatoria de montos
-    const montoTotal = detEntregasRendirSelect.reduce(
-      (suma, mov) => suma + Number(mov.monto),
-      0
-    );
-
-    // Obtener el módulo origen (debe ser el mismo en todos)
-    const moduloOrigenMovCajaId =
-      detEntregasRendirSelect[0]?.moduloOrigenMovCajaId;
-
-    // Preparar datos para el formulario
-    const datosFormulario = {
-      selectedDetMovsIds,
-      detEntregasRendirSelect,
-      entidadComercialId: entidadComercialUnica,
-      monto: montoTotal,
-      moduloOrigenMovCajaId: moduloOrigenMovCajaId,
-      // Asignar automáticamente estado "PENDIENTE"
-      estadoId:
-        estadosMultiFuncion.find((estado) =>
-          estado.descripcion?.toUpperCase().includes("PENDIENTE")
-        )?.id || null,
-      tipoMovimientoId: null, // Se definirá en el formulario
-      fechaMovimiento: new Date(),
-    };
-
-    // Abrir el formulario de MovimientoCaja con los datos preparados
-    setEditing(datosFormulario);
-    setShowDialog(true);
-  };
-  // Funciones para cambio de estados
-  const handleValidarMovimiento = async (movimiento) => {
-    try {
-      const estadoValidado = estadosMultiFuncion.find((estado) =>
-        estado.descripcion?.toUpperCase().includes("VALIDADO")
-      );
-
-      if (!estadoValidado) {
-        toast.current.show({
-          severity: "error",
-          summary: "Error",
-          detail: "No se encontró el estado VALIDADO",
-        });
-        return;
-      }
-
-      await actualizarMovimientoCaja(movimiento.id, {
-        ...movimiento,
-        estadoId: estadoValidado.id,
-      });
-
-      toast.current.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "Movimiento validado correctamente",
-      });
-
-      cargarItems();
-    } catch (error) {
-      toast.current.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Error al validar movimiento",
-      });
-    }
-  };
-
-  const handleGenerarAsiento = async (movimiento) => {
-    try {
-      const estadoAsiento = estadosMultiFuncion.find(
-        (estado) =>
-          estado.descripcion?.toUpperCase().includes("ASIENTO") &&
-          estado.descripcion?.toUpperCase().includes("GENERADO")
-      );
-
-      if (!estadoAsiento) {
-        toast.current.show({
-          severity: "error",
-          summary: "Error",
-          detail: "No se encontró el estado ASIENTO GENERADO",
-        });
-        return;
-      }
-
-      await actualizarMovimientoCaja(movimiento.id, {
-        ...movimiento,
-        estadoId: estadoAsiento.id,
-      });
-
-      toast.current.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "Asiento contable generado correctamente",
-      });
-
-      cargarItems();
-    } catch (error) {
-      toast.current.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Error al generar asiento contable",
-      });
-    }
-  };
-
-  const actionBody = (rowData) => {
-    // Obtener estado actual
-    const estadoActual = estadosMultiFuncion.find(
-      (e) => Number(e.id) === Number(rowData.estadoId)
-    );
-    const estadoDesc = estadoActual?.descripcion?.toUpperCase() || "";
-
-    const esPendiente = estadoDesc.includes("PENDIENTE");
-    const esValidado = estadoDesc.includes("VALIDADO");
-
+  const actionBodyTemplate = (rowData) => {
     return (
-      <div style={{ display: "flex", gap: "0.25rem" }}>
+      <div className="flex gap-2">
         <Button
           icon="pi pi-pencil"
-          className="p-button-text p-button-sm"
+          className="p-button-rounded p-button-text"
           onClick={() => handleEdit(rowData)}
-          aria-label="Editar"
+          tooltip="Editar"
         />
-
-        {esPendiente && (
-          <Button
-            icon="pi pi-check-circle"
-            className="p-button-text p-button-warning p-button-sm"
-            onClick={() => handleValidarMovimiento(rowData)}
-            aria-label="Validar Movimiento"
-            tooltip="Validar Movimiento"
-          />
-        )}
-
-        {esValidado && (
-          <Button
-            icon="pi pi-file-edit"
-            className="p-button-text p-button-info p-button-sm"
-            onClick={() => handleGenerarAsiento(rowData)}
-            aria-label="Generar Asiento"
-            tooltip="Generar Asiento Contable"
-          />
-        )}
-
         {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
           <Button
             icon="pi pi-trash"
-            className="p-button-text p-button-danger p-button-sm"
+            className="p-button-rounded p-button-text p-button-danger"
             onClick={() => handleDelete(rowData)}
-            aria-label="Eliminar"
+            tooltip="Eliminar"
           />
         )}
       </div>
@@ -518,15 +382,14 @@ export default function MovimientoCaja() {
   };
 
   return (
-    <div className="p-fluid">
+    <div className="movimiento-caja-container">
       <Toast ref={toast} />
       <ConfirmDialog
         visible={showConfirm}
         onHide={() => setShowConfirm(false)}
-        message="¿Está seguro que desea eliminar este registro?"
-        header="Confirmar eliminación"
+        message="¿Está seguro de eliminar este registro?"
+        header="Confirmar Eliminación"
         icon="pi pi-exclamation-triangle"
-        acceptClassName="p-button-danger"
         accept={handleDeleteConfirm}
         reject={() => setShowConfirm(false)}
       />
@@ -541,7 +404,7 @@ export default function MovimientoCaja() {
               personal={personal}
               centrosCosto={centrosCosto}
               tiposMovimiento={tipoMovEntregaRendir}
-              entidadesComerciales={entidadesComerciales} // Nueva prop
+              entidadesComerciales={entidadesComerciales}
               temporadaPescaIniciada={true}
               loading={loadingDetEntrega}
               selectedMovimientos={selectedMovimientosDetEntrega}
@@ -558,9 +421,26 @@ export default function MovimientoCaja() {
         </TabPanel>
 
         <TabPanel header="Pesca Consumo">
-          <div className="p-4">
-            <h3>Pesca Consumo</h3>
-            <p>Contenido para Pesca Consumo - En desarrollo</p>
+          <div className="mb-4">
+            <DetEntregaRendirNovedadConsumo
+              entregaARendirPescaConsumo={entregasARendirConsumo[0] || null}
+              movimientos={movimientosDetEntregaConsumo}
+              personal={personal}
+              centrosCosto={centrosCosto}
+              tiposMovimiento={tipoMovEntregaRendir}
+              entidadesComerciales={entidadesComerciales}
+              novedadPescaConsumoIniciada={true}
+              loading={loadingDetEntregaConsumo}
+              selectedMovimientos={selectedMovimientosDetEntregaConsumo}
+              onSelectionChange={(e) => {
+                setSelectedMovimientosDetEntregaConsumo(e.value);
+                setSelectedDetMovsIdsConsumo(e.value.map((mov) => mov.id));
+              }}
+              onDataChange={() => {
+                cargarMovimientosDetEntregaConsumo();
+                cargarEntregasARendirConsumo();
+              }}
+            />
           </div>
         </TabPanel>
 
@@ -607,93 +487,19 @@ export default function MovimientoCaja() {
         </TabPanel>
       </TabView>
 
-      {/* DataTable CRUD original */}
-      <DataTable
-        value={items}
-        loading={loading}
-        dataKey="id"
-        paginator
-        rows={10}
-        onRowClick={(e) => handleEdit(e.data)}
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
-        header={
-          <div
-            style={{
-              alignItems: "center",
-              display: "flex",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 2 }}>
-              <h2>Gestión de Movimientos de Caja</h2>
-            </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                label="Aplicar"
-                icon="pi pi-check"
-                className="p-button-success"
-                onClick={handleAplicarMovimientosSeleccionados}
-                disabled={selectedDetMovsIds.length === 0}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                label="Nuevo"
-                icon="pi pi-plus"
-                className="p-button-success"
-                size="small"
-                outlined
-                onClick={handleAdd}
-                disabled={loading}
-              />
-            </div>
-          </div>
-        }
-      >
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="empresaOrigenId" header="Empresa Origen" />
-        <Column field="cuentaCorrienteOrigenId" header="Cuenta Origen" />
-        <Column field="empresaDestinoId" header="Empresa Destino" />
-        <Column field="cuentaCorrienteDestinoId" header="Cuenta Destino" />
-        <Column field="fecha" header="Fecha" />
-        <Column field="tipoMovimientoId" header="Tipo Movimiento" />
-        <Column
-          field="entidadComercialId"
-          header="Entidad Comercial"
-          body={(rowData) => {
-            const entidad = entidadesComerciales.find(
-              (e) => Number(e.id) === Number(rowData.entidadComercialId)
-            );
-            return entidad ? entidad.razonSocial : rowData.entidadComercialId;
-          }}
-        />
-        <Column field="monto" header="Monto" />
-        <Column field="monedaId" header="Moneda" />
-        <Column field="descripcion" header="Descripción" />
-        <Column field="tipoReferenciaId" header="Tipo Referencia" />
-        <Column
-          body={actionBody}
-          header="Acciones"
-          style={{ width: 130, textAlign: "center" }}
-        />
-      </DataTable>
-
+      {/* Dialog para formulario */}
       <Dialog
-        header={editing ? "Editar Movimiento" : "Nuevo Movimiento"}
         visible={showDialog}
-        style={{ width: 1300 }}
-        onHide={() => setShowDialog(false)}
+        style={{ width: "800px" }}
+        header={editing ? "Editar Movimiento Caja" : "Nuevo Movimiento Caja"}
         modal
+        onHide={() => {
+          setShowDialog(false);
+          setEditing(null);
+        }}
       >
         <MovimientoCajaForm
-          isEdit={!!editing}
-          defaultValues={editing || {}}
-          onSubmit={handleFormSubmit}
-          onCancel={() => setShowDialog(false)}
-          onValidarMovimiento={handleValidarMovimiento} // Agregar
-          onGenerarAsiento={handleGenerarAsiento} // Agregar
-          loading={loading}
+          item={editing}
           centrosCosto={centrosCosto}
           modulos={modulos}
           personal={personal}
@@ -703,9 +509,12 @@ export default function MovimientoCaja() {
           tipoReferenciaMovimientoCaja={tipoReferenciaMovimientoCaja}
           cuentasCorrientes={cuentasCorrientes}
           entidadesComerciales={entidadesComerciales}
-          selectedDetMovsIds={editing?.selectedDetMovsIds || []}
-          detEntregasRendirSelect={editing?.detEntregasRendirSelect || []}
           estadosMultiFuncion={estadosMultiFuncion}
+          onSubmit={handleFormSubmit}
+          onCancel={() => {
+            setShowDialog(false);
+            setEditing(null);
+          }}
         />
       </Dialog>
     </div>
