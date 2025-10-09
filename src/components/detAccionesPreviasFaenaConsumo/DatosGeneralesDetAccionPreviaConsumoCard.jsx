@@ -251,7 +251,7 @@ export default function DatosGeneralesDetAccionPreviaConsumoCard({
               render={({ field }) => (
                 <InputTextarea
                   id="observaciones"
-                  value={field.value}
+                  value={field.value || ""}  // ← Convertir null a ""
                   onChange={(e) => field.onChange(e.target.value)}
                   rows={3}
                   disabled={loading}

@@ -27,7 +27,6 @@ import ModulosSistema from "./ModulosSistema";
 import SubmodulosSistema from "./SubmodulosSistema";
 import DocumentacionPersonal from "./DocumentacionPersonal";
 import TipoMovEntregaRendir from "./TipoMovEntregaRendir";
-import DescargaFaenaConsumo from "./DescargaFaenaConsumo";
 import CuentaCorriente from "./CuentaCorriente";
 import Activo from "./Activo";
 import DetallePermisoActivo from "./DetallePermisoActivo";
@@ -51,7 +50,6 @@ import TipoEmbarcacion from "./TipoEmbarcacion";
 import DocumentoPesca from "./DocumentoPesca";
 import DocumentacionEmbarcacion from "./DocumentacionEmbarcacion";
 import AccesosUsuario from "./AccesosUsuario";
-import DescargaFaenaPesca from "./DescargaFaenaPesca";
 import CotizacionVentas from './CotizacionVentas';
 import TipoProducto from './TipoProducto';
 import TipoEstadoProducto from './TipoEstadoProducto';
@@ -238,7 +236,6 @@ export default function MultiCrud() {
     centroCosto: { label: "Centro de Costo", componente: <CentroCosto /> },
     categoriaCCosto: { label: "Categoría Centro de Costo", componente: <CategoriaCCosto /> },
     empresaCentroCosto: { label: "Empresa Centro de Costo", componente: <EmpresaCentroCosto /> },
-    descargaFaenaPesca: { label: "Descarga Faena Temporada Pesca", componente: <DescargaFaenaPesca /> },
     detalleDescargaFaena: { label: "Detalle Descarga Faena Temporada Pesca", componente: <DetalleDescargaFaena /> },
     accionesPreviasFaena: { label: "Acciones Previas Faena", componente: <AccionesPreviasFaena /> },
     detAccionesPreviasFaena: { label: "Detalle Acciones Previas Faena Temporada Pesca", componente: <DetAccionesPreviasFaena /> },
@@ -272,7 +269,6 @@ export default function MultiCrud() {
     kardexAlmacen: { label: "Kardex de Almacén", componente: <KardexAlmacen /> },
     saldosProductoCliente: { label: "Saldos de Productos-Cliente", componente: <SaldosProductoCliente /> },
     saldosDetProductoCliente: { label: "Saldos de Productos-Cliente Variables Control", componente: <SaldosDetProductoCliente /> },
-    descargaFaenaConsumo: { label: "Descargas de Faena", componente: <DescargaFaenaConsumo /> },
     cotizacionVentas: { label: "Cotización de Ventas", componente: <CotizacionVentas /> },
     detCotizacionVentas: { label: "Detalle Cotización Ventas", componente: <DetCotizacionVentas /> },
     detDocsReqCotizaVentas: { label: "Documentos Requeridos Cotización Ventas", componente: <DetDocsReqCotizaVentas /> },
@@ -371,8 +367,6 @@ export default function MultiCrud() {
           {
             label: "Tablas Maestras Pesca",
             items: [
-              { label: "Pesca Industrial", icon: "pi pi-leaf", command: () => abrirModulo("temporadaPesca", "Pesca Industrial") },
-              { label: "Pesca de Consumo", icon: "pi pi-ship", command: () => abrirModulo("novedadPescaConsumo", "Pesca de Consumo") },
               { label: "Especies", icon: "pi pi-leaf", command: () => abrirModulo("especie", "Especies") },
               { label: "Acciones Previas", icon: "pi pi-archive", command: () => abrirModulo("accionesPreviasFaena", "Acciones previas Faena") },
               { label: "Embarcaciones", icon: "pi pi-snowflake", command: () => abrirModulo("embarcacion", "Embarcaciones") },

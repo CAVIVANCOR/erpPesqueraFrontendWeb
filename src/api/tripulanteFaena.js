@@ -74,3 +74,18 @@ export const actualizarTripulanteFaena = async (id, data) => {
     throw error;
   }
 };
+
+/**
+ * Crea un nuevo tripulante de faena
+ */
+export const crearTripulanteFaena = async (data) => {
+  try {
+    const response = await axios.post(API_URL, data, {
+      headers: getAuthHeaders(),
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error al crear tripulante de faena:", error);
+    throw error;
+  }
+};

@@ -103,3 +103,27 @@ export async function iniciarNovedadPescaConsumo(novedadId) {
   });
   return res.data;
 }
+
+/**
+ * Finaliza una novedad de pesca consumo
+ * @param {number} novedadId - ID de la novedad a finalizar
+ * @returns {Promise} Respuesta de la operación
+ */
+export async function finalizarNovedadPescaConsumo(novedadId) {
+  const res = await axios.post(`${API_URL}/${novedadId}/finalizar`, {}, { 
+    headers: getAuthHeader() 
+  });
+  return res.data;
+}
+
+/**
+ * Cancela una novedad de pesca consumo
+ * @param {number} novedadId - ID de la novedad a cancelar
+ * @returns {Promise} Respuesta de la operación
+ */
+export async function cancelarNovedadPescaConsumo(novedadId) {
+  const res = await axios.post(`${API_URL}/${novedadId}/cancelar`, {}, { 
+    headers: getAuthHeader() 
+  });
+  return res.data;
+}

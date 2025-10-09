@@ -33,6 +33,7 @@ import {
 import { SelectButton } from "primereact/selectbutton";
 import { Toolbar } from "primereact/toolbar";
 import { Card } from "primereact/card";
+import { getDocumentacionesEmbarcacion } from "../../api/documentacionEmbarcacion";
 
 const DetalleDocEmbarcacionCard = ({
   faenaPescaId,
@@ -67,7 +68,8 @@ const DetalleDocEmbarcacionCard = ({
   const [opcionesDocumento, setOpcionesDocumento] = useState([]);
 
   // Estados para props normalizadas
-  const [documentosPescaNormalizados, setDocumentosPescaNormalizados] = useState([]);
+  const [documentosPescaNormalizados, setDocumentosPescaNormalizados] =
+    useState([]);
 
   // Opciones fijas para el SelectButton de estado
   const opcionesEstado = [
@@ -98,7 +100,7 @@ const DetalleDocEmbarcacionCard = ({
       .map((d) => ({
         label: d.nombre || d.descripcion,
         value: Number(d.id),
-        ...d
+        ...d,
       }));
     setDocumentosPescaNormalizados(documentosFormateados);
   }, [documentosPesca]);
@@ -108,7 +110,9 @@ const DetalleDocEmbarcacionCard = ({
 
     // Filtro de Documento
     const documentosUnicos = [
-      ...new Set(docEmbarcacion.map((doc) => doc.documentoPescaId).filter(Boolean)),
+      ...new Set(
+        docEmbarcacion.map((doc) => doc.documentoPescaId).filter(Boolean)
+      ),
     ];
     const opcionesDocumentoNuevas = documentosUnicos
       .map((documentoPescaId) => {
@@ -144,6 +148,136 @@ const DetalleDocEmbarcacionCard = ({
     }
   };
 
+  const cargarDocumentosEmbarcacion = async () => {
+    const embarcacionId = faenaData?.embarcacionId;
+
+    if (!embarcacionId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe seleccionar una embarcación primero",
+        life: 3000,
+      });
+      return;
+    }
+
+    try {
+      setLoadingData(true);
+
+      // 1. Obtener todos los documentos de embarcación
+      const todosLosDocumentos = await getDocumentacionesEmbarcacion();
+
+      // 2. Filtrar por embarcacionId
+      const documentosEmbarcacion = todosLosDocumentos.filter(
+        (doc) => Number(doc.embarcacionId) === Number(embarcacionId)
+      );
+
+      if (documentosEmbarcacion.length === 0) {
+        toast.current?.show({
+          severity: "info",
+          summary: "Sin Documentos",
+          detail: "No se encontraron documentos para esta embarcación",
+          life: 3000,
+        });
+        return;
+      }
+
+      // 3. Obtener documentos existentes en DetalleDocEmbarcacion
+      const documentosExistentes = await getDetallesDocEmbarcacion({
+        faenaPescaId,
+      });
+
+      // 4. Crear o actualizar registros en DetalleDocEmbarcacion
+      let creados = 0;
+      let actualizados = 0;
+      let errores = 0;
+
+      for (const docEmb of documentosEmbarcacion) {
+        try {
+          // Calcular docVencido basado en fechaVencimiento
+          const fechaActual = new Date();
+          const fechaVencimiento = docEmb.fechaVencimiento
+            ? new Date(docEmb.fechaVencimiento)
+            : null;
+          const docVencido =
+            !fechaVencimiento || fechaVencimiento < fechaActual;
+
+          const dataToSend = {
+            faenaPescaId: Number(faenaPescaId),
+            documentoPescaId: Number(docEmb.documentoPescaId),
+            numeroDocumento: docEmb.numeroDocumento || null,
+            fechaEmision: docEmb.fechaEmision || null,
+            fechaVencimiento: docEmb.fechaVencimiento || null,
+            urlDocEmbarcacion: docEmb.urlDocPdf || null,
+            docVencido: docVencido,
+            verificado: false,
+            observaciones: docEmb.observaciones || null,
+            updatedAt: new Date().toISOString(),
+          };
+
+          // Verificar si ya existe el documento
+          const documentoExistente = documentosExistentes.find(
+            (d) =>
+              Number(d.faenaPescaId) === Number(faenaPescaId) &&
+              Number(d.documentoPescaId) === Number(docEmb.documentoPescaId)
+          );
+
+          if (documentoExistente) {
+            // Actualizar documento existente
+            await actualizarDetalleDocEmbarcacion(
+              documentoExistente.id,
+              dataToSend
+            );
+            actualizados++;
+          } else {
+            // Crear nuevo documento
+            await crearDetalleDocEmbarcacion(dataToSend);
+            creados++;
+          }
+        } catch (error) {
+          console.error("Error al procesar documento:", error);
+          errores++;
+        }
+      }
+
+      // 5. Mostrar resultado
+      if (creados > 0 || actualizados > 0) {
+        toast.current?.show({
+          severity: "success",
+          summary: "Documentos Procesados",
+          detail: `${creados} creado(s), ${actualizados} actualizado(s)${
+            errores > 0 ? `. ${errores} error(es)` : ""
+          }`,
+          life: 4000,
+        });
+
+        await cargarDocEmbarcacion();
+
+        // Notificar cambios al componente padre
+        if (onDocEmbarcacionChange) {
+          onDocEmbarcacionChange();
+        }
+      } else {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudo procesar ningún documento",
+          life: 3000,
+        });
+      }
+    } catch (error) {
+      console.error("Error al cargar documentos de embarcación:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar documentos de embarcación",
+        life: 3000,
+      });
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
   const openNew = () => {
     setEditingDocEmbarcacion(null);
     setDocEmbarcacionDialog(true);
@@ -159,67 +293,6 @@ const DetalleDocEmbarcacionCard = ({
     setEditingDocEmbarcacion(null);
   };
 
-  const saveDocEmbarcacion = async (docEmbarcacionData) => {
-    try {
-      setLoadingData(true);
-
-      // Calcular docVencido basado en fechaVencimiento
-      const fechaActual = new Date();
-      const fechaVencimiento = docEmbarcacionData.fechaVencimiento ? new Date(docEmbarcacionData.fechaVencimiento) : null;
-      
-      // Si fechaVencimiento es null, se considera vencido (true)
-      // Si fechaVencimiento < fechaActual, se considera vencido (true)
-      const docVencido = !fechaVencimiento || fechaVencimiento < fechaActual;
-
-      const dataToSend = {
-        ...docEmbarcacionData,
-        faenaPescaId: Number(faenaPescaId),
-        documentoPescaId: docEmbarcacionData.documentoPescaId
-          ? Number(docEmbarcacionData.documentoPescaId)
-          : null,
-        docVencido: docVencido,
-      };
-
-      if (editingDocEmbarcacion) {
-        await actualizarDetalleDocEmbarcacion(
-          editingDocEmbarcacion.id,
-          dataToSend
-        );
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Documento de embarcación actualizado correctamente",
-          life: 3000,
-        });
-      } else {
-        await crearDetalleDocEmbarcacion(dataToSend);
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Documento de embarcación creado correctamente",
-          life: 3000,
-        });
-      }
-
-      await cargarDocEmbarcacion();
-      hideDialog();
-
-      // Notificar cambios al componente padre
-      if (onDocEmbarcacionChange) {
-        onDocEmbarcacionChange();
-      }
-    } catch (error) {
-      console.error("Error al guardar documento de embarcación:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo guardar el documento de embarcación",
-        life: 3000,
-      });
-    } finally {
-      setLoadingData(false);
-    }
-  };
 
   const confirmDeleteDocEmbarcacion = (docEmbarcacion) => {
     setSelectedDocEmbarcacion(docEmbarcacion);
@@ -230,16 +303,18 @@ const DetalleDocEmbarcacionCard = ({
     try {
       setLoadingData(true);
       const nuevoEstado = !rowData.verificado;
-      
+
       await actualizarDetalleDocEmbarcacion(rowData.id, {
         ...rowData,
-        verificado: nuevoEstado
+        verificado: nuevoEstado,
       });
 
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: `Documento ${nuevoEstado ? "verificado" : "marcado como pendiente"} correctamente`,
+        detail: `Documento ${
+          nuevoEstado ? "verificado" : "marcado como pendiente"
+        } correctamente`,
         life: 3000,
       });
 
@@ -267,23 +342,23 @@ const DetalleDocEmbarcacionCard = ({
     const cumpleFiltroDocumento =
       filtroDocumento === null ||
       Number(doc.documentoPescaId) === Number(filtroDocumento);
-    
+
     // Filtro por vencidos - evaluar fechaVencimiento vs fecha actual
     let cumpleFiltroVencidos = true;
     if (filtroVencidos !== null) {
       const fechaActual = new Date();
-      const fechaVencimiento = doc.fechaVencimiento ? new Date(doc.fechaVencimiento) : null;
-      
+      const fechaVencimiento = doc.fechaVencimiento
+        ? new Date(doc.fechaVencimiento)
+        : null;
+
       // Si fechaVencimiento es null, se considera vencido (true)
       // Si fechaVencimiento < fechaActual, se considera vencido (true)
       const estaVencido = !fechaVencimiento || fechaVencimiento < fechaActual;
-      
+
       cumpleFiltroVencidos = estaVencido === filtroVencidos;
     }
 
-    return (
-      cumpleFiltroEstado && cumpleFiltroDocumento && cumpleFiltroVencidos
-    );
+    return cumpleFiltroEstado && cumpleFiltroDocumento && cumpleFiltroVencidos;
   });
 
   const limpiarFiltros = () => {
@@ -363,6 +438,19 @@ const DetalleDocEmbarcacionCard = ({
           <h2>DOCUMENTOS EMBARCACION</h2>
         </div>
         <div style={{ flex: 1 }}>
+          <Button
+            type="button"
+            icon="pi pi-download"
+            label="Cargar Documentos Embarcación"
+            className="p-button-info"
+            onClick={cargarDocumentosEmbarcacion}
+            disabled={loadingData || !temporadaData}
+            tooltip="Cargar documentos de la embarcación"
+            tooltipOptions={{ position: "top" }}
+            style={{ fontSize: "0.875rem" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
           <InputText
             type="search"
             value={globalFilter}
@@ -397,7 +485,7 @@ const DetalleDocEmbarcacionCard = ({
           marginTop: "0.5rem",
         }}
       >
-                <div style={{ flex: 1 }}>
+        <div style={{ flex: 1 }}>
           <label
             className="block text-900 font-medium mb-1"
             style={{ fontSize: "0.875rem" }}
@@ -415,7 +503,7 @@ const DetalleDocEmbarcacionCard = ({
         </div>
 
         <div style={{ flex: 1 }}>
-        <label
+          <label
             className="block text-900 font-medium mb-1"
             style={{ fontSize: "0.875rem" }}
           >
@@ -461,23 +549,27 @@ const DetalleDocEmbarcacionCard = ({
   const documentoPescaTemplate = (rowData) => {
     return (
       <span style={{ fontWeight: "bold" }}>
-        {documentosPescaNormalizados.find((doc) => Number(doc.value) === Number(rowData.documentoPescaId))?.label || "N/A"}
+        {documentosPescaNormalizados.find(
+          (doc) => Number(doc.value) === Number(rowData.documentoPescaId)
+        )?.label || "N/A"}
       </span>
     );
   };
 
   const vencimientoTemplate = (rowData) => {
     const fechaActual = new Date();
-    const fechaVencimiento = rowData.fechaVencimiento ? new Date(rowData.fechaVencimiento) : null;
-    
+    const fechaVencimiento = rowData.fechaVencimiento
+      ? new Date(rowData.fechaVencimiento)
+      : null;
+
     // Si fechaVencimiento es null, se considera vencido (true)
     // Si fechaVencimiento < fechaActual, se considera vencido (true)
     const estaVencido = !fechaVencimiento || fechaVencimiento < fechaActual;
-    
+
     const fechaTexto = rowData.fechaVencimiento
       ? new Date(rowData.fechaVencimiento).toLocaleDateString("es-PE")
       : "-";
-    
+
     return (
       <div>
         <div style={{ fontSize: getResponsiveFontSize(), marginBottom: "4px" }}>

@@ -258,7 +258,7 @@ const DetalleAccionesPreviasForm = forwardRef(
           detail: "Acción previa actualizada correctamente",
           life: 3000,
         });
-        
+
         setShowEditDialog(false);
         setSelectedAccion(null);
         await cargarAccionesPrevias();
@@ -295,9 +295,8 @@ const DetalleAccionesPreviasForm = forwardRef(
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
           size="small"
-          style={{
-            fontSize: getResponsiveFontSize(),
-          }}
+          style={{ fontSize: getResponsiveFontSize(), cursor: "pointer" }}
+          onRowClick={(e) => editarAccionPrevia(e.data)}
           header={
             <div
               style={{
@@ -395,7 +394,7 @@ const DetalleAccionesPreviasForm = forwardRef(
           />
         </DataTable>
         <Toast ref={toast} />
-        
+
         {/* Dialog para editar acción previa */}
         <Dialog
           headerStyle={{ display: "none" }}
@@ -405,22 +404,22 @@ const DetalleAccionesPreviasForm = forwardRef(
           breakpoints={{ "960px": "85vw", "641px": "95vw" }}
           modal
         >
-                {/* Mostrar descripción de acción previa con Tag */}
-                <div className="flex justify-content-center mb-4">
-                  <Tag
-                    value={selectedAccion?.accionPrevia?.nombre || "N/A"}
-                    severity="info"
-                    style={{
-                      fontSize: "1.1rem",
-                      padding: "0.75rem 1.25rem",
-                      textTransform: "uppercase",
-                      fontWeight: "bold",
-                      textAlign: "center",
-                      width: "100%",
-                      marginTop: "0.5rem",
-                    }}
-                  />
-                </div>
+          {/* Mostrar descripción de acción previa con Tag */}
+          <div className="flex justify-content-center mb-4">
+            <Tag
+              value={selectedAccion?.accionPrevia?.nombre || "N/A"}
+              severity="info"
+              style={{
+                fontSize: "1.1rem",
+                padding: "0.75rem 1.25rem",
+                textTransform: "uppercase",
+                fontWeight: "bold",
+                textAlign: "center",
+                width: "100%",
+                marginTop: "0.5rem",
+              }}
+            />
+          </div>
           {selectedAccion && (
             <DetAccionesPreviasFaenaForm
               isEdit={true}

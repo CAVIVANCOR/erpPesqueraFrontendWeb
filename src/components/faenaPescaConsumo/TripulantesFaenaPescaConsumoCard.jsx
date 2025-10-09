@@ -27,6 +27,7 @@ import {
   getTripulantesPorFaena,
   updateTripulanteFaenaConsumo,
   regenerarTripulantes,
+  crearTripulanteFaenaConsumo,
 } from "../../api/tripulanteFaenaConsumo";
 
 const TripulantesFaenaPescaConsumoCard = ({
@@ -71,6 +72,132 @@ const TripulantesFaenaPescaConsumoCard = ({
         severity: "error",
         summary: "Error",
         detail: "Error al cargar los tripulantes de la faena",
+        life: 3000,
+      });
+    } finally {
+      setLoadingTripulantes(false);
+    }
+  };
+
+  const cargarTripulantesAutomatico = async () => {
+    try {
+      setLoadingTripulantes(true);
+
+      // Validar que exista novedadData y empresaId
+      if (!novedadData || !novedadData.empresaId) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "No se encontró información de la novedad o empresaId",
+          life: 3000,
+        });
+        return;
+      }
+
+      // 1. Filtrar tripulantes elegibles (IGUAL QUE EL BACKEND)
+      // Personal.empresaId = novedad.empresaId
+      // Personal.cesado = false
+      // Personal.paraPescaConsumo = true
+      // Personal.cargoId IN (21, 22, 14)
+      const tripulantesElegibles = personal.filter(
+        (p) =>
+          Number(p.empresaId) === Number(novedadData.empresaId) &&
+          p.cesado === false &&
+          p.paraPescaConsumo === true &&
+          (Number(p.cargoId) === 21 || // TRIPULANTE
+            Number(p.cargoId) === 22 || // PATRON
+            Number(p.cargoId) === 14) // MOTORISTA
+      );
+
+      if (tripulantesElegibles.length === 0) {
+        toast.current?.show({
+          severity: "info",
+          summary: "Sin Tripulantes",
+          detail: "No se encontraron tripulantes elegibles para pesca consumo",
+          life: 3000,
+        });
+        return;
+      }
+
+      // 2. Obtener tripulantes existentes en TripulanteFaenaConsumo para esta faena
+      const tripulantesExistentes = await getTripulantesPorFaena(faenaPescaConsumoId);
+
+      // 3. Crear o actualizar registros (UNO POR UNO para verificar duplicados)
+      let creados = 0;
+      let actualizados = 0;
+      let errores = 0;
+
+      for (const personalItem of tripulantesElegibles) {
+        try {
+          // Mapeo de campos (IGUAL QUE EL BACKEND)
+          const dataToSend = {
+            faenaPescaConsumoId: Number(faenaPescaConsumoId),
+            personalId: Number(personalItem.id),
+            cargoId: Number(personalItem.cargoId),
+            nombres: personalItem.nombres,
+            apellidos: personalItem.apellidos,
+            observaciones: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+
+          // Verificar si ya existe (DIFERENCIA CON EL BACKEND)
+          const tripulanteExistente = tripulantesExistentes.find(
+            (t) =>
+              Number(t.faenaPescaConsumoId) === Number(faenaPescaConsumoId) &&
+              Number(t.personalId) === Number(personalItem.id)
+          );
+
+          if (tripulanteExistente) {
+            // Si existe: ACTUALIZAR
+            await updateTripulanteFaenaConsumo(
+              tripulanteExistente.id,
+              dataToSend
+            );
+            actualizados++;
+          } else {
+            // Si no existe: CREAR
+            await crearTripulanteFaenaConsumo(dataToSend);
+            creados++;
+          }
+        } catch (error) {
+          console.error("Error al procesar tripulante:", error);
+          errores++;
+        }
+      }
+
+      // 4. Mostrar resultado
+      if (creados > 0 || actualizados > 0) {
+        toast.current?.show({
+          severity: "success",
+          summary: "Tripulantes Procesados",
+          detail: `${creados} creado(s), ${actualizados} actualizado(s)${
+            errores > 0 ? `. ${errores} error(es)` : ""
+          }`,
+          life: 4000,
+        });
+
+        // Recargar la tabla
+        await cargarTripulantes();
+
+        // Notificar cambios al componente padre
+        if (onTripulantesChange) {
+          onTripulantesChange();
+        }
+      } else {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Sin Cambios",
+          detail: "No se procesaron tripulantes",
+          life: 3000,
+        });
+      }
+    } catch (error) {
+      console.error("Error al cargar tripulantes:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar tripulantes automáticamente",
         life: 3000,
       });
     } finally {
@@ -300,7 +427,20 @@ const TripulantesFaenaPescaConsumoCard = ({
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <h2 className="m-0">Tripulantes de la Faena</h2>
+                  <h2 className="m-0">TRIPULANTES DE LA FAENA</h2>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    type="button"
+                    icon="pi pi-users"
+                    label="Cargar Tripulantes"
+                    className="p-button-success"
+                    onClick={cargarTripulantesAutomatico}
+                    disabled={loadingTripulantes}
+                    tooltip="Cargar tripulantes elegibles automáticamente"
+                    tooltipOptions={{ position: "top" }}
+                    style={{ fontSize: "0.875rem" }}
+                  />
                 </div>
                 <div style={{ flex: 1 }}>
                   <InputText
@@ -309,16 +449,6 @@ const TripulantesFaenaPescaConsumoCard = ({
                     onChange={(e) => setGlobalFilter(e.target.value)}
                     placeholder="Buscar tripulante..."
                     size="small"
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <Button
-                    label="Actualizar"
-                    icon="pi pi-refresh"
-                    className="p-button-outlined"
-                    onClick={handleRegenerarTripulantes}
-                    size="small"
-                    loading={loadingTripulantes}
                   />
                 </div>
               </div>

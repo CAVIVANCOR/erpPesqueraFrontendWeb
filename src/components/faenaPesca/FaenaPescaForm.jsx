@@ -583,6 +583,7 @@ export default function FaenaPescaForm({
           <DetalleDocEmbarcacionCard
             faenaPescaId={currentFaenaData.id || defaultValues.id}
             temporadaData={temporadaData}
+            faenaData={currentFaenaData}
             personal={personal}
             documentosPesca={documentosPesca}
             documentacionEmbarcacion={documentacionEmbarcacion}

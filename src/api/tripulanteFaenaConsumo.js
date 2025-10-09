@@ -84,3 +84,18 @@ export async function regenerarTripulantes(faenaPescaConsumoId) {
   const res = await axios.post(`${API_URL}/regenerar/${faenaPescaConsumoId}`, {}, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Crea un nuevo tripulante de faena consumo
+ */
+export const crearTripulanteFaenaConsumo = async (data) => {
+  try {
+    const response = await axios.post(API_URL, data, {
+      headers: getAuthHeaders(),
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error al crear tripulante de faena consumo:", error);
+    throw error;
+  }
+};

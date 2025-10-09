@@ -292,9 +292,8 @@ const DetalleAccionesPreviasConsumoCard = forwardRef(
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
           size="small"
-          style={{
-            fontSize: getResponsiveFontSize(),
-          }}
+          style={{fontSize: getResponsiveFontSize(), cursor: "pointer"}}
+          onRowClick={(e) => editarAccionPrevia(e.data)}
           header={
             <div
               style={{

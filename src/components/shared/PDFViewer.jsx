@@ -37,10 +37,14 @@ const PDFViewer = ({ urlDocumento, altura = '600px' }) => {
           // Soporte para documentos de visitante
           const rutaArchivo = urlDocumento.replace('/uploads/documentos-visitante/', '');
           urlCompleta = `${import.meta.env.VITE_API_URL}/acceso-instalaciones/documentos-visitante/archivo/${rutaArchivo}`;
+        } else if (urlDocumento.startsWith('/uploads/confirmaciones-acciones-previas-consumo/')) {
+          // Soporte para confirmaciones de acciones previas CONSUMO
+          const rutaArchivo = urlDocumento.replace('/uploads/confirmaciones-acciones-previas-consumo/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/confirmaciones-acciones-previas-consumo/archivo/${rutaArchivo}`;
         } else if (urlDocumento.startsWith('/uploads/confirmaciones-acciones-previas/')) {
           // Soporte para confirmaciones de acciones previas
           const rutaArchivo = urlDocumento.replace('/uploads/confirmaciones-acciones-previas/', '');
-          urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/confirmaciones-acciones-previas/archivo/${rutaArchivo}`;
+          urlCompleta = `${import.meta.env.VITE_API_URL}/confirmaciones-acciones-previas/archivo/${rutaArchivo}`;
         } else if (urlDocumento.startsWith('/uploads/documentacion-personal/')) {
           // Soporte para documentación personal
           const rutaArchivo = urlDocumento.replace('/uploads/documentacion-personal/', '');

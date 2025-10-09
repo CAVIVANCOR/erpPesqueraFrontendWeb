@@ -1,6 +1,6 @@
 // src/components/faenaPescaConsumo/DatosGeneralesFaenaPescaConsumo.jsx
 // Componente para datos generales de FaenaPescaConsumo
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Controller } from "react-hook-form";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
@@ -10,6 +10,7 @@ import { Message } from "primereact/message";
 import { classNames } from "primereact/utils";
 import CalasConsumoCard from "./CalasConsumoCard";
 import { getFaenaPescaConsumoPorId } from "../../api/faenaPescaConsumo";
+import { Button } from "primereact/button";
 
 export default function DatosGeneralesFaenaPescaConsumo({
   control,
@@ -27,12 +28,77 @@ export default function DatosGeneralesFaenaPescaConsumo({
   patrones,
   puertos,
   especies,
+  loading = false, // ← AGREGAR
+  handleFinalizarFaena, // ← AGREGAR
   onDataChange, // Mantener para callbacks
   onNovedadDataChange, // Mantener para callbacks
 }) {
   const [calasUpdateTrigger, setCalasUpdateTrigger] = useState(0);
+    // Normalizar puertos
+    const puertosNormalizados = useMemo(() => {
+      if (!puertos || !Array.isArray(puertos)) return [];
+      
+      // Si ya están normalizados (tienen label y value), devolverlos tal cual
+      if (puertos.length > 0 && puertos[0].label && puertos[0].value) {
+        return puertos;
+      }
+      
+      // Si no están normalizados, normalizarlos
+      return puertos.map(p => ({
+        label: p.nombre,
+        value: Number(p.id)
+      }));
+    }, [puertos]);
+
   const estadoFaenaId = watch("estadoFaenaId");
   const toneladasCapturadasFaena = watch("toneladasCapturadasFaena");
+
+  // ← AGREGAR ESTOS WATCH
+  const fechaSalida = watch("fechaSalida");
+  const puertoSalidaId = watch("puertoSalidaId");
+  const fechaDescarga = watch("fechaDescarga");
+  const puertoDescargaId = watch("puertoDescargaId");
+  const fechaHoraFondeo = watch("fechaHoraFondeo");
+  const puertoFondeoId = watch("puertoFondeoId");
+
+  // ← AGREGAR LÓGICA DE CAMBIO AUTOMÁTICO DE ESTADO
+  useEffect(() => {
+    // Solo cambiar si estado actual es 27 (INICIADA) y tenemos fechaSalida + puertoSalidaId
+    if (Number(estadoFaenaId) === 27 && fechaSalida && puertoSalidaId) {
+      setValue("estadoFaenaId", 28); // Cambiar a EN PROCESO
+    }
+  }, [fechaSalida, puertoSalidaId, estadoFaenaId, setValue]);
+
+  // ← AGREGAR LÓGICA PARA VERIFICAR CAMPOS COMPLETOS
+  const allRequiredFieldsComplete = useMemo(() => {
+    const requiredFields = [
+      fechaSalida,
+      fechaDescarga,
+      fechaHoraFondeo,
+      puertoSalidaId,
+      puertoDescargaId,
+      puertoFondeoId,
+    ];
+
+    return requiredFields.every(
+      (field) => field !== null && field !== undefined && field !== ""
+    );
+  }, [
+    fechaSalida,
+    fechaDescarga,
+    fechaHoraFondeo,
+    puertoSalidaId,
+    puertoDescargaId,
+    puertoFondeoId,
+  ]);
+
+  // ← AGREGAR LÓGICA PARA MOSTRAR BOTÓN
+  const showFinalizarButton =
+  Number(estadoFaenaId) === 28 && allRequiredFieldsComplete;
+
+  // ← AGREGAR LÓGICA DE SOLO LECTURA
+  const isReadOnlyState = Number(estadoFaenaId) === 29; // FINALIZADA
+
 
   useEffect(() => {
     const recargarDatosFaena = async () => {
@@ -131,46 +197,6 @@ export default function DatosGeneralesFaenaPescaConsumo({
             <small className="p-error">{errors.bolicheRedId.message}</small>
           )}
         </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="estadoFaenaId">Estado Faena</label>
-          <Controller
-            name="estadoFaenaId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="estadoFaenaId"
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                options={estadosFaenaOptions}
-                optionLabel="label"
-                optionValue="value"
-                style={{ fontWeight: "bold" }}
-                placeholder="Seleccione estado"
-                disabled
-              />
-            )}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="toneladasCapturadasFaena">Toneladas Capturadas</label>
-          <Controller
-            name="toneladasCapturadasFaena"
-            control={control}
-            render={({ field }) => (
-              <InputNumber
-                id="toneladasCapturadasFaena"
-                value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
-                mode="decimal"
-                minFractionDigits={0}
-                maxFractionDigits={3}
-                suffix=" Ton"
-                style={{ fontWeight: "bold", backgroundColor: "#f7ee88" }}
-                disabled
-              />
-            )}
-          />
-        </div>
       </div>
 
       <div
@@ -257,8 +283,6 @@ export default function DatosGeneralesFaenaPescaConsumo({
             <small className="p-error">{errors.patronId.message}</small>
           )}
         </div>
-
-
       </div>
 
       <div
@@ -270,7 +294,7 @@ export default function DatosGeneralesFaenaPescaConsumo({
           marginTop: 10,
         }}
       >
-                <div style={{ flex: 1 }}>
+        <div style={{ flex: 1 }}>
           <label htmlFor="fechaSalida">Fecha Zarpe</label>
           <Controller
             name="fechaSalida"
@@ -304,7 +328,7 @@ export default function DatosGeneralesFaenaPescaConsumo({
                 id="puertoSalidaId"
                 value={field.value}
                 onChange={(e) => field.onChange(e.value)}
-                options={puertos}
+                options={puertosNormalizados}
                 optionLabel="label"
                 optionValue="value"
                 style={{ fontWeight: "bold" }}
@@ -353,7 +377,7 @@ export default function DatosGeneralesFaenaPescaConsumo({
                 id="puertoDescargaId"
                 value={field.value}
                 onChange={(e) => field.onChange(e.value)}
-                options={puertos}
+                options={puertosNormalizados}
                 optionLabel="label"
                 optionValue="value"
                 style={{ fontWeight: "bold" }}
@@ -407,7 +431,7 @@ export default function DatosGeneralesFaenaPescaConsumo({
                 id="puertoFondeoId"
                 value={field.value}
                 onChange={(e) => field.onChange(e.value)}
-                options={puertos}
+                options={puertosNormalizados}
                 optionLabel="label"
                 optionValue="value"
                 style={{ fontWeight: "bold" }}
@@ -433,24 +457,60 @@ export default function DatosGeneralesFaenaPescaConsumo({
           marginTop: 10,
         }}
       >
-
-
-        <div style={{ flex: 2 }}>
-          <label htmlFor="descripcion">Descripción</label>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="estadoFaenaId">Estado Faena</label>
           <Controller
-            name="descripcion"
+            name="estadoFaenaId"
             control={control}
             render={({ field }) => (
-              <InputText
-                id="descripcion"
-                value={field.value || ""}
-                onChange={(e) => field.onChange(e.target.value)}
-                style={{ fontWeight: "bold", fontStyle: "italic" }}
-                placeholder="Descripción de la faena"
+              <Dropdown
+                id="estadoFaenaId"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={estadosFaenaOptions}
+                optionLabel="label"
+                optionValue="value"
+                style={{ fontWeight: "bold" }}
+                placeholder="Seleccione estado"
+                disabled
               />
             )}
           />
         </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="toneladasCapturadasFaena">Toneladas Capturadas</label>
+          <Controller
+            name="toneladasCapturadasFaena"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="toneladasCapturadasFaena"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="decimal"
+                minFractionDigits={0}
+                maxFractionDigits={3}
+                suffix=" Ton"
+                style={{ fontWeight: "bold", backgroundColor: "#f7ee88" }}
+                disabled
+              />
+            )}
+          />
+        </div>
+        {/* Botón Fin de Faena */}
+        {showFinalizarButton && (
+          <div style={{ flex: 0.5 }}>
+            <Button
+              label="Fin de Faena"
+              icon="pi pi-check"
+              severity="danger"
+              size="small"
+              raised
+              onClick={handleFinalizarFaena}
+              disabled={loading}
+            />
+          </div>
+        )}
       </div>
 
       <CalasConsumoCard

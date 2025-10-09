@@ -223,6 +223,7 @@ export default function DetalleDocTripulantesConsumoCard({
             docVencido: docVencido,
             verificado: false,
             observaciones: docPersonal.observaciones || null,
+            updatedAt: new Date().toISOString(),
           };
   
           // Verificar si ya existe el documento
@@ -428,17 +429,6 @@ export default function DetalleDocTripulantesConsumoCard({
             disabled={loadingData}
             tooltip="Cargar documentos de los tripulantes"
             tooltipOptions={{ position: "top" }}
-            style={{ fontSize: "0.875rem" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <Button
-            type="button"
-            icon="pi pi-plus"
-            label="Nuevo"
-            className="p-button-success"
-            onClick={openNew}
-            disabled={loadingData}
             style={{ fontSize: "0.875rem" }}
           />
         </div>

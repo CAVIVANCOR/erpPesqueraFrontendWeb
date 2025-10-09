@@ -179,6 +179,8 @@ const DetalleCalasConsumoEspecieForm = ({
         toneladas: kilogramos ? Number(kilogramos) / 1000 : null,
         porcentajeJuveniles: porcentajeJuveniles ? Number(porcentajeJuveniles) : null,
         observaciones: observaciones || null,
+        updatedAt: new Date().toISOString(),  // ← AGREGAR ESTA LÍNEA
+
       };
 
       if (editingDetalle) {

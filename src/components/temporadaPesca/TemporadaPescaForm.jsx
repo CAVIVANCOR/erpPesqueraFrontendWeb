@@ -28,7 +28,11 @@ import {
   getMotoristas,
   getPatrones,
 } from "../../api/personal";
-import { iniciarTemporada } from "../../api/temporadaPesca";
+import {
+  iniciarTemporada,
+  finalizarTemporada,
+  cancelarTemporada,
+} from "../../api/temporadaPesca";
 import { getEstadosMultiFuncionParaTemporadaPesca } from "../../api/estadoMultiFuncion";
 import { getEmbarcaciones } from "../../api/embarcacion";
 import { getAllBolicheRed } from "../../api/bolicheRed";
@@ -72,7 +76,8 @@ const TemporadaPescaForm = ({
   const [archivoSubido, setArchivoSubido] = useState(null);
   const [iniciandoTemporada, setIniciandoTemporada] = useState(false);
   const [tieneFaenas, setTieneFaenas] = useState(false);
-  const [camposRequeridosCompletos, setCamposRequeridosCompletos] = useState(false);
+  const [camposRequeridosCompletos, setCamposRequeridosCompletos] =
+    useState(false);
   // Estados para nuevos catálogos
   const [personal, setPersonal] = useState([]);
   const [centrosCosto, setCentrosCosto] = useState([]);
@@ -260,7 +265,12 @@ const TemporadaPescaForm = ({
    * Validar superposición cuando cambien fechas o estado
    */
   useEffect(() => {
-    if (fechaInicio && fechaFin && estadoSeleccionado && empresaSeleccionadaId) {
+    if (
+      fechaInicio &&
+      fechaFin &&
+      estadoSeleccionado &&
+      empresaSeleccionadaId
+    ) {
       validarSuperposicionFechas();
     }
   }, [fechaInicio, fechaFin, estadoSeleccionado, empresaSeleccionadaId]);
@@ -317,8 +327,7 @@ const TemporadaPescaForm = ({
         ? Number(data.cuotaAlquiladaTon)
         : null,
       fechaActualizacion: new Date().toISOString(),
-      toneladasCapturadasTemporada:
-        data.toneladasCapturadasTemporada || null,
+      toneladasCapturadasTemporada: data.toneladasCapturadasTemporada || null,
     };
 
     // Solo incluir ID si existe y no es null (para edición)
@@ -395,7 +404,9 @@ const TemporadaPescaForm = ({
           await verificarTemporadaIniciada(editingItem.id);
 
           // Obtener datos actualizados de la temporada y notificar cambios
-          const temporadaActualizada = await getTemporadaPescaPorId(editingItem.id);
+          const temporadaActualizada = await getTemporadaPescaPorId(
+            editingItem.id
+          );
           if (onTemporadaDataChange && temporadaActualizada) {
             onTemporadaDataChange(temporadaActualizada);
           }
@@ -423,6 +434,95 @@ const TemporadaPescaForm = ({
     });
   };
 
+  /**
+   * Manejar finalización de temporada
+   */
+  const handleFinalizarTemporada = () => {
+    confirmDialog({
+      message:
+        "¿Está seguro de finalizar esta temporada de pesca? Esta acción cambiará el estado a FINALIZADA.",
+      header: "Confirmar Finalización de Temporada",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-warning",
+      rejectClassName: "p-button-secondary",
+      acceptLabel: "Sí, Finalizar",
+      rejectLabel: "Cancelar",
+      accept: async () => {
+        try {
+          // ✅ Llamar al backend para finalizar
+          await finalizarTemporada(editingItem.id);
+
+          toast.current?.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: "Temporada finalizada correctamente",
+            life: 3000,
+          });
+
+          // Recargar datos actualizados
+          const temporadaActualizada = await getTemporadaPescaPorId(
+            editingItem.id
+          );
+          if (onTemporadaDataChange && temporadaActualizada) {
+            onTemporadaDataChange(temporadaActualizada);
+          }
+        } catch (error) {
+          console.error("Error finalizando temporada:", error);
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "Error al finalizar la temporada",
+            life: 3000,
+          });
+        }
+      },
+    });
+  };
+
+  /**
+   * Manejar cancelación de temporada
+   */
+  const handleCancelarTemporada = () => {
+    confirmDialog({
+      message:
+        "¿Está seguro de cancelar esta temporada de pesca? Esta acción cambiará el estado a CANCELADA.",
+      header: "Confirmar Cancelación de Temporada",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
+      rejectClassName: "p-button-secondary",
+      acceptLabel: "Sí, Cancelar",
+      rejectLabel: "No",
+      accept: async () => {
+        try {
+          // ✅ Llamar al backend para cancelar
+          await cancelarTemporada(editingItem.id);
+
+          toast.current?.show({
+            severity: "warn",
+            summary: "Temporada Cancelada",
+            detail: "Temporada cancelada correctamente",
+            life: 3000,
+          });
+
+          // Recargar datos actualizados
+          const temporadaActualizada = await getTemporadaPescaPorId(
+            editingItem.id
+          );
+          if (onTemporadaDataChange && temporadaActualizada) {
+            onTemporadaDataChange(temporadaActualizada);
+          }
+        } catch (error) {
+          console.error("Error cancelando temporada:", error);
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "Error al cancelar la temporada",
+            life: 3000,
+          });
+        }
+      },
+    });
+  };
   /**
    * Footer del diálogo con botones de acción
    */
@@ -481,7 +581,7 @@ const TemporadaPescaForm = ({
 
       {/* Botones de acción - lado derecho */}
       <div className="flex gap-2">
-        {editingItem && (
+        {editingItem && Number(watch("estadoSeleccionado")) === 13 && (
           <Button
             label="Iniciar Temporada"
             icon="pi pi-play"
@@ -502,8 +602,33 @@ const TemporadaPescaForm = ({
             }
           />
         )}
+
+        {/* Botón Finalizar Temporada - Solo visible en estado EN PROCESO (14) */}
+        {editingItem && Number(estadoSeleccionado) === 14 && (
+          <Button
+            label="Finalizar Temporada"
+            icon="pi pi-check-circle"
+            className="p-button-warning"
+            onClick={handleFinalizarTemporada}
+            tooltip="Finalizar temporada de pesca"
+          />
+        )}
+
+        {/* Botón Cancelar Temporada - Visible en estados EN ESPERA (13) o EN PROCESO (14) */}
+        {editingItem &&
+          (Number(estadoSeleccionado) === 13 ||
+            Number(estadoSeleccionado) === 14) && (
+            <Button
+              label="Cancelar Temporada"
+              icon="pi pi-ban"
+              className="p-button-danger"
+              onClick={handleCancelarTemporada}
+              tooltip="Cancelar temporada de pesca"
+            />
+          )}
+
         <Button
-          label="Cancelar"
+          label="Salir"
           icon="pi pi-times"
           outlined
           onClick={handleHide}
@@ -627,14 +752,16 @@ const TemporadaPescaForm = ({
         {activeCard === "entregas-a-rendir" && (
           <EntregasARendirTemporadaCard
             temporadaPescaId={editingItem?.id}
-            temporadaPescaIniciada={editingItem?.temporadaPescaIniciada || false}
+            temporadaPescaIniciada={
+              editingItem?.temporadaPescaIniciada || false
+            }
             personal={personal}
             centrosCosto={centrosCosto}
             tiposMovimiento={tiposMovimiento}
             onDataChange={onTemporadaDataChange}
           />
         )}
-        
+
         {/* Indicador de validación de superposición */}
         {validandoSuperposicion && (
           <div className="col-12">

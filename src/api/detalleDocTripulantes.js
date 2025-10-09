@@ -15,9 +15,11 @@ function getAuthHeader() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-
-export async function getDetallesDocTripulantes() {
-  const res = await axios.get(API_URL, { headers: getAuthHeader() });
+export async function getDetallesDocTripulantes(params = {}) {
+  const res = await axios.get(API_URL, { 
+    headers: getAuthHeader(),
+    params: params  // Permite filtrar por faenaPescaId u otros parámetros
+  });
   return res.data;
 }
 

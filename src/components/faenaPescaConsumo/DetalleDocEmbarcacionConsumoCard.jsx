@@ -48,6 +48,7 @@ const DetalleDocEmbarcacionConsumoCard = ({
   onDocEmbarcacionChange,
   onFaenasChange,
 }) => {
+  console.log("documentosPesca", documentosPesca);
   const [docEmbarcacion, setDocEmbarcacion] = useState([]);
   const [selectedDocEmbarcacion, setSelectedDocEmbarcacion] = useState(null);
   const [docEmbarcacionDialog, setDocEmbarcacionDialog] = useState(false);
@@ -106,36 +107,38 @@ const DetalleDocEmbarcacionConsumoCard = ({
     setDocumentosPescaNormalizados(documentosFormateados);
   }, [documentosPesca]);
 
-// Actualizar la función actualizarOpcionesFiltros (línea 109)
-const actualizarOpcionesFiltros = () => {
-  if (!docEmbarcacion.length) return;
+  // Actualizar la función actualizarOpcionesFiltros (línea 109)
+  const actualizarOpcionesFiltros = () => {
+    if (!docEmbarcacion.length) return;
 
-  // Filtro de Documento
-  const documentosUnicos = [
-    ...new Set(
-      docEmbarcacion.map((doc) => doc.documentoPescaId).filter(Boolean)
-    ),
-  ];
-  const opcionesDocumentoNuevas = documentosUnicos
-    .map((documentoPescaId) => {
-      // Primero buscar en el objeto documentoPesca que viene del backend
-      const docEnDetalle = docEmbarcacion.find(
-        (d) => Number(d.documentoPescaId) === Number(documentoPescaId)
-      )?.documentoPesca;
-      
-      // Si no existe, buscar en documentosPesca (fallback)
-      const documentoEncontrado = docEnDetalle || documentosPesca.find(
-        (d) => Number(d.id) === Number(documentoPescaId)
-      );
-      
-      return {
-        label: documentoEncontrado?.nombre || `ID: ${documentoPescaId}`,
-        value: documentoPescaId,
-      };
-    })
-    .filter((option) => option.label !== `ID: ${option.value}`);
-  setOpcionesDocumento(opcionesDocumentoNuevas);
-};
+    // Filtro de Documento
+    const documentosUnicos = [
+      ...new Set(
+        docEmbarcacion.map((doc) => doc.documentoPescaId).filter(Boolean)
+      ),
+    ];
+    const opcionesDocumentoNuevas = documentosUnicos
+      .map((documentoPescaId) => {
+        // Primero buscar en el objeto documentoPesca que viene del backend
+        const docEnDetalle = docEmbarcacion.find(
+          (d) => Number(d.documentoPescaId) === Number(documentoPescaId)
+        )?.documentoPesca;
+
+        // Si no existe, buscar en documentosPesca (fallback)
+        const documentoEncontrado =
+          docEnDetalle ||
+          documentosPesca.find(
+            (d) => Number(d.id) === Number(documentoPescaId)
+          );
+
+        return {
+          label: documentoEncontrado?.nombre || `ID: ${documentoPescaId}`,
+          value: documentoPescaId,
+        };
+      })
+      .filter((option) => option.label !== `ID: ${option.value}`);
+    setOpcionesDocumento(opcionesDocumentoNuevas);
+  };
   const cargarDocEmbarcacion = async () => {
     try {
       setLoadingData(true);
@@ -169,70 +172,6 @@ const actualizarOpcionesFiltros = () => {
   const hideDialog = () => {
     setDocEmbarcacionDialog(false);
     setEditingDocEmbarcacion(null);
-  };
-
-  const saveDocEmbarcacion = async (docEmbarcacionData) => {
-    try {
-      setLoadingData(true);
-
-      // Calcular docVencido basado en fechaVencimiento
-      const fechaActual = new Date();
-      const fechaVencimiento = docEmbarcacionData.fechaVencimiento
-        ? new Date(docEmbarcacionData.fechaVencimiento)
-        : null;
-
-      // Si fechaVencimiento es null, se considera vencido (true)
-      // Si fechaVencimiento < fechaActual, se considera vencido (true)
-      const docVencido = !fechaVencimiento || fechaVencimiento < fechaActual;
-
-      const dataToSend = {
-        ...docEmbarcacionData,
-        faenaPescaConsumoId: Number(faenaPescaConsumoId),
-        documentoPescaId: docEmbarcacionData.documentoPescaId
-          ? Number(docEmbarcacionData.documentoPescaId)
-          : null,
-        docVencido: docVencido,
-      };
-
-      if (editingDocEmbarcacion) {
-        await actualizarDetDocEmbarcacionPescaConsumo(
-          editingDocEmbarcacion.id,
-          dataToSend
-        );
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Documento de embarcación actualizado correctamente",
-          life: 3000,
-        });
-      } else {
-        await crearDetDocEmbarcacionPescaConsumo(dataToSend);
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Documento de embarcación creado correctamente",
-          life: 3000,
-        });
-      }
-
-      await cargarDocEmbarcacion();
-      hideDialog();
-
-      // Notificar cambios al componente padre
-      if (onDocEmbarcacionChange) {
-        onDocEmbarcacionChange();
-      }
-    } catch (error) {
-      console.error("Error al guardar documento de embarcación:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo guardar el documento de embarcación",
-        life: 3000,
-      });
-    } finally {
-      setLoadingData(false);
-    }
   };
 
   const confirmDeleteDocEmbarcacion = (docEmbarcacion) => {
@@ -277,8 +216,9 @@ const actualizarOpcionesFiltros = () => {
   };
 
   const cargarDocumentosEmbarcacion = async () => {
-    const embarcacionId = faenaData?.embarcacionId || novedadData?.embarcacionId;
-  
+    const embarcacionId =
+      faenaData?.embarcacionId || novedadData?.embarcacionId;
+
     if (!embarcacionId) {
       toast.current?.show({
         severity: "warn",
@@ -288,18 +228,18 @@ const actualizarOpcionesFiltros = () => {
       });
       return;
     }
-  
+
     try {
       setLoadingData(true);
-  
+
       // 1. Obtener todos los documentos de embarcación
       const todosLosDocumentos = await getDocumentacionesEmbarcacion();
-  
+
       // 2. Filtrar por embarcacionId
       const documentosEmbarcacion = todosLosDocumentos.filter(
         (doc) => Number(doc.embarcacionId) === Number(embarcacionId)
       );
-  
+
       if (documentosEmbarcacion.length === 0) {
         toast.current?.show({
           severity: "info",
@@ -309,17 +249,17 @@ const actualizarOpcionesFiltros = () => {
         });
         return;
       }
-  
+
       // 3. Obtener documentos existentes en DetDocEmbarcacionPescaConsumo
       const documentosExistentes = await getDetDocEmbarcacionPescaConsumo({
         faenaPescaConsumoId,
       });
-  
+
       // 4. Crear o actualizar registros en DetDocEmbarcacionPescaConsumo
       let creados = 0;
       let actualizados = 0;
       let errores = 0;
-  
+
       for (const docEmb of documentosEmbarcacion) {
         try {
           // Calcular docVencido basado en fechaVencimiento
@@ -327,8 +267,9 @@ const actualizarOpcionesFiltros = () => {
           const fechaVencimiento = docEmb.fechaVencimiento
             ? new Date(docEmb.fechaVencimiento)
             : null;
-          const docVencido = !fechaVencimiento || fechaVencimiento < fechaActual;
-  
+          const docVencido =
+            !fechaVencimiento || fechaVencimiento < fechaActual;
+
           const dataToSend = {
             faenaPescaConsumoId: Number(faenaPescaConsumoId),
             documentoPescaId: Number(docEmb.documentoPescaId),
@@ -339,15 +280,16 @@ const actualizarOpcionesFiltros = () => {
             docVencido: docVencido,
             verificado: false,
             observaciones: docEmb.observaciones || null,
+            updatedAt: new Date().toISOString(),
           };
-  
+
           // Verificar si ya existe el documento
           const documentoExistente = documentosExistentes.find(
             (d) =>
               Number(d.faenaPescaConsumoId) === Number(faenaPescaConsumoId) &&
               Number(d.documentoPescaId) === Number(docEmb.documentoPescaId)
           );
-  
+
           if (documentoExistente) {
             // Actualizar documento existente
             await actualizarDetDocEmbarcacionPescaConsumo(
@@ -365,7 +307,7 @@ const actualizarOpcionesFiltros = () => {
           errores++;
         }
       }
-  
+
       // 5. Mostrar resultado
       if (creados > 0 || actualizados > 0) {
         toast.current?.show({
@@ -376,9 +318,9 @@ const actualizarOpcionesFiltros = () => {
           }`,
           life: 4000,
         });
-  
+
         await cargarDocEmbarcacion();
-  
+
         // Notificar cambios al componente padre
         if (onDocEmbarcacionChange) {
           onDocEmbarcacionChange();
@@ -633,20 +575,17 @@ const actualizarOpcionesFiltros = () => {
     );
   };
 
-// Actualizar el template en DetalleDocEmbarcacionConsumoCard.jsx (línea 608)
-const documentoPescaTemplate = (rowData) => {
-  // Primero intentar usar el objeto documentoPesca que viene del backend
-  const nombreDocumento = rowData.documentoPesca?.nombre || 
-    documentosPescaNormalizados.find(
-      (doc) => Number(doc.value) === Number(rowData.documentoPescaId)
-    )?.label;
-  
-  return (
-    <span style={{ fontWeight: "bold" }}>
-      {nombreDocumento || "N/A"}
-    </span>
-  );
-};
+  const documentoPescaTemplate = (rowData) => {
+    console.log("documentoPescaTemplate rowData", rowData);
+    console.log("documentosPescaNormalizados", documentosPescaNormalizados);
+    return (
+      <span style={{ fontWeight: "bold" }}>
+        {documentosPescaNormalizados.find(
+          (doc) => Number(doc.value) === Number(rowData.documentoPescaId)
+        )?.label || "N/A"}
+      </span>
+    );
+  };
 
   const vencimientoTemplate = (rowData) => {
     const fechaActual = new Date();
@@ -664,9 +603,7 @@ const documentoPescaTemplate = (rowData) => {
 
     return (
       <div>
-        <div
-          style={{ fontSize: getResponsiveFontSize(), marginBottom: "4px" }}
-        >
+        <div style={{ fontSize: getResponsiveFontSize(), marginBottom: "4px" }}>
           {fechaTexto}
         </div>
         <Tag

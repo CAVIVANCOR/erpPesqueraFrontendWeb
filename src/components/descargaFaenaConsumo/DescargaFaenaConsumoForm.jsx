@@ -279,6 +279,7 @@ export default function DescargaFaenaConsumoForm({
           : null,
       };
 
+      // 1. Guardar la descarga
       if (detalle?.id) {
         await actualizarDescargaFaenaConsumo(detalle.id, payload);
         toast.current?.show({
@@ -300,31 +301,11 @@ export default function DescargaFaenaConsumoForm({
       onGuardadoExitoso?.();
     } catch (error) {
       console.error("Error al guardar descarga:", error);
-      // Extraer mensaje de error del backend
-      let errorMessage = "Error desconocido al guardar la descarga";
-
-      if (error?.response?.data?.mensaje) {
-        // Error del backend con campo 'mensaje'
-        errorMessage = error.response.data.mensaje;
-      } else if (error?.response?.data?.message) {
-        // Error del backend con campo 'message'
-        errorMessage = error.response.data.message;
-      } else if (error?.response?.data?.error) {
-        // Algunos backends envían el error en 'error'
-        errorMessage = error.response.data.error;
-      } else if (error?.message) {
-        // Error de axios o JavaScript
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        // Error como string directo
-        errorMessage = error;
-      }
-
       toast.current?.show({
         severity: "error",
-        summary: "Error de Validación",
-        detail: errorMessage,
-        life: 8000,
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al guardar la descarga",
+        life: 3000,
       });
     } finally {
       setLoading(false);

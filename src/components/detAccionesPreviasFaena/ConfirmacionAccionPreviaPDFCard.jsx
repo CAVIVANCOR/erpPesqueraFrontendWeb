@@ -76,7 +76,6 @@ export default function ConfirmacionAccionPreviaPDFCard({
           });
         }
       } else {
-        console.error('❌ [DEBUG] Condiciones no cumplidas, no se actualiza verificación');
       }
     };
 
@@ -129,6 +128,7 @@ export default function ConfirmacionAccionPreviaPDFCard({
                   <InputText
                     id="urlConfirmaAccionPdf"
                     {...field}
+                    value={field.value || ""}  // ← Convertir null a ""
                     placeholder="URL del PDF de confirmación"
                     className="w-full"
                     style={{ fontWeight: "bold" }}

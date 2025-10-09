@@ -26,6 +26,7 @@ import TripulanteFaenaForm from "./TripulanteFaenaForm";
 import {
   getTripulantesPorFaena,
   actualizarTripulanteFaena,
+  crearTripulanteFaena,
 } from "../../api/tripulanteFaena";
 
 const TripulantesFaenaPescaCard = ({
@@ -77,6 +78,132 @@ const TripulantesFaenaPescaCard = ({
     }
   };
 
+  const cargarTripulantesAutomatico = async () => {
+    try {
+      setLoadingTripulantes(true);
+
+      // Validar que exista temporadaData y empresaId
+      if (!temporadaData || !temporadaData.empresaId) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "No se encontró información de la temporada o empresaId",
+          life: 3000,
+        });
+        return;
+      }
+
+      // 1. Filtrar tripulantes elegibles (IGUAL QUE EL BACKEND)
+      // Personal.empresaId = temporada.empresaId
+      // Personal.cesado = false
+      // Personal.paraTemporadaPesca = true
+      // Personal.cargoId IN (21, 22, 14)
+      const tripulantesElegibles = personal.filter(
+        (p) =>
+          Number(p.empresaId) === Number(temporadaData.empresaId) &&
+          p.cesado === false &&
+          p.paraTemporadaPesca === true &&
+          (Number(p.cargoId) === 21 || // TRIPULANTE
+            Number(p.cargoId) === 22 || // PATRON
+            Number(p.cargoId) === 14) // MOTORISTA
+      );
+
+      if (tripulantesElegibles.length === 0) {
+        toast.current?.show({
+          severity: "info",
+          summary: "Sin Tripulantes",
+          detail: "No se encontraron tripulantes elegibles para temporada de pesca",
+          life: 3000,
+        });
+        return;
+      }
+
+      // 2. Obtener tripulantes existentes en TripulanteFaena para esta faena
+      const tripulantesExistentes = await getTripulantesPorFaena(faenaPescaId);
+
+      // 3. Crear o actualizar registros (UNO POR UNO para verificar duplicados)
+      let creados = 0;
+      let actualizados = 0;
+      let errores = 0;
+
+      for (const personalItem of tripulantesElegibles) {
+        try {
+          // Mapeo de campos (IGUAL QUE EL BACKEND)
+          const dataToSend = {
+            faenaPescaId: Number(faenaPescaId),
+            personalId: Number(personalItem.id),
+            cargoId: Number(personalItem.cargoId),
+            nombres: personalItem.nombres,
+            apellidos: personalItem.apellidos,
+            observaciones: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+
+          // Verificar si ya existe (DIFERENCIA CON EL BACKEND)
+          const tripulanteExistente = tripulantesExistentes.find(
+            (t) =>
+              Number(t.faenaPescaId) === Number(faenaPescaId) &&
+              Number(t.personalId) === Number(personalItem.id)
+          );
+
+          if (tripulanteExistente) {
+            // Si existe: ACTUALIZAR
+            await actualizarTripulanteFaena(
+              tripulanteExistente.id,
+              dataToSend
+            );
+            actualizados++;
+          } else {
+            // Si no existe: CREAR
+            await crearTripulanteFaena(dataToSend);
+            creados++;
+          }
+        } catch (error) {
+          console.error("Error al procesar tripulante:", error);
+          errores++;
+        }
+      }
+
+      // 4. Mostrar resultado
+      if (creados > 0 || actualizados > 0) {
+        toast.current?.show({
+          severity: "success",
+          summary: "Tripulantes Procesados",
+          detail: `${creados} creado(s), ${actualizados} actualizado(s)${
+            errores > 0 ? `. ${errores} error(es)` : ""
+          }`,
+          life: 4000,
+        });
+
+        // Recargar la tabla
+        await cargarTripulantes();
+
+        // Notificar cambios al componente padre
+        if (onTripulantesChange) {
+          onTripulantesChange();
+        }
+      } else {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Sin Cambios",
+          detail: "No se procesaron tripulantes",
+          life: 3000,
+        });
+      }
+    } catch (error) {
+      console.error("Error al cargar tripulantes:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar tripulantes automáticamente",
+        life: 3000,
+      });
+    } finally {
+      setLoadingTripulantes(false);
+    }
+  };
+  
   const handleVerTripulante = (tripulante) => {
     setEditingTripulante(tripulante);
     setTripulanteDialog(true);
@@ -232,35 +359,6 @@ const TripulantesFaenaPescaCard = ({
     return rowData.personal?.telefono || "Sin teléfono";
   };
 
-  // Toolbar del DataTable
-  const leftToolbarTemplate = () => {
-    return (
-      <div className="flex flex-wrap gap-2">
-        <h5 className="m-0">Tripulantes de la Faena</h5>
-      </div>
-    );
-  };
-
-  const rightToolbarTemplate = () => {
-    return <div className="flex flex-wrap gap-2"></div>;
-  };
-
-  // Header del DataTable con filtro global
-  const header = (
-    <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
-      <span className="p-input-icon-left">
-        <i className="pi pi-search" />
-        <InputText
-          type="search"
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          placeholder="Buscar tripulante..."
-          size="small"
-        />
-      </span>
-    </div>
-  );
-
   return (
     <div className="tripulantes-faena-card">
       <Toast ref={toast} />
@@ -293,7 +391,20 @@ const TripulantesFaenaPescaCard = ({
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <h2 className="m-0">Tripulantes de la Faena</h2>
+                  <h2 className="m-0">TRIPULANTES DE LA FAENA</h2>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    type="button"
+                    icon="pi pi-users"
+                    label="Cargar Tripulantes"
+                    className="p-button-success"
+                    onClick={cargarTripulantesAutomatico}
+                    disabled={loadingTripulantes || !temporadaData}
+                    tooltip="Cargar tripulantes elegibles automáticamente"
+                    tooltipOptions={{ position: "top" }}
+                    style={{ fontSize: "0.875rem" }}
+                  />
                 </div>
                 <div style={{ flex: 1 }}>
                   <InputText
@@ -301,15 +412,6 @@ const TripulantesFaenaPescaCard = ({
                     value={globalFilter}
                     onChange={(e) => setGlobalFilter(e.target.value)}
                     placeholder="Buscar tripulante..."
-                    size="small"
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <Button
-                    label="Actualizar"
-                    icon="pi pi-refresh"
-                    className="p-button-outlined"
-                    onClick={cargarTripulantes}
                     size="small"
                   />
                 </div>

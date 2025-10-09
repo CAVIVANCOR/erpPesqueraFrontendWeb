@@ -56,4 +56,15 @@ export async function subirDocumentoTemporada(file) {
 export async function iniciarTemporada(temporadaId) {
   const res = await axios.post(`${API_URL}/${temporadaId}/iniciar`, {}, { headers: getAuthHeaders() });
   return res.data;
-}
+};
+
+export const finalizarTemporada = async (id) => {
+  const response = await api.put(`/temporadas-pesca/${id}/finalizar`);
+  return response.data;
+};
+
+export const cancelarTemporada = async (id) => {
+  const response = await api.put(`/temporadas-pesca/${id}/cancelar`);
+  return response.data;
+};
+

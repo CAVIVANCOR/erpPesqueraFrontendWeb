@@ -26,7 +26,11 @@ import {
   getMotoristas,
   getPatrones,
 } from "../../api/personal";
-import { iniciarNovedadPescaConsumo } from "../../api/novedadPescaConsumo";
+import {
+  iniciarNovedadPescaConsumo,
+  finalizarNovedadPescaConsumo,
+  cancelarNovedadPescaConsumo,
+} from "../../api/novedadPescaConsumo";
 import { getEstadosMultiFuncionParaNovedadPescaConsumo } from "../../api/estadoMultiFuncion";
 import { getEmbarcaciones } from "../../api/embarcacion";
 import { getAllBolicheRed } from "../../api/bolicheRed";
@@ -103,6 +107,7 @@ const NovedadPescaConsumoForm = ({
       toneladasCapturadas: null,
       novedadPescaConsumoIniciada: false,
       urlResolucionPdf: "",
+      referenciaExtra: "", // Incluir referenciaExtra en defaultValues
     },
   });
 
@@ -239,30 +244,32 @@ const NovedadPescaConsumoForm = ({
     setActiveCard(cardName);
   };
 
-  // Manejar envío del formulario
-  const handleFormSubmit = async (data) => {
-    try {
-      const normalizedData = {
-        ...data,
-        id: data.id ? Number(data.id) : undefined,
-        empresaId: Number(data.empresaId),
-        BahiaId: Number(data.BahiaId),
-        estadoNovedadPescaConsumoId: Number(data.estadoNovedadPescaConsumoId),
-        cuotaPropiaTon: data.cuotaPropiaTon ? Number(data.cuotaPropiaTon) : null,
-        cuotaAlquiladaTon: data.cuotaAlquiladaTon ? Number(data.cuotaAlquiladaTon) : null,
-      };
+// Manejar envío del formulario
+const handleFormSubmit = async (data) => {
+  try {
+    const normalizedData = {
+      ...data,
+      id: data.id ? Number(data.id) : undefined,
+      empresaId: Number(data.empresaId),
+      BahiaId: Number(data.BahiaId),
+      estadoNovedadPescaConsumoId: Number(data.estadoNovedadPescaConsumoId),
+      cuotaPropiaTon: data.cuotaPropiaTon ? Number(data.cuotaPropiaTon) : null,
+      cuotaAlquiladaTon: data.cuotaAlquiladaTon ? Number(data.cuotaAlquiladaTon) : null,
+      // Asegurar que referenciaExtra se incluya si existe
+      referenciaExtra: data.referenciaExtra || null,
+    };
 
-      await onSave(normalizedData);
-    } catch (error) {
-      console.error("Error guardando novedad:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Error al guardar la novedad",
-        life: 3000,
-      });
-    }
-  };
+    await onSave(normalizedData);
+  } catch (error) {
+    console.error("Error guardando novedad:", error);
+    toast.current?.show({
+      severity: "error",
+      summary: "Error",
+      detail: "Error al guardar la novedad",
+      life: 3000,
+    });
+  }
+};
 
   // Manejar inicio de novedad
   const handleIniciarNovedad = () => {
@@ -298,7 +305,7 @@ const NovedadPescaConsumoForm = ({
 
           // Disparar eventos para actualizar otros componentes
           window.dispatchEvent(
-            new CustomEvent("refreshFaenas", {
+            new CustomEvent("refreshFaenasConsumo", {
               detail: { novedadId: editingItem.id },
             })
           );
@@ -326,6 +333,88 @@ const NovedadPescaConsumoForm = ({
       },
     });
   };
+
+    /**
+   * Manejar finalización de novedad
+   */
+    const handleFinalizarNovedad = () => {
+      confirmDialog({
+        message: "¿Está seguro de finalizar esta novedad de pesca? Esta acción cambiará el estado a FINALIZADA.",
+        header: "Confirmar Finalización de Novedad",
+        icon: "pi pi-exclamation-triangle",
+        acceptClassName: "p-button-warning",
+        rejectClassName: "p-button-secondary",
+        acceptLabel: "Sí, Finalizar",
+        rejectLabel: "Cancelar",
+        accept: async () => {
+          try {
+            await finalizarNovedadPescaConsumo(editingItem.id);
+  
+            toast.current?.show({
+              severity: "success",
+              summary: "Éxito",
+              detail: "Novedad finalizada correctamente",
+              life: 3000,
+            });
+  
+            // Recargar datos actualizados
+            const novedadActualizada = await getNovedadPescaConsumoPorId(editingItem.id);
+            if (onNovedadDataChange && novedadActualizada) {
+              onNovedadDataChange(novedadActualizada);
+            }
+          } catch (error) {
+            console.error("Error finalizando novedad:", error);
+            toast.current?.show({
+              severity: "error",
+              summary: "Error",
+              detail: "Error al finalizar la novedad",
+              life: 3000,
+            });
+          }
+        },
+      });
+    };
+  
+    /**
+     * Manejar cancelación de novedad
+     */
+    const handleCancelarNovedad = () => {
+      confirmDialog({
+        message: "¿Está seguro de cancelar esta novedad de pesca? Esta acción cambiará el estado a CANCELADA.",
+        header: "Confirmar Cancelación de Novedad",
+        icon: "pi pi-exclamation-triangle",
+        acceptClassName: "p-button-danger",
+        rejectClassName: "p-button-secondary",
+        acceptLabel: "Sí, Cancelar",
+        rejectLabel: "No",
+        accept: async () => {
+          try {
+            await cancelarNovedadPescaConsumo(editingItem.id);
+  
+            toast.current?.show({
+              severity: "warn",
+              summary: "Novedad Cancelada",
+              detail: "Novedad cancelada correctamente",
+              life: 3000,
+            });
+  
+            // Recargar datos actualizados
+            const novedadActualizada = await getNovedadPescaConsumoPorId(editingItem.id);
+            if (onNovedadDataChange && novedadActualizada) {
+              onNovedadDataChange(novedadActualizada);
+            }
+          } catch (error) {
+            console.error("Error cancelando novedad:", error);
+            toast.current?.show({
+              severity: "error",
+              summary: "Error",
+              detail: "Error al cancelar la novedad",
+              life: 3000,
+            });
+          }
+        },
+      });
+    };
 
   // Verificar si la novedad ya fue iniciada
   const verificarNovedadIniciada = async (novedadId) => {
@@ -403,7 +492,8 @@ const NovedadPescaConsumoForm = ({
 
       {/* Botones de acción - lado derecho */}
       <div className="flex gap-2">
-        {editingItem && (
+        {/* Botón Iniciar Novedad - Solo visible en estado EN ESPERA (23) */}
+        {editingItem && Number(watch("estadoNovedadPescaConsumoId")) === 23 && (
           <Button
             label="Iniciar Novedad"
             icon="pi pi-play"
@@ -422,8 +512,37 @@ const NovedadPescaConsumoForm = ({
             }
           />
         )}
+
+        {/* Botón Finalizar Novedad - Solo visible en estado EN PROCESO (24) */}
+        {editingItem && Number(watch("estadoNovedadPescaConsumoId")) === 24 && (
+          <Button
+            label="Finalizar Novedad"
+            icon="pi pi-check-circle"
+            className="p-button-warning"
+            onClick={handleFinalizarNovedad}
+            tooltip="Finalizar novedad de pesca"
+            type="button"
+            size="small"
+          />
+        )}
+
+        {/* Botón Cancelar Novedad - Visible en estados EN ESPERA (23) o EN PROCESO (24) */}
+        {editingItem &&
+          (Number(watch("estadoNovedadPescaConsumoId")) === 23 ||
+            Number(watch("estadoNovedadPescaConsumoId")) === 24) && (
+            <Button
+              label="Cancelar Novedad"
+              icon="pi pi-ban"
+              className="p-button-danger"
+              onClick={handleCancelarNovedad}
+              tooltip="Cancelar novedad de pesca"
+              type="button"
+              size="small"
+            />
+          )}
+
         <Button
-          label="Cancelar"
+          label="Salir"
           icon="pi pi-times"
           outlined
           onClick={handleHide}
@@ -458,6 +577,7 @@ const NovedadPescaConsumoForm = ({
         novedadPescaConsumoIniciada:
           editingItem.novedadPescaConsumoIniciada || false,
         urlResolucionPdf: editingItem.urlResolucionPdf || "",
+        referenciaExtra: editingItem.referenciaExtra || "",
       });
     } else {
       reset({
@@ -474,6 +594,7 @@ const NovedadPescaConsumoForm = ({
         toneladasCapturadas: null,
         novedadPescaConsumoIniciada: false,
         urlResolucionPdf: "",
+        referenciaExtra: "",
       });
     }
   }, [editingItem, reset, estadoDefaultId]);

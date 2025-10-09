@@ -99,6 +99,34 @@ export default function FaenaPescaConsumoForm({
     },
   });
 
+  // Función helper para generar descripción de faena
+  const generarDescripcionFaena = (faenaId, novedadData) => {
+    let descripcion = "";
+
+    if (faenaId) {
+      descripcion = `Faena ${faenaId}`;
+    } else {
+      descripcion = "Nueva Faena";
+    }
+
+    // Agregar ID de novedad
+    if (novedadData?.id) {
+      descripcion += ` - Novedad ${novedadData.id}`;
+    }
+
+    // Agregar número de resolución
+    if (novedadData?.numeroResolucion) {
+      descripcion += ` - ${novedadData.numeroResolucion}`;
+    }
+
+    // Agregar referencia extra al final si existe
+    if (novedadData?.referenciaExtra) {
+      descripcion += ` - ${novedadData.referenciaExtra}`;
+    }
+
+    return descripcion;
+  };
+
   // Cargar datos iniciales
   useEffect(() => {
     cargarDatosIniciales();
@@ -223,6 +251,14 @@ export default function FaenaPescaConsumoForm({
         currentFaenaData.id
       );
       setCurrentFaenaData(faenaActualizada);
+      
+      // ✅ AGREGAR: Actualizar los campos del formulario con los nuevos datos
+      setValue("puertoDescargaId", faenaActualizada.puertoDescargaId ? Number(faenaActualizada.puertoDescargaId) : null);
+      setValue("fechaDescarga", faenaActualizada.fechaDescarga ? new Date(faenaActualizada.fechaDescarga) : null);
+      setValue("puertoFondeoId", faenaActualizada.puertoFondeoId ? Number(faenaActualizada.puertoFondeoId) : null);
+      setValue("fechaHoraFondeo", faenaActualizada.fechaHoraFondeo ? new Date(faenaActualizada.fechaHoraFondeo) : null);
+      setValue("toneladasCapturadasFaena", faenaActualizada.toneladasCapturadasFaena || 0);
+      
       setForceUpdate((prev) => prev + 1);
     } catch (error) {
       console.error("Error al recargar faena:", error);
@@ -255,13 +291,34 @@ export default function FaenaPescaConsumoForm({
 
   const handleFormSubmit = async (data) => {
     try {
-      const resultado = await onSubmit(data);
+      // Generar descripción automática ANTES de enviar al backend
+      let dataConDescripcion = { ...data };
+
+      if (isEditMode) {
+        // Para actualizaciones, regenerar la descripción con el ID actual
+        const descripcionGenerada = generarDescripcionFaena(
+          currentFaenaData?.id,
+          novedadData
+        );
+        dataConDescripcion.descripcion = descripcionGenerada;
+      }
+
+      // Enviar al backend con la descripción incluida
+      const resultado = await onSubmit(dataConDescripcion);
 
       if (!isEditMode && resultado?.id) {
-        // Generar descripción automática
-        const descripcionGenerada = `Faena ${resultado.id} Novedad ${
-          novedadData?.numeroNovedad || "S/N"
-        }`;
+        // Generar descripción automática con el ID real
+        const descripcionGenerada = generarDescripcionFaena(
+          resultado.id,
+          novedadData
+        );
+
+        // Actualizar la faena en el backend con la descripción correcta
+        await onSubmit({
+          ...dataConDescripcion,
+          id: resultado.id,
+          descripcion: descripcionGenerada,
+        });
 
         const nuevaFaenaData = {
           ...data,
@@ -270,7 +327,7 @@ export default function FaenaPescaConsumoForm({
         };
         setCurrentFaenaData(nuevaFaenaData);
 
-        // Actualizar el formulario con el nuevo ID ANTES de cambiar isEditMode
+        // Actualizar el formulario con el nuevo ID
         reset({
           ...data,
           id: resultado.id,
@@ -296,6 +353,26 @@ export default function FaenaPescaConsumoForm({
           life: 4000,
         });
       } else if (isEditMode) {
+        // La descripción ya se envió en dataConDescripcion
+        const descripcionGenerada = dataConDescripcion.descripcion;
+
+        const faenaActualizada = {
+          ...data,
+          id: currentFaenaData?.id,
+          descripcion: descripcionGenerada,
+        };
+        setCurrentFaenaData(faenaActualizada);
+
+        // Actualizar el formulario con la nueva descripción
+        reset({
+          ...data,
+          id: currentFaenaData?.id,
+          descripcion: descripcionGenerada,
+        });
+
+        // Forzar actualización del Tag
+        setForceUpdate((prev) => prev + 1);
+
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -313,6 +390,14 @@ export default function FaenaPescaConsumoForm({
       });
     }
   };
+
+  const handleFinalizarFaena = () => {
+    // Cambiar estado a FINALIZADA (29)
+    setValue("estadoFaenaId", 29);
+    // Forzar actualización inmediata
+    handleSubmit(handleFormSubmit)();
+  };
+
   const commonProps = {
     control,
     errors,
@@ -336,6 +421,8 @@ export default function FaenaPescaConsumoForm({
     documentacionEmbarcacion,
     clientes,
     especies,
+    loading, // ← AGREGAR ESTA LÍNEA
+    handleFinalizarFaena, // ← AGREGAR ESTA LÍNEA
   };
 
   const dialogFooter = (
@@ -553,14 +640,10 @@ export default function FaenaPescaConsumoForm({
           key={`tag-${isEditMode}-${faenaCreatedSuccessfully}-${currentFaenaData?.id}-${forceUpdate}`}
           value={(() => {
             const faenaId = currentFaenaData?.id;
-            const novedadNumero = novedadData?.numeroNovedad || "S/N";
-            let descripcionBase = "";
-
-            if (faenaId) {
-              descripcionBase = `Faena ${faenaId} Novedad ${novedadNumero}`;
-            } else {
-              descripcionBase = `Nueva Faena Novedad ${novedadNumero}`;
-            }
+            const descripcionBase = generarDescripcionFaena(
+              faenaId,
+              novedadData
+            );
 
             let resultado = "";
             if (isEditMode) {
@@ -608,7 +691,9 @@ export default function FaenaPescaConsumoForm({
         {activeCard === "documentos-embarcacion" && (
           <DetalleDocEmbarcacionConsumoCard
             faenaPescaConsumoId={currentFaenaData?.id}
-            faenaData={currentFaenaData} // ✅ Agregar esta línea
+            faenaData={currentFaenaData}
+            novedadData={novedad} // ← AGREGAR
+            documentosPesca={documentosPesca} // ← AGREGAR ESTA LÍNEA
             documentacionEmbarcacion={documentacionEmbarcacion}
             onDataChange={handleFaenaDataChange}
           />
@@ -617,6 +702,7 @@ export default function FaenaPescaConsumoForm({
         {activeCard === "tripulantes" && (
           <TripulantesFaenaPescaConsumoCard
             faenaPescaConsumoId={currentFaenaData?.id}
+            novedadData={novedad}  // ← AGREGAR ESTA LÍNEA
             personal={personal}
             onDataChange={handleFaenaDataChange}
           />
@@ -644,6 +730,7 @@ export default function FaenaPescaConsumoForm({
             clientes={clientes}
             especies={especies}
             onDataChange={handleDescargaUpdate}
+            onDescargaChange={handleDescargaUpdate}  // ← AGREGAR ESTA LÍNEA
             lastUpdate={lastDescargaUpdate}
           />
         )}

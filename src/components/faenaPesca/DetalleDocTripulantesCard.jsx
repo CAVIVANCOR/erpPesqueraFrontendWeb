@@ -253,6 +253,7 @@ const DetalleDocTripulantesCard = ({
             docVencido: docVencido,
             verificado: false,
             observaciones: docPersonal.observaciones || null,
+            updatedAt: new Date().toISOString(), 
           };
 
           // Verificar si ya existe el documento para esta faena, tripulante y tipo de documento
@@ -463,17 +464,7 @@ const DetalleDocTripulantesCard = ({
             style={{ fontSize: "0.875rem" }}
           />
         </div>
-        <div style={{ flex: 1 }}>
-          <Button
-            type="button"
-            icon="pi pi-plus"
-            label="Nuevo"
-            className="p-button-success"
-            onClick={openNew}
-            disabled={loadingData}
-            style={{ fontSize: "0.875rem" }}
-          />
-        </div>
+
         <div style={{ flex: 1 }}>
           <InputText
             type="search"

@@ -7,7 +7,7 @@
  * Sigue el patrón profesional ERP Megui con React Hook Form.
  *
  * @author ERP Megui
- * @version 2.0.0
+ * @version 2.1.0
  */
 
 import React, { useEffect, useRef, useState } from "react";
@@ -52,6 +52,7 @@ export default function DatosGeneralesNovedadForm({
   // Watch para generar nombre automáticamente
   const idWatched = watch("id");
   const numeroResolucionWatched = watch("numeroResolucion");
+  const referenciaExtraWatched = watch("referenciaExtra");
 
   // Watch para toneladas capturadas
   const toneladasCapturadas = watch("toneladasCapturadas");
@@ -65,20 +66,28 @@ export default function DatosGeneralesNovedadForm({
     }
   }, [empresaWatched, setValue, bahiasComerciales]);
 
-  // Generar nombre automáticamente cuando cambien id o numeroResolucion
+  // Generar nombre automáticamente cuando cambien id, numeroResolucion o referenciaExtra
   useEffect(() => {
+    let nombreGenerado = "";
+    
     if (idWatched && numeroResolucionWatched) {
-      const nombreGenerado = `Novedad Pesca Consumo - ${idWatched} - ${numeroResolucionWatched}`;
-      setValue("nombre", nombreGenerado);
+      nombreGenerado = `Novedad Pesca Consumo - ${idWatched} - ${numeroResolucionWatched}`;
     } else if (numeroResolucionWatched && numeroResolucionWatched.trim()) {
       // Para nuevas novedades sin ID, usar solo numeroResolucion
-      const nombreGenerado = `Novedad Pesca Consumo - ${numeroResolucionWatched}`;
-      setValue("nombre", nombreGenerado);
+      nombreGenerado = `Novedad Pesca Consumo - ${numeroResolucionWatched}`;
     } else if (idWatched) {
-      const nombreGenerado = `Novedad Pesca Consumo - ${idWatched}`;
+      nombreGenerado = `Novedad Pesca Consumo - ${idWatched}`;
+    }
+    
+    // Agregar referenciaExtra al final si existe
+    if (referenciaExtraWatched && referenciaExtraWatched.trim()) {
+      nombreGenerado = nombreGenerado ? `${nombreGenerado} - ${referenciaExtraWatched}` : referenciaExtraWatched;
+    }
+    
+    if (nombreGenerado) {
       setValue("nombre", nombreGenerado);
     }
-  }, [idWatched, numeroResolucionWatched, setValue]);
+  }, [idWatched, numeroResolucionWatched, referenciaExtraWatched, setValue]);
 
   const autocompletarBahiaId = async (empresaId) => {
     try {
@@ -270,7 +279,7 @@ export default function DatosGeneralesNovedadForm({
           </div>
         </div>
 
-        {/* Segunda fila: Número de Resolución, Fecha Inicio, Fecha Fin */}
+        {/* Tercera fila: Número de Resolución, Referencia Extra Fecha Inicio, Fecha Fin, Cuota Propia, Toneladas Capturadas */}
         <div
           style={{
             display: "flex",
@@ -278,8 +287,8 @@ export default function DatosGeneralesNovedadForm({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          {/* Número de Resolución */}
-          <div style={{ flex: 1.5 }}>
+           {/* Número de Resolución */}
+           <div style={{ flex: 1 }}>
             <label
               htmlFor="numeroResolucion"
               className="block text-900 font-medium mb-2"
@@ -296,8 +305,7 @@ export default function DatosGeneralesNovedadForm({
                   {...field}
                   value={field.value?.toUpperCase() || ""}
                   onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                  placeholder="Ej: R.M. N° 123-2024-PRODUCE"
-                  style={{ fontWeight: "bold" }}
+                  style={{ fontWeight: "bold", textTransform: "uppercase" }}
                   className={classNames({
                     "p-invalid": errors.numeroResolucion,
                   })}
@@ -311,6 +319,36 @@ export default function DatosGeneralesNovedadForm({
             )}
           </div>
 
+          {/* Referencia Extra */}
+          <div style={{ flex: 1 }}>
+            <label
+              htmlFor="referenciaExtra"
+              className="block text-900 font-medium mb-2"
+            >
+              Referencia Extra
+            </label>
+            <Controller
+              name="referenciaExtra"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  id="referenciaExtra"
+                  {...field}
+                  value={field.value?.toUpperCase() || ""}
+                  onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                  style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                  className={classNames({
+                    "p-invalid": errors.referenciaExtra,
+                  })}
+                />
+              )}
+            />
+            {errors.referenciaExtra && (
+              <small className="p-error">
+                {errors.referenciaExtra.message}
+              </small>
+            )}
+          </div>
           <div style={{ flex: 1 }}>
             <label
               htmlFor="fechaInicio"
@@ -371,6 +409,7 @@ export default function DatosGeneralesNovedadForm({
               <small className="p-error">{errors.fechaFin.message}</small>
             )}
           </div>
+
           {/* Cuota Propia */}
           <div style={{ flex: 1 }}>
             <label

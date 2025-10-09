@@ -16,10 +16,7 @@ import { Tag } from "primereact/tag";
 import { confirmDialog } from "primereact/confirmdialog";
 import { Controller, useForm } from "react-hook-form";
 import { getResponsiveFontSize } from "../../utils/utils";
-import { 
-  capturarGPS, 
-  formatearCoordenadas, 
-} from "../../utils/gpsUtils";
+import { capturarGPS, formatearCoordenadas } from "../../utils/gpsUtils";
 import {
   getCalasFaenaConsumoPorFaena,
   crearCalaFaenaConsumo,
@@ -44,27 +41,27 @@ export default function CalasConsumoCard({
   const [dialogCalaVisible, setDialogCalaVisible] = useState(false);
   const [editingCala, setEditingCala] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
-  
+
   // Estados para GPS (string vacío como en DetalleCalasForm)
   const [latitud, setLatitud] = useState("");
   const [longitud, setLongitud] = useState("");
-  
+
   // Estados para campos de fecha
   const [createdAt, setCreatedAt] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
-  
+
   // Estados para dropdowns deshabilitados
   const [bahias, setBahias] = useState(bahiasProps);
   const [motoristas, setMotoristas] = useState(motoristasProps);
   const [patrones, setPatrones] = useState(patronesProps);
   const [embarcaciones, setEmbarcaciones] = useState(embarcacionesProps);
-  
+
   // Estados para valores seleccionados en dropdowns
   const [selectedBahiaId, setSelectedBahiaId] = useState(null);
   const [selectedMotoristaId, setSelectedMotoristaId] = useState(null);
   const [selectedPatronId, setSelectedPatronId] = useState(null);
   const [selectedEmbarcacionId, setSelectedEmbarcacionId] = useState(null);
-  
+
   const toast = useRef(null);
 
   const {
@@ -151,7 +148,7 @@ export default function CalasConsumoCard({
     setLongitud("");
     setCreatedAt(new Date());
     setUpdatedAt(new Date());
-    
+
     // Asignar valores directamente desde faenaData
     if (faenaData) {
       const bahiaIdNum = Number(faenaData.bahiaId);
@@ -164,7 +161,7 @@ export default function CalasConsumoCard({
       setSelectedPatronId(patronIdNum);
       setSelectedEmbarcacionId(embarcacionIdNum);
     }
-    
+
     resetCala({
       bahiaId: null,
       motoristaId: null,
@@ -187,13 +184,15 @@ export default function CalasConsumoCard({
     setLongitud(cala.longitud || "");
     setCreatedAt(cala.createdAt ? new Date(cala.createdAt) : null);
     setUpdatedAt(cala.updatedAt ? new Date(cala.updatedAt) : null);
-    
+
     // Cargar valores de dropdowns
     setSelectedBahiaId(cala.bahiaId ? Number(cala.bahiaId) : null);
     setSelectedMotoristaId(cala.motoristaId ? Number(cala.motoristaId) : null);
     setSelectedPatronId(cala.patronId ? Number(cala.patronId) : null);
-    setSelectedEmbarcacionId(cala.embarcacionId ? Number(cala.embarcacionId) : null);
-    
+    setSelectedEmbarcacionId(
+      cala.embarcacionId ? Number(cala.embarcacionId) : null
+    );
+
     resetCala({
       bahiaId: cala.bahiaId ? Number(cala.bahiaId) : null,
       motoristaId: cala.motoristaId ? Number(cala.motoristaId) : null,
@@ -242,15 +241,17 @@ export default function CalasConsumoCard({
     });
   };
 
-  const guardarCala = async () => {
-    
+  const guardarCala = async (cerrarDialogo = true) => {  // ← AGREGAR parámetro
     // Obtener valores directamente desde faenaData para evitar problemas de asincronía
     const bahiaIdNum = faenaData?.bahiaId ? Number(faenaData.bahiaId) : null;
-    const motoristaIdNum = faenaData?.motoristaId ? Number(faenaData.motoristaId) : null;
+    const motoristaIdNum = faenaData?.motoristaId
+      ? Number(faenaData.motoristaId)
+      : null;
     const patronIdNum = faenaData?.patronId ? Number(faenaData.patronId) : null;
-    const embarcacionIdNum = faenaData?.embarcacionId ? Number(faenaData.embarcacionId) : null;
-  
-  
+    const embarcacionIdNum = faenaData?.embarcacionId
+      ? Number(faenaData.embarcacionId)
+      : null;
+
     const data = {
       bahiaId: bahiaIdNum,
       motoristaId: motoristaIdNum,
@@ -264,8 +265,8 @@ export default function CalasConsumoCard({
       toneladasCapturadas: controlCala._formValues.toneladasCapturadas,
       observaciones: controlCala._formValues.observaciones,
     };
-  
-    await onSubmitCala(data);
+
+    await onSubmitCala(data, cerrarDialogo);  // ← PASAR parámetro
   };
 
   const finalizarCalaAction = async (cala) => {
@@ -276,24 +277,36 @@ export default function CalasConsumoCard({
     try {
       const ahora = new Date();
       setValueCala("fechaHoraFin", ahora);
-      
+
+      // Solo enviar campos actualizables, NO enviar id, createdAt, ni relaciones
       const calaActualizada = {
-        ...cala,
+        faenaPescaConsumoId: Number(cala.faenaPescaConsumoId),
+        novedadPescaConsumoId: Number(cala.novedadPescaConsumoId),
+        bahiaId: cala.bahiaId ? Number(cala.bahiaId) : null,
+        motoristaId: cala.motoristaId ? Number(cala.motoristaId) : null,
+        patronId: cala.patronId ? Number(cala.patronId) : null,
+        embarcacionId: cala.embarcacionId ? Number(cala.embarcacionId) : null,
+        fechaHoraInicio: cala.fechaHoraInicio,
         fechaHoraFin: ahora.toISOString(),
+        latitud: cala.latitud || null,
+        longitud: cala.longitud || null,
+        profundidadM: cala.profundidadM || null,
+        toneladasCapturadas: cala.toneladasCapturadas || null,
+        observaciones: cala.observaciones || null,
+        updatedAt: new Date().toISOString(),
       };
-      
+
       await actualizarCalaFaenaConsumo(cala.id, calaActualizada);
-      
+
       toast.current?.show({
         severity: "success",
         summary: "Cala Finalizada",
         detail: `Cala finalizada a las ${ahora.toLocaleTimeString()}`,
         life: 3000,
       });
-      
+
       cargarCalas();
       onDataChange?.();
-      
     } catch (error) {
       console.error("Error finalizando cala:", error);
       toast.current?.show({
@@ -305,7 +318,7 @@ export default function CalasConsumoCard({
     }
   };
 
-  const onSubmitCala = async (data) => {
+  const onSubmitCala = async (data, cerrarDialogo = true) => {  // ← AGREGAR parámetro con default true
     try {
       const payload = {
         faenaPescaConsumoId: Number(faenaPescaConsumoId),
@@ -345,7 +358,9 @@ export default function CalasConsumoCard({
         });
       }
 
-      setDialogCalaVisible(false);
+      if (cerrarDialogo) {  // ← SOLO CERRAR SI cerrarDialogo es true
+        setDialogCalaVisible(false);
+      }
       cargarCalas();
       onDataChange?.();
     } catch (error) {
@@ -372,9 +387,7 @@ export default function CalasConsumoCard({
   };
 
   const fechaHoraTemplate = (rowData, field) => {
-    return rowData[field.field]
-      ? formatearFecha(rowData[field.field])
-      : "-";
+    return rowData[field.field] ? formatearFecha(rowData[field.field]) : "-";
   };
 
   const toneladasTemplate = (rowData) => {
@@ -405,8 +418,10 @@ export default function CalasConsumoCard({
   };
 
   // Estados para determinar si los botones están habilitados
-  const puedeFinalizarCala = editingCala?.fechaHoraInicio && !editingCala?.fechaHoraFin;
-  const calaFinalizada = editingCala?.fechaHoraInicio && editingCala?.fechaHoraFin;
+  const puedeFinalizarCala =
+    editingCala?.fechaHoraInicio && !editingCala?.fechaHoraFin;
+  const calaFinalizada =
+    editingCala?.fechaHoraInicio && editingCala?.fechaHoraFin;
 
   // Header del DataTable
   const header = (
@@ -481,8 +496,8 @@ export default function CalasConsumoCard({
         label="Guardar"
         icon="pi pi-check"
         className="p-button-text"
-        onClick={guardarCala}  // ✅ CAMBIAR AQUÍ: igual que DetalleCalasForm
-        />
+        onClick={() => guardarCala(true)}  // ← PASAR true para cerrar el diálogo
+      />
     </>
   );
 
@@ -554,14 +569,18 @@ export default function CalasConsumoCard({
           <Column
             field="fechaHoraInicio"
             header="Fecha Inicio"
-            body={(rowData) => fechaHoraTemplate(rowData, { field: "fechaHoraInicio" })}
+            body={(rowData) =>
+              fechaHoraTemplate(rowData, { field: "fechaHoraInicio" })
+            }
             sortable
             style={{ minWidth: "10rem" }}
           />
           <Column
             field="fechaHoraFin"
             header="Fecha Fin"
-            body={(rowData) => fechaHoraTemplate(rowData, { field: "fechaHoraFin" })}
+            body={(rowData) =>
+              fechaHoraTemplate(rowData, { field: "fechaHoraFin" })
+            }
             sortable
             style={{ minWidth: "10rem" }}
           />
@@ -715,8 +734,11 @@ export default function CalasConsumoCard({
             }}
           >
             <div style={{ flex: 1 }}>
-              <Button
-                onClick={async () => {
+            <Button
+                type="button"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   try {
                     await capturarGPS(
                       async (latitude, longitude, accuracy) => {
@@ -725,26 +747,15 @@ export default function CalasConsumoCard({
                         setLongitud(longitude);
                         setValueCala("latitud", latitude);
                         setValueCala("longitud", longitude);
-                        
+
                         toast.current?.show({
                           severity: "success",
                           summary: "GPS capturado",
-                          detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m. Guardando cala...`,
+                          detail: `GPS capturado con precisión de ${accuracy.toFixed(
+                            1
+                          )}m. Presione Guardar para confirmar.`,
                           life: 3000,
                         });
-
-                        // Guardar automáticamente la cala después de capturar GPS
-                        try {
-                          await guardarCala();
-                        } catch (error) {
-                          console.error("Error al guardar cala automáticamente:", error);
-                          toast.current?.show({
-                            severity: "error",
-                            summary: "Error",
-                            detail: "GPS capturado pero error al guardar la cala",
-                            life: 4000,
-                          });
-                        }
                       },
                       (errorMessage) => {
                         // Callback de error usando funciones genéricas
@@ -843,10 +854,12 @@ export default function CalasConsumoCard({
                   <strong>📐 Formato DMS (Marítimo):</strong>
                   <div style={{ marginTop: "5px", fontSize: "14px" }}>
                     <div>
-                      <strong>Lat:</strong> {formatearCoordenadas(latitud, longitud).latitudDMS}
+                      <strong>Lat:</strong>{" "}
+                      {formatearCoordenadas(latitud, longitud).latitudDMS}
                     </div>
                     <div>
-                      <strong>Lon:</strong> {formatearCoordenadas(latitud, longitud).longitudDMS}
+                      <strong>Lon:</strong>{" "}
+                      {formatearCoordenadas(latitud, longitud).longitudDMS}
                     </div>
                   </div>
                 </div>
@@ -932,8 +945,8 @@ export default function CalasConsumoCard({
             </div>
           </div>
           <div className="col-12">
-            <DetalleCalasConsumoEspecieForm 
-              calaId={editingCala?.id} 
+            <DetalleCalasConsumoEspecieForm
+              calaId={editingCala?.id}
               faenaPescaConsumoId={faenaPescaConsumoId}
               calaFinalizada={calaFinalizada}
               onDataChange={onDataChange}
