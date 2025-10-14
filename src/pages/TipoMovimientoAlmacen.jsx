@@ -8,8 +8,14 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import TipoMovimientoAlmacenForm from "../components/tipoMovimientoAlmacen/TipoMovimientoAlmacenForm";
-import { getTiposMovimientoAlmacen, crearTipoMovimientoAlmacen, actualizarTipoMovimientoAlmacen, eliminarTipoMovimientoAlmacen } from "../api/tipoMovimientoAlmacen";
+import {
+  getTiposMovimientoAlmacen,
+  crearTipoMovimientoAlmacen,
+  actualizarTipoMovimientoAlmacen,
+  eliminarTipoMovimientoAlmacen,
+} from "../api/tipoMovimientoAlmacen";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Pantalla profesional para gestión de Tipos de Movimiento de Almacén.
@@ -28,7 +34,7 @@ export default function TipoMovimientoAlmacen() {
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore(state => state.usuario);
+  const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
     cargarDatos();
@@ -40,7 +46,11 @@ export default function TipoMovimientoAlmacen() {
       const data = await getTiposMovimientoAlmacen();
       setItems(data);
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar los datos." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar los datos.",
+      });
     }
     setLoading(false);
   };
@@ -61,10 +71,18 @@ export default function TipoMovimientoAlmacen() {
     setLoading(true);
     try {
       await eliminarTipoMovimientoAlmacen(toDelete.id);
-      toast.current.show({ severity: "success", summary: "Eliminado", detail: "Tipo de movimiento eliminado correctamente." });
+      toast.current.show({
+        severity: "success",
+        summary: "Eliminado",
+        detail: "Tipo de movimiento eliminado correctamente.",
+      });
       cargarDatos();
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo eliminar." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo eliminar.",
+      });
     }
     setLoading(false);
     setToDelete(null);
@@ -75,16 +93,28 @@ export default function TipoMovimientoAlmacen() {
     try {
       if (editing && editing.id) {
         await actualizarTipoMovimientoAlmacen(editing.id, data);
-        toast.current.show({ severity: "success", summary: "Actualizado", detail: "Tipo de movimiento actualizado." });
+        toast.current.show({
+          severity: "success",
+          summary: "Actualizado",
+          detail: "Tipo de movimiento actualizado.",
+        });
       } else {
         await crearTipoMovimientoAlmacen(data);
-        toast.current.show({ severity: "success", summary: "Creado", detail: "Tipo de movimiento creado." });
+        toast.current.show({
+          severity: "success",
+          summary: "Creado",
+          detail: "Tipo de movimiento creado.",
+        });
       }
       setShowDialog(false);
       setEditing(null);
       cargarDatos();
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo guardar." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo guardar.",
+      });
     }
     setLoading(false);
   };
@@ -102,9 +132,19 @@ export default function TipoMovimientoAlmacen() {
 
   const actionBody = (rowData) => (
     <>
-      <Button icon="pi pi-pencil" className="p-button-text p-button-sm" onClick={() => handleEdit(rowData)} aria-label="Editar" />
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-text p-button-sm"
+        onClick={() => handleEdit(rowData)}
+        aria-label="Editar"
+      />
       {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger p-button-sm" onClick={() => handleDelete(rowData)} aria-label="Eliminar" />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger p-button-sm"
+          onClick={() => handleDelete(rowData)}
+          aria-label="Eliminar"
+        />
       )}
     </>
   );
@@ -112,19 +152,74 @@ export default function TipoMovimientoAlmacen() {
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
-      <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar este tipo de movimiento?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
-      <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
-        <h2>Gestión de Tipos de Movimiento de Almacén</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
-      </div>
-      <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
+      <ConfirmDialog
+        visible={showConfirm}
+        onHide={() => setShowConfirm(false)}
+        message="¿Está seguro que desea eliminar este tipo de movimiento?"
+        header="Confirmar eliminación"
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        accept={handleDeleteConfirm}
+        reject={() => setShowConfirm(false)}
+      />
+      <DataTable
+        value={items}
+        loading={loading}
+        dataKey="id"
+        paginator
+        rows={10}
+        onRowClick={(e) => handleEdit(e.data)}
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        className="p-datatable-sm"
+        header={
+          <div
+            style={{
+              alignItems: "center",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h2>Tipos de Movimiento de Almacén</h2>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                className="p-button-success"
+                size="small"
+                outlined
+                onClick={handleAdd}
+                disabled={loading}
+              />
+            </div>
+          </div>
+        }
+      >
         <Column field="id" header="ID" style={{ width: 80 }} />
         <Column field="nombre" header="Nombre" />
         <Column field="descripcion" header="Descripción" />
-        <Column field="activo" header="Activo" body={rowData => booleanTemplate(rowData, 'activo')} />
-        <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
+        <Column
+          field="activo"
+          header="Activo"
+          body={(rowData) => booleanTemplate(rowData, "activo")}
+        />
+        <Column
+          body={actionBody}
+          header="Acciones"
+          style={{ width: 130, textAlign: "center" }}
+        />
       </DataTable>
-      <Dialog header={editing ? "Editar Tipo de Movimiento" : "Nuevo Tipo de Movimiento"} visible={showDialog} style={{ width: 600 }} onHide={() => setShowDialog(false)} modal>
+      <Dialog
+        header={
+          editing ? "Editar Tipo de Movimiento" : "Nuevo Tipo de Movimiento"
+        }
+        visible={showDialog}
+        style={{ width: 600 }}
+        onHide={() => setShowDialog(false)}
+        modal
+      >
         <TipoMovimientoAlmacenForm
           isEdit={!!editing}
           defaultValues={editing || {}}

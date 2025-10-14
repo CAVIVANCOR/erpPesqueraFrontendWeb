@@ -1,8 +1,8 @@
 /**
- * PdfDetMovEntRendirNovedadCard.jsx
+ * PdfComprobanteOperacionDetMovCard.jsx
  *
- * Card para manejo de PDF de comprobantes de DetMovsEntRendirPescaConsumo.
- * Incluye captura/subida, visualización y gestión de documentos PDF.
+ * Card para visualización del PDF de comprobante de operación de movimiento de caja.
+ * Este PDF se copia desde MovimientoCaja cuando se valida el movimiento.
  *
  * @author ERP Megui
  * @version 1.0.0
@@ -19,10 +19,10 @@ import DocumentoCapture from "../shared/DocumentoCapture";
 import PDFViewer from "../shared/PDFViewer";
 import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
 
-const PdfDetMovEntRendirNovedadCard = ({
+const PdfComprobanteOperacionDetMovCard = ({
   control,
   errors,
-  urlComprobanteMovimiento,
+  urlComprobanteOperacionMovCaja,
   toast,
   setValue,
   movimiento,
@@ -32,23 +32,23 @@ const PdfDetMovEntRendirNovedadCard = ({
 
   // Función para ver PDF
   const handleVerPDF = () => {
-    if (urlComprobanteMovimiento) {
+    if (urlComprobanteOperacionMovCaja) {
       abrirPdfEnNuevaPestana(
-        urlComprobanteMovimiento,
+        urlComprobanteOperacionMovCaja,
         toast,
-        "No hay comprobante PDF disponible"
+        "No hay comprobante de operación disponible"
       );
     }
   };
 
   // Función para manejar comprobante subido
   const handleComprobanteSubido = (urlDocumento) => {
-    setValue("urlComprobanteMovimiento", urlDocumento);
+    setValue("urlComprobanteOperacionMovCaja", urlDocumento);
     setMostrarCaptura(false);
     toast.current?.show({
       severity: "success",
       summary: "Comprobante Subido",
-      detail: "El comprobante PDF se ha subido correctamente",
+      detail: "El comprobante de operación se ha subido correctamente",
       life: 3000,
     });
   };
@@ -56,7 +56,15 @@ const PdfDetMovEntRendirNovedadCard = ({
   return (
     <Card>
       <div className="p-fluid">
-        {/* URL del comprobante */}
+        {/* Mensaje informativo */}
+        <div style={{ marginBottom: "1rem" }}>
+          <Message
+            severity="info"
+            text="Este comprobante se copia automáticamente desde el Movimiento de Caja cuando se valida la operación, pero también puede ser capturado/subido manualmente."
+          />
+        </div>
+
+        {/* URL del comprobante de operación */}
         <div
           style={{
             display: "flex",
@@ -65,27 +73,29 @@ const PdfDetMovEntRendirNovedadCard = ({
           }}
         >
           <div style={{ flex: 2 }}>
-            <label htmlFor="urlComprobanteMovimiento">Comprobante PDF</label>
+            <label htmlFor="urlComprobanteOperacionMovCaja">
+              Comprobante de Operación (MovimientoCaja)
+            </label>
             <Controller
-              name="urlComprobanteMovimiento"
+              name="urlComprobanteOperacionMovCaja"
               control={control}
               render={({ field }) => (
                 <InputText
-                  id="urlComprobanteMovimiento"
+                  id="urlComprobanteOperacionMovCaja"
                   {...field}
-                  placeholder="URL del comprobante PDF"
+                  placeholder="URL del comprobante de operación"
                   className={classNames({
-                    "p-invalid": errors.urlComprobanteMovimiento,
+                    "p-invalid": errors.urlComprobanteOperacionMovCaja,
                   })}
                   style={{ fontWeight: "bold" }}
                   readOnly
                 />
               )}
             />
-            {errors.urlComprobanteMovimiento && (
+            {errors.urlComprobanteOperacionMovCaja && (
               <Message
                 severity="error"
-                text={errors.urlComprobanteMovimiento.message}
+                text={errors.urlComprobanteOperacionMovCaja.message}
               />
             )}
           </div>
@@ -110,7 +120,7 @@ const PdfDetMovEntRendirNovedadCard = ({
             </div>
           </div>
           <div style={{ flex: 0.5 }}>
-            {urlComprobanteMovimiento && (
+            {urlComprobanteOperacionMovCaja && (
               <Button
                 type="button"
                 label="Ver PDF"
@@ -124,9 +134,19 @@ const PdfDetMovEntRendirNovedadCard = ({
         </div>
 
         {/* Visor de PDF */}
-        {urlComprobanteMovimiento && (
+        {urlComprobanteOperacionMovCaja && (
           <div style={{ marginTop: "1rem" }}>
-            <PDFViewer urlDocumento={urlComprobanteMovimiento} />
+            <PDFViewer urlDocumento={urlComprobanteOperacionMovCaja} />
+          </div>
+        )}
+
+        {/* Mensaje si no hay comprobante */}
+        {!urlComprobanteOperacionMovCaja && (
+          <div style={{ marginTop: "1rem" }}>
+            <Message
+              severity="warn"
+              text="No hay comprobante de operación disponible. Este campo se llenará automáticamente cuando se valide el movimiento de caja asociado."
+            />
           </div>
         )}
 
@@ -135,14 +155,14 @@ const PdfDetMovEntRendirNovedadCard = ({
           visible={mostrarCaptura}
           onHide={() => setMostrarCaptura(false)}
           onDocumentoSubido={handleComprobanteSubido}
-          endpoint="/api/pesca/movs-entregarendir-pesca-consumo/upload"
-          titulo="Capturar Comprobante de Movimiento"
+          endpoint="/api/det-movs-entrega-rendir/upload-comprobante-operacion"
+          titulo="Capturar Comprobante de Operación"
           toast={toast}
-          extraData={{ detMovsEntRendirPescaConsumoId: movimiento?.id }}
+          extraData={{ detMovsEntregaRendirId: movimiento?.id }}
         />
       </div>
     </Card>
   );
 };
 
-export default PdfDetMovEntRendirNovedadCard;
+export default PdfComprobanteOperacionDetMovCard;

@@ -7,30 +7,137 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
 
-export default function ConceptoMovAlmacenForm({ isEdit, defaultValues, tiposConcepto, onSubmit, onCancel, loading }) {
+export default function ConceptoMovAlmacenForm({ isEdit, defaultValues, tiposConcepto, tiposMovimiento, tiposAlmacen, almacenes, empresaId, onSubmit, onCancel, loading }) {
   const [tipoConceptoId, setTipoConceptoId] = React.useState(defaultValues.tipoConceptoId || null);
-  const [nombre, setNombre] = React.useState(defaultValues.nombre || '');
+  const [tipoMovimientoId, setTipoMovimientoId] = React.useState(defaultValues.tipoMovimientoId || null);
+  const [tipoAlmacenId, setTipoAlmacenId] = React.useState(defaultValues.tipoAlmacenId || null);
+  const [almacenOrigenId, setAlmacenOrigenId] = React.useState(defaultValues.almacenOrigenId || null);
+  const [almacenDestinoId, setAlmacenDestinoId] = React.useState(defaultValues.almacenDestinoId || null);
   const [descripcion, setDescripcion] = React.useState(defaultValues.descripcion || '');
+  const [kardexOrigen, setKardexOrigen] = React.useState(defaultValues.llevaKardexOrigen || false);
+  const [kardexDestino, setKardexDestino] = React.useState(defaultValues.llevaKardexDestino || false);
+  const [custodia, setCustodia] = React.useState(defaultValues.esCustodia || false);
   const [activo, setActivo] = React.useState(defaultValues.activo !== undefined ? defaultValues.activo : true);
 
   React.useEffect(() => {
     setTipoConceptoId(defaultValues.tipoConceptoId || null);
-    setNombre(defaultValues.nombre || '');
+    setTipoMovimientoId(defaultValues.tipoMovimientoId || null);
+    setTipoAlmacenId(defaultValues.tipoAlmacenId || null);
+    setAlmacenOrigenId(defaultValues.almacenOrigenId || null);
+    setAlmacenDestinoId(defaultValues.almacenDestinoId || null);
     setDescripcion(defaultValues.descripcion || '');
+    setKardexOrigen(defaultValues.llevaKardexOrigen || false);
+    setKardexDestino(defaultValues.llevaKardexDestino || false);
+    setCustodia(defaultValues.esCustodia || false);
     setActivo(defaultValues.activo !== undefined ? defaultValues.activo : true);
   }, [defaultValues]);
+
+  // Actualizar kardexOrigen cuando cambia el almacén origen
+  React.useEffect(() => {
+    if (almacenOrigenId) {
+      const almacen = almacenes.find(a => Number(a.id) === Number(almacenOrigenId));
+      if (almacen) {
+        setKardexOrigen(almacen.seLlevaKardex || false);
+      }
+    } else {
+      setKardexOrigen(false);
+    }
+  }, [almacenOrigenId, almacenes]);
+
+  // Actualizar kardexDestino cuando cambia el almacén destino
+  React.useEffect(() => {
+    if (almacenDestinoId) {
+      const almacen = almacenes.find(a => Number(a.id) === Number(almacenDestinoId));
+      if (almacen) {
+        setKardexDestino(almacen.seLlevaKardex || false);
+      }
+    } else {
+      setKardexDestino(false);
+    }
+  }, [almacenDestinoId, almacenes]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit({
       tipoConceptoId: tipoConceptoId ? Number(tipoConceptoId) : null,
-      nombre,
+      tipoMovimientoId: tipoMovimientoId ? Number(tipoMovimientoId) : null,
+      tipoAlmacenId: tipoAlmacenId ? Number(tipoAlmacenId) : null,
+      almacenOrigenId: almacenOrigenId ? Number(almacenOrigenId) : null,
+      almacenDestinoId: almacenDestinoId ? Number(almacenDestinoId) : null,
       descripcion,
+      llevaKardexOrigen: kardexOrigen,
+      llevaKardexDestino: kardexDestino,
+      esCustodia: custodia,
       activo
     });
   };
 
+  // Filtrar almacenes por empresa seleccionada
+  const almacenesFiltrados = React.useMemo(() => {
+    if (!empresaId) return [];
+    return almacenes.filter(a => {
+      // Filtrar por centroAlmacen.empresaId
+      return a.centroAlmacen && Number(a.centroAlmacen.empresaId) === Number(empresaId);
+    });
+  }, [almacenes, empresaId]);
+
+  // Construir descripcionArmada en tiempo real
+  const descripcionArmada = React.useMemo(() => {
+    const partes = [];
+
+    // Prefijo si es custodia
+    if (custodia) {
+      partes.push('CUSTODIA');
+    }
+
+    // Tipo Concepto
+    if (tipoConceptoId) {
+      const tipoConcepto = tiposConcepto.find(t => Number(t.id) === Number(tipoConceptoId));
+      if (tipoConcepto) partes.push(tipoConcepto.nombre);
+    }
+
+    // Tipo Movimiento
+    if (tipoMovimientoId) {
+      const tipoMovimiento = tiposMovimiento.find(t => Number(t.id) === Number(tipoMovimientoId));
+      if (tipoMovimiento) partes.push(tipoMovimiento.nombre);
+    }
+
+    // Tipo Almacén
+    if (tipoAlmacenId) {
+      const tipoAlmacen = tiposAlmacen.find(t => Number(t.id) === Number(tipoAlmacenId));
+      if (tipoAlmacen) partes.push(tipoAlmacen.nombre);
+    }
+
+    // Almacén Origen
+    if (almacenOrigenId) {
+      const almacenOrigen = almacenes.find(a => Number(a.id) === Number(almacenOrigenId));
+      if (almacenOrigen) {
+        partes.push('DE');
+        partes.push(almacenOrigen.nombre);
+      }
+    }
+
+    // Almacén Destino
+    if (almacenDestinoId) {
+      const almacenDestino = almacenes.find(a => Number(a.id) === Number(almacenDestinoId));
+      if (almacenDestino) {
+        partes.push('A');
+        partes.push(almacenDestino.nombre);
+      }
+    }
+
+    // Descripción
+    if (descripcion) {
+      partes.push(descripcion);
+    }
+
+    return partes.join(' ');
+  }, [custodia, tipoConceptoId, tipoMovimientoId, tipoAlmacenId, almacenOrigenId, almacenDestinoId, descripcion, tiposConcepto, tiposMovimiento, tiposAlmacen, almacenes]);
+
   const tiposConceptoOptions = tiposConcepto.map(t => ({ ...t, id: Number(t.id) }));
+  const tiposMovimientoOptions = tiposMovimiento.map(t => ({ ...t, id: Number(t.id) }));
+  const tiposAlmacenOptions = tiposAlmacen.map(t => ({ ...t, id: Number(t.id) }));
+  const almacenesOptions = almacenesFiltrados.map(a => ({ ...a, id: Number(a.id) }));
 
   return (
     <form onSubmit={handleSubmit} className="p-fluid">
@@ -47,33 +154,142 @@ export default function ConceptoMovAlmacenForm({ isEdit, defaultValues, tiposCon
               onChange={e => setTipoConceptoId(e.value)}
               placeholder="Seleccione tipo de concepto"
               disabled={loading}
+              style={{ fontWeight: 'bold' }}
+              required
+              filter
+            />
+          </div>
+        </div>
+        <div className="p-col-12">
+          <div className="p-field">
+            <label htmlFor="tipoMovimientoId">Tipo de Movimiento*</label>
+            <Dropdown 
+              id="tipoMovimientoId"
+              value={tipoMovimientoId ? Number(tipoMovimientoId) : null}
+              options={tiposMovimientoOptions}
+              optionLabel="nombre"
+              optionValue="id"
+              onChange={e => setTipoMovimientoId(e.value)}
+              placeholder="Seleccione tipo de movimiento"
+              disabled={loading}
+              style={{ fontWeight: 'bold' }}
+              required
+              filter
+            />
+          </div>
+        </div>
+        <div className="p-col-12">
+          <div className="p-field">
+            <label htmlFor="tipoAlmacenId">Tipo de Almacén*</label>
+            <Dropdown 
+              id="tipoAlmacenId"
+              value={tipoAlmacenId ? Number(tipoAlmacenId) : null}
+              options={tiposAlmacenOptions}
+              optionLabel="nombre"
+              optionValue="id"
+              onChange={e => setTipoAlmacenId(e.value)}
+              placeholder="Seleccione tipo de almacén"
+              disabled={loading}
+              style={{ fontWeight: 'bold' }}
+              required
+              filter
+            />
+          </div>
+        </div>
+        <div className="p-col-12">
+          <div className="p-field">
+            <label htmlFor="almacenOrigenId">Almacén Origen</label>
+            <Dropdown 
+              id="almacenOrigenId"
+              value={almacenOrigenId ? Number(almacenOrigenId) : null}
+              options={almacenesOptions}
+              optionLabel="nombre"
+              optionValue="id"
+              onChange={e => setAlmacenOrigenId(e.value)}
+              placeholder={empresaId ? "Seleccione almacén origen" : "Primero seleccione una empresa"}
+              disabled={loading || !empresaId}
+              style={{ fontWeight: 'bold' }}
+              showClear
+              filter
+            />
+          </div>
+        </div>
+        <div className="p-col-12">
+          <div className="p-field">
+            <label htmlFor="almacenDestinoId">Almacén Destino</label>
+            <Dropdown 
+              id="almacenDestinoId"
+              value={almacenDestinoId ? Number(almacenDestinoId) : null}
+              options={almacenesOptions}
+              optionLabel="nombre"
+              optionValue="id"
+              onChange={e => setAlmacenDestinoId(e.value)}
+              placeholder={empresaId ? "Seleccione almacén destino" : "Primero seleccione una empresa"}
+              disabled={loading || !empresaId}
+              style={{ fontWeight: 'bold' }}
+              showClear
+              filter
+            />
+          </div>
+        </div>
+        <div className="p-col-12">
+          <div className="p-field">
+            <label htmlFor="descripcion">Descripción*</label>
+            <InputTextarea 
+              id="descripcion" 
+              value={descripcion} 
+              onChange={e => setDescripcion(e.target.value)} 
+              disabled={loading}
+              rows={1}
+              style={{ fontWeight: 'bold' }}
+              maxLength={200}
               required
             />
           </div>
         </div>
         <div className="p-col-12">
           <div className="p-field">
-            <label htmlFor="nombre">Nombre*</label>
-            <InputText 
-              id="nombre" 
-              value={nombre} 
-              onChange={e => setNombre(e.target.value)} 
-              required 
-              disabled={loading}
-              maxLength={50}
+            <label htmlFor="descripcionArmada" style={{ fontWeight: 'bold', color: '#2196F3' }}>Descripción Armada (Vista Previa)</label>
+            <InputTextarea 
+              id="descripcionArmada" 
+              value={descripcionArmada} 
+              disabled={true}
+              rows={3}
+              style={{ backgroundColor: '#f0f8ff', fontWeight: 'bold', color: '#333' }}
             />
           </div>
         </div>
         <div className="p-col-12">
-          <div className="p-field">
-            <label htmlFor="descripcion">Descripción</label>
-            <InputTextarea 
-              id="descripcion" 
-              value={descripcion} 
-              onChange={e => setDescripcion(e.target.value)} 
-              disabled={loading}
-              rows={3}
+          <div className="p-field-checkbox">
+            <Checkbox 
+              id="kardexOrigen" 
+              checked={kardexOrigen} 
+              onChange={e => setKardexOrigen(e.checked)} 
+              disabled={true}
             />
+            <label htmlFor="kardexOrigen">Kardex Origen (automático desde almacén)</label>
+          </div>
+        </div>
+        <div className="p-col-12">
+          <div className="p-field-checkbox">
+            <Checkbox 
+              id="kardexDestino" 
+              checked={kardexDestino} 
+              onChange={e => setKardexDestino(e.checked)} 
+              disabled={true}
+            />
+            <label htmlFor="kardexDestino">Kardex Destino (automático desde almacén)</label>
+          </div>
+        </div>
+        <div className="p-col-12">
+          <div className="p-field-checkbox">
+            <Checkbox 
+              id="custodia" 
+              checked={custodia} 
+              onChange={e => setCustodia(e.checked)} 
+              disabled={loading} 
+            />
+            <label htmlFor="custodia">Custodia</label>
           </div>
         </div>
         <div className="p-col-12">
@@ -88,9 +304,21 @@ export default function ConceptoMovAlmacenForm({ isEdit, defaultValues, tiposCon
           </div>
         </div>
       </div>
-      <div className="p-d-flex p-jc-end" style={{ gap: 8, marginTop: 16 }}>
-        <Button type="button" label="Cancelar" className="p-button-text" onClick={onCancel} disabled={loading} />
-        <Button type="submit" label={isEdit ? "Actualizar" : "Crear"} icon="pi pi-save" loading={loading} />
+      <div className="p-dialog-footer" style={{ marginTop: "1rem" }}>
+        <Button
+          label="Cancelar"
+          icon="pi pi-times"
+          onClick={onCancel}
+          className="p-button-text"
+          type="button"
+          disabled={loading}
+        />
+        <Button
+          label="Guardar"
+          icon="pi pi-check"
+          type="submit"
+          disabled={loading}
+        />
       </div>
     </form>
   );

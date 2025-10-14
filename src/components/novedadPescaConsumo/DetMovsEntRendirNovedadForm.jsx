@@ -30,7 +30,8 @@ import {
 } from "../../api/detMovsEntRendirPescaConsumo";
 import { getModulos } from "../../api/moduloSistema";
 import { Card } from "primereact/card";
-import PdfDetMovEntRendirNovedadCard from "./pdfDetMovEntRendirNovedadCard";
+import PdfDetMovEntRendirNovedadCard from "./PdfDetMovEntRendirNovedadCard";
+import PdfComprobanteOperacionDetMovNovedadCard from "./PdfComprobanteOperacionDetMovNovedadCard";
 
 const DetMovsEntRendirNovedadForm = ({
   movimiento = null,
@@ -39,6 +40,7 @@ const DetMovsEntRendirNovedadForm = ({
   centrosCosto = [],
   tiposMovimiento = [],
   entidadesComerciales = [],
+  monedas = [], // ← AGREGAR ESTA LÍNEA
   onGuardadoExitoso,
   onCancelar,
 }) => {
@@ -50,7 +52,7 @@ const DetMovsEntRendirNovedadForm = ({
   const [modulosNovedadConsumo, setModulosNovedadConsumo] = useState(null);
 
   // Estados para navegación de cards
-  const [cardActiva, setCardActiva] = useState("datos"); // "datos" | "pdf"
+  const [cardActiva, setCardActiva] = useState("datos"); // "datos" | "pdf" | "pdfOperacion"
 
   // Configuración del formulario con react-hook-form
   const {
@@ -69,6 +71,7 @@ const DetMovsEntRendirNovedadForm = ({
       tipoMovimientoId: "",
       centroCostoId: "",
       monto: 0,
+      monedaId: "", // ← AGREGAR ESTA LÍNEA
       descripcion: "",
       entidadComercialId: "",
       urlComprobanteMovimiento: "",
@@ -78,6 +81,7 @@ const DetMovsEntRendirNovedadForm = ({
       fechaOperacionMovCaja: null,
       operacionMovCajaId: null,
       moduloOrigenMovCajaId: 3, // Valor automático para "NOVEDAD PESCA CONSUMO"
+      urlComprobanteOperacionMovCaja: "",
     },
   });
 
@@ -92,6 +96,7 @@ const DetMovsEntRendirNovedadForm = ({
   const fechaOperacionMovCaja = watch("fechaOperacionMovCaja");
   const operacionMovCajaId = watch("operacionMovCajaId");
   const moduloOrigenMovCajaId = watch("moduloOrigenMovCajaId");
+  const urlComprobanteOperacionMovCaja = watch("urlComprobanteOperacionMovCaja");
 
   // Cargar datos del registro en edición
   useEffect(() => {
@@ -111,6 +116,7 @@ const DetMovsEntRendirNovedadForm = ({
           ? Number(movimiento.centroCostoId)
           : null,
         monto: Number(movimiento.monto) || 0,
+        monedaId: movimiento.monedaId ? Number(movimiento.monedaId) : null, // ← AGREGAR ESTA LÍNEA
         descripcion: movimiento.descripcion || "",
         entidadComercialId: movimiento.entidadComercialId
           ? Number(movimiento.entidadComercialId)
@@ -128,6 +134,7 @@ const DetMovsEntRendirNovedadForm = ({
         moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId
           ? Number(movimiento.moduloOrigenMovCajaId)
           : 3,
+        urlComprobanteOperacionMovCaja: movimiento.urlComprobanteOperacionMovCaja || "",
       });
     } else {
       // Para nuevo registro, establecer entregaARendirPescaConsumoId y asignar responsable automáticamente
@@ -212,7 +219,10 @@ const DetMovsEntRendirNovedadForm = ({
     label: tm.nombre || "N/A",
     value: Number(tm.id),
   }));
-
+  const monedaOptions = (monedas || []).map((m) => ({ // ← AGREGAR ESTAS LÍNEAS
+    label: `${m.simbolo}`,
+    value: Number(m.id),
+  }));
   // Función para manejar el toggle de operacionSinFactura
   const handleToggleOperacionSinFactura = () => {
     const valorActual = getValues("operacionSinFactura");
@@ -254,12 +264,14 @@ const DetMovsEntRendirNovedadForm = ({
           : null,
         centroCostoId: data.centroCostoId ? Number(data.centroCostoId) : null,
         monto: Number(data.monto),
+        monedaId: data.monedaId ? Number(data.monedaId) : null, // ← AGREGAR ESTA LÍNEA
         fechaMovimiento: data.fechaMovimiento,
         descripcion: data.descripcion ? data.descripcion.toUpperCase() : null,
         entidadComercialId: data.entidadComercialId
           ? Number(data.entidadComercialId)
           : null,
         urlComprobanteMovimiento: data.urlComprobanteMovimiento?.trim() || null,
+        urlComprobanteOperacionMovCaja: data.urlComprobanteOperacionMovCaja?.trim() || null,
         validadoTesoreria: data.validadoTesoreria,
         fechaValidacionTesoreria: data.fechaValidacionTesoreria,
         operacionSinFactura: data.operacionSinFactura,
@@ -288,75 +300,6 @@ const DetMovsEntRendirNovedadForm = ({
         life: 3000,
       });
     }
-  };
-
-  // Función para validar tesorería
-  const handleValidarTesoreria = () => {
-    // Obtener valores actuales del formulario
-    const valores = getValues();
-
-    // Validar campos obligatorios
-    const camposFaltantes = [];
-
-    if (!valores.fechaMovimiento) {
-      camposFaltantes.push("Fecha del Movimiento");
-    }
-
-    if (!valores.responsableId) {
-      camposFaltantes.push("Responsable");
-    }
-
-    if (!valores.tipoMovimientoId) {
-      camposFaltantes.push("Tipo de Movimiento");
-    }
-
-    if (!valores.centroCostoId) {
-      camposFaltantes.push("Centro de Costo");
-    }
-
-    if (!valores.descripcion || valores.descripcion.trim() === "") {
-      camposFaltantes.push("Descripción");
-    }
-
-    if (!valores.monto || Number(valores.monto) <= 0) {
-      camposFaltantes.push("Monto");
-    }
-
-    // Verificar si faltan campos
-    if (camposFaltantes.length > 0) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Campos Incompletos",
-        detail: `Faltan los siguientes campos: ${camposFaltantes.join(", ")}`,
-        life: 5000,
-      });
-      return;
-    }
-
-    // Verificar que existe el comprobante PDF
-    if (
-      !valores.urlComprobanteMovimiento ||
-      valores.urlComprobanteMovimiento.trim() === ""
-    ) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Comprobante Requerido",
-        detail: "Debe adjuntar el comprobante para poder validar la Operación",
-        life: 5000,
-      });
-      return;
-    }
-
-    // Si todas las validaciones pasan, proceder con la validación
-    setValue("validadoTesoreria", true);
-    setValue("fechaValidacionTesoreria", new Date());
-
-    toast.current?.show({
-      severity: "success",
-      summary: "Validación Exitosa",
-      detail: "Operación validada Exitosamente",
-      life: 3000,
-    });
   };
 
   // Verificar si el formulario debe estar deshabilitado
@@ -644,12 +587,47 @@ const DetMovsEntRendirNovedadForm = ({
                 )}
               </div>
               <div style={{ flex: 1 }}>
+                {/* Moneda */}
+                <label
+                  htmlFor="monedaId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Moneda *
+                </label>
+                <Controller
+                  name="monedaId"
+                  control={control}
+                  rules={{ required: "La moneda es obligatoria" }}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="monedaId"
+                      {...field}
+                      value={field.value}
+                      options={monedaOptions}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione moneda"
+                      className={classNames({
+                        "p-invalid": errors.monedaId,
+                      })}
+                      filter
+                      showClear
+                      style={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.monedaId && (
+                  <Message severity="error" text={errors.monedaId.message} />
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
                 {/* Monto */}
                 <label
                   htmlFor="monto"
                   className="block text-900 font-medium mb-2"
                 >
-                  Monto (S/) *
+                  Monto *
                 </label>
                 <Controller
                   name="monto"
@@ -666,9 +644,7 @@ const DetMovsEntRendirNovedadForm = ({
                       id="monto"
                       value={field.value || null}
                       onValueChange={(e) => field.onChange(e.value)}
-                      mode="currency"
-                      currency="PEN"
-                      locale="es-PE"
+                      mode="decimal"
                       minFractionDigits={2}
                       maxFractionDigits={2}
                       min={0}
@@ -684,29 +660,7 @@ const DetMovsEntRendirNovedadForm = ({
                   <Message severity="error" text={errors.monto.message} />
                 )}
               </div>
-              <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">
-                  Estado Facturación
-                </label>
-                <Button
-                  type="button"
-                  label={operacionSinFactura ? "S/FACTURA" : "C/FACTURA"}
-                  icon={
-                    operacionSinFactura
-                      ? "pi pi-exclamation-triangle"
-                      : "pi pi-check-circle"
-                  }
-                  className={
-                    operacionSinFactura
-                      ? "p-button-warning"
-                      : "p-button-primary"
-                  }
-                  onClick={handleToggleOperacionSinFactura}
-                  size="small"
-                  style={{ width: "100%" }}
-                  disabled={formularioDeshabilitado}
-                />
-              </div>
+
             </div>
 
             {/* Sección de Comprobante PDF */}
@@ -721,7 +675,7 @@ const DetMovsEntRendirNovedadForm = ({
             >
               <div style={{ flex: 1 }}>
                 <label className="block text-900 font-medium mb-2">
-                  Estado
+                  Validado Tesorería
                 </label>
                 <Button
                   type="button"
@@ -765,6 +719,29 @@ const DetMovsEntRendirNovedadForm = ({
                       className="p-inputtext-sm"
                     />
                   )}
+                />
+              </div>
+                            <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Comprobante
+                </label>
+                <Button
+                  type="button"
+                  label={operacionSinFactura ? "S/FACTURA" : "C/FACTURA"}
+                  icon={
+                    operacionSinFactura
+                      ? "pi pi-exclamation-triangle"
+                      : "pi pi-check-circle"
+                  }
+                  className={
+                    operacionSinFactura
+                      ? "p-button-warning"
+                      : "p-button-primary"
+                  }
+                  onClick={handleToggleOperacionSinFactura}
+                  size="small"
+                  style={{ width: "100%" }}
+                  disabled={formularioDeshabilitado}
                 />
               </div>
             </div>
@@ -853,25 +830,6 @@ const DetMovsEntRendirNovedadForm = ({
                   className="p-inputtext-sm"
                 />
               </div>
-              <div style={{ flex: 1 }}>
-                {!validadoTesoreria && (
-                  <Button
-                    type="button"
-                    label={
-                      <span className="flex align-items-center gap-1">
-                        <i className="pi pi-check"></i>
-                        <i className="pi pi-dollar"></i>
-                        <span>Validar</span>
-                      </span>
-                    }
-                    className="p-button-danger"
-                    onClick={handleValidarTesoreria}
-                    size="small"
-                    severity="danger"
-                    disabled={formularioDeshabilitado}
-                  />
-                )}
-              </div>
             </div>
           </form>
         </Card>
@@ -883,6 +841,18 @@ const DetMovsEntRendirNovedadForm = ({
           control={control}
           errors={errors}
           urlComprobanteMovimiento={urlComprobanteMovimiento}
+          toast={toast}
+          setValue={setValue}
+          movimiento={movimiento}
+        />
+      )}
+
+      {/* Card de PDF Comprobante Operación MovCaja */}
+      {cardActiva === "pdfOperacion" && (
+        <PdfComprobanteOperacionDetMovNovedadCard
+          control={control}
+          errors={errors}
+          urlComprobanteOperacionMovCaja={urlComprobanteOperacionMovCaja}
           toast={toast}
           setValue={setValue}
           movimiento={movimiento}
@@ -923,6 +893,16 @@ const DetMovsEntRendirNovedadForm = ({
             tooltip="Comprobante PDF"
             raised
           />
+          <Button
+            icon="pi pi-receipt"
+            className={
+              cardActiva === "pdfOperacion" ? "p-button-primary" : "p-button-outlined"
+            }
+            onClick={() => setCardActiva("pdfOperacion")}
+            size="small"
+            tooltip="Comprobante Operación MovCaja"
+            raised
+          />
         </div>
 
         {/* Grupo de botones de acción - Derecha */}
@@ -935,7 +915,6 @@ const DetMovsEntRendirNovedadForm = ({
             size="small"
             severity="warning"
             onClick={onCancelar}
-            disabled={formularioDeshabilitado}
           />
           <Button
             type="button"

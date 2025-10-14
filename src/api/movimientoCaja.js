@@ -1,3 +1,4 @@
+// c:\Proyectos\megui\erp\erp-pesquera-frontend-web\src\api\movimientoCaja.js
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
@@ -76,6 +77,23 @@ export const eliminarMovimientoCaja = async (id) => {
     return response.data;
   } catch (error) {
     console.error('Error al eliminar movimiento de caja:', error);
+    throw error;
+  }
+};
+
+/**
+ * Valida un movimiento de caja y actualiza el origen correspondiente
+ * @param {number} id - ID del movimiento de caja a validar
+ * @returns {Promise<Object>} Movimiento de caja validado
+ */
+export const validarMovimientoCaja = async (id) => {
+  try {
+    const response = await axios.post(`${API_URL}/${id}/validar`, {}, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al validar movimiento de caja:', error);
     throw error;
   }
 };

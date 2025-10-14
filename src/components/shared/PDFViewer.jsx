@@ -77,6 +77,17 @@ const PDFViewer = ({ urlDocumento, altura = '600px' }) => {
           // ✅ NUEVO: Soporte para informes de faena consumo (ruta protegida con JWT)
           const rutaArchivo = urlDocumento.replace('/uploads/informes-faena-consumo/', '');
           urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/faenas-pesca-consumo/archivo-informe-faena/${rutaArchivo}`;
+
+        } else if (urlDocumento.startsWith('/uploads/comprobantes-movimiento-caja/')) {
+          // ✅ NUEVO: Soporte para comprobantes de operación de movimiento de caja
+          const rutaArchivo = urlDocumento.replace('/uploads/comprobantes-movimiento-caja/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/movimientos-caja/archivo-comprobante/${rutaArchivo}`;
+        } else if (urlDocumento.startsWith('/uploads/documentos-movimiento-caja/')) {
+          // ✅ NUEVO: Soporte para documentos afectos de movimiento de caja
+          const rutaArchivo = urlDocumento.replace('/uploads/documentos-movimiento-caja/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/movimientos-caja/archivo-documento/${rutaArchivo}`;
+          
+
         } else if (urlDocumento.startsWith('/api/')) {
           // Remover /api/ del inicio porque VITE_API_URL ya lo incluye
           const rutaSinApi = urlDocumento.substring(4);

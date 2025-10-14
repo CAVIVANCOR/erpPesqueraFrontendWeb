@@ -49,6 +49,7 @@ import { getEstadosMultiFuncionParaProductos } from "../api/estadoMultiFuncion";
 import { getTiposAlmacenamiento } from "../api/tipoAlmacenamiento";
 import { getPaises } from "../api/pais";
 import { getMarcas } from "../api/marca";
+import { getEspecies } from "../api/especie";
 
 const Producto = () => {
   const [productos, setProductos] = useState([]);
@@ -81,6 +82,7 @@ const Producto = () => {
   const [marcas, setMarcas] = useState([]);
   const [estadosIniciales, setEstadosIniciales] = useState([]);
   const [unidadMetricaDefault, setUnidadMetricaDefault] = useState(null);
+  const [especies, setEspecies] = useState([]);
 
   // Estados para los selectores de filtro
   const [selectedEmpresa, setSelectedEmpresa] = useState(null);
@@ -113,6 +115,7 @@ const Producto = () => {
         paisesData,
         marcasData,
         unidadMetricaDefaultData,
+        especiesData,
       ] = await Promise.all([
         getFamiliasProducto(),
         getSubfamiliasProducto(),
@@ -127,6 +130,9 @@ const Producto = () => {
         getPaises(),
         getMarcas(),
         getUnidadMetricaDefault(),
+        getEspecies().catch(err => {
+          return []; // Retornar array vacío si falla
+        }),
       ]);
 
       setFamilias(familiasData);
@@ -142,6 +148,7 @@ const Producto = () => {
       setPaises(paisesData);
       setMarcas(marcasData);
       setUnidadMetricaDefault(unidadMetricaDefaultData);
+      setEspecies(especiesData);
     } catch (error) {
       toast.current.show({
         severity: "error",
@@ -285,9 +292,23 @@ const Producto = () => {
       if (selectedEmpresa) {
         try {
           const clientesData = await getEntidadesComerciales();
-          setClientes(clientesData.filter((e) => e.esCliente === true));
+          // Filtrar clientes por empresa seleccionada
+          const clientesFiltrados = clientesData.filter(
+            (e) => e.esCliente === true && Number(e.empresaId) === Number(selectedEmpresa.id)
+          );
+          setClientes(clientesFiltrados);
+          // Limpiar cliente seleccionado si no pertenece a la empresa
+          if (selectedCliente && Number(selectedCliente.empresaId) !== Number(selectedEmpresa.id)) {
+            setSelectedCliente(null);
+          }
         } catch (error) {
           console.error("Error cargando clientes:", error);
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "Error al cargar clientes de la empresa",
+            life: 3000,
+          });
         }
       } else {
         setClientes([]);
@@ -299,8 +320,23 @@ const Producto = () => {
   }, [selectedEmpresa]);
 
   const abrirDialogoNuevo = () => {
-    setProductoSeleccionado(null);
+    // Pre-cargar empresa y cliente seleccionados en los filtros
+    const productoInicial = {
+      empresaId: selectedEmpresa ? Number(selectedEmpresa.id) : null,
+      clienteId: selectedCliente ? Number(selectedCliente.id) : null,
+    };
+    setProductoSeleccionado(productoInicial);
     setDialogVisible(true);
+  };
+
+  const limpiarFiltros = () => {
+    setSelectedEmpresa(null);
+    setSelectedCliente(null);
+    setSelectedFamilia(null);
+    setSelectedSubfamilia(null);
+    setSelectedTipoAlmacenamiento(null);
+    setSelectedUnidadMedida(null);
+    setGlobalFilterValue("");
   };
 
   const abrirDialogoEdicion = (producto) => {
@@ -314,7 +350,7 @@ const Producto = () => {
   };
 
   const onGuardarExitoso = async (data) => {
-    if (productoSeleccionado) {
+    if (productoSeleccionado && productoSeleccionado.id) {
       await actualizarProducto(productoSeleccionado.id, data);
     } else {
       await crearProducto(data);
@@ -324,7 +360,7 @@ const Producto = () => {
     toast.current.show({
       severity: "success",
       summary: "Éxito",
-      detail: productoSeleccionado
+      detail: productoSeleccionado && productoSeleccionado.id
         ? "Producto actualizado correctamente"
         : "Producto creado correctamente",
       life: 3000,
@@ -409,7 +445,16 @@ const Producto = () => {
 
   const descripcionTemplate = (rowData) => {
     return (
-      <span style={{ fontWeight: "500" }}>{rowData.descripcionArmada}</span>
+      <span 
+        style={{ 
+          fontWeight: "500",
+          whiteSpace: "normal",
+          wordWrap: "break-word",
+          display: "block"
+        }}
+      >
+        {rowData.descripcionArmada}
+      </span>
     );
   };
 
@@ -441,6 +486,47 @@ const Producto = () => {
     return (
       <span style={{ fontWeight: "400" }}>
         {rowData.unidadMedida?.nombre || "N/A"}
+      </span>
+    );
+  };
+
+  const especieTemplate = (rowData) => {
+    const especie = especies.find(
+      (e) => Number(e.id) === Number(rowData.especieId)
+    );
+    return (
+      <span style={{ fontWeight: "400", color: "#6b7280" }}>
+        {especie?.nombre || "N/A"}
+      </span>
+    );
+  };
+
+  const cesadoTemplate = (rowData) => {
+    return rowData.cesado ? (
+      <span
+        style={{
+          backgroundColor: "#fee2e2",
+          color: "#991b1b",
+          padding: "0.25rem 0.5rem",
+          borderRadius: "4px",
+          fontSize: "0.75rem",
+          fontWeight: "600",
+        }}
+      >
+        CESADO
+      </span>
+    ) : (
+      <span
+        style={{
+          backgroundColor: "#dcfce7",
+          color: "#166534",
+          padding: "0.25rem 0.5rem",
+          borderRadius: "4px",
+          fontSize: "0.75rem",
+          fontWeight: "600",
+        }}
+      >
+        ACTIVO
       </span>
     );
   };
@@ -548,6 +634,17 @@ const Producto = () => {
                   ? "Seleccione empresa y cliente para crear un nuevo producto"
                   : "Crear nuevo producto"
               }
+              tooltipOptions={{ position: "top" }}
+            />
+          </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <Button
+              label="Limpiar Filtros"
+              icon="pi pi-filter-slash"
+              className="p-button-outlined p-button-secondary p-button-sm"
+              onClick={limpiarFiltros}
+              disabled={!selectedEmpresa && !selectedCliente && !selectedFamilia && !selectedSubfamilia && !selectedTipoAlmacenamiento && !selectedUnidadMedida && !globalFilterValue}
+              tooltip="Limpiar todos los filtros aplicados"
               tooltipOptions={{ position: "top" }}
             />
           </div>
@@ -669,21 +766,21 @@ const Producto = () => {
           header="Descripción"
           sortable
           body={descripcionTemplate}
-          style={{ minWidth: "250px" }}
+          style={{ minWidth: "100px" }}
         />
         <Column
           field="familia.nombre"
           header="Familia"
           sortable
           body={familiaTemplate}
-          style={{ minWidth: "150px" }}
+          style={{ minWidth: "100px" }}
         />
         <Column
           field="subfamilia.nombre"
           header="Subfamilia"
           sortable
           body={subfamiliaTemplate}
-          style={{ minWidth: "150px" }}
+          style={{ minWidth: "100px" }}
         />
         <Column
           field="tipoAlmacenamiento.nombre"
@@ -700,6 +797,16 @@ const Producto = () => {
           style={{ minWidth: "120px" }}
         />
         <Column
+          header="Especie"
+          body={especieTemplate}
+          style={{ minWidth: "100px" }}
+        />
+        <Column
+          header="Estado"
+          body={cesadoTemplate}
+          style={{ minWidth: "100px", textAlign: "center" }}
+        />
+        <Column
           body={accionesTemplate}
           style={{ width: "120px", textAlign: "center" }}
         />
@@ -709,7 +816,7 @@ const Producto = () => {
         visible={dialogVisible}
         style={{ width: "80vw", maxWidth: "1200px" }}
         header={
-          productoSeleccionado
+          productoSeleccionado && productoSeleccionado.id
             ? `Editar Producto - ID: ${productoSeleccionado.id}`
             : "Nuevo Producto"
         }
@@ -721,7 +828,7 @@ const Producto = () => {
           producto={productoSeleccionado}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
-          modoEdicion={!!productoSeleccionado}
+          modoEdicion={!!(productoSeleccionado && productoSeleccionado.id)}
           loading={loading}
           setLoading={setLoading}
           familias={familias}
@@ -737,6 +844,7 @@ const Producto = () => {
           marcas={marcas}
           estadosIniciales={estadosIniciales}
           unidadMetricaDefault={unidadMetricaDefault}
+          especies={especies}
         />
       </Dialog>
     </div>

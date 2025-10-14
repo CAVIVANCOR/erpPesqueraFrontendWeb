@@ -99,7 +99,7 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
   const vehiculosRef = useRef(null);
   const lineasCreditoRef = useRef(null);
   const preciosRef = useRef(null);
-  const esEdicion = !!entidadComercial;
+  const esEdicion = !!(entidadComercial && entidadComercial.id);
 
   // Configuración del formulario principal (solo para datos básicos)
   const {

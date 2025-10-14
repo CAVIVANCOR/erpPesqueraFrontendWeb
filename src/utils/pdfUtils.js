@@ -77,6 +77,14 @@ export const abrirPdfEnNuevaPestana = async (urlPdf, toast, mensajeError = "No h
       // ✅ NUEVO: Soporte para informes de faena consumo (ruta protegida con JWT)
       const rutaArchivo = urlPdf.replace("/uploads/informes-faena-consumo/", "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/pesca/faenas-pesca-consumo/archivo-informe-faena/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/comprobantes-movimiento-caja/')) {
+      // ✅ NUEVO: Soporte para comprobantes de operación de movimiento de caja
+      const rutaArchivo = urlPdf.replace('/uploads/comprobantes-movimiento-caja/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/movimientos-caja/archivo-comprobante/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/documentos-movimiento-caja/')) {
+      // ✅ NUEVO: Soporte para documentos afectos de movimiento de caja
+      const rutaArchivo = urlPdf.replace('/uploads/documentos-movimiento-caja/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/movimientos-caja/archivo-documento/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/")) {
       // Para otros tipos de uploads (archivos de confirmación, etc.)
       urlCompleta = `${import.meta.env.VITE_API_URL}${urlPdf}`;
@@ -191,6 +199,16 @@ export const descargarPdf = async (urlPdf, toast, nombreArchivo = "documento.pdf
     } else if (urlPdf.startsWith("/uploads/fichas-tecnicas/")) {
       const rutaArchivo = urlPdf.replace("/uploads/fichas-tecnicas/", "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/producto-ficha-tecnica/archivo/${rutaArchivo}`;
+
+    } else if (urlPdf.startsWith('/uploads/comprobantes-movimiento-caja/')) {
+      // ✅ NUEVO: Soporte para comprobantes de operación de movimiento de caja
+      const rutaArchivo = urlPdf.replace('/uploads/comprobantes-movimiento-caja/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/movimientos-caja/archivo-comprobante/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/documentos-movimiento-caja/')) {
+      // ✅ NUEVO: Soporte para documentos afectos de movimiento de caja
+      const rutaArchivo = urlPdf.replace('/uploads/documentos-movimiento-caja/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/movimientos-caja/archivo-documento/${rutaArchivo}`;
+      
     } else if (urlPdf.startsWith(`/uploads/${tipoUpload}/`)) {
       const rutaArchivo = urlPdf.replace(`/uploads/${tipoUpload}/`, "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/${tipoUpload}/archivo/${rutaArchivo}`;

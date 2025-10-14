@@ -77,11 +77,12 @@ import TipoVehiculo from "./TipoVehiculo";
 import VehiculoEntidad from "./VehiculoEntidad";
 import LineaCreditoEntidad from "./LineaCreditoEntidad";
 import MovimientoAlmacen from "./MovimientoAlmacen";
-import DetalleMovimientoAlmacen from "./DetalleMovimientoAlmacen";
 import TipoConcepto from "./TipoConcepto";
 import ConceptoMovAlmacen from "./ConceptoMovAlmacen";
 import TipoMovimientoAlmacen from "./TipoMovimientoAlmacen";
 import TipoAlmacen from "./TipoAlmacen";
+import CentrosAlmacen from "./CentrosAlmacen";
+import Almacen from "./Almacen";
 import SerieDoc from "./SerieDoc";
 import FamiliaProducto from "./FamiliaProducto";
 import SubfamiliaProducto from "./SubfamiliaProducto";
@@ -116,14 +117,11 @@ import NovedadPescaConsumo from "./NovedadPescaConsumo";
 import TripulanteFaenaConsumo from "./TripulanteFaenaConsumo";
 import FaenaPesca from "./FaenaPesca";
 import FaenaPescaConsumo from "./FaenaPescaConsumo";
-import EntregaARendirPescaConsumo from "./EntregaARendirPescaConsumo";
 import Cala from "./Cala";
 import DetalleCalaEspecie from "./DetalleCalaEspecie";
-import CalaFaenaConsumo from "./CalaFaenaConsumo";
 import DetCalaPescaConsumo from "./DetCalaPescaConsumo";
 import DetDescargaFaenaConsumo from "./DetDescargaFaenaConsumo";
 import DetAccionesPreviasFaenaConsumo from "./DetAccionesPreviasFaenaConsumo";
-import DetMovsEntRendirPescaConsumo from "./DetMovsEntRendirPescaConsumo";
 import CotizacionCompra from "./CotizacionCompra";
 import DetCotizacionCompras from "./DetCotizacionCompras";
 import RequerimientoCompra from "./RequerimientoCompra";
@@ -164,6 +162,8 @@ export default function MultiCrud() {
 
   // Catálogo de módulos disponibles (key -> componente)
   const modulos = {
+    almacen: { label: "Almacenes", componente: <Almacen /> },
+    centrosAlmacen: { label: "Centros de Almacén", componente: <CentrosAlmacen /> },
     tipoAlmacenamiento: { label: "Tipo Almacenamiento", componente: <TipoAlmacenamiento /> },
     marca: { label: "Marca", componente: <Marca /> },
     parametroAprobador: { label: "Aprobadores", componente: <ParametroAprobador /> },
@@ -180,13 +180,11 @@ export default function MultiCrud() {
     detalleOrdenCompra: { label: "Detalle Orden Compra", componente: <DetalleOrdenCompra /> },
     requerimientoCompra: { label: "Requerimiento Compra", componente: <RequerimientoCompra /> },
     detalleReqCompra: { label: "Detalle Requerimiento Compra", componente: <DetalleReqCompra /> },
-    detMovsEntRendirPescaConsumo: { label: "Detalle Movimientos Entrega a Rendir Novedad Pesca Consumo", componente: <DetMovsEntRendirPescaConsumo /> },
     detAccionesPreviasFaenaConsumo: { label: "Detalle Acciones Previas Faena Novedad Pesca Consumo", componente: <DetAccionesPreviasFaenaConsumo /> },
     detDescargaFaenaConsumo: { label: "Detalle Descargas Faena Novedad Pesca Consumo", componente: <DetDescargaFaenaConsumo /> },
     detCalaPescaConsumo: { label: "Detalle Cala Faena Novedad Pesca Consumo", componente: <DetCalaPescaConsumo /> },
     detalleCalaEspecie: { label: "Detalle Cala Faena Temporada Pesca", componente: <DetalleCalaEspecie /> },
     cala: { label: "Cala Faena Temporada Pesca", componente: <Cala /> },
-    entregaARendirPescaConsumo: { label: "Entrega a Rendir Novedad Pesca Consumo", componente: <EntregaARendirPescaConsumo /> },
     faenaPescaConsumo: { label: "Faena Novedad Pesca Consumo", componente: <FaenaPescaConsumo /> },
     faenaPesca: { label: "Faena Temporada Pesca", componente: <FaenaPesca /> },
     tripulanteFaenaConsumo: { label: "Tripulante Faena Consumo", componente: <TripulanteFaenaConsumo /> },
@@ -254,7 +252,6 @@ export default function MultiCrud() {
     vehiculoEntidad: { label: "Vehículos Entidad Comercial", componente: <VehiculoEntidad /> },
     lineaCreditoEntidad: { label: "Líneas Crédito Entidad Comercial", componente: <LineaCreditoEntidad /> },
     movimientoAlmacen: { label: "Movimientos de Almacén", componente: <MovimientoAlmacen /> },
-    detalleMovimientoAlmacen: { label: "Detalles Movimientos de Almacén", componente: <DetalleMovimientoAlmacen /> },
     tipoConcepto: { label: "Tipos de Concepto Movimientos Almacén", componente: <TipoConcepto /> },
     conceptoMovAlmacen: { label: "Conceptos Movimientos Almacén", componente: <ConceptoMovAlmacen /> },
     tipoMovimientoAlmacen: { label: "Tipos de Movimiento Almacén", componente: <TipoMovimientoAlmacen /> },
@@ -459,7 +456,6 @@ export default function MultiCrud() {
             label: "Movimientos",
             items: [
               { label: "Movimientos Almacén", icon: "pi pi-arrow-right-arrow-left", command: () => abrirModulo("movimientoAlmacen", "Movimientos Almacén") },
-              { label: "Detalles Movimiento", icon: "pi pi-list", command: () => abrirModulo("detalleMovimientoAlmacen", "Detalles Movimiento Almacén") },
               { label: "Conceptos Movimientos", icon: "pi pi-bookmark", command: () => abrirModulo("conceptoMovAlmacen", "Conceptos Movimientos Almacén") }
             ]
           },
@@ -474,9 +470,13 @@ export default function MultiCrud() {
           {
             label: "Configuración",
             items: [
+              { label: "Tipos de Documento", icon: "pi pi-weight", command: () => abrirModulo("tipoDocumento", "Tipos de Documento") },
               { label: "Tipos de Concepto", icon: "pi pi-tags", command: () => abrirModulo("tipoConcepto", "Tipos de Concepto Movimientos Almacén") },
               { label: "Tipos de Movimiento", icon: "pi pi-sort", command: () => abrirModulo("tipoMovimientoAlmacen", "Tipos de Movimiento Almacén") },
-              { label: "Tipos de Almacén", icon: "pi pi-building", command: () => abrirModulo("tipoAlmacen", "Tipos de Almacén") }
+              { label: "Tipos de Almacén", icon: "pi pi-building", command: () => abrirModulo("tipoAlmacen", "Tipos de Almacén") },
+              { label: "Centros de Almacén", icon: "pi pi-building", command: () => abrirModulo("centrosAlmacen", "Centros de Almacén") },
+              { label: "Almacenes", icon: "pi pi-building", command: () => abrirModulo("almacen", "Almacenes") },
+              { label: "Series de Documento", icon: "pi pi-building", command: () => abrirModulo("serieDoc", "Series de Documento") }
             ]
           }
         ]

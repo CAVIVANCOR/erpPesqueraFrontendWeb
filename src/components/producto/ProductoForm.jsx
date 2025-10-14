@@ -182,6 +182,7 @@ const schema = yup.object().shape({
   aplicaMarca: yup.boolean().default(false),
   aplicaTipoMaterial: yup.boolean().default(false),
   aplicaColor: yup.boolean().default(false),
+  cesado: yup.boolean().default(false),
 });
 
 export default function ProductoForm({
@@ -199,6 +200,7 @@ export default function ProductoForm({
   marcas = [],
   estadosIniciales = [],
   unidadMetricaDefault,
+  especies = [],
   onGuardar,
   onCancelar,
   modoEdicion = false,
@@ -279,6 +281,7 @@ export default function ProductoForm({
       medidaEspesor: producto?.medidaEspesor || "",
       medidaAngulo: producto?.medidaAngulo || "",
       descripcionMedidaAdicional: producto?.descripcionMedidaAdicional || "",
+      especieId: producto?.especieId ? Number(producto.especieId) : null,
       exoneradoRetencion: producto?.exoneradoRetencion || false,
       sujetoDetraccion: producto?.sujetoDetraccion || false,
       aplicaSubfamilia: producto?.aplicaSubfamilia || false,
@@ -288,6 +291,7 @@ export default function ProductoForm({
       aplicaMarca: producto?.aplicaMarca || false,
       aplicaTipoMaterial: producto?.aplicaTipoMaterial || false,
       aplicaColor: producto?.aplicaColor || false,
+      cesado: producto?.cesado || false,
       urlFichaTecnica: producto?.urlFichaTecnica || "",
       urlFotoProducto: producto?.urlFotoProducto || "",
     },
@@ -355,10 +359,13 @@ export default function ProductoForm({
   };
 
   const onSubmitForm = async (data) => {
+    console.log('onSubmitForm ejecutado con data:', data);
+    console.log('Valor de cesado en data:', data.cesado);
     try {
       setLoading(true);
 
       // Crear un nuevo objeto solo con los campos necesarios
+      console.log('Construyendo datosParaEnviar...');
       const datosParaEnviar = {
         id: data.id,
         codigo: data.codigo,
@@ -389,6 +396,7 @@ export default function ProductoForm({
         medidaEspesor: data.medidaEspesor,
         medidaAngulo: data.medidaAngulo,
         descripcionMedidaAdicional: data.descripcionMedidaAdicional,
+        especieId: data.especieId ? Number(data.especieId) : null,
         porcentajeDetraccion: data.porcentajeDetraccion,
         exoneradoIgv: data.exoneradoIgv,
         exoneradoRetencion: data.exoneradoRetencion,
@@ -400,19 +408,25 @@ export default function ProductoForm({
         aplicaMarca: data.aplicaMarca,
         aplicaTipoMaterial: data.aplicaTipoMaterial,
         aplicaColor: data.aplicaColor,
+        cesado: data.cesado,
         urlFichaTecnica: data.urlFichaTecnica,
         urlFotoProducto: data.urlFotoProducto,
       };
 
-      // Eliminar propiedades que son null o undefined
+      console.log('Objeto datosParaEnviar construido:', datosParaEnviar);
+
+      // Eliminar propiedades que son null o undefined (pero mantener false)
+      console.log('Iniciando limpieza de valores null/undefined...');
       Object.keys(datosParaEnviar).forEach((key) => {
-        if (
-          datosParaEnviar[key] === null ||
-          datosParaEnviar[key] === undefined
-        ) {
+        const value = datosParaEnviar[key];
+        if (value === null || value === undefined) {
           delete datosParaEnviar[key];
         }
       });
+      console.log('Limpieza completada');
+
+      console.log('Datos a enviar:', datosParaEnviar);
+      console.log('Campo cesado:', datosParaEnviar.cesado);
 
       await onGuardar(datosParaEnviar);
 
@@ -525,6 +539,7 @@ export default function ProductoForm({
             tiposMaterial={tiposMaterial}
             colores={colores}
             unidadMetricaDefault={unidadMetricaDefault}
+            especies={especies}
           />
         )}
 

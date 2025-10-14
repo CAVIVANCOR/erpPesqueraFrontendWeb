@@ -8,8 +8,14 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import TipoConceptoForm from "../components/tipoConcepto/TipoConceptoForm";
-import { getTiposConcepto, crearTipoConcepto, actualizarTipoConcepto, eliminarTipoConcepto } from "../api/tipoConcepto";
+import {
+  getTiposConcepto,
+  crearTipoConcepto,
+  actualizarTipoConcepto,
+  eliminarTipoConcepto,
+} from "../api/tipoConcepto";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Pantalla profesional para gestión de Tipos de Concepto.
@@ -28,7 +34,7 @@ export default function TipoConcepto() {
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore(state => state.usuario);
+  const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
     cargarDatos();
@@ -40,7 +46,11 @@ export default function TipoConcepto() {
       const data = await getTiposConcepto();
       setItems(data);
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar los datos." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar los datos.",
+      });
     }
     setLoading(false);
   };
@@ -61,10 +71,18 @@ export default function TipoConcepto() {
     setLoading(true);
     try {
       await eliminarTipoConcepto(toDelete.id);
-      toast.current.show({ severity: "success", summary: "Eliminado", detail: "Tipo de concepto eliminado correctamente." });
+      toast.current.show({
+        severity: "success",
+        summary: "Eliminado",
+        detail: "Tipo de concepto eliminado correctamente.",
+      });
       cargarDatos();
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo eliminar." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo eliminar.",
+      });
     }
     setLoading(false);
     setToDelete(null);
@@ -75,16 +93,28 @@ export default function TipoConcepto() {
     try {
       if (editing && editing.id) {
         await actualizarTipoConcepto(editing.id, data);
-        toast.current.show({ severity: "success", summary: "Actualizado", detail: "Tipo de concepto actualizado." });
+        toast.current.show({
+          severity: "success",
+          summary: "Actualizado",
+          detail: "Tipo de concepto actualizado.",
+        });
       } else {
         await crearTipoConcepto(data);
-        toast.current.show({ severity: "success", summary: "Creado", detail: "Tipo de concepto creado." });
+        toast.current.show({
+          severity: "success",
+          summary: "Creado",
+          detail: "Tipo de concepto creado.",
+        });
       }
       setShowDialog(false);
       setEditing(null);
       cargarDatos();
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo guardar." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo guardar.",
+      });
     }
     setLoading(false);
   };
@@ -102,9 +132,19 @@ export default function TipoConcepto() {
 
   const actionBody = (rowData) => (
     <>
-      <Button icon="pi pi-pencil" className="p-button-text p-button-sm" onClick={() => handleEdit(rowData)} aria-label="Editar" />
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-text p-button-sm"
+        onClick={() => handleEdit(rowData)}
+        aria-label="Editar"
+      />
       {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger p-button-sm" onClick={() => handleDelete(rowData)} aria-label="Eliminar" />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger p-button-sm"
+          onClick={() => handleDelete(rowData)}
+          aria-label="Eliminar"
+        />
       )}
     </>
   );
@@ -112,19 +152,72 @@ export default function TipoConcepto() {
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
-      <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar este tipo de concepto?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
-      <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
-        <h2>Gestión de Tipos de Concepto</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
-      </div>
-      <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
+      <ConfirmDialog
+        visible={showConfirm}
+        onHide={() => setShowConfirm(false)}
+        message="¿Está seguro que desea eliminar este tipo de concepto?"
+        header="Confirmar eliminación"
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        accept={handleDeleteConfirm}
+        reject={() => setShowConfirm(false)}
+      />
+      <DataTable
+        value={items}
+        loading={loading}
+        dataKey="id"
+        paginator
+        rows={10}
+        onRowClick={(e) => handleEdit(e.data)}
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        className="p-datatable-sm"
+        header={
+          <div
+            style={{
+              alignItems: "center",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h1>Tipos de Concepto</h1>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                className="p-button-success"
+                size="small"
+                outlined
+                onClick={handleAdd}
+                disabled={loading}
+              />
+            </div>
+          </div>
+        }
+      >
         <Column field="id" header="ID" style={{ width: 80 }} />
         <Column field="nombre" header="Nombre" />
         <Column field="descripcion" header="Descripción" />
-        <Column field="activo" header="Activo" body={rowData => booleanTemplate(rowData, 'activo')} />
-        <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
+        <Column
+          field="activo"
+          header="Activo"
+          body={(rowData) => booleanTemplate(rowData, "activo")}
+        />
+        <Column
+          body={actionBody}
+          header="Acciones"
+          style={{ width: 130, textAlign: "center" }}
+        />
       </DataTable>
-      <Dialog header={editing ? "Editar Tipo de Concepto" : "Nuevo Tipo de Concepto"} visible={showDialog} style={{ width: 600 }} onHide={() => setShowDialog(false)} modal>
+      <Dialog
+        header={editing ? "Editar Tipo de Concepto" : "Nuevo Tipo de Concepto"}
+        visible={showDialog}
+        style={{ width: 600 }}
+        onHide={() => setShowDialog(false)}
+        modal
+      >
         <TipoConceptoForm
           isEdit={!!editing}
           defaultValues={editing || {}}

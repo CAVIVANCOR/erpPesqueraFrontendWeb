@@ -29,6 +29,7 @@ import {
 } from "../../api/entregaARendirPescaConsumo";
 import { getAllDetMovsEntRendirPescaConsumo } from "../../api/detMovsEntRendirPescaConsumo";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
+import { getMonedas } from "../../api/moneda"; // ← AGREGAR ESTA LÍNEA
 
 const EntregasARendirNovedadCard = ({
   novedadPescaConsumoId,
@@ -46,6 +47,8 @@ const EntregasARendirNovedadCard = ({
   const [responsableEntrega, setResponsableEntrega] = useState(null);
   const [centroCostoEntrega, setCentroCostoEntrega] = useState(null);
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
+  const [monedas, setMonedas] = useState([]); // ← AGREGAR ESTA LÍNEA
+
 
   // Estados para cálculos automáticos
   const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] =
@@ -71,7 +74,20 @@ const EntregasARendirNovedadCard = ({
       });
     }
   };
-
+  const cargarMonedas = async () => { // ← AGREGAR ESTA FUNCIÓN COMPLETA
+    try {
+      const data = await getMonedas();
+      setMonedas(data);
+    } catch (error) {
+      console.error("Error al cargar monedas:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar monedas",
+        life: 3000,
+      });
+    }
+  };
   // Cargar entrega a rendir de la novedad
   const cargarEntregaARendir = async () => {
     if (!novedadPescaConsumoId) return;
@@ -127,6 +143,7 @@ const EntregasARendirNovedadCard = ({
   useEffect(() => {
     cargarEntregaARendir();
     cargarEntidadesComerciales();
+    cargarMonedas();
   }, [novedadPescaConsumoId]);
 
   useEffect(() => {
@@ -382,6 +399,7 @@ const EntregasARendirNovedadCard = ({
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           entidadesComerciales={entidadesComerciales}
+          monedas={monedas}
           novedadPescaConsumoIniciada={novedadPescaConsumoIniciada}
           loading={loadingMovimientos}
           selectedMovimientos={selectedMovimientos}

@@ -39,6 +39,7 @@ import {
   eliminarDetMovsEntregaRendir,
 } from "../../api/detMovsEntregaRendir";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
+import { getMonedas } from "../../api/moneda"; // ← AGREGAR ESTA LÍNEA
 
 const EntregasARendirTemporadaCard = ({
   temporadaPescaId,
@@ -57,6 +58,7 @@ const EntregasARendirTemporadaCard = ({
   const [responsableEntrega, setResponsableEntrega] = useState(null);
   const [centroCostoEntrega, setCentroCostoEntrega] = useState(null);
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
+  const [monedas, setMonedas] = useState([]); // ← AGREGAR ESTA LÍNEA
 
   // Estados para cálculos automáticos
   const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] =
@@ -73,7 +75,8 @@ const EntregasARendirTemporadaCard = ({
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
   const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);
   const [filtroIngresoEgreso, setFiltroIngresoEgreso] = useState(null);
-  const [filtroValidacionTesoreria, setFiltroValidacionTesoreria] = useState(null);
+  const [filtroValidacionTesoreria, setFiltroValidacionTesoreria] =
+    useState(null);
 
   const cargarEntidadesComerciales = async () => {
     try {
@@ -85,6 +88,21 @@ const EntregasARendirTemporadaCard = ({
         severity: "error",
         summary: "Error",
         detail: "No se pudieron cargar las entidades comerciales",
+      });
+    }
+  };
+
+  const cargarMonedas = async () => {
+    try {
+      const data = await getMonedas();
+      setMonedas(data);
+    } catch (error) {
+      console.error("Error al cargar monedas:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar monedas",
+        life: 3000,
       });
     }
   };
@@ -120,13 +138,23 @@ const EntregasARendirTemporadaCard = ({
 
     try {
       setLoadingMovimientos(true);
+      console.log("=== CARGANDO MOVIMIENTOS EntregasARendirTemporadaCard ===");
+      console.log("entregaARendir.id:", entregaARendir.id);
+      
       const movimientosData = await getAllDetMovsEntregaRendir();
+      console.log("✅ TODOS los movimientos de la API:", movimientosData);
+      console.log("✅ Total movimientos en BD:", movimientosData?.length);
+      
       const movimientosEntrega = movimientosData.filter(
         (mov) => Number(mov.entregaARendirId) === Number(entregaARendir.id)
       );
+      console.log("✅ Movimientos filtrados para entrega", entregaARendir.id, ":", movimientosEntrega);
+      console.log("✅ Total filtrados:", movimientosEntrega?.length);
+      
       setMovimientos(movimientosEntrega);
+      console.log("✅ Estado 'movimientos' actualizado");
     } catch (error) {
-      console.error("Error al cargar movimientos:", error);
+      console.error("❌ ERROR al cargar movimientos:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -142,6 +170,7 @@ const EntregasARendirTemporadaCard = ({
   useEffect(() => {
     cargarEntregaARendir();
     cargarEntidadesComerciales(); // Nueva llamada
+    cargarMonedas(); // ← AGREGAR ESTA LÍNEA
   }, [temporadaPescaId]);
 
   useEffect(() => {
@@ -449,6 +478,7 @@ const EntregasARendirTemporadaCard = ({
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           entidadesComerciales={entidadesComerciales} // Nueva prop
+          monedas={monedas} // ← AGREGAR ESTA LÍNEA
           temporadaPescaIniciada={temporadaPescaIniciada}
           loading={loadingMovimientos}
           selectedMovimientos={selectedMovimientos}

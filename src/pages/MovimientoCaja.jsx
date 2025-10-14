@@ -8,6 +8,8 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { TabView, TabPanel } from "primereact/tabview";
+import { Card } from "primereact/card";
+import { Badge } from "primereact/badge";
 import MovimientoCajaForm from "../components/movimientoCaja/MovimientoCajaForm";
 import DetEntregaRendirPescaIndustrial from "../components/temporadaPesca/DetEntregaRendirPescaIndustrial";
 import DetEntregaRendirNovedadConsumo from "../components/novedadPescaConsumo/DetEntregaRendirNovedadConsumo";
@@ -16,6 +18,7 @@ import {
   crearMovimientoCaja,
   actualizarMovimientoCaja,
   eliminarMovimientoCaja,
+  validarMovimientoCaja,
 } from "../api/movimientoCaja";
 import { getCentrosCosto } from "../api/centroCosto";
 import { getModulos } from "../api/moduloSistema";
@@ -58,18 +61,24 @@ export default function MovimientoCaja() {
   const [movimientosDetEntrega, setMovimientosDetEntrega] = useState([]);
   const [entregasARendir, setEntregasARendir] = useState([]);
   const [selectedMovimientosDetEntrega, setSelectedMovimientosDetEntrega] =
-    useState([]);
+    useState(null);
   const [loadingDetEntrega, setLoadingDetEntrega] = useState(false);
   const [selectedDetMovsIds, setSelectedDetMovsIds] = useState([]);
   const [estadosMultiFuncion, setEstadosMultiFuncion] = useState([]);
 
   // Estados para DetEntregaRendirNovedadConsumo (Pesca Consumo)
-  const [movimientosDetEntregaConsumo, setMovimientosDetEntregaConsumo] = useState([]);
-  const [entregasARendirConsumo, setEntregasARendirConsumo] = useState([]);
-  const [selectedMovimientosDetEntregaConsumo, setSelectedMovimientosDetEntregaConsumo] =
+  const [movimientosDetEntregaConsumo, setMovimientosDetEntregaConsumo] =
     useState([]);
-  const [loadingDetEntregaConsumo, setLoadingDetEntregaConsumo] = useState(false);
-  const [selectedDetMovsIdsConsumo, setSelectedDetMovsIdsConsumo] = useState([]);
+  const [entregasARendirConsumo, setEntregasARendirConsumo] = useState([]);
+  const [
+    selectedMovimientosDetEntregaConsumo,
+    setSelectedMovimientosDetEntregaConsumo,
+  ] = useState(null);
+  const [loadingDetEntregaConsumo, setLoadingDetEntregaConsumo] =
+    useState(false);
+  const [selectedDetMovsIdsConsumo, setSelectedDetMovsIdsConsumo] = useState(
+    []
+  );
 
   const cargarEstadosMultiFuncion = async () => {
     try {
@@ -243,7 +252,9 @@ export default function MovimientoCaja() {
     setLoadingDetEntrega(true);
     try {
       const data = await getAllDetMovsEntregaRendir();
-      setMovimientosDetEntrega(data);
+      // Filtrar solo los movimientos pendientes (no validados por tesorería)
+      const pendientes = data.filter(mov => !mov.validadoTesoreria);
+      setMovimientosDetEntrega(pendientes);
     } catch (err) {
       toast.current.show({
         severity: "error",
@@ -272,12 +283,15 @@ export default function MovimientoCaja() {
     setLoadingDetEntregaConsumo(true);
     try {
       const data = await getAllDetMovsEntRendirPescaConsumo();
-      setMovimientosDetEntregaConsumo(data);
+      // Filtrar solo los movimientos pendientes (no validados por tesorería)
+      const pendientes = data.filter(mov => !mov.validadoTesoreria);
+      setMovimientosDetEntregaConsumo(pendientes);
     } catch (err) {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo cargar los movimientos de entrega a rendir de pesca consumo.",
+        detail:
+          "No se pudo cargar los movimientos de entrega a rendir de pesca consumo.",
       });
     }
     setLoadingDetEntregaConsumo(false);
@@ -339,25 +353,206 @@ export default function MovimientoCaja() {
           summary: "Actualizado",
           detail: "Registro actualizado.",
         });
+        // Recargar datos del movimiento actualizado
+        const movimientoActualizado = await getAllMovimientoCaja();
+        const movActualizado = movimientoActualizado.find(m => m.id === editing.id);
+        if (movActualizado) {
+          setEditing(movActualizado);
+        }
+        cargarItems();
       } else {
-        await crearMovimientoCaja(data);
+        const nuevoMovimiento = await crearMovimientoCaja(data);
         toast.current.show({
           severity: "success",
           summary: "Creado",
-          detail: "Registro creado.",
+          detail: "Registro creado exitosamente. Puede continuar editando o cerrar la ventana.",
+          life: 4000
         });
+        // Recargar datos del movimiento recién creado para mostrar el PDF
+        const movimientos = await getAllMovimientoCaja();
+        const movimientoCreado = movimientos.find(m => m.id === nuevoMovimiento.id);
+        if (movimientoCreado) {
+          setEditing(movimientoCreado);
+        }
+        cargarItems();
+        // NO cerrar el diálogo para que el usuario pueda ver el PDF
       }
-      setShowDialog(false);
-      setEditing(null);
-      cargarItems();
     } catch (err) {
+      console.error('Error al guardar movimiento de caja:', err);
+      const mensajeError = err.response?.data?.mensaje || err.message || "No se pudo guardar el movimiento de caja.";
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo guardar.",
+        detail: mensajeError,
+        life: 5000
       });
     }
     setLoading(false);
+  };
+
+  const handleValidarMovimiento = async (movimiento) => {
+    setLoading(true);
+    try {
+      await validarMovimientoCaja(movimiento.id);
+      toast.current.show({ severity: "success", summary: "Validado", detail: "Movimiento validado correctamente y origen actualizado.", life: 4000 });
+      setShowDialog(false);
+      setEditing(null);
+      cargarItems();
+      cargarMovimientosDetEntrega();
+      cargarMovimientosDetEntregaConsumo();
+    } catch (err) {
+      const mensajeError = err.response?.data?.mensaje || err.response?.data?.message || err.response?.data?.error || err.message || "No se pudo validar el movimiento.";
+      toast.current.show({ severity: "error", summary: "Error al Validar", detail: mensajeError, life: 5000 });
+    }
+    setLoading(false);
+  };
+
+  const handleGenerarAsiento = async (movimiento) => {
+    toast.current.show({ severity: "info", summary: "En Desarrollo", detail: "Funcionalidad de generar asiento contable en desarrollo.", life: 3000 });
+  };
+  /**
+   * Maneja la aplicación de movimientos seleccionados para crear un MovimientoCaja
+   */
+  /**
+   * Maneja la aplicación de movimientos seleccionados para crear un MovimientoCaja
+   * REGLA: Solo se permite seleccionar UN item a la vez
+   */
+  const handleAplicarMovimientos = async (
+    movimientoSeleccionado,
+    tipoOrigen
+  ) => {
+    // Validar que haya un movimiento seleccionado
+    if (!movimientoSeleccionado) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe seleccionar un movimiento",
+        life: 3000,
+      });
+      return;
+    }
+
+    try {
+      // Buscar el estado "PENDIENTE" (id=20)
+      const estadoPendiente = estadosMultiFuncion.find(
+        (estado) => Number(estado.id) === 20
+      );
+
+      if (!estadoPendiente) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se encontró el estado PENDIENTE (id=20)",
+          life: 3000,
+        });
+        return;
+      }
+
+      // Obtener la entrega a rendir completa con sus relaciones
+      let empresaDestinoId = null;
+
+      if (tipoOrigen === "industrial") {
+        // Para Pesca Industrial: DetMovsEntregaRendir -> EntregaARendir -> TemporadaPesca -> empresaId
+        const entregaARendir = entregasARendir.find(
+          (e) =>
+            Number(e.id) === Number(movimientoSeleccionado.entregaARendirId)
+        );
+
+        if (entregaARendir && entregaARendir.temporadaPesca) {
+          empresaDestinoId = entregaARendir.temporadaPesca.empresaId;
+        }
+      } else if (tipoOrigen === "consumo") {
+        // Para Pesca Consumo: DetMovsEntRendirPescaConsumo -> EntregaARendirPescaConsumo -> NovedadPescaConsumo -> empresaId
+        const entregaARendirConsumo = entregasARendirConsumo.find(
+          (e) =>
+            Number(e.id) ===
+            Number(movimientoSeleccionado.entregaARendirPescaConsumoId)
+        );
+
+        if (
+          entregaARendirConsumo &&
+          entregaARendirConsumo.novedadPescaConsumo
+        ) {
+          empresaDestinoId =
+            entregaARendirConsumo.novedadPescaConsumo.empresaId;
+        }
+      }
+
+      // Preparar datos iniciales para el formulario de MovimientoCaja según el mapeo
+      const datosIniciales = {
+        // Campos automáticos del mapeo
+        empresaDestinoId: empresaDestinoId ? Number(empresaDestinoId) : null,
+        tipoMovimientoId: movimientoSeleccionado.tipoMovimientoId
+          ? Number(movimientoSeleccionado.tipoMovimientoId)
+          : null,
+        entidadComercialId: movimientoSeleccionado.entidadComercialId
+          ? Number(movimientoSeleccionado.entidadComercialId)
+          : null,
+        monto: Number(movimientoSeleccionado.monto) || 0,
+        monedaId: movimientoSeleccionado.monedaId
+          ? Number(movimientoSeleccionado.monedaId)
+          : null,
+        descripcion: movimientoSeleccionado.descripcion || "",
+        fechaMotivoOperacion: movimientoSeleccionado.fechaMovimiento
+          ? new Date(movimientoSeleccionado.fechaMovimiento)
+          : null,
+        usuarioMotivoOperacionId: movimientoSeleccionado.responsableId
+          ? Number(movimientoSeleccionado.responsableId)
+          : null,
+        moduloOrigenMotivoOperacionId:
+          movimientoSeleccionado.moduloOrigenMovCajaId
+            ? Number(movimientoSeleccionado.moduloOrigenMovCajaId)
+            : tipoOrigen === "industrial"
+            ? 2
+            : 3,
+        estadoId: Number(estadoPendiente.id), // 20 - PENDIENTE
+        centroCostoId: movimientoSeleccionado.centroCostoId
+          ? Number(movimientoSeleccionado.centroCostoId)
+          : null,
+        origenMotivoOperacionId: Number(movimientoSeleccionado.id),
+        operacionSinFactura:
+          movimientoSeleccionado.operacionSinFactura || false,
+
+        // Campos que se llenarán en el formulario
+        empresaOrigenId: null,
+        cuentaCorrienteOrigenId: null,
+        cuentaCorrienteDestinoId: null,
+        referenciaExtId: null,
+        tipoReferenciaId: null,
+        usuarioId: usuario?.id ? Number(usuario.id) : null,
+
+        // Fechas automáticas
+        fechaCreacion: new Date(),
+        fechaActualizacion: new Date(),
+        fechaOperacionMovCaja: new Date(),
+
+        // Metadata para el formulario
+        movimientoAplicado: movimientoSeleccionado,
+        tipoOrigen: tipoOrigen,
+      };
+
+      // Antes de la línea: setEditing(datosIniciales);
+console.log("=== DEBUG DATOS INICIALES ===");
+console.log("empresaDestinoId:", datosIniciales.empresaDestinoId);
+console.log("tipoMovimientoId:", datosIniciales.tipoMovimientoId);
+console.log("entidadComercialId:", datosIniciales.entidadComercialId);
+console.log("monedaId:", datosIniciales.monedaId);
+console.log("centroCostoId:", datosIniciales.centroCostoId);
+console.log("Movimiento seleccionado completo:", movimientoSeleccionado);
+console.log("Entrega a rendir:", tipoOrigen === "industrial" ? entregasARendir.find(e => Number(e.id) === Number(movimientoSeleccionado.entregaARendirId)) : null);
+
+      // Abrir el diálogo con los datos iniciales
+      setEditing(datosIniciales);
+      setShowDialog(true);
+    } catch (error) {
+      console.error("Error al preparar datos:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al preparar los datos del movimiento",
+        life: 3000,
+      });
+    }
   };
 
   const actionBodyTemplate = (rowData) => {
@@ -382,7 +577,7 @@ export default function MovimientoCaja() {
   };
 
   return (
-    <div className="movimiento-caja-container">
+    <div className="p-fluid">
       <Toast ref={toast} />
       <ConfirmDialog
         visible={showConfirm}
@@ -397,101 +592,392 @@ export default function MovimientoCaja() {
       {/* TabView con 8 TabPanels */}
       <TabView>
         <TabPanel header="Pesca Industrial">
-          <div className="mb-4">
-            <DetEntregaRendirPescaIndustrial
-              entregaARendir={entregasARendir[0] || null}
-              movimientos={movimientosDetEntrega}
-              personal={personal}
-              centrosCosto={centrosCosto}
-              tiposMovimiento={tipoMovEntregaRendir}
-              entidadesComerciales={entidadesComerciales}
-              temporadaPescaIniciada={true}
-              loading={loadingDetEntrega}
-              selectedMovimientos={selectedMovimientosDetEntrega}
-              onSelectionChange={(e) => {
-                setSelectedMovimientosDetEntrega(e.value);
-                setSelectedDetMovsIds(e.value.map((mov) => mov.id));
-              }}
-              onDataChange={() => {
-                cargarMovimientosDetEntrega();
-                cargarEntregasARendir();
-              }}
+          <DetEntregaRendirPescaIndustrial
+            entregaARendir={entregasARendir[0] || null}
+            movimientos={movimientosDetEntrega}
+            personal={personal}
+            centrosCosto={centrosCosto}
+            tiposMovimiento={tipoMovEntregaRendir}
+            entidadesComerciales={entidadesComerciales}
+            monedas={monedas} // ← AGREGAR ESTA LÍNEA
+            temporadaPescaIniciada={true}
+            loading={loadingDetEntrega}
+            selectedMovimientos={selectedMovimientosDetEntrega}
+            onSelectionChange={(e) => {
+              setSelectedMovimientosDetEntrega(e.value); // Ahora e.value es un objeto único, no array
+              setSelectedDetMovsIds(e.value ? [e.value.id] : []);
+            }}
+            onDataChange={() => {
+              cargarMovimientosDetEntrega();
+              cargarEntregasARendir();
+            }}
+          />
+
+          {/* Botón Aplicar para Pesca Industrial con Resumen */}
+          <div
+            className="flex justify-content-between align-items-center mt-3 mx-4 p-3"
+            style={{
+              backgroundColor: "#f0f9ff",
+              borderRadius: "8px",
+              border: "2px solid #3b82f6",
+              boxShadow: "0 2px 4px rgba(59, 130, 246, 0.1)",
+            }}
+          >
+            <div>
+              <strong style={{ fontSize: "1.1rem", color: "#1e40af" }}>
+                Registro seleccionado:
+              </strong>{" "}
+              <Badge
+                value={selectedMovimientosDetEntrega ? "1" : "0"}
+                severity={selectedMovimientosDetEntrega ? "info" : "secondary"}
+                style={{ fontSize: "1rem" }}
+              />
+              {selectedMovimientosDetEntrega && (
+                <span className="ml-3" style={{ fontSize: "1.1rem" }}>
+                  | <strong style={{ color: "#1e40af" }}>Monto:</strong>{" "}
+                  <span style={{ color: "#059669", fontWeight: "bold" }}>
+                    {(() => {
+                      // Buscar la moneda del movimiento seleccionado
+                      const moneda = monedas.find(
+                        (m) =>
+                          Number(m.id) ===
+                          Number(selectedMovimientosDetEntrega.monedaId)
+                      );
+                      const codigoMoneda = moneda?.codigoSunat || "PEN";
+
+                      return new Intl.NumberFormat("es-PE", {
+                        style: "currency",
+                        currency: codigoMoneda,
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(
+                        parseFloat(selectedMovimientosDetEntrega.monto) || 0
+                      );
+                    })()}
+                  </span>
+                </span>
+              )}
+            </div>
+            <Button
+              label="Aplicar a Movimiento de Caja"
+              icon="pi pi-check-circle"
+              className="p-button-success"
+              onClick={() =>
+                handleAplicarMovimientos(
+                  selectedMovimientosDetEntrega,
+                  "industrial"
+                )
+              }
+              disabled={!selectedMovimientosDetEntrega}
+              tooltip={
+                selectedMovimientosDetEntrega
+                  ? "Crear movimiento de caja con el registro seleccionado"
+                  : "Seleccione un movimiento para aplicar"
+              }
             />
           </div>
         </TabPanel>
 
         <TabPanel header="Pesca Consumo">
-          <div className="mb-4">
-            <DetEntregaRendirNovedadConsumo
-              entregaARendirPescaConsumo={entregasARendirConsumo[0] || null}
-              movimientos={movimientosDetEntregaConsumo}
-              personal={personal}
-              centrosCosto={centrosCosto}
-              tiposMovimiento={tipoMovEntregaRendir}
-              entidadesComerciales={entidadesComerciales}
-              novedadPescaConsumoIniciada={true}
-              loading={loadingDetEntregaConsumo}
-              selectedMovimientos={selectedMovimientosDetEntregaConsumo}
-              onSelectionChange={(e) => {
-                setSelectedMovimientosDetEntregaConsumo(e.value);
-                setSelectedDetMovsIdsConsumo(e.value.map((mov) => mov.id));
-              }}
-              onDataChange={() => {
-                cargarMovimientosDetEntregaConsumo();
-                cargarEntregasARendirConsumo();
-              }}
+          <DetEntregaRendirNovedadConsumo
+            entregaARendirPescaConsumo={entregasARendirConsumo[0] || null}
+            movimientos={movimientosDetEntregaConsumo}
+            personal={personal}
+            centrosCosto={centrosCosto}
+            tiposMovimiento={tipoMovEntregaRendir}
+            entidadesComerciales={entidadesComerciales}
+            monedas={monedas} // ← AGREGAR ESTA LÍNEA
+            novedadPescaConsumoIniciada={true}
+            loading={loadingDetEntregaConsumo}
+            selectedMovimientos={selectedMovimientosDetEntregaConsumo}
+            onSelectionChange={(e) => {
+              setSelectedMovimientosDetEntregaConsumo(e.value); // Ahora e.value es un objeto único
+              setSelectedDetMovsIdsConsumo(e.value ? [e.value.id] : []);
+            }}
+            onDataChange={() => {
+              cargarMovimientosDetEntregaConsumo();
+              cargarEntregasARendirConsumo();
+            }}
+          />
+
+          {/* Botón Aplicar para Pesca Consumo con Resumen */}
+          <div
+            className="flex justify-content-between align-items-center mt-3 mx-4 p-3"
+            style={{
+              backgroundColor: "#f0fdf4",
+              borderRadius: "8px",
+              border: "2px solid #10b981",
+              boxShadow: "0 2px 4px rgba(16, 185, 129, 0.1)",
+            }}
+          >
+            <div>
+              <strong style={{ fontSize: "1.1rem", color: "#065f46" }}>
+                Registro seleccionado:
+              </strong>{" "}
+              <Badge
+                value={selectedMovimientosDetEntregaConsumo ? "1" : "0"}
+                severity={
+                  selectedMovimientosDetEntregaConsumo ? "success" : "secondary"
+                }
+                style={{ fontSize: "1rem" }}
+              />
+              {selectedMovimientosDetEntregaConsumo && (
+                <span className="ml-3" style={{ fontSize: "1.1rem" }}>
+                  | <strong style={{ color: "#065f46" }}>Monto:</strong>{" "}
+                  <span style={{ color: "#059669", fontWeight: "bold" }}>
+                    {(() => {
+                      // Buscar la moneda del movimiento seleccionado
+                      const moneda = monedas.find(
+                        (m) =>
+                          Number(m.id) ===
+                          Number(selectedMovimientosDetEntregaConsumo.monedaId)
+                      );
+                      const codigoMoneda = moneda?.codigoSunat || "PEN";
+
+                      return new Intl.NumberFormat("es-PE", {
+                        style: "currency",
+                        currency: codigoMoneda,
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(
+                        parseFloat(
+                          selectedMovimientosDetEntregaConsumo.monto
+                        ) || 0
+                      );
+                    })()}
+                  </span>
+                </span>
+              )}
+            </div>
+            <Button
+              label="Aplicar a Movimiento de Caja"
+              icon="pi pi-check-circle"
+              className="p-button-success"
+              onClick={() =>
+                handleAplicarMovimientos(
+                  selectedMovimientosDetEntregaConsumo,
+                  "consumo"
+                )
+              }
+              disabled={!selectedMovimientosDetEntregaConsumo}
+              tooltip={
+                selectedMovimientosDetEntregaConsumo
+                  ? "Crear movimiento de caja con el registro seleccionado"
+                  : "Seleccione un movimiento para aplicar"
+              }
             />
           </div>
         </TabPanel>
 
         <TabPanel header="Compras">
-          <div className="p-4">
+          <Card>
             <h3>Compras</h3>
             <p>Contenido para Compras - En desarrollo</p>
-          </div>
+          </Card>
         </TabPanel>
 
         <TabPanel header="Ventas">
-          <div className="p-4">
+          <Card>
             <h3>Ventas</h3>
             <p>Contenido para Ventas - En desarrollo</p>
-          </div>
+          </Card>
         </TabPanel>
 
         <TabPanel header="Producción">
-          <div className="p-4">
+          <Card>
             <h3>Producción</h3>
             <p>Contenido para Producción - En desarrollo</p>
-          </div>
+          </Card>
         </TabPanel>
 
         <TabPanel header="Almacén">
-          <div className="p-4">
+          <Card>
             <h3>Almacén</h3>
             <p>Contenido para Almacén - En desarrollo</p>
-          </div>
+          </Card>
         </TabPanel>
 
         <TabPanel header="Servicios">
-          <div className="p-4">
+          <Card>
             <h3>Servicios</h3>
             <p>Contenido para Servicios - En desarrollo</p>
-          </div>
+          </Card>
         </TabPanel>
 
         <TabPanel header="Mantenimiento">
-          <div className="p-4">
+          <Card>
             <h3>Mantenimiento</h3>
             <p>Contenido para Mantenimiento - En desarrollo</p>
-          </div>
+          </Card>
         </TabPanel>
       </TabView>
+
+      {/* Sección CRUD de Movimientos de Caja */}
+      <Card className="mt-4">
+        <div className="flex justify-content-between align-items-center mb-3">
+          <h2 className="m-0">Registro de Movimientos de Caja</h2>
+          <Button
+            label="Nuevo Movimiento"
+            icon="pi pi-plus"
+            className="p-button-success"
+            onClick={() => {
+              setEditing(null);
+              setShowDialog(true);
+            }}
+          />
+        </div>
+
+        <DataTable
+          value={items}
+          loading={loading}
+          paginator
+          rows={10}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          emptyMessage="No hay movimientos de caja registrados"
+          className="p-datatable-sm"
+          style={{ fontSize: getResponsiveFontSize() }}
+        >
+          <Column field="id" header="ID" sortable style={{ width: "80px" }} />
+
+          <Column
+            field="fechaOperacionMovCaja"
+            header="Fecha Operación"
+            sortable
+            body={(rowData) => {
+              return rowData.fechaOperacionMovCaja
+                ? new Date(rowData.fechaOperacionMovCaja).toLocaleDateString(
+                    "es-PE"
+                  )
+                : "N/A";
+            }}
+            style={{ width: "120px" }}
+          />
+
+          <Column
+            field="monto"
+            header="Monto"
+            sortable
+            body={(rowData) => {
+              return new Intl.NumberFormat("es-PE", {
+                style: "currency",
+                currency: "PEN",
+              }).format(rowData.monto || 0);
+            }}
+            style={{ width: "120px", textAlign: "right" }}
+          />
+
+          <Column
+            field="descripcion"
+            header="Descripción"
+            sortable
+            style={{ minWidth: "200px" }}
+          />
+
+          <Column
+            field="empresaOrigenId"
+            header="Empresa Origen"
+            sortable
+            body={(rowData) => {
+              const empresa = empresas.find(
+                (e) => Number(e.id) === Number(rowData.empresaOrigenId)
+              );
+              return empresa ? empresa.razonSocial : "N/A";
+            }}
+            style={{ width: "150px" }}
+          />
+
+          <Column
+            field="empresaDestinoId"
+            header="Empresa Destino"
+            sortable
+            body={(rowData) => {
+              const empresa = empresas.find(
+                (e) => Number(e.id) === Number(rowData.empresaDestinoId)
+              );
+              return empresa ? empresa.razonSocial : "N/A";
+            }}
+            style={{ width: "150px" }}
+          />
+
+          <Column
+            field="cuentaCorrienteOrigenId"
+            header="Cuenta Origen"
+            sortable
+            body={(rowData) => {
+              const cuenta = cuentasCorrientes.find(
+                (c) => Number(c.id) === Number(rowData.cuentaCorrienteOrigenId)
+              );
+              return cuenta ? cuenta.numeroCuenta : "N/A";
+            }}
+            style={{ width: "130px" }}
+          />
+
+          <Column
+            field="cuentaCorrienteDestinoId"
+            header="Cuenta Destino"
+            sortable
+            body={(rowData) => {
+              const cuenta = cuentasCorrientes.find(
+                (c) => Number(c.id) === Number(rowData.cuentaCorrienteDestinoId)
+              );
+              return cuenta ? cuenta.numeroCuenta : "N/A";
+            }}
+            style={{ width: "130px" }}
+          />
+
+          <Column
+            field="operacionSinFactura"
+            header="Sin Factura"
+            sortable
+            body={(rowData) => {
+              return rowData.operacionSinFactura ? (
+                <Badge value="SÍ" severity="warning" />
+              ) : (
+                <Badge value="NO" severity="success" />
+              );
+            }}
+            style={{ width: "100px", textAlign: "center" }}
+          />
+
+          <Column
+            field="estadoId"
+            header="Estado"
+            sortable
+            body={(rowData) => {
+              const estado = estadosMultiFuncion.find(
+                (e) => Number(e.id) === Number(rowData.estadoId)
+              );
+              return estado ? (
+                <Badge
+                  value={estado.descripcion}
+                  severity={
+                    estado.descripcion === "ACTIVO" ? "success" : "danger"
+                  }
+                />
+              ) : (
+                "N/A"
+              );
+            }}
+            style={{ width: "120px", textAlign: "center" }}
+          />
+
+          <Column
+            header="Acciones"
+            body={actionBodyTemplate}
+            style={{ width: "120px", textAlign: "center" }}
+          />
+        </DataTable>
+      </Card>
 
       {/* Dialog para formulario */}
       <Dialog
         visible={showDialog}
-        style={{ width: "800px" }}
-        header={editing ? "Editar Movimiento Caja" : "Nuevo Movimiento Caja"}
+        style={{ width: "1300px" }}
+        header={
+          editing && !editing.movimientosAplicados
+            ? "Editar Movimiento Caja"
+            : "Nuevo Movimiento Caja"
+        }
         modal
         onHide={() => {
           setShowDialog(false);
@@ -499,7 +985,9 @@ export default function MovimientoCaja() {
         }}
       >
         <MovimientoCajaForm
-          item={editing}
+          key={editing?.id || 'new'}
+          isEdit={editing && editing.id ? true : false}
+          defaultValues={editing || {}}
           centrosCosto={centrosCosto}
           modulos={modulos}
           personal={personal}
@@ -511,6 +999,9 @@ export default function MovimientoCaja() {
           entidadesComerciales={entidadesComerciales}
           estadosMultiFuncion={estadosMultiFuncion}
           onSubmit={handleFormSubmit}
+          onValidarMovimiento={handleValidarMovimiento}  // ← AGREGAR
+          onGenerarAsiento={handleGenerarAsiento}  // ← AGREGAR
+          loading={loading}  // ← AGREGAR
           onCancel={() => {
             setShowDialog(false);
             setEditing(null);

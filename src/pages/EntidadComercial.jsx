@@ -158,7 +158,11 @@ const EntidadComercial = () => {
   };
 
   const abrirDialogoNuevo = () => {
-    setEntidadSeleccionada(null);
+    // Pre-cargar empresa seleccionada en el filtro
+    const entidadInicial = filtroEmpresa
+      ? { empresaId: Number(filtroEmpresa) }
+      : null;
+    setEntidadSeleccionada(entidadInicial);
     setDialogVisible(true);
   };
 
@@ -178,7 +182,7 @@ const EntidadComercial = () => {
     toast.current.show({
       severity: "success",
       summary: "Éxito",
-      detail: entidadSeleccionada
+      detail: entidadSeleccionada && entidadSeleccionada.id
         ? "Entidad comercial actualizada correctamente"
         : "Entidad comercial creada correctamente",
       life: 3000,
@@ -331,8 +335,21 @@ const EntidadComercial = () => {
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 2 }}>
           <h2>Entidades Comerciales</h2>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="filtroEmpresa">Filtro por Empresa</label>
+          <Dropdown
+            value={filtroEmpresa}
+            onChange={(e) => setFiltroEmpresa(e.value)}
+            options={empresasOptions}
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Filtrar por Empresa"
+            showClear
+            className="w-full"
+          />
         </div>
         <div style={{ flex: 1 }}>
           <Button
@@ -346,15 +363,15 @@ const EntidadComercial = () => {
           />
         </div>
         <div style={{ flex: 1 }}>
-            <InputText
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              placeholder="Buscar..."
-              className="w-full"
-            />
+          <InputText
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            placeholder="Buscar..."
+            className="w-full"
+          />
         </div>
         <div style={{ flex: 1 }}>
-        <Button
+          <Button
             label="Limpiar Filtros"
             icon="pi pi-filter-slash"
             size="small"
@@ -373,21 +390,8 @@ const EntidadComercial = () => {
         }}
       >
         <div style={{ flex: 1 }}>
-          <label htmlFor="filtroEmpresa">Filtro por Empresa</label>
-        <Dropdown
-            value={filtroEmpresa}
-            onChange={(e) => setFiltroEmpresa(e.value)}
-            options={empresasOptions}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Filtrar por Empresa"
-            showClear
-            className="w-full"
-          />
-        </div>
-        <div style={{ flex: 1 }}>
           <label htmlFor="filtroTipoEntidad">Filtro por Tipo Entidad</label>
-        <Dropdown
+          <Dropdown
             value={filtroTipoEntidad}
             onChange={(e) => setFiltroTipoEntidad(e.value)}
             options={tiposEntidadOptions}
@@ -411,9 +415,9 @@ const EntidadComercial = () => {
             className="w-full"
           />
         </div>
-        <div style={{ flex: 1, alignItems: "center", flexDirection: "column"}}>
+        <div style={{ flex: 1, alignItems: "center", flexDirection: "column" }}>
           <label htmlFor="filtroAgenteRetencion">Agente Retención</label>
-        <Dropdown
+          <Dropdown
             value={filtroAgenteRetencion}
             onChange={(e) => setFiltroAgenteRetencion(e.value)}
             options={agenteRetencionOptions}
@@ -488,7 +492,7 @@ const EntidadComercial = () => {
 
       <Dialog
         header={
-          entidadSeleccionada
+          entidadSeleccionada && entidadSeleccionada.id
             ? `Editar Entidad Comercial - ID: ${entidadSeleccionada.id}`
             : "Nueva Entidad Comercial"
         }

@@ -1,5 +1,5 @@
 /**
- * pdfDetMovEntregaRendirCard.jsx
+ * PdfDetMovEntregaRendirCard.jsx
  *
  * Card para manejo de PDF de comprobantes de DetMovsEntregaRendir.
  * Incluye captura/subida, visualización y gestión de documentos PDF.

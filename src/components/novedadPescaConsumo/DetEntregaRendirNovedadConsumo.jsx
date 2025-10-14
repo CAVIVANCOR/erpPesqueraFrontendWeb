@@ -26,6 +26,7 @@ export default function DetEntregaRendirNovedadConsumo({
   centrosCosto = [],
   tiposMovimiento = [],
   entidadesComerciales = [],
+  monedas = [], // ← AGREGAR ESTA LÍNEA
 
   // Props de estado
   novedadPescaConsumoIniciada = false,
@@ -269,14 +270,56 @@ export default function DetEntregaRendirNovedadConsumo({
 
   // Templates para las columnas
   const fechaMovimientoTemplate = (rowData) => {
-    return new Date(rowData.fechaMovimiento).toLocaleDateString("es-PE");
+    if (!rowData.fechaMovimiento) return "N/A";
+    
+    const fecha = new Date(rowData.fechaMovimiento);
+    
+    // Validar si la fecha es válida
+    if (isNaN(fecha.getTime())) return "Fecha inválida";
+    
+    return fecha.toLocaleDateString("es-PE", {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
   };
-
   const montoTemplate = (rowData) => {
-    return new Intl.NumberFormat("es-PE", {
+    // Buscar la moneda correspondiente
+    const moneda = monedas.find((m) => Number(m.id) === Number(rowData.monedaId));
+    
+    // Si no hay moneda, usar PEN por defecto
+    const codigoMoneda = moneda?.codigoSunat || "PEN";
+    const simboloMoneda = moneda?.simbolo || "S/.";
+    
+    // Definir color de fondo según la moneda
+    let backgroundColor = "#fff9c4"; // Amarillo claro por defecto (SOLES)
+    if (codigoMoneda === "USD") {
+      backgroundColor = "#c8e6c9"; // Verde claro (DÓLARES)
+    } else if (codigoMoneda !== "PEN") {
+      backgroundColor = "#b3e5fc"; // Celeste claro (OTRAS MONEDAS)
+    }
+    
+    // Formatear el monto con la moneda correcta
+    const montoFormateado = new Intl.NumberFormat("es-PE", {
       style: "currency",
-      currency: "PEN",
+      currency: codigoMoneda,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(rowData.monto);
+    
+    return (
+      <div
+        style={{
+          backgroundColor: backgroundColor,
+          padding: "4px 8px",
+          borderRadius: "4px",
+          fontWeight: "bold",
+          textAlign: "right",
+        }}
+      >
+        {montoFormateado}
+      </div>
+    );
   };
 
   const responsableTemplate = (rowData) => {
@@ -360,7 +403,7 @@ export default function DetEntregaRendirNovedadConsumo({
           value={obtenerMovimientosFiltrados()}
           selection={selectedMovimientos}
           onSelectionChange={onSelectionChange}
-          selectionMode="multiple"
+          selectionMode="single"
           onRowClick={(e) => handleEditarMovimiento(e.data)}
           dataKey="id"
           loading={loading}
@@ -491,7 +534,7 @@ export default function DetEntregaRendirNovedadConsumo({
           }
         >
           <Column
-            selectionMode="multiple"
+            selectionMode="single"
             headerStyle={{ width: "3rem" }}
           ></Column>
           <Column
@@ -567,6 +610,7 @@ export default function DetEntregaRendirNovedadConsumo({
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           entidadesComerciales={entidadesComerciales}
+          monedas={monedas}
           onGuardadoExitoso={handleGuardarMovimiento}
           onCancelar={() => {
             setShowMovimientoForm(false);

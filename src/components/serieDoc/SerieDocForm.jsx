@@ -7,7 +7,15 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
 
-export default function SerieDocForm({ isEdit, defaultValues, tiposDocumento, tiposAlmacen, onSubmit, onCancel, loading }) {
+export default function SerieDocForm({ 
+  isEdit, 
+  defaultValues, 
+  tiposDocumento = [], 
+  tiposAlmacen = [], 
+  onSubmit, 
+  onCancel, 
+  loading 
+}) {
   const [tipoDocumentoId, setTipoDocumentoId] = React.useState(defaultValues.tipoDocumentoId || null);
   const [tipoAlmacenId, setTipoAlmacenId] = React.useState(defaultValues.tipoAlmacenId || null);
   const [serie, setSerie] = React.useState(defaultValues.serie || '');

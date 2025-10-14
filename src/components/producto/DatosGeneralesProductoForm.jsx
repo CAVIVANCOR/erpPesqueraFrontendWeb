@@ -43,6 +43,7 @@ export default function DatosGeneralesProductoForm({
   tiposMaterial = [],
   colores = [],
   unidadMetricaDefault,
+  especies = [],
   defaultValues = {},
 }) {
   const familiaIdWatch = watch("familiaId");
@@ -104,6 +105,11 @@ export default function DatosGeneralesProductoForm({
 
   const estadosInicialesOptions = estadosIniciales.map((e) => ({
     label: e.descripcion,
+    value: Number(e.id),
+  }));
+
+  const especiesOptions = especies.map((e) => ({
+    label: e.nombre,
     value: Number(e.id),
   }));
 
@@ -591,6 +597,32 @@ export default function DatosGeneralesProductoForm({
               <small className="p-error">{errors.subfamiliaId.message}</small>
             )}
           </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="especieId" className="font-bold">
+              Especie
+            </label>
+            <Controller
+              name="especieId"
+              control={control}
+              render={({ field, fieldState }) => (
+                <Dropdown
+                  id="especieId"
+                  {...field}
+                  options={especiesOptions}
+                  placeholder="Seleccione especie"
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({
+                    "p-invalid": fieldState.error,
+                  })}
+                  showClear
+                  filter
+                />
+              )}
+            />
+            {errors.especieId && (
+              <small className="p-error">{errors.especieId.message}</small>
+            )}
+          </div>
         </div>
         <div
           style={{
@@ -703,6 +735,7 @@ export default function DatosGeneralesProductoForm({
           style={{
             display: "flex",
             gap: 10,
+            alignItems: "end",
             flexDirection: window.innerWidth < 768 ? "column" : "row",
             marginBottom: 20,
           }}
@@ -817,6 +850,28 @@ export default function DatosGeneralesProductoForm({
               <small className="p-error">{errors.unidadMedidaId.message}</small>
             )}
           </div>
+          <div style={{ flex: 0.5 }}>
+            <Controller
+              name="cesado"
+              control={control}
+              render={({ field }) => (
+                <Button
+                  id="cesado"
+                  type="button"
+                  label={field.value ? "CESADO" : "ACTIVO"}
+                  icon={
+                    field.value ? "pi pi-times-circle" : "pi pi-check-circle"
+                  }
+                  className={
+                    field.value ? "p-button-danger" : "p-button-primary"
+                  }
+                  onClick={() => field.onChange(!field.value)}
+                  style={{ marginTop: "0.5rem", width: "100%" }}
+                  raised
+                />
+              )}
+            />
+          </div>
         </div>
         <div
           style={{
@@ -880,6 +935,7 @@ export default function DatosGeneralesProductoForm({
               </small>
             )}
           </div>
+
           {/* Controles de carga y mensaje */}
           <div style={{ flex: 2 }}>
             <FileUpload
