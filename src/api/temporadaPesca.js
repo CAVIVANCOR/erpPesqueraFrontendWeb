@@ -58,13 +58,28 @@ export async function iniciarTemporada(temporadaId) {
   return res.data;
 };
 
-export const finalizarTemporada = async (id) => {
-  const response = await api.put(`/temporadas-pesca/${id}/finalizar`);
-  return response.data;
-};
+export async function finalizarTemporada(id) {
+  const res = await axios.post(`${API_URL}/${id}/finalizar`, {}, { headers: getAuthHeaders() });
+  return res.data;
+}
 
-export const cancelarTemporada = async (id) => {
-  const response = await api.put(`/temporadas-pesca/${id}/cancelar`);
-  return response.data;
-};
+export async function cancelarTemporada(id) {
+  const res = await axios.post(`${API_URL}/${id}/cancelar`, {}, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Finaliza una temporada de pesca y genera automáticamente el movimiento de almacén
+ * @param {number|string} temporadaId - ID de la temporada de pesca
+ * @param {number|string} faenaPescaId - ID de la faena de pesca
+ * @returns {Promise<Object>} Respuesta con temporada y movimiento de almacén generado
+ */
+export async function finalizarTemporadaConMovimientoAlmacen(temporadaId, faenaPescaId) {
+  const res = await axios.post(
+    `${API_URL}/${temporadaId}/finalizar-con-almacen`,
+    { faenaPescaId },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
 

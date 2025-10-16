@@ -81,58 +81,11 @@ export default function ConceptoMovAlmacenForm({ isEdit, defaultValues, tiposCon
     });
   }, [almacenes, empresaId]);
 
-  // Construir descripcionArmada en tiempo real
-  const descripcionArmada = React.useMemo(() => {
-    const partes = [];
-
-    // Prefijo si es custodia
-    if (custodia) {
-      partes.push('CUSTODIA');
-    }
-
-    // Tipo Concepto
-    if (tipoConceptoId) {
-      const tipoConcepto = tiposConcepto.find(t => Number(t.id) === Number(tipoConceptoId));
-      if (tipoConcepto) partes.push(tipoConcepto.nombre);
-    }
-
-    // Tipo Movimiento
-    if (tipoMovimientoId) {
-      const tipoMovimiento = tiposMovimiento.find(t => Number(t.id) === Number(tipoMovimientoId));
-      if (tipoMovimiento) partes.push(tipoMovimiento.nombre);
-    }
-
-    // Tipo Almacén
-    if (tipoAlmacenId) {
-      const tipoAlmacen = tiposAlmacen.find(t => Number(t.id) === Number(tipoAlmacenId));
-      if (tipoAlmacen) partes.push(tipoAlmacen.nombre);
-    }
-
-    // Almacén Origen
-    if (almacenOrigenId) {
-      const almacenOrigen = almacenes.find(a => Number(a.id) === Number(almacenOrigenId));
-      if (almacenOrigen) {
-        partes.push('DE');
-        partes.push(almacenOrigen.nombre);
-      }
-    }
-
-    // Almacén Destino
-    if (almacenDestinoId) {
-      const almacenDestino = almacenes.find(a => Number(a.id) === Number(almacenDestinoId));
-      if (almacenDestino) {
-        partes.push('A');
-        partes.push(almacenDestino.nombre);
-      }
-    }
-
-    // Descripción
-    if (descripcion) {
-      partes.push(descripcion);
-    }
-
-    return partes.join(' ');
-  }, [custodia, tipoConceptoId, tipoMovimientoId, tipoAlmacenId, almacenOrigenId, almacenDestinoId, descripcion, tiposConcepto, tiposMovimiento, tiposAlmacen, almacenes]);
+  // La descripción armada se genera en el backend al guardar
+  // Solo mostramos el valor existente si es edición
+  const descripcionArmada = isEdit && defaultValues.descripcionArmada 
+    ? defaultValues.descripcionArmada 
+    : 'Se generará automáticamente al guardar';
 
   const tiposConceptoOptions = tiposConcepto.map(t => ({ ...t, id: Number(t.id) }));
   const tiposMovimientoOptions = tiposMovimiento.map(t => ({ ...t, id: Number(t.id) }));
@@ -249,13 +202,13 @@ export default function ConceptoMovAlmacenForm({ isEdit, defaultValues, tiposCon
         </div>
         <div className="p-col-12">
           <div className="p-field">
-            <label htmlFor="descripcionArmada" style={{ fontWeight: 'bold', color: '#2196F3' }}>Descripción Armada (Vista Previa)</label>
+            <label htmlFor="descripcionArmada" style={{ fontWeight: 'bold', color: '#2196F3' }}>Descripción Armada (Generada por el Sistema)</label>
             <InputTextarea 
               id="descripcionArmada" 
               value={descripcionArmada} 
               disabled={true}
               rows={3}
-              style={{ backgroundColor: '#f0f8ff', fontWeight: 'bold', color: '#333' }}
+              style={{ backgroundColor: '#f0f8ff', fontWeight: 'bold', color: '#666', fontStyle: isEdit ? 'normal' : 'italic' }}
             />
           </div>
         </div>

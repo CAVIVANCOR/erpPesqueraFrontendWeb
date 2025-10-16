@@ -25,7 +25,9 @@ import { getDocumentacionesEmbarcacion } from "../../api/documentacionEmbarcacio
 import { getClientesPorEmpresa } from "../../api/entidadComercial"; 
 import { getEspeciesParaDropdown } from "../../api/especie";
 import { getPuertosActivos } from "../../api/puertoPesca";
-import { getFaenaPescaPorId } from "../../api/faenaPesca"; // Importar función para obtener faena por ID
+import { getFaenaPescaPorId, finalizarFaenaConMovimientoAlmacen } from "../../api/faenaPesca"; // Importar función para obtener faena por ID
+import { confirmDialog } from "primereact/confirmdialog";
+import { ConfirmDialog } from "primereact/confirmdialog";
 import logoEscudoPeru from "../../assets/logoEscudoPeru.png";
 
 export default function FaenaPescaForm({
@@ -315,10 +317,76 @@ export default function FaenaPescaForm({
   };
 
   const handleFinalizarFaena = () => {
-    // Cambiar estado a FINALIZADA (19)
-    setValue("estadoFaenaId", 19);
-    // Forzar actualización inmediata
-    handleSubmit(handleFormSubmit)();
+    console.log('=== DEBUG handleFinalizarFaena ===');
+    console.log('faenaPescaId:', defaultValues.id);
+    console.log('temporadaData:', temporadaData);
+    console.log('temporadaData.id:', temporadaData?.id);
+    
+    if (!temporadaData?.id) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "No se pudo obtener el ID de la temporada de pesca",
+        life: 4000,
+      });
+      return;
+    }
+
+    confirmDialog({
+      message:
+        "¿Está seguro de finalizar esta faena de pesca? Esta acción cambiará el estado a FINALIZADA y generará automáticamente el ingreso a almacén de todas las descargas.",
+      header: "Confirmar Finalización de Faena",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
+      rejectClassName: "p-button-secondary",
+      acceptLabel: "Sí, Finalizar y Generar Ingreso",
+      rejectLabel: "Cancelar",
+      accept: async () => {
+        try {
+          console.log('=== Enviando a backend ===');
+          console.log('faenaPescaId:', defaultValues.id);
+          console.log('temporadaPescaId:', temporadaData.id);
+          
+          // Llamar al backend para finalizar y generar movimiento de almacén
+          const resultado = await finalizarFaenaConMovimientoAlmacen(
+            defaultValues.id,
+            temporadaData.id
+          );
+          
+          console.log('=== Resultado del backend ===');
+          console.log('resultado:', resultado);
+
+          toast.current?.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: `Faena finalizada correctamente. Se generó el documento ${resultado.movimientoAlmacen?.numeroDocumento || ''} con ${resultado.movimientoAlmacen?.cantidadDetalles || 0} detalles.`,
+            life: 5000,
+          });
+
+          // Actualizar el estado local
+          setValue("estadoFaenaId", 19);
+          
+          // Notificar cambios
+          if (onFaenasChange) {
+            onFaenasChange();
+          }
+          
+          // Cerrar el diálogo
+          if (onHide) {
+            onHide();
+          }
+        } catch (error) {
+          console.error("Error finalizando faena:", error);
+          const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || "Error al finalizar la faena";
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: errorMsg,
+            life: 5000,
+          });
+        }
+      },
+    });
   };
 
   {

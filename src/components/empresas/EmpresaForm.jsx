@@ -13,6 +13,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
 import { useState } from 'react';
 import { getPersonal } from '../../api/personal';
+import { getEntidadesComerciales } from '../../api/entidadComercial';
 import { Checkbox } from 'primereact/checkbox';
 import { Button } from 'primereact/button';
 import { FileUpload } from 'primereact/fileupload';
@@ -30,6 +31,7 @@ const schema = Yup.object().shape({
   email: Yup.string().email('Debe ser un email válido'),
   cesado: Yup.boolean(),
   representantelegalId: Yup.number().nullable(),
+  entidadComercialId: Yup.number().nullable(),
   logo: Yup.string(),
   porcentajeIgv: Yup.number().nullable(),
   porcentajeRetencion: Yup.number().nullable(),
@@ -78,6 +80,10 @@ export default function EmpresaForm({ isEdit = false, defaultValues = {}, onSubm
   const [personal, setPersonal] = useState([]);
   const [loadingPersonal, setLoadingPersonal] = useState(false);
 
+  // Estado profesional para lista de entidades comerciales
+  const [entidadesComerciales, setEntidadesComerciales] = useState([]);
+  const [loadingEntidades, setLoadingEntidades] = useState(false);
+
   const listarPersonalEmpresa = async (empresaId) => {
     // Devuelve un array [{ id, nombreCompleto }]
     const data = await getPersonal(empresaId);
@@ -108,6 +114,31 @@ export default function EmpresaForm({ isEdit = false, defaultValues = {}, onSubm
     }
     cargarPersonal();
   }, [defaultValues.empresaId]);
+
+  // Carga las entidades comerciales filtradas por empresaId
+  useEffect(() => {
+    async function cargarEntidades() {
+      setLoadingEntidades(true);
+      try {
+        if (defaultValues.id) {
+          // Obtener todas las entidades comerciales y filtrar por empresaId
+          const todasEntidades = await getEntidadesComerciales();
+          const entidadesFiltradas = todasEntidades.filter(
+            (e) => Number(e.empresaId) === Number(defaultValues.id)
+          );
+          setEntidadesComerciales(entidadesFiltradas);
+        } else {
+          setEntidadesComerciales([]);
+        }
+      } catch (err) {
+        console.error('Error al cargar entidades comerciales:', err);
+        setEntidadesComerciales([]);
+      } finally {
+        setLoadingEntidades(false);
+      }
+    }
+    cargarEntidades();
+  }, [defaultValues.id]);
 
   // Reset al abrir en modo edición o alta
   useEffect(() => {
@@ -268,6 +299,33 @@ export default function EmpresaForm({ isEdit = false, defaultValues = {}, onSubm
             )}
           />
           {errors.representantelegalId && <small className="p-error">{errors.representantelegalId.message}</small>}
+        </div>
+        <div className="p-field">
+          <label htmlFor="entidadComercialId">Entidad Comercial</label>
+          {/* Combo profesional de entidad comercial filtrada por empresaId */}
+          <Controller
+            name="entidadComercialId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="entidadComercialId"
+                value={field.value ?? null}
+                options={entidadesComerciales}
+                optionLabel="razonSocial"
+                optionValue="id"
+                placeholder={loadingEntidades ? "Cargando..." : "Seleccione entidad comercial"}
+                className={errors.entidadComercialId ? 'p-invalid' : ''}
+                onChange={e => field.onChange(e.value)}
+                disabled={loadingEntidades || !defaultValues.id}
+                filter
+                showClear
+              />
+            )}
+          />
+          {errors.entidadComercialId && <small className="p-error">{errors.entidadComercialId.message}</small>}
+          {!defaultValues.id && (
+            <small className="p-d-block" style={{ color: '#888', marginTop: 4 }}>Guarda primero la empresa para seleccionar una entidad comercial.</small>
+          )}
         </div>
         <div className="p-field">
           <label htmlFor="porcentajeIgv">Porcentaje IGV (%)</label>

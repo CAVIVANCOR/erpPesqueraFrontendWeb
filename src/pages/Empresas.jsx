@@ -19,6 +19,7 @@ import {
   eliminarEmpresa,
 } from "../api/empresa";
 import EmpresaForm from "../components/empresas/EmpresaForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Página de gestión de empresas.
@@ -98,6 +99,7 @@ export default function Empresas() {
         porcentajeRetencion: data.porcentajeRetencion,
         montoMinimoRetencion: data.montoMinimoRetencion,
         representantelegalId: data.representantelegalId,
+        entidadComercialId: data.entidadComercialId,
         logo: data.logo,
       };
       if (modoEdicion && empresaEdit) {
@@ -222,6 +224,7 @@ export default function Empresas() {
         globalFilter={globalFilter}
         stripedRows
         emptyMessage="No hay empresas registradas."
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         header={
           <div className="flex align-items-center gap-2">
             <h2>Empresas</h2>

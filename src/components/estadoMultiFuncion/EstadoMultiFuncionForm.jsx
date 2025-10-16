@@ -74,7 +74,7 @@ const EstadoMultiFuncionForm = ({ estadoMultiFuncion, onGuardar, onCancelar }) =
   // Efecto para cargar datos en modo edición
   useEffect(() => {
     if (estadoMultiFuncion) {
-      setValue("tipoProvieneDeId", estadoMultiFuncion.tipoProvieneDeId || null);
+      setValue("tipoProvieneDeId", estadoMultiFuncion.tipoProvieneDeId ? Number(estadoMultiFuncion.tipoProvieneDeId) : null);
       setValue("descripcion", estadoMultiFuncion.descripcion || "");
       setValue("cesado", estadoMultiFuncion.cesado || false);
     } else {
@@ -159,6 +159,8 @@ const EstadoMultiFuncionForm = ({ estadoMultiFuncion, onGuardar, onCancelar }) =
                 id="tipoProvieneDeId"
                 {...field}
                 options={tiposProvieneDe}
+                optionLabel="label"
+                optionValue="value"
                 placeholder="Seleccionar tipo..."
                 className={getFieldClass("tipoProvieneDeId")}
                 disabled={loading}

@@ -39,3 +39,18 @@ export async function eliminarFaenaPesca(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Finaliza una faena de pesca y genera automáticamente el movimiento de almacén
+ * @param {number|string} faenaPescaId - ID de la faena de pesca
+ * @param {number|string} temporadaPescaId - ID de la temporada de pesca
+ * @returns {Promise<Object>} Respuesta con faena y movimiento de almacén generado
+ */
+export async function finalizarFaenaConMovimientoAlmacen(faenaPescaId, temporadaPescaId) {
+  const res = await axios.post(
+    `${API_URL}/${faenaPescaId}/finalizar-con-almacen`,
+    { temporadaPescaId },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

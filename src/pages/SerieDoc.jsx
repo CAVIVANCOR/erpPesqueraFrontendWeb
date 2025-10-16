@@ -15,6 +15,7 @@ import {
 } from "../api/serieDoc";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getTiposAlmacen } from "../api/tipoAlmacen";
+import { getEmpresas } from "../api/empresa";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -29,9 +30,11 @@ export default function SerieDoc() {
   const [items, setItems] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [tiposAlmacen, setTiposAlmacen] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState(null);
   const [tipoAlmacenSeleccionado, setTipoAlmacenSeleccionado] = useState(null);
   const [filtroActivo, setFiltroActivo] = useState("todos"); // 'todos', 'si', 'no'
@@ -43,14 +46,16 @@ export default function SerieDoc() {
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const [seriesData, tiposDocData, tiposAlmData] = await Promise.all([
+      const [seriesData, tiposDocData, tiposAlmData, empresasData] = await Promise.all([
         getSeriesDoc(),
         getTiposDocumento(),
         getTiposAlmacen(),
+        getEmpresas(),
       ]);
       setItems(seriesData);
       setTiposDocumento(tiposDocData);
       setTiposAlmacen(tiposAlmData);
+      setEmpresas(empresasData);
     } catch (err) {
       toast.current.show({
         severity: "error",
@@ -64,6 +69,13 @@ export default function SerieDoc() {
   // Filtrar series por todos los criterios
   const seriesFiltradas = React.useMemo(() => {
     let filtradas = items;
+
+    // Filtrar por empresa
+    if (empresaSeleccionada) {
+      filtradas = filtradas.filter((serie) => {
+        return Number(serie.empresaId) === Number(empresaSeleccionada);
+      });
+    }
 
     // Filtrar por tipo documento
     if (tipoDocumentoSeleccionado) {
@@ -87,9 +99,10 @@ export default function SerieDoc() {
     }
 
     return filtradas;
-  }, [items, tipoDocumentoSeleccionado, tipoAlmacenSeleccionado, filtroActivo]);
+  }, [items, empresaSeleccionada, tipoDocumentoSeleccionado, tipoAlmacenSeleccionado, filtroActivo]);
 
   const limpiarFiltros = () => {
+    setEmpresaSeleccionada(null);
     setTipoDocumentoSeleccionado(null);
     setTipoAlmacenSeleccionado(null);
     setFiltroActivo("todos");
@@ -186,12 +199,17 @@ export default function SerieDoc() {
 
   const tipoDocumentoNombre = (rowData) => {
     const tipo = tiposDocumento.find(t => Number(t.id) === Number(rowData.tipoDocumentoId));
-    return tipo ? tipo.nombre : '';
+    return tipo ? tipo.descripcion : '';
   };
 
   const tipoAlmacenNombre = (rowData) => {
     const tipo = tiposAlmacen.find(t => Number(t.id) === Number(rowData.tipoAlmacenId));
     return tipo ? tipo.nombre : '';
+  };
+
+  const empresaNombre = (rowData) => {
+    const empresa = empresas.find(e => Number(e.id) === Number(rowData.empresaId));
+    return empresa ? empresa.razonSocial : '';
   };
 
   const booleanTemplate = (rowData, field) => (
@@ -248,14 +266,39 @@ export default function SerieDoc() {
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <div style={{ flex: 2 }}>
+              <div style={{ flex: 1 }}>
                 <h1>Series de Documento</h1>
+              </div>
+              <div style={{ flex: 2 }}>
+                <label
+                  htmlFor="empresaFilter"
+                  style={{
+                    display: "block",
+                    marginBottom: "0.5rem",
+                    fontWeight: "bold",
+                  }}
+                >
+                  Empresa:
+                </label>
+                <Dropdown
+                  id="empresaFilter"
+                  value={empresaSeleccionada}
+                  options={empresas}
+                  onChange={(e) => setEmpresaSeleccionada(e.value)}
+                  optionLabel="razonSocial"
+                  optionValue="id"
+                  placeholder="Todas"
+                  filter
+                  showClear
+                  style={{ width: "100%" }}
+                />
               </div>
               <div style={{ flex: 1 }}>
                 <Button
                   label="Nuevo"
                   icon="pi pi-plus"
                   onClick={handleNew}
+                  disabled={!empresaSeleccionada || loading}
                   style={{ marginTop: "1.8rem" }}
                 />
               </div>
@@ -293,7 +336,7 @@ export default function SerieDoc() {
                   value={tipoDocumentoSeleccionado}
                   options={tiposDocumento}
                   onChange={(e) => setTipoDocumentoSeleccionado(e.value)}
-                  optionLabel="nombre"
+                  optionLabel="descripcion"
                   optionValue="id"
                   placeholder="Todos"
                   filter
@@ -371,6 +414,11 @@ export default function SerieDoc() {
       >
         <Column field="id" header="ID" style={{ width: 80 }} />
         <Column
+          field="empresaId"
+          header="Empresa"
+          body={empresaNombre}
+        />
+        <Column
           field="tipoDocumentoId"
           header="Tipo Documento"
           body={tipoDocumentoNombre}
@@ -407,6 +455,8 @@ export default function SerieDoc() {
         <SerieDocForm
           isEdit={!!editing}
           defaultValues={editing || {}}
+          empresas={empresas}
+          empresaId={empresaSeleccionada}
           tiposDocumento={tiposDocumento}
           tiposAlmacen={tiposAlmacen}
           onSubmit={handleFormSubmit}

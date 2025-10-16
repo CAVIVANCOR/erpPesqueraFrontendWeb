@@ -238,6 +238,7 @@ const DetalleVehiculosEntidad = forwardRef(
           numeroMotor: data.numeroMotor?.trim().toUpperCase() || null,
           numeroSerie: data.numeroSerie?.trim().toUpperCase() || null,
           observaciones: data.observaciones?.trim().toUpperCase() || null,
+          updatedAt: new Date().toISOString(),
         };
 
         if (vehiculoSeleccionado && vehiculoSeleccionado.id) {

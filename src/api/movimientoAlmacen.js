@@ -39,3 +39,53 @@ export async function eliminarMovimientoAlmacen(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Cierra un movimiento de almacén y genera kardex y saldos.
+ */
+export async function cerrarMovimientoAlmacen(id) {
+  const res = await axios.post(`${API_URL}/${id}/cerrar`, {}, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Anula un movimiento de almacén (requiere supervisor autorizado).
+ */
+export async function anularMovimientoAlmacen(id, empresaId) {
+  const res = await axios.post(`${API_URL}/${id}/anular`, { empresaId }, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Consulta el stock disponible de un producto.
+ */
+export async function consultarStockDisponible(empresaId, almacenId, productoId, clienteId, esCustodia) {
+  const params = {
+    empresaId,
+    almacenId,
+    productoId,
+    ...(clienteId && { clienteId }),
+    ...(esCustodia !== undefined && { esCustodia })
+  };
+  const res = await axios.get(`${API_URL}/stock/consultar`, { 
+    params,
+    headers: getAuthHeaders() 
+  });
+  return res.data;
+}
+
+/**
+ * Obtiene series de documentos filtradas por empresaId, tipoDocumentoId y tipoAlmacenId.
+ */
+export async function getSeriesDoc(empresaId, tipoDocumentoId, tipoAlmacenId) {
+  const params = {
+    ...(empresaId && { empresaId }),
+    ...(tipoDocumentoId && { tipoDocumentoId }),
+    ...(tipoAlmacenId && { tipoAlmacenId })
+  };
+  const res = await axios.get(`${API_URL}/series-doc`, { 
+    params,
+    headers: getAuthHeaders() 
+  });
+  return res.data;
+}
