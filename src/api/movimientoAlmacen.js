@@ -26,6 +26,7 @@ export async function getMovimientoAlmacenPorId(id) {
 }
 
 export async function crearMovimientoAlmacen(data) {
+
   const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
   return res.data;
 }
@@ -87,5 +88,32 @@ export async function getSeriesDoc(empresaId, tipoDocumentoId, tipoAlmacenId) {
     params,
     headers: getAuthHeaders() 
   });
+  return res.data;
+}
+
+/**
+ * Crea un detalle de movimiento de almacén
+ */
+export async function crearDetalleMovimiento(data) {
+  const DETALLE_URL = `${import.meta.env.VITE_API_URL}/detalles-movimiento-almacen`;
+  const res = await axios.post(DETALLE_URL, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Actualiza un detalle de movimiento de almacén
+ */
+export async function actualizarDetalleMovimiento(id, data) {
+  const DETALLE_URL = `${import.meta.env.VITE_API_URL}/detalles-movimiento-almacen`;
+  const res = await axios.put(`${DETALLE_URL}/${id}`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
+ * Elimina un detalle de movimiento de almacén
+ */
+export async function eliminarDetalleMovimiento(id) {
+  const DETALLE_URL = `${import.meta.env.VITE_API_URL}/detalles-movimiento-almacen`;
+  const res = await axios.delete(`${DETALLE_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }

@@ -15,8 +15,11 @@ function getAuthHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
-export async function getSaldosProductoCliente() {
-  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+export async function getSaldosProductoCliente(params = {}) {
+  const res = await axios.get(API_URL, { 
+    headers: getAuthHeaders(),
+    params: params // Permite filtrar por empresaId, clienteId, custodia, etc.
+  });
   return res.data;
 }
 

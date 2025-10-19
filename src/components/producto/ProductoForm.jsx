@@ -359,13 +359,10 @@ export default function ProductoForm({
   };
 
   const onSubmitForm = async (data) => {
-    console.log('onSubmitForm ejecutado con data:', data);
-    console.log('Valor de cesado en data:', data.cesado);
     try {
       setLoading(true);
 
       // Crear un nuevo objeto solo con los campos necesarios
-      console.log('Construyendo datosParaEnviar...');
       const datosParaEnviar = {
         id: data.id,
         codigo: data.codigo,
@@ -412,22 +409,13 @@ export default function ProductoForm({
         urlFichaTecnica: data.urlFichaTecnica,
         urlFotoProducto: data.urlFotoProducto,
       };
-
-      console.log('Objeto datosParaEnviar construido:', datosParaEnviar);
-
       // Eliminar propiedades que son null o undefined (pero mantener false)
-      console.log('Iniciando limpieza de valores null/undefined...');
       Object.keys(datosParaEnviar).forEach((key) => {
         const value = datosParaEnviar[key];
         if (value === null || value === undefined) {
           delete datosParaEnviar[key];
         }
       });
-      console.log('Limpieza completada');
-
-      console.log('Datos a enviar:', datosParaEnviar);
-      console.log('Campo cesado:', datosParaEnviar.cesado);
-
       await onGuardar(datosParaEnviar);
 
       toast.current.show({

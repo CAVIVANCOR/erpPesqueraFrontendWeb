@@ -137,22 +137,13 @@ const EntregasARendirTemporadaCard = ({
     if (!entregaARendir?.id) return;
 
     try {
-      setLoadingMovimientos(true);
-      console.log("=== CARGANDO MOVIMIENTOS EntregasARendirTemporadaCard ===");
-      console.log("entregaARendir.id:", entregaARendir.id);
-      
-      const movimientosData = await getAllDetMovsEntregaRendir();
-      console.log("✅ TODOS los movimientos de la API:", movimientosData);
-      console.log("✅ Total movimientos en BD:", movimientosData?.length);
-      
+      setLoadingMovimientos(true);      
+      const movimientosData = await getAllDetMovsEntregaRendir();      
       const movimientosEntrega = movimientosData.filter(
         (mov) => Number(mov.entregaARendirId) === Number(entregaARendir.id)
       );
-      console.log("✅ Movimientos filtrados para entrega", entregaARendir.id, ":", movimientosEntrega);
-      console.log("✅ Total filtrados:", movimientosEntrega?.length);
       
       setMovimientos(movimientosEntrega);
-      console.log("✅ Estado 'movimientos' actualizado");
     } catch (error) {
       console.error("❌ ERROR al cargar movimientos:", error);
       toast.current?.show({

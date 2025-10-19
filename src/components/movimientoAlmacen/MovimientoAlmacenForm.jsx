@@ -14,9 +14,13 @@ import { Tag } from "primereact/tag";
 import { Dialog } from "primereact/dialog";
 import { confirmDialog } from "primereact/confirmdialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
+import { Message } from "primereact/message";
+import ProcessProgressDialog from "../../shared/ProcessProgressDialog";
 import DetalleMovimientoList from "./DetalleMovimientoList";
 import DetalleMovimientoForm from "./DetalleMovimientoForm";
-import { getSeriesDoc } from "../../api/movimientoAlmacen";
+import KardexProductoDialog from "./KardexProductoDialog";
+import { generarPDFMovimientoAlmacen, generarPDFMovimientoAlmacenConCostos } from "./MovimientoAlmacenPDF";
+import { getSeriesDoc, getMovimientoAlmacenPorId } from "../../api/movimientoAlmacen";
 import { getAlmacenById } from "../../api/almacen";
 import { getDireccionesEntidad } from "../../api/direccionEntidad";
 import { getVehiculosEntidad } from "../../api/vehiculoEntidad";
@@ -42,12 +46,16 @@ export default function MovimientoAlmacenForm({
   ordenesCompraOptions = [],
   pedidosVentaOptions = [],
   estadosDocAlmacen = [],
+  estadosMercaderia = [],
+  estadosCalidad = [],
+  detallesReqCompra = [],
   empresaFija = null, // Empresa pre-seleccionada desde el filtro
   onSubmit,
   onCancel,
   onCerrar,
   onAnular,
   loading,
+  toast, // Toast ref pasado desde el componente padre
 }) {
   // Estados de la cabecera - Conforme al modelo MovimientoAlmacen
   const [empresaId, setEmpresaId] = useState(defaultValues.empresaId || null);
@@ -147,10 +155,52 @@ export default function MovimientoAlmacenForm({
   // Usuario logueado
   const usuarioLogueado = useAuthStore((state) => state.user);
 
+  // Verificar si el documento está cerrado (estadoDocAlmacenId = 31)
+  const documentoCerrado =
+    defaultValues?.estadoDocAlmacenId === 31 ||
+    defaultValues?.estadoDocAlmacenId === "31";
+
   // Estados para detalles
   const [detalles, setDetalles] = useState(defaultValues.detalles || []);
   const [showDetalleDialog, setShowDetalleDialog] = useState(false);
   const [editingDetalle, setEditingDetalle] = useState(null);
+  const [showKardexDialog, setShowKardexDialog] = useState(false);
+  const [detalleKardex, setDetalleKardex] = useState(null);
+
+  // Estados para el progreso de generación de kardex
+  const [showProgressDialog, setShowProgressDialog] = useState(false);
+  const [progressSteps, setProgressSteps] = useState([]);
+  const [currentProgressStep, setCurrentProgressStep] = useState(0);
+  const [progressComplete, setProgressComplete] = useState(false);
+  const [progressError, setProgressError] = useState(false);
+  const [progressErrorMessage, setProgressErrorMessage] = useState("");
+  const [progressSummary, setProgressSummary] = useState(null);
+
+  // Función para recargar detalles desde la BD
+  const recargarDetalles = async () => {
+    if (defaultValues?.id) {
+      try {
+        const { getMovimientoAlmacenPorId } = await import(
+          "../../api/movimientoAlmacen"
+        );
+        const movimientoActualizado = await getMovimientoAlmacenPorId(
+          defaultValues.id
+        );
+        console.log("🔄 Movimiento actualizado:", movimientoActualizado);
+        console.log("🔄 Detalles recibidos:", movimientoActualizado.detalles);
+        setDetalles(movimientoActualizado.detalles || []);
+      } catch (error) {
+        console.error("Error al recargar detalles:", error);
+      }
+    }
+  };
+
+  // Cargar detalles con producto al montar si es edición
+  useEffect(() => {
+    if (isEdit && defaultValues?.id) {
+      recargarDetalles();
+    }
+  }, [isEdit, defaultValues?.id]);
 
   // Estados para series de documentos
   const [seriesDoc, setSeriesDoc] = useState([]);
@@ -298,19 +348,22 @@ export default function MovimientoAlmacenForm({
           const concepto = conceptosMovAlmacen.find(
             (c) => Number(c.id) === Number(conceptoMovAlmacenId)
           );
-          
+
           if (concepto) {
-            const empresa = empresas.find((e) => Number(e.id) === Number(empresaId));
+            const empresa = empresas.find(
+              (e) => Number(e.id) === Number(empresaId)
+            );
             const entidadEmpresaId = empresa?.entidadComercialId;
-            
+
             if (entidadEmpresaId) {
               const direcciones = await getDireccionesEntidad();
               let direccionesFiltradas = [];
-              
+
               if (concepto.llevaKardexOrigen) {
                 // Solo direcciones de la empresa
                 direccionesFiltradas = direcciones.filter(
-                  (d) => Number(d.entidadComercialId) === Number(entidadEmpresaId)
+                  (d) =>
+                    Number(d.entidadComercialId) === Number(entidadEmpresaId)
                 );
               } else {
                 // Direcciones de la empresa + entidad comercial del movimiento
@@ -318,11 +371,11 @@ export default function MovimientoAlmacenForm({
                 if (entidadComercialId) {
                   entidadesPermitidas.push(entidadComercialId);
                 }
-                direccionesFiltradas = direcciones.filter(
-                  (d) => entidadesPermitidas.includes(Number(d.entidadComercialId))
+                direccionesFiltradas = direcciones.filter((d) =>
+                  entidadesPermitidas.includes(Number(d.entidadComercialId))
                 );
               }
-              
+
               setDireccionesOrigen(direccionesFiltradas);
             } else {
               setDireccionesOrigen([]);
@@ -332,12 +385,18 @@ export default function MovimientoAlmacenForm({
           setDireccionesOrigen([]);
         }
       } catch (err) {
-        console.error('Error al cargar direcciones origen:', err);
+        console.error("Error al cargar direcciones origen:", err);
         setDireccionesOrigen([]);
       }
     }
     cargarDireccionesOrigen();
-  }, [conceptoMovAlmacenId, empresaId, entidadComercialId, conceptosMovAlmacen, empresas]);
+  }, [
+    conceptoMovAlmacenId,
+    empresaId,
+    entidadComercialId,
+    conceptosMovAlmacen,
+    empresas,
+  ]);
 
   // Cargar direcciones destino según reglas de negocio
   useEffect(() => {
@@ -347,19 +406,22 @@ export default function MovimientoAlmacenForm({
           const concepto = conceptosMovAlmacen.find(
             (c) => Number(c.id) === Number(conceptoMovAlmacenId)
           );
-          
+
           if (concepto) {
-            const empresa = empresas.find((e) => Number(e.id) === Number(empresaId));
+            const empresa = empresas.find(
+              (e) => Number(e.id) === Number(empresaId)
+            );
             const entidadEmpresaId = empresa?.entidadComercialId;
-            
+
             if (entidadEmpresaId) {
               const direcciones = await getDireccionesEntidad();
               let direccionesFiltradas = [];
-              
+
               if (concepto.llevaKardexDestino) {
                 // Solo direcciones de la empresa
                 direccionesFiltradas = direcciones.filter(
-                  (d) => Number(d.entidadComercialId) === Number(entidadEmpresaId)
+                  (d) =>
+                    Number(d.entidadComercialId) === Number(entidadEmpresaId)
                 );
               } else {
                 // Direcciones de la empresa + entidad comercial del movimiento
@@ -367,11 +429,11 @@ export default function MovimientoAlmacenForm({
                 if (entidadComercialId) {
                   entidadesPermitidas.push(entidadComercialId);
                 }
-                direccionesFiltradas = direcciones.filter(
-                  (d) => entidadesPermitidas.includes(Number(d.entidadComercialId))
+                direccionesFiltradas = direcciones.filter((d) =>
+                  entidadesPermitidas.includes(Number(d.entidadComercialId))
                 );
               }
-              
+
               setDireccionesDestino(direccionesFiltradas);
             } else {
               setDireccionesDestino([]);
@@ -381,12 +443,18 @@ export default function MovimientoAlmacenForm({
           setDireccionesDestino([]);
         }
       } catch (err) {
-        console.error('Error al cargar direcciones destino:', err);
+        console.error("Error al cargar direcciones destino:", err);
         setDireccionesDestino([]);
       }
     }
     cargarDireccionesDestino();
-  }, [conceptoMovAlmacenId, empresaId, entidadComercialId, conceptosMovAlmacen, empresas]);
+  }, [
+    conceptoMovAlmacenId,
+    empresaId,
+    entidadComercialId,
+    conceptosMovAlmacen,
+    empresas,
+  ]);
 
   // Filtrar transportistas: tipoEntidadId=11 + entidadComercialId seleccionada
   useEffect(() => {
@@ -394,17 +462,22 @@ export default function MovimientoAlmacenForm({
       const transportistasFiltrados = entidadesComerciales.filter(
         (e) => Number(e.tipoEntidadId) === 11
       );
-      
+
       // Agregar la entidad comercial seleccionada si existe
       if (entidadComercialId) {
         const entidadSeleccionada = entidadesComerciales.find(
           (e) => Number(e.id) === Number(entidadComercialId)
         );
-        if (entidadSeleccionada && !transportistasFiltrados.find((t) => Number(t.id) === Number(entidadSeleccionada.id))) {
+        if (
+          entidadSeleccionada &&
+          !transportistasFiltrados.find(
+            (t) => Number(t.id) === Number(entidadSeleccionada.id)
+          )
+        ) {
           transportistasFiltrados.push(entidadSeleccionada);
         }
       }
-      
+
       setTransportistasFiltrados(transportistasFiltrados);
     } else {
       setTransportistasFiltrados([]);
@@ -417,17 +490,22 @@ export default function MovimientoAlmacenForm({
       const agenciasFiltradas = entidadesComerciales.filter(
         (e) => Number(e.tipoEntidadId) === 7
       );
-      
+
       // Agregar la entidad comercial seleccionada si existe
       if (entidadComercialId) {
         const entidadSeleccionada = entidadesComerciales.find(
           (e) => Number(e.id) === Number(entidadComercialId)
         );
-        if (entidadSeleccionada && !agenciasFiltradas.find((a) => Number(a.id) === Number(entidadSeleccionada.id))) {
+        if (
+          entidadSeleccionada &&
+          !agenciasFiltradas.find(
+            (a) => Number(a.id) === Number(entidadSeleccionada.id)
+          )
+        ) {
           agenciasFiltradas.push(entidadSeleccionada);
         }
       }
-      
+
       setAgenciasFiltradas(agenciasFiltradas);
     } else {
       setAgenciasFiltradas([]);
@@ -449,7 +527,7 @@ export default function MovimientoAlmacenForm({
           setVehiculoId(null); // Limpiar selección
         }
       } catch (err) {
-        console.error('Error al cargar vehículos:', err);
+        console.error("Error al cargar vehículos:", err);
         setVehiculosFiltrados([]);
       }
     }
@@ -471,7 +549,7 @@ export default function MovimientoAlmacenForm({
           setDirAgenciaEnvioId(null); // Limpiar selección
         }
       } catch (err) {
-        console.error('Error al cargar direcciones de agencia:', err);
+        console.error("Error al cargar direcciones de agencia:", err);
         setDireccionesAgencia([]);
       }
     }
@@ -483,33 +561,25 @@ export default function MovimientoAlmacenForm({
     async function cargarEstados() {
       try {
         const estados = await getEstadosMultiFuncion();
-        console.log('📋 Estados cargados:', estados.length);
-        
+
         // Filtrar estados para Inventarios (tipoProvieneDeId = 9)
         // Estados: 30=Pendiente, 31=Cerrado, 32=Anulado
         const estadosFiltrados = estados.filter(
           (e) => Number(e.tipoProvieneDeId) === 9 && !e.cesado
         );
-        console.log('✅ Estados filtrados (tipoProvieneDeId=9 - Inventarios):', estadosFiltrados);
         setEstadosDocumento(estadosFiltrados);
-        
+
         // Si no hay estado asignado, asignar estado "Pendiente" (id=30) por defecto
-        console.log('🔍 isEdit:', isEdit, 'estadoDocAlmacenId:', estadoDocAlmacenId, 'estadosFiltrados.length:', estadosFiltrados.length);
         if (!estadoDocAlmacenId && estadosFiltrados.length > 0) {
-          console.log('✅ Entrando al bloque de asignación (estadoDocAlmacenId es null)...');
-          const estadoPendiente = estadosFiltrados.find((e) => Number(e.id) === 30);
-          console.log('🔍 Estado Pendiente encontrado:', estadoPendiente);
+          const estadoPendiente = estadosFiltrados.find(
+            (e) => Number(e.id) === 30
+          );
           if (estadoPendiente) {
             setEstadoDocAlmacenId(Number(estadoPendiente.id));
-            console.log('✅ Estado asignado:', estadoPendiente.id);
-          } else {
-            console.log('⚠️ No se encontró estado con id=30');
           }
-        } else {
-          console.log('❌ No se asigna estado: estadoDocAlmacenId ya tiene valor o no hay estados');
         }
       } catch (err) {
-        console.error('❌ Error al cargar estados:', err);
+        console.error("Error al cargar estados:", err);
       }
     }
     cargarEstados();
@@ -520,13 +590,12 @@ export default function MovimientoAlmacenForm({
     async function cargarPersonalResponsable() {
       try {
         if (empresaId) {
-          console.log('personalOptions', personalOptions );
           const parametros = await getParametrosAprobador();
           // Filtrar por empresaId, moduloSistemaId=6 (Inventarios) y cesado=false
           const parametroInventario = parametros.find(
-            (p) => 
-              Number(p.empresaId) === Number(empresaId) && 
-              Number(p.moduloSistemaId) === 6 && 
+            (p) =>
+              Number(p.empresaId) === Number(empresaId) &&
+              Number(p.moduloSistemaId) === 6 &&
               p.cesado === false
           );
           if (parametroInventario && parametroInventario.personalRespId) {
@@ -534,7 +603,7 @@ export default function MovimientoAlmacenForm({
           }
         }
       } catch (err) {
-        console.error('Error al cargar personal responsable:', err);
+        console.error("Error al cargar personal responsable:", err);
       }
     }
     cargarPersonalResponsable();
@@ -568,6 +637,13 @@ export default function MovimientoAlmacenForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Normalizar fechaDocumento a medianoche (00:00:00) para guardar solo la fecha
+    const fechaNormalizada = fechaDocumento ? new Date(fechaDocumento) : null;
+    if (fechaNormalizada) {
+      fechaNormalizada.setHours(0, 0, 0, 0);
+    }
+
     onSubmit({
       empresaId: empresaId ? Number(empresaId) : null,
       tipoDocumentoId: tipoDocumentoId ? Number(tipoDocumentoId) : null,
@@ -578,7 +654,7 @@ export default function MovimientoAlmacenForm({
       numSerieDoc,
       numCorreDoc,
       numeroDocumento,
-      fechaDocumento,
+      fechaDocumento: fechaNormalizada,
       entidadComercialId: entidadComercialId
         ? Number(entidadComercialId)
         : null,
@@ -615,12 +691,15 @@ export default function MovimientoAlmacenForm({
     value: Number(e.id),
   }));
 
-  const tiposDocumentoOptions = tiposDocumento.map((t) => ({
-    ...t,
-    id: Number(t.id),
-    label: t.descripcion, // TipoDocumento usa 'descripcion' no 'nombre'
-    value: Number(t.id),
-  }));
+  // Filtrar solo tipos de documento para Almacén (esParaAlmacen = true)
+  const tiposDocumentoOptions = tiposDocumento
+    .filter((t) => t.esParaAlmacen === true)
+    .map((t) => ({
+      ...t,
+      id: Number(t.id),
+      label: t.descripcion, // TipoDocumento usa 'descripcion' no 'nombre'
+      value: Number(t.id),
+    }));
 
   const entidadesOptions = entidadesComerciales.map((e) => ({
     ...e,
@@ -663,7 +742,7 @@ export default function MovimientoAlmacenForm({
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccionar empresa"
-            disabled={loading || !!empresaFija} // Deshabilitar si hay empresaFija
+            disabled={loading || !!empresaFija || isEdit || detalles.length > 0} // Deshabilitar si hay empresaFija, es edición o hay detalles
             required
             style={{
               fontWeight: "bold",
@@ -678,8 +757,6 @@ export default function MovimientoAlmacenForm({
             value={fechaDocumento}
             onChange={(e) => setFechaDocumento(e.value)}
             dateFormat="dd/mm/yy"
-            showTime
-            hourFormat="24"
             showIcon
             required
             disabled={loading}
@@ -699,7 +776,7 @@ export default function MovimientoAlmacenForm({
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccionar tipo"
-            disabled={loading}
+            disabled={loading || detalles.length > 0} // Deshabilitar solo si hay detalles
             required
             style={{
               fontWeight: "bold",
@@ -730,7 +807,7 @@ export default function MovimientoAlmacenForm({
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
-        <div style={{ flex: 2 }}>
+        <div style={{ flex: 4 }}>
           <label htmlFor="conceptoMovAlmacenId">Concepto Movimiento*</label>
           <Dropdown
             id="conceptoMovAlmacenId"
@@ -740,7 +817,7 @@ export default function MovimientoAlmacenForm({
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccionar concepto"
-            disabled={loading}
+            disabled={loading || isEdit || detalles.length > 0} // Deshabilitar si es edición o hay detalles
             required
             style={{
               fontWeight: "bold",
@@ -748,11 +825,11 @@ export default function MovimientoAlmacenForm({
             }}
           />
         </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="esCustodia">Almacen</label>
+        <div style={{ flex: 0.5 }}>
+          <label htmlFor="esCustodia">Mercaderia</label>
           <Button
             id="esCustodia"
-            label={esCustodia ? "CUSTODIA" : "PROPIO"}
+            label={esCustodia ? "CUSTODIA" : "PROPIA"}
             className={esCustodia ? "p-button-danger" : "p-button-success"}
             disabled
             style={{
@@ -798,9 +875,10 @@ export default function MovimientoAlmacenForm({
               </div>
             )}
             {almacenOrigenInfo && almacenOrigenInfo.nombre && (
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.5 }}>
+                <label>Kardex</label>
                 <Button
-                  label={llevaKardexOrigen ? "KARDEX SI" : "KARDEX NO"}
+                  label={llevaKardexOrigen ? "SI" : "NO"}
                   className={
                     llevaKardexOrigen
                       ? "p-button-success"
@@ -811,16 +889,6 @@ export default function MovimientoAlmacenForm({
                 />
               </div>
             )}
-          </div>
-          <div
-            style={{
-              alignItems: "end",
-              display: "flex",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-              marginTop: 10,
-            }}
-          >
             {almacenDestinoInfo && almacenDestinoInfo.nombre && (
               <div style={{ flex: 4 }}>
                 <label style={{ fontWeight: "bold", color: "#388e3c" }}>
@@ -842,9 +910,10 @@ export default function MovimientoAlmacenForm({
               </div>
             )}
             {almacenDestinoInfo && almacenDestinoInfo.nombre && (
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.5 }}>
+                <label>Kardex</label>
                 <Button
-                  label={llevaKardexDestino ? "KARDEX SI" : "KARDEX NO"}
+                  label={llevaKardexDestino ? "SI" : "NO"}
                   className={
                     llevaKardexDestino
                       ? "p-button-success"
@@ -860,7 +929,6 @@ export default function MovimientoAlmacenForm({
           </div>
         </div>
       )}
-
       <div
         style={{
           alignItems: "end",
@@ -921,6 +989,41 @@ export default function MovimientoAlmacenForm({
             }}
           />
         </div>
+        <div style={{ flex: 1.5 }}>
+          <label htmlFor="estadoDocAlmacenId">Estado Documento*</label>
+          <Dropdown
+            id="estadoDocAlmacenId"
+            value={estadoDocAlmacenId ? Number(estadoDocAlmacenId) : null}
+            options={estadosDocumento.map((e) => ({
+              label: e.descripcion,
+              value: Number(e.id),
+            }))}
+            onChange={(e) => setEstadoDocAlmacenId(e.value)}
+            placeholder="Seleccionar estado"
+            disabled={loading || isEdit}
+            filter
+            style={{
+              fontWeight: "bold",
+              textTransform: "uppercase",
+              backgroundColor:
+                estadoDocAlmacenId === 30
+                  ? "#f97316" // Pendiente - Naranja warning (igual que p-button-warning)
+                  : estadoDocAlmacenId === 31
+                  ? "#22c55e" // Cerrado - Verde success (igual que p-button-success)
+                  : estadoDocAlmacenId === 32
+                  ? "#ef4444" // Anulado - Rojo danger (igual que p-button-danger)
+                  : "#ffffff", // Default - Blanco
+              color:
+                estadoDocAlmacenId === 30
+                  ? "#ffffff" // Texto blanco para warning
+                  : estadoDocAlmacenId === 31
+                  ? "#ffffff" // Texto blanco para success
+                  : estadoDocAlmacenId === 32
+                  ? "#ffffff" // Texto blanco para danger
+                  : "#000000", // Default - Negro
+            }}
+          />
+        </div>
       </div>
       <div
         style={{
@@ -941,7 +1044,7 @@ export default function MovimientoAlmacenForm({
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccionar entidad"
-            disabled={loading}
+            disabled={loading || isEdit || detalles.length > 0} // Deshabilitar si es edición o hay detalles
             style={{
               fontWeight: "bold",
               textTransform: "uppercase",
@@ -949,9 +1052,111 @@ export default function MovimientoAlmacenForm({
           />
         </div>
       </div>
+      {/* Sección de Detalles del Movimiento */}
+      <Panel header="Detalles del Movimiento" toggleable className="p-mt-3">
+        <div className="p-mb-3">
+          {!isEdit && (
+            <div
+              style={{
+                padding: "12px",
+                backgroundColor: "#fff3cd",
+                border: "1px solid #ffc107",
+                borderRadius: "4px",
+                marginBottom: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <i className="pi pi-info-circle" style={{ color: "#856404" }}></i>
+              <span style={{ color: "#856404", fontSize: "0.9em" }}>
+                <strong>Importante:</strong> Primero debes guardar el movimiento
+                para poder agregar detalles.
+              </span>
+            </div>
+          )}
+          <Button
+            label="Agregar Detalle"
+            icon="pi pi-plus"
+            className="p-button-success p-button-sm"
+            onClick={() => {
+              setEditingDetalle(null);
+              setShowDetalleDialog(true);
+            }}
+            disabled={loading || !isEdit}
+            type="button"
+            tooltip={!isEdit ? "Primero debes guardar el movimiento" : ""}
+            tooltipOptions={{ position: "top" }}
+          />
+        </div>
+        <DetalleMovimientoList
+          detalles={detalles}
+          productos={productos}
+          readOnly={documentoCerrado}
+          onEdit={(detalle) => {
+            setEditingDetalle(detalle);
+            setShowDetalleDialog(true);
+          }}
+          onVerKardex={(detalle) => {
+            setDetalleKardex(detalle);
+            setShowKardexDialog(true);
+          }}
+          onSave={(detalleData) => {
+            // Solo actualizar el estado local - NO guardar en BD
+            // El guardado en BD lo hace DetalleMovimientoForm.jsx
+            if (editingDetalle) {
+              // Actualizar detalle existente
+              setDetalles(
+                detalles.map((d) =>
+                  d === editingDetalle
+                    ? { ...editingDetalle, ...detalleData }
+                    : d
+                )
+              );
+            } else {
+              // Agregar nuevo detalle
+              setDetalles([
+                ...detalles,
+                { ...detalleData, tempId: Date.now() },
+              ]);
+            }
+            setShowDetalleDialog(false);
+            setEditingDetalle(null);
+          }}
+          onDelete={async (detalle) => {
+            confirmDialog({
+              message: "¿Está seguro que desea eliminar este detalle?",
+              header: "Confirmar eliminación",
+              icon: "pi pi-exclamation-triangle",
+              acceptClassName: "p-button-danger",
+              accept: async () => {
+                // Si el movimiento existe y el detalle tiene ID, eliminar en BD
+                if (
+                  defaultValues?.id &&
+                  detalle?.id &&
+                  !isNaN(Number(detalle.id))
+                ) {
+                  try {
+                    const { eliminarDetalleMovimiento } = await import(
+                      "../../api/movimientoAlmacen"
+                    );
+                    await eliminarDetalleMovimiento(Number(detalle.id));
+                    // Recargar detalles desde BD
+                    await recargarDetalles();
+                  } catch (error) {
+                    console.error("Error al eliminar detalle:", error);
+                  }
+                } else {
+                  // Detalle nuevo (sin ID) - solo eliminar del estado local
+                  setDetalles(detalles.filter((d) => d !== detalle));
+                }
+              },
+            });
+          }}
+        />
+      </Panel>
 
       {/* Sección de Información Adicional */}
-      <Divider />
       <Panel
         header="Información Adicional"
         toggleable
@@ -974,19 +1179,25 @@ export default function MovimientoAlmacenForm({
               id="dirOrigenId"
               value={dirOrigenId ? Number(dirOrigenId) : null}
               options={(direccionesOrigen || []).map((d) => ({
-                label: d.direccionArmada || d.direccion || d.descripcion || 'Sin dirección',
+                label:
+                  d.direccionArmada ||
+                  d.direccion ||
+                  d.descripcion ||
+                  "Sin dirección",
                 value: Number(d.id),
               }))}
               onChange={(e) => setDirOrigenId(e.value)}
               placeholder="Seleccionar dirección origen"
-              disabled={loading || !direccionesOrigen || direccionesOrigen.length === 0}
+              disabled={
+                loading || !direccionesOrigen || direccionesOrigen.length === 0
+              }
               showClear
               filter
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
         </div>
-                <div
+        <div
           style={{
             alignItems: "end",
             display: "flex",
@@ -1001,12 +1212,20 @@ export default function MovimientoAlmacenForm({
               id="dirDestinoId"
               value={dirDestinoId ? Number(dirDestinoId) : null}
               options={(direccionesDestino || []).map((d) => ({
-                label: d.direccionArmada || d.direccion || d.descripcion || 'Sin dirección',
+                label:
+                  d.direccionArmada ||
+                  d.direccion ||
+                  d.descripcion ||
+                  "Sin dirección",
                 value: Number(d.id),
               }))}
               onChange={(e) => setDirDestinoId(e.value)}
               placeholder="Seleccionar dirección destino"
-              disabled={loading || !direccionesDestino || direccionesDestino.length === 0}
+              disabled={
+                loading ||
+                !direccionesDestino ||
+                direccionesDestino.length === 0
+              }
               showClear
               filter
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
@@ -1141,8 +1360,17 @@ export default function MovimientoAlmacenForm({
                 value: Number(v.id),
               }))}
               onChange={(e) => setVehiculoId(e.value)}
-              placeholder={transportistaId ? "Seleccionar vehículo" : "Seleccione primero un transportista"}
-              disabled={loading || !transportistaId || !vehiculosFiltrados || vehiculosFiltrados.length === 0}
+              placeholder={
+                transportistaId
+                  ? "Seleccionar vehículo"
+                  : "Seleccione primero un transportista"
+              }
+              disabled={
+                loading ||
+                !transportistaId ||
+                !vehiculosFiltrados ||
+                vehiculosFiltrados.length === 0
+              }
               showClear
               filter
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
@@ -1183,7 +1411,11 @@ export default function MovimientoAlmacenForm({
               id="dirAgenciaEnvioId"
               value={dirAgenciaEnvioId ? Number(dirAgenciaEnvioId) : null}
               options={(direccionesAgencia || []).map((d) => ({
-                label: d.direccionArmada || d.direccion || d.descripcion || 'Sin dirección',
+                label:
+                  d.direccionArmada ||
+                  d.direccion ||
+                  d.descripcion ||
+                  "Sin dirección",
                 value: Number(d.id),
               }))}
               onChange={(e) => setDirAgenciaEnvioId(e.value)}
@@ -1193,7 +1425,10 @@ export default function MovimientoAlmacenForm({
                   : "Seleccione primero una agencia"
               }
               disabled={
-                loading || !agenciaEnvioId || !direccionesAgencia || direccionesAgencia.length === 0
+                loading ||
+                !agenciaEnvioId ||
+                !direccionesAgencia ||
+                direccionesAgencia.length === 0
               }
               showClear
               filter
@@ -1228,7 +1463,8 @@ export default function MovimientoAlmacenForm({
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
             <small style={{ color: "#888", marginTop: 4 }}>
-              Asignado automáticamente desde Parámetros de Aprobador (Solo lectura)
+              Asignado automáticamente desde Parámetros de Aprobador (Solo
+              lectura)
             </small>
           </div>
         </div>
@@ -1273,84 +1509,37 @@ export default function MovimientoAlmacenForm({
               )}
             </>
           )}
-          <div style={{ flex: 1 }}>
-            <label htmlFor="estadoDocAlmacenId">Estado Documento*</label>
-            {console.log('📊 Renderizando dropdown - estadosDocumento:', estadosDocumento)}
-            {console.log('📊 estadoDocAlmacenId actual:', estadoDocAlmacenId)}
-            <Dropdown
-              id="estadoDocAlmacenId"
-              value={estadoDocAlmacenId ? Number(estadoDocAlmacenId) : null}
-              options={estadosDocumento.map((e) => ({
-                label: e.descripcion,
-                value: Number(e.id),
-              }))}
-              onChange={(e) => setEstadoDocAlmacenId(e.value)}
-              placeholder="Seleccionar estado"
-              disabled={loading || isEdit}
-              filter
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-            {isEdit && (
-              <small style={{ color: "#888", marginTop: 4 }}>
-                El estado se cambia con los botones Cerrar/Anular
-              </small>
-            )}
-          </div>
         </div>
-      </Panel>
-
-      {/* Sección de Detalles del Movimiento */}
-      <Divider />
-      <Panel header="Detalles del Movimiento" toggleable className="p-mt-3">
-        <div className="p-mb-3">
-          <Button
-            label="Agregar Detalle"
-            icon="pi pi-plus"
-            className="p-button-success p-button-sm"
-            onClick={() => {
-              setEditingDetalle(null);
-              setShowDetalleDialog(true);
-            }}
-            disabled={loading}
-            type="button"
-          />
-        </div>
-        <DetalleMovimientoList
-          detalles={detalles}
-          productos={productos}
-          onEdit={(detalle) => {
-            setEditingDetalle(detalle);
-            setShowDetalleDialog(true);
-          }}
-          onDelete={(detalle) => {
-            confirmDialog({
-              message: "¿Está seguro que desea eliminar este detalle?",
-              header: "Confirmar eliminación",
-              icon: "pi pi-exclamation-triangle",
-              acceptClassName: "p-button-danger",
-              accept: () => {
-                setDetalles(detalles.filter((d) => d !== detalle));
-              },
-            });
-          }}
-        />
       </Panel>
 
       {/* Diálogo para agregar/editar detalle */}
-      <Dialog
-        header={editingDetalle ? "Editar Detalle" : "Nuevo Detalle"}
+      <DetalleMovimientoForm
         visible={showDetalleDialog}
-        style={{ width: "800px", maxWidth: "95vw" }}
         onHide={() => {
           setShowDetalleDialog(false);
           setEditingDetalle(null);
         }}
-        modal
-      >
-        <DetalleMovimientoForm
-          defaultValues={editingDetalle || {}}
-          productos={productos}
-          onSubmit={(detalleData) => {
+        detalle={editingDetalle}
+        movimientoAlmacen={{
+          id: defaultValues.id,
+          empresaId,
+          entidadComercialId,
+          esCustodia,
+          fechaDocumento,
+          empresa: empresas.find((e) => Number(e.id) === Number(empresaId)),
+          conceptoMovAlmacen: conceptosMovAlmacen.find(
+            (c) => Number(c.id) === Number(conceptoMovAlmacenId)
+          ),
+        }}
+        estadosMercaderia={estadosMercaderia}
+        estadosCalidad={estadosCalidad}
+        readOnly={documentoCerrado}
+        onSave={async (detalleData) => {
+          // Si el movimiento existe, recargar desde BD
+          if (defaultValues?.id) {
+            await recargarDetalles();
+          } else {
+            // Movimiento nuevo - actualizar estado local
             if (editingDetalle) {
               // Actualizar detalle existente
               setDetalles(
@@ -1367,35 +1556,397 @@ export default function MovimientoAlmacenForm({
                 { ...detalleData, tempId: Date.now() },
               ]);
             }
-            setShowDetalleDialog(false);
-            setEditingDetalle(null);
-          }}
-          onCancel={() => {
-            setShowDetalleDialog(false);
-            setEditingDetalle(null);
-          }}
-          loading={loading}
-        />
-      </Dialog>
+          }
+          setShowDetalleDialog(false);
+          setEditingDetalle(null);
+        }}
+        loading={loading}
+      />
 
       <ConfirmDialog />
 
       <Divider />
-      <div className="p-d-flex p-jc-end" style={{ gap: 8, marginTop: 16 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 8,
+          marginTop: 18,
+        }}
+      >
+        {/* Botones de acciones del documento */}
+        {isEdit && detalles.length > 0 && (
+          <>
+            {/* Botón Cerrar Documento - Estado 31 */}
+            <Button
+              type="button"
+              label="Cerrar Documento"
+              icon="pi pi-lock"
+              onClick={() => {
+                confirmDialog({
+                  message:
+                    "¿Está seguro que desea cerrar este documento? El estado cambiará a CERRADO (31).",
+                  header: "Confirmar Cierre",
+                  icon: "pi pi-exclamation-triangle",
+                  acceptClassName: "p-button-warning",
+                  accept: async () => {
+                    if (onCerrar) {
+                      await onCerrar(defaultValues.id);
+                    }
+                  },
+                });
+              }}
+              disabled={loading || estadoDocAlmacenId !== 30}
+              className="p-button-warning"
+              severity="warning"
+              raised
+              size="small"
+              tooltip={estadoDocAlmacenId === 30 ? "Cerrar documento (estado CERRADO - 31)" : "Solo disponible para documentos en estado PENDIENTE"}
+              tooltipOptions={{ position: "top" }}
+            />
+
+            {/* Botón Anular Documento - Estado 32 */}
+            <Button
+              type="button"
+              label="Anular Documento"
+              icon="pi pi-times-circle"
+              onClick={() => {
+                confirmDialog({
+                  message:
+                    "¿Está seguro que desea anular este documento? El estado cambiará a ANULADO (32).",
+                  header: "Confirmar Anulación",
+                  icon: "pi pi-exclamation-triangle",
+                  acceptClassName: "p-button-danger",
+                  accept: async () => {
+                    if (onAnular) {
+                      await onAnular(defaultValues.id, defaultValues.empresaId);
+                    }
+                  },
+                });
+              }}
+              disabled={loading}
+              className="p-button-danger"
+              severity="danger"
+              raised
+              size="small"
+              tooltip="Anular documento (estado ANULADO - 32)"
+              tooltipOptions={{ position: "top" }}
+            />
+
+            {/* Botón Generar Kardex - Estado 33 */}
+            <Button
+              type="button"
+              label="Generar Kardex"
+              icon="pi pi-chart-line"
+              onClick={async () => {
+                confirmDialog({
+                  message:
+                    "¿Está seguro que desea generar el kardex y los saldos?",
+                  header: "Confirmar Generación",
+                  icon: "pi pi-question-circle",
+                  acceptClassName: "p-button-success",
+                  accept: async () => {
+                    try {
+                      // Inicializar pasos del proceso
+                      const steps = [
+                        {
+                          label: "Iniciando generación de kardex...",
+                          completed: false,
+                        },
+                        {
+                          label: "Procesando detalles del movimiento...",
+                          completed: false,
+                        },
+                        {
+                          label: "Calculando saldos de kardex...",
+                          completed: false,
+                        },
+                        {
+                          label: "Actualizando saldos de productos...",
+                          completed: false,
+                        },
+                        { label: "Finalizando proceso...", completed: false },
+                      ];
+
+                      setProgressSteps(steps);
+                      setCurrentProgressStep(0);
+                      setProgressComplete(false);
+                      setProgressError(false);
+                      setProgressErrorMessage("");
+                      setProgressSummary(null);
+                      setShowProgressDialog(true);
+
+                      // Paso 1: Iniciar
+                      await new Promise((resolve) => setTimeout(resolve, 500));
+                      steps[0].completed = true;
+                      setProgressSteps([...steps]);
+                      setCurrentProgressStep(1);
+
+                      // Paso 2: Generar kardex
+                      const { generarKardex } = await import(
+                        "../../api/generarKardex"
+                      );
+                      const resultado = await generarKardex(defaultValues.id);
+                      steps[1].completed = true;
+                      setProgressSteps([...steps]);
+                      setCurrentProgressStep(2);
+
+                      // Paso 3: Calcular saldos
+                      await new Promise((resolve) => setTimeout(resolve, 300));
+                      steps[2].completed = true;
+                      setProgressSteps([...steps]);
+                      setCurrentProgressStep(3);
+
+                      // Paso 4: Actualizar saldos
+                      await new Promise((resolve) => setTimeout(resolve, 300));
+                      steps[3].completed = true;
+                      setProgressSteps([...steps]);
+                      setCurrentProgressStep(4);
+
+                      // Paso 5: Finalizar
+                      await new Promise((resolve) => setTimeout(resolve, 300));
+                      steps[4].completed = true;
+                      setProgressSteps([...steps]);
+
+                      // Preparar resumen
+                      setProgressSummary({
+                        creados: resultado.kardexCreados || 0,
+                        actualizados: resultado.kardexActualizados || 0,
+                        saldosDetActualizados:
+                          resultado.saldosDetActualizados || 0,
+                        saldosGenActualizados:
+                          resultado.saldosGenActualizados || 0,
+                        errores: resultado.errores?.length || 0,
+                      });
+
+                      setProgressComplete(true);
+
+                      // Si hay errores, mostrarlos en consola
+                      if (resultado.errores && resultado.errores.length > 0) {
+                        console.error("Errores en kardex:", resultado.errores);
+                      }
+
+                      // Cerrar automáticamente después de 2 segundos
+                      setTimeout(() => {
+                        setShowProgressDialog(false);
+                      }, 2000);
+                    } catch (error) {
+                      console.error("Error al generar kardex:", error);
+                      setProgressError(true);
+                      setProgressErrorMessage(
+                        error.response?.data?.error ||
+                          error.message ||
+                          "No se pudo generar el kardex"
+                      );
+                      setProgressComplete(true);
+
+                      // En caso de error, cerrar después de 4 segundos para que el usuario lea el mensaje
+                      setTimeout(() => {
+                        setShowProgressDialog(false);
+                      }, 4000);
+                    }
+                  },
+                });
+              }}
+              disabled={loading}
+              className="p-button-success"
+              severity="success"
+              raised
+              size="small"
+              tooltip="Generar kardex y actualizar saldos"
+              tooltipOptions={{ position: "top" }}
+            />
+          </>
+        )}
+        {/* Botones para generar PDF */}
+        {isEdit && detalles.length > 0 && (
+          <>
+            <Button
+              type="button"
+              label="PDF sin Costos"
+              icon="pi pi-file-pdf"
+              onClick={async () => {
+                try {
+                  toast.current.show({
+                    severity: "info",
+                    summary: "Generando PDF",
+                    detail: "Generando documento sin costos...",
+                    life: 2000,
+                  });
+
+                  // Recargar movimiento completo desde el backend para obtener todas las relaciones
+                  const movimientoCompleto = await getMovimientoAlmacenPorId(defaultValues.id);
+                  
+                  // Agregar personal responsable completo desde personalOptions
+                  if (movimientoCompleto.personalRespAlmacen && personalOptions.length > 0) {
+                    const personalId = typeof movimientoCompleto.personalRespAlmacen === 'string'
+                      ? Number(movimientoCompleto.personalRespAlmacen)
+                      : Number(movimientoCompleto.personalRespAlmacen.id || movimientoCompleto.personalRespAlmacen);
+                    
+                    const personalEncontrado = personalOptions.find(p => Number(p.id) === personalId);
+                    if (personalEncontrado) {
+                      movimientoCompleto.personalRespAlmacen = personalEncontrado;
+                    }
+                  }
+                  
+                  // Obtener empresa completa
+                  const empresaSeleccionada = empresas.find(
+                    (e) => Number(e.id) === Number(empresaId)
+                  );
+
+                  const resultado = await generarPDFMovimientoAlmacen(
+                    movimientoCompleto,
+                    movimientoCompleto.detalles || detalles,
+                    empresaSeleccionada || {},
+                    false // Sin costos
+                  );
+
+                  if (resultado.success) {
+                    toast.current.show({
+                      severity: "success",
+                      summary: "Éxito",
+                      detail: "PDF generado correctamente",
+                      life: 3000,
+                    });
+                  } else {
+                    toast.current.show({
+                      severity: "error",
+                      summary: "Error",
+                      detail: resultado.error || "Error al generar PDF",
+                      life: 5000,
+                    });
+                  }
+                } catch (error) {
+                  console.error("Error al generar PDF:", error);
+                  toast.current.show({
+                    severity: "error",
+                    summary: "Error",
+                    detail: "Error al generar el PDF",
+                    life: 5000,
+                  });
+                }
+              }}
+              className="p-button-info"
+              severity="info"
+              raised
+              size="small"
+              outlined
+              tooltip="Generar PDF sin información de costos"
+              tooltipOptions={{ position: "top" }}
+            />
+            <Button
+              type="button"
+              label="PDF con Costos"
+              icon="pi pi-file-pdf"
+              onClick={async () => {
+                try {
+                  toast.current.show({
+                    severity: "info",
+                    summary: "Generando PDF",
+                    detail: "Generando documento con costos...",
+                    life: 2000,
+                  });
+
+                  // Obtener empresa completa
+                  const empresaSeleccionada = empresas.find(
+                    (e) => Number(e.id) === Number(empresaId)
+                  );
+
+                  const resultado = await generarPDFMovimientoAlmacenConCostos(
+                    defaultValues,
+                    detalles,
+                    empresaSeleccionada || {}
+                  );
+
+                  if (resultado.success) {
+                    toast.current.show({
+                      severity: "success",
+                      summary: "Éxito",
+                      detail: "PDF generado correctamente",
+                      life: 3000,
+                    });
+                  } else {
+                    toast.current.show({
+                      severity: "error",
+                      summary: "Error",
+                      detail: resultado.error || "Error al generar PDF",
+                      life: 5000,
+                    });
+                  }
+                } catch (error) {
+                  console.error("Error al generar PDF:", error);
+                  toast.current.show({
+                    severity: "error",
+                    summary: "Error",
+                    detail: "Error al generar el PDF",
+                    life: 5000,
+                  });
+                }
+              }}
+              className="p-button-help"
+              severity="help"
+              raised
+              size="small"
+              outlined
+              tooltip="Generar PDF con información de costos"
+              tooltipOptions={{ position: "top" }}
+            />
+          </>
+        )}
+
         <Button
           type="button"
           label="Cancelar"
-          className="p-button-text"
           onClick={onCancel}
           disabled={loading}
+          className="p-button-warning"
+          severity="warning"
+          raised
+          size="small"
+          outlined
         />
         <Button
           type="submit"
           label={isEdit ? "Actualizar" : "Crear"}
           icon="pi pi-save"
           loading={loading}
+          className="p-button-success"
+          severity="success"
+          raised
+          size="small"
+          outlined
         />
       </div>
+
+      {/* Diálogo de Progreso de Generación de Kardex */}
+      <ProcessProgressDialog
+        visible={showProgressDialog}
+        onHide={() => setShowProgressDialog(false)}
+        title="Generando Kardex"
+        steps={progressSteps}
+        currentStep={currentProgressStep}
+        isComplete={progressComplete}
+        hasError={progressError}
+        errorMessage={progressErrorMessage}
+        summary={progressSummary}
+      />
+
+      {/* Diálogo de Kardex de Producto */}
+      <KardexProductoDialog
+        visible={showKardexDialog}
+        onHide={() => setShowKardexDialog(false)}
+        empresaId={defaultValues.empresaId}
+        almacenId={
+          defaultValues.conceptoMovAlmacen?.almacenDestinoId ||
+          defaultValues.conceptoMovAlmacen?.almacenOrigenId
+        }
+        productoId={detalleKardex?.productoId}
+        esCustodia={defaultValues.esCustodia}
+        clienteId={detalleKardex?.clienteId}
+        productoNombre={
+          detalleKardex?.producto?.descripcionArmada || "Producto"
+        }
+      />
     </form>
   );
 }

@@ -1,0 +1,585 @@
+// src/components/common/ConsultaStockForm.jsx
+// Componente independiente para consulta de stock con dos tabs
+import React, { useState, useEffect, useRef } from "react";
+import { Dialog } from "primereact/dialog";
+import { TabView, TabPanel } from "primereact/tabview";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Dropdown } from "primereact/dropdown";
+import { Toast } from "primereact/toast";
+import { getSaldosProductoCliente } from "../../api/saldosProductoCliente";
+import { getSaldosDetProductoCliente } from "../../api/saldosDetProductoCliente";
+import { getEmpresas } from "../../api/empresa";
+import { getEntidadesComerciales } from "../../api/entidadComercial";
+import { getResponsiveFontSize } from "../../utils/utils";
+
+/**
+ * Componente independiente para consulta de stock
+ * Puede ser llamado desde cualquier módulo del sistema
+ * @param {boolean} visible - Controla la visibilidad del diálogo
+ * @param {function} onHide - Función para cerrar el diálogo
+ * @param {number} empresaIdInicial - ID de empresa seleccionada por defecto
+ */
+export default function ConsultaStockForm({
+  visible,
+  onHide,
+  empresaIdInicial,
+}) {
+  const toast = useRef(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  // Datos para filtros
+  const [empresas, setEmpresas] = useState([]);
+  const [clientes, setClientes] = useState([]);
+
+  // Filtros Tab 1 - Saldos Generales
+  const [filtroEmpresa1, setFiltroEmpresa1] = useState(
+    empresaIdInicial || null
+  );
+  const [filtroCliente1, setFiltroCliente1] = useState(null);
+  const [filtroCustodia1, setFiltroCustodia1] = useState(false);
+
+  // Filtros Tab 2 - Saldos Detallados
+  const [filtroEmpresa2, setFiltroEmpresa2] = useState(
+    empresaIdInicial || null
+  );
+  const [filtroCliente2, setFiltroCliente2] = useState(null);
+  const [filtroCustodia2, setFiltroCustodia2] = useState(false);
+
+  // Datos de las tablas
+  const [saldosGenerales, setSaldosGenerales] = useState([]);
+  const [saldosDetallados, setSaldosDetallados] = useState([]);
+
+  useEffect(() => {
+    if (visible) {
+      cargarDatosIniciales();
+    }
+  }, [visible]);
+
+  useEffect(() => {
+    if (empresaIdInicial) {
+      setFiltroEmpresa1(empresaIdInicial);
+      setFiltroEmpresa2(empresaIdInicial);
+    }
+  }, [empresaIdInicial]);
+
+  useEffect(() => {
+    if (filtroEmpresa1) {
+      cargarSaldosGenerales();
+    }
+  }, [filtroEmpresa1]);
+
+  useEffect(() => {
+    if (filtroEmpresa2) {
+      cargarSaldosDetallados();
+    }
+  }, [filtroEmpresa2]);
+
+  const cargarDatosIniciales = async () => {
+    try {
+      const [empresasData, clientesData] = await Promise.all([
+        getEmpresas(),
+        getEntidadesComerciales(),
+      ]);
+      setEmpresas(empresasData);
+      setClientes(clientesData);
+
+      // Cargar datos iniciales si hay empresa seleccionada
+      if (empresaIdInicial) {
+        await Promise.all([cargarSaldosGenerales(), cargarSaldosDetallados()]);
+      }
+    } catch (error) {
+      console.error("Error al cargar datos iniciales:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar los datos iniciales",
+      });
+    }
+  };
+
+  const cargarSaldosGenerales = async () => {
+    if (!filtroEmpresa1) return;
+
+    setLoading(true);
+    try {
+      const params = {
+        empresaId: filtroEmpresa1,
+        custodia: filtroCustodia1,
+      };
+      if (filtroCliente1) {
+        params.clienteId = filtroCliente1;
+      }
+
+      const data = await getSaldosProductoCliente(params);
+      setSaldosGenerales(data);
+    } catch (error) {
+      console.error("Error al cargar saldos generales:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar los saldos generales",
+      });
+    }
+    setLoading(false);
+  };
+
+  const cargarSaldosDetallados = async () => {
+    if (!filtroEmpresa2) return;
+
+    setLoading(true);
+    try {
+      const params = {
+        empresaId: filtroEmpresa2,
+        esCustodia: filtroCustodia2,
+      };
+      if (filtroCliente2) {
+        params.clienteId = filtroCliente2;
+      }
+
+      const data = await getSaldosDetProductoCliente(params);
+      setSaldosDetallados(data);
+    } catch (error) {
+      console.error("Error al cargar saldos detallados:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar los saldos detallados",
+      });
+    }
+    setLoading(false);
+  };
+
+  const limpiarFiltros1 = () => {
+    setFiltroCliente1(null);
+    setFiltroCustodia1(false);
+  };
+
+  const limpiarFiltros2 = () => {
+    setFiltroCliente2(null);
+    setFiltroCustodia2(false);
+  };
+
+  // Templates para columnas - Acceso directo a las propiedades de las relaciones
+  const empresaTemplate = (rowData) => {
+    // Intentar diferentes formas de acceder a la empresa
+    return (
+      rowData.empresa?.razonSocial ||
+      rowData.Empresa?.razonSocial ||
+      rowData.empresaId ||
+      "-"
+    );
+  };
+
+  const clienteTemplate = (rowData) => {
+    return (
+      rowData.cliente?.razonSocial ||
+      rowData.Cliente?.razonSocial ||
+      rowData.clienteId ||
+      "-"
+    );
+  };
+
+  const almacenTemplate = (rowData) => {
+    return (
+      rowData.almacen?.nombre ||
+      rowData.Almacen?.nombre ||
+      rowData.almacenId ||
+      "-"
+    );
+  };
+
+  const productoTemplate = (rowData) => {
+    return (
+      rowData.producto?.descripcionArmada ||
+      rowData.producto?.descripcion ||
+      rowData.producto?.nombre ||
+      rowData.Producto?.descripcionArmada ||
+      rowData.Producto?.descripcion ||
+      rowData.Producto?.nombre ||
+      rowData.productoId ||
+      "-"
+    );
+  };
+
+  const unidadMedidaTemplate = (rowData) => {
+    return (
+      rowData.producto?.unidadMedida?.abreviatura ||
+      rowData.producto?.unidadMedida?.simbolo ||
+      rowData.Producto?.unidadMedida?.abreviatura ||
+      rowData.Producto?.unidadMedida?.simbolo ||
+      rowData.producto?.UnidadMedida?.abreviatura ||
+      "-"
+    );
+  };
+
+  const decimalTemplate = (rowData, field) => {
+    const valor = Number(rowData[field]) || 0;
+    return valor.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const fechaTemplate = (rowData, field) => {
+    return rowData[field]
+      ? new Date(rowData[field]).toLocaleDateString("es-PE")
+      : "-";
+  };
+
+  const estadoTemplate = (rowData) => rowData.estado?.descripcion || "-";
+  const estadoCalidadTemplate = (rowData) =>
+    rowData.estadoCalidad?.descripcion || "-";
+
+  return (
+    <>
+      <Toast ref={toast} />
+      <Dialog
+        visible={visible}
+        onHide={onHide}
+        header="Consulta de Stock"
+        style={{ width: "95vw", maxWidth: "1400px" }}
+        maximizable
+        modal
+      >
+        <TabView
+          activeIndex={activeIndex}
+          onTabChange={(e) => setActiveIndex(e.index)}
+        >
+          {/* TAB 1: SALDOS GENERALES */}
+          <TabPanel header="Saldos Generales">
+            <div className="p-fluid">
+              {/* Filtros */}
+
+              <div
+                style={{
+                  alignItems: "end",
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 3 }}>
+                  <label htmlFor="empresa1">Empresa*</label>
+                  <Dropdown
+                    id="empresa1"
+                    value={filtroEmpresa1}
+                    options={empresas.map((e) => ({
+                      label: e.razonSocial,
+                      value: Number(e.id),
+                    }))}
+                    onChange={(e) => setFiltroEmpresa1(e.value)}
+                    placeholder="Seleccionar empresa"
+                    optionLabel="label"
+                    optionValue="value"
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 3 }}>
+                  <label htmlFor="cliente1">Cliente</label>
+                  <Dropdown
+                    id="cliente1"
+                    value={filtroCliente1}
+                    options={clientes.map((c) => ({
+                      label: c.razonSocial,
+                      value: Number(c.id),
+                    }))}
+                    onChange={(e) => setFiltroCliente1(e.value)}
+                    placeholder="Todos los clientes"
+                    optionLabel="label"
+                    optionValue="value"
+                    showClear
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="custodia1">Mercadería</label>
+                  <Button
+                    label={filtroCustodia1 ? "EN CUSTODIA" : "PROPIA"}
+                    icon={filtroCustodia1 ? "pi pi-users" : "pi pi-home"}
+                    className={
+                      filtroCustodia1 ? "p-button-warning" : "p-button-success"
+                    }
+                    onClick={() => setFiltroCustodia1(!filtroCustodia1)}
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Actualizar"
+                    icon="pi pi-refresh"
+                    onClick={cargarSaldosGenerales}
+                    disabled={loading || !filtroEmpresa1}
+                  />
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Limpiar"
+                    icon="pi pi-times"
+                    className="p-button-secondary"
+                    onClick={limpiarFiltros1}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              {/* Tabla de Saldos Generales */}
+              <DataTable
+                value={saldosGenerales}
+                loading={loading}
+                paginator
+                rows={20}
+                dataKey="id"
+                style={{ fontSize: getResponsiveFontSize() }}
+                emptyMessage="No hay datos para mostrar"
+              >
+                <Column
+                  field="empresa"
+                  header="Empresa"
+                  body={empresaTemplate}
+                  sortable
+                />
+                <Column
+                  field="cliente"
+                  header="Cliente"
+                  body={clienteTemplate}
+                  sortable
+                />
+                <Column
+                  field="almacen"
+                  header="Almacén"
+                  body={almacenTemplate}
+                  sortable
+                />
+                <Column
+                  field="producto"
+                  header="Producto"
+                  body={productoTemplate}
+                  sortable
+                />
+                <Column
+                  field="unidadMedida"
+                  header="U.M."
+                  body={unidadMedidaTemplate}
+                />
+                <Column
+                  field="saldoCantidad"
+                  header="Saldo Cantidad"
+                  body={(rowData) => decimalTemplate(rowData, "saldoCantidad")}
+                  sortable
+                  style={{ textAlign: "right" }}
+                />
+                <Column
+                  field="costoUnitarioPromedio"
+                  header="Costo Unit. Promedio"
+                  body={(rowData) =>
+                    decimalTemplate(rowData, "costoUnitarioPromedio")
+                  }
+                  sortable
+                  style={{ textAlign: "right" }}
+                />
+                <Column
+                  field="costoTotalPromedio"
+                  header="Costo Total Promedio"
+                  body={(rowData) => {
+                    const cantidad = Number(rowData.saldoCantidad) || 0;
+                    const costoUnit =
+                      Number(rowData.costoUnitarioPromedio) || 0;
+                    const total = cantidad * costoUnit;
+                    return total.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    });
+                  }}
+                  sortable
+                  style={{ textAlign: "right" }}
+                />
+                <Column
+                  field="saldoPeso"
+                  header="Saldo Peso"
+                  body={(rowData) => decimalTemplate(rowData, "saldoPeso")}
+                  sortable
+                  style={{ textAlign: "right" }}
+                />
+              </DataTable>
+            </div>
+          </TabPanel>
+
+          {/* TAB 2: SALDOS DETALLADOS */}
+          <TabPanel header="Saldos Detallados">
+            <div className="p-fluid">
+              {/* Filtros */}
+              <div
+                style={{
+                  alignItems: "end",
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 3 }}>
+                  <label htmlFor="empresa2">Empresa*</label>
+                  <Dropdown
+                    id="empresa2"
+                    value={filtroEmpresa2}
+                    options={empresas.map((e) => ({
+                      label: e.razonSocial,
+                      value: Number(e.id),
+                    }))}
+                    onChange={(e) => setFiltroEmpresa2(e.value)}
+                    placeholder="Seleccionar empresa"
+                    optionLabel="label"
+                    optionValue="value"
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 3 }}>
+                  <label htmlFor="cliente2">Cliente</label>
+                  <Dropdown
+                    id="cliente2"
+                    value={filtroCliente2}
+                    options={clientes.map((c) => ({
+                      label: c.razonSocial,
+                      value: Number(c.id),
+                    }))}
+                    onChange={(e) => setFiltroCliente2(e.value)}
+                    placeholder="Todos los clientes"
+                    optionLabel="label"
+                    optionValue="value"
+                    showClear
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="custodia2">Mercadería</label>
+                  <Button
+                    label={filtroCustodia2 ? "EN CUSTODIA" : "PROPIA"}
+                    icon={filtroCustodia2 ? "pi pi-users" : "pi pi-home"}
+                    className={
+                      filtroCustodia2 ? "p-button-warning" : "p-button-success"
+                    }
+                    onClick={() => setFiltroCustodia2(!filtroCustodia2)}
+                    disabled={loading}
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Actualizar"
+                    icon="pi pi-refresh"
+                    onClick={cargarSaldosDetallados}
+                    disabled={loading || !filtroEmpresa2}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Limpiar"
+                    icon="pi pi-times"
+                    className="p-button-secondary"
+                    onClick={limpiarFiltros2}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              {/* Tabla de Saldos Detallados */}
+              <DataTable
+                value={saldosDetallados}
+                loading={loading}
+                paginator
+                rows={20}
+                dataKey="id"
+                style={{ fontSize: getResponsiveFontSize() }}
+                emptyMessage="No hay datos para mostrar"
+                scrollable
+                scrollHeight="500px"
+              >
+                <Column
+                  field="empresa"
+                  header="Empresa"
+                  body={empresaTemplate}
+                  sortable
+                  frozen
+                />
+                <Column
+                  field="cliente"
+                  header="Cliente"
+                  body={clienteTemplate}
+                  sortable
+                />
+                <Column
+                  field="almacen"
+                  header="Almacén"
+                  body={almacenTemplate}
+                  sortable
+                />
+                <Column
+                  field="producto"
+                  header="Producto"
+                  body={productoTemplate}
+                  sortable
+                  style={{ minWidth: "200px" }}
+                />
+                <Column
+                  field="unidadMedida"
+                  header="U.M."
+                  body={unidadMedidaTemplate}
+                />
+                <Column field="lote" header="Lote" sortable />
+                <Column
+                  field="fechaVencimiento"
+                  header="F. Vencimiento"
+                  body={(rowData) => fechaTemplate(rowData, "fechaVencimiento")}
+                  sortable
+                />
+                <Column
+                  field="fechaProduccion"
+                  header="F. Producción"
+                  body={(rowData) => fechaTemplate(rowData, "fechaProduccion")}
+                  sortable
+                />
+                <Column
+                  field="fechaIngreso"
+                  header="F. Ingreso"
+                  body={(rowData) => fechaTemplate(rowData, "fechaIngreso")}
+                  sortable
+                />
+                <Column field="numContenedor" header="Contenedor" sortable />
+                <Column field="nroSerie" header="Nº Serie" sortable />
+                <Column
+                  field="estado"
+                  header="Estado"
+                  body={estadoTemplate}
+                  sortable
+                />
+                <Column
+                  field="estadoCalidad"
+                  header="Estado Calidad"
+                  body={estadoCalidadTemplate}
+                  sortable
+                />
+                <Column
+                  field="saldoCantidad"
+                  header="Saldo Cantidad"
+                  body={(rowData) => decimalTemplate(rowData, "saldoCantidad")}
+                  sortable
+                  style={{ textAlign: "right" }}
+                />
+                <Column
+                  field="saldoPeso"
+                  header="Saldo Peso"
+                  body={(rowData) => decimalTemplate(rowData, "saldoPeso")}
+                  sortable
+                  style={{ textAlign: "right" }}
+                />
+              </DataTable>
+            </div>
+          </TabPanel>
+        </TabView>
+      </Dialog>
+    </>
+  );
+}

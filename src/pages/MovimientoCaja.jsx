@@ -531,16 +531,6 @@ export default function MovimientoCaja() {
         tipoOrigen: tipoOrigen,
       };
 
-      // Antes de la línea: setEditing(datosIniciales);
-console.log("=== DEBUG DATOS INICIALES ===");
-console.log("empresaDestinoId:", datosIniciales.empresaDestinoId);
-console.log("tipoMovimientoId:", datosIniciales.tipoMovimientoId);
-console.log("entidadComercialId:", datosIniciales.entidadComercialId);
-console.log("monedaId:", datosIniciales.monedaId);
-console.log("centroCostoId:", datosIniciales.centroCostoId);
-console.log("Movimiento seleccionado completo:", movimientoSeleccionado);
-console.log("Entrega a rendir:", tipoOrigen === "industrial" ? entregasARendir.find(e => Number(e.id) === Number(movimientoSeleccionado.entregaARendirId)) : null);
-
       // Abrir el diálogo con los datos iniciales
       setEditing(datosIniciales);
       setShowDialog(true);

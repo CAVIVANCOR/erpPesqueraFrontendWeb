@@ -16,7 +16,10 @@ const schema = Yup.object().shape({
   codigoSunat: Yup.string(),
   descripcion: Yup.string(),
   moduloId: Yup.number().nullable(),
-  activo: Yup.boolean()
+  activo: Yup.boolean(),
+  esParaAlmacen: Yup.boolean(),
+  esParaCompras: Yup.boolean(),
+  esParaVentas: Yup.boolean()
 });
 
 /**
@@ -76,6 +79,48 @@ export default function TipoDocumentoForm({ isEdit = false, defaultValues = {}, 
               <>
                 <InputSwitch checked={field.value} onChange={e => field.onChange(e.value)} />
                 <label style={{ marginLeft: 8 }}>Activo</label>
+              </>
+            )}
+          />
+        </div>
+        
+        {/* Campo: Es para Almacén */}
+        <div className="p-field-checkbox">
+          <Controller
+            name="esParaAlmacen"
+            control={control}
+            render={({ field }) => (
+              <>
+                <InputSwitch checked={field.value} onChange={e => field.onChange(e.value)} />
+                <label style={{ marginLeft: 8 }}>Es para Almacén</label>
+              </>
+            )}
+          />
+        </div>
+        
+        {/* Campo: Es para Compras */}
+        <div className="p-field-checkbox">
+          <Controller
+            name="esParaCompras"
+            control={control}
+            render={({ field }) => (
+              <>
+                <InputSwitch checked={field.value} onChange={e => field.onChange(e.value)} />
+                <label style={{ marginLeft: 8 }}>Es para Compras</label>
+              </>
+            )}
+          />
+        </div>
+        
+        {/* Campo: Es para Ventas */}
+        <div className="p-field-checkbox">
+          <Controller
+            name="esParaVentas"
+            control={control}
+            render={({ field }) => (
+              <>
+                <InputSwitch checked={field.value} onChange={e => field.onChange(e.value)} />
+                <label style={{ marginLeft: 8 }}>Es para Ventas</label>
               </>
             )}
           />

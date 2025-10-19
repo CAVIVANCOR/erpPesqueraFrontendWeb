@@ -317,10 +317,6 @@ export default function FaenaPescaForm({
   };
 
   const handleFinalizarFaena = () => {
-    console.log('=== DEBUG handleFinalizarFaena ===');
-    console.log('faenaPescaId:', defaultValues.id);
-    console.log('temporadaData:', temporadaData);
-    console.log('temporadaData.id:', temporadaData?.id);
     
     if (!temporadaData?.id) {
       toast.current?.show({
@@ -343,19 +339,12 @@ export default function FaenaPescaForm({
       rejectLabel: "Cancelar",
       accept: async () => {
         try {
-          console.log('=== Enviando a backend ===');
-          console.log('faenaPescaId:', defaultValues.id);
-          console.log('temporadaPescaId:', temporadaData.id);
           
           // Llamar al backend para finalizar y generar movimiento de almacén
           const resultado = await finalizarFaenaConMovimientoAlmacen(
             defaultValues.id,
             temporadaData.id
           );
-          
-          console.log('=== Resultado del backend ===');
-          console.log('resultado:', resultado);
-
           toast.current?.show({
             severity: "success",
             summary: "Éxito",

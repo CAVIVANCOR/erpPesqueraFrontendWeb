@@ -141,6 +141,9 @@ export default function TipoDocumentoPage() {
         codigoSunat: data.codigoSunat,
         descripcion: data.descripcion,
         activo: data.activo,
+        esParaAlmacen: data.esParaAlmacen || false,
+        esParaCompras: data.esParaCompras || false,
+        esParaVentas: data.esParaVentas || false,
       };
       if (isEdit && selected) {
         await actualizarTipoDocumento(selected.id, payload);
@@ -205,6 +208,8 @@ export default function TipoDocumentoPage() {
         selection={selected}
         onSelectionChange={(e) => setSelected(e.value)}
         onRowClick={onRowClick}
+        sortField="id"
+        sortOrder={-1}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         className="p-datatable-sm"
         header={
@@ -242,6 +247,21 @@ export default function TipoDocumentoPage() {
           header="Activo"
           body={(row) => (row.activo ? "Sí" : "No")}
         />
+        <Column
+          field="esParaAlmacen"
+          header="Almacén"
+          body={(row) => (row.esParaAlmacen ? "Sí" : "No")}
+        />
+        <Column
+          field="esParaCompras"
+          header="Compras"
+          body={(row) => (row.esParaCompras ? "Sí" : "No")}
+        />
+        <Column
+          field="esParaVentas"
+          header="Ventas"
+          body={(row) => (row.esParaVentas ? "Sí" : "No")}
+        />
         <Column field="createdAt" header="Creado" sortable />
         <Column field="updatedAt" header="Actualizado" sortable />
         <Column body={actionBodyTemplate} header="Acciones" />
@@ -258,7 +278,7 @@ export default function TipoDocumentoPage() {
       >
         <TipoDocumentoForm
           isEdit={isEdit}
-          defaultValues={selected || { activo: true }}
+          defaultValues={selected || { activo: true, esParaAlmacen: false, esParaCompras: false, esParaVentas: false }}
           onSubmit={onSubmit}
           onCancel={onCancel}
           loading={loading}

@@ -48,7 +48,6 @@ const DetalleDocEmbarcacionConsumoCard = ({
   onDocEmbarcacionChange,
   onFaenasChange,
 }) => {
-  console.log("documentosPesca", documentosPesca);
   const [docEmbarcacion, setDocEmbarcacion] = useState([]);
   const [selectedDocEmbarcacion, setSelectedDocEmbarcacion] = useState(null);
   const [docEmbarcacionDialog, setDocEmbarcacionDialog] = useState(false);
@@ -576,8 +575,6 @@ const DetalleDocEmbarcacionConsumoCard = ({
   };
 
   const documentoPescaTemplate = (rowData) => {
-    console.log("documentoPescaTemplate rowData", rowData);
-    console.log("documentosPescaNormalizados", documentosPescaNormalizados);
     return (
       <span style={{ fontWeight: "bold" }}>
         {documentosPescaNormalizados.find(

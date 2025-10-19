@@ -9,6 +9,7 @@ import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import MovimientoAlmacenForm from "../components/movimientoAlmacen/MovimientoAlmacenForm";
+import ConsultaStockForm from "../components/common/ConsultaStockForm";
 import {
   getMovimientosAlmacen,
   crearMovimientoAlmacen,
@@ -17,12 +18,14 @@ import {
   cerrarMovimientoAlmacen,
   anularMovimientoAlmacen,
 } from "../api/movimientoAlmacen";
+import { generarKardex } from "../api/generarKardex";
 import { getEmpresas } from "../api/empresa";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getEntidadesComerciales } from "../api/entidadComercial";
 import { getConceptosMovAlmacen } from "../api/conceptoMovAlmacen";
 import { getProductos } from "../api/producto";
 import { getPersonal } from "../api/personal";
+import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -44,6 +47,8 @@ export default function MovimientoAlmacen() {
   const [conceptosMovAlmacen, setConceptosMovAlmacen] = useState([]);
   const [productos, setProductos] = useState([]);
   const [personalOptions, setPersonalOptions] = useState([]);
+  const [estadosMercaderia, setEstadosMercaderia] = useState([]);
+  const [estadosCalidad, setEstadosCalidad] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -51,6 +56,7 @@ export default function MovimientoAlmacen() {
   const [toDelete, setToDelete] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
+  const [showConsultaStock, setShowConsultaStock] = useState(false);
   const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
@@ -80,6 +86,7 @@ export default function MovimientoAlmacen() {
         conceptosData,
         productosData,
         personalData,
+        estadosData,
       ] = await Promise.all([
         getMovimientosAlmacen(),
         getEmpresas(),
@@ -88,6 +95,7 @@ export default function MovimientoAlmacen() {
         getConceptosMovAlmacen(),
         getProductos(),
         getPersonal(),
+        getEstadosMultiFuncion(),
       ]);
       setItems(movimientosData);
       setEmpresas(empresasData);
@@ -102,7 +110,18 @@ export default function MovimientoAlmacen() {
         nombreCompleto: `${p.nombres || ''} ${p.apellidos || ''}`.trim()
       }));
       setPersonalOptions(personalConNombres);
-      console.log('👥 Personal cargado:', personalConNombres.length, 'registros');
+
+      // Filtrar estados de mercadería (tipoProvieneDeId = 2 para PRODUCTOS)
+      const estadosMercaderiaFiltrados = estadosData.filter(
+        (e) => Number(e.tipoProvieneDeId) === 2 && !e.cesado
+      );
+      setEstadosMercaderia(estadosMercaderiaFiltrados);
+
+      // Filtrar estados de calidad (tipoProvieneDeId = 10 para PRODUCTOS CALIDAD)
+      const estadosCalidadFiltrados = estadosData.filter(
+        (e) => Number(e.tipoProvieneDeId) === 10 && !e.cesado
+      );
+      setEstadosCalidad(estadosCalidadFiltrados);
     } catch (err) {
       toast.current.show({
         severity: "error",
@@ -147,26 +166,44 @@ export default function MovimientoAlmacen() {
   };
 
   const handleFormSubmit = async (data) => {
+    console.log("=== handleFormSubmit DATOS ENVIADOS ===");
+    console.log("Datos enviados:", data, "Editing:", editing );
+    console.log("Editing.id:", editing?.id, "numeroDocumento:", editing?.numeroDocumento);
     setLoading(true);
     try {
-      if (editing && editing.id) {
+      // Verificar si es edición: editing tiene numeroDocumento (viene del backend)
+      // Si editing solo tiene { empresaId }, entonces es creación
+      const esEdicion = editing && editing.id && editing.numeroDocumento;
+      
+      if (esEdicion) {
+        console.log("🔄 ACTUALIZANDO movimiento existente ID:", editing.id);
         const resultado = await actualizarMovimientoAlmacen(editing.id, data);
         toast.current.show({
           severity: "success",
           summary: "Actualizado",
-          detail: "Movimiento de almacén actualizado.",
+          detail: "Movimiento de almacén actualizado. Puedes seguir agregando detalles.",
         });
+        // NO cerrar el diálogo - permitir seguir agregando detalles
+        // El usuario cerrará manualmente cuando termine
       } else {
+        console.log("➕ CREANDO nuevo movimiento");
         const resultado = await crearMovimientoAlmacen(data);
+        console.log("=== handleFormSubmit RESULTADO CREADO ===");
+        console.log("Resultado creado:", resultado);
+        
         toast.current.show({
           severity: "success",
           summary: "Creado",
-          detail: `Movimiento creado con número: ${resultado.numeroDocumento}`,
+          detail: `Movimiento creado con número: ${resultado.numeroDocumento}. Ahora puedes agregar detalles.`,
           life: 5000
         });
+        
+        // Cargar el movimiento recién creado para permitir agregar detalles
+        const movimientoCompleto = await getMovimientoAlmacenPorId(resultado.id);
+        setEditing(movimientoCompleto);
+        // NO cerrar el diálogo - mantenerlo abierto para agregar detalles
       }
-      setShowDialog(false);
-      setEditing(null);
+      
       cargarDatos(); // Refresca la lista para mostrar el nuevo movimiento
     } catch (err) {
       const errorMsg = err.response?.data?.error || err.response?.data?.message || "No se pudo guardar.";
@@ -187,23 +224,79 @@ export default function MovimientoAlmacen() {
   const handleCerrar = async (id) => {
     setLoading(true);
     try {
+      // Cerrar movimiento (cambiar estado a CERRADO id=31)
       await cerrarMovimientoAlmacen(id);
+      
       toast.current.show({
         severity: "success",
-        summary: "Movimiento Cerrado",
-        detail: "El movimiento se cerró exitosamente y se generó el kardex.",
+        summary: "Documento Cerrado",
+        detail: "El documento se cerró exitosamente (Estado: CERRADO).",
+        life: 3000
       });
+      
       setShowDialog(false);
       cargarDatos();
     } catch (err) {
       const errorMsg =
         err.response?.data?.error ||
         err.response?.data?.message ||
-        "No se pudo cerrar el movimiento.";
+        err.message ||
+        "No se pudo cerrar el documento.";
       toast.current.show({
         severity: "error",
-        summary: "Error",
+        summary: "Error al Cerrar",
         detail: errorMsg,
+        life: 5000
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleGenerarKardex = async (id) => {
+    setLoading(true);
+    try {
+      // 1. Generar Kardex (crea registros, calcula saldos, actualiza tablas)
+      const resultado = await generarKardex(id);
+      
+      // Mostrar resumen de la generación
+      const mensajeDetalle = `
+        Kardex generado exitosamente:
+        - Registros creados: ${resultado.kardexCreados}
+        - Registros actualizados: ${resultado.kardexActualizados}
+        - Saldos detallados: ${resultado.saldosDetActualizados}
+        - Saldos generales: ${resultado.saldosGenActualizados}
+      `;
+      
+      // Mostrar errores si los hay
+      if (resultado.errores && resultado.errores.length > 0) {
+        toast.current.show({
+          severity: "warn",
+          summary: "Kardex generado con advertencias",
+          detail: `Se encontraron ${resultado.errores.length} advertencias. Revise el kardex.`,
+          life: 5000
+        });
+      }
+      
+      toast.current.show({
+        severity: "success",
+        summary: "Kardex Generado",
+        detail: mensajeDetalle,
+        life: 5000
+      });
+      
+      setShowDialog(false);
+      cargarDatos();
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        "No se pudo generar el kardex.";
+      toast.current.show({
+        severity: "error",
+        summary: "Error al Generar Kardex",
+        detail: errorMsg,
+        life: 5000
       });
     }
     setLoading(false);
@@ -212,11 +305,24 @@ export default function MovimientoAlmacen() {
   const handleAnular = async (id, empresaId) => {
     setLoading(true);
     try {
-      await anularMovimientoAlmacen(id, empresaId);
+      const resultado = await anularMovimientoAlmacen(id, empresaId);
+      
+      // Mostrar resumen detallado de la anulación
+      const mensajeDetalle = `
+        Movimiento anulado exitosamente:
+        - Kardex eliminados: ${resultado.kardexEliminados || 0}
+        - Productos afectados: ${resultado.productosAfectados || 0}
+        - SaldoAlmacenDetallado: ${resultado.saldosDetActualizados || 0}
+        - SaldoAlmacenGeneral: ${resultado.saldosGenActualizados || 0}
+        - SaldosDetProductoCliente: ${resultado.saldosDetProductoClienteActualizados || 0}
+        - SaldosProductoCliente: ${resultado.saldosProductoClienteActualizados || 0}
+      `;
+      
       toast.current.show({
         severity: "success",
         summary: "Movimiento Anulado",
-        detail: "El movimiento se anuló exitosamente.",
+        detail: mensajeDetalle,
+        life: 5000
       });
       setShowDialog(false);
       cargarDatos();
@@ -224,36 +330,36 @@ export default function MovimientoAlmacen() {
       const errorMsg =
         err.response?.data?.error ||
         err.response?.data?.message ||
+        err.message ||
         "No se pudo anular el movimiento.";
       toast.current.show({
         severity: "error",
-        summary: "Error",
+        summary: "Error al Anular",
         detail: errorMsg,
+        life: 5000
       });
     }
     setLoading(false);
   };
 
   const empresaNombre = (rowData) => {
-    const empresa = empresas.find(
-      (e) => Number(e.id) === Number(rowData.empresaId)
-    );
-    return empresa ? empresa.razonSocial : "";
+    // Usar la relación incluida del backend
+    return rowData.empresa?.razonSocial || "";
   };
 
   const tipoDocumentoNombre = (rowData) => {
-    const tipo = tiposDocumento.find(
-      (t) => Number(t.id) === Number(rowData.tipoDocumentoId)
-    );
-    return tipo ? tipo.descripcion : ""; // TipoDocumento usa 'descripcion' no 'nombre'
+    // Usar la relación incluida del backend
+    return rowData.tipoDocumento?.descripcion || "";
+  };
+
+  const conceptoNombre = (rowData) => {
+    // Usar la relación incluida del backend
+    return rowData.conceptoMovAlmacen?.descripcionArmada || "";
   };
 
   const entidadNombre = (rowData) => {
-    if (!rowData.entidadComercialId) return "";
-    const entidad = entidadesComerciales.find(
-      (e) => Number(e.id) === Number(rowData.entidadComercialId)
-    );
-    return entidad ? entidad.razonSocial : "";
+    // Usar la relación incluida del backend
+    return rowData.entidadComercial?.razonSocial || "";
   };
 
   const fechaTemplate = (rowData, field) => {
@@ -339,6 +445,17 @@ export default function MovimientoAlmacen() {
             </div>
             <div style={{ flex: 1 }}>
               <Button
+                label="Consulta de Stock"
+                icon="pi pi-chart-bar"
+                className="p-button-info"
+                size="small"
+                outlined
+                onClick={() => setShowConsultaStock(true)}
+                disabled={loading || !empresaSeleccionada}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
                 label="Nuevo"
                 icon="pi pi-plus"
                 className="p-button-success"
@@ -387,7 +504,7 @@ export default function MovimientoAlmacen() {
             : "Nuevo Movimiento de Almacén"
         }
         visible={showDialog}
-        style={{ width: "1200px", maxWidth: "95vw" }}
+        style={{ width: "1350px", maxWidth: "95vw" }}
         onHide={() => setShowDialog(false)}
         modal
         maximizable
@@ -401,14 +518,25 @@ export default function MovimientoAlmacen() {
           conceptosMovAlmacen={conceptosMovAlmacen}
           productos={productos}
           personalOptions={personalOptions}
+          estadosMercaderia={estadosMercaderia}
+          estadosCalidad={estadosCalidad}
           empresaFija={empresaSeleccionada}
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           onCerrar={handleCerrar}
           onAnular={handleAnular}
+          onGenerarKardex={handleGenerarKardex}
           loading={loading}
+          toast={toast}
         />
       </Dialog>
+
+      {/* Diálogo de Consulta de Stock */}
+      <ConsultaStockForm
+        visible={showConsultaStock}
+        onHide={() => setShowConsultaStock(false)}
+        empresaIdInicial={empresaSeleccionada}
+      />
     </div>
   );
 }
