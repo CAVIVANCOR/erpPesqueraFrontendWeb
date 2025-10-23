@@ -1,59 +1,63 @@
-// src/pages/ModoDespachoRecepcion.jsx
-// Pantalla principal para gestión de modos de despacho/recepción
-// Cumple regla transversal ERP Megui: edición por clic, borrado seguro con roles, ConfirmDialog, Toast
-import React, { useState, useEffect, useRef } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Toast } from 'primereact/toast';
-import { Dialog } from 'primereact/dialog';
-import { ConfirmDialog } from 'primereact/confirmdialog';
-import { Tag } from 'primereact/tag';
-import { Toolbar } from 'primereact/toolbar';
-import { InputText } from 'primereact/inputtext';
-import { FilterMatchMode } from 'primereact/api';
-import { getAllModoDespachoRecepcion, deleteModoDespachoRecepcion } from '../api/modoDespachoRecepcion';
-import { useAuthStore } from '../shared/stores/useAuthStore';
-import ModoDespachoRecepcionForm from '../components/modoDespachoRecepcion/ModoDespachoRecepcionForm';
-
 /**
- * Componente ModoDespachoRecepcion
- * Pantalla principal para gestión de modos de despacho/recepción en cotizaciones
- * Incluye listado, creación, edición y eliminación con control de roles
+ * Pantalla CRUD para gestión de Modos de Despacho y Recepción
+ *
+ * Características implementadas:
+ * - Edición profesional por clic en fila (abre modal de edición)
+ * - Botón eliminar visible solo para superusuario/admin (usuario?.esSuperUsuario || usuario?.esAdmin)
+ * - Confirmación de borrado con ConfirmDialog visual rojo y mensajes claros
+ * - Feedback visual con Toast para éxito/error
+ * - Búsqueda global por código, nombre, descripción
+ * - Cumple regla transversal ERP Megui completa
+ *
+ * @author ERP Megui
+ * @version 1.0.0
  */
+
+import React, { useState, useEffect, useRef } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
+import { Tag } from "primereact/tag";
+import { InputText } from "primereact/inputtext";
+import {
+  getAllModoDespachoRecepcion,
+  deleteModoDespachoRecepcion,
+  crearModoDespachoRecepcion,
+  actualizarModoDespachoRecepcion,
+} from "../api/modoDespachoRecepcion";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import ModoDespachoRecepcionForm from "../components/modoDespachoRecepcion/ModoDespachoRecepcionForm";
+import { getResponsiveFontSize } from "../utils/utils";
+
 const ModoDespachoRecepcion = () => {
-  const [modos, setModos] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [modosDespachoRecepcion, setModosDespachoRecepcion] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [modoSeleccionado, setModoSeleccionado] = useState(null);
-  const [globalFilter, setGlobalFilter] = useState('');
-  const [filters, setFilters] = useState({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS }
-  });
-
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [modoAEliminar, setModoAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const [globalFilter, setGlobalFilter] = useState("");
 
   useEffect(() => {
-    cargarModos();
+    cargarModosDespachoRecepcion();
   }, []);
 
-  const cargarModos = async () => {
+  const cargarModosDespachoRecepcion = async () => {
     try {
       setLoading(true);
       const data = await getAllModoDespachoRecepcion();
-      // Normalizar IDs según regla ERP Megui
-      const modosNormalizados = data.map(modo => ({
-        ...modo,
-        id: Number(modo.id)
-      }));
-      setModos(modosNormalizados);
+      setModosDespachoRecepcion(data);
     } catch (error) {
-      console.error('Error al cargar modos de despacho/recepción:', error);
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al cargar los modos de despacho/recepción'
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar modos de despacho y recepción",
+        life: 3000,
       });
     } finally {
       setLoading(false);
@@ -75,199 +79,209 @@ const ModoDespachoRecepcion = () => {
     setModoSeleccionado(null);
   };
 
-  const onGuardar = () => {
+  const onGuardarExitoso = async (data) => {
+    if (modoSeleccionado) {
+      try {
+        await actualizarModoDespachoRecepcion(modoSeleccionado.id, data);
+        toast.current.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Modo de despacho/recepción actualizado correctamente",
+          life: 3000,
+        });
+      } catch (error) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al actualizar modo de despacho/recepción",
+          life: 3000,
+        });
+      }
+    } else {
+      try {
+        await crearModoDespachoRecepcion(data);
+        toast.current.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Modo de despacho/recepción creado correctamente",
+          life: 3000,
+        });
+      } catch (error) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al crear modo de despacho/recepción",
+          life: 3000,
+        });
+      }
+    }
+    cargarModosDespachoRecepcion();
     cerrarDialogo();
-    cargarModos();
   };
 
   const confirmarEliminacion = (modo) => {
-    if (!usuario?.esSuperUsuario && !usuario?.esAdmin) {
-      toast.current?.show({
-        severity: 'warn',
-        summary: 'Sin permisos',
-        detail: 'Solo los administradores pueden eliminar registros'
-      });
-      return;
-    }
-
-    const confirmar = () => {
-      eliminarModo(modo.id);
-    };
-
-    const rechazar = () => {
-      toast.current?.show({
-        severity: 'info',
-        summary: 'Cancelado',
-        detail: 'Eliminación cancelada'
-      });
-    };
-
-    // ConfirmDialog con estilo profesional
-    import('primereact/api').then(({ confirmDialog: showConfirmDialog }) => {
-      showConfirmDialog({
-        message: `¿Está seguro de eliminar el modo "${modo.nombre}"?`,
-        header: 'Confirmar Eliminación',
-        icon: 'pi pi-exclamation-triangle',
-        acceptClassName: 'p-button-danger',
-        acceptLabel: 'Sí, Eliminar',
-        rejectLabel: 'Cancelar',
-        accept: confirmar,
-        reject: rechazar
-      });
-    });
+    setModoAEliminar(modo);
+    setConfirmVisible(true);
   };
 
-  const eliminarModo = async (id) => {
+  const eliminar = async () => {
     try {
-      await deleteModoDespachoRecepcion(id);
-      toast.current?.show({
-        severity: 'success',
-        summary: 'Éxito',
-        detail: 'Modo de despacho/recepción eliminado correctamente'
+      await deleteModoDespachoRecepcion(modoAEliminar.id);
+      setModosDespachoRecepcion(
+        modosDespachoRecepcion.filter(
+          (m) => Number(m.id) !== Number(modoAEliminar.id)
+        )
+      );
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Modo de despacho/recepción eliminado correctamente",
+        life: 3000,
       });
-      cargarModos();
     } catch (error) {
-      console.error('Error al eliminar modo de despacho/recepción:', error);
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: error.response?.data?.error || 'Error al eliminar el modo de despacho/recepción'
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al eliminar modo de despacho/recepción",
+        life: 3000,
       });
+    } finally {
+      setConfirmVisible(false);
+      setModoAEliminar(null);
     }
   };
 
-  // Templates para las columnas
-  const activoTemplate = (rowData) => (
-    <Tag 
-      value={rowData.activo ? 'Activo' : 'Inactivo'} 
-      severity={rowData.activo ? 'success' : 'danger'} 
-    />
-  );
+  const codigoTemplate = (rowData) => {
+    return (
+      <span style={{ fontWeight: "bold", color: "#2563eb" }}>
+        {rowData.codigo}
+      </span>
+    );
+  };
 
-  const accionesTemplate = (rowData) => (
-    <div className="flex gap-2">
-      <Button
-        icon="pi pi-pencil"
-        className="p-button-rounded p-button-text p-button-info"
-        onClick={() => abrirDialogoEdicion(rowData)}
-        tooltip="Editar"
-        tooltipOptions={{ position: 'top' }}
+  const nombreTemplate = (rowData) => {
+    return <span style={{ fontWeight: "500" }}>{rowData.nombre}</span>;
+  };
+
+  const activoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.activo ? "ACTIVO" : "INACTIVO"}
+        severity={rowData.activo ? "success" : "danger"}
+        style={{ fontSize: "10px", padding: "2px 8px" }}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+    );
+  };
+
+  const accionesTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
         <Button
-          icon="pi pi-trash"
-          className="p-button-rounded p-button-text p-button-danger"
-          onClick={() => confirmarEliminacion(rowData)}
-          tooltip="Eliminar"
-          tooltipOptions={{ position: 'top' }}
+          icon="pi pi-pencil"
+          className="p-button-text p-mr-2"
+          onClick={(ev) => {
+            ev.stopPropagation();
+            abrirDialogoEdicion(rowData);
+          }}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
         />
-      )}
-    </div>
-  );
-
-  // Toolbar con botón de nuevo y filtro global
-  const leftToolbarTemplate = () => (
-    <Button
-      label="Nuevo Modo de Despacho/Recepción"
-      icon="pi pi-plus"
-      className="p-button-primary"
-      onClick={abrirDialogoNuevo}
-    />
-  );
-
-  const rightToolbarTemplate = () => (
-    <div className="flex align-items-center gap-2">
-      <i className="pi pi-search" />
-      <InputText
-        type="search"
-        placeholder="Buscar..."
-        value={globalFilter}
-        onChange={(e) => {
-          setGlobalFilter(e.target.value);
-          setFilters({
-            global: { value: e.target.value, matchMode: FilterMatchMode.CONTAINS }
-          });
-        }}
-        className="w-20rem"
-      />
-    </div>
-  );
+        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-text p-button-danger"
+            onClick={() => confirmarEliminacion(rowData)}
+            tooltip="Eliminar"
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="modo-despacho-recepcion-container">
+    <div className="p-4">
       <Toast ref={toast} />
-      <ConfirmDialog />
-      
-      <div className="card">
-        <h2 className="text-2xl font-bold mb-4 text-900">
-          <i className="pi pi-truck mr-2 text-primary"></i>
-          Gestión de Modos de Despacho/Recepción
-        </h2>
-
-        <Toolbar 
-          className="mb-4" 
-          left={leftToolbarTemplate} 
-          right={rightToolbarTemplate}
+      <DataTable
+        value={modosDespachoRecepcion}
+        loading={loading}
+        paginator
+        rows={10}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        selectionMode="single"
+        className="p-datatable-hover cursor-pointer"
+        emptyMessage="No se encontraron modos de despacho y recepción"
+        globalFilter={globalFilter}
+        globalFilterFields={["nombre", "descripcion"]}
+        header={
+          <div className="flex align-items-center gap-2">
+            <h2>Gestión de Modos de Despacho y Recepción</h2>
+            <Button
+              label="Nuevo"
+              icon="pi pi-plus"
+              size="small"
+              raised
+              tooltip="Nuevo Modo de Despacho/Recepción"
+              outlined
+              className="p-button-success"
+              onClick={abrirDialogoNuevo}
+            />
+            <span className="p-input-icon-left">
+              <InputText
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Buscar modos de despacho/recepción..."
+                style={{ width: "300px" }}
+              />
+            </span>
+          </div>
+        }
+        scrollable
+        scrollHeight="600px"
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+      >
+        <Column field="id" header="ID" sortable />
+        <Column field="codigo" header="Código" body={codigoTemplate} sortable />
+        <Column field="nombre" header="Nombre" body={nombreTemplate} sortable />
+        <Column field="descripcion" header="Descripción" sortable />
+        <Column header="Estado" body={activoTemplate} sortable />
+        <Column
+          body={accionesTemplate}
+          header="Acciones"
+          style={{ width: "8rem" }}
         />
-
-        <DataTable
-          value={modos}
-          loading={loading}
-          dataKey="id"
-          filters={filters}
-          globalFilterFields={['nombre', 'descripcion']}
-          emptyMessage="No se encontraron modos de despacho/recepción"
-          className="p-datatable-sm"
-          stripedRows
-          showGridlines
-          size="small"
-          onRowClick={(e) => abrirDialogoEdicion(e.data)}
-          rowClassName="cursor-pointer hover:bg-primary-50"
-        >
-          <Column 
-            field="nombre" 
-            header="Nombre" 
-            sortable 
-            className="font-medium"
-            style={{ minWidth: '200px' }}
-          />
-          <Column 
-            field="descripcion" 
-            header="Descripción" 
-            sortable
-            style={{ minWidth: '400px' }}
-          />
-          <Column 
-            field="activo" 
-            header="Estado" 
-            body={activoTemplate}
-            sortable
-            style={{ minWidth: '100px' }}
-          />
-          <Column
-            header="Acciones"
-            body={accionesTemplate}
-            style={{ minWidth: '120px', textAlign: 'center' }}
-            frozen
-            alignFrozen="right"
-          />
-        </DataTable>
-      </div>
+      </DataTable>
 
       <Dialog
+        header={
+          modoSeleccionado
+            ? "Editar Modo de Despacho/Recepción"
+            : "Nuevo Modo de Despacho/Recepción"
+        }
         visible={dialogVisible}
-        style={{ width: '600px' }}
-        header={modoSeleccionado ? 'Editar Modo de Despacho/Recepción' : 'Nuevo Modo de Despacho/Recepción'}
-        modal
         onHide={cerrarDialogo}
-        className="p-fluid"
+        style={{ width: "600px" }}
+        modal
       >
         <ModoDespachoRecepcionForm
-          modo={modoSeleccionado}
-          onSave={onGuardar}
-          onCancel={cerrarDialogo}
+          modoDespachoRecepcion={modoSeleccionado}
+          onGuardar={onGuardarExitoso}
+          onCancelar={cerrarDialogo}
         />
       </Dialog>
+
+      <ConfirmDialog
+        visible={confirmVisible}
+        onHide={() => setConfirmVisible(false)}
+        message={`¿Está seguro de eliminar el modo de despacho/recepción "${modoAEliminar?.nombre}"?`}
+        header="Confirmar Eliminación"
+        icon="pi pi-exclamation-triangle"
+        accept={eliminar}
+        reject={() => setConfirmVisible(false)}
+        acceptLabel="Sí, Eliminar"
+        rejectLabel="Cancelar"
+        acceptClassName="p-button-danger"
+      />
     </div>
   );
 };

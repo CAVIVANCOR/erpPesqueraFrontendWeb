@@ -13,6 +13,7 @@ import { getSaldosDetProductoCliente } from "../../api/saldosDetProductoCliente"
 import { getEmpresas } from "../../api/empresa";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
 import { getResponsiveFontSize } from "../../utils/utils";
+import KardexProductoDialog from "../movimientoAlmacen/KardexProductoDialog";
 
 /**
  * Componente independiente para consulta de stock
@@ -51,6 +52,17 @@ export default function ConsultaStockForm({
   // Datos de las tablas
   const [saldosGenerales, setSaldosGenerales] = useState([]);
   const [saldosDetallados, setSaldosDetallados] = useState([]);
+
+  // Estados para Kardex
+  const [showKardex, setShowKardex] = useState(false);
+  const [kardexData, setKardexData] = useState({
+    empresaId: null,
+    almacenId: null,
+    productoId: null,
+    esCustodia: false,
+    clienteId: null,
+    productoNombre: "",
+  });
 
   useEffect(() => {
     if (visible) {
@@ -160,6 +172,40 @@ export default function ConsultaStockForm({
   const limpiarFiltros2 = () => {
     setFiltroCliente2(null);
     setFiltroCustodia2(false);
+  };
+
+  // Función para abrir el Kardex desde Saldos Generales
+  const handleRowClickGenerales = (e) => {
+    const rowData = e.data;
+    setKardexData({
+      empresaId: rowData.empresaId,
+      almacenId: rowData.almacenId,
+      productoId: rowData.productoId,
+      esCustodia: rowData.custodia || false,
+      clienteId: rowData.clienteId || null,
+      productoNombre:
+        rowData.producto?.descripcionArmada ||
+        rowData.producto?.descripcion ||
+        "Producto",
+    });
+    setShowKardex(true);
+  };
+
+  // Función para abrir el Kardex desde Saldos Detallados
+  const handleRowClickDetallados = (e) => {
+    const rowData = e.data;
+    setKardexData({
+      empresaId: rowData.empresaId,
+      almacenId: rowData.almacenId,
+      productoId: rowData.productoId,
+      esCustodia: rowData.esCustodia || false,
+      clienteId: rowData.clienteId || null,
+      productoNombre:
+        rowData.producto?.descripcionArmada ||
+        rowData.producto?.descripcion ||
+        "Producto",
+    });
+    setShowKardex(true);
   };
 
   // Templates para columnas - Acceso directo a las propiedades de las relaciones
@@ -335,6 +381,9 @@ export default function ConsultaStockForm({
                 dataKey="id"
                 style={{ fontSize: getResponsiveFontSize() }}
                 emptyMessage="No hay datos para mostrar"
+                onRowClick={handleRowClickGenerales}
+                selectionMode="single"
+                rowClassName={() => "cursor-pointer"}
               >
                 <Column
                   field="empresa"
@@ -496,6 +545,9 @@ export default function ConsultaStockForm({
                 emptyMessage="No hay datos para mostrar"
                 scrollable
                 scrollHeight="500px"
+                onRowClick={handleRowClickDetallados}
+                selectionMode="single"
+                rowClassName={() => "cursor-pointer"}
               >
                 <Column
                   field="empresa"
@@ -580,6 +632,18 @@ export default function ConsultaStockForm({
           </TabPanel>
         </TabView>
       </Dialog>
+
+      {/* Diálogo de Kardex */}
+      <KardexProductoDialog
+        visible={showKardex}
+        onHide={() => setShowKardex(false)}
+        empresaId={kardexData.empresaId}
+        almacenId={kardexData.almacenId}
+        productoId={kardexData.productoId}
+        esCustodia={kardexData.esCustodia}
+        clienteId={kardexData.clienteId}
+        productoNombre={kardexData.productoNombre}
+      />
     </>
   );
 }

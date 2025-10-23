@@ -42,7 +42,7 @@ import EntregasARendirNovedadCard from "./EntregasARendirNovedadCard";
 // Importar APIs adicionales
 import { getPersonal } from "../../api/personal";
 import { getCentrosCosto } from "../../api/centroCosto";
-import { getTiposMovEntregaRendir } from "../../api/tipoMovEntregaRendir";
+import { getAllTipoMovEntregaRendir } from "../../api/tipoMovEntregaRendir";
 import { getEmpresas } from "../../api/empresa";
 import ResolucionPDFNovedadForm from "./ResolucionPDFNovedadForm";
 
@@ -155,7 +155,7 @@ const NovedadPescaConsumoForm = ({
           getPuertosPesca(),
           getPersonal(),
           getCentrosCosto(),
-          getTiposMovEntregaRendir(),
+          getAllTipoMovEntregaRendir(),
           getEmpresas(),
         ]);
 

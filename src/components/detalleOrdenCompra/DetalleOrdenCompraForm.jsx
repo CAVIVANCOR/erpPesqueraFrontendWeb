@@ -10,7 +10,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Toast } from 'primereact/toast';
-import { createDetalleOrdenCompra, updateDetalleOrdenCompra } from '../../api/detalleOrdenCompra';
+import { crearDetalleOrdenCompra, actualizarDetalleOrdenCompra } from '../../api/detalleOrdenCompra';
 
 /**
  * Formulario para gestión de DetalleOrdenCompra

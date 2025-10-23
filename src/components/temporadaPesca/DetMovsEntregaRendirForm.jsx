@@ -190,20 +190,6 @@ const DetMovsEntregaRendirForm = ({
     cargarModuloPescaIndustrial();
   }, [setValue, isEditing]);
 
-  // Función para renderizar navegación de cards
-  const renderNavegacionCards = () => (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        gap: "1rem",
-        marginBottom: "1rem",
-        padding: "1rem",
-        backgroundColor: "#f8f9fa",
-        borderRadius: "8px",
-      }}
-    ></div>
-  );
 
   // Preparar opciones para dropdowns aplicando regla Number()
   const personalOptions = personal.map((p) => ({

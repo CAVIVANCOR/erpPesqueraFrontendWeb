@@ -22,10 +22,10 @@ const DetalleReqCompraForm = ({ detalle, onSave, onCancel }) => {
   const [unidadesMedida, setUnidadesMedida] = useState([]);
   const toast = useRef(null);
 
-  // Observar cantidad y precio unitario para calcular subtotal
+  // Observar cantidad y costo unitario para calcular subtotal
   const cantidad = watch('cantidad');
-  const precioUnitario = watch('precioUnitario');
-  const subtotal = (cantidad || 0) * (precioUnitario || 0);
+  const costoUnitario = watch('costoUnitario');
+  const subtotal = (cantidad || 0) * (costoUnitario || 0);
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -40,7 +40,7 @@ const DetalleReqCompraForm = ({ detalle, onSave, onCancel }) => {
         descripcion: detalle.descripcion || '',
         cantidad: detalle.cantidad || 0,
         unidadMedidaId: detalle.unidadMedidaId ? Number(detalle.unidadMedidaId) : null,
-        precioUnitario: detalle.precioUnitario || 0,
+        costoUnitario: detalle.costoUnitario || 0,
         observaciones: detalle.observaciones || ''
       });
     } else {
@@ -51,7 +51,7 @@ const DetalleReqCompraForm = ({ detalle, onSave, onCancel }) => {
         descripcion: '',
         cantidad: 0,
         unidadMedidaId: null,
-        precioUnitario: 0,
+        costoUnitario: 0,
         observaciones: ''
       });
     }
@@ -103,7 +103,7 @@ const DetalleReqCompraForm = ({ detalle, onSave, onCancel }) => {
         descripcion: data.descripcion || null,
         cantidad: Number(data.cantidad),
         unidadMedidaId: Number(data.unidadMedidaId),
-        precioUnitario: Number(data.precioUnitario),
+        costoUnitario: Number(data.costoUnitario),
         observaciones: data.observaciones || null
       };
       if (detalle?.id) {
@@ -281,21 +281,21 @@ const DetalleReqCompraForm = ({ detalle, onSave, onCancel }) => {
             )}
           </div>
 
-          {/* Precio Unitario */}
+          {/* Costo Unitario */}
           <div className="col-12 md:col-4">
-            <label htmlFor="precioUnitario" className="block text-900 font-medium mb-2">
-              Precio Unitario *
+            <label htmlFor="costoUnitario" className="block text-900 font-medium mb-2">
+              Costo Unitario *
             </label>
             <Controller
-              name="precioUnitario"
+              name="costoUnitario"
               control={control}
               rules={{ 
-                required: 'El precio unitario es obligatorio',
+                required: 'El costo unitario es obligatorio',
                 min: { value: 0, message: 'El precio debe ser mayor o igual a 0' }
               }}
               render={({ field }) => (
                 <InputNumber
-                  id="precioUnitario"
+                  id="costoUnitario"
                   value={field.value}
                   onValueChange={(e) => field.onChange(e.value)}
                   mode="currency"
@@ -305,12 +305,12 @@ const DetalleReqCompraForm = ({ detalle, onSave, onCancel }) => {
                   maxFractionDigits={2}
                   min={0}
                   placeholder="S/ 0.00"
-                  className={errors.precioUnitario ? 'p-invalid' : ''}
+                  className={errors.costoUnitario ? 'p-invalid' : ''}
                 />
               )}
             />
-            {errors.precioUnitario && (
-              <small className="p-error">{errors.precioUnitario.message}</small>
+            {errors.costoUnitario && (
+              <small className="p-error">{errors.costoUnitario.message}</small>
             )}
           </div>
 

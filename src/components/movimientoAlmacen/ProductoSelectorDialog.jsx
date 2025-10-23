@@ -12,6 +12,8 @@ import { Tag } from "primereact/tag";
 import { Panel } from "primereact/panel";
 import { getProductos, crearProducto } from "../../api/producto";
 import { getSaldosDetProductoClienteConFiltros } from "../../api/saldosDetProductoCliente";
+import { getSaldosProductoClienteConFiltros } from "../../api/saldosProductoCliente";
+import StockPorAlmacenDialog from "./StockPorAlmacenDialog";
 import { getFamiliasProducto } from "../../api/familiaProducto";
 import { getSubfamiliasProducto } from "../../api/subfamiliaProducto";
 import { getMarcas } from "../../api/marca";
@@ -52,6 +54,7 @@ export default function ProductoSelectorDialog({
   estadoCalidadDefault = 10,
   onSelect,
 }) {
+
   const toast = useRef(null);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState([]);
@@ -97,6 +100,10 @@ export default function ProductoSelectorDialog({
   const [colores, setColores] = useState([]);
   const [estadosIniciales, setEstadosIniciales] = useState([]);
   const [unidadesMetricas, setUnidadesMetricas] = useState([]);
+
+  // Estado para Nivel 2: Stock por almacén
+  const [showStockPorAlmacen, setShowStockPorAlmacen] = useState(false);
+  const [productoSeleccionado, setProductoSeleccionado] = useState(null);
 
   // Determinar si es ingreso (muestra productos) o egreso/transferencia (muestra saldos)
   const esIngreso = modo === "ingreso";
@@ -167,62 +174,24 @@ export default function ProductoSelectorDialog({
     }
   };
 
+
+  /**
+   * Carga datos con sistema de 3 niveles profesional:
+   * Nivel 1: Productos con stock consolidado
+   * Nivel 2: Stock por almacén (al hacer clic en producto)
+   * Nivel 3: Stock con variables (al hacer clic en almacén)
+   */
   const cargarDatos = async () => {
     if (!empresaId || !clienteId) return;
 
     setLoading(true);
     try {
       if (esIngreso) {
-        // INGRESO: Cargar productos con sus saldos
-        const filtros = {
-          empresaId,
-          clienteId,
-        };
-        const productosData = await getProductos(filtros);
-        // Filtrar productos no cesados
-        const productosActivos = productosData.filter((p) => !p.cesado);
-
-        // Cargar saldos para cada producto (para mostrar stock disponible)
-        const filtrosSaldos = {
-          empresaId,
-          almacenId,
-          clienteId,
-          esCustodia,
-        };
-        const saldosData = await getSaldosDetProductoClienteConFiltros(filtrosSaldos);
-
-        // Agregar información de stock a cada producto
-        const productosConStock = productosActivos.map((producto) => {
-          const saldosProducto = saldosData.filter(
-            (s) => Number(s.productoId) === Number(producto.id)
-          );
-          const stockTotal = saldosProducto.reduce(
-            (sum, s) => sum + Number(s.saldoCantidad || 0),
-            0
-          );
-          const pesoTotal = saldosProducto.reduce(
-            (sum, s) => sum + Number(s.saldoPeso || 0),
-            0
-          );
-          return {
-            ...producto,
-            stockDisponible: stockTotal,
-            pesoDisponible: pesoTotal,
-          };
-        });
-
-        setItems(productosConStock);
+        // INGRESO: Cargar productos con stock consolidado
+        await cargarProductosConStockConsolidado();
       } else {
-        // EGRESO/TRANSFERENCIA: Cargar saldos
-        const filtros = {
-          empresaId,
-          almacenId,
-          clienteId,
-          esCustodia,
-          soloConSaldo: true,
-        };
-        const saldosData = await getSaldosDetProductoClienteConFiltros(filtros);
-        setItems(saldosData);
+        // EGRESO/TRANSFERENCIA: Cargar solo productos con stock disponible
+        await cargarProductosConStock();
       }
     } catch (error) {
       console.error("Error al cargar datos:", error);
@@ -234,6 +203,84 @@ export default function ProductoSelectorDialog({
     } finally {
       setLoading(false);
     }
+  };
+
+  /**
+   * NIVEL 1: Carga productos con stock consolidado de todos los almacenes
+   * Para mercadería propia: Producto.clienteId = Empresa.entidadComercialId
+   * Para mercadería en custodia: Producto.clienteId = clienteId
+   */
+  const cargarProductosConStockConsolidado = async () => {
+    // 1. Cargar productos activos de la empresa
+    const filtrosProductos = {
+      empresaId,
+      clienteId, // Ya viene correcto desde el padre (entidadComercialId para propia)
+      cesado: false,
+    };
+    console.log('🔍 Filtros Productos:', filtrosProductos);
+    const productosData = await getProductos(filtrosProductos);
+    console.log('📦 Productos cargados:', productosData.length);
+
+    // 2. Cargar saldos generales desde SaldosProductoCliente (consolidado por producto)
+    const filtrosSaldos = {
+      empresaId,
+      clienteId, // Mismo clienteId correcto
+      custodia: esCustodia,
+    };
+    console.log('🔍 Filtros Saldos:', filtrosSaldos);
+    const saldosData = await getSaldosProductoClienteConFiltros(filtrosSaldos);
+    console.log('📊 Saldos cargados:', saldosData.length);
+
+    // 3. Mapear productos con stock consolidado
+    const productosConStock = productosData.map((producto) => {
+      // Buscar todos los saldos de este producto en todos los almacenes
+      const saldosProducto = saldosData.filter(
+        (s) => Number(s.productoId) === Number(producto.id)
+      );
+
+      // Consolidar stock de todos los almacenes
+      const stockTotal = saldosProducto.reduce(
+        (sum, s) => sum + Number(s.saldoCantidad || 0),
+        0
+      );
+      const pesoTotal = saldosProducto.reduce(
+        (sum, s) => sum + Number(s.saldoPeso || 0),
+        0
+      );
+      const costoPromedio = saldosProducto.length > 0
+        ? saldosProducto.reduce(
+            (sum, s) => sum + Number(s.costoUnitarioPromedio || 0),
+            0
+          ) / saldosProducto.length
+        : 0;
+
+      return {
+        ...producto,
+        stockDisponible: stockTotal,
+        pesoDisponible: pesoTotal,
+        costoUnitarioPromedio: costoPromedio,
+        cantidadAlmacenes: saldosProducto.length, // Cuántos almacenes tienen stock
+      };
+    });
+
+    console.log('✅ Productos con stock consolidado:', productosConStock.length);
+    setItems(productosConStock);
+  };
+
+  /**
+   * NIVEL 1 (Egresos): Carga solo productos con stock disponible
+   */
+  const cargarProductosConStock = async () => {
+    // Para egresos, solo mostrar productos con stock en el almacén específico
+    const filtros = {
+      empresaId,
+      almacenId,
+      clienteId,
+      custodia: esCustodia,
+      soloConSaldo: true,
+    };
+    const saldosData = await getSaldosProductoClienteConFiltros(filtros);
+    setItems(saldosData);
   };
 
   const calcularOpcionesDinamicas = () => {
@@ -364,17 +411,32 @@ export default function ProductoSelectorDialog({
     setFilteredItems(filtered);
   };
 
+  /**
+   * Maneja clic en fila: Abre Nivel 2 si tiene stock
+   */
+  const handleRowClick = (e) => {
+    const rowData = e.data;
+    if (esIngreso && rowData.stockDisponible > 0 && rowData.cantidadAlmacenes > 0) {
+      // Si tiene stock, abrir Nivel 2 (Stock por Almacén)
+      setProductoSeleccionado(rowData);
+      setShowStockPorAlmacen(true);
+    }
+  };
+
+  /**
+   * Maneja botón Seleccionar: Selecciona el producto directamente
+   */
   const handleSelect = (rowData) => {
     if (esIngreso) {
-      // INGRESO: Retornar producto con estados por defecto
+      // INGRESO: Seleccionar producto directamente (sin importar si tiene stock)
       onSelect({
         tipo: "producto",
         productoId: rowData.id,
         producto: rowData,
-        // Estados por defecto para ingresos (recibidos como props)
         estadoMercaderiaId: estadoMercaderiaDefault,
         estadoCalidadId: estadoCalidadDefault,
       });
+      onHide();
     } else {
       // EGRESO/TRANSFERENCIA: Retornar saldo completo
       onSelect({
@@ -383,8 +445,8 @@ export default function ProductoSelectorDialog({
         producto: rowData.producto,
         saldo: rowData,
       });
+      onHide();
     }
-    onHide();
   };
 
   const handleNuevoProducto = async () => {
@@ -778,7 +840,9 @@ export default function ProductoSelectorDialog({
           rowsPerPageOptions={[10, 25, 50]}
           header={header}
           emptyMessage={`No se encontraron ${esIngreso ? "productos" : "productos con saldo"}`}
+          onRowClick={handleRowClick}
           onRowDoubleClick={(e) => handleSelect(e.data)}
+          selectionMode="single"
           style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         >
           <Column
@@ -863,6 +927,24 @@ export default function ProductoSelectorDialog({
             setLoading={setLoading}
           />
         </Dialog>
+      )}
+       {/* Diálogo Nivel 2: Stock por Almacén */}
+      {showStockPorAlmacen && productoSeleccionado && (
+        <StockPorAlmacenDialog
+          visible={showStockPorAlmacen}
+          onHide={() => setShowStockPorAlmacen(false)}
+          producto={productoSeleccionado}
+          empresaId={empresaId}
+          clienteId={clienteId}
+          esCustodia={esCustodia}
+          estadoMercaderiaDefault={estadoMercaderiaDefault}
+          estadoCalidadDefault={estadoCalidadDefault}
+          onSelect={(data) => {
+            onSelect(data);
+            setShowStockPorAlmacen(false);
+            onHide();
+          }}
+        />
       )}
     </>
   );

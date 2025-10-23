@@ -144,6 +144,7 @@ export default function MovimientoAlmacenForm({
   const [llevaKardexDestino, setLlevaKardexDestino] = useState(false);
 
   // Estados dinámicos para filtros
+  const [entidadesFiltradas, setEntidadesFiltradas] = useState([]);
   const [direccionesOrigen, setDireccionesOrigen] = useState([]);
   const [direccionesDestino, setDireccionesDestino] = useState([]);
   const [direccionesAgencia, setDireccionesAgencia] = useState([]);
@@ -186,8 +187,6 @@ export default function MovimientoAlmacenForm({
         const movimientoActualizado = await getMovimientoAlmacenPorId(
           defaultValues.id
         );
-        console.log("🔄 Movimiento actualizado:", movimientoActualizado);
-        console.log("🔄 Detalles recibidos:", movimientoActualizado.detalles);
         setDetalles(movimientoActualizado.detalles || []);
       } catch (error) {
         console.error("Error al recargar detalles:", error);
@@ -456,6 +455,18 @@ export default function MovimientoAlmacenForm({
     empresas,
   ]);
 
+  // Filtrar entidades comerciales por empresaId
+  useEffect(() => {
+    if (entidadesComerciales && entidadesComerciales.length > 0 && empresaId) {
+      const entidadesPorEmpresa = entidadesComerciales.filter(
+        (e) => Number(e.empresaId) === Number(empresaId)
+      );
+      setEntidadesFiltradas(entidadesPorEmpresa);
+    } else {
+      setEntidadesFiltradas([]);
+    }
+  }, [entidadesComerciales, empresaId]);
+
   // Filtrar transportistas: tipoEntidadId=11 + entidadComercialId seleccionada
   useEffect(() => {
     if (entidadesComerciales && entidadesComerciales.length > 0) {
@@ -701,7 +712,7 @@ export default function MovimientoAlmacenForm({
       value: Number(t.id),
     }));
 
-  const entidadesOptions = entidadesComerciales.map((e) => ({
+  const entidadesOptions = entidadesFiltradas.map((e) => ({
     ...e,
     id: Number(e.id),
     label: e.razonSocial,
@@ -817,7 +828,7 @@ export default function MovimientoAlmacenForm({
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccionar concepto"
-            disabled={loading || isEdit || detalles.length > 0} // Deshabilitar si es edición o hay detalles
+            disabled={loading || detalles.length > 0} // Deshabilitar solo si hay detalles
             required
             style={{
               fontWeight: "bold",
@@ -1044,7 +1055,7 @@ export default function MovimientoAlmacenForm({
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccionar entidad"
-            disabled={loading || isEdit || detalles.length > 0} // Deshabilitar si es edición o hay detalles
+            disabled={loading || detalles.length > 0} // Deshabilitar solo si hay detalles
             style={{
               fontWeight: "bold",
               textTransform: "uppercase",

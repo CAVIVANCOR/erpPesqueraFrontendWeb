@@ -1,59 +1,52 @@
-// src/pages/DestinoProducto.jsx
-// Pantalla principal para gestión de destinos de producto
-// Cumple regla transversal ERP Megui: edición por clic, borrado seguro con roles, ConfirmDialog, Toast
-import React, { useState, useEffect, useRef } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Toast } from 'primereact/toast';
-import { Dialog } from 'primereact/dialog';
-import { ConfirmDialog } from 'primereact/confirmdialog';
-import { Tag } from 'primereact/tag';
-import { Toolbar } from 'primereact/toolbar';
-import { InputText } from 'primereact/inputtext';
-import { FilterMatchMode } from 'primereact/api';
-import { getDestinosProducto, eliminarDestinoProducto } from '../api/destinoProducto';
-import { useAuthStore } from '../shared/stores/useAuthStore';
-import DestinoProductoForm from '../components/destinoProducto/DestinoProductoForm';
-
 /**
- * Componente DestinoProducto
- * Pantalla principal para gestión de destinos de producto en cotizaciones
- * Incluye listado, creación, edición y eliminación con control de roles
+ * Pantalla CRUD para gestión de Destinos de Producto
  */
+
+import React, { useState, useEffect, useRef } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
+import { Tag } from "primereact/tag";
+import { InputText } from "primereact/inputtext";
+import {
+  getAllDestinoProducto,
+  deleteDestinoProducto,
+  crearDestinoProducto,
+  actualizarDestinoProducto,
+} from "../api/destinoProducto";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import DestinoProductoForm from "../components/destinoProducto/DestinoProductoForm";
+import { getResponsiveFontSize } from "../utils/utils";
+
 const DestinoProducto = () => {
-  const [destinos, setDestinos] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [destinosProducto, setDestinosProducto] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [destinoSeleccionado, setDestinoSeleccionado] = useState(null);
-  const [globalFilter, setGlobalFilter] = useState('');
-  const [filters, setFilters] = useState({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS }
-  });
-
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [destinoAEliminar, setDestinoAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const [globalFilter, setGlobalFilter] = useState("");
 
   useEffect(() => {
-    cargarDestinos();
+    cargarDestinosProducto();
   }, []);
 
-  const cargarDestinos = async () => {
+  const cargarDestinosProducto = async () => {
     try {
       setLoading(true);
-      const data = await getDestinosProducto();
-      // Normalizar IDs según regla ERP Megui
-      const destinosNormalizados = data.map(destino => ({
-        ...destino,
-        id: Number(destino.id)
-      }));
-      setDestinos(destinosNormalizados);
+      const data = await getAllDestinoProducto();
+      setDestinosProducto(data);
     } catch (error) {
-      console.error('Error al cargar destinos de producto:', error);
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al cargar los destinos de producto'
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar destinos de producto",
+        life: 3000,
       });
     } finally {
       setLoading(false);
@@ -75,227 +68,222 @@ const DestinoProducto = () => {
     setDestinoSeleccionado(null);
   };
 
-  const onGuardar = () => {
+  const onGuardarExitoso = async (data) => {
+    if (destinoSeleccionado) {
+      try {
+        await actualizarDestinoProducto(destinoSeleccionado.id, data);
+        toast.current.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Destino de producto actualizado correctamente",
+          life: 3000,
+        });
+      } catch (error) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al actualizar destino de producto",
+          life: 3000,
+        });
+      }
+    } else {
+      try {
+        await crearDestinoProducto(data);
+        toast.current.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Destino de producto creado correctamente",
+          life: 3000,
+        });
+      } catch (error) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al crear destino de producto",
+          life: 3000,
+        });
+      }
+    }
+    cargarDestinosProducto();
     cerrarDialogo();
-    cargarDestinos();
   };
 
   const confirmarEliminacion = (destino) => {
-    if (!usuario?.esSuperUsuario && !usuario?.esAdmin) {
-      toast.current?.show({
-        severity: 'warn',
-        summary: 'Sin permisos',
-        detail: 'Solo los administradores pueden eliminar registros'
-      });
-      return;
-    }
-
-    const confirmar = () => {
-      eliminarDestinoProducto(destino.id);
-    };
-
-    const rechazar = () => {
-      toast.current?.show({
-        severity: 'info',
-        summary: 'Cancelado',
-        detail: 'Eliminación cancelada'
-      });
-    };
-
-    // ConfirmDialog con estilo profesional
-    import('primereact/api').then(({ confirmDialog: showConfirmDialog }) => {
-      showConfirmDialog({
-        message: `¿Está seguro de eliminar el destino "${destino.nombre}"?`,
-        header: 'Confirmar Eliminación',
-        icon: 'pi pi-exclamation-triangle',
-        acceptClassName: 'p-button-danger',
-        acceptLabel: 'Sí, Eliminar',
-        rejectLabel: 'Cancelar',
-        accept: confirmar,
-        reject: rechazar
-      });
-    });
+    setDestinoAEliminar(destino);
+    setConfirmVisible(true);
   };
 
-  const eliminarDestinoProducto = async (id) => {
+  const eliminar = async () => {
     try {
-      await eliminarDestinoProducto(id);
-      toast.current?.show({
-        severity: 'success',
-        summary: 'Éxito',
-        detail: 'Destino de producto eliminado correctamente'
+      await deleteDestinoProducto(destinoAEliminar.id);
+      setDestinosProducto(
+        destinosProducto.filter(
+          (d) => Number(d.id) !== Number(destinoAEliminar.id)
+        )
+      );
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Destino de producto eliminado correctamente",
+        life: 3000,
       });
-      cargarDestinos();
     } catch (error) {
-      console.error('Error al eliminar destino de producto:', error);
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: error.response?.data?.error || 'Error al eliminar el destino de producto'
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al eliminar destino de producto",
+        life: 3000,
       });
+    } finally {
+      setConfirmVisible(false);
+      setDestinoAEliminar(null);
     }
   };
 
-  // Templates para las columnas
-  const activoTemplate = (rowData) => (
-    <Tag 
-      value={rowData.activo ? 'Activo' : 'Inactivo'} 
-      severity={rowData.activo ? 'success' : 'danger'} 
-    />
-  );
+  const nombreTemplate = (rowData) => {
+    return <span style={{ fontWeight: "500" }}>{rowData.nombre}</span>;
+  };
 
-  const paraComprasTemplate = (rowData) => (
-    <Tag 
-      value={rowData.paraCompras ? 'Sí' : 'No'} 
-      severity={rowData.paraCompras ? 'info' : 'secondary'} 
-    />
-  );
-
-  const paraVentasTemplate = (rowData) => (
-    <Tag 
-      value={rowData.paraVentas ? 'Sí' : 'No'} 
-      severity={rowData.paraVentas ? 'success' : 'secondary'} 
-    />
-  );
-
-  const accionesTemplate = (rowData) => (
-    <div className="flex gap-2">
-      <Button
-        icon="pi pi-pencil"
-        className="p-button-rounded p-button-text p-button-info"
-        onClick={() => abrirDialogoEdicion(rowData)}
-        tooltip="Editar"
-        tooltipOptions={{ position: 'top' }}
+  const activoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.activo ? "ACTIVO" : "INACTIVO"}
+        severity={rowData.activo ? "success" : "danger"}
+        style={{ fontSize: "10px", padding: "2px 8px" }}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+    );
+  };
+
+  const paraComprasTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.paraCompras ? "SÍ" : "NO"}
+        severity={rowData.paraCompras ? "info" : "secondary"}
+        style={{ fontSize: "10px", padding: "2px 8px" }}
+      />
+    );
+  };
+
+  const paraVentasTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.paraVentas ? "SÍ" : "NO"}
+        severity={rowData.paraVentas ? "info" : "secondary"}
+        style={{ fontSize: "10px", padding: "2px 8px" }}
+      />
+    );
+  };
+
+  const accionesTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
         <Button
-          icon="pi pi-trash"
-          className="p-button-rounded p-button-text p-button-danger"
-          onClick={() => confirmarEliminacion(rowData)}
-          tooltip="Eliminar"
-          tooltipOptions={{ position: 'top' }}
+          icon="pi pi-pencil"
+          className="p-button-text p-mr-2"
+          onClick={(ev) => {
+            ev.stopPropagation();
+            abrirDialogoEdicion(rowData);
+          }}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
         />
-      )}
-    </div>
-  );
-
-  // Toolbar con botón de nuevo y filtro global
-  const leftToolbarTemplate = () => (
-    <Button
-      label="Nuevo Destino de Producto"
-      icon="pi pi-plus"
-      className="p-button-primary"
-      onClick={abrirDialogoNuevo}
-    />
-  );
-
-  const rightToolbarTemplate = () => (
-    <div className="flex align-items-center gap-2">
-      <i className="pi pi-search" />
-      <InputText
-        type="search"
-        placeholder="Buscar..."
-        value={globalFilter}
-        onChange={(e) => {
-          setGlobalFilter(e.target.value);
-          setFilters({
-            global: { value: e.target.value, matchMode: FilterMatchMode.CONTAINS }
-          });
-        }}
-        className="w-20rem"
-      />
-    </div>
-  );
+        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-text p-button-danger"
+            onClick={() => confirmarEliminacion(rowData)}
+            tooltip="Eliminar"
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="destino-producto-container">
+    <div className="p-4">
       <Toast ref={toast} />
-      <ConfirmDialog />
-      
-      <div className="card">
-        <h2 className="text-2xl font-bold mb-4 text-900">
-          <i className="pi pi-map-marker mr-2 text-primary"></i>
-          Gestión de Destinos de Producto
-        </h2>
-
-        <Toolbar 
-          className="mb-4" 
-          left={leftToolbarTemplate} 
-          right={rightToolbarTemplate}
+      <DataTable
+        value={destinosProducto}
+        loading={loading}
+        paginator
+        rows={10}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        selectionMode="single"
+        className="p-datatable-hover cursor-pointer"
+        emptyMessage="No se encontraron destinos de producto"
+        globalFilter={globalFilter}
+        globalFilterFields={["nombre", "descripcion"]}
+        header={
+          <div className="flex align-items-center gap-2">
+            <h2>Gestión de Destinos de Producto</h2>
+            <Button
+              label="Nuevo"
+              icon="pi pi-plus"
+              size="small"
+              raised
+              tooltip="Nuevo Destino de Producto"
+              outlined
+              className="p-button-success"
+              onClick={abrirDialogoNuevo}
+            />
+            <span className="p-input-icon-left">
+              <InputText
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Buscar destinos de producto..."
+                style={{ width: "300px" }}
+              />
+            </span>
+          </div>
+        }
+        scrollable
+        scrollHeight="600px"
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+      >
+        <Column field="id" header="ID" sortable />
+        <Column field="nombre" header="Nombre" body={nombreTemplate} sortable />
+        <Column field="descripcion" header="Descripción" sortable />
+        <Column header="Estado" body={activoTemplate} sortable />
+        <Column header="Para Compras" body={paraComprasTemplate} sortable />
+        <Column header="Para Ventas" body={paraVentasTemplate} sortable />
+        <Column
+          body={accionesTemplate}
+          header="Acciones"
+          style={{ width: "8rem" }}
         />
-
-        <DataTable
-          value={destinos}
-          loading={loading}
-          dataKey="id"
-          filters={filters}
-          globalFilterFields={['nombre', 'descripcion']}
-          emptyMessage="No se encontraron destinos de producto"
-          className="p-datatable-sm"
-          stripedRows
-          showGridlines
-          size="small"
-          onRowClick={(e) => abrirDialogoEdicion(e.data)}
-          rowClassName="cursor-pointer hover:bg-primary-50"
-        >
-          <Column 
-            field="nombre" 
-            header="Nombre" 
-            sortable 
-            className="font-medium"
-            style={{ minWidth: '200px' }}
-          />
-          <Column 
-            field="descripcion" 
-            header="Descripción" 
-            sortable
-            style={{ minWidth: '300px' }}
-          />
-          <Column 
-            field="activo" 
-            header="Estado" 
-            body={activoTemplate}
-            sortable
-            style={{ minWidth: '100px' }}
-          />
-          <Column 
-            field="paraCompras" 
-            header="Para Compras" 
-            body={paraComprasTemplate}
-            sortable
-            style={{ minWidth: '120px' }}
-          />
-          <Column 
-            field="paraVentas" 
-            header="Para Ventas" 
-            body={paraVentasTemplate}
-            sortable
-            style={{ minWidth: '120px' }}
-          />
-          <Column
-            header="Acciones"
-            body={accionesTemplate}
-            style={{ minWidth: '120px', textAlign: 'center' }}
-            frozen
-            alignFrozen="right"
-          />
-        </DataTable>
-      </div>
+      </DataTable>
 
       <Dialog
+        header={
+          destinoSeleccionado
+            ? "Editar Destino de Producto"
+            : "Nuevo Destino de Producto"
+        }
         visible={dialogVisible}
-        style={{ width: '600px' }}
-        header={destinoSeleccionado ? 'Editar Destino de Producto' : 'Nuevo Destino de Producto'}
-        modal
         onHide={cerrarDialogo}
-        className="p-fluid"
+        style={{ width: "600px" }}
+        modal
       >
         <DestinoProductoForm
-          destino={destinoSeleccionado}
-          onSave={onGuardar}
-          onCancel={cerrarDialogo}
+          destinoProducto={destinoSeleccionado}
+          onGuardar={onGuardarExitoso}
+          onCancelar={cerrarDialogo}
         />
       </Dialog>
+
+      <ConfirmDialog
+        visible={confirmVisible}
+        onHide={() => setConfirmVisible(false)}
+        message={`¿Está seguro de eliminar el destino de producto "${destinoAEliminar?.nombre}"?`}
+        header="Confirmar Eliminación"
+        icon="pi pi-exclamation-triangle"
+        accept={eliminar}
+        reject={() => setConfirmVisible(false)}
+        acceptLabel="Sí, Eliminar"
+        rejectLabel="Cancelar"
+        acceptClassName="p-button-danger"
+      />
     </div>
   );
 };

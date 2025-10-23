@@ -42,3 +42,16 @@ export async function eliminarSaldosProductoCliente(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Obtiene saldos generales con filtros profesionales
+ * @param {Object} filtros - { empresaId, almacenId?, clienteId, custodia, soloConSaldo? }
+ * @returns {Promise<Array>} Saldos generales filtrados
+ */
+export async function getSaldosProductoClienteConFiltros(filtros = {}) {
+  const res = await axios.get(`${API_URL}/filtros`, {
+    headers: getAuthHeaders(),
+    params: filtros
+  });
+  return res.data;
+}

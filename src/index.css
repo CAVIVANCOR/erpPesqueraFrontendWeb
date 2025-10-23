@@ -283,3 +283,12 @@ body {
 .chrome-extension-warning {
   display: none !important;
 }
+
+/* Cursor pointer para filas clicables */
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+.cursor-pointer:hover {
+  background-color: rgba(0, 159, 227, 0.05) !important;
+}

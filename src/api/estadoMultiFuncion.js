@@ -130,3 +130,17 @@ export async function getEstadosMultiFuncionParaNovedadPescaConsumo() {
   const estadosFiltrados = res.data.filter(estado => Number(estado.tipoProvieneDeId) === 7);
   return estadosFiltrados;
 }
+
+/**
+ * Obtiene estados multifunción filtrados por tipoProvieneDeId
+ * Solo retorna los que no están cesados
+ * @param {number} tipoProvieneDeId - ID del tipo proviene de
+ * @returns {Promise} Lista de estados multifunción filtrados
+ */
+export async function getEstadosMultiFuncionPorTipoProviene(tipoProvieneDeId) {
+  const res = await axios.get(`${API_URL}/por-tipo-proviene`, {
+    params: { tipoProvieneDeId },
+    headers: getAuthHeaders()
+  });
+  return res.data;
+}

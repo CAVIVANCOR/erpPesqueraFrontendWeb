@@ -1,8 +1,15 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/tipos-mov-entrega-rendir`;
 
+/**
+ * Obtiene el token JWT profesionalmente desde Zustand
+ */
+function getAuthHeaders() {
+  const token = useAuthStore.getState().token;
+  return { Authorization: `Bearer ${token}` };
+}
 /**
  * API para gestión de Tipo Movimiento Entrega Rendir
  * Proporciona funciones para operaciones CRUD en el módulo de tipos de movimientos de entregas a rendir
@@ -12,22 +19,9 @@ const API_URL = import.meta.env.VITE_API_URL;
  * Obtiene todos los tipos de movimientos de entregas a rendir
  * @returns {Promise} Lista de tipos de movimientos de entregas a rendir
  */
-export const getTiposMovEntregaRendir = async () => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/tipos-mov-entrega-rendir`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
-
-/**
- * Obtiene todos los tipos de movimientos de entregas a rendir (alias)
- * @returns {Promise} Lista de tipos de movimientos de entregas a rendir
- */
 export const getAllTipoMovEntregaRendir = async () => {
-  return getTiposMovEntregaRendir();
+  const response = await axios.get(API_URL, { headers: getAuthHeaders() });
+  return response.data;
 };
 
 /**
@@ -36,12 +30,7 @@ export const getAllTipoMovEntregaRendir = async () => {
  * @returns {Promise} Tipo de movimiento de entrega a rendir creado
  */
 export const crearTipoMovEntregaRendir = async (tipoMovEntregaRendirData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/tipos-mov-entrega-rendir`, tipoMovEntregaRendirData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.post(API_URL, tipoMovEntregaRendirData, { headers: getAuthHeaders() });
   return response.data;
 };
 
@@ -52,12 +41,7 @@ export const crearTipoMovEntregaRendir = async (tipoMovEntregaRendirData) => {
  * @returns {Promise} Tipo de movimiento de entrega a rendir actualizado
  */
 export const actualizarTipoMovEntregaRendir = async (id, tipoMovEntregaRendirData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/tipos-mov-entrega-rendir/${id}`, tipoMovEntregaRendirData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.put(`${API_URL}/${id}`, tipoMovEntregaRendirData, { headers: getAuthHeaders() });
   return response.data;
 };
 
@@ -67,16 +51,7 @@ export const actualizarTipoMovEntregaRendir = async (id, tipoMovEntregaRendirDat
  * @returns {Promise} Confirmación de eliminación
  */
 export const deleteTipoMovEntregaRendir = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/tipos-mov-entrega-rendir/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return response.data;
 };
 
-// Aliases en inglés para compatibilidad
-export const createTipoMovEntregaRendir = crearTipoMovEntregaRendir;
-export const updateTipoMovEntregaRendir = actualizarTipoMovEntregaRendir;
-export const eliminarTipoMovEntregaRendir = deleteTipoMovEntregaRendir;

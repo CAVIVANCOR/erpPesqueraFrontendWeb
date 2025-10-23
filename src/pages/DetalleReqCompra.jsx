@@ -112,12 +112,12 @@ const DetalleReqCompra = () => {
     return formatearNumero(rowData.cantidad, 2);
   };
 
-  const precioUnitarioTemplate = (rowData) => {
-    return formatearMoneda(rowData.precioUnitario);
+  const costoUnitarioTemplate = (rowData) => {
+    return formatearMoneda(rowData.costoUnitario);
   };
 
   const subtotalTemplate = (rowData) => {
-    const subtotal = (rowData.cantidad || 0) * (rowData.precioUnitario || 0);
+    const subtotal = (rowData.cantidad || 0) * (rowData.costoUnitario || 0);
     return formatearMoneda(subtotal);
   };
 
@@ -198,9 +198,9 @@ const DetalleReqCompra = () => {
           />
           <Column field="unidadMedidaId" header="U.M. ID" sortable style={{ width: '100px' }} />
           <Column 
-            field="precioUnitario" 
-            header="P. Unitario" 
-            body={precioUnitarioTemplate}
+            field="costoUnitario" 
+            header="Costo Unit." 
+            body={costoUnitarioTemplate}
             sortable 
             style={{ width: '130px' }}
             className="text-right"

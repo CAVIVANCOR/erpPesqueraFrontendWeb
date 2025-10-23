@@ -12,6 +12,7 @@ import MovimientoAlmacenForm from "../components/movimientoAlmacen/MovimientoAlm
 import ConsultaStockForm from "../components/common/ConsultaStockForm";
 import {
   getMovimientosAlmacen,
+  getMovimientoAlmacenPorId,
   crearMovimientoAlmacen,
   actualizarMovimientoAlmacen,
   eliminarMovimientoAlmacen,
@@ -166,9 +167,7 @@ export default function MovimientoAlmacen() {
   };
 
   const handleFormSubmit = async (data) => {
-    console.log("=== handleFormSubmit DATOS ENVIADOS ===");
-    console.log("Datos enviados:", data, "Editing:", editing );
-    console.log("Editing.id:", editing?.id, "numeroDocumento:", editing?.numeroDocumento);
+
     setLoading(true);
     try {
       // Verificar si es edición: editing tiene numeroDocumento (viene del backend)
@@ -176,7 +175,6 @@ export default function MovimientoAlmacen() {
       const esEdicion = editing && editing.id && editing.numeroDocumento;
       
       if (esEdicion) {
-        console.log("🔄 ACTUALIZANDO movimiento existente ID:", editing.id);
         const resultado = await actualizarMovimientoAlmacen(editing.id, data);
         toast.current.show({
           severity: "success",
@@ -186,11 +184,7 @@ export default function MovimientoAlmacen() {
         // NO cerrar el diálogo - permitir seguir agregando detalles
         // El usuario cerrará manualmente cuando termine
       } else {
-        console.log("➕ CREANDO nuevo movimiento");
-        const resultado = await crearMovimientoAlmacen(data);
-        console.log("=== handleFormSubmit RESULTADO CREADO ===");
-        console.log("Resultado creado:", resultado);
-        
+        const resultado = await crearMovimientoAlmacen(data);        
         toast.current.show({
           severity: "success",
           summary: "Creado",
@@ -199,21 +193,30 @@ export default function MovimientoAlmacen() {
         });
         
         // Cargar el movimiento recién creado para permitir agregar detalles
-        const movimientoCompleto = await getMovimientoAlmacenPorId(resultado.id);
-        setEditing(movimientoCompleto);
+        try {
+          const movimientoCompleto = await getMovimientoAlmacenPorId(resultado.id);
+          setEditing(movimientoCompleto);
+        } catch (reloadErr) {
+          console.error("Error al recargar movimiento:", reloadErr);
+          // Si falla la recarga, usar el resultado directo
+          setEditing(resultado);
+        }
         // NO cerrar el diálogo - mantenerlo abierto para agregar detalles
       }
       
-      cargarDatos(); // Refresca la lista para mostrar el nuevo movimiento
+      // Refresca la lista para mostrar el nuevo movimiento
+      cargarDatos();
     } catch (err) {
+      console.error("Error en handleFormSubmit:", err);
       const errorMsg = err.response?.data?.error || err.response?.data?.message || "No se pudo guardar.";
       toast.current.show({
         severity: "error",
         summary: "Error",
         detail: errorMsg,
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleAdd = () => {

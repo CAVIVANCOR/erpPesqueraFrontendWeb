@@ -45,7 +45,7 @@ import EntregasARendirTemporadaCard from "./EntregasARendirTemporadaCard";
 // Importar APIs adicionales
 import { getPersonal } from "../../api/personal";
 import { getCentrosCosto } from "../../api/centroCosto";
-import { getTiposMovEntregaRendir } from "../../api/tipoMovEntregaRendir";
+import { getAllTipoMovEntregaRendir } from "../../api/tipoMovEntregaRendir";
 import { getEmpresas } from "../../api/empresa";
 
 /**
@@ -141,7 +141,7 @@ const TemporadaPescaForm = ({
           getPuertosPesca(),
           getPersonal(),
           getCentrosCosto(),
-          getTiposMovEntregaRendir(),
+          getAllTipoMovEntregaRendir(),
           getEmpresas(),
         ]);
 

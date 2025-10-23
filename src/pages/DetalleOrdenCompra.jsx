@@ -10,7 +10,7 @@ import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { useAuthStore } from '../shared/stores/useAuthStore';
-import { getAllDetalleOrdenCompra, deleteDetalleOrdenCompra } from '../api/detalleOrdenCompra';
+import { getDetallesOrdenCompra, eliminarDetalleOrdenCompra } from '../api/detalleOrdenCompra';
 import DetalleOrdenCompraForm from '../components/detalleOrdenCompra/DetalleOrdenCompraForm';
 
 /**

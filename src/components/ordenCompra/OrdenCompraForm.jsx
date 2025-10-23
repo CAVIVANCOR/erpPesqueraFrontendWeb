@@ -1,702 +1,320 @@
 // src/components/ordenCompra/OrdenCompraForm.jsx
-// Formulario profesional para OrdenCompra. Cumple regla transversal ERP Megui:
-// - Campos controlados, validación, normalización de IDs en combos, envío con JWT desde Zustand
-import React, { useState, useEffect, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
-import { Calendar } from 'primereact/calendar';
-import { Dropdown } from 'primereact/dropdown';
-import { InputNumber } from 'primereact/inputnumber';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { TabView, TabPanel } from 'primereact/tabview';
-import { Toast } from 'primereact/toast';
-import { createOrdenCompra, updateOrdenCompra } from '../../api/ordenCompra';
+import React, { useState, useEffect } from "react";
+import { TabView, TabPanel } from "primereact/tabview";
+import { Button } from "primereact/button";
+import { Tag } from "primereact/tag";
+import DatosGeneralesTab from "./DatosGeneralesTab";
+import DetallesTab from "./DetallesTab";
+import MovimientosTab from "./MovimientosTab";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
-/**
- * Formulario para gestión de OrdenCompra
- * Maneja creación y edición con validaciones y combos normalizados
- * Organizado en pestañas para mejor UX debido a la cantidad de campos
- */
-const OrdenCompraForm = ({ orden, onSave, onCancel }) => {
-  const { control, handleSubmit, reset, watch, formState: { errors } } = useForm();
-  const [loading, setLoading] = useState(false);
-  const [proveedores, setProveedores] = useState([]);
-  const [compradores, setCompradores] = useState([]);
-  const [centrosCosto, setCentrosCosto] = useState([]);
-  const [monedas, setMonedas] = useState([]);
-  const [condicionesPago, setCondicionesPago] = useState([]);
-  const toast = useRef(null);
+export default function OrdenCompraForm({
+  isEdit,
+  defaultValues,
+  empresas,
+  proveedores,
+  formasPago,
+  productos,
+  personalOptions,
+  requerimientos,
+  empresaFija,
+  onSubmit,
+  onCancel,
+  onAprobar,
+  onAnular,
+  onGenerarDesdeRequerimiento,
+  loading,
+  toast,
+}) {
+  const { usuario } = useAuthStore();
+  
+  // Estados individuales para cada campo (patrón MovimientoAlmacenForm)
+  const [empresaId, setEmpresaId] = useState(defaultValues?.empresaId || empresaFija || null);
+  const [tipoDocumentoId, setTipoDocumentoId] = useState(defaultValues?.tipoDocumentoId || 17); // ORDEN DE COMPRA
+  const [serieDocId, setSerieDocId] = useState(defaultValues?.serieDocId || null);
+  const [numSerieDoc, setNumSerieDoc] = useState(defaultValues?.numSerieDoc || "");
+  const [numCorreDoc, setNumCorreDoc] = useState(defaultValues?.numCorreDoc || "");
+  const [numeroDocumento, setNumeroDocumento] = useState(defaultValues?.numeroDocumento || "");
+  const [fechaDocumento, setFechaDocumento] = useState(
+    defaultValues?.fechaDocumento ? new Date(defaultValues.fechaDocumento) : new Date()
+  );
+  const [requerimientoCompraId, setRequerimientoCompraId] = useState(defaultValues?.requerimientoCompraId || null);
+  const [proveedorId, setProveedorId] = useState(defaultValues?.proveedorId || null);
+  const [formaPagoId, setFormaPagoId] = useState(defaultValues?.formaPagoId || null);
+  const [monedaId, setMonedaId] = useState(defaultValues?.monedaId || null);
+  const [tipoCambio, setTipoCambio] = useState(defaultValues?.tipoCambio || null);
+  const [fechaEntrega, setFechaEntrega] = useState(
+    defaultValues?.fechaEntrega ? new Date(defaultValues.fechaEntrega) : null
+  );
+  const [fechaRecepcion, setFechaRecepcion] = useState(
+    defaultValues?.fechaRecepcion ? new Date(defaultValues.fechaRecepcion) : null
+  );
+  const [solicitanteId, setSolicitanteId] = useState(defaultValues?.solicitanteId || null);
+  const [aprobadoPorId, setAprobadoPorId] = useState(defaultValues?.aprobadoPorId || null);
+  const [estadoId, setEstadoId] = useState(defaultValues?.estadoId ? Number(defaultValues.estadoId) : null);
+  const [centroCostoId, setCentroCostoId] = useState(defaultValues?.centroCostoId || null);
+  const [movIngresoAlmacenId, setMovIngresoAlmacenId] = useState(defaultValues?.movIngresoAlmacenId || null);
+  const [observaciones, setObservaciones] = useState(defaultValues?.observaciones || "");
 
-  // Observar montos para cálculos automáticos
-  const montoSubtotal = watch('montoSubtotal');
-  const montoImpuestos = watch('montoImpuestos');
-  const montoDescuento = watch('montoDescuento');
-  const montoFinal = (montoSubtotal || 0) + (montoImpuestos || 0) - (montoDescuento || 0);
+  const [proveedoresFiltrados, setProveedoresFiltrados] = useState([]);
+  const [activeTab, setActiveTab] = useState(0);
+  const [detallesCount, setDetallesCount] = useState(0);
+  const [movimientosCount, setMovimientosCount] = useState(0);
 
-  // Opciones para dropdowns
-  const estadosOptions = [
-    { value: 'BORRADOR', label: 'Borrador' },
-    { value: 'ENVIADA', label: 'Enviada' },
-    { value: 'CONFIRMADA', label: 'Confirmada' },
-    { value: 'RECIBIDA', label: 'Recibida' },
-    { value: 'FACTURADA', label: 'Facturada' },
-    { value: 'CANCELADA', label: 'Cancelada' }
-  ];
-
-  const prioridadOptions = [
-    { value: 'ALTA', label: 'Alta' },
-    { value: 'MEDIA', label: 'Media' },
-    { value: 'BAJA', label: 'Baja' }
-  ];
-
+  // Filtrar proveedores por empresaId
   useEffect(() => {
-    cargarDatosIniciales();
-  }, []);
-
-  useEffect(() => {
-    if (orden) {
-      // Reset del formulario con datos de edición, normalizando IDs
-      reset({
-        numero: orden.numero || '',
-        fechaOrden: orden.fechaOrden ? new Date(orden.fechaOrden) : new Date(),
-        fechaEntrega: orden.fechaEntrega ? new Date(orden.fechaEntrega) : null,
-        proveedorId: orden.proveedorId ? Number(orden.proveedorId) : null,
-        estado: orden.estado || 'BORRADOR',
-        prioridad: orden.prioridad || 'MEDIA',
-        compradorId: orden.compradorId ? Number(orden.compradorId) : null,
-        centroCostoId: orden.centroCostoId ? Number(orden.centroCostoId) : null,
-        monedaId: orden.monedaId ? Number(orden.monedaId) : null,
-        tipoCambio: orden.tipoCambio || 1,
-        condicionPagoId: orden.condicionPagoId ? Number(orden.condicionPagoId) : null,
-        montoSubtotal: orden.montoSubtotal || 0,
-        montoImpuestos: orden.montoImpuestos || 0,
-        montoDescuento: orden.montoDescuento || 0,
-        montoTotal: orden.montoTotal || 0,
-        montoFinal: orden.montoFinal || 0,
-        observaciones: orden.observaciones || '',
-        terminosCondiciones: orden.terminosCondiciones || '',
-        direccionEntrega: orden.direccionEntrega || '',
-        contactoProveedor: orden.contactoProveedor || ''
-      });
+    if (proveedores && proveedores.length > 0 && empresaId) {
+      const proveedoresPorEmpresa = proveedores.filter(
+        (p) => Number(p.empresaId) === Number(empresaId)
+      );
+      setProveedoresFiltrados(proveedoresPorEmpresa);
     } else {
-      // Reset para nuevo registro
-      reset({
-        numero: '',
-        fechaOrden: new Date(),
-        fechaEntrega: null,
-        proveedorId: null,
-        estado: 'BORRADOR',
-        prioridad: 'MEDIA',
-        compradorId: null,
-        centroCostoId: null,
-        monedaId: null,
-        tipoCambio: 1,
-        condicionPagoId: null,
-        montoSubtotal: 0,
-        montoImpuestos: 0,
-        montoDescuento: 0,
-        montoTotal: 0,
-        montoFinal: 0,
-        observaciones: '',
-        terminosCondiciones: '',
-        direccionEntrega: '',
-        contactoProveedor: ''
-      });
+      setProveedoresFiltrados([]);
     }
-  }, [orden, reset]);
+  }, [proveedores, empresaId]);
 
-  const cargarDatosIniciales = async () => {
-    try {
-      // TODO: Implementar APIs para cargar datos de combos
-      // Datos de ejemplo mientras se implementan las APIs
-      setProveedores([
-        { id: 1, razonSocial: 'Proveedor Industrial SAC', ruc: '20123456789' },
-        { id: 2, razonSocial: 'Suministros Marítimos EIRL', ruc: '20987654321' },
-        { id: 3, razonSocial: 'Equipos y Repuestos SA', ruc: '20456789123' }
-      ]);
-      
-      setCompradores([
-        { id: 1, nombres: 'Ana', apellidos: 'Martín' },
-        { id: 2, nombres: 'Luis', apellidos: 'Rodríguez' },
-        { id: 3, nombres: 'Elena', apellidos: 'Torres' }
-      ]);
-
-      setCentrosCosto([
-        { id: 1, nombre: 'Administración', codigo: 'ADM' },
-        { id: 2, nombre: 'Producción', codigo: 'PROD' },
-        { id: 3, nombre: 'Mantenimiento', codigo: 'MANT' }
-      ]);
-
-      setMonedas([
-        { id: 1, nombre: 'Soles', codigo: 'PEN', simbolo: 'S/' },
-        { id: 2, nombre: 'Dólares', codigo: 'USD', simbolo: '$' }
-      ]);
-
-      setCondicionesPago([
-        { id: 1, descripcion: 'Contado', dias: 0 },
-        { id: 2, descripcion: '30 días', dias: 30 },
-        { id: 3, descripcion: '60 días', dias: 60 },
-        { id: 4, descripcion: '90 días', dias: 90 }
-      ]);
-      
-    } catch (error) {
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al cargar datos iniciales'
-      });
+  // Actualizar estados cuando cambien los defaultValues (patrón MovimientoAlmacenForm)
+  useEffect(() => {
+    if (defaultValues && Object.keys(defaultValues).length > 0) {
+      setEmpresaId(defaultValues.empresaId ? Number(defaultValues.empresaId) : (empresaFija ? Number(empresaFija) : null));
+      setTipoDocumentoId(defaultValues.tipoDocumentoId ? Number(defaultValues.tipoDocumentoId) : 17);
+      setSerieDocId(defaultValues.serieDocId ? Number(defaultValues.serieDocId) : null);
+      setNumSerieDoc(defaultValues.numSerieDoc || "");
+      setNumCorreDoc(defaultValues.numCorreDoc || "");
+      setNumeroDocumento(defaultValues.numeroDocumento || "");
+      setFechaDocumento(defaultValues.fechaDocumento ? new Date(defaultValues.fechaDocumento) : new Date());
+      setRequerimientoCompraId(defaultValues.requerimientoCompraId ? Number(defaultValues.requerimientoCompraId) : null);
+      setProveedorId(defaultValues.proveedorId ? Number(defaultValues.proveedorId) : null);
+      setFormaPagoId(defaultValues.formaPagoId ? Number(defaultValues.formaPagoId) : null);
+      setMonedaId(defaultValues.monedaId ? Number(defaultValues.monedaId) : null);
+      setTipoCambio(defaultValues.tipoCambio || null);
+      setFechaEntrega(defaultValues.fechaEntrega ? new Date(defaultValues.fechaEntrega) : null);
+      setFechaRecepcion(defaultValues.fechaRecepcion ? new Date(defaultValues.fechaRecepcion) : null);
+      setSolicitanteId(defaultValues.solicitanteId ? Number(defaultValues.solicitanteId) : null);
+      setAprobadoPorId(defaultValues.aprobadoPorId ? Number(defaultValues.aprobadoPorId) : null);
+      setEstadoId(defaultValues.estadoId ? Number(defaultValues.estadoId) : null);
+      setCentroCostoId(defaultValues.centroCostoId ? Number(defaultValues.centroCostoId) : null);
+      setMovIngresoAlmacenId(defaultValues.movIngresoAlmacenId ? Number(defaultValues.movIngresoAlmacenId) : null);
+      setObservaciones(defaultValues.observaciones || "");
     }
-  };
+  }, [defaultValues, empresaFija]);
 
-  const onSubmit = async (data) => {
-    try {
-      setLoading(true);
-      
-      // Preparar payload con tipos correctos
-      const payload = {
-        numero: data.numero,
-        fechaOrden: data.fechaOrden,
-        fechaEntrega: data.fechaEntrega || null,
-        proveedorId: Number(data.proveedorId),
-        estado: data.estado,
-        prioridad: data.prioridad,
-        compradorId: data.compradorId ? Number(data.compradorId) : null,
-        centroCostoId: data.centroCostoId ? Number(data.centroCostoId) : null,
-        monedaId: data.monedaId ? Number(data.monedaId) : null,
-        tipoCambio: Number(data.tipoCambio) || 1,
-        condicionPagoId: data.condicionPagoId ? Number(data.condicionPagoId) : null,
-        montoSubtotal: Number(data.montoSubtotal) || 0,
-        montoImpuestos: Number(data.montoImpuestos) || 0,
-        montoDescuento: Number(data.montoDescuento) || 0,
-        montoTotal: Number(data.montoTotal) || 0,
-        montoFinal: montoFinal,
-        observaciones: data.observaciones || null,
-        terminosCondiciones: data.terminosCondiciones || null,
-        direccionEntrega: data.direccionEntrega || null,
-        contactoProveedor: data.contactoProveedor || null
-      };
-      if (orden?.id) {
-        await updateOrdenCompra(orden.id, payload);
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Orden de compra actualizada correctamente'
-        });
-      } else {
-        await createOrdenCompra(payload);
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Orden de compra creada correctamente'
-        });
+  // Asignar automáticamente el solicitante basado en el usuario logueado (solo al crear)
+  useEffect(() => {
+    if (!isEdit && usuario?.personalId && !solicitanteId) {
+      setSolicitanteId(Number(usuario.personalId));
+
+      if (toast?.current) {
+        setTimeout(() => {
+          toast.current.show({
+            severity: "info",
+            summary: "Solicitante Asignado",
+            detail: "Se ha asignado automáticamente como solicitante de la orden",
+            life: 3000,
+          });
+        }, 500);
       }
-      
-      onSave();
-    } catch (error) {
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al guardar la orden de compra'
-      });
-    } finally {
-      setLoading(false);
+    }
+  }, [isEdit, usuario?.personalId, toast]);
+
+  // Handler genérico para cambios de campos
+  const handleChange = (field, value) => {
+    const setters = {
+      empresaId: setEmpresaId,
+      tipoDocumentoId: setTipoDocumentoId,
+      serieDocId: setSerieDocId,
+      numSerieDoc: setNumSerieDoc,
+      numCorreDoc: setNumCorreDoc,
+      numeroDocumento: setNumeroDocumento,
+      fechaDocumento: setFechaDocumento,
+      requerimientoCompraId: setRequerimientoCompraId,
+      proveedorId: setProveedorId,
+      formaPagoId: setFormaPagoId,
+      monedaId: setMonedaId,
+      tipoCambio: setTipoCambio,
+      fechaEntrega: setFechaEntrega,
+      fechaRecepcion: setFechaRecepcion,
+      solicitanteId: setSolicitanteId,
+      aprobadoPorId: setAprobadoPorId,
+      estadoId: setEstadoId,
+      centroCostoId: setCentroCostoId,
+      movIngresoAlmacenId: setMovIngresoAlmacenId,
+      observaciones: setObservaciones,
+    };
+    
+    const setter = setters[field];
+    if (setter) {
+      setter(value);
     }
   };
+
+  const handleSubmit = () => {
+    // Construir el objeto con todos los estados individuales
+    const data = {
+      empresaId: empresaId ? Number(empresaId) : null,
+      tipoDocumentoId: tipoDocumentoId ? Number(tipoDocumentoId) : null,
+      serieDocId: serieDocId ? Number(serieDocId) : null,
+      numSerieDoc,
+      numCorreDoc,
+      numeroDocumento,
+      fechaDocumento,
+      requerimientoCompraId: requerimientoCompraId ? Number(requerimientoCompraId) : null,
+      proveedorId: proveedorId ? Number(proveedorId) : null,
+      formaPagoId: formaPagoId ? Number(formaPagoId) : null,
+      monedaId: monedaId ? Number(monedaId) : null,
+      tipoCambio,
+      fechaEntrega,
+      fechaRecepcion,
+      solicitanteId: solicitanteId ? Number(solicitanteId) : null,
+      aprobadoPorId: aprobadoPorId ? Number(aprobadoPorId) : null,
+      estadoId: estadoId ? Number(estadoId) : null,
+      centroCostoId: centroCostoId ? Number(centroCostoId) : null,
+      movIngresoAlmacenId: movIngresoAlmacenId ? Number(movIngresoAlmacenId) : null,
+      observaciones,
+    };
+
+    if (!data.empresaId || !data.proveedorId) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Complete los campos obligatorios (Empresa, Proveedor)",
+      });
+      return;
+    }
+
+    onSubmit(data);
+  };
+
+  const handleAprobarClick = () => {
+    if (!defaultValues?.id) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe guardar la orden antes de aprobar",
+      });
+      return;
+    }
+
+    if (detallesCount === 0) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe agregar al menos un detalle antes de aprobar",
+      });
+      return;
+    }
+
+    onAprobar(defaultValues.id);
+  };
+
+  const handleAnularClick = () => {
+    if (!defaultValues?.id) return;
+    onAnular(defaultValues.id);
+  };
+
+  // Estados del documento
+  const estaAprobado = formData.estadoId === 33;
+  const estaAnulado = formData.estadoId === 34;
+  const estaPendiente = formData.estadoId === 32 || !formData.estadoId;
+  const puedeEditar = estaPendiente && !loading;
 
   return (
-    <div className="orden-compra-form">
-      <Toast ref={toast} />
-      
-      <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
-        <TabView>
-          {/* Pestaña 1: Información General */}
-          <TabPanel header="Información General">
-            <div className="grid">
-              {/* Número */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="numero" className="block text-900 font-medium mb-2">
-                  Número de Orden *
-                </label>
-                <Controller
-                  name="numero"
-                  control={control}
-                  rules={{ required: 'El número es obligatorio' }}
-                  render={({ field }) => (
-                    <InputText
-                      id="numero"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      placeholder="OC-2024-001"
-                      className={errors.numero ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.numero && (
-                  <small className="p-error">{errors.numero.message}</small>
-                )}
-              </div>
-
-              {/* Estado */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="estado" className="block text-900 font-medium mb-2">
-                  Estado *
-                </label>
-                <Controller
-                  name="estado"
-                  control={control}
-                  rules={{ required: 'El estado es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="estado"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={estadosOptions}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccione un estado"
-                      className={errors.estado ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.estado && (
-                  <small className="p-error">{errors.estado.message}</small>
-                )}
-              </div>
-
-              {/* Fecha Orden */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="fechaOrden" className="block text-900 font-medium mb-2">
-                  Fecha de Orden *
-                </label>
-                <Controller
-                  name="fechaOrden"
-                  control={control}
-                  rules={{ required: 'La fecha de orden es obligatoria' }}
-                  render={({ field }) => (
-                    <Calendar
-                      id="fechaOrden"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      dateFormat="dd/mm/yy"
-                      placeholder="dd/mm/aaaa"
-                      className={errors.fechaOrden ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.fechaOrden && (
-                  <small className="p-error">{errors.fechaOrden.message}</small>
-                )}
-              </div>
-
-              {/* Fecha Entrega */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="fechaEntrega" className="block text-900 font-medium mb-2">
-                  Fecha de Entrega
-                </label>
-                <Controller
-                  name="fechaEntrega"
-                  control={control}
-                  render={({ field }) => (
-                    <Calendar
-                      id="fechaEntrega"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      dateFormat="dd/mm/yy"
-                      placeholder="dd/mm/aaaa"
-                      showClear
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Proveedor */}
-              <div className="col-12">
-                <label htmlFor="proveedorId" className="block text-900 font-medium mb-2">
-                  Proveedor *
-                </label>
-                <Controller
-                  name="proveedorId"
-                  control={control}
-                  rules={{ required: 'El proveedor es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="proveedorId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={proveedores.map(p => ({ 
-                        ...p, 
-                        id: Number(p.id),
-                        nombreCompleto: `${p.ruc} - ${p.razonSocial}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione un proveedor"
-                      className={errors.proveedorId ? 'p-invalid' : ''}
-                      filter
-                    />
-                  )}
-                />
-                {errors.proveedorId && (
-                  <small className="p-error">{errors.proveedorId.message}</small>
-                )}
-              </div>
-
-              {/* Prioridad */}
-              <div className="col-12 md:col-4">
-                <label htmlFor="prioridad" className="block text-900 font-medium mb-2">
-                  Prioridad *
-                </label>
-                <Controller
-                  name="prioridad"
-                  control={control}
-                  rules={{ required: 'La prioridad es obligatoria' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="prioridad"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={prioridadOptions}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccione prioridad"
-                      className={errors.prioridad ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.prioridad && (
-                  <small className="p-error">{errors.prioridad.message}</small>
-                )}
-              </div>
-
-              {/* Comprador */}
-              <div className="col-12 md:col-4">
-                <label htmlFor="compradorId" className="block text-900 font-medium mb-2">
-                  Comprador
-                </label>
-                <Controller
-                  name="compradorId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="compradorId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={compradores.map(c => ({ 
-                        ...c, 
-                        id: Number(c.id),
-                        nombreCompleto: `${c.nombres} ${c.apellidos}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione comprador"
-                      showClear
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Centro de Costo */}
-              <div className="col-12 md:col-4">
-                <label htmlFor="centroCostoId" className="block text-900 font-medium mb-2">
-                  Centro de Costo
-                </label>
-                <Controller
-                  name="centroCostoId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="centroCostoId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={centrosCosto.map(cc => ({ 
-                        ...cc, 
-                        id: Number(cc.id),
-                        nombreCompleto: `${cc.codigo} - ${cc.nombre}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione centro de costo"
-                      showClear
-                    />
-                  )}
-                />
-              </div>
-            </div>
-          </TabPanel>
-
-          {/* Pestaña 2: Montos y Condiciones */}
-          <TabPanel header="Montos y Condiciones">
-            <div className="grid">
-              {/* Moneda */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="monedaId" className="block text-900 font-medium mb-2">
-                  Moneda
-                </label>
-                <Controller
-                  name="monedaId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="monedaId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={monedas.map(m => ({ 
-                        ...m, 
-                        id: Number(m.id),
-                        nombreCompleto: `${m.simbolo} - ${m.nombre}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione moneda"
-                      showClear
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Tipo de Cambio */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="tipoCambio" className="block text-900 font-medium mb-2">
-                  Tipo de Cambio
-                </label>
-                <Controller
-                  name="tipoCambio"
-                  control={control}
-                  render={({ field }) => (
-                    <InputNumber
-                      id="tipoCambio"
-                      value={field.value}
-                      onValueChange={(e) => field.onChange(e.value)}
-                      mode="decimal"
-                      minFractionDigits={4}
-                      maxFractionDigits={4}
-                      min={0}
-                      placeholder="1.0000"
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Condición de Pago */}
-              <div className="col-12">
-                <label htmlFor="condicionPagoId" className="block text-900 font-medium mb-2">
-                  Condición de Pago
-                </label>
-                <Controller
-                  name="condicionPagoId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="condicionPagoId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={condicionesPago.map(cp => ({ 
-                        ...cp, 
-                        id: Number(cp.id),
-                        nombreCompleto: `${cp.descripcion} (${cp.dias} días)`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione condición de pago"
-                      showClear
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Monto Subtotal */}
-              <div className="col-12 md:col-3">
-                <label htmlFor="montoSubtotal" className="block text-900 font-medium mb-2">
-                  Subtotal
-                </label>
-                <Controller
-                  name="montoSubtotal"
-                  control={control}
-                  render={({ field }) => (
-                    <InputNumber
-                      id="montoSubtotal"
-                      value={field.value}
-                      onValueChange={(e) => field.onChange(e.value)}
-                      mode="currency"
-                      currency="PEN"
-                      locale="es-PE"
-                      minFractionDigits={2}
-                      maxFractionDigits={2}
-                      min={0}
-                      placeholder="S/ 0.00"
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Monto Impuestos */}
-              <div className="col-12 md:col-3">
-                <label htmlFor="montoImpuestos" className="block text-900 font-medium mb-2">
-                  Impuestos
-                </label>
-                <Controller
-                  name="montoImpuestos"
-                  control={control}
-                  render={({ field }) => (
-                    <InputNumber
-                      id="montoImpuestos"
-                      value={field.value}
-                      onValueChange={(e) => field.onChange(e.value)}
-                      mode="currency"
-                      currency="PEN"
-                      locale="es-PE"
-                      minFractionDigits={2}
-                      maxFractionDigits={2}
-                      min={0}
-                      placeholder="S/ 0.00"
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Monto Descuento */}
-              <div className="col-12 md:col-3">
-                <label htmlFor="montoDescuento" className="block text-900 font-medium mb-2">
-                  Descuento
-                </label>
-                <Controller
-                  name="montoDescuento"
-                  control={control}
-                  render={({ field }) => (
-                    <InputNumber
-                      id="montoDescuento"
-                      value={field.value}
-                      onValueChange={(e) => field.onChange(e.value)}
-                      mode="currency"
-                      currency="PEN"
-                      locale="es-PE"
-                      minFractionDigits={2}
-                      maxFractionDigits={2}
-                      min={0}
-                      placeholder="S/ 0.00"
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Monto Final (Calculado) */}
-              <div className="col-12 md:col-3">
-                <label className="block text-900 font-medium mb-2">
-                  Total Final
-                </label>
-                <div className="p-inputtext p-component p-disabled">
-                  S/ {montoFinal.toFixed(2)}
-                </div>
-              </div>
-            </div>
-          </TabPanel>
-
-          {/* Pestaña 3: Detalles Adicionales */}
-          <TabPanel header="Detalles Adicionales">
-            <div className="grid">
-              {/* Dirección de Entrega */}
-              <div className="col-12">
-                <label htmlFor="direccionEntrega" className="block text-900 font-medium mb-2">
-                  Dirección de Entrega
-                </label>
-                <Controller
-                  name="direccionEntrega"
-                  control={control}
-                  render={({ field }) => (
-                    <InputTextarea
-                      id="direccionEntrega"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      rows={2}
-                      placeholder="Dirección completa de entrega..."
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Contacto Proveedor */}
-              <div className="col-12">
-                <label htmlFor="contactoProveedor" className="block text-900 font-medium mb-2">
-                  Contacto del Proveedor
-                </label>
-                <Controller
-                  name="contactoProveedor"
-                  control={control}
-                  render={({ field }) => (
-                    <InputTextarea
-                      id="contactoProveedor"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      rows={2}
-                      placeholder="Información de contacto del proveedor..."
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Términos y Condiciones */}
-              <div className="col-12">
-                <label htmlFor="terminosCondiciones" className="block text-900 font-medium mb-2">
-                  Términos y Condiciones
-                </label>
-                <Controller
-                  name="terminosCondiciones"
-                  control={control}
-                  render={({ field }) => (
-                    <InputTextarea
-                      id="terminosCondiciones"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      rows={4}
-                      placeholder="Términos y condiciones de la orden de compra..."
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Observaciones */}
-              <div className="col-12">
-                <label htmlFor="observaciones" className="block text-900 font-medium mb-2">
-                  Observaciones
-                </label>
-                <Controller
-                  name="observaciones"
-                  control={control}
-                  render={({ field }) => (
-                    <InputTextarea
-                      id="observaciones"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      rows={3}
-                      placeholder="Observaciones adicionales..."
-                    />
-                  )}
-                />
-              </div>
-            </div>
-          </TabPanel>
-        </TabView>
-
-        <div className="flex justify-content-end gap-2 mt-4">
-          <Button
-            type="button"
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-secondary"
-            onClick={onCancel}
+    <div className="p-fluid">
+      <TabView activeIndex={activeTab} onTabChange={(e) => setActiveTab(e.index)}>
+        {/* TAB 1: DATOS GENERALES */}
+        <TabPanel header="Datos Generales" leftIcon="pi pi-file">
+          <DatosGeneralesTab
+            formData={formData}
+            onChange={handleChange}
+            empresas={empresas}
+            proveedores={proveedoresFiltrados}
+            formasPago={formasPago}
+            personalOptions={personalOptions}
+            requerimientos={requerimientos}
+            isEdit={isEdit}
+            puedeEditar={puedeEditar}
+            onGenerarDesdeRequerimiento={onGenerarDesdeRequerimiento}
           />
-          <Button
-            type="submit"
-            label={orden?.id ? 'Actualizar' : 'Crear'}
-            icon="pi pi-check"
-            loading={loading}
-            className="p-button-primary"
+        </TabPanel>
+
+        {/* TAB 2: DETALLES */}
+        <TabPanel
+          header={`Detalles ${detallesCount > 0 ? `(${detallesCount})` : ""}`}
+          leftIcon="pi pi-list"
+          disabled={!isEdit}
+        >
+          <DetallesTab
+            ordenCompraId={defaultValues?.id}
+            productos={productos}
+            puedeEditar={puedeEditar}
+            toast={toast}
+            onCountChange={setDetallesCount}
           />
-        </div>
-      </form>
+        </TabPanel>
+
+        {/* TAB 3: MOVIMIENTOS DE ALMACÉN */}
+        <TabPanel
+          header={`Movimientos ${movimientosCount > 0 ? `(${movimientosCount})` : ""}`}
+          leftIcon="pi pi-warehouse"
+          disabled={!isEdit || !estaAprobado}
+        >
+          <MovimientosTab
+            ordenCompraId={defaultValues?.id}
+            toast={toast}
+            onCountChange={setMovimientosCount}
+          />
+        </TabPanel>
+      </TabView>
+
+      {/* BOTONES DE ACCIÓN */}
+      <div className="flex justify-content-end gap-2 mt-4">
+        <Button
+          label="Cancelar"
+          icon="pi pi-times"
+          className="p-button-secondary"
+          onClick={onCancel}
+          disabled={loading}
+        />
+
+        {estaPendiente && (
+          <>
+            <Button
+              label="Guardar"
+              icon="pi pi-save"
+              className="p-button-primary"
+              onClick={handleSubmit}
+              disabled={loading}
+            />
+
+            {isEdit && (
+              <>
+                <Button
+                  label="Aprobar"
+                  icon="pi pi-check"
+                  className="p-button-success"
+                  onClick={handleAprobarClick}
+                  disabled={loading}
+                />
+                <Button
+                  label="Anular"
+                  icon="pi pi-ban"
+                  className="p-button-danger"
+                  onClick={handleAnularClick}
+                  disabled={loading}
+                />
+              </>
+            )}
+          </>
+        )}
+
+        {estaAprobado && (
+          <Tag value="APROBADO" severity="success" icon="pi pi-check-circle" />
+        )}
+
+        {estaAnulado && (
+          <Tag value="ANULADO" severity="danger" icon="pi pi-times-circle" />
+        )}
+      </div>
     </div>
   );
-};
-
-export default OrdenCompraForm;
+}

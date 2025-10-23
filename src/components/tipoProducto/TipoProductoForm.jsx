@@ -1,223 +1,227 @@
-// src/components/tipoProducto/TipoProductoForm.jsx
-// Formulario profesional para TipoProducto con validaciones completas
-// Cumple regla transversal ERP Megui: normalización de IDs, documentación en español
-import React, { useState, useEffect, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { Checkbox } from 'primereact/checkbox';
-import { Button } from 'primereact/button';
-import { Toast } from 'primereact/toast';
-import { crearTipoProducto, actualizarTipoProducto } from '../../api/tipoProducto';
-
 /**
- * Componente TipoProductoForm
- * Formulario para gestión de tipos de producto en cotizaciones
- * Incluye validaciones y campos específicos para compras/ventas según patrón ERP Megui
+ * Formulario para gestión de Tipos de Producto
+ * Adaptado al modelo backend: nombre (único), descripcion, activo, paraCompras, paraVentas
  */
-const TipoProductoForm = ({ tipo, onSave, onCancel }) => {
-  const { control, handleSubmit, formState: { errors }, reset } = useForm({
+
+import React, { useState, useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { InputText } from "primereact/inputtext";
+import { Checkbox } from "primereact/checkbox";
+import { Button } from "primereact/button";
+import { classNames } from "primereact/utils";
+
+const esquemaValidacion = yup.object().shape({
+  nombre: yup
+    .string()
+    .required("El nombre es obligatorio")
+    .trim(),
+  descripcion: yup
+    .string()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  activo: yup.boolean().default(true),
+  paraCompras: yup.boolean().default(false),
+  paraVentas: yup.boolean().default(false),
+});
+
+const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
+  const [loading, setLoading] = useState(false);
+  const esEdicion = !!tipoProducto;
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    setValue,
+  } = useForm({
+    resolver: yupResolver(esquemaValidacion),
     defaultValues: {
-      nombre: '',
-      descripcion: '',
+      nombre: "",
+      descripcion: "",
       activo: true,
       paraCompras: false,
-      paraVentas: false
-    }
+      paraVentas: false,
+    },
   });
 
-  const [loading, setLoading] = useState(false);
-  const toast = useRef(null);
-
   useEffect(() => {
-    if (tipo) {
-      // Cargar datos del tipo para edición
+    if (tipoProducto) {
+      setValue("nombre", tipoProducto.nombre || "");
+      setValue("descripcion", tipoProducto.descripcion || "");
+      setValue("activo", tipoProducto.activo !== undefined ? tipoProducto.activo : true);
+      setValue("paraCompras", tipoProducto.paraCompras || false);
+      setValue("paraVentas", tipoProducto.paraVentas || false);
+    } else {
       reset({
-        nombre: tipo.nombre || '',
-        descripcion: tipo.descripcion || '',
-        activo: Boolean(tipo.activo),
-        paraCompras: Boolean(tipo.paraCompras),
-        paraVentas: Boolean(tipo.paraVentas)
+        nombre: "",
+        descripcion: "",
+        activo: true,
+        paraCompras: false,
+        paraVentas: false,
       });
     }
-  }, [tipo, reset]);
+  }, [tipoProducto, setValue, reset]);
 
   const onSubmit = async (data) => {
     try {
       setLoading(true);
-
-      // Preparar payload con validaciones
-      const payload = {
-        nombre: data.nombre.trim(),
-        descripcion: data.descripcion?.trim() || null,
-        activo: Boolean(data.activo),
-        paraCompras: Boolean(data.paraCompras),
-        paraVentas: Boolean(data.paraVentas)
+      const datosNormalizados = {
+        nombre: data.nombre.trim().toUpperCase(),
+        descripcion: data.descripcion?.trim().toUpperCase() || null,
+        activo: data.activo,
+        paraCompras: data.paraCompras,
+        paraVentas: data.paraVentas,
       };
-
-      if (tipo?.id) {
-        await actualizarTipoProducto(tipo.id, payload);
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Tipo de producto actualizado correctamente'
-        });
-      } else {
-        await crearTipoProducto(payload);
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Tipo de producto creado correctamente'
-        });
-      }
-
-      onSave();
+      
+      onGuardar(datosNormalizados);
     } catch (error) {
-      console.error('Error al guardar tipo de producto:', error);
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: error.response?.data?.error || 'Error al guardar el tipo de producto'
-      });
+      console.error("Error al guardar tipo de producto:", error);
     } finally {
       setLoading(false);
     }
   };
 
+  const getFieldClass = (fieldName) => {
+    return classNames({
+      "p-invalid": errors[fieldName],
+    });
+  };
+
   return (
-    <div className="tipo-producto-form">
-      <Toast ref={toast} />
+    <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
+      <div className="p-grid p-formgrid">
+        {/* Campo Nombre */}
+        <div className="p-col-12 p-field">
+          <label htmlFor="nombre" className="p-d-block">
+            Nombre <span className="p-error">*</span>
+          </label>
+          <Controller
+            name="nombre"
+            control={control}
+            render={({ field }) => (
+              <InputText
+                id="nombre"
+                {...field}
+                placeholder="Ingrese el nombre"
+                className={getFieldClass("nombre")}
+                style={{ textTransform: 'uppercase' }}
+                autoFocus
+              />
+            )}
+          />
+          {errors.nombre && (
+            <small className="p-error p-d-block">{errors.nombre.message}</small>
+          )}
+        </div>
+
+        {/* Campo Descripción */}
+        <div className="p-col-12 p-field">
+          <label htmlFor="descripcion" className="p-d-block">
+            Descripción
+          </label>
+          <Controller
+            name="descripcion"
+            control={control}
+            render={({ field }) => (
+              <InputText
+                id="descripcion"
+                {...field}
+                placeholder="Descripción del tipo de producto (opcional)"
+                className={getFieldClass("descripcion")}
+                style={{ textTransform: 'uppercase' }}
+              />
+            )}
+          />
+          {errors.descripcion && (
+            <small className="p-error p-d-block">{errors.descripcion.message}</small>
+          )}
+        </div>
+
+        {/* Campo Activo */}
+        <div className="p-col-12 p-field">
+          <Controller
+            name="activo"
+            control={control}
+            render={({ field }) => (
+              <div className="p-field-checkbox">
+                <Checkbox
+                  id="activo"
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.checked)}
+                  className={getFieldClass("activo")}
+                />
+                <label htmlFor="activo" className="p-checkbox-label">
+                  Tipo de producto activo
+                </label>
+              </div>
+            )}
+          />
+        </div>
+
+        {/* Campo Para Compras */}
+        <div className="p-col-12 p-field">
+          <Controller
+            name="paraCompras"
+            control={control}
+            render={({ field }) => (
+              <div className="p-field-checkbox">
+                <Checkbox
+                  id="paraCompras"
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.checked)}
+                  className={getFieldClass("paraCompras")}
+                />
+                <label htmlFor="paraCompras" className="p-checkbox-label">
+                  Disponible para compras
+                </label>
+              </div>
+            )}
+          />
+        </div>
+
+        {/* Campo Para Ventas */}
+        <div className="p-col-12 p-field">
+          <Controller
+            name="paraVentas"
+            control={control}
+            render={({ field }) => (
+              <div className="p-field-checkbox">
+                <Checkbox
+                  id="paraVentas"
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.checked)}
+                  className={getFieldClass("paraVentas")}
+                />
+                <label htmlFor="paraVentas" className="p-checkbox-label">
+                  Disponible para ventas
+                </label>
+              </div>
+            )}
+          />
+        </div>
+      </div>
       
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="grid">
-          <div className="col-12">
-            <label htmlFor="nombre" className="block text-900 font-medium mb-2">
-              Nombre *
-            </label>
-            <Controller
-              name="nombre"
-              control={control}
-              rules={{ 
-                required: 'El nombre es obligatorio',
-                minLength: { value: 2, message: 'Mínimo 2 caracteres' },
-                maxLength: { value: 100, message: 'Máximo 100 caracteres' }
-              }}
-              render={({ field }) => (
-                <InputText
-                  id="nombre"
-                  {...field}
-                  placeholder="Ingrese el nombre del tipo de producto"
-                  className={`w-full ${errors.nombre ? 'p-invalid' : ''}`}
-                />
-              )}
-            />
-            {errors.nombre && (
-              <small className="p-error">{errors.nombre.message}</small>
-            )}
-          </div>
-
-          <div className="col-12">
-            <label htmlFor="descripcion" className="block text-900 font-medium mb-2">
-              Descripción
-            </label>
-            <Controller
-              name="descripcion"
-              control={control}
-              rules={{ 
-                maxLength: { value: 500, message: 'Máximo 500 caracteres' }
-              }}
-              render={({ field }) => (
-                <InputTextarea
-                  id="descripcion"
-                  {...field}
-                  placeholder="Descripción del tipo de producto (opcional)"
-                  className={`w-full ${errors.descripcion ? 'p-invalid' : ''}`}
-                  rows={3}
-                />
-              )}
-            />
-            {errors.descripcion && (
-              <small className="p-error">{errors.descripcion.message}</small>
-            )}
-          </div>
-
-          <div className="col-12 md:col-4">
-            <div className="field-checkbox">
-              <Controller
-                name="activo"
-                control={control}
-                render={({ field }) => (
-                  <Checkbox
-                    inputId="activo"
-                    checked={field.value}
-                    onChange={(e) => field.onChange(e.checked)}
-                  />
-                )}
-              />
-              <label htmlFor="activo" className="ml-2 text-900 font-medium">
-                Activo
-              </label>
-            </div>
-          </div>
-
-          <div className="col-12 md:col-4">
-            <div className="field-checkbox">
-              <Controller
-                name="paraCompras"
-                control={control}
-                render={({ field }) => (
-                  <Checkbox
-                    inputId="paraCompras"
-                    checked={field.value}
-                    onChange={(e) => field.onChange(e.checked)}
-                  />
-                )}
-              />
-              <label htmlFor="paraCompras" className="ml-2 text-900 font-medium">
-                Para Compras
-              </label>
-            </div>
-          </div>
-
-          <div className="col-12 md:col-4">
-            <div className="field-checkbox">
-              <Controller
-                name="paraVentas"
-                control={control}
-                render={({ field }) => (
-                  <Checkbox
-                    inputId="paraVentas"
-                    checked={field.value}
-                    onChange={(e) => field.onChange(e.checked)}
-                  />
-                )}
-              />
-              <label htmlFor="paraVentas" className="ml-2 text-900 font-medium">
-                Para Ventas
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-content-end gap-2 mt-4">
-          <Button
-            type="button"
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-secondary"
-            onClick={onCancel}
-            disabled={loading}
-          />
-          <Button
-            type="submit"
-            label={tipo?.id ? 'Actualizar' : 'Crear'}
-            icon={tipo?.id ? 'pi pi-check' : 'pi pi-plus'}
-            className="p-button-primary"
-            loading={loading}
-          />
-        </div>
-      </form>
-    </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+        <Button
+          type="button"
+          label="Cancelar"
+          className="p-button-text"
+          onClick={onCancelar}
+          disabled={loading}
+        />
+        <Button
+          type="submit"
+          label={esEdicion ? "Actualizar" : "Crear"}
+          icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
+          loading={loading}
+        />
+      </div>
+    </form>
   );
 };
 

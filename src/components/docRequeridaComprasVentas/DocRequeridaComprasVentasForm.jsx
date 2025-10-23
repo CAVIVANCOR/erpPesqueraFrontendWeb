@@ -12,7 +12,7 @@ import { Toast } from 'primereact/toast';
 import { createDocRequeridaComprasVentas, updateDocRequeridaComprasVentas } from '../../api/docRequeridaComprasVentas';
 import { getTiposProducto } from '../../api/tipoProducto';
 import { getAllTipoEstadoProducto } from '../../api/tipoEstadoProducto';
-import { getDestinosProducto } from '../../api/destinoProducto';
+import { getAllDestinoProducto } from '../../api/destinoProducto';
 import { getAllFormaTransaccion } from '../../api/formaTransaccion';
 
 /**
@@ -75,7 +75,7 @@ const DocRequeridaComprasVentasForm = ({ documento, onSave, onCancel }) => {
       ] = await Promise.all([
         getTiposProducto(),
         getAllTipoEstadoProducto(),
-        getDestinosProducto(),
+        getAllDestinoProducto(),
         getAllFormaTransaccion()
       ]);
 

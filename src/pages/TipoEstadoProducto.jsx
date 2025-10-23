@@ -1,59 +1,52 @@
-// src/pages/TipoEstadoProducto.jsx
-// Pantalla principal para gestión de tipos de estado de producto
-// Cumple regla transversal ERP Megui: edición por clic, borrado seguro con roles, ConfirmDialog, Toast
-import React, { useState, useEffect, useRef } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Toast } from 'primereact/toast';
-import { Dialog } from 'primereact/dialog';
-import { ConfirmDialog } from 'primereact/confirmdialog';
-import { Tag } from 'primereact/tag';
-import { Toolbar } from 'primereact/toolbar';
-import { InputText } from 'primereact/inputtext';
-import { FilterMatchMode } from 'primereact/api';
-import { getAllTipoEstadoProducto, deleteTipoEstadoProducto } from '../api/tipoEstadoProducto';
-import { useAuthStore } from '../shared/stores/useAuthStore';
-import TipoEstadoProductoForm from '../components/tipoEstadoProducto/TipoEstadoProductoForm';
-
 /**
- * Componente TipoEstadoProducto
- * Pantalla principal para gestión de tipos de estado de producto en cotizaciones
- * Incluye listado, creación, edición y eliminación con control de roles
+ * Pantalla CRUD para gestión de Tipos de Estado de Producto
  */
+
+import React, { useState, useEffect, useRef } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
+import { Tag } from "primereact/tag";
+import { InputText } from "primereact/inputtext";
+import {
+  getAllTipoEstadoProducto,
+  deleteTipoEstadoProducto,
+  crearTipoEstadoProducto,
+  actualizarTipoEstadoProducto,
+} from "../api/tipoEstadoProducto";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import TipoEstadoProductoForm from "../components/tipoEstadoProducto/TipoEstadoProductoForm";
+import { getResponsiveFontSize } from "../utils/utils";
+
 const TipoEstadoProducto = () => {
-  const [tiposEstado, setTiposEstado] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [tiposEstadoProducto, setTiposEstadoProducto] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [tipoSeleccionado, setTipoSeleccionado] = useState(null);
-  const [globalFilter, setGlobalFilter] = useState('');
-  const [filters, setFilters] = useState({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS }
-  });
-
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [tipoAEliminar, setTipoAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const [globalFilter, setGlobalFilter] = useState("");
 
   useEffect(() => {
-    cargarTiposEstado();
+    cargarTiposEstadoProducto();
   }, []);
 
-  const cargarTiposEstado = async () => {
+  const cargarTiposEstadoProducto = async () => {
     try {
       setLoading(true);
       const data = await getAllTipoEstadoProducto();
-      // Normalizar IDs según regla ERP Megui
-      const tiposNormalizados = data.map(tipo => ({
-        ...tipo,
-        id: Number(tipo.id)
-      }));
-      setTiposEstado(tiposNormalizados);
+      setTiposEstadoProducto(data);
     } catch (error) {
-      console.error('Error al cargar tipos de estado de producto:', error);
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al cargar los tipos de estado de producto'
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar tipos de estado de producto",
+        life: 3000,
       });
     } finally {
       setLoading(false);
@@ -75,227 +68,222 @@ const TipoEstadoProducto = () => {
     setTipoSeleccionado(null);
   };
 
-  const onGuardar = () => {
+  const onGuardarExitoso = async (data) => {
+    if (tipoSeleccionado) {
+      try {
+        await actualizarTipoEstadoProducto(tipoSeleccionado.id, data);
+        toast.current.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Tipo de estado de producto actualizado correctamente",
+          life: 3000,
+        });
+      } catch (error) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al actualizar tipo de estado de producto",
+          life: 3000,
+        });
+      }
+    } else {
+      try {
+        await crearTipoEstadoProducto(data);
+        toast.current.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Tipo de estado de producto creado correctamente",
+          life: 3000,
+        });
+      } catch (error) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al crear tipo de estado de producto",
+          life: 3000,
+        });
+      }
+    }
+    cargarTiposEstadoProducto();
     cerrarDialogo();
-    cargarTiposEstado();
   };
 
   const confirmarEliminacion = (tipo) => {
-    if (!usuario?.esSuperUsuario && !usuario?.esAdmin) {
-      toast.current?.show({
-        severity: 'warn',
-        summary: 'Sin permisos',
-        detail: 'Solo los administradores pueden eliminar registros'
-      });
-      return;
-    }
-
-    const confirmar = () => {
-      eliminarTipo(tipo.id);
-    };
-
-    const rechazar = () => {
-      toast.current?.show({
-        severity: 'info',
-        summary: 'Cancelado',
-        detail: 'Eliminación cancelada'
-      });
-    };
-
-    // ConfirmDialog con estilo profesional
-    import('primereact/api').then(({ confirmDialog: showConfirmDialog }) => {
-      showConfirmDialog({
-        message: `¿Está seguro de eliminar el tipo de estado "${tipo.nombre}"?`,
-        header: 'Confirmar Eliminación',
-        icon: 'pi pi-exclamation-triangle',
-        acceptClassName: 'p-button-danger',
-        acceptLabel: 'Sí, Eliminar',
-        rejectLabel: 'Cancelar',
-        accept: confirmar,
-        reject: rechazar
-      });
-    });
+    setTipoAEliminar(tipo);
+    setConfirmVisible(true);
   };
 
-  const eliminarTipo = async (id) => {
+  const eliminar = async () => {
     try {
-      await deleteTipoEstadoProducto(id);
-      toast.current?.show({
-        severity: 'success',
-        summary: 'Éxito',
-        detail: 'Tipo de estado de producto eliminado correctamente'
+      await deleteTipoEstadoProducto(tipoAEliminar.id);
+      setTiposEstadoProducto(
+        tiposEstadoProducto.filter(
+          (t) => Number(t.id) !== Number(tipoAEliminar.id)
+        )
+      );
+      toast.current.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Tipo de estado de producto eliminado correctamente",
+        life: 3000,
       });
-      cargarTiposEstado();
     } catch (error) {
-      console.error('Error al eliminar tipo de estado de producto:', error);
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: error.response?.data?.error || 'Error al eliminar el tipo de estado de producto'
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al eliminar tipo de estado de producto",
+        life: 3000,
       });
+    } finally {
+      setConfirmVisible(false);
+      setTipoAEliminar(null);
     }
   };
 
-  // Templates para las columnas
-  const activoTemplate = (rowData) => (
-    <Tag 
-      value={rowData.activo ? 'Activo' : 'Inactivo'} 
-      severity={rowData.activo ? 'success' : 'danger'} 
-    />
-  );
+  const nombreTemplate = (rowData) => {
+    return <span style={{ fontWeight: "500" }}>{rowData.nombre}</span>;
+  };
 
-  const paraComprasTemplate = (rowData) => (
-    <Tag 
-      value={rowData.paraCompras ? 'Sí' : 'No'} 
-      severity={rowData.paraCompras ? 'info' : 'secondary'} 
-    />
-  );
-
-  const paraVentasTemplate = (rowData) => (
-    <Tag 
-      value={rowData.paraVentas ? 'Sí' : 'No'} 
-      severity={rowData.paraVentas ? 'success' : 'secondary'} 
-    />
-  );
-
-  const accionesTemplate = (rowData) => (
-    <div className="flex gap-2">
-      <Button
-        icon="pi pi-pencil"
-        className="p-button-rounded p-button-text p-button-info"
-        onClick={() => abrirDialogoEdicion(rowData)}
-        tooltip="Editar"
-        tooltipOptions={{ position: 'top' }}
+  const activoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.activo ? "ACTIVO" : "INACTIVO"}
+        severity={rowData.activo ? "success" : "danger"}
+        style={{ fontSize: "10px", padding: "2px 8px" }}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+    );
+  };
+
+  const paraComprasTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.paraCompras ? "SÍ" : "NO"}
+        severity={rowData.paraCompras ? "info" : "secondary"}
+        style={{ fontSize: "10px", padding: "2px 8px" }}
+      />
+    );
+  };
+
+  const paraVentasTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.paraVentas ? "SÍ" : "NO"}
+        severity={rowData.paraVentas ? "info" : "secondary"}
+        style={{ fontSize: "10px", padding: "2px 8px" }}
+      />
+    );
+  };
+
+  const accionesTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
         <Button
-          icon="pi pi-trash"
-          className="p-button-rounded p-button-text p-button-danger"
-          onClick={() => confirmarEliminacion(rowData)}
-          tooltip="Eliminar"
-          tooltipOptions={{ position: 'top' }}
+          icon="pi pi-pencil"
+          className="p-button-text p-mr-2"
+          onClick={(ev) => {
+            ev.stopPropagation();
+            abrirDialogoEdicion(rowData);
+          }}
+          tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
         />
-      )}
-    </div>
-  );
-
-  // Toolbar con botón de nuevo y filtro global
-  const leftToolbarTemplate = () => (
-    <Button
-      label="Nuevo Estado de Producto"
-      icon="pi pi-plus"
-      className="p-button-primary"
-      onClick={abrirDialogoNuevo}
-    />
-  );
-
-  const rightToolbarTemplate = () => (
-    <div className="flex align-items-center gap-2">
-      <i className="pi pi-search" />
-      <InputText
-        type="search"
-        placeholder="Buscar..."
-        value={globalFilter}
-        onChange={(e) => {
-          setGlobalFilter(e.target.value);
-          setFilters({
-            global: { value: e.target.value, matchMode: FilterMatchMode.CONTAINS }
-          });
-        }}
-        className="w-20rem"
-      />
-    </div>
-  );
+        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-text p-button-danger"
+            onClick={() => confirmarEliminacion(rowData)}
+            tooltip="Eliminar"
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="tipo-estado-producto-container">
+    <div className="p-4">
       <Toast ref={toast} />
-      <ConfirmDialog />
-      
-      <div className="card">
-        <h2 className="text-2xl font-bold mb-4 text-900">
-          <i className="pi pi-flag mr-2 text-primary"></i>
-          Gestión de Estados de Producto
-        </h2>
-
-        <Toolbar 
-          className="mb-4" 
-          left={leftToolbarTemplate} 
-          right={rightToolbarTemplate}
+      <DataTable
+        value={tiposEstadoProducto}
+        loading={loading}
+        paginator
+        rows={10}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        selectionMode="single"
+        className="p-datatable-hover cursor-pointer"
+        emptyMessage="No se encontraron tipos de estado de producto"
+        globalFilter={globalFilter}
+        globalFilterFields={["nombre", "descripcion"]}
+        header={
+          <div className="flex align-items-center gap-2">
+            <h2>Gestión de Tipos de Estado de Producto</h2>
+            <Button
+              label="Nuevo"
+              icon="pi pi-plus"
+              size="small"
+              raised
+              tooltip="Nuevo Tipo de Estado de Producto"
+              outlined
+              className="p-button-success"
+              onClick={abrirDialogoNuevo}
+            />
+            <span className="p-input-icon-left">
+              <InputText
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Buscar tipos de estado de producto..."
+                style={{ width: "300px" }}
+              />
+            </span>
+          </div>
+        }
+        scrollable
+        scrollHeight="600px"
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+      >
+        <Column field="id" header="ID" sortable />
+        <Column field="nombre" header="Nombre" body={nombreTemplate} sortable />
+        <Column field="descripcion" header="Descripción" sortable />
+        <Column header="Estado" body={activoTemplate} sortable />
+        <Column header="Para Compras" body={paraComprasTemplate} sortable />
+        <Column header="Para Ventas" body={paraVentasTemplate} sortable />
+        <Column
+          body={accionesTemplate}
+          header="Acciones"
+          style={{ width: "8rem" }}
         />
-
-        <DataTable
-          value={tiposEstado}
-          loading={loading}
-          dataKey="id"
-          filters={filters}
-          globalFilterFields={['nombre', 'descripcion']}
-          emptyMessage="No se encontraron tipos de estado de producto"
-          className="p-datatable-sm"
-          stripedRows
-          showGridlines
-          size="small"
-          onRowClick={(e) => abrirDialogoEdicion(e.data)}
-          rowClassName="cursor-pointer hover:bg-primary-50"
-        >
-          <Column 
-            field="nombre" 
-            header="Nombre" 
-            sortable 
-            className="font-medium"
-            style={{ minWidth: '200px' }}
-          />
-          <Column 
-            field="descripcion" 
-            header="Descripción" 
-            sortable
-            style={{ minWidth: '300px' }}
-          />
-          <Column 
-            field="activo" 
-            header="Estado" 
-            body={activoTemplate}
-            sortable
-            style={{ minWidth: '100px' }}
-          />
-          <Column 
-            field="paraCompras" 
-            header="Para Compras" 
-            body={paraComprasTemplate}
-            sortable
-            style={{ minWidth: '120px' }}
-          />
-          <Column 
-            field="paraVentas" 
-            header="Para Ventas" 
-            body={paraVentasTemplate}
-            sortable
-            style={{ minWidth: '120px' }}
-          />
-          <Column
-            header="Acciones"
-            body={accionesTemplate}
-            style={{ minWidth: '120px', textAlign: 'center' }}
-            frozen
-            alignFrozen="right"
-          />
-        </DataTable>
-      </div>
+      </DataTable>
 
       <Dialog
+        header={
+          tipoSeleccionado
+            ? "Editar Tipo de Estado de Producto"
+            : "Nuevo Tipo de Estado de Producto"
+        }
         visible={dialogVisible}
-        style={{ width: '600px' }}
-        header={tipoSeleccionado ? 'Editar Estado de Producto' : 'Nuevo Estado de Producto'}
-        modal
         onHide={cerrarDialogo}
-        className="p-fluid"
+        style={{ width: "600px" }}
+        modal
       >
         <TipoEstadoProductoForm
-          tipo={tipoSeleccionado}
-          onSave={onGuardar}
-          onCancel={cerrarDialogo}
+          tipoEstadoProducto={tipoSeleccionado}
+          onGuardar={onGuardarExitoso}
+          onCancelar={cerrarDialogo}
         />
       </Dialog>
+
+      <ConfirmDialog
+        visible={confirmVisible}
+        onHide={() => setConfirmVisible(false)}
+        message={`¿Está seguro de eliminar el tipo de estado de producto "${tipoAEliminar?.nombre}"?`}
+        header="Confirmar Eliminación"
+        icon="pi pi-exclamation-triangle"
+        accept={eliminar}
+        reject={() => setConfirmVisible(false)}
+        acceptLabel="Sí, Eliminar"
+        rejectLabel="Cancelar"
+        acceptClassName="p-button-danger"
+      />
     </div>
   );
 };

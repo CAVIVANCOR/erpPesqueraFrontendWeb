@@ -86,7 +86,10 @@ const PDFViewer = ({ urlDocumento, altura = '600px' }) => {
           // ✅ NUEVO: Soporte para documentos afectos de movimiento de caja
           const rutaArchivo = urlDocumento.replace('/uploads/documentos-movimiento-caja/', '');
           urlCompleta = `${import.meta.env.VITE_API_URL}/movimientos-caja/archivo-documento/${rutaArchivo}`;
-          
+        } else if (urlDocumento.startsWith('/uploads/requerimientos-compra/')) {
+          // ✅ NUEVO: Soporte para PDFs de requerimientos de compra
+          const rutaArchivo = urlDocumento.replace('/uploads/requerimientos-compra/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/requerimiento-compra/archivo/${rutaArchivo}`;
 
         } else if (urlDocumento.startsWith('/api/')) {
           // Remover /api/ del inicio porque VITE_API_URL ya lo incluye

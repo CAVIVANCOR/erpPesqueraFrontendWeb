@@ -366,9 +366,6 @@ export async function generarPDFMovimientoAlmacen(
     // SECCIÓN DE FIRMAS
     yPosition = 150;
     
-    // Debug: Verificar datos para firmas
-    console.log('PDF - Personal Responsable:', movimiento.personalRespAlmacen);
-    console.log('PDF - Entidad Comercial:', movimiento.entidadComercial);
     
     // Calcular posiciones para dos columnas
     const firmaIzqX = margin + 20;

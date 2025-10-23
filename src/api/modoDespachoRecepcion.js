@@ -1,24 +1,22 @@
 import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/modo-despacho-recepcion`;
 
 /**
- * API para gestión de Modo Despacho Recepción
- * Proporciona funciones para operaciones CRUD en el módulo de modos de despacho y recepción
+ * Obtiene el token JWT profesionalmente desde Zustand
  */
+function getAuthHeaders() {
+  const token = useAuthStore.getState().token;
+  return { Authorization: `Bearer ${token}` };
+}
 
 /**
  * Obtiene todos los modos de despacho y recepción
  * @returns {Promise} Lista de modos de despacho y recepción
  */
 export const getAllModoDespachoRecepcion = async () => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/modo-despacho-recepcion`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.get(API_URL, { headers: getAuthHeaders() });
   return response.data;
 };
 
@@ -28,12 +26,7 @@ export const getAllModoDespachoRecepcion = async () => {
  * @returns {Promise} Modo de despacho y recepción creado
  */
 export const crearModoDespachoRecepcion = async (modoDespachoRecepcionData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/modo-despacho-recepcion`, modoDespachoRecepcionData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.post(API_URL, modoDespachoRecepcionData, { headers: getAuthHeaders() });
   return response.data;
 };
 
@@ -44,12 +37,7 @@ export const crearModoDespachoRecepcion = async (modoDespachoRecepcionData) => {
  * @returns {Promise} Modo de despacho y recepción actualizado
  */
 export const actualizarModoDespachoRecepcion = async (id, modoDespachoRecepcionData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/modo-despacho-recepcion/${id}`, modoDespachoRecepcionData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.put(`${API_URL}/${id}`, modoDespachoRecepcionData, { headers: getAuthHeaders() });
   return response.data;
 };
 
@@ -59,16 +47,6 @@ export const actualizarModoDespachoRecepcion = async (id, modoDespachoRecepcionD
  * @returns {Promise} Confirmación de eliminación
  */
 export const deleteModoDespachoRecepcion = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/modo-despacho-recepcion/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return response.data;
 };
-
-// Aliases en inglés para compatibilidad
-export const createModoDespachoRecepcion = crearModoDespachoRecepcion;
-export const updateModoDespachoRecepcion = actualizarModoDespachoRecepcion;
-export const eliminarModoDespachoRecepcion = deleteModoDespachoRecepcion;

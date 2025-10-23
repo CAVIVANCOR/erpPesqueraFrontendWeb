@@ -13,6 +13,12 @@ import { Badge } from "primereact/badge";
 import MovimientoCajaForm from "../components/movimientoCaja/MovimientoCajaForm";
 import DetEntregaRendirPescaIndustrial from "../components/temporadaPesca/DetEntregaRendirPescaIndustrial";
 import DetEntregaRendirNovedadConsumo from "../components/novedadPescaConsumo/DetEntregaRendirNovedadConsumo";
+// Agregar estos imports después de la línea 15
+import DetEntregaRendirCompras from "../components/entregaARendirPCompras/DetEntregaRendirCompras";
+import { getDetMovsEntregaRendirPCompras } from "../api/detMovsEntregaRendirPCompras";
+import { getEntregasARendirPCompras } from "../api/entregaARendirPCompras";
+import { getTiposDocumento } from "../api/tipoDocumento";
+
 import {
   getAllMovimientoCaja,
   crearMovimientoCaja,
@@ -24,7 +30,7 @@ import { getCentrosCosto } from "../api/centroCosto";
 import { getModulos } from "../api/moduloSistema";
 import { getPersonal } from "../api/personal";
 import { getEmpresas } from "../api/empresa";
-import { getTiposMovEntregaRendir } from "../api/tipoMovEntregaRendir";
+import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { getMonedas } from "../api/moneda";
 import { getAllTipoReferenciaMovimientoCaja } from "../api/tipoReferenciaMovimientoCaja";
 import { getAllCuentaCorriente } from "../api/cuentaCorriente";
@@ -79,6 +85,20 @@ export default function MovimientoCaja() {
   const [selectedDetMovsIdsConsumo, setSelectedDetMovsIdsConsumo] = useState(
     []
   );
+  // Estados para DetEntregaRendirCompras (Compras)
+  const [movimientosDetEntregaCompras, setMovimientosDetEntregaCompras] =
+    useState([]);
+  const [entregasARendirCompras, setEntregasARendirCompras] = useState([]);
+  const [
+    selectedMovimientosDetEntregaCompras,
+    setSelectedMovimientosDetEntregaCompras,
+  ] = useState(null);
+  const [loadingDetEntregaCompras, setLoadingDetEntregaCompras] =
+    useState(false);
+  const [selectedDetMovsIdsCompras, setSelectedDetMovsIdsCompras] = useState(
+    []
+  );
+  const [tiposDocumento, setTiposDocumento] = useState([]);
 
   const cargarEstadosMultiFuncion = async () => {
     try {
@@ -113,6 +133,9 @@ export default function MovimientoCaja() {
     cargarMovimientosDetEntregaConsumo();
     cargarEntregasARendirConsumo();
     cargarEstadosMultiFuncion();
+    cargarMovimientosDetEntregaCompras();
+    cargarEntregasARendirCompras();
+    cargarTiposDocumento();
   }, []);
 
   const cargarItems = async () => {
@@ -184,7 +207,7 @@ export default function MovimientoCaja() {
 
   const cargarTipoMovEntregaRendir = async () => {
     try {
-      const data = await getTiposMovEntregaRendir();
+      const data = await getAllTipoMovEntregaRendir();
       setTipoMovEntregaRendir(data);
     } catch (err) {
       toast.current.show({
@@ -253,7 +276,7 @@ export default function MovimientoCaja() {
     try {
       const data = await getAllDetMovsEntregaRendir();
       // Filtrar solo los movimientos pendientes (no validados por tesorería)
-      const pendientes = data.filter(mov => !mov.validadoTesoreria);
+      const pendientes = data.filter((mov) => !mov.validadoTesoreria);
       setMovimientosDetEntrega(pendientes);
     } catch (err) {
       toast.current.show({
@@ -284,7 +307,7 @@ export default function MovimientoCaja() {
     try {
       const data = await getAllDetMovsEntRendirPescaConsumo();
       // Filtrar solo los movimientos pendientes (no validados por tesorería)
-      const pendientes = data.filter(mov => !mov.validadoTesoreria);
+      const pendientes = data.filter((mov) => !mov.validadoTesoreria);
       setMovimientosDetEntregaConsumo(pendientes);
     } catch (err) {
       toast.current.show({
@@ -306,6 +329,52 @@ export default function MovimientoCaja() {
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar las entregas a rendir de pesca consumo.",
+      });
+    }
+  };
+
+  // Cargar movimientos de entregas a rendir para Compras
+  const cargarMovimientosDetEntregaCompras = async () => {
+    try {
+      setLoadingDetEntregaCompras(true);
+      const data = await getDetMovsEntregaRendirPCompras();
+      // Filtrar solo los movimientos pendientes (no validados por tesorería)
+      const pendientes = data.filter((mov) => !mov.validadoTesoreria);
+      setMovimientosDetEntregaCompras(pendientes);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          "No se pudo cargar los movimientos de entregas a rendir de compras.",
+      });
+    } finally {
+      setLoadingDetEntregaCompras(false);
+    }
+  };
+
+  const cargarEntregasARendirCompras = async () => {
+    try {
+      const data = await getEntregasARendirPCompras();
+      setEntregasARendirCompras(data);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar las entregas a rendir de compras.",
+      });
+    }
+  };
+
+  const cargarTiposDocumento = async () => {
+    try {
+      const data = await getTiposDocumento();
+      setTiposDocumento(data);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar los tipos de documento.",
       });
     }
   };
@@ -355,7 +424,9 @@ export default function MovimientoCaja() {
         });
         // Recargar datos del movimiento actualizado
         const movimientoActualizado = await getAllMovimientoCaja();
-        const movActualizado = movimientoActualizado.find(m => m.id === editing.id);
+        const movActualizado = movimientoActualizado.find(
+          (m) => m.id === editing.id
+        );
         if (movActualizado) {
           setEditing(movActualizado);
         }
@@ -365,12 +436,15 @@ export default function MovimientoCaja() {
         toast.current.show({
           severity: "success",
           summary: "Creado",
-          detail: "Registro creado exitosamente. Puede continuar editando o cerrar la ventana.",
-          life: 4000
+          detail:
+            "Registro creado exitosamente. Puede continuar editando o cerrar la ventana.",
+          life: 4000,
         });
         // Recargar datos del movimiento recién creado para mostrar el PDF
         const movimientos = await getAllMovimientoCaja();
-        const movimientoCreado = movimientos.find(m => m.id === nuevoMovimiento.id);
+        const movimientoCreado = movimientos.find(
+          (m) => m.id === nuevoMovimiento.id
+        );
         if (movimientoCreado) {
           setEditing(movimientoCreado);
         }
@@ -378,13 +452,16 @@ export default function MovimientoCaja() {
         // NO cerrar el diálogo para que el usuario pueda ver el PDF
       }
     } catch (err) {
-      console.error('Error al guardar movimiento de caja:', err);
-      const mensajeError = err.response?.data?.mensaje || err.message || "No se pudo guardar el movimiento de caja.";
+      console.error("Error al guardar movimiento de caja:", err);
+      const mensajeError =
+        err.response?.data?.mensaje ||
+        err.message ||
+        "No se pudo guardar el movimiento de caja.";
       toast.current.show({
         severity: "error",
         summary: "Error",
         detail: mensajeError,
-        life: 5000
+        life: 5000,
       });
     }
     setLoading(false);
@@ -394,21 +471,41 @@ export default function MovimientoCaja() {
     setLoading(true);
     try {
       await validarMovimientoCaja(movimiento.id);
-      toast.current.show({ severity: "success", summary: "Validado", detail: "Movimiento validado correctamente y origen actualizado.", life: 4000 });
+      toast.current.show({
+        severity: "success",
+        summary: "Validado",
+        detail: "Movimiento validado correctamente y origen actualizado.",
+        life: 4000,
+      });
       setShowDialog(false);
       setEditing(null);
       cargarItems();
       cargarMovimientosDetEntrega();
       cargarMovimientosDetEntregaConsumo();
     } catch (err) {
-      const mensajeError = err.response?.data?.mensaje || err.response?.data?.message || err.response?.data?.error || err.message || "No se pudo validar el movimiento.";
-      toast.current.show({ severity: "error", summary: "Error al Validar", detail: mensajeError, life: 5000 });
+      const mensajeError =
+        err.response?.data?.mensaje ||
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "No se pudo validar el movimiento.";
+      toast.current.show({
+        severity: "error",
+        summary: "Error al Validar",
+        detail: mensajeError,
+        life: 5000,
+      });
     }
     setLoading(false);
   };
 
   const handleGenerarAsiento = async (movimiento) => {
-    toast.current.show({ severity: "info", summary: "En Desarrollo", detail: "Funcionalidad de generar asiento contable en desarrollo.", life: 3000 });
+    toast.current.show({
+      severity: "info",
+      summary: "En Desarrollo",
+      detail: "Funcionalidad de generar asiento contable en desarrollo.",
+      life: 3000,
+    });
   };
   /**
    * Maneja la aplicación de movimientos seleccionados para crear un MovimientoCaja
@@ -417,7 +514,7 @@ export default function MovimientoCaja() {
    * Maneja la aplicación de movimientos seleccionados para crear un MovimientoCaja
    * REGLA: Solo se permite seleccionar UN item a la vez
    */
-  const handleAplicarMovimientos = async (
+    const handleAplicarMovimientos = async (
     movimientoSeleccionado,
     tipoOrigen
   ) => {
@@ -476,6 +573,35 @@ export default function MovimientoCaja() {
           empresaDestinoId =
             entregaARendirConsumo.novedadPescaConsumo.empresaId;
         }
+      } else if (tipoOrigen === "compras") {
+        // Para Compras: DetMovsEntregaRendirPCompras -> EntregaARendirPCompras -> RequerimientoCompra -> empresaId
+        const entregaARendirCompras = entregasARendirCompras.find(
+          (e) =>
+            Number(e.id) ===
+            Number(movimientoSeleccionado.entregaARendirPComprasId)
+        );
+
+        if (
+          entregaARendirCompras &&
+          entregaARendirCompras.requerimientoCompra
+        ) {
+          empresaDestinoId = entregaARendirCompras.requerimientoCompra.empresaId;
+        }
+      }
+
+      // Determinar el módulo origen según el tipo
+      let moduloOrigenId = movimientoSeleccionado.moduloOrigenMovCajaId
+        ? Number(movimientoSeleccionado.moduloOrigenMovCajaId)
+        : null;
+
+      if (!moduloOrigenId) {
+        if (tipoOrigen === "industrial") {
+          moduloOrigenId = 2; // PESCA INDUSTRIAL
+        } else if (tipoOrigen === "consumo") {
+          moduloOrigenId = 3; // PESCA CONSUMO
+        } else if (tipoOrigen === "compras") {
+          moduloOrigenId = 4; // COMPRAS
+        }
       }
 
       // Preparar datos iniciales para el formulario de MovimientoCaja según el mapeo
@@ -499,12 +625,7 @@ export default function MovimientoCaja() {
         usuarioMotivoOperacionId: movimientoSeleccionado.responsableId
           ? Number(movimientoSeleccionado.responsableId)
           : null,
-        moduloOrigenMotivoOperacionId:
-          movimientoSeleccionado.moduloOrigenMovCajaId
-            ? Number(movimientoSeleccionado.moduloOrigenMovCajaId)
-            : tipoOrigen === "industrial"
-            ? 2
-            : 3,
+        moduloOrigenMotivoOperacionId: moduloOrigenId,
         estadoId: Number(estadoPendiente.id), // 20 - PENDIENTE
         centroCostoId: movimientoSeleccionado.centroCostoId
           ? Number(movimientoSeleccionado.centroCostoId)
@@ -760,10 +881,66 @@ export default function MovimientoCaja() {
         </TabPanel>
 
         <TabPanel header="Compras">
-          <Card>
-            <h3>Compras</h3>
-            <p>Contenido para Compras - En desarrollo</p>
-          </Card>
+          <div style={{ padding: "1rem" }}>
+            <h2 style={{ marginBottom: "1rem", color: "#2196F3" }}>
+              Entregas a Rendir - Compras
+            </h2>
+
+            {loadingDetEntregaCompras ? (
+              <div style={{ textAlign: "center", padding: "2rem" }}>
+                <i
+                  className="pi pi-spin pi-spinner"
+                  style={{ fontSize: "2rem" }}
+                ></i>
+              </div>
+            ) : entregasARendirCompras.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "2rem" }}>
+                <p>No hay entregas a rendir de compras registradas</p>
+              </div>
+            ) : (
+              entregasARendirCompras.map((entrega) => {
+                const movimientosEntrega = movimientosDetEntregaCompras.filter(
+                  (mov) =>
+                    Number(mov.entregaARendirPComprasId) === Number(entrega.id)
+                );
+
+                return (
+                  <div key={entrega.id} style={{ marginBottom: "2rem" }}>
+                    <DetEntregaRendirCompras
+                      entregaARendir={entrega}
+                      movimientos={movimientosEntrega}
+                      personal={personal}
+                      centrosCosto={centrosCosto}
+                      tiposMovimiento={tipoMovEntregaRendir}
+                      entidadesComerciales={entidadesComerciales}
+                      monedas={monedas}
+                      tiposDocumento={tiposDocumento}
+                      requerimientoCompraAprobado={true}
+                      loading={loadingDetEntregaCompras}
+                      selectedMovimientos={selectedMovimientosDetEntregaCompras}
+                      onSelectionChange={(e) =>
+                        setSelectedMovimientosDetEntregaCompras(e.value)
+                      }
+                      onDataChange={cargarMovimientosDetEntregaCompras}
+                    />
+                    <Button
+                      label="Aplicar a Movimiento de Caja"
+                      icon="pi pi-check-circle"
+                      className="p-button-success"
+                      onClick={() =>
+                        handleAplicarMovimientos(
+                          selectedMovimientosDetEntregaCompras,
+                          "compras"
+                        )
+                      }
+                      disabled={!selectedMovimientosDetEntregaCompras}
+                      style={{ marginTop: "1rem" }}
+                    />
+                  </div>
+                );
+              })
+            )}
+          </div>
         </TabPanel>
 
         <TabPanel header="Ventas">
@@ -975,7 +1152,7 @@ export default function MovimientoCaja() {
         }}
       >
         <MovimientoCajaForm
-          key={editing?.id || 'new'}
+          key={editing?.id || "new"}
           isEdit={editing && editing.id ? true : false}
           defaultValues={editing || {}}
           centrosCosto={centrosCosto}
@@ -989,9 +1166,9 @@ export default function MovimientoCaja() {
           entidadesComerciales={entidadesComerciales}
           estadosMultiFuncion={estadosMultiFuncion}
           onSubmit={handleFormSubmit}
-          onValidarMovimiento={handleValidarMovimiento}  // ← AGREGAR
-          onGenerarAsiento={handleGenerarAsiento}  // ← AGREGAR
-          loading={loading}  // ← AGREGAR
+          onValidarMovimiento={handleValidarMovimiento} // ← AGREGAR
+          onGenerarAsiento={handleGenerarAsiento} // ← AGREGAR
+          loading={loading} // ← AGREGAR
           onCancel={() => {
             setShowDialog(false);
             setEditing(null);

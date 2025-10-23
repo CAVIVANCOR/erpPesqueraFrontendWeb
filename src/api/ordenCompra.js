@@ -1,74 +1,58 @@
-import axios from 'axios';
-import { useAuthStore } from '../shared/stores/useAuthStore';
+// src/api/ordenCompra.js
+import axios from "axios";
+import { useAuthStore } from "../shared/stores/useAuthStore";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = `${import.meta.env.VITE_API_URL}/ordenes-compra`;
 
-/**
- * API para gestión de Orden de Compra
- * Proporciona funciones para operaciones CRUD en el módulo de órdenes de compra
- */
-
-/**
- * Obtiene todas las órdenes de compra
- * @returns {Promise} Lista de órdenes de compra
- */
-export const getAllOrdenCompra = async () => {
+function getAuthHeaders() {
   const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/orden-compra`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+  return { Authorization: `Bearer ${token}` };
+}
 
-/**
- * Crea una nueva orden de compra
- * @param {Object} ordenCompraData - Datos de la orden de compra
- * @returns {Promise} Orden de compra creada
- */
-export const crearOrdenCompra = async (ordenCompraData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/orden-compra`, ordenCompraData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function getOrdenesCompra() {
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  return res.data;
+}
 
-/**
- * Actualiza una orden de compra existente
- * @param {number} id - ID de la orden de compra
- * @param {Object} ordenCompraData - Datos actualizados
- * @returns {Promise} Orden de compra actualizada
- */
-export const actualizarOrdenCompra = async (id, ordenCompraData) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/orden-compra/${id}`, ordenCompraData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function getOrdenCompraPorId(id) {
+  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
 
-/**
- * Elimina una orden de compra
- * @param {number} id - ID de la orden de compra a eliminar
- * @returns {Promise} Confirmación de eliminación
- */
-export const deleteOrdenCompra = async (id) => {
-  const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/orden-compra/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return response.data;
-};
+export async function crearOrdenCompra(data) {
+  const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
+  return res.data;
+}
 
-// Aliases en inglés para compatibilidad
-export const createOrdenCompra = crearOrdenCompra;
-export const updateOrdenCompra = actualizarOrdenCompra;
-export const eliminarOrdenCompra = deleteOrdenCompra;
+export async function actualizarOrdenCompra(id, data) {
+  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function eliminarOrdenCompra(id) {
+  const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function aprobarOrdenCompra(id) {
+  const res = await axios.post(`${API_URL}/${id}/aprobar`, {}, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function anularOrdenCompra(id) {
+  const res = await axios.post(`${API_URL}/${id}/anular`, {}, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function generarMovimientoAlmacen(id, data) {
+  const res = await axios.post(`${API_URL}/${id}/generar-movimiento`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function generarOrdenDesdeRequerimiento(requerimientoCompraId) {
+  const res = await axios.post(`${API_URL}/generar-desde-requerimiento`, 
+    { requerimientoCompraId }, 
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

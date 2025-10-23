@@ -20,6 +20,14 @@ export async function getParametrosAprobador() {
   return res.data;
 }
 
+export async function getParametrosAprobadorPorModulo(empresaId, moduloSistemaId) {
+  const res = await axios.get(`${API_URL}/por-modulo`, {
+    params: { empresaId, moduloSistemaId },
+    headers: getAuthHeaders()
+  });
+  return res.data;
+}
+
 export async function getParametroAprobadorPorId(id) {
   const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;

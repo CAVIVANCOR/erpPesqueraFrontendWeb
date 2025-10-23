@@ -85,6 +85,10 @@ export const abrirPdfEnNuevaPestana = async (urlPdf, toast, mensajeError = "No h
       // ✅ NUEVO: Soporte para documentos afectos de movimiento de caja
       const rutaArchivo = urlPdf.replace('/uploads/documentos-movimiento-caja/', '');
       urlCompleta = `${import.meta.env.VITE_API_URL}/movimientos-caja/archivo-documento/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/requerimientos-compra/')) {
+      // ✅ NUEVO: Soporte para PDFs de requerimientos de compra
+      const rutaArchivo = urlPdf.replace('/uploads/requerimientos-compra/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/requerimiento-compra/archivo/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/")) {
       // Para otros tipos de uploads (archivos de confirmación, etc.)
       urlCompleta = `${import.meta.env.VITE_API_URL}${urlPdf}`;
@@ -208,6 +212,11 @@ export const descargarPdf = async (urlPdf, toast, nombreArchivo = "documento.pdf
       // ✅ NUEVO: Soporte para documentos afectos de movimiento de caja
       const rutaArchivo = urlPdf.replace('/uploads/documentos-movimiento-caja/', '');
       urlCompleta = `${import.meta.env.VITE_API_URL}/movimientos-caja/archivo-documento/${rutaArchivo}`;
+      
+    } else if (urlPdf.startsWith('/uploads/requerimientos-compra/')) {
+      // ✅ NUEVO: Soporte para PDFs de requerimientos de compra
+      const rutaArchivo = urlPdf.replace('/uploads/requerimientos-compra/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/requerimiento-compra/archivo/${rutaArchivo}`;
       
     } else if (urlPdf.startsWith(`/uploads/${tipoUpload}/`)) {
       const rutaArchivo = urlPdf.replace(`/uploads/${tipoUpload}/`, "");

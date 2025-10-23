@@ -8,7 +8,12 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import TipoMovEntregaRendirForm from "../components/tipoMovEntregaRendir/TipoMovEntregaRendirForm";
-import { getAllTipoMovEntregaRendir, createTipoMovEntregaRendir, updateTipoMovEntregaRendir, deleteTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
+import {
+  getAllTipoMovEntregaRendir,
+  crearTipoMovEntregaRendir,
+  actualizarTipoMovEntregaRendir,
+  deleteTipoMovEntregaRendir,
+} from "../api/tipoMovEntregaRendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
 export default function TipoMovEntregaRendir() {
@@ -19,7 +24,7 @@ export default function TipoMovEntregaRendir() {
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore(state => state.usuario);
+  const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
     cargarItems();
@@ -31,7 +36,11 @@ export default function TipoMovEntregaRendir() {
       const data = await getAllTipoMovEntregaRendir();
       setItems(data);
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar la lista." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar la lista.",
+      });
     }
     setLoading(false);
   };
@@ -52,10 +61,18 @@ export default function TipoMovEntregaRendir() {
     setLoading(true);
     try {
       await deleteTipoMovEntregaRendir(toDelete.id);
-      toast.current.show({ severity: "success", summary: "Eliminado", detail: "Registro eliminado correctamente." });
+      toast.current.show({
+        severity: "success",
+        summary: "Eliminado",
+        detail: "Registro eliminado correctamente.",
+      });
       cargarItems();
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo eliminar." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo eliminar.",
+      });
     }
     setLoading(false);
     setToDelete(null);
@@ -65,17 +82,29 @@ export default function TipoMovEntregaRendir() {
     setLoading(true);
     try {
       if (editing && editing.id) {
-        await updateTipoMovEntregaRendir(editing.id, data);
-        toast.current.show({ severity: "success", summary: "Actualizado", detail: "Registro actualizado." });
+        await actualizarTipoMovEntregaRendir(editing.id, data);
+        toast.current.show({
+          severity: "success",
+          summary: "Actualizado",
+          detail: "Registro actualizado.",
+        });
       } else {
-        await createTipoMovEntregaRendir(data);
-        toast.current.show({ severity: "success", summary: "Creado", detail: "Registro creado." });
+        await crearTipoMovEntregaRendir(data);
+        toast.current.show({
+          severity: "success",
+          summary: "Creado",
+          detail: "Registro creado.",
+        });
       }
       setShowDialog(false);
       setEditing(null);
       cargarItems();
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo guardar." });
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo guardar.",
+      });
     }
     setLoading(false);
   };
@@ -87,9 +116,19 @@ export default function TipoMovEntregaRendir() {
 
   const actionBody = (rowData) => (
     <>
-      <Button icon="pi pi-pencil" className="p-button-text p-button-sm" onClick={() => handleEdit(rowData)} aria-label="Editar" />
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-text p-button-sm"
+        onClick={() => handleEdit(rowData)}
+        aria-label="Editar"
+      />
       {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger p-button-sm" onClick={() => handleDelete(rowData)} aria-label="Eliminar" />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger p-button-sm"
+          onClick={() => handleDelete(rowData)}
+          aria-label="Eliminar"
+        />
       )}
     </>
   );
@@ -97,20 +136,66 @@ export default function TipoMovEntregaRendir() {
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
-      <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar este registro?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
-      <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
+      <ConfirmDialog
+        visible={showConfirm}
+        onHide={() => setShowConfirm(false)}
+        message="¿Está seguro que desea eliminar este registro?"
+        header="Confirmar eliminación"
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        accept={handleDeleteConfirm}
+        reject={() => setShowConfirm(false)}
+      />
+      <div
+        className="p-d-flex p-jc-between p-ai-center"
+        style={{ marginBottom: 16 }}
+      >
         <h2>Gestión de Tipos de Movimiento Entrega a Rendir</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
+        <Button
+          label="Nuevo"
+          icon="pi pi-plus"
+          className="p-button-success"
+          size="small"
+          outlined
+          onClick={handleAdd}
+          disabled={loading}
+        />
       </div>
-      <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
+      <DataTable
+        value={items}
+        loading={loading}
+        dataKey="id"
+        paginator
+        rows={10}
+        onRowClick={(e) => handleEdit(e.data)}
+        style={{ cursor: "pointer" }}
+      >
         <Column field="id" header="ID" style={{ width: 80 }} />
         <Column field="nombre" header="Nombre" />
         <Column field="descripcion" header="Descripción" />
-        <Column field="esIngreso" header="Es Ingreso" body={rowData => rowData.esIngreso ? "Sí" : "No"} />
-        <Column field="activo" header="Activo" body={rowData => rowData.activo ? "Sí" : "No"} />
-        <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
+        <Column
+          field="esIngreso"
+          header="Es Ingreso"
+          body={(rowData) => (rowData.esIngreso ? "Sí" : "No")}
+        />
+        <Column
+          field="activo"
+          header="Activo"
+          body={(rowData) => (rowData.activo ? "Sí" : "No")}
+        />
+        <Column
+          body={actionBody}
+          header="Acciones"
+          style={{ width: 130, textAlign: "center" }}
+        />
       </DataTable>
-      <Dialog header={editing ? "Editar Tipo Movimiento" : "Nuevo Tipo Movimiento"} visible={showDialog} style={{ width: 600 }} onHide={() => setShowDialog(false)} modal>
+      <Dialog
+        header={editing ? "Editar Tipo Movimiento" : "Nuevo Tipo Movimiento"}
+        visible={showDialog}
+        style={{ width: 600 }}
+        onHide={() => setShowDialog(false)}
+        modal
+      >
         <TipoMovEntregaRendirForm
           isEdit={!!editing}
           defaultValues={editing || {}}

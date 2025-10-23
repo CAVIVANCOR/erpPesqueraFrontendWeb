@@ -2,13 +2,14 @@
 // Página principal de gestión de tipos de documento en el ERP Megui.
 // Reutiliza patrones de Usuarios.jsx y documenta en español técnico.
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { Dialog } from "primereact/dialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
+import { InputText } from "primereact/inputtext";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import TipoDocumentoForm from "../components/tipoDocumento/TipoDocumentoForm";
 import {
@@ -30,7 +31,7 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
  * - El usuario autenticado se obtiene siempre desde useAuthStore.
  */
-export default function TipoDocumentoPage() {
+export default function TipoDocumento() {
   const usuario = useAuthStore((state) => state.usuario);
   const [confirmState, setConfirmState] = useState({
     visible: false,
@@ -42,6 +43,12 @@ export default function TipoDocumentoPage() {
   const [isEdit, setIsEdit] = useState(false);
   const [loading, setLoading] = useState(false);
   const toast = useRef(null);
+
+  // Estados de filtros
+  const [filtroDescripcion, setFiltroDescripcion] = useState("");
+  const [filtroAlmacen, setFiltroAlmacen] = useState(null); // null = todos, true = sí, false = no
+  const [filtroCompras, setFiltroCompras] = useState(null);
+  const [filtroVentas, setFiltroVentas] = useState(null);
 
   // Carga inicial de tipos de documento
   useEffect(() => {
@@ -61,6 +68,71 @@ export default function TipoDocumentoPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Filtrado de datos
+  const tiposFiltrados = useMemo(() => {
+    return tipos.filter((tipo) => {
+      // Filtro por descripción
+      if (filtroDescripcion) {
+        const descripcionMatch = tipo.descripcion
+          ?.toLowerCase()
+          .includes(filtroDescripcion.toLowerCase());
+        const codigoMatch = tipo.codigo
+          ?.toLowerCase()
+          .includes(filtroDescripcion.toLowerCase());
+        if (!descripcionMatch && !codigoMatch) return false;
+      }
+
+      // Filtro por esParaAlmacen
+      if (filtroAlmacen !== null && tipo.esParaAlmacen !== filtroAlmacen) {
+        return false;
+      }
+
+      // Filtro por esParaCompras
+      if (filtroCompras !== null && tipo.esParaCompras !== filtroCompras) {
+        return false;
+      }
+
+      // Filtro por esParaVentas
+      if (filtroVentas !== null && tipo.esParaVentas !== filtroVentas) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [tipos, filtroDescripcion, filtroAlmacen, filtroCompras, filtroVentas]);
+
+  // Limpiar todos los filtros
+  const limpiarFiltros = () => {
+    setFiltroDescripcion("");
+    setFiltroAlmacen(null);
+    setFiltroCompras(null);
+    setFiltroVentas(null);
+  };
+
+  // Toggle de filtros booleanos
+  const toggleFiltroAlmacen = () => {
+    setFiltroAlmacen((prev) => (prev === null ? true : prev === true ? false : null));
+  };
+
+  const toggleFiltroCompras = () => {
+    setFiltroCompras((prev) => (prev === null ? true : prev === true ? false : null));
+  };
+
+  const toggleFiltroVentas = () => {
+    setFiltroVentas((prev) => (prev === null ? true : prev === true ? false : null));
+  };
+
+  // Obtener label y severity para botones de filtro
+  const getFilterButtonProps = (filterValue, baseName) => {
+    if (filterValue === null) {
+      return { label: `Todos ${baseName}`, severity: "secondary", icon: "pi pi-filter" };
+    } else if (filterValue === true) {
+      return { label: `${baseName}: Sí`, severity: "success", icon: "pi pi-check" };
+    } else {
+      return { label: `${baseName}: No`, severity: "danger", icon: "pi pi-times" };
     }
   };
 
@@ -200,7 +272,7 @@ export default function TipoDocumentoPage() {
         style={{ minWidth: 400 }}
       />
       <DataTable
-        value={tipos}
+        value={tiposFiltrados}
         loading={loading}
         paginator
         rows={10}
@@ -213,27 +285,96 @@ export default function TipoDocumentoPage() {
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         className="p-datatable-sm"
         header={
-          <div
-            style={{
-              alignItems: "center",
-              display: "flex",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 2 }}>
-              <h1>Tipos de Documento</h1>
+          <div>
+            {/* Título y botón nuevo */}
+            <div
+              style={{
+                alignItems: "center",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+                marginBottom: 15,
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <h1>Tipos de Documento</h1>
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Nuevo"
+                  icon="pi pi-plus"
+                  className="p-button-success"
+                  size="small"
+                  outlined
+                  onClick={onNew}
+                  disabled={loading}
+                />
+              </div>
             </div>
-            <div style={{ flex: 1 }}>
+
+            {/* Filtros */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+                alignItems: "center",
+                marginBottom: 10,
+              }}
+            >
+              {/* Búsqueda por descripción */}
+              <div style={{ flex: "1 1 250px" }}>
+                <span className="p-input-icon-left" style={{ width: "100%" }}>
+                  <i className="pi pi-search" />
+                  <InputText
+                    value={filtroDescripcion}
+                    onChange={(e) => setFiltroDescripcion(e.target.value)}
+                    placeholder="Buscar por descripción o código"
+                    style={{ width: "100%" }}
+                  />
+                </span>
+              </div>
+
+              {/* Filtro Almacén */}
               <Button
-                label="Nuevo"
-                icon="pi pi-plus"
-                className="p-button-success"
+                {...getFilterButtonProps(filtroAlmacen, "Almacén")}
+                onClick={toggleFiltroAlmacen}
                 size="small"
                 outlined
-                onClick={onNew}
-                disabled={loading}
               />
+
+              {/* Filtro Compras */}
+              <Button
+                {...getFilterButtonProps(filtroCompras, "Compras")}
+                onClick={toggleFiltroCompras}
+                size="small"
+                outlined
+              />
+
+              {/* Filtro Ventas */}
+              <Button
+                {...getFilterButtonProps(filtroVentas, "Ventas")}
+                onClick={toggleFiltroVentas}
+                size="small"
+                outlined
+              />
+
+              {/* Botón limpiar filtros */}
+              {(filtroDescripcion || filtroAlmacen !== null || filtroCompras !== null || filtroVentas !== null) && (
+                <Button
+                  label="Limpiar"
+                  icon="pi pi-filter-slash"
+                  onClick={limpiarFiltros}
+                  size="small"
+                  outlined
+                  severity="warning"
+                />
+              )}
+            </div>
+
+            {/* Contador de resultados */}
+            <div style={{ fontSize: "0.9rem", color: "#666", marginTop: 5 }}>
+              Mostrando {tiposFiltrados.length} de {tipos.length} registros
             </div>
           </div>
         }

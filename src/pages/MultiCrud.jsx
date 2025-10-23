@@ -58,7 +58,6 @@ import FormaTransaccion from './FormaTransaccion';
 import ModoDespachoRecepcion from './ModoDespachoRecepcion';
 import DocRequeridaComprasVentas from './DocRequeridaComprasVentas';
 import EntregaARendirPVentas from './EntregaARendirPVentas';
-import DetMovsEntregaRendirPVentas from './DetMovsEntregaRendirPVentas';
 import TipoPersona from './TipoPersona';
 import MotivoAcceso from './MotivoAcceso';
 import TipoAccesoInstalacion from './TipoAccesoInstalacion';
@@ -92,8 +91,6 @@ import Color from "./Color";
 import KardexAlmacen from "./KardexAlmacen";
 import SaldosProductoCliente from "./SaldosProductoCliente";
 import SaldosDetProductoCliente from "./SaldosDetProductoCliente";
-import DetGastosComprasProd from "./DetGastosComprasProd";
-import LiquidacionProcesoComprasProd from "./LiquidacionProcesoComprasProd";
 import TemporadaPesca from "./TemporadaPesca";
 import Embarcacion from "./Embarcacion";
 import DetalleEmbarcacion from "./DetalleEmbarcacion";
@@ -106,10 +103,6 @@ import DetalleDescargaFaena from "./DetalleDescargaFaena";
 import AccionesPreviasFaena from "./AccionesPreviasFaena";
 import DetAccionesPreviasFaena from "./DetAccionesPreviasFaena";
 import DetCotizacionVentas from "./DetCotizacionVentas";
-import DetProductoFinalCotizacionCompras from "./DetProductoFinalCotizacionCompras";
-import EntregaARendirPCompras from "./EntregaARendirPCompras";
-import DetMovsEntregaRendirPCompras from "./DetMovsEntregaRendirPCompras";
-import MovLiquidacionProcesoComprasProd from "./MovLiquidacionProcesoComprasProd";
 import AccesoInstalacion from "./AccesoInstalacion";
 import TipoEquipo from "./TipoEquipo";
 import TipoMovimiento from "./TipoMovimiento"
@@ -122,8 +115,6 @@ import DetalleCalaEspecie from "./DetalleCalaEspecie";
 import DetCalaPescaConsumo from "./DetCalaPescaConsumo";
 import DetDescargaFaenaConsumo from "./DetDescargaFaenaConsumo";
 import DetAccionesPreviasFaenaConsumo from "./DetAccionesPreviasFaenaConsumo";
-import CotizacionCompra from "./CotizacionCompra";
-import DetCotizacionCompras from "./DetCotizacionCompras";
 import RequerimientoCompra from "./RequerimientoCompra";
 import DetalleReqCompra from "./DetalleReqCompra";
 import OrdenCompra from "./OrdenCompra";
@@ -138,7 +129,6 @@ import TiposDocIdentidad from "./TiposDocIdentidad";
 import DetDocsReqCotizaVentas from "./DetDocsReqCotizaVentas";
 import AccesoInstalacionDetalle from "./AccesoInstalacionDetalle";
 import TipoMovimientoAcceso from "./TipoMovimientoAcceso";
-import DetDocsReqCotizaCompras from "./DetDocsReqCotizaCompras";
 import SedesEmpresa from "./SedesEmpresa";
 import TipoAlmacenamiento from "./TipoAlmacenamiento";
 import Marca from "./Marca";
@@ -174,8 +164,6 @@ export default function MultiCrud() {
     detInsumosTareaOT: { label: "Detalle Insumos de Tarea OT", componente: <DetInsumosTareaOT /> },
     preFactura: { label: "Pre-Factura", componente: <PreFactura /> },
     detallePreFactura: { label: "Detalle Pre-Factura", componente: <DetallePreFactura /> },
-    cotizacionCompra: { label: "Cotización Compra", componente: <CotizacionCompra /> },
-    detCotizacionCompras: { label: "Detalle Cotización Compra", componente: <DetCotizacionCompras /> },
     ordenCompra: { label: "Orden Compra", componente: <OrdenCompra /> },
     detalleOrdenCompra: { label: "Detalle Orden Compra", componente: <DetalleOrdenCompra /> },
     requerimientoCompra: { label: "Requerimiento Compra", componente: <RequerimientoCompra /> },
@@ -269,7 +257,6 @@ export default function MultiCrud() {
     cotizacionVentas: { label: "Cotización de Ventas", componente: <CotizacionVentas /> },
     detCotizacionVentas: { label: "Detalle Cotización Ventas", componente: <DetCotizacionVentas /> },
     detDocsReqCotizaVentas: { label: "Documentos Requeridos Cotización Ventas", componente: <DetDocsReqCotizaVentas /> },
-    detDocsReqCotizaCompras: { label: "Documentos Requeridos Cotización Compras", componente: <DetDocsReqCotizaCompras /> },
     tipoProducto: { label: "Tipos de Mercaderia", componente: <TipoProducto /> },
     tipoEstadoProducto: { label: "Estado del Producto", componente: <TipoEstadoProducto /> },
     destinoProducto: { label: "Destinos de Mercaderia", componente: <DestinoProducto /> },
@@ -277,16 +264,9 @@ export default function MultiCrud() {
     modoDespachoRecepcion: { label: "Formas Entrega(Venta)/Recepción(Compra) de Mercaderia", componente: <ModoDespachoRecepcion /> },
     docRequeridaComprasVentas: { label: "Documentación Requerida Compras y Ventas", componente: <DocRequeridaComprasVentas /> },
     entregaARendirPVentas: { label: "Entregas a Rendir Cotización Ventas", componente: <EntregaARendirPVentas /> },
-    detMovsEntregaRendirPVentas: { label: "Movimientos Entregas a Rendir Cotización Ventas", componente: <DetMovsEntregaRendirPVentas /> },
     tipoPersona: { label: "Tipos de Persona", componente: <TipoPersona /> },
     motivoAcceso: { label: "Motivos de Acceso", componente: <MotivoAcceso /> },
     tipoAccesoInstalacion: { label: "Tipos de Acceso Instalación", componente: <TipoAccesoInstalacion /> },
-    detGastosComprasProd: { label: "Detalle Gastos Cotización Compras", componente: <DetGastosComprasProd /> },
-    detProductoFinalCotizacionCompras: { label: "Detalle Productos Finales Cotización Compras", componente: <DetProductoFinalCotizacionCompras /> },
-    entregaARendirPCompras: { label: "Entregas a Rendir Cotización Compras", componente: <EntregaARendirPCompras /> },
-    detMovsEntregaRendirPCompras: { label: "Detalle Movimientos Entregas Rendir Cotización Compras", componente: <DetMovsEntregaRendirPCompras /> },
-    liquidacionProcesoComprasProd: { label: "Liquidación Cotización Compras", componente: <LiquidacionProcesoComprasProd /> },
-    movLiquidacionProcesoComprasProd: { label: "Movimientos Liquidación Cotización Compras", componente: <MovLiquidacionProcesoComprasProd /> },
     temporadaPesca: { label: "Temporadas de Pesca", componente: <TemporadaPesca /> },
     embarcacion: { label: "Embarcaciones", componente: <Embarcacion /> },
     // ...agrega aquí los componentes reales según los vayas creando
@@ -384,31 +364,17 @@ export default function MultiCrud() {
       items: [
         [
           {
-            label: "Cotizaciones",
+            label: "Proceso Compras",
             items: [
-              { label: "Cotización Compra", icon: "pi pi-leaf", command: () => abrirModulo("cotizacionCompra", "Cotización Compra") },
-              { label: "Detalle Cotización", icon: "pi pi-list", command: () => abrirModulo("detCotizacionCompras", "Detalle Cotizacion Compras") },
-              { label: "Documentos Requeridos", icon: "pi pi-file-o", command: () => abrirModulo("detDocsReqCotizaCompras", "Documentos Requeridos Cotización Compras") },
-              { label: "Gastos Cotización", icon: "pi pi-dollar", command: () => abrirModulo("detGastosComprasProd", "Detalle Gastos Cotizacion Compras") }
+              { label: "Requerimiento Compra", icon: "pi pi-leaf", command: () => abrirModulo("requerimientoCompra", "Requerimiento Compra") },
+              { label: "Orden de Compra", icon: "pi pi-list", command: () => abrirModulo("ordenCompra", "Orden de Compra") },
+              { label: "Tipo Producto", icon: "pi pi-list", command: () => abrirModulo("tipoProducto", "Tipo Producto") },
+              { label: "Tipo Estado Producto", icon: "pi pi-list", command: () => abrirModulo("tipoEstadoProducto", "Tipo Estado Producto") },
+              { label: "Destino Producto", icon: "pi pi-list", command: () => abrirModulo("destinoProducto", "Destino Producto") },
+              { label: "Forma de Pago", icon: "pi pi-list", command: () => abrirModulo("formaPago", "Forma de Pago") },
+              { label: "Modo Despacho/Recepción", icon: "pi pi-list", command: () => abrirModulo("modoDespachoRecepcion", "Modo Despacho/Recepción") },
             ]
           },
-          {
-            label: "Órdenes",
-            items: [
-              { label: "Requerimiento Compra", icon: "pi pi-ship", command: () => abrirModulo("requerimientoCompra", "Requerimiento Compra") },
-              { label: "Detalle Requerimiento", icon: "pi pi-ship", command: () => abrirModulo("detalleReqCompra", "Detalle Requerimiento Compra") },
-              { label: "Orden de Compra", icon: "pi pi-archive", command: () => abrirModulo("ordenCompra", "Orden de Compra") },
-              { label: "Detalle Orden", icon: "pi pi-archive", command: () => abrirModulo("detalleOrdenCompra", "Detalle Orden Compra") }
-            ]
-          },
-          {
-            label: "Liquidaciones",
-            items: [
-              { label: "Liquidación Cotización", icon: "pi pi-file-check", command: () => abrirModulo("liquidacionProcesoComprasProd", "Liquidacion Cotización Compras") },
-              { label: "Movimientos Liquidación", icon: "pi pi-exchange", command: () => abrirModulo("movLiquidacionProcesoComprasProd", "Movimientos Liquidación Cotización Compras") },
-              { label: "Entregas a Rendir", icon: "pi pi-send", command: () => abrirModulo("entregaARendirPCompras", "Entregas a Rendir Cotizacion Compras") }
-            ]
-          }
         ]
       ]
     },
