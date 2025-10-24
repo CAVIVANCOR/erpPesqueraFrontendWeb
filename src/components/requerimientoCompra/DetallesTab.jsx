@@ -10,7 +10,7 @@ import {
   getDetallesReqCompra,
   eliminarDetalleReqCompra,
 } from "../../api/detalleReqCompra";
-import { getResponsiveFontSize } from "../../utils/utils";
+import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 
 export default function DetallesTab({
   requerimientoId,
@@ -98,43 +98,6 @@ export default function DetallesTab({
     cargarDetalles();
   };
 
-  // Formatear números con comas para miles y apóstrofe para millones
-  const formatearNumero = (numero) => {
-    const num = Number(numero);
-    if (isNaN(num)) return "";
-    
-    const partes = num.toFixed(2).split(".");
-    const entero = partes[0];
-    const decimal = partes[1];
-    
-    // Formatear parte entera con comas y apóstrofes
-    let enteroFormateado = "";
-    let contador = 0;
-    
-    for (let i = entero.length - 1; i >= 0; i--) {
-      if (contador === 3) {
-        enteroFormateado = "," + enteroFormateado;
-        contador = 0;
-      }
-      if (contador === 6) {
-        enteroFormateado = "'" + enteroFormateado;
-        contador = 0;
-      }
-      enteroFormateado = entero[i] + enteroFormateado;
-      contador++;
-    }
-    
-    // Agregar apóstrofe para millones si es necesario
-    if (enteroFormateado.length > 7) {
-      const partesMiles = enteroFormateado.split(",");
-      if (partesMiles.length > 1) {
-        enteroFormateado = partesMiles[0] + "'" + partesMiles.slice(1).join(",");
-      }
-    }
-    
-    return `${enteroFormateado}.${decimal}`;
-  };
-
   const costoTemplate = (rowData) => {
     return rowData.costoUnitario
       ? `S/ ${formatearNumero(rowData.costoUnitario)}`
@@ -155,6 +118,10 @@ export default function DetallesTab({
 
   const unidadTemplate = (rowData) => {
     return <span style={{ fontWeight: "bold" }}>{rowData.producto?.unidadMedida?.nombre}</span>;
+  };
+
+  const nroItemTemplate = (rowData, options) => {
+    return <span style={{ fontWeight: "bold" }}>{options.rowIndex + 1}</span>;
   };
 
   const accionesTemplate = (rowData) => (
@@ -203,8 +170,8 @@ export default function DetallesTab({
           display: "flex",
           gap: 10,
           flexDirection: window.innerWidth < 768 ? "column" : "row",
-          marginBottom: 15,
-          padding: "15px",
+          marginBottom: 5,
+          padding: "5px",
           backgroundColor: "#f8f9fa",
           borderRadius: "8px",
           border: "2px solid #dee2e6",
@@ -287,7 +254,17 @@ export default function DetallesTab({
           }
         }}
         selectionMode="single"
+        paginator
+        rows={8}
+        rowsPerPageOptions={[8, 16, 24, 50]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} detalles"
       >
+        <Column
+          header="Nro Item"
+          body={nroItemTemplate}
+          style={{ width: "80px", textAlign: "center", fontWeight: "bold", borderRight: "1px solid #dee2e6" }}
+        />
         <Column 
           field="producto.descripcionArmada" 
           header="Producto" 

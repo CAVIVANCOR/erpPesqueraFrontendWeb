@@ -1,26 +1,37 @@
-// src/components/requerimientoCompra/EntregasARendirComprasCard.jsx
-// Card para gestionar entregas a rendir asociadas a un requerimiento de compra
+/**
+ * EntregasARendirComprasCard.jsx
+ *
+ * Card para gestionar la entrega a rendir única por requerimiento de compra.
+ * Muestra el registro único de EntregaARendirPCompras y permite gestionar sus movimientos detallados.
+ * Se habilita solo cuando existe un requerimiento guardado con supervisorCampoId válido.
+ *
+ * @author ERP Megui
+ * @version 2.0.0
+ */
+
 import React, { useState, useEffect, useRef } from "react";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { confirmDialog } from "primereact/confirmdialog";
-import { Dropdown } from "primereact/dropdown";
-import { InputNumber } from "primereact/inputnumber";
 import { Message } from "primereact/message";
 import { Badge } from "primereact/badge";
+import { Panel } from "primereact/panel";
+import { Divider } from "primereact/divider";
+import { InputText } from "primereact/inputtext";
+import { Dropdown } from "primereact/dropdown";
 import DetEntregaRendirCompras from "./DetEntregaRendirCompras";
-import { getResponsiveFontSize } from "../../utils/utils";
+import { formatearNumero } from "../../utils/utils";
 import {
-  getEntregasARendirPCompras,
+  getAllEntregaARendirPCompras,
   crearEntregaARendirPCompras,
   actualizarEntregaARendirPCompras,
   eliminarEntregaARendirPCompras,
 } from "../../api/entregaARendirPCompras";
-import { getDetMovsEntregaRendirPCompras } from "../../api/detMovsEntregaRendirPCompras";
+import {
+  getDetMovsEntregaRendirPCompras,
+} from "../../api/detMovsEntregaRendirPCompras";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 export default function EntregasARendirComprasCard({
   requerimientoCompra,
@@ -33,60 +44,185 @@ export default function EntregasARendirComprasCard({
   puedeEditar = true,
   onCountChange,
 }) {
-  const [entregas, setEntregas] = useState([]);
-  const [movimientos, setMovimientos] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showDialog, setShowDialog] = useState(false);
-  const [showDetalle, setShowDetalle] = useState(false);
-  const [editingEntrega, setEditingEntrega] = useState(null);
-  const [selectedEntrega, setSelectedEntrega] = useState(null);
-  const [formData, setFormData] = useState({
-    respEntregaRendirId: null,
-    centroCostoId: null,
-  });
-
   const toast = useRef(null);
+  const usuario = useAuthStore((state) => state.usuario);
 
+  // Estados para EntregaARendirPCompras (única)
+  const [entregaARendir, setEntregaARendir] = useState(null);
+  const [loadingEntrega, setLoadingEntrega] = useState(false);
+  const [verificandoEntrega, setVerificandoEntrega] = useState(true);
+
+  // Estados para cálculos automáticos
+  const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] = useState(0);
+  const [totalGastosEntregasRendir, setTotalGastosEntregasRendir] = useState(0);
+  const [totalSaldoEntregasRendir, setTotalSaldoEntregasRendir] = useState(0);
+
+  // Estados para DetMovsEntregaRendirPCompras
+  const [movimientos, setMovimientos] = useState([]);
+  const [loadingMovimientos, setLoadingMovimientos] = useState(false);
+
+  // Estados para edición de la entrega
+  const [responsableEditado, setResponsableEditado] = useState(null);
+  const [centroCostoEditado, setCentroCostoEditado] = useState(null);
+  const [hayCambios, setHayCambios] = useState(false);
+
+  // Verificar y cargar entrega a rendir cuando cambie el requerimiento
   useEffect(() => {
     if (requerimientoCompra?.id) {
-      cargarEntregas();
+      verificarYCargarEntrega();
+    } else {
+      setEntregaARendir(null);
+      setVerificandoEntrega(false);
     }
-  }, [requerimientoCompra]);
+  }, [requerimientoCompra?.id]);
 
+  // Cargar movimientos cuando cambie la entrega
+  useEffect(() => {
+    if (entregaARendir?.id) {
+      cargarMovimientos();
+    } else {
+      setMovimientos([]);
+    }
+  }, [entregaARendir?.id]);
+
+  // Notificar cambios en el contador
   useEffect(() => {
     if (onCountChange) {
-      onCountChange(entregas.length);
+      onCountChange(entregaARendir ? 1 : 0);
     }
-  }, [entregas, onCountChange]);
+  }, [entregaARendir, onCountChange]);
 
-  const cargarEntregas = async () => {
-    setLoading(true);
+  /**
+   * Verificar si existe una entrega a rendir para este requerimiento
+   * Si no existe, preguntar si desea crearla
+   */
+  const verificarYCargarEntrega = async () => {
+    setVerificandoEntrega(true);
     try {
-      const data = await getEntregasARendirPCompras();
-      const entregasFiltradas = data.filter(
+      const data = await getAllEntregaARendirPCompras();
+      const entregaExistente = data.find(
         (e) => Number(e.requerimientoCompraId) === Number(requerimientoCompra.id)
       );
-      setEntregas(entregasFiltradas);
+
+      if (entregaExistente) {
+        setEntregaARendir(entregaExistente);
+        setResponsableEditado(Number(entregaExistente.respEntregaRendirId));
+        setCentroCostoEditado(Number(entregaExistente.centroCostoId));
+        setHayCambios(false);
+      } else {
+        // No existe entrega, preguntar si desea crearla
+        preguntarCrearEntrega();
+      }
     } catch (error) {
-      console.error("Error al cargar entregas:", error);
+      console.error("Error al verificar entrega:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudieron cargar las entregas a rendir",
+        detail: "No se pudo verificar la entrega a rendir",
         life: 3000,
       });
     } finally {
-      setLoading(false);
+      setVerificandoEntrega(false);
     }
   };
 
-  const cargarMovimientos = async (entregaId) => {
+  /**
+   * Preguntar al usuario si desea crear una entrega a rendir
+   */
+  const preguntarCrearEntrega = () => {
+    confirmDialog({
+      message: "No existe una entrega a rendir para este requerimiento. ¿Desea crear una?",
+      header: "Crear Entrega a Rendir",
+      icon: "pi pi-question-circle",
+      acceptLabel: "Sí, Crear",
+      rejectLabel: "No",
+      accept: () => crearEntregaAutomatica(),
+      reject: () => {
+        setEntregaARendir(null);
+      },
+    });
+  };
+
+  /**
+   * Crear entrega a rendir automáticamente
+   */
+  const crearEntregaAutomatica = async () => {
+    // Validar que supervisorCampoId sea mayor a cero
+    if (!requerimientoCompra.supervisorCampoId || Number(requerimientoCompra.supervisorCampoId) <= 0) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "El requerimiento debe tener un Supervisor de Campo asignado para crear una entrega a rendir",
+        life: 5000,
+      });
+      return;
+    }
+
+    setLoadingEntrega(true);
+    try {
+      const dataToCreate = {
+        requerimientoCompraId: Number(requerimientoCompra.id),
+        respEntregaRendirId: Number(requerimientoCompra.supervisorCampoId),
+        centroCostoId: 14, // Compras materia prima
+        entregaLiquidada: false,
+        fechaCreacion: new Date().toISOString(),
+        fechaActualizacion: new Date().toISOString(),
+        creadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
+        actualizadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
+      };
+
+      const nuevaEntrega = await crearEntregaARendirPCompras(dataToCreate);
+
+      // Convertir BigInt a Number para evitar problemas de serialización
+      const entregaNormalizada = {
+        ...nuevaEntrega,
+        id: Number(nuevaEntrega.id),
+        requerimientoCompraId: Number(nuevaEntrega.requerimientoCompraId),
+        respEntregaRendirId: Number(nuevaEntrega.respEntregaRendirId),
+        centroCostoId: Number(nuevaEntrega.centroCostoId),
+        creadoPor: nuevaEntrega.creadoPor ? Number(nuevaEntrega.creadoPor) : null,
+        actualizadoPor: nuevaEntrega.actualizadoPor ? Number(nuevaEntrega.actualizadoPor) : null,
+      };
+
+      setEntregaARendir(entregaNormalizada);
+      setResponsableEditado(Number(entregaNormalizada.respEntregaRendirId));
+      setCentroCostoEditado(Number(entregaNormalizada.centroCostoId));
+      setHayCambios(false);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Entrega a rendir creada correctamente",
+        life: 3000,
+      });
+      verificarYCargarEntrega();
+    } catch (error) {
+      console.error("Error al crear entrega automática:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.mensaje || "Error al crear la entrega a rendir",
+        life: 3000,
+      });
+    } finally {
+      setLoadingEntrega(false);
+    }
+  };
+
+  /**
+   * Cargar movimientos de la entrega a rendir
+   */
+  const cargarMovimientos = async () => {
+    if (!entregaARendir?.id) return;
+
+    setLoadingMovimientos(true);
     try {
       const data = await getDetMovsEntregaRendirPCompras();
       const movsFiltrados = data.filter(
-        (m) => Number(m.entregaARendirPComprasId) === Number(entregaId)
+        (m) => Number(m.entregaARendirPComprasId) === Number(entregaARendir.id)
       );
       setMovimientos(movsFiltrados);
+      calcularTotales(movsFiltrados);
     } catch (error) {
       console.error("Error al cargar movimientos:", error);
       toast.current?.show({
@@ -95,93 +231,148 @@ export default function EntregasARendirComprasCard({
         detail: "No se pudieron cargar los movimientos",
         life: 3000,
       });
+    } finally {
+      setLoadingMovimientos(false);
     }
   };
 
-  const handleNuevaEntrega = () => {
-    setEditingEntrega(null);
-    setFormData({
-      respEntregaRendirId: null,
-      centroCostoId: requerimientoCompra.centroCostoId || null,
+  /**
+   * Calcular totales de asignaciones, gastos y saldo
+   */
+  const calcularTotales = (movs) => {
+    let totalAsignaciones = 0;
+    let totalGastos = 0;
+
+    movs.forEach((mov) => {
+      const monto = Number(mov.monto) || 0;
+      if (mov.ingresoEgreso === "INGRESO") {
+        totalAsignaciones += monto;
+      } else if (mov.ingresoEgreso === "EGRESO") {
+        totalGastos += monto;
+      }
     });
-    setShowDialog(true);
+
+    const saldo = totalAsignaciones - totalGastos;
+
+    setTotalAsignacionesEntregasRendir(totalAsignaciones);
+    setTotalGastosEntregasRendir(totalGastos);
+    setTotalSaldoEntregasRendir(saldo);
   };
 
-  const handleEditarEntrega = (entrega) => {
-    setEditingEntrega(entrega);
-    setFormData({
-      respEntregaRendirId: entrega.respEntregaRendirId,
-      centroCostoId: entrega.centroCostoId,
-    });
-    setShowDialog(true);
+  /**
+   * Obtener nombre del responsable
+   */
+  const getNombreResponsable = () => {
+    if (!entregaARendir?.respEntregaRendirId) return "N/A";
+    const resp = personal.find((p) => Number(p.id) === Number(entregaARendir.respEntregaRendirId));
+    return resp?.nombreCompleto || `${resp?.nombres || ""} ${resp?.apellidos || ""}` || "N/A";
   };
 
-  const handleGuardarEntrega = async () => {
-    if (!formData.respEntregaRendirId || !formData.centroCostoId) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "Complete todos los campos requeridos",
-        life: 3000,
-      });
-      return;
-    }
+  /**
+   * Obtener nombre del centro de costo
+   */
+  const getNombreCentroCosto = () => {
+    if (!entregaARendir?.centroCostoId) return "N/A";
+    const centro = centrosCosto.find((c) => Number(c.id) === Number(entregaARendir.centroCostoId));
+    return centro ? `${centro.Codigo} - ${centro.Nombre}` : "N/A";
+  };
 
+  /**
+   * Manejar cambios en el responsable
+   */
+  const handleResponsableChange = (value) => {
+    setResponsableEditado(value);
+    setHayCambios(
+      Number(value) !== Number(entregaARendir.respEntregaRendirId) ||
+      Number(centroCostoEditado) !== Number(entregaARendir.centroCostoId)
+    );
+  };
+
+  /**
+   * Manejar cambios en el centro de costo
+   */
+  const handleCentroCostoChange = (value) => {
+    setCentroCostoEditado(value);
+    setHayCambios(
+      Number(responsableEditado) !== Number(entregaARendir.respEntregaRendirId) ||
+      Number(value) !== Number(entregaARendir.centroCostoId)
+    );
+  };
+
+  /**
+   * Guardar cambios en la entrega a rendir
+   */
+  const handleGuardarCambios = async () => {
+    setLoadingEntrega(true);
     try {
-      const dataToSave = {
-        requerimientoCompraId: Number(requerimientoCompra.id),
-        respEntregaRendirId: Number(formData.respEntregaRendirId),
-        centroCostoId: Number(formData.centroCostoId),
-        entregaLiquidada: false,
+      const dataToUpdate = {
+        requerimientoCompraId: Number(entregaARendir.requerimientoCompraId),
+        respEntregaRendirId: Number(responsableEditado),
+        centroCostoId: Number(centroCostoEditado),
+        entregaLiquidada: entregaARendir.entregaLiquidada,
+        actualizadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
       };
 
-      if (editingEntrega) {
-        await actualizarEntregaARendirPCompras(editingEntrega.id, dataToSave);
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Entrega actualizada correctamente",
-          life: 3000,
-        });
-      } else {
-        await crearEntregaARendirPCompras(dataToSave);
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Entrega creada correctamente",
-          life: 3000,
-        });
-      }
+      const entregaActualizada = await actualizarEntregaARendirPCompras(
+        entregaARendir.id,
+        dataToUpdate
+      );
 
-      setShowDialog(false);
-      cargarEntregas();
+      // Normalizar BigInt
+      const entregaNormalizada = {
+        ...entregaActualizada,
+        id: Number(entregaActualizada.id),
+        requerimientoCompraId: Number(entregaActualizada.requerimientoCompraId),
+        respEntregaRendirId: Number(entregaActualizada.respEntregaRendirId),
+        centroCostoId: Number(entregaActualizada.centroCostoId),
+        creadoPor: entregaActualizada.creadoPor ? Number(entregaActualizada.creadoPor) : null,
+        actualizadoPor: entregaActualizada.actualizadoPor ? Number(entregaActualizada.actualizadoPor) : null,
+      };
+
+      setEntregaARendir(entregaNormalizada);
+      setResponsableEditado(Number(entregaNormalizada.respEntregaRendirId));
+      setCentroCostoEditado(Number(entregaNormalizada.centroCostoId));
+      setHayCambios(false);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Entrega a rendir actualizada correctamente",
+        life: 3000,
+      });
     } catch (error) {
-      console.error("Error al guardar entrega:", error);
+      console.error("Error al actualizar entrega:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.mensaje || "Error al guardar la entrega",
+        detail: error.response?.data?.mensaje || "Error al actualizar la entrega",
         life: 3000,
       });
+    } finally {
+      setLoadingEntrega(false);
     }
   };
 
-  const handleEliminarEntrega = (entrega) => {
+  /**
+   * Manejar eliminación de la entrega a rendir
+   */
+  const handleEliminarEntrega = () => {
     confirmDialog({
-      message: "¿Está seguro de eliminar esta entrega a rendir?",
+      message: "¿Está seguro de eliminar esta entrega a rendir? Se eliminarán todos los movimientos asociados.",
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-danger",
       accept: async () => {
         try {
-          await eliminarEntregaARendirPCompras(entrega.id);
+          await eliminarEntregaARendirPCompras(entregaARendir.id);
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
-            detail: "Entrega eliminada correctamente",
+            detail: "Entrega a rendir eliminada correctamente",
             life: 3000,
           });
-          cargarEntregas();
+          setEntregaARendir(null);
+          setMovimientos([]);
         } catch (error) {
           console.error("Error al eliminar entrega:", error);
           toast.current?.show({
@@ -195,208 +386,250 @@ export default function EntregasARendirComprasCard({
     });
   };
 
-  const handleVerDetalle = async (entrega) => {
-    setSelectedEntrega(entrega);
-    await cargarMovimientos(entrega.id);
-    setShowDetalle(true);
-  };
-
-  // Templates
-  const responsableTemplate = (rowData) => {
-    const resp = personal.find((p) => Number(p.id) === Number(rowData.respEntregaRendirId));
-    return resp?.nombreCompleto || `${resp?.nombres || ""} ${resp?.apellidos || ""}` || "N/A";
-  };
-
-  const centroCostoTemplate = (rowData) => {
-    const centro = centrosCosto.find((c) => Number(c.id) === Number(rowData.centroCostoId));
-    return centro ? `${centro.Codigo} - ${centro.Nombre}` : "N/A";
-  };
-
-  const estadoTemplate = (rowData) => {
+  // Renderizado
+  if (!requerimientoCompra?.id) {
     return (
-      <Badge
-        value={rowData.entregaLiquidada ? "LIQUIDADA" : "ACTIVA"}
-        severity={rowData.entregaLiquidada ? "success" : "warning"}
-      />
+      <Card className="mt-3">
+        <Message
+          severity="info"
+          text="Guarde el requerimiento primero para poder gestionar entregas a rendir"
+        />
+      </Card>
     );
-  };
+  }
 
-  const fechaLiquidacionTemplate = (rowData) => {
-    return rowData.fechaLiquidacion
-      ? new Date(rowData.fechaLiquidacion).toLocaleDateString("es-PE")
-      : "N/A";
-  };
-
-  const accionesTemplate = (rowData) => {
+  if (verificandoEntrega) {
     return (
-      <div className="flex gap-2">
-        <Button
-          icon="pi pi-eye"
-          className="p-button-text p-button-sm"
-          onClick={() => handleVerDetalle(rowData)}
-          tooltip="Ver Detalle"
-        />
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-text p-button-sm"
-          onClick={() => handleEditarEntrega(rowData)}
-          disabled={!puedeEditar || rowData.entregaLiquidada}
-          tooltip="Editar"
-        />
-        <Button
-          icon="pi pi-trash"
-          className="p-button-text p-button-danger p-button-sm"
-          onClick={() => handleEliminarEntrega(rowData)}
-          disabled={!puedeEditar || rowData.entregaLiquidada}
-          tooltip="Eliminar"
-        />
-      </div>
+      <Card className="mt-3">
+        <Message severity="info" text="Verificando entrega a rendir..." />
+      </Card>
     );
-  };
+  }
+
+  if (!entregaARendir) {
+    return (
+      <Card className="mt-3">
+        <Message
+          severity="warn"
+          text="No existe una entrega a rendir para este requerimiento"
+        />
+      </Card>
+    );
+  }
 
   return (
     <>
-      <Card
-        title={
-          <div className="flex justify-content-between align-items-center">
-            <span>Entregas a Rendir</span>
-            <Button
-              label="Nueva Entrega"
-              icon="pi pi-plus"
-              className="p-button-success p-button-sm"
-              onClick={handleNuevaEntrega}
-              disabled={!puedeEditar || !requerimientoCompra?.id}
-            />
+      <Panel
+        header={
+          <div className="flex justify-content-between align-items-center w-full">
+            <span>
+              <i className="pi pi-money-bill mr-2" />
+              Entrega a Rendir - Requerimiento #{requerimientoCompra.id}
+            </span>
           </div>
         }
         className="mt-3"
+        toggleable
       >
-        {!requerimientoCompra?.id ? (
-          <Message
-            severity="info"
-            text="Guarde el requerimiento primero para poder crear entregas a rendir"
-          />
-        ) : (
-          <DataTable
-            value={entregas}
-            loading={loading}
-            emptyMessage="No hay entregas a rendir registradas"
-            className="p-datatable-sm"
-            style={{ fontSize: getResponsiveFontSize() }}
-          >
-            <Column field="id" header="ID" style={{ width: "80px" }} />
-            <Column
-              field="respEntregaRendirId"
-              header="Responsable"
-              body={responsableTemplate}
+        {/* Información de la entrega */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "end",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Responsable
+            </label>
+            <Dropdown
+              value={responsableEditado}
+              options={personal.map((p) => ({
+                ...p,
+                label: p.nombreCompleto || `${p.nombres || ""} ${p.apellidos || ""}`,
+                value: Number(p.id),
+              }))}
+              optionLabel="label"
+              optionValue="value"
+              onChange={(e) => handleResponsableChange(e.value)}
+              placeholder="Seleccione un responsable"
+              filter
+              showClear
+              className="w-full"
+              style={{ fontWeight: "bold" }}
+              disabled={!puedeEditar || entregaARendir.entregaLiquidada}
             />
-            <Column
-              field="centroCostoId"
-              header="Centro de Costo"
-              body={centroCostoTemplate}
+          </div>
+          <div style={{ flex: 0.5 }}>
+            <label className="block text-900 font-medium mb-2">
+              Estado
+            </label>
+            <Button
+              label={
+                entregaARendir.entregaLiquidada
+                  ? "LIQUIDADA"
+                  : "PENDIENTE"
+              }
+              severity={
+                entregaARendir.entregaLiquidada ? "success" : "danger"
+              }
+              className="w-full"
+              disabled
+              style={{ fontWeight: "bold" }}
             />
-            <Column
-              field="entregaLiquidada"
-              header="Estado"
-              body={estadoTemplate}
-              style={{ width: "120px" }}
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Fecha Liquidación
+            </label>
+            <InputText
+              value={
+                entregaARendir.fechaLiquidacion
+                  ? new Date(
+                      entregaARendir.fechaLiquidacion
+                    ).toLocaleDateString("es-PE")
+                  : "N/A"
+              }
+              readOnly
+              className="w-full"
+              style={{ fontWeight: "bold" }}
             />
-            <Column
-              field="fechaLiquidacion"
-              header="Fecha Liquidación"
-              body={fechaLiquidacionTemplate}
+          </div>
+          <div style={{ flex: 2 }}>
+            <label className="block text-900 font-medium mb-2">
+              Centro de Costo
+            </label>
+            <Dropdown
+              value={centroCostoEditado}
+              options={centrosCosto.map((c) => ({
+                ...c,
+                label: `${c.Codigo} - ${c.Nombre}`,
+                value: Number(c.id),
+              }))}
+              optionLabel="label"
+              optionValue="value"
+              onChange={(e) => handleCentroCostoChange(e.value)}
+              placeholder="Seleccione un centro de costo"
+              filter
+              showClear
+              className="w-full"
+              style={{ fontWeight: "bold" }}
+              disabled={!puedeEditar || entregaARendir.entregaLiquidada}
             />
-            <Column
-              header="Acciones"
-              body={accionesTemplate}
-              style={{ width: "150px", textAlign: "center" }}
-            />
-          </DataTable>
-        )}
-      </Card>
-
-      {/* Dialog para crear/editar entrega */}
-      <Dialog
-        visible={showDialog}
-        style={{ width: "500px" }}
-        header={editingEntrega ? "Editar Entrega a Rendir" : "Nueva Entrega a Rendir"}
-        modal
-        className="p-fluid"
-        onHide={() => setShowDialog(false)}
-      >
-        <div className="field">
-          <label htmlFor="responsable">Responsable *</label>
-          <Dropdown
-            id="responsable"
-            value={formData.respEntregaRendirId}
-            options={personal}
-            optionLabel={(option) =>
-              option.nombreCompleto || `${option.nombres} ${option.apellidos}`
-            }
-            optionValue="id"
-            placeholder="Seleccione un responsable"
-            onChange={(e) =>
-              setFormData({ ...formData, respEntregaRendirId: e.value })
-            }
-            filter
-            showClear
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="centroCosto">Centro de Costo *</label>
-          <Dropdown
-            id="centroCosto"
-            value={formData.centroCostoId}
-            options={centrosCosto}
-            optionLabel={(option) => `${option.Codigo} - ${option.Nombre}`}
-            optionValue="id"
-            placeholder="Seleccione un centro de costo"
-            onChange={(e) => setFormData({ ...formData, centroCostoId: e.value })}
-            filter
-            showClear
-          />
-        </div>
-
-        <div className="flex justify-content-end gap-2 mt-3">
+          </div>
+                  {/* Botón de acción para actualizar */}
+          <div style={{ flex: 0.5 }}>
           <Button
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-text"
-            onClick={() => setShowDialog(false)}
-          />
-          <Button
-            label="Guardar"
+            label="Actualizar"
             icon="pi pi-check"
-            onClick={handleGuardarEntrega}
+            className="p-button-success"
+            onClick={handleGuardarCambios}
+            loading={loadingEntrega}
+            disabled={entregaARendir.entregaLiquidada}
           />
         </div>
-      </Dialog>
+        </div>
 
-      {/* Dialog para ver detalle de movimientos */}
-      <Dialog
-        visible={showDetalle}
-        style={{ width: "95vw", maxWidth: "1400px" }}
-        header="Detalle de Movimientos - Entrega a Rendir"
-        modal
-        maximizable
-        onHide={() => setShowDetalle(false)}
-      >
-        {selectedEntrega && (
-          <DetEntregaRendirCompras
-            entregaARendir={selectedEntrega}
-            movimientos={movimientos}
-            personal={personal}
-            centrosCosto={centrosCosto}
-            tiposMovimiento={tiposMovimiento}
-            entidadesComerciales={entidadesComerciales}
-            monedas={monedas}
-            tiposDocumento={tiposDocumento}
-            requerimientoCompraAprobado={true}
-            onDataChange={() => cargarMovimientos(selectedEntrega.id)}
-          />
-        )}
-      </Dialog>
+
+
+        <Divider />
+
+        {/* Totales con fondo verde */}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+            padding: 15,
+            backgroundColor: "#d4edda",
+            borderRadius: 8,
+            border: "1px solid #c3e6cb",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Total Asignaciones
+            </label>
+            <InputText
+              value={new Intl.NumberFormat("es-PE", {
+                style: "currency",
+                currency: "PEN",
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(totalAsignacionesEntregasRendir)}
+              readOnly
+              className="w-full"
+              style={{
+                fontWeight: "bold",
+                backgroundColor: "#d4edda",
+                border: "1px solid #28a745",
+                color: "#155724",
+              }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Total Gastos
+            </label>
+            <InputText
+              value={new Intl.NumberFormat("es-PE", {
+                style: "currency",
+                currency: "PEN",
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(totalGastosEntregasRendir)}
+              readOnly
+              className="w-full"
+              style={{
+                fontWeight: "bold",
+                backgroundColor: "#d4edda",
+                border: "1px solid #28a745",
+                color: "#155724",
+              }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Saldo Total
+            </label>
+            <InputText
+              value={new Intl.NumberFormat("es-PE", {
+                style: "currency",
+                currency: "PEN",
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(totalSaldoEntregasRendir)}
+              readOnly
+              className="w-full"
+              style={{
+                fontWeight: "bold",
+                backgroundColor: "#d4edda",
+                border: "1px solid #28a745",
+                color: totalSaldoEntregasRendir >= 0 ? "#155724" : "#721c24",
+              }}
+            />
+          </div>
+        </div>
+
+        <Divider />
+
+        {/* Componente de detalle de movimientos */}
+        <DetEntregaRendirCompras
+          entregaARendir={entregaARendir}
+          movimientos={movimientos}
+          personal={personal}
+          centrosCosto={centrosCosto}
+          tiposMovimiento={tiposMovimiento}
+          entidadesComerciales={entidadesComerciales}
+          monedas={monedas}
+          tiposDocumento={tiposDocumento}
+          requerimientoCompraAprobado={true}
+          onDataChange={cargarMovimientos}
+        />
+      </Panel>
 
       <Toast ref={toast} />
     </>

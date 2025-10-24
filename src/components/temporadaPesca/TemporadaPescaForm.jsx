@@ -58,6 +58,7 @@ const TemporadaPescaForm = ({
   onSave,
   editingItem,
   empresas = [],
+  tiposDocumento = [],
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
 }) => {
   // Estados principales
@@ -758,6 +759,7 @@ const TemporadaPescaForm = ({
             personal={personal}
             centrosCosto={centrosCosto}
             tiposMovimiento={tiposMovimiento}
+            tiposDocumento={tiposDocumento}
             onDataChange={onTemporadaDataChange}
           />
         )}

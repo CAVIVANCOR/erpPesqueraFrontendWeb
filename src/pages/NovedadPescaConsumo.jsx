@@ -24,6 +24,7 @@ import {
 } from "../api/novedadPescaConsumo";
 import { getEmpresas } from "../api/empresa";
 import { getEstadosMultiFuncionParaNovedadPescaConsumo } from "../api/estadoMultiFuncion";
+import { getTiposDocumento } from "../api/tipoDocumento";
 import NovedadPescaConsumoForm from "../components/novedadPescaConsumo/NovedadPescaConsumoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -44,6 +45,7 @@ const NovedadPescaConsumo = () => {
   // Estados para combos de filtro
   const [empresas, setEmpresas] = useState([]);
   const [estadosNovedad, setEstadosNovedad] = useState([]);
+  const [tiposDocumento, setTiposDocumento] = useState([]);
   const [filtroEmpresa, setFiltroEmpresa] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState(null);
 
@@ -64,9 +66,10 @@ const NovedadPescaConsumo = () => {
    */
   const cargarCombos = async () => {
     try {
-      const [empresasData, estadosData] = await Promise.all([
+      const [empresasData, estadosData, tiposDocumentoData] = await Promise.all([
         getEmpresas(),
         getEstadosMultiFuncionParaNovedadPescaConsumo(),
+        getTiposDocumento(),
       ]);
 
       if (empresasData && Array.isArray(empresasData)) {
@@ -75,6 +78,12 @@ const NovedadPescaConsumo = () => {
 
       if (estadosData && Array.isArray(estadosData)) {
         setEstadosNovedad(estadosData.map((e) => ({ ...e, id: Number(e.id) })));
+      }
+
+      if (tiposDocumentoData && Array.isArray(tiposDocumentoData)) {
+        setTiposDocumento(
+          tiposDocumentoData.map((td) => ({ ...td, id: Number(td.id) }))
+        );
       }
     } catch (error) {
       console.error("Error cargando combos:", error);
@@ -767,6 +776,7 @@ const NovedadPescaConsumo = () => {
         onSave={saveItem}
         editingItem={editingItem}
         empresas={empresas}
+        tiposDocumento={tiposDocumento}
         onNovedadDataChange={actualizarEditingItem}
       />
     </div>

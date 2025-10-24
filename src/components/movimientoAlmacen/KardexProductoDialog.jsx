@@ -139,9 +139,9 @@ export default function KardexProductoDialog({
     return "vigente";
   };
 
-  // Filtrar kardex según los filtros aplicados
-  const kardexFiltrado = useMemo(() => {
-    let resultado = [...kardex];
+  // Función auxiliar para aplicar filtros
+  const aplicarFiltros = (datos) => {
+    let resultado = [...datos];
 
     // Filtro por fecha de documento
     if (filtroFechaDesde) {
@@ -185,6 +185,120 @@ export default function KardexProductoDialog({
       );
     }
 
+    return resultado;
+  };
+
+  // KARDEX VALORIZADO: Ordenamiento simple (fecha, tipo, ID)
+  const kardexValorizado = useMemo(() => {
+    let resultado = aplicarFiltros(kardex);
+
+    // Ordenamiento simple para kardex valorizado
+    resultado.sort((a, b) => {
+      // 1. Ordenar por fecha
+      const fechaA = new Date(a.fechaMovimientoAlmacen);
+      const fechaB = new Date(b.fechaMovimientoAlmacen);
+      if (fechaA.getTime() !== fechaB.getTime()) {
+        return fechaA - fechaB;
+      }
+      
+      // 2. Ingresos primero (true antes que false)
+      if (a.esIngresoEgreso !== b.esIngresoEgreso) {
+        return b.esIngresoEgreso - a.esIngresoEgreso;
+      }
+      
+      // 3. Por ID ascendente
+      return Number(a.id) - Number(b.id);
+    });
+    
+    return resultado;
+  }, [
+    kardex,
+    filtroFechaDesde,
+    filtroFechaHasta,
+    filtroVencimiento,
+    filtroEstadosMercaderia,
+    filtroEstadosCalidad,
+  ]);
+
+  // KARDEX POR VARIABLES: Ordenamiento completo (fecha, tipo, variables, ID)
+  const kardexPorVariables = useMemo(() => {
+    let resultado = aplicarFiltros(kardex);
+
+    // Ordenamiento completo con variables de trazabilidad
+    resultado.sort((a, b) => {
+      // 1. Ordenar por fecha
+      const fechaA = new Date(a.fechaMovimientoAlmacen);
+      const fechaB = new Date(b.fechaMovimientoAlmacen);
+      if (fechaA.getTime() !== fechaB.getTime()) {
+        return fechaA - fechaB;
+      }
+      
+      // 2. Ingresos primero
+      if (a.esIngresoEgreso !== b.esIngresoEgreso) {
+        return b.esIngresoEgreso - a.esIngresoEgreso;
+      }
+      
+      // 3. Variables de trazabilidad
+      // 3.1 Lote
+      const loteA = (a.lote || "").toLowerCase();
+      const loteB = (b.lote || "").toLowerCase();
+      if (loteA !== loteB) {
+        return loteA.localeCompare(loteB);
+      }
+      
+      // 3.2 Fecha Ingreso
+      const fechaIngA = a.fechaIngreso ? new Date(a.fechaIngreso).getTime() : 0;
+      const fechaIngB = b.fechaIngreso ? new Date(b.fechaIngreso).getTime() : 0;
+      if (fechaIngA !== fechaIngB) {
+        return fechaIngA - fechaIngB;
+      }
+      
+      // 3.3 Fecha Producción
+      const fechaProdA = a.fechaProduccion ? new Date(a.fechaProduccion).getTime() : 0;
+      const fechaProdB = b.fechaProduccion ? new Date(b.fechaProduccion).getTime() : 0;
+      if (fechaProdA !== fechaProdB) {
+        return fechaProdA - fechaProdB;
+      }
+      
+      // 3.4 Fecha Vencimiento
+      const fechaVencA = a.fechaVencimiento ? new Date(a.fechaVencimiento).getTime() : 0;
+      const fechaVencB = b.fechaVencimiento ? new Date(b.fechaVencimiento).getTime() : 0;
+      if (fechaVencA !== fechaVencB) {
+        return fechaVencA - fechaVencB;
+      }
+      
+      // 3.5 Estado Mercadería
+      const estadoA = Number(a.estadoId || 0);
+      const estadoB = Number(b.estadoId || 0);
+      if (estadoA !== estadoB) {
+        return estadoA - estadoB;
+      }
+      
+      // 3.6 Estado Calidad
+      const calidadA = Number(a.estadoCalidadId || 0);
+      const calidadB = Number(b.estadoCalidadId || 0);
+      if (calidadA !== calidadB) {
+        return calidadA - calidadB;
+      }
+      
+      // 3.7 Contenedor
+      const contA = (a.numContenedor || "").toLowerCase();
+      const contB = (b.numContenedor || "").toLowerCase();
+      if (contA !== contB) {
+        return contA.localeCompare(contB);
+      }
+      
+      // 3.8 Serie
+      const serieA = (a.nroSerie || "").toLowerCase();
+      const serieB = (b.nroSerie || "").toLowerCase();
+      if (serieA !== serieB) {
+        return serieA.localeCompare(serieB);
+      }
+      
+      // 4. Por ID ascendente
+      return Number(a.id) - Number(b.id);
+    });
+    
     return resultado;
   }, [
     kardex,
@@ -395,7 +509,7 @@ export default function KardexProductoDialog({
                 color: "#6c757d",
               }}
             >
-              Mostrando <strong>{kardexFiltrado.length}</strong> de{" "}
+              Mostrando <strong>{kardexValorizado.length}</strong> de{" "}
               <strong>{kardex.length}</strong> registros
             </div>
           </div>
@@ -404,7 +518,7 @@ export default function KardexProductoDialog({
             {/* VISTA 1: KARDEX VALORIZADO */}
             <TabPanel header="Kardex Valorizado">
               <DataTable
-                value={kardexFiltrado}
+                value={kardexValorizado}
                 emptyMessage="No hay movimientos de kardex para este producto"
                 size="small"
                 stripedRows
@@ -589,7 +703,7 @@ export default function KardexProductoDialog({
             {/* VISTA 2: KARDEX POR VARIABLES DE STOCK */}
             <TabPanel header="Kardex por Variables de Stock">
               <DataTable
-                value={kardexFiltrado}
+                value={kardexPorVariables}
                 emptyMessage="No hay movimientos de kardex para este producto"
                 stripedRows
                 showGridlines

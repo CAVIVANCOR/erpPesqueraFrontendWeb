@@ -15,6 +15,47 @@ export const toUpperCaseSafe = (value) => {
 };
 
 /**
+ * Función para formatear números con comas para miles y apóstrofes para millones
+ * @param {number|string} numero - Número a formatear
+ * @returns {string} Número formateado con 2 decimales, comas para miles y apóstrofes para millones
+ */
+export const formatearNumero = (numero) => {
+    const num = Number(numero);
+    if (isNaN(num)) return "";
+    
+    const partes = num.toFixed(2).split(".");
+    const entero = partes[0];
+    const decimal = partes[1];
+    
+    // Formatear parte entera con comas y apóstrofes
+    let enteroFormateado = "";
+    let contador = 0;
+    
+    for (let i = entero.length - 1; i >= 0; i--) {
+        if (contador === 3) {
+            enteroFormateado = "," + enteroFormateado;
+            contador = 0;
+        }
+        if (contador === 6) {
+            enteroFormateado = "'" + enteroFormateado;
+            contador = 0;
+        }
+        enteroFormateado = entero[i] + enteroFormateado;
+        contador++;
+    }
+    
+    // Agregar apóstrofe para millones si es necesario
+    if (enteroFormateado.length > 7) {
+        const partesMiles = enteroFormateado.split(",");
+        if (partesMiles.length > 1) {
+            enteroFormateado = partesMiles[0] + "'" + partesMiles.slice(1).join(",");
+        }
+    }
+    
+    return `${enteroFormateado}.${decimal}`;
+};
+
+/**
  * Función para formatear fechas y horas de forma consistente en todo el ERP
  * @param {Date|string|null} fechaHora - Fecha a formatear (Date, string ISO, o null)
  * @param {string} mensajePorDefecto - Mensaje a mostrar si no hay fecha (opcional)

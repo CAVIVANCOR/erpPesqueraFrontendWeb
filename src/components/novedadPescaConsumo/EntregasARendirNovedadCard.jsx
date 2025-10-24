@@ -37,6 +37,7 @@ const EntregasARendirNovedadCard = ({
   personal = [],
   centrosCosto = [],
   tiposMovimiento = [],
+  tiposDocumento = [],
   onDataChange,
 }) => {
   const toast = useRef(null);
@@ -400,6 +401,7 @@ const EntregasARendirNovedadCard = ({
           tiposMovimiento={tiposMovimiento}
           entidadesComerciales={entidadesComerciales}
           monedas={monedas}
+          tiposDocumento={tiposDocumento}
           novedadPescaConsumoIniciada={novedadPescaConsumoIniciada}
           loading={loadingMovimientos}
           selectedMovimientos={selectedMovimientos}

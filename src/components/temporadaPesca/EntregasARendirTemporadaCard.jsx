@@ -46,6 +46,7 @@ const EntregasARendirTemporadaCard = ({
   personal = [],
   centrosCosto = [],
   tiposMovimiento = [],
+  tiposDocumento = [],
   onDataChange,
 }) => {
   const toast = useRef(null);
@@ -469,6 +470,7 @@ const EntregasARendirTemporadaCard = ({
           tiposMovimiento={tiposMovimiento}
           entidadesComerciales={entidadesComerciales} // Nueva prop
           monedas={monedas} // ← AGREGAR ESTA LÍNEA
+          tiposDocumento={tiposDocumento}
           temporadaPescaIniciada={temporadaPescaIniciada}
           loading={loadingMovimientos}
           selectedMovimientos={selectedMovimientos}

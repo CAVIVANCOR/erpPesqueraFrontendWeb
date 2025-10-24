@@ -28,6 +28,7 @@ export default function DetEntregaRendirPescaIndustrial({
   tiposMovimiento = [],
   entidadesComerciales = [], // Nueva prop
   monedas = [], // ← AGREGAR ESTA LÍNEA
+  tiposDocumento = [],
 
   // Props de estado
   temporadaPescaIniciada = false,
@@ -599,6 +600,7 @@ export default function DetEntregaRendirPescaIndustrial({
           tiposMovimiento={tiposMovimiento}
           entidadesComerciales={entidadesComerciales} // Nueva prop
           monedas={monedas} // ← AGREGAR ESTA LÍNEA
+          tiposDocumento={tiposDocumento}
           onGuardadoExitoso={handleGuardarMovimiento}
           onCancelar={() => {
             setShowMovimientoForm(false);

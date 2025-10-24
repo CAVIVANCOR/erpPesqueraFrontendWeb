@@ -26,7 +26,8 @@ export default function DetEntregaRendirNovedadConsumo({
   centrosCosto = [],
   tiposMovimiento = [],
   entidadesComerciales = [],
-  monedas = [], // ← AGREGAR ESTA LÍNEA
+  monedas = [],
+  tiposDocumento = [],
 
   // Props de estado
   novedadPescaConsumoIniciada = false,
@@ -611,6 +612,7 @@ export default function DetEntregaRendirNovedadConsumo({
           tiposMovimiento={tiposMovimiento}
           entidadesComerciales={entidadesComerciales}
           monedas={monedas}
+          tiposDocumento={tiposDocumento}
           onGuardadoExitoso={handleGuardarMovimiento}
           onCancelar={() => {
             setShowMovimientoForm(false);

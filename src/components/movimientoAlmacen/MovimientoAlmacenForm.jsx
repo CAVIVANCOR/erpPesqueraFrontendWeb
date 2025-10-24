@@ -19,7 +19,7 @@ import ProcessProgressDialog from "../../shared/ProcessProgressDialog";
 import DetalleMovimientoList from "./DetalleMovimientoList";
 import DetalleMovimientoForm from "./DetalleMovimientoForm";
 import KardexProductoDialog from "./KardexProductoDialog";
-import { generarPDFMovimientoAlmacen, generarPDFMovimientoAlmacenConCostos } from "./MovimientoAlmacenPDF";
+import { generarPDFMovimientoAlmacen } from "./MovimientoAlmacenPDF";
 import { getSeriesDoc, getMovimientoAlmacenPorId } from "../../api/movimientoAlmacen";
 import { getAlmacenById } from "../../api/almacen";
 import { getDireccionesEntidad } from "../../api/direccionEntidad";
@@ -1858,15 +1858,31 @@ export default function MovimientoAlmacenForm({
                     life: 2000,
                   });
 
+                  // Recargar movimiento completo desde el backend para obtener todas las relaciones
+                  const movimientoCompleto = await getMovimientoAlmacenPorId(defaultValues.id);
+                  
+                  // Agregar personal responsable completo desde personalOptions
+                  if (movimientoCompleto.personalRespAlmacen && personalOptions.length > 0) {
+                    const personalId = typeof movimientoCompleto.personalRespAlmacen === 'string'
+                      ? Number(movimientoCompleto.personalRespAlmacen)
+                      : Number(movimientoCompleto.personalRespAlmacen.id || movimientoCompleto.personalRespAlmacen);
+                    
+                    const personalEncontrado = personalOptions.find(p => Number(p.id) === personalId);
+                    if (personalEncontrado) {
+                      movimientoCompleto.personalRespAlmacen = personalEncontrado;
+                    }
+                  }
+                  
                   // Obtener empresa completa
                   const empresaSeleccionada = empresas.find(
                     (e) => Number(e.id) === Number(empresaId)
                   );
 
-                  const resultado = await generarPDFMovimientoAlmacenConCostos(
-                    defaultValues,
-                    detalles,
-                    empresaSeleccionada || {}
+                  const resultado = await generarPDFMovimientoAlmacen(
+                    movimientoCompleto,
+                    movimientoCompleto.detalles || detalles,
+                    empresaSeleccionada || {},
+                    true // incluirCostos
                   );
 
                   if (resultado.success) {

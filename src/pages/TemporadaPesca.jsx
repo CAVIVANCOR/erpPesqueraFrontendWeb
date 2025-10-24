@@ -39,6 +39,7 @@ import {
 } from "../api/temporadaPesca";
 import { getEmpresas } from "../api/empresa";
 import { getEstadosMultiFuncionParaTemporadaPesca } from "../api/estadoMultiFuncion";
+import { getTiposDocumento } from "../api/tipoDocumento";
 import TemporadaPescaForm from "../components/temporadaPesca/TemporadaPescaForm";
 import { getResponsiveFontSize } from "../utils/utils";
 import { abrirPdfEnNuevaPestana } from "../utils/pdfUtils";
@@ -63,6 +64,7 @@ const TemporadaPesca = () => {
   // Estados para combos de filtro
   const [empresas, setEmpresas] = useState([]);
   const [estadosTemporada, setEstadosTemporada] = useState([]);
+  const [tiposDocumento, setTiposDocumento] = useState([]);
   const [filtroEmpresa, setFiltroEmpresa] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState(null);
 
@@ -114,9 +116,10 @@ const TemporadaPesca = () => {
    */
   const cargarCombos = async () => {
     try {
-      const [empresasData, estadosData] = await Promise.all([
+      const [empresasData, estadosData, tiposDocumentoData] = await Promise.all([
         getEmpresas(),
         getEstadosMultiFuncionParaTemporadaPesca(),
+        getTiposDocumento(),
       ]);
 
       if (empresasData && Array.isArray(empresasData)) {
@@ -126,6 +129,12 @@ const TemporadaPesca = () => {
       if (estadosData && Array.isArray(estadosData)) {
         setEstadosTemporada(
           estadosData.map((e) => ({ ...e, id: Number(e.id) }))
+        );
+      }
+
+      if (tiposDocumentoData && Array.isArray(tiposDocumentoData)) {
+        setTiposDocumento(
+          tiposDocumentoData.map((td) => ({ ...td, id: Number(td.id) }))
         );
       }
     } catch (error) {
@@ -816,6 +825,7 @@ const TemporadaPesca = () => {
         onSave={saveItem}
         editingItem={editingItem}
         empresas={empresas}
+        tiposDocumento={tiposDocumento}
         onTemporadaDataChange={actualizarEditingItem}
       />
     </div>

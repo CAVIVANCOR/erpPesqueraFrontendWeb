@@ -56,6 +56,7 @@ const NovedadPescaConsumoForm = ({
   onSave,
   editingItem,
   empresas = [],
+  tiposDocumento = [],
   onNovedadDataChange, // Callback para notificar cambios en datos de novedad
 }) => {
   // Estados principales
@@ -676,6 +677,7 @@ const handleFormSubmit = async (data) => {
             personal={personal}
             centrosCosto={centrosCosto}
             tiposMovimiento={tiposMovimiento}
+            tiposDocumento={tiposDocumento}
             onDataChange={onNovedadDataChange}
           />
         )}

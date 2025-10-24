@@ -1,74 +1,148 @@
-// src/components/requerimientoCompra/PdfDetMovEntregaRendirComprasCard.jsx
-// Card para visualizar el PDF del detalle del movimiento de entrega a rendir de compras
-import React from "react";
+/**
+ * PdfDetMovEntregaRendirComprasCard.jsx
+ *
+ * Card para manejo de PDF de comprobantes de DetMovsEntregaRendirCompras.
+ * Incluye captura/subida, visualización y gestión de documentos PDF.
+ *
+ * @author ERP Megui
+ * @version 1.0.0
+ */
+
+import React, { useState } from "react";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { Controller } from "react-hook-form";
+import { classNames } from "primereact/utils";
 import { Message } from "primereact/message";
+import DocumentoCapture from "../shared/DocumentoCapture";
+import PDFViewer from "../shared/PDFViewer";
+import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
 
-export default function PdfDetMovEntregaRendirComprasCard({ movimiento }) {
-  if (!movimiento) {
-    return (
-      <Card title="Detalle Movimiento">
-        <Message severity="info" text="No hay movimiento seleccionado" />
-      </Card>
-    );
-  }
+const PdfDetMovEntregaRendirComprasCard = ({
+  control,
+  errors,
+  urlComprobanteMovimiento,
+  toast,
+  setValue,
+  movimiento,
+}) => {
+  // Estados para captura de comprobante
+  const [mostrarCaptura, setMostrarCaptura] = useState(false);
 
-  const handleGenerarPDF = () => {
-    // Implementar lógica de generación de PDF
-    console.log("Generar PDF para movimiento:", movimiento.id);
-  };
-
-  const handleDescargar = () => {
-    if (movimiento.urlPdfDetMovimiento) {
-      window.open(movimiento.urlPdfDetMovimiento, "_blank");
+  // Función para ver PDF
+  const handleVerPDF = () => {
+    if (urlComprobanteMovimiento) {
+      abrirPdfEnNuevaPestana(
+        urlComprobanteMovimiento,
+        toast,
+        "No hay comprobante PDF disponible"
+      );
     }
   };
 
+  // Función para manejar comprobante subido
+  const handleComprobanteSubido = (urlDocumento) => {
+    setValue("urlComprobanteMovimiento", urlDocumento);
+    setMostrarCaptura(false);
+    toast.current?.show({
+      severity: "success",
+      summary: "Comprobante Subido",
+      detail: "El comprobante PDF se ha subido correctamente",
+      life: 3000,
+    });
+  };
+
   return (
-    <Card
-      title="Detalle del Movimiento"
-      subTitle={`Movimiento #${movimiento.id} - ${new Date(
-        movimiento.fechaMovimiento
-      ).toLocaleDateString("es-PE")}`}
-    >
-      {movimiento.urlPdfDetMovimiento ? (
-        <div>
-          <iframe
-            src={movimiento.urlPdfDetMovimiento}
-            style={{ width: "100%", height: "400px", border: "1px solid #ccc" }}
-            title="Detalle Movimiento PDF"
-          />
-          <div className="flex gap-2 mt-3">
-            <Button
-              label="Descargar"
-              icon="pi pi-download"
-              onClick={handleDescargar}
-              className="p-button-sm"
+    <Card>
+      <div className="p-fluid">
+        {/* URL del comprobante */}
+        <div
+          style={{
+            display: "flex",
+            gap: "0.5rem",
+            alignItems: "flex-end",
+          }}
+        >
+          <div style={{ flex: 2 }}>
+            <label htmlFor="urlComprobanteMovimiento">Comprobante PDF</label>
+            <Controller
+              name="urlComprobanteMovimiento"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  id="urlComprobanteMovimiento"
+                  {...field}
+                  placeholder="URL del comprobante PDF"
+                  className={classNames({
+                    "p-invalid": errors.urlComprobanteMovimiento,
+                  })}
+                  style={{ fontWeight: "bold" }}
+                  readOnly
+                />
+              )}
             />
-            <Button
-              label="Regenerar"
-              icon="pi pi-refresh"
-              onClick={handleGenerarPDF}
-              className="p-button-sm p-button-secondary"
-            />
+            {errors.urlComprobanteMovimiento && (
+              <Message
+                severity="error"
+                text={errors.urlComprobanteMovimiento.message}
+              />
+            )}
+          </div>
+
+          {/* Botones de acción */}
+          <div style={{ flex: 0.5 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: "0.25rem",
+                justifyContent: "flex-end",
+              }}
+            >
+              <Button
+                type="button"
+                label="Capturar/Subir"
+                icon="pi pi-camera"
+                className="p-button-info"
+                size="small"
+                onClick={() => setMostrarCaptura(true)}
+              />
+            </div>
+          </div>
+          <div style={{ flex: 0.5 }}>
+            {urlComprobanteMovimiento && (
+              <Button
+                type="button"
+                label="Ver PDF"
+                icon="pi pi-eye"
+                className="p-button-success"
+                size="small"
+                onClick={handleVerPDF}
+              />
+            )}
           </div>
         </div>
-      ) : (
-        <div>
-          <Message
-            severity="warn"
-            text="No hay PDF generado para este movimiento"
-            className="mb-3"
-          />
-          <Button
-            label="Generar PDF"
-            icon="pi pi-file-pdf"
-            onClick={handleGenerarPDF}
-            className="p-button-sm"
-          />
-        </div>
-      )}
+
+        {/* Visor de PDF */}
+        {urlComprobanteMovimiento && (
+          <div style={{ marginTop: "1rem" }}>
+            <PDFViewer urlDocumento={urlComprobanteMovimiento} />
+          </div>
+        )}
+
+        {/* Modal de captura de documento */}
+        <DocumentoCapture
+          visible={mostrarCaptura}
+          onHide={() => setMostrarCaptura(false)}
+          onDocumentoSubido={handleComprobanteSubido}
+          endpoint="/api/det-movs-entrega-rendir-compras/upload"
+          titulo="Capturar Comprobante de Movimiento"
+          toast={toast}
+          extraData={{ detMovsEntregaRendirComprasId: movimiento?.id }}
+        />
+      </div>
     </Card>
   );
-}
+};
+
+export default PdfDetMovEntregaRendirComprasCard;

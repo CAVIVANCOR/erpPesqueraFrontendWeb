@@ -42,6 +42,7 @@ const DetMovsEntregaRendirForm = ({
   tiposMovimiento = [],
   entidadesComerciales = [], // Nueva prop
   monedas = [], // ← AGREGAR ESTA LÍNEA
+  tiposDocumento = [],
   onGuardadoExitoso,
   onCancelar,
 }) => {
@@ -83,6 +84,9 @@ const DetMovsEntregaRendirForm = ({
       operacionMovCajaId: null,
       moduloOrigenMovCajaId: 2, // Valor automático para "PESCA INDUSTRIAL"
       urlComprobanteOperacionMovCaja: "",
+      tipoDocumentoId: "",
+      numeroSerieComprobante: "",
+      numeroCorrelativoComprobante: "",
     },
   });
 
@@ -212,6 +216,18 @@ const DetMovsEntregaRendirForm = ({
     value: Number(m.id), // Esto convierte el string a número
   }));
 
+  // Debug: verificar qué llega en tiposDocumento
+  console.log('tiposDocumento recibidos:', tiposDocumento);
+  
+  const tipoDocumentoOptions = tiposDocumento
+    .filter((td) => td.esParaCompras === true || td.esParaVentas === true)
+    .map((td) => ({
+      label: td.activo === false ? `${td.descripcion} (INACTIVO)` : td.descripcion,
+      value: Number(td.id),
+    }));
+  
+  console.log('tipoDocumentoOptions filtrados:', tipoDocumentoOptions);
+
   // Función para manejar el toggle de operacionSinFactura
   const handleToggleOperacionSinFactura = () => {
     const valorActual = getValues("operacionSinFactura");
@@ -271,6 +287,9 @@ const DetMovsEntregaRendirForm = ({
         moduloOrigenMovCajaId: data.moduloOrigenMovCajaId
           ? Number(data.moduloOrigenMovCajaId)
           : null,
+        tipoDocumentoId: data.tipoDocumentoId ? Number(data.tipoDocumentoId) : null,
+        numeroSerieComprobante: data.numeroSerieComprobante?.trim() || null,
+        numeroCorrelativoComprobante: data.numeroCorrelativoComprobante?.trim() || null,
         actualizadoEn: new Date(),
       };
 
@@ -734,6 +753,94 @@ const DetMovsEntregaRendirForm = ({
                 />
               </div>
             </div>
+
+            {/* Tipo y Número de Documento (solo si NO es sin factura) */}
+            {!operacionSinFactura && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginBottom: "0.5rem",
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label
+                    htmlFor="tipoDocumentoId"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Tipo Documento
+                  </label>
+                  <Controller
+                    name="tipoDocumentoId"
+                    control={control}
+                    render={({ field }) => (
+                      <Dropdown
+                        id="tipoDocumentoId"
+                        {...field}
+                        value={field.value}
+                        options={tipoDocumentoOptions}
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Seleccione tipo"
+                        filter
+                        showClear
+                        style={{ fontWeight: "bold" }}
+                        disabled={formularioDeshabilitado}
+                      />
+                    )}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label
+                    htmlFor="numeroSerieComprobante"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Serie
+                  </label>
+                  <Controller
+                    name="numeroSerieComprobante"
+                    control={control}
+                    render={({ field }) => (
+                      <InputText
+                        id="numeroSerieComprobante"
+                        {...field}
+                        value={field.value}
+                        onChange={(e) =>
+                          field.onChange(e.target.value?.toUpperCase())
+                        }
+                        placeholder="Ej: F001"
+                        style={{ fontWeight: "bold" }}
+                        disabled={formularioDeshabilitado}
+                      />
+                    )}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label
+                    htmlFor="numeroCorrelativoComprobante"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Correlativo
+                  </label>
+                  <Controller
+                    name="numeroCorrelativoComprobante"
+                    control={control}
+                    render={({ field }) => (
+                      <InputText
+                        id="numeroCorrelativoComprobante"
+                        {...field}
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        placeholder="Ej: 00001234"
+                        style={{ fontWeight: "bold" }}
+                        disabled={formularioDeshabilitado}
+                      />
+                    )}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Sección de Validación de Tesorería */}
 
