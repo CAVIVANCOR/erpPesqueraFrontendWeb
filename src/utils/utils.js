@@ -56,6 +56,46 @@ export const formatearNumero = (numero) => {
 };
 
 /**
+ * Función para formatear solo fecha (sin hora) de forma consistente en todo el ERP
+ * @param {Date|string|null} fecha - Fecha a formatear (Date, string ISO, o null)
+ * @param {string} mensajePorDefecto - Mensaje a mostrar si no hay fecha (opcional)
+ * @returns {string} Fecha formateada en formato DD/MM/YYYY o mensaje por defecto
+ */
+export const formatearFecha = (fecha, mensajePorDefecto = "Sin fecha") => {
+    if (!fecha) return mensajePorDefecto;
+    
+    let fechaObj;
+    
+    // Si es un objeto Date, usarlo directamente
+    if (fecha instanceof Date) {
+        fechaObj = fecha;
+    }
+    // Si es string, intentar parsearlo
+    else if (typeof fecha === "string") {
+        try {
+            fechaObj = new Date(fecha);
+            // Verificar si la fecha es válida
+            if (isNaN(fechaObj.getTime())) {
+                return fecha; // Si no se puede parsear, devolver el string original
+            }
+        } catch {
+            return fecha; // Si hay error, devolver el string original
+        }
+    }
+    // Si no es Date ni string, devolver mensaje por defecto
+    else {
+        return mensajePorDefecto;
+    }
+    
+    // Formatear solo la fecha usando toLocaleDateString con configuración española
+    return fechaObj.toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "2-digit", 
+        year: "numeric"
+    });
+};
+
+/**
  * Función para formatear fechas y horas de forma consistente en todo el ERP
  * @param {Date|string|null} fechaHora - Fecha a formatear (Date, string ISO, o null)
  * @param {string} mensajePorDefecto - Mensaje a mostrar si no hay fecha (opcional)

@@ -90,6 +90,14 @@ const PDFViewer = ({ urlDocumento, altura = '600px' }) => {
           // ✅ NUEVO: Soporte para PDFs de requerimientos de compra
           const rutaArchivo = urlDocumento.replace('/uploads/requerimientos-compra/', '');
           urlCompleta = `${import.meta.env.VITE_API_URL}/requerimiento-compra/archivo/${rutaArchivo}`;
+        } else if (urlDocumento.startsWith('/uploads/ordenes-compra/')) {
+          // ✅ NUEVO: Soporte para PDFs de órdenes de compra
+          const rutaArchivo = urlDocumento.replace('/uploads/ordenes-compra/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/orden-compra/archivo/${rutaArchivo}`;
+        } else if (urlDocumento.startsWith('/uploads/movimientos-almacen/')) {
+          // ✅ NUEVO: Soporte para PDFs de movimientos de almacén
+          const rutaArchivo = urlDocumento.replace('/uploads/movimientos-almacen/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/movimiento-almacen/archivo/${rutaArchivo}`;
 
         } else if (urlDocumento.startsWith('/api/')) {
           // Remover /api/ del inicio porque VITE_API_URL ya lo incluye

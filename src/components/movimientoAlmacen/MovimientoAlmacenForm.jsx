@@ -15,11 +15,13 @@ import { Dialog } from "primereact/dialog";
 import { confirmDialog } from "primereact/confirmdialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Message } from "primereact/message";
+import { TabView, TabPanel } from "primereact/tabview";
 import ProcessProgressDialog from "../../shared/ProcessProgressDialog";
 import DetalleMovimientoList from "./DetalleMovimientoList";
 import DetalleMovimientoForm from "./DetalleMovimientoForm";
 import KardexProductoDialog from "./KardexProductoDialog";
-import { generarPDFMovimientoAlmacen } from "./MovimientoAlmacenPDF";
+import VerImpresionMovimientoPDF from "./VerImpresionMovimientoPDF";
+import VerImpresionMovimientoConCostosPDF from "./VerImpresionMovimientoConCostosPDF";
 import { getSeriesDoc, getMovimientoAlmacenPorId } from "../../api/movimientoAlmacen";
 import { getAlmacenById } from "../../api/almacen";
 import { getDireccionesEntidad } from "../../api/direccionEntidad";
@@ -57,7 +59,7 @@ export default function MovimientoAlmacenForm({
   loading,
   toast, // Toast ref pasado desde el componente padre
 }) {
-  // Estados de la cabecera - Conforme al modelo MovimientoAlmacen
+    // Estados de la cabecera - Conforme al modelo MovimientoAlmacen
   const [empresaId, setEmpresaId] = useState(defaultValues.empresaId || null);
   const [tipoDocumentoId, setTipoDocumentoId] = useState(
     defaultValues.tipoDocumentoId || null
@@ -202,7 +204,7 @@ export default function MovimientoAlmacenForm({
   }, [isEdit, defaultValues?.id]);
 
   // Estados para series de documentos
-  const [seriesDoc, setSeriesDoc] = useState([]);
+    const [seriesDoc, setSeriesDoc] = useState([]);
 
   useEffect(() => {
     // Si hay empresaFija, usarla; sino usar defaultValues.empresaId
@@ -619,7 +621,7 @@ export default function MovimientoAlmacenForm({
     }
     cargarPersonalResponsable();
   }, [empresaId]);
-
+  
   // Mostrar información de referencia cuando se seleccione una serie
   // El número real se generará al guardar
   const handleSerieDocChange = (serieId) => {
@@ -732,563 +734,218 @@ export default function MovimientoAlmacenForm({
     label: `${s.serie} (Correlativo: ${s.correlativo})`,
     value: Number(s.id),
   }));
-
+  
   return (
     <form onSubmit={handleSubmit} className="p-fluid">
-      <div
-        style={{
-          alignItems: "end",
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 2 }}>
-          <label htmlFor="empresaId">Empresa*</label>
-          <Dropdown
-            id="empresaId"
-            value={empresaId ? Number(empresaId) : null}
-            options={empresasOptions}
-            onChange={(e) => setEmpresaId(e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar empresa"
-            disabled={loading || !!empresaFija || isEdit || detalles.length > 0} // Deshabilitar si hay empresaFija, es edición o hay detalles
-            required
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-            }}
-          />
-        </div>
-        <div style={{ flex: 1.5 }}>
-          <label htmlFor="fechaDocumento">Fecha Documento*</label>
-          <Calendar
-            id="fechaDocumento"
-            value={fechaDocumento}
-            onChange={(e) => setFechaDocumento(e.value)}
-            dateFormat="dd/mm/yy"
-            showIcon
-            required
-            disabled={loading}
-            inputStyle={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-            }}
-          />
-        </div>
-        <div style={{ flex: 2 }}>
-          <label htmlFor="tipoDocumentoId">Tipo de Documento*</label>
-          <Dropdown
-            id="tipoDocumentoId"
-            value={tipoDocumentoId ? Number(tipoDocumentoId) : null}
-            options={tiposDocumentoOptions}
-            onChange={(e) => setTipoDocumentoId(e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar tipo"
-            disabled={loading || detalles.length > 0} // Deshabilitar solo si hay detalles
-            required
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-            }}
-          />
-        </div>
-        <div style={{ flex: 1.5 }}>
-          <label htmlFor="numeroDocumento">Número de Documento</label>
-          <InputText
-            id="numeroDocumento"
-            value={numeroDocumento}
-            disabled
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-              backgroundColor: "#f0f0f0",
-            }}
-          />
-        </div>
-      </div>
-      <div
-        style={{
-          alignItems: "end",
-          display: "flex",
-          gap: 10,
-          marginTop: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 4 }}>
-          <label htmlFor="conceptoMovAlmacenId">Concepto Movimiento*</label>
-          <Dropdown
-            id="conceptoMovAlmacenId"
-            value={conceptoMovAlmacenId ? Number(conceptoMovAlmacenId) : null}
-            options={conceptosMovAlmacenOptions}
-            onChange={(e) => setConceptoMovAlmacenId(e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar concepto"
-            disabled={loading || detalles.length > 0} // Deshabilitar solo si hay detalles
-            required
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-            }}
-          />
-        </div>
-        <div style={{ flex: 0.5 }}>
-          <label htmlFor="esCustodia">Mercaderia</label>
-          <Button
-            id="esCustodia"
-            label={esCustodia ? "CUSTODIA" : "PROPIA"}
-            className={esCustodia ? "p-button-danger" : "p-button-success"}
-            disabled
-            style={{
-              fontWeight: "bold",
-              width: "100%",
-              cursor: "not-allowed",
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Información de Almacenes del Concepto */}
-      {((almacenOrigenInfo && almacenOrigenInfo.nombre) ||
-        (almacenDestinoInfo && almacenDestinoInfo.nombre)) && (
-        <div>
+      {/* TABVIEW PRINCIPAL */}
+      <TabView>
+        {/* TAB 1: DATOS GENERALES */}
+        <TabPanel header="Datos Generales">
           <div
             style={{
               alignItems: "end",
               display: "flex",
               gap: 10,
               flexDirection: window.innerWidth < 768 ? "column" : "row",
-              marginTop: 10,
             }}
           >
-            {almacenOrigenInfo && almacenOrigenInfo.nombre && (
-              <div style={{ flex: 4 }}>
-                <label style={{ fontWeight: "bold", color: "#1976d2" }}>
-                  Almacen Origen
-                </label>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <InputText
-                    value={almacenOrigenInfo.nombre}
-                    disabled
-                    style={{
-                      backgroundColor: "#e3f2fd",
-                      fontWeight: "bold",
-                      color: "#0d47a1",
-                      textTransform: "uppercase",
-                      flex: 1,
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-            {almacenOrigenInfo && almacenOrigenInfo.nombre && (
-              <div style={{ flex: 0.5 }}>
-                <label>Kardex</label>
-                <Button
-                  label={llevaKardexOrigen ? "SI" : "NO"}
-                  className={
-                    llevaKardexOrigen
-                      ? "p-button-success"
-                      : "p-button-secondary"
-                  }
-                  disabled
-                  style={{ fontWeight: "bold" }}
-                />
-              </div>
-            )}
-            {almacenDestinoInfo && almacenDestinoInfo.nombre && (
-              <div style={{ flex: 4 }}>
-                <label style={{ fontWeight: "bold", color: "#388e3c" }}>
-                  Almacen Destino
-                </label>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <InputText
-                    value={almacenDestinoInfo.nombre}
-                    disabled
-                    style={{
-                      backgroundColor: "#e8f5e9",
-                      fontWeight: "bold",
-                      color: "#1b5e20",
-                      textTransform: "uppercase",
-                      flex: 1,
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-            {almacenDestinoInfo && almacenDestinoInfo.nombre && (
-              <div style={{ flex: 0.5 }}>
-                <label>Kardex</label>
-                <Button
-                  label={llevaKardexDestino ? "SI" : "NO"}
-                  className={
-                    llevaKardexDestino
-                      ? "p-button-success"
-                      : "p-button-secondary"
-                  }
-                  disabled
-                  style={{
-                    fontWeight: "bold",
-                  }}
-                />
-              </div>
-            )}
+            <div style={{ flex: 2 }}>
+              <label htmlFor="empresaId">Empresa*</label>
+              <Dropdown
+                id="empresaId"
+                value={empresaId ? Number(empresaId) : null}
+                options={empresasOptions}
+                onChange={(e) => setEmpresaId(e.value)}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccionar empresa"
+                disabled={loading || !!empresaFija || isEdit || detalles.length > 0}
+                required
+                style={{
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                }}
+              />
+            </div>
+            <div style={{ flex: 1.5 }}>
+              <label htmlFor="fechaDocumento">Fecha Documento*</label>
+              <Calendar
+                id="fechaDocumento"
+                value={fechaDocumento}
+                onChange={(e) => setFechaDocumento(e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                required
+                disabled={loading}
+                inputStyle={{
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                }}
+              />
+            </div>
+            <div style={{ flex: 2 }}>
+              <label htmlFor="tipoDocumentoId">Tipo de Documento*</label>
+              <Dropdown
+                id="tipoDocumentoId"
+                value={tipoDocumentoId ? Number(tipoDocumentoId) : null}
+                options={tiposDocumentoOptions}
+                onChange={(e) => setTipoDocumentoId(e.value)}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccionar tipo"
+                disabled={loading || detalles.length > 0}
+                required
+                style={{
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                }}
+              />
+            </div>
+            <div style={{ flex: 1.5 }}>
+              <label htmlFor="numeroDocumento">Número de Documento</label>
+              <InputText
+                id="numeroDocumento"
+                value={numeroDocumento}
+                disabled
+                style={{
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                  backgroundColor: "#f0f0f0",
+                }}
+              />
+            </div>
+                   </div>
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              marginTop: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 4 }}>
+              <label htmlFor="conceptoMovAlmacenId">Concepto Movimiento*</label>
+              <Dropdown
+                id="conceptoMovAlmacenId"
+                value={conceptoMovAlmacenId ? Number(conceptoMovAlmacenId) : null}
+                options={conceptosMovAlmacenOptions}
+                onChange={(e) => setConceptoMovAlmacenId(e.value)}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccionar concepto"
+                disabled={loading || detalles.length > 0}
+                required
+                style={{
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                }}
+              />
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <label htmlFor="esCustodia">Mercaderia</label>
+              <Button
+                id="esCustodia"
+                label={esCustodia ? "CUSTODIA" : "PROPIA"}
+                className={esCustodia ? "p-button-danger" : "p-button-success"}
+                disabled
+                style={{
+                  fontWeight: "bold",
+                  width: "100%",
+                  cursor: "not-allowed",
+                }}
+              />
+            </div>
           </div>
-        </div>
-      )}
-      <div
-        style={{
-          alignItems: "end",
-          display: "flex",
-          gap: 10,
-          marginTop: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 2 }}>
-          <label htmlFor="serieDocId">Serie de Documento*</label>
-          <Dropdown
-            id="serieDocId"
-            value={serieDocId ? Number(serieDocId) : null}
-            options={seriesDocOptions}
-            onChange={(e) => handleSerieDocChange(e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar serie"
-            disabled={
-              loading ||
-              !tipoDocumentoId ||
-              !conceptoMovAlmacenId ||
-              !!serieDocId
-            }
-            required
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-            }}
-          />
-        </div>
-        <div style={{ flex: 2 }}>
-          <label htmlFor="numSerieDoc">Número Serie Doc.</label>
-          <InputText
-            id="numSerieDoc"
-            value={numSerieDoc}
-            disabled
-            maxLength={40}
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-              backgroundColor: "#f0f0f0",
-            }}
-          />
-        </div>
-        <div style={{ flex: 2 }}>
-          <label htmlFor="numCorreDoc">Número Correlativo Doc.</label>
-          <InputText
-            id="numCorreDoc"
-            value={numCorreDoc}
-            disabled
-            maxLength={40}
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-              backgroundColor: "#f0f0f0",
-            }}
-          />
-        </div>
-        <div style={{ flex: 1.5 }}>
-          <label htmlFor="estadoDocAlmacenId">Estado Documento*</label>
-          <Dropdown
-            id="estadoDocAlmacenId"
-            value={estadoDocAlmacenId ? Number(estadoDocAlmacenId) : null}
-            options={estadosDocumento.map((e) => ({
-              label: e.descripcion,
-              value: Number(e.id),
-            }))}
-            onChange={(e) => setEstadoDocAlmacenId(e.value)}
-            placeholder="Seleccionar estado"
-            disabled={loading || isEdit}
-            filter
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-              backgroundColor:
-                estadoDocAlmacenId === 30
-                  ? "#f97316" // Pendiente - Naranja warning (igual que p-button-warning)
-                  : estadoDocAlmacenId === 31
-                  ? "#22c55e" // Cerrado - Verde success (igual que p-button-success)
-                  : estadoDocAlmacenId === 32
-                  ? "#ef4444" // Anulado - Rojo danger (igual que p-button-danger)
-                  : "#ffffff", // Default - Blanco
-              color:
-                estadoDocAlmacenId === 30
-                  ? "#ffffff" // Texto blanco para warning
-                  : estadoDocAlmacenId === 31
-                  ? "#ffffff" // Texto blanco para success
-                  : estadoDocAlmacenId === 32
-                  ? "#ffffff" // Texto blanco para danger
-                  : "#000000", // Default - Negro
-            }}
-          />
-        </div>
-      </div>
-      <div
-        style={{
-          alignItems: "end",
-          display: "flex",
-          gap: 10,
-          marginTop: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 2 }}>
-          <label htmlFor="entidadComercialId">Entidad Comercial</label>
-          <Dropdown
-            id="entidadComercialId"
-            value={entidadComercialId ? Number(entidadComercialId) : null}
-            options={entidadesOptions}
-            onChange={(e) => setEntidadComercialId(e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar entidad"
-            disabled={loading || detalles.length > 0} // Deshabilitar solo si hay detalles
-            style={{
-              fontWeight: "bold",
-              textTransform: "uppercase",
-            }}
-          />
-        </div>
-      </div>
-      {/* Sección de Detalles del Movimiento */}
-      <Panel header="Detalles del Movimiento" toggleable className="p-mt-3">
-        <div className="p-mb-3">
-          {!isEdit && (
-            <div
-              style={{
-                padding: "12px",
-                backgroundColor: "#fff3cd",
-                border: "1px solid #ffc107",
-                borderRadius: "4px",
-                marginBottom: "12px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <i className="pi pi-info-circle" style={{ color: "#856404" }}></i>
-              <span style={{ color: "#856404", fontSize: "0.9em" }}>
-                <strong>Importante:</strong> Primero debes guardar el movimiento
-                para poder agregar detalles.
-              </span>
+
+          {/* Información de Almacenes del Concepto */}
+          {((almacenOrigenInfo && almacenOrigenInfo.nombre) ||
+            (almacenDestinoInfo && almacenDestinoInfo.nombre)) && (
+            <div>
+              <div
+                style={{
+                  alignItems: "end",
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  marginTop: 10,
+                }}
+              >
+                {almacenOrigenInfo && almacenOrigenInfo.nombre && (
+                  <div style={{ flex: 4 }}>
+                    <label style={{ fontWeight: "bold", color: "#1976d2" }}>
+                      Almacen Origen
+                    </label>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <InputText
+                        value={almacenOrigenInfo.nombre}
+                        disabled
+                        style={{
+                          backgroundColor: "#e3f2fd",
+                          fontWeight: "bold",
+                          color: "#0d47a1",
+                          textTransform: "uppercase",
+                          flex: 1,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {almacenOrigenInfo && almacenOrigenInfo.nombre && (
+                  <div style={{ flex: 0.5 }}>
+                    <label>Kardex</label>
+                    <Button
+                      label={llevaKardexOrigen ? "SI" : "NO"}
+                      className={
+                        llevaKardexOrigen
+                          ? "p-button-success"
+                          : "p-button-secondary"
+                      }
+                      disabled
+                      style={{ fontWeight: "bold" }}
+                    />
+                  </div>
+                )}
+                {almacenDestinoInfo && almacenDestinoInfo.nombre && (
+                  <div style={{ flex: 4 }}>
+                    <label style={{ fontWeight: "bold", color: "#388e3c" }}>
+                      Almacen Destino
+                    </label>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <InputText
+                        value={almacenDestinoInfo.nombre}
+                        disabled
+                        style={{
+                          backgroundColor: "#e8f5e9",
+                          fontWeight: "bold",
+                          color: "#1b5e20",
+                          textTransform: "uppercase",
+                          flex: 1,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {almacenDestinoInfo && almacenDestinoInfo.nombre && (
+                  <div style={{ flex: 0.5 }}>
+                    <label>Kardex</label>
+                    <Button
+                      label={llevaKardexDestino ? "SI" : "NO"}
+                      className={
+                        llevaKardexDestino
+                          ? "p-button-success"
+                          : "p-button-secondary"
+                      }
+                      disabled
+                      style={{
+                        fontWeight: "bold",
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           )}
-          <Button
-            label="Agregar Detalle"
-            icon="pi pi-plus"
-            className="p-button-success p-button-sm"
-            onClick={() => {
-              setEditingDetalle(null);
-              setShowDetalleDialog(true);
-            }}
-            disabled={loading || !isEdit}
-            type="button"
-            tooltip={!isEdit ? "Primero debes guardar el movimiento" : ""}
-            tooltipOptions={{ position: "top" }}
-          />
-        </div>
-        <DetalleMovimientoList
-          detalles={detalles}
-          productos={productos}
-          readOnly={documentoCerrado}
-          onEdit={(detalle) => {
-            setEditingDetalle(detalle);
-            setShowDetalleDialog(true);
-          }}
-          onVerKardex={(detalle) => {
-            setDetalleKardex(detalle);
-            setShowKardexDialog(true);
-          }}
-          onSave={(detalleData) => {
-            // Solo actualizar el estado local - NO guardar en BD
-            // El guardado en BD lo hace DetalleMovimientoForm.jsx
-            if (editingDetalle) {
-              // Actualizar detalle existente
-              setDetalles(
-                detalles.map((d) =>
-                  d === editingDetalle
-                    ? { ...editingDetalle, ...detalleData }
-                    : d
-                )
-              );
-            } else {
-              // Agregar nuevo detalle
-              setDetalles([
-                ...detalles,
-                { ...detalleData, tempId: Date.now() },
-              ]);
-            }
-            setShowDetalleDialog(false);
-            setEditingDetalle(null);
-          }}
-          onDelete={async (detalle) => {
-            confirmDialog({
-              message: "¿Está seguro que desea eliminar este detalle?",
-              header: "Confirmar eliminación",
-              icon: "pi pi-exclamation-triangle",
-              acceptClassName: "p-button-danger",
-              accept: async () => {
-                // Si el movimiento existe y el detalle tiene ID, eliminar en BD
-                if (
-                  defaultValues?.id &&
-                  detalle?.id &&
-                  !isNaN(Number(detalle.id))
-                ) {
-                  try {
-                    const { eliminarDetalleMovimiento } = await import(
-                      "../../api/movimientoAlmacen"
-                    );
-                    await eliminarDetalleMovimiento(Number(detalle.id));
-                    // Recargar detalles desde BD
-                    await recargarDetalles();
-                  } catch (error) {
-                    console.error("Error al eliminar detalle:", error);
-                  }
-                } else {
-                  // Detalle nuevo (sin ID) - solo eliminar del estado local
-                  setDetalles(detalles.filter((d) => d !== detalle));
-                }
-              },
-            });
-          }}
-        />
-      </Panel>
-
-      {/* Sección de Información Adicional */}
-      <Panel
-        header="Información Adicional"
-        toggleable
-        collapsed
-        className="p-mt-3"
-      >
-        {/* Información de Direcciones */}
-        <div
-          style={{
-            alignItems: "end",
-            display: "flex",
-            gap: 10,
-            marginTop: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="dirOrigenId">Dirección Origen</label>
-            <Dropdown
-              id="dirOrigenId"
-              value={dirOrigenId ? Number(dirOrigenId) : null}
-              options={(direccionesOrigen || []).map((d) => ({
-                label:
-                  d.direccionArmada ||
-                  d.direccion ||
-                  d.descripcion ||
-                  "Sin dirección",
-                value: Number(d.id),
-              }))}
-              onChange={(e) => setDirOrigenId(e.value)}
-              placeholder="Seleccionar dirección origen"
-              disabled={
-                loading || !direccionesOrigen || direccionesOrigen.length === 0
-              }
-              showClear
-              filter
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-        </div>
-        <div
-          style={{
-            alignItems: "end",
-            display: "flex",
-            gap: 10,
-            marginTop: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="dirDestinoId">Dirección Destino</label>
-            <Dropdown
-              id="dirDestinoId"
-              value={dirDestinoId ? Number(dirDestinoId) : null}
-              options={(direccionesDestino || []).map((d) => ({
-                label:
-                  d.direccionArmada ||
-                  d.direccion ||
-                  d.descripcion ||
-                  "Sin dirección",
-                value: Number(d.id),
-              }))}
-              onChange={(e) => setDirDestinoId(e.value)}
-              placeholder="Seleccionar dirección destino"
-              disabled={
-                loading ||
-                !direccionesDestino ||
-                direccionesDestino.length === 0
-              }
-              showClear
-              filter
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-        </div>
-        <div
-          style={{
-            alignItems: "end",
-            display: "flex",
-            gap: 10,
-            marginTop: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="numGuiaSunat">Número Guía SUNAT</label>
-            <InputText
-              id="numGuiaSunat"
-              value={numGuiaSunat}
-              onChange={(e) => setNumGuiaSunat(e.target.value.toUpperCase())}
-              disabled={loading}
-              maxLength={40}
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="fechaGuiaSunat">Fecha Guía SUNAT</label>
-            <Calendar
-              id="fechaGuiaSunat"
-              value={fechaGuiaSunat}
-              onChange={(e) => setFechaGuiaSunat(e.value)}
-              dateFormat="dd/mm/yy"
-              showIcon
-              disabled={loading}
-              inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-          <div style={{ flex: 3 }}>
-            <label htmlFor="observaciones">Observaciones</label>
-            <InputText
-              id="observaciones"
-              value={observaciones}
-              onChange={(e) => setObservaciones(e.target.value.toUpperCase())}
-              disabled={loading}
-              rows={1}
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-        </div>
-        {/* Campos generados automáticamente - Solo lectura */}
-        {(faenaPescaId || embarcacionId || ordenTrabajoId) && (
           <div
             style={{
               alignItems: "end",
@@ -1298,629 +955,669 @@ export default function MovimientoAlmacenForm({
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
-            {faenaPescaId && (
-              <div style={{ flex: 1 }}>
-                <label htmlFor="faenaPescaId">Faena Pesca (Generado)</label>
-                <InputText
-                  id="faenaPescaId"
-                  value={`ID: ${faenaPescaId}`}
-                  disabled
-                  style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
-                />
-              </div>
-            )}
-            {embarcacionId && (
-              <div style={{ flex: 1 }}>
-                <label htmlFor="embarcacionId">Embarcación (Generado)</label>
-                <InputText
-                  id="embarcacionId"
-                  value={`ID: ${embarcacionId}`}
-                  disabled
-                  style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
-                />
-              </div>
-            )}
-            {ordenTrabajoId && (
-              <div style={{ flex: 1 }}>
-                <label htmlFor="ordenTrabajoId">Orden Trabajo (Generado)</label>
-                <InputText
-                  id="ordenTrabajoId"
-                  value={`ID: ${ordenTrabajoId}`}
-                  disabled
-                  style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
-                />
-              </div>
-            )}
+            <div style={{ flex: 2 }}>
+              <label htmlFor="serieDocId">Serie de Documento*</label>
+              <Dropdown
+                id="serieDocId"
+                value={serieDocId ? Number(serieDocId) : null}
+                options={seriesDocOptions}
+                onChange={(e) => handleSerieDocChange(e.value)}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccionar serie"
+                disabled={
+                  loading ||
+                  !tipoDocumentoId ||
+                  !conceptoMovAlmacenId ||
+                  !!serieDocId
+                }
+                required
+                style={{
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                }}
+              />
+            </div>
+            <div style={{ flex: 2 }}>
+              <label htmlFor="numSerieDoc">Número Serie Doc.</label>
+              <InputText
+                id="numSerieDoc"
+                value={numSerieDoc}
+                disabled
+                maxLength={40}
+                style={{
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                  backgroundColor: "#f0f0f0",
+                }}
+              />
+            </div>
+            <div style={{ flex: 2 }}>
+              <label htmlFor="numCorreDoc">Número Correlativo Doc.</label>
+              <InputText
+                id="numCorreDoc"
+                value={numCorreDoc}
+                disabled
+                maxLength={40}
+                style={{
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                  backgroundColor: "#f0f0f0",
+                }}
+              />
+            </div>
+            <div style={{ flex: 1.5 }}>
+              <label htmlFor="estadoDocAlmacenId">Estado Documento*</label>
+              <Dropdown
+                id="estadoDocAlmacenId"
+                value={estadoDocAlmacenId ? Number(estadoDocAlmacenId) : null}
+                options={estadosDocumento.map((e) => ({
+                  label: e.descripcion,
+                  value: Number(e.id),
+                }))}
+                onChange={(e) => setEstadoDocAlmacenId(e.value)}
+                placeholder="Seleccionar estado"
+                disabled={loading || isEdit}
+                filter
+                style={{
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                  backgroundColor:
+                    estadoDocAlmacenId === 30
+                      ? "#f97316"
+                      : estadoDocAlmacenId === 31
+                      ? "#22c55e"
+                      : estadoDocAlmacenId === 32
+                      ? "#ef4444"
+                      : "#ffffff",
+                  color:
+                    estadoDocAlmacenId === 30
+                      ? "#ffffff"
+                      : estadoDocAlmacenId === 31
+                      ? "#ffffff"
+                      : estadoDocAlmacenId === 32
+                      ? "#ffffff"
+                      : "#000000",
+                }}
+              />
+            </div>
           </div>
-        )}
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              marginTop: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <label htmlFor="entidadComercialId">Entidad Comercial</label>
+              <Dropdown
+                id="entidadComercialId"
+                value={entidadComercialId ? Number(entidadComercialId) : null}
+                options={entidadesOptions}
+                onChange={(e) => setEntidadComercialId(e.value)}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccionar entidad"
+                disabled={loading || detalles.length > 0}
+                style={{
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                }}
+              />
+            </div>
+          </div>
 
-        {/* Información de Transporte */}
-        <div
-          style={{
-            alignItems: "end",
-            display: "flex",
-            gap: 10,
-            marginTop: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="transportistaId">Transportista</label>
-            <Dropdown
-              id="transportistaId"
-              value={transportistaId ? Number(transportistaId) : null}
-              options={(transportistasFiltrados || []).map((t) => ({
-                label: t.razonSocial || t.nombre,
-                value: Number(t.id),
-              }))}
-              onChange={(e) => setTransportistaId(e.value)}
-              placeholder="Seleccionar transportista"
-              disabled={loading}
-              showClear
-              filter
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="vehiculoId">Vehículo</label>
-            <Dropdown
-              id="vehiculoId"
-              value={vehiculoId ? Number(vehiculoId) : null}
-              options={(vehiculosFiltrados || []).map((v) => ({
-                label: `${v.placa || ""} - ${v.marca || ""} ${v.modelo || ""}`,
-                value: Number(v.id),
-              }))}
-              onChange={(e) => setVehiculoId(e.value)}
-              placeholder={
-                transportistaId
-                  ? "Seleccionar vehículo"
-                  : "Seleccione primero un transportista"
-              }
-              disabled={
-                loading ||
-                !transportistaId ||
-                !vehiculosFiltrados ||
-                vehiculosFiltrados.length === 0
-              }
-              showClear
-              filter
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-        </div>
-
-        {/* Información de Agencia de Envío */}
-        <div
-          style={{
-            alignItems: "end",
-            display: "flex",
-            gap: 10,
-            marginTop: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="agenciaEnvioId">Agencia de Envío</label>
-            <Dropdown
-              id="agenciaEnvioId"
-              value={agenciaEnvioId ? Number(agenciaEnvioId) : null}
-              options={(agenciasFiltradas || []).map((a) => ({
-                label: a.razonSocial || a.nombre,
-                value: Number(a.id),
-              }))}
-              onChange={(e) => setAgenciaEnvioId(e.value)}
-              placeholder="Seleccionar agencia"
-              disabled={loading}
-              showClear
-              filter
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="dirAgenciaEnvioId">Dirección Agencia</label>
-            <Dropdown
-              id="dirAgenciaEnvioId"
-              value={dirAgenciaEnvioId ? Number(dirAgenciaEnvioId) : null}
-              options={(direccionesAgencia || []).map((d) => ({
-                label:
-                  d.direccionArmada ||
-                  d.direccion ||
-                  d.descripcion ||
-                  "Sin dirección",
-                value: Number(d.id),
-              }))}
-              onChange={(e) => setDirAgenciaEnvioId(e.value)}
-              placeholder={
-                agenciaEnvioId
-                  ? "Seleccionar dirección agencia"
-                  : "Seleccione primero una agencia"
-              }
-              disabled={
-                loading ||
-                !agenciaEnvioId ||
-                !direccionesAgencia ||
-                direccionesAgencia.length === 0
-              }
-              showClear
-              filter
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-        </div>
-
-        {/* Información de Responsable */}
-        <div
-          style={{
-            alignItems: "end",
-            display: "flex",
-            gap: 10,
-            marginTop: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="personalRespAlmacen">Responsable Almacén*</label>
-            <Dropdown
-              id="personalRespAlmacen"
-              value={personalRespAlmacen ? Number(personalRespAlmacen) : null}
-              options={personalOptions.map((p) => ({
-                label: p.nombreCompleto || p.nombre,
-                value: Number(p.id),
-              }))}
-              onChange={(e) => setPersonalRespAlmacen(e.value)}
-              placeholder="Responsable asignado automáticamente"
-              disabled={true}
-              filter
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-            <small style={{ color: "#888", marginTop: 4 }}>
-              Asignado automáticamente desde Parámetros de Aprobador (Solo
-              lectura)
-            </small>
-          </div>
-        </div>
-
-        {/* Información de Estado y Órdenes Generadas */}
-        <div
-          style={{
-            alignItems: "end",
-            display: "flex",
-            gap: 10,
-            marginTop: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          {(ordenCompraId || pedidoVentaId) && (
-            <>
-              {ordenCompraId && (
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="ordenCompraId">
-                    Orden de Compra (Generado)
-                  </label>
-                  <InputText
-                    id="ordenCompraId"
-                    value={`ID: ${ordenCompraId}`}
-                    disabled
-                    style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
-                  />
+          {/* Sección de Detalles del Movimiento */}
+          <Panel header="Detalles del Movimiento" toggleable className="p-mt-3">
+            <div className="p-mb-3">
+              {!isEdit && (
+                <div
+                  style={{
+                    padding: "12px",
+                    backgroundColor: "#fff3cd",
+                    border: "1px solid #ffc107",
+                    borderRadius: "4px",
+                    marginBottom: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <i className="pi pi-info-circle" style={{ color: "#856404" }}></i>
+                  <span style={{ color: "#856404", fontSize: "0.9em" }}>
+                    <strong>Importante:</strong> Primero debes guardar el movimiento
+                    para poder agregar detalles.
+                  </span>
                 </div>
               )}
-              {pedidoVentaId && (
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="pedidoVentaId">
-                    Pedido de Venta (Generado)
-                  </label>
-                  <InputText
-                    id="pedidoVentaId"
-                    value={`ID: ${pedidoVentaId}`}
-                    disabled
-                    style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
-                  />
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </Panel>
-
-      {/* Diálogo para agregar/editar detalle */}
-      <DetalleMovimientoForm
-        visible={showDetalleDialog}
-        onHide={() => {
-          setShowDetalleDialog(false);
-          setEditingDetalle(null);
-        }}
-        detalle={editingDetalle}
-        movimientoAlmacen={{
-          id: defaultValues.id,
-          empresaId,
-          entidadComercialId,
-          esCustodia,
-          fechaDocumento,
-          empresa: empresas.find((e) => Number(e.id) === Number(empresaId)),
-          conceptoMovAlmacen: conceptosMovAlmacen.find(
-            (c) => Number(c.id) === Number(conceptoMovAlmacenId)
-          ),
-        }}
-        estadosMercaderia={estadosMercaderia}
-        estadosCalidad={estadosCalidad}
-        readOnly={documentoCerrado}
-        onSave={async (detalleData) => {
-          // Si el movimiento existe, recargar desde BD
-          if (defaultValues?.id) {
-            await recargarDetalles();
-          } else {
-            // Movimiento nuevo - actualizar estado local
-            if (editingDetalle) {
-              // Actualizar detalle existente
-              setDetalles(
-                detalles.map((d) =>
-                  d === editingDetalle
-                    ? { ...editingDetalle, ...detalleData }
-                    : d
-                )
-              );
-            } else {
-              // Agregar nuevo detalle
-              setDetalles([
-                ...detalles,
-                { ...detalleData, tempId: Date.now() },
-              ]);
-            }
-          }
-          setShowDetalleDialog(false);
-          setEditingDetalle(null);
-        }}
-        loading={loading}
-      />
-
-      <ConfirmDialog />
-
-      <Divider />
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 8,
-          marginTop: 18,
-        }}
-      >
-        {/* Botones de acciones del documento */}
-        {isEdit && detalles.length > 0 && (
-          <>
-            {/* Botón Cerrar Documento - Estado 31 */}
-            <Button
-              type="button"
-              label="Cerrar Documento"
-              icon="pi pi-lock"
-              onClick={() => {
-                confirmDialog({
-                  message:
-                    "¿Está seguro que desea cerrar este documento? El estado cambiará a CERRADO (31).",
-                  header: "Confirmar Cierre",
-                  icon: "pi pi-exclamation-triangle",
-                  acceptClassName: "p-button-warning",
-                  accept: async () => {
-                    if (onCerrar) {
-                      await onCerrar(defaultValues.id);
-                    }
-                  },
-                });
+              <Button
+                label="Agregar Detalle"
+                icon="pi pi-plus"
+                className="p-button-success p-button-sm"
+                onClick={() => {
+                  setEditingDetalle(null);
+                  setShowDetalleDialog(true);
+                }}
+                disabled={loading || !isEdit}
+                type="button"
+                tooltip={!isEdit ? "Primero debes guardar el movimiento" : ""}
+                tooltipOptions={{ position: "top" }}
+              />
+            </div>
+            <DetalleMovimientoList
+              detalles={detalles}
+              productos={productos}
+              readOnly={documentoCerrado}
+              onEdit={(detalle) => {
+                setEditingDetalle(detalle);
+                setShowDetalleDialog(true);
               }}
-              disabled={loading || estadoDocAlmacenId !== 30}
-              className="p-button-warning"
-              severity="warning"
-              raised
-              size="small"
-              tooltip={estadoDocAlmacenId === 30 ? "Cerrar documento (estado CERRADO - 31)" : "Solo disponible para documentos en estado PENDIENTE"}
-              tooltipOptions={{ position: "top" }}
-            />
-
-            {/* Botón Anular Documento - Estado 32 */}
-            <Button
-              type="button"
-              label="Anular Documento"
-              icon="pi pi-times-circle"
-              onClick={() => {
+              onVerKardex={(detalle) => {
+                setDetalleKardex(detalle);
+                setShowKardexDialog(true);
+              }}
+              onSave={(detalleData) => {
+                if (editingDetalle) {
+                  setDetalles(
+                    detalles.map((d) =>
+                      d === editingDetalle
+                        ? { ...editingDetalle, ...detalleData }
+                        : d
+                    )
+                  );
+                } else {
+                  setDetalles([
+                    ...detalles,
+                    { ...detalleData, tempId: Date.now() },
+                  ]);
+                }
+                setShowDetalleDialog(false);
+                setEditingDetalle(null);
+              }}
+              onDelete={async (detalle) => {
                 confirmDialog({
-                  message:
-                    "¿Está seguro que desea anular este documento? El estado cambiará a ANULADO (32).",
-                  header: "Confirmar Anulación",
+                  message: "¿Está seguro que desea eliminar este detalle?",
+                  header: "Confirmar eliminación",
                   icon: "pi pi-exclamation-triangle",
                   acceptClassName: "p-button-danger",
                   accept: async () => {
-                    if (onAnular) {
-                      await onAnular(defaultValues.id, defaultValues.empresaId);
-                    }
-                  },
-                });
-              }}
-              disabled={loading}
-              className="p-button-danger"
-              severity="danger"
-              raised
-              size="small"
-              tooltip="Anular documento (estado ANULADO - 32)"
-              tooltipOptions={{ position: "top" }}
-            />
-
-            {/* Botón Generar Kardex - Estado 33 */}
-            <Button
-              type="button"
-              label="Generar Kardex"
-              icon="pi pi-chart-line"
-              onClick={async () => {
-                confirmDialog({
-                  message:
-                    "¿Está seguro que desea generar el kardex y los saldos?",
-                  header: "Confirmar Generación",
-                  icon: "pi pi-question-circle",
-                  acceptClassName: "p-button-success",
-                  accept: async () => {
-                    try {
-                      // Inicializar pasos del proceso
-                      const steps = [
-                        {
-                          label: "Iniciando generación de kardex...",
-                          completed: false,
-                        },
-                        {
-                          label: "Procesando detalles del movimiento...",
-                          completed: false,
-                        },
-                        {
-                          label: "Calculando saldos de kardex...",
-                          completed: false,
-                        },
-                        {
-                          label: "Actualizando saldos de productos...",
-                          completed: false,
-                        },
-                        { label: "Finalizando proceso...", completed: false },
-                      ];
-
-                      setProgressSteps(steps);
-                      setCurrentProgressStep(0);
-                      setProgressComplete(false);
-                      setProgressError(false);
-                      setProgressErrorMessage("");
-                      setProgressSummary(null);
-                      setShowProgressDialog(true);
-
-                      // Paso 1: Iniciar
-                      await new Promise((resolve) => setTimeout(resolve, 500));
-                      steps[0].completed = true;
-                      setProgressSteps([...steps]);
-                      setCurrentProgressStep(1);
-
-                      // Paso 2: Generar kardex
-                      const { generarKardex } = await import(
-                        "../../api/generarKardex"
-                      );
-                      const resultado = await generarKardex(defaultValues.id);
-                      steps[1].completed = true;
-                      setProgressSteps([...steps]);
-                      setCurrentProgressStep(2);
-
-                      // Paso 3: Calcular saldos
-                      await new Promise((resolve) => setTimeout(resolve, 300));
-                      steps[2].completed = true;
-                      setProgressSteps([...steps]);
-                      setCurrentProgressStep(3);
-
-                      // Paso 4: Actualizar saldos
-                      await new Promise((resolve) => setTimeout(resolve, 300));
-                      steps[3].completed = true;
-                      setProgressSteps([...steps]);
-                      setCurrentProgressStep(4);
-
-                      // Paso 5: Finalizar
-                      await new Promise((resolve) => setTimeout(resolve, 300));
-                      steps[4].completed = true;
-                      setProgressSteps([...steps]);
-
-                      // Preparar resumen
-                      setProgressSummary({
-                        creados: resultado.kardexCreados || 0,
-                        actualizados: resultado.kardexActualizados || 0,
-                        saldosDetActualizados:
-                          resultado.saldosDetActualizados || 0,
-                        saldosGenActualizados:
-                          resultado.saldosGenActualizados || 0,
-                        errores: resultado.errores?.length || 0,
-                      });
-
-                      setProgressComplete(true);
-
-                      // Si hay errores, mostrarlos en consola
-                      if (resultado.errores && resultado.errores.length > 0) {
-                        console.error("Errores en kardex:", resultado.errores);
+                    if (
+                      defaultValues?.id &&
+                      detalle?.id &&
+                      !isNaN(Number(detalle.id))
+                    ) {
+                      try {
+                        const { eliminarDetalleMovimiento } = await import(
+                          "../../api/movimientoAlmacen"
+                        );
+                        await eliminarDetalleMovimiento(Number(detalle.id));
+                        await recargarDetalles();
+                      } catch (error) {
+                        console.error("Error al eliminar detalle:", error);
                       }
-
-                      // Cerrar automáticamente después de 2 segundos
-                      setTimeout(() => {
-                        setShowProgressDialog(false);
-                      }, 2000);
-                    } catch (error) {
-                      console.error("Error al generar kardex:", error);
-                      setProgressError(true);
-                      setProgressErrorMessage(
-                        error.response?.data?.error ||
-                          error.message ||
-                          "No se pudo generar el kardex"
-                      );
-                      setProgressComplete(true);
-
-                      // En caso de error, cerrar después de 4 segundos para que el usuario lea el mensaje
-                      setTimeout(() => {
-                        setShowProgressDialog(false);
-                      }, 4000);
+                    } else {
+                      setDetalles(detalles.filter((d) => d !== detalle));
                     }
                   },
                 });
               }}
-              disabled={loading}
-              className="p-button-success"
-              severity="success"
-              raised
-              size="small"
-              tooltip="Generar kardex y actualizar saldos"
-              tooltipOptions={{ position: "top" }}
             />
-          </>
-        )}
-        {/* Botones para generar PDF */}
-        {isEdit && detalles.length > 0 && (
-          <>
-            <Button
-              type="button"
-              label="PDF sin Costos"
-              icon="pi pi-file-pdf"
-              onClick={async () => {
-                try {
-                  toast.current.show({
-                    severity: "info",
-                    summary: "Generando PDF",
-                    detail: "Generando documento sin costos...",
-                    life: 2000,
-                  });
+          </Panel>
 
-                  // Recargar movimiento completo desde el backend para obtener todas las relaciones
-                  const movimientoCompleto = await getMovimientoAlmacenPorId(defaultValues.id);
-                  
-                  // Agregar personal responsable completo desde personalOptions
-                  if (movimientoCompleto.personalRespAlmacen && personalOptions.length > 0) {
-                    const personalId = typeof movimientoCompleto.personalRespAlmacen === 'string'
-                      ? Number(movimientoCompleto.personalRespAlmacen)
-                      : Number(movimientoCompleto.personalRespAlmacen.id || movimientoCompleto.personalRespAlmacen);
-                    
-                    const personalEncontrado = personalOptions.find(p => Number(p.id) === personalId);
-                    if (personalEncontrado) {
-                      movimientoCompleto.personalRespAlmacen = personalEncontrado;
-                    }
+          {/* Sección de Información Adicional */}
+          <Panel
+            header="Información Adicional"
+            toggleable
+            collapsed
+            className="p-mt-3"
+          >
+            {/* Información de Direcciones */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="dirOrigenId">Dirección Origen</label>
+                <Dropdown
+                  id="dirOrigenId"
+                  value={dirOrigenId ? Number(dirOrigenId) : null}
+                  options={(direccionesOrigen || []).map((d) => ({
+                    label:
+                      d.direccionArmada ||
+                      d.direccion ||
+                      d.descripcion ||
+                      "Sin dirección",
+                    value: Number(d.id),
+                  }))}
+                  onChange={(e) => setDirOrigenId(e.value)}
+                  placeholder="Seleccionar dirección origen"
+                  disabled={
+                    loading || !direccionesOrigen || direccionesOrigen.length === 0
                   }
-                  
-                  // Obtener empresa completa
-                  const empresaSeleccionada = empresas.find(
-                    (e) => Number(e.id) === Number(empresaId)
-                  );
-
-                  const resultado = await generarPDFMovimientoAlmacen(
-                    movimientoCompleto,
-                    movimientoCompleto.detalles || detalles,
-                    empresaSeleccionada || {},
-                    false // Sin costos
-                  );
-
-                  if (resultado.success) {
-                    toast.current.show({
-                      severity: "success",
-                      summary: "Éxito",
-                      detail: "PDF generado correctamente",
-                      life: 3000,
-                    });
-                  } else {
-                    toast.current.show({
-                      severity: "error",
-                      summary: "Error",
-                      detail: resultado.error || "Error al generar PDF",
-                      life: 5000,
-                    });
+                  showClear
+                  filter
+                  style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                />
+              </div>
+            </div>
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="dirDestinoId">Dirección Destino</label>
+                <Dropdown
+                  id="dirDestinoId"
+                  value={dirDestinoId ? Number(dirDestinoId) : null}
+                  options={(direccionesDestino || []).map((d) => ({
+                    label:
+                      d.direccionArmada ||
+                      d.direccion ||
+                      d.descripcion ||
+                      "Sin dirección",
+                    value: Number(d.id),
+                  }))}
+                  onChange={(e) => setDirDestinoId(e.value)}
+                  placeholder="Seleccionar dirección destino"
+                  disabled={
+                    loading ||
+                    !direccionesDestino ||
+                    direccionesDestino.length === 0
                   }
-                } catch (error) {
-                  console.error("Error al generar PDF:", error);
-                  toast.current.show({
-                    severity: "error",
-                    summary: "Error",
-                    detail: "Error al generar el PDF",
-                    life: 5000,
-                  });
+                  showClear
+                  filter
+                  style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                />
+              </div>
+            </div>
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="numGuiaSunat">Número Guía SUNAT</label>
+                <InputText
+                  id="numGuiaSunat"
+                  value={numGuiaSunat}
+                  onChange={(e) => setNumGuiaSunat(e.target.value.toUpperCase())}
+                  disabled={loading}
+                  maxLength={40}
+                  style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaGuiaSunat">Fecha Guía SUNAT</label>
+                <Calendar
+                  id="fechaGuiaSunat"
+                  value={fechaGuiaSunat}
+                  onChange={(e) => setFechaGuiaSunat(e.value)}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  disabled={loading}
+                  inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+                />
+              </div>
+              <div style={{ flex: 3 }}>
+                <label htmlFor="observaciones">Observaciones</label>
+                <InputText
+                  id="observaciones"
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value.toUpperCase())}
+                  disabled={loading}
+                  rows={1}
+                  style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                />
+              </div>
+            </div>
+            
+            {/* Campos generados automáticamente - Solo lectura */}
+            {(faenaPescaId || embarcacionId || ordenTrabajoId) && (
+              <div
+                style={{
+                  alignItems: "end",
+                  display: "flex",
+                  gap: 10,
+                  marginTop: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                {faenaPescaId && (
+                  <div style={{ flex: 1 }}>
+                    <label htmlFor="faenaPescaId">Faena Pesca (Generado)</label>
+                    <InputText
+                      id="faenaPescaId"
+                      value={`ID: ${faenaPescaId}`}
+                      disabled
+                      style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+                    />
+                  </div>
+                )}
+                {embarcacionId && (
+                  <div style={{ flex: 1 }}>
+                    <label htmlFor="embarcacionId">Embarcación (Generado)</label>
+                    <InputText
+                      id="embarcacionId"
+                      value={`ID: ${embarcacionId}`}
+                      disabled
+                      style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+                    />
+                  </div>
+                )}
+                {ordenTrabajoId && (
+                  <div style={{ flex: 1 }}>
+                    <label htmlFor="ordenTrabajoId">Orden Trabajo (Generado)</label>
+                    <InputText
+                      id="ordenTrabajoId"
+                      value={`ID: ${ordenTrabajoId}`}
+                      disabled
+                      style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Información de Transporte */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="transportistaId">Transportista</label>
+                <Dropdown
+                  id="transportistaId"
+                  value={transportistaId ? Number(transportistaId) : null}
+                  options={(transportistasFiltrados || []).map((t) => ({
+                    label: t.razonSocial || t.nombre,
+                    value: Number(t.id),
+                  }))}
+                  onChange={(e) => setTransportistaId(e.value)}
+                  placeholder="Seleccionar transportista"
+                  disabled={loading}
+                  showClear
+                  filter
+                  style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="vehiculoId">Vehículo</label>
+                <Dropdown
+                  id="vehiculoId"
+                  value={vehiculoId ? Number(vehiculoId) : null}
+                  options={(vehiculosFiltrados || []).map((v) => ({
+                    label: `${v.placa || ""} - ${v.marca || ""} ${v.modelo || ""}`,
+                    value: Number(v.id),
+                  }))}
+                  onChange={(e) => setVehiculoId(e.value)}
+                  placeholder={
+                    transportistaId
+                      ? "Seleccionar vehículo"
+                      : "Seleccione primero un transportista"
+                  }
+                  disabled={
+                    loading ||
+                    !transportistaId ||
+                    !vehiculosFiltrados ||
+                    vehiculosFiltrados.length === 0
+                  }
+                  showClear
+                  filter
+                  style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                />
+              </div>
+            </div>
+
+            {/* Información de Agencia de Envío */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="agenciaEnvioId">Agencia de Envío</label>
+                <Dropdown
+                  id="agenciaEnvioId"
+                  value={agenciaEnvioId ? Number(agenciaEnvioId) : null}
+                  options={(agenciasFiltradas || []).map((a) => ({
+                    label: a.razonSocial || a.nombre,
+                    value: Number(a.id),
+                  }))}
+                  onChange={(e) => setAgenciaEnvioId(e.value)}
+                  placeholder="Seleccionar agencia"
+                  disabled={loading}
+                  showClear
+                  filter
+                  style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="dirAgenciaEnvioId">Dirección Agencia</label>
+                <Dropdown
+                  id="dirAgenciaEnvioId"
+                  value={dirAgenciaEnvioId ? Number(dirAgenciaEnvioId) : null}
+                  options={(direccionesAgencia || []).map((d) => ({
+                    label:
+                      d.direccionArmada ||
+                      d.direccion ||
+                      d.descripcion ||
+                      "Sin dirección",
+                    value: Number(d.id),
+                  }))}
+                  onChange={(e) => setDirAgenciaEnvioId(e.value)}
+                  placeholder={
+                    agenciaEnvioId
+                      ? "Seleccionar dirección agencia"
+                      : "Seleccione primero una agencia"
+                  }
+                  disabled={
+                    loading ||
+                    !agenciaEnvioId ||
+                    !direccionesAgencia ||
+                    direccionesAgencia.length === 0
+                  }
+                  showClear
+                  filter
+                  style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                />
+              </div>
+            </div>
+
+            {/* Información de Responsable */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="personalRespAlmacen">Responsable Almacén*</label>
+                <Dropdown
+                  id="personalRespAlmacen"
+                  value={personalRespAlmacen ? Number(personalRespAlmacen) : null}
+                  options={personalOptions.map((p) => ({
+                    label: p.nombreCompleto || p.nombre,
+                    value: Number(p.id),
+                  }))}
+                  onChange={(e) => setPersonalRespAlmacen(e.value)}
+                  placeholder="Responsable asignado automáticamente"
+                  disabled={true}
+                  filter
+                  style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                />
+                <small style={{ color: "#888", marginTop: 4 }}>
+                  Asignado automáticamente desde Parámetros de Aprobador (Solo
+                  lectura)
+                </small>
+              </div>
+            </div>
+
+            {/* Información de Estado y Órdenes Generadas */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              {(ordenCompraId || pedidoVentaId) && (
+                <>
+                  {ordenCompraId && (
+                    <div style={{ flex: 1 }}>
+                      <label htmlFor="ordenCompraId">
+                        Orden de Compra (Generado)
+                      </label>
+                      <InputText
+                        id="ordenCompraId"
+                        value={`ID: ${ordenCompraId}`}
+                        disabled
+                        style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+                      />
+                    </div>
+                  )}
+                  {pedidoVentaId && (
+                    <div style={{ flex: 1 }}>
+                      <label htmlFor="pedidoVentaId">
+                        Pedido de Venta (Generado)
+                      </label>
+                      <InputText
+                        id="pedidoVentaId"
+                        value={`ID: ${pedidoVentaId}`}
+                        disabled
+                        style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+                    </Panel>
+
+          {/* Diálogo para agregar/editar detalle */}
+          <DetalleMovimientoForm
+            visible={showDetalleDialog}
+            onHide={() => {
+              setShowDetalleDialog(false);
+              setEditingDetalle(null);
+            }}
+            detalle={editingDetalle}
+            movimientoAlmacen={{
+              id: defaultValues.id,
+              empresaId,
+              entidadComercialId,
+              esCustodia,
+              fechaDocumento,
+              empresa: empresas.find((e) => Number(e.id) === Number(empresaId)),
+              conceptoMovAlmacen: conceptosMovAlmacen.find(
+                (c) => Number(c.id) === Number(conceptoMovAlmacenId)
+              ),
+            }}
+            estadosMercaderia={estadosMercaderia}
+            estadosCalidad={estadosCalidad}
+            readOnly={documentoCerrado}
+            onSave={async (detalleData) => {
+              if (defaultValues?.id) {
+                await recargarDetalles();
+              } else {
+                if (editingDetalle) {
+                  setDetalles(
+                    detalles.map((d) =>
+                      d === editingDetalle
+                        ? { ...editingDetalle, ...detalleData }
+                        : d
+                    )
+                  );
+                } else {
+                  setDetalles([
+                    ...detalles,
+                    { ...detalleData, tempId: Date.now() },
+                  ]);
+                }
+              }
+              setShowDetalleDialog(false);
+              setEditingDetalle(null);
+            }}
+            loading={loading}
+          />
+
+          <ConfirmDialog />
+        </TabPanel>
+
+        {/* TAB 2: PDF SIN COSTOS */}
+        {isEdit && defaultValues?.id && (
+          <TabPanel header="PDF sin Costos">
+            <VerImpresionMovimientoPDF
+              movimientoId={defaultValues?.id}
+              datosMovimiento={defaultValues}
+              toast={toast}
+              personalOptions={personalOptions}
+              onPdfGenerated={(urlPdf) => {
+                if (defaultValues) {
+                  defaultValues.urlMovAlmacenPdf = urlPdf;
                 }
               }}
-              className="p-button-info"
-              severity="info"
-              raised
-              size="small"
-              outlined
-              tooltip="Generar PDF sin información de costos"
-              tooltipOptions={{ position: "top" }}
             />
-            <Button
-              type="button"
-              label="PDF con Costos"
-              icon="pi pi-file-pdf"
-              onClick={async () => {
-                try {
-                  toast.current.show({
-                    severity: "info",
-                    summary: "Generando PDF",
-                    detail: "Generando documento con costos...",
-                    life: 2000,
-                  });
-
-                  // Recargar movimiento completo desde el backend para obtener todas las relaciones
-                  const movimientoCompleto = await getMovimientoAlmacenPorId(defaultValues.id);
-                  
-                  // Agregar personal responsable completo desde personalOptions
-                  if (movimientoCompleto.personalRespAlmacen && personalOptions.length > 0) {
-                    const personalId = typeof movimientoCompleto.personalRespAlmacen === 'string'
-                      ? Number(movimientoCompleto.personalRespAlmacen)
-                      : Number(movimientoCompleto.personalRespAlmacen.id || movimientoCompleto.personalRespAlmacen);
-                    
-                    const personalEncontrado = personalOptions.find(p => Number(p.id) === personalId);
-                    if (personalEncontrado) {
-                      movimientoCompleto.personalRespAlmacen = personalEncontrado;
-                    }
-                  }
-                  
-                  // Obtener empresa completa
-                  const empresaSeleccionada = empresas.find(
-                    (e) => Number(e.id) === Number(empresaId)
-                  );
-
-                  const resultado = await generarPDFMovimientoAlmacen(
-                    movimientoCompleto,
-                    movimientoCompleto.detalles || detalles,
-                    empresaSeleccionada || {},
-                    true // incluirCostos
-                  );
-
-                  if (resultado.success) {
-                    toast.current.show({
-                      severity: "success",
-                      summary: "Éxito",
-                      detail: "PDF generado correctamente",
-                      life: 3000,
-                    });
-                  } else {
-                    toast.current.show({
-                      severity: "error",
-                      summary: "Error",
-                      detail: resultado.error || "Error al generar PDF",
-                      life: 5000,
-                    });
-                  }
-                } catch (error) {
-                  console.error("Error al generar PDF:", error);
-                  toast.current.show({
-                    severity: "error",
-                    summary: "Error",
-                    detail: "Error al generar el PDF",
-                    life: 5000,
-                  });
-                }
-              }}
-              className="p-button-help"
-              severity="help"
-              raised
-              size="small"
-              outlined
-              tooltip="Generar PDF con información de costos"
-              tooltipOptions={{ position: "top" }}
-            />
-          </>
+          </TabPanel>
         )}
 
+        {/* TAB 3: PDF CON COSTOS */}
+        {isEdit && defaultValues?.id && (
+          <TabPanel header="PDF con Costos">
+            <VerImpresionMovimientoConCostosPDF
+              movimientoId={defaultValues?.id}
+              datosMovimiento={defaultValues}
+              toast={toast}
+              personalOptions={personalOptions}
+              onPdfGenerated={(urlPdf) => {
+                if (defaultValues) {
+                  defaultValues.urlMovAlmacenConCostosPdf = urlPdf;
+                }
+              }}
+            />
+          </TabPanel>
+        )}
+      </TabView>
+
+      {/* BOTONES DE ACCIÓN */}
+      <div
+        style={{
+          display: "flex",
+          gap: "0.5rem",
+          marginTop: "1rem",
+          justifyContent: "flex-end",
+        }}
+      >
         <Button
           type="button"
           label="Cancelar"
@@ -1944,7 +1641,7 @@ export default function MovimientoAlmacenForm({
           outlined
         />
       </div>
-
+      
       {/* Diálogo de Progreso de Generación de Kardex */}
       <ProcessProgressDialog
         visible={showProgressDialog}

@@ -1,0 +1,251 @@
+// src/components/ordenCompra/dibujaEncabezadoPDFOC.js
+// Función para dibujar encabezado completo de la Orden de Compra
+import { rgb } from "pdf-lib";
+
+/**
+ * Dibuja el encabezado completo del documento en una página
+ * @param {Object} params - Parámetros
+ * @param {Page} params.pag - Página donde dibujar
+ * @param {PDFDocument} params.pdfDoc - Documento PDF
+ * @param {Object} params.empresa - Datos de la empresa
+ * @param {Object} params.ordenCompra - Datos de la orden de compra
+ * @param {Array} params.datosIzquierda - Datos columna izquierda
+ * @param {Array} params.datosDerecha - Datos columna derecha
+ * @param {number} params.width - Ancho de página
+ * @param {number} params.height - Alto de página
+ * @param {number} params.margin - Margen
+ * @param {number} params.lineHeight - Altura de línea
+ * @param {Font} params.fontBold - Fuente negrita
+ * @param {Font} params.fontNormal - Fuente normal
+ * @returns {Promise<number>} - Nueva posición Y
+ */
+export async function dibujaEncabezadoPDFOC({
+  pag,
+  pdfDoc,
+  empresa,
+  ordenCompra,
+  datosIzquierda,
+  datosDerecha,
+  width,
+  height,
+  margin,
+  lineHeight,
+  fontBold,
+  fontNormal,
+}) {
+  let yPos = height - 50;
+
+  // Cargar logo si existe
+  if (empresa?.logo && empresa?.id) {
+    try {
+      const logoUrl = `${import.meta.env.VITE_API_URL}/empresas-logo/${
+        empresa.id
+      }/logo`;
+      const logoResponse = await fetch(logoUrl);
+
+      if (logoResponse.ok) {
+        const logoBytes = await logoResponse.arrayBuffer();
+        let logoImage;
+
+        if (empresa.logo.toLowerCase().includes(".png")) {
+          logoImage = await pdfDoc.embedPng(logoBytes);
+        } else {
+          logoImage = await pdfDoc.embedJpg(logoBytes);
+        }
+
+        if (logoImage) {
+          const logoDims = logoImage.size();
+          const maxLogoWidth = 100;
+          const aspectRatio = logoDims.width / logoDims.height;
+          const finalWidth = maxLogoWidth;
+          const finalHeight = maxLogoWidth / aspectRatio;
+
+          pag.drawImage(logoImage, {
+            x: margin,
+            y: yPos - finalHeight,
+            width: finalWidth,
+            height: finalHeight,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error al cargar logo:", error);
+    }
+  }
+
+  // ENCABEZADO - Datos de la empresa
+  pag.drawText(empresa?.razonSocial || "EMPRESA", {
+    x: margin + 110,
+    y: yPos,
+    size: 10,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPos -= lineHeight;
+  pag.drawText(`RUC: ${empresa?.ruc || "-"}`, {
+    x: margin + 110,
+    y: yPos,
+    size: 10,
+    font: fontNormal,
+  });
+
+  yPos -= lineHeight;
+  if (empresa?.direccion) {
+    pag.drawText(`Dirección: ${empresa.direccion}`, {
+      x: margin + 110,
+      y: yPos,
+      size: 8,
+      font: fontNormal,
+    });
+    yPos -= 12;
+  }
+
+  // Título del documento
+  yPos -= 10;
+  const titulo = "ORDEN DE COMPRA";
+  const tituloWidth = titulo.length * 8;
+  const tituloX = (width - tituloWidth) / 2;
+
+  pag.drawText(titulo, {
+    x: tituloX,
+    y: yPos,
+    size: 14,
+    font: fontBold,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+
+  // Número de documento
+  yPos -= 14;
+  const numeroDoc = ordenCompra.numeroDocumento || "-";
+  pag.drawText(`N° ${numeroDoc}`, {
+    x: width / 2 - 50,
+    y: yPos,
+    size: 12,
+    font: fontBold,
+  });
+
+  // Línea separadora
+  yPos -= 8;
+  pag.drawLine({
+    start: { x: margin, y: yPos },
+    end: { x: width - margin, y: yPos },
+    thickness: 1,
+    color: rgb(0, 0, 0),
+  });
+
+  // Datos de la orden en dos columnas
+  yPos -= 12;
+  const yInicial = yPos;
+  const columnaDerechaX = width / 2 + 50;
+
+  // Dibujar columna izquierda
+  datosIzquierda.forEach(([label, value]) => {
+    pag.drawText(label, {
+      x: margin,
+      y: yPos,
+      size: 9,
+      font: fontBold,
+    });
+    pag.drawText(String(value), {
+      x: margin + 120,
+      y: yPos,
+      size: 9,
+      font: fontNormal,
+    });
+    yPos -= lineHeight;
+  });
+
+  // Dibujar columna derecha
+  yPos = yInicial;
+  datosDerecha.forEach(([label, value]) => {
+    pag.drawText(label, {
+      x: columnaDerechaX,
+      y: yPos,
+      size: 9,
+      font: fontBold,
+    });
+    pag.drawText(String(value), {
+      x: columnaDerechaX + 120,
+      y: yPos,
+      size: 9,
+      font: fontNormal,
+    });
+    yPos -= lineHeight;
+  });
+
+  // Ajustar yPos al final de las columnas
+  yPos =
+    yInicial -
+    Math.max(datosIzquierda.length, datosDerecha.length) * lineHeight;
+
+  // Proveedor (siempre se muestra en orden de compra)
+  if (ordenCompra.proveedor) {
+    pag.drawText("Proveedor:", {
+      x: margin,
+      y: yPos,
+      size: 9,
+      font: fontBold,
+    });
+    pag.drawText(ordenCompra.proveedor?.razonSocial || "-", {
+      x: margin + 120,
+      y: yPos,
+      size: 9,
+      font: fontNormal,
+    });
+    yPos -= lineHeight;
+
+    // RUC del proveedor
+    if (ordenCompra.proveedor?.ruc) {
+      pag.drawText("RUC Proveedor:", {
+        x: margin,
+        y: yPos,
+        size: 9,
+        font: fontBold,
+      });
+      pag.drawText(ordenCompra.proveedor.ruc, {
+        x: margin + 120,
+        y: yPos,
+        size: 9,
+        font: fontNormal,
+      });
+      yPos -= lineHeight;
+    }
+  }
+
+  // Solicitante
+  if (ordenCompra.solicitante) {
+    pag.drawText("Solicitante:", {
+      x: margin,
+      y: yPos,
+      size: 9,
+      font: fontBold,
+    });
+    pag.drawText(ordenCompra.solicitante.nombreCompleto || "-", {
+      x: margin + 120,
+      y: yPos,
+      size: 9,
+      font: fontNormal,
+    });
+    yPos -= lineHeight;
+  }
+
+  // Observaciones
+  if (ordenCompra.observaciones) {
+    pag.drawText("Observaciones:", {
+      x: margin,
+      y: yPos,
+      size: 9,
+      font: fontBold,
+    });
+    pag.drawText(ordenCompra.observaciones, {
+      x: margin + 120,
+      y: yPos,
+      size: 9,
+      font: fontNormal,
+    });
+    yPos -= lineHeight;
+  }
+
+  return yPos;
+}

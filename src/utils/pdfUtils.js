@@ -89,6 +89,14 @@ export const abrirPdfEnNuevaPestana = async (urlPdf, toast, mensajeError = "No h
       // ✅ NUEVO: Soporte para PDFs de requerimientos de compra
       const rutaArchivo = urlPdf.replace('/uploads/requerimientos-compra/', '');
       urlCompleta = `${import.meta.env.VITE_API_URL}/requerimiento-compra/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/ordenes-compra/')) {
+      // ✅ NUEVO: Soporte para PDFs de órdenes de compra
+      const rutaArchivo = urlPdf.replace('/uploads/ordenes-compra/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/orden-compra/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/movimientos-almacen/')) {
+      // ✅ NUEVO: Soporte para PDFs de movimientos de almacén
+      const rutaArchivo = urlPdf.replace('/uploads/movimientos-almacen/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/movimiento-almacen/archivo/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/")) {
       // Para otros tipos de uploads (archivos de confirmación, etc.)
       urlCompleta = `${import.meta.env.VITE_API_URL}${urlPdf}`;

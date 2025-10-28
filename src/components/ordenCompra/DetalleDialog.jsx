@@ -134,7 +134,7 @@ export default function DetalleDialog({
             id="productoId"
             value={formData.productoId}
             options={productos.map((p) => ({
-              label: p.nombre,
+              label: p.descripcionArmada,
               value: Number(p.id),
             }))}
             onChange={(e) => handleChange("productoId", e.value)}

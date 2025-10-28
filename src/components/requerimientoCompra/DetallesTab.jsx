@@ -247,7 +247,8 @@ export default function DetallesTab({
         loading={loading}
         emptyMessage="No hay detalles agregados"
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
-        className="p-datatable-gridlines"
+        showGridlines
+        size="small"
         onRowClick={(e) => {
           if (puedeEditar) {
             handleEdit(e.data);
@@ -255,8 +256,8 @@ export default function DetallesTab({
         }}
         selectionMode="single"
         paginator
-        rows={8}
-        rowsPerPageOptions={[8, 16, 24, 50]}
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} detalles"
       >

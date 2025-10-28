@@ -412,35 +412,40 @@ export default function SerieDoc() {
           </div>
         }
       >
-        <Column field="id" header="ID" style={{ width: 80 }} />
+        <Column field="id" header="ID" style={{ width: 80 }} sortable/>
         <Column
           field="empresaId"
           header="Empresa"
           body={empresaNombre}
+          sortable
         />
         <Column
           field="tipoDocumentoId"
           header="Tipo Documento"
           body={tipoDocumentoNombre}
+          sortable
         />
         <Column
           field="tipoAlmacenId"
           header="Tipo Almacén"
           body={tipoAlmacenNombre}
+          sortable
         />
-        <Column field="serie" header="Serie" />
-        <Column field="correlativo" header="Correlativo" />
-        <Column field="numCerosIzqCorre" header="Ceros Correlativo" />
-        <Column field="numCerosIzqSerie" header="Ceros Serie" />
+        <Column field="serie" header="Serie" sortable/>
+        <Column field="correlativo" header="Correlativo" sortable/>
+        <Column field="numCerosIzqCorre" header="Ceros Correlativo" sortable/>
+        <Column field="numCerosIzqSerie" header="Ceros Serie" sortable/>
         <Column
           field="activo"
           header="Activo"
           body={(rowData) => booleanTemplate(rowData, "activo")}
+          sortable
         />
         <Column
           body={actionBody}
           header="Acciones"
           style={{ width: 130, textAlign: "center" }}
+          sortable
         />
       </DataTable>
       <Dialog

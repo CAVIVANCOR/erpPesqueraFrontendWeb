@@ -5,7 +5,7 @@ import { Button } from "primereact/button";
 import { Tag } from "primereact/tag";
 import DatosGeneralesTab from "./DatosGeneralesTab";
 import DetallesTab from "./DetallesTab";
-import CotizacionesTab from "./CotizacionesTab";
+import CotizacionesCompras from "./CotizacionesCompras";
 import EntregasARendirComprasCard from "./EntregasARendirComprasCard";
 import { getSeriesDocRequerimiento } from "../../api/requerimientoCompra";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
@@ -86,7 +86,9 @@ export default function RequerimientoCompraForm({
   const [formaPagoId, setFormaPagoId] = useState(
     defaultValues?.formaPagoId || null
   );
-  const [monedaId, setMonedaId] = useState(defaultValues?.monedaId || 1); // Default: Soles
+  const [monedaId, setMonedaId] = useState(
+    defaultValues?.moneda?.id || defaultValues?.monedaId || 1
+  ); // Default: Soles - Usa relación directa si existe
   const [tipoCambio, setTipoCambio] = useState(
     defaultValues?.tipoCambio || null
   );
@@ -267,7 +269,11 @@ export default function RequerimientoCompraForm({
         defaultValues.formaPagoId ? Number(defaultValues.formaPagoId) : null
       );
       setMonedaId(
-        defaultValues.monedaId ? Number(defaultValues.monedaId) : null
+        defaultValues.moneda?.id
+          ? Number(defaultValues.moneda.id)
+          : defaultValues.monedaId
+          ? Number(defaultValues.monedaId)
+          : null
       );
       setTipoCambio(defaultValues.tipoCambio || null);
       setSolicitanteId(
@@ -875,6 +881,7 @@ export default function RequerimientoCompraForm({
             subtotal={totales.subtotal}
             totalIGV={totales.igv}
             total={totales.total}
+            monedaRequerimiento={defaultValues?.moneda}
           />
         </TabPanel>
 
@@ -886,9 +893,11 @@ export default function RequerimientoCompraForm({
           leftIcon="pi pi-shopping-cart"
           disabled={!isEdit || !formData.esConCotizacion}
         >
-          <CotizacionesTab
+          <CotizacionesCompras
             requerimientoId={defaultValues?.id}
+            detallesRequerimiento={defaultValues?.detalles || []}
             proveedores={proveedores}
+            monedas={monedas}
             puedeEditar={puedeEditar}
             toast={toast}
             onCountChange={setCotizacionesCount}

@@ -8,6 +8,8 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
+import { Calendar } from "primereact/calendar";
+import { Tag } from "primereact/tag";
 import MovimientoAlmacenForm from "../components/movimientoAlmacen/MovimientoAlmacenForm";
 import ConsultaStockForm from "../components/common/ConsultaStockForm";
 import {
@@ -28,7 +30,7 @@ import { getProductos } from "../api/producto";
 import { getPersonal } from "../api/personal";
 import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { useAuthStore } from "../shared/stores/useAuthStore";
-import { getResponsiveFontSize } from "../utils/utils";
+import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 
 /**
  * Pantalla profesional para gestión de Movimientos de Almacén.
@@ -56,7 +58,19 @@ export default function MovimientoAlmacen() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [entidadComercialSeleccionada, setEntidadComercialSeleccionada] = useState(null);
+  const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState(null);
+  const [fechaInicio, setFechaInicio] = useState(null);
+  const [fechaFin, setFechaFin] = useState(null);
+  const [esCustodiaSeleccionado, setEsCustodiaSeleccionado] = useState(null);
+  const [conceptoMovAlmacenSeleccionado, setConceptoMovAlmacenSeleccionado] = useState(null);
+  const [almacenOrigenSeleccionado, setAlmacenOrigenSeleccionado] = useState(null);
+  const [almacenDestinoSeleccionado, setAlmacenDestinoSeleccionado] = useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
+  const [entidadesComercialesUnicas, setEntidadesComercialesUnicas] = useState([]);
+  const [tiposDocumentoUnicos, setTiposDocumentoUnicos] = useState([]);
+  const [almacenesOrigen, setAlmacenesOrigen] = useState([]);
+  const [almacenesDestino, setAlmacenesDestino] = useState([]);
   const [showConsultaStock, setShowConsultaStock] = useState(false);
   const usuario = useAuthStore((state) => state.usuario);
 
@@ -64,17 +78,131 @@ export default function MovimientoAlmacen() {
     cargarDatos();
   }, []);
 
-  // Filtrar items cuando cambie la empresa seleccionada
+  // Filtrar items cuando cambien los filtros
   useEffect(() => {
+    let filtrados = items;
+
+    // Filtro por empresa
     if (empresaSeleccionada) {
-      const filtrados = items.filter(
-        (item) => Number(item.empresaId) === Number(empresaSeleccionada)
+      filtrados = filtrados.filter(
+        (item) => String(item.empresaId) === String(empresaSeleccionada)
       );
-      setItemsFiltrados(filtrados);
-    } else {
-      setItemsFiltrados(items);
     }
-  }, [empresaSeleccionada, items]);
+
+    // Filtro por entidad comercial
+    if (entidadComercialSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => String(item.entidadComercialId) === String(entidadComercialSeleccionada)
+      );
+    }
+
+    // Filtro por tipo documento
+    if (tipoDocumentoSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => String(item.tipoDocumentoId) === String(tipoDocumentoSeleccionado)
+      );
+    }
+
+    // Filtro por rango de fechas
+    if (fechaInicio) {
+      filtrados = filtrados.filter((item) => {
+        const fechaDoc = new Date(item.fechaDocumento);
+        const fechaIni = new Date(fechaInicio);
+        fechaIni.setHours(0, 0, 0, 0);
+        return fechaDoc >= fechaIni;
+      });
+    }
+
+    if (fechaFin) {
+      filtrados = filtrados.filter((item) => {
+        const fechaDoc = new Date(item.fechaDocumento);
+        const fechaFinDia = new Date(fechaFin);
+        fechaFinDia.setHours(23, 59, 59, 999);
+        return fechaDoc <= fechaFinDia;
+      });
+    }
+
+    // Filtro por custodia/mercadería propia
+    if (esCustodiaSeleccionado !== null) {
+      filtrados = filtrados.filter(
+        (item) => item.esCustodia === esCustodiaSeleccionado
+      );
+    }
+
+    // Filtro por concepto de almacén
+    if (conceptoMovAlmacenSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => String(item.conceptoMovAlmacenId) === String(conceptoMovAlmacenSeleccionado)
+      );
+    }
+
+    // Filtro por almacén origen
+    if (almacenOrigenSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => String(item.almacenOrigenId) === String(almacenOrigenSeleccionado)
+      );
+    }
+
+    // Filtro por almacén destino
+    if (almacenDestinoSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => String(item.almacenDestinoId) === String(almacenDestinoSeleccionado)
+      );
+    }
+
+    setItemsFiltrados(filtrados);
+  }, [
+    empresaSeleccionada,
+    entidadComercialSeleccionada,
+    tipoDocumentoSeleccionado,
+    fechaInicio,
+    fechaFin,
+    esCustodiaSeleccionado,
+    conceptoMovAlmacenSeleccionado,
+    almacenOrigenSeleccionado,
+    almacenDestinoSeleccionado,
+    items,
+  ]);
+
+  // Extraer entidades comerciales únicas de los movimientos
+  useEffect(() => {
+    const entidadesMap = new Map();
+    items.forEach((item) => {
+      if (item.entidadComercialId && item.entidadComercial) {
+        entidadesMap.set(item.entidadComercialId, item.entidadComercial);
+      }
+    });
+    const entidadesArray = Array.from(entidadesMap.values());
+    setEntidadesComercialesUnicas(entidadesArray);
+  }, [items]);
+
+  // Extraer tipos de documento únicos de los movimientos
+  useEffect(() => {
+    const tiposDocMap = new Map();
+    items.forEach((item) => {
+      if (item.tipoDocumentoId && item.tipoDocumento) {
+        tiposDocMap.set(item.tipoDocumentoId, item.tipoDocumento);
+      }
+    });
+    const tiposDocArray = Array.from(tiposDocMap.values());
+    setTiposDocumentoUnicos(tiposDocArray);
+  }, [items]);
+
+  // Extraer almacenes únicos de los movimientos
+  useEffect(() => {
+    const almacenesOrigenMap = new Map();
+    const almacenesDestinoMap = new Map();
+    items.forEach((item) => {
+      if (item.almacenOrigenId && item.almacenOrigen) {
+        almacenesOrigenMap.set(item.almacenOrigenId, item.almacenOrigen);
+      }
+      if (item.almacenDestinoId && item.almacenDestino) {
+        almacenesDestinoMap.set(item.almacenDestinoId, item.almacenDestino);
+      }
+    });
+    setAlmacenesOrigen(Array.from(almacenesOrigenMap.values()));
+    setAlmacenesDestino(Array.from(almacenesDestinoMap.values()));
+  }, [items]);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -224,6 +352,18 @@ export default function MovimientoAlmacen() {
     setShowDialog(true);
   };
 
+  const limpiarFiltros = () => {
+    setEmpresaSeleccionada(null);
+    setEntidadComercialSeleccionada(null);
+    setTipoDocumentoSeleccionado(null);
+    setFechaInicio(null);
+    setFechaFin(null);
+    setEsCustodiaSeleccionado(null);
+    setConceptoMovAlmacenSeleccionado(null);
+    setAlmacenOrigenSeleccionado(null);
+    setAlmacenDestinoSeleccionado(null);
+  };
+
   const handleCerrar = async (id) => {
     setLoading(true);
     try {
@@ -366,7 +506,7 @@ export default function MovimientoAlmacen() {
   };
 
   const fechaTemplate = (rowData, field) => {
-    return rowData[field] ? new Date(rowData[field]).toLocaleDateString() : "";
+    return formatearFecha(rowData[field], "");
   };
 
   const booleanTemplate = (rowData, field) => (
@@ -374,6 +514,17 @@ export default function MovimientoAlmacen() {
       {rowData[field] ? "Sí" : "No"}
     </span>
   );
+
+  const mercaderiaTemplate = (rowData) => {
+    const esCustodia = rowData.esCustodia;
+    return (
+      <Tag
+        value={esCustodia ? "CUSTODIA" : "PROPIA"}
+        severity={esCustodia ? "danger" : "success"}
+        style={{ fontWeight: "bold" }}
+      />
+    );
+  };
 
   const actionBody = (rowData) => (
     <>
@@ -412,61 +563,267 @@ export default function MovimientoAlmacen() {
         loading={loading}
         dataKey="id"
         paginator
-        rows={10}
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} movimientos"
+        size="small"
+        showGridlines
+        stripedRows
         onRowClick={(e) => handleEdit(e.data)}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         header={
-          <div
-            style={{
-              alignItems: "end",
-              display: "flex",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 2 }}>
-              <h2>Gestión de Movimientos de Almacén</h2>
+          <div>
+            {/* Primera fila */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <h2>Movimientos de Almacén</h2>
+              </div>
+              <div style={{ flex: 1.5 }}>
+                <label htmlFor="empresaFiltro" style={{ fontWeight: "bold" }}>
+                  Empresa
+                </label>
+                <Dropdown
+                  id="empresaFiltro"
+                  value={empresaSeleccionada}
+                  options={empresas.map((e) => ({
+                    label: e.razonSocial,
+                    value: Number(e.id),
+                  }))}
+                  onChange={(e) => setEmpresaSeleccionada(e.value)}
+                  placeholder="Todas"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                />
+              </div>
+                            <div style={{ flex: 0.5 }}>
+                <Button
+                  label="Nuevo"
+                  icon="pi pi-plus"
+                  className="p-button-success"
+                  severity="success"
+                  raised
+                  onClick={handleAdd}
+                  disabled={loading || !empresaSeleccionada}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Consulta Stock"
+                  icon="pi pi-chart-bar"
+                  className="p-button-warning"
+                  severity="warning"
+                  raised
+                  onClick={() => setShowConsultaStock(true)}
+                  disabled={loading || !empresaSeleccionada}
+                />
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Limpiar Filtros"
+                  icon="pi pi-filter-slash"
+                  className="p-button-secondary"
+                  outlined
+                  onClick={limpiarFiltros}
+                  disabled={loading}
+                />
+              </div>
             </div>
-            <div style={{ flex: 2 }}>
-              <label htmlFor="empresaFiltro" style={{ fontWeight: "bold" }}>
-                Empresa*
-              </label>
-              <Dropdown
-                id="empresaFiltro"
-                value={empresaSeleccionada}
-                options={empresas.map((e) => ({
-                  label: e.razonSocial,
-                  value: Number(e.id),
-                }))}
-                onChange={(e) => setEmpresaSeleccionada(e.value)}
-                placeholder="Seleccionar empresa para filtrar"
-                optionLabel="label"
-                optionValue="value"
-                showClear
-                disabled={loading}
-              />
+            {/* Segunda fila */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <label htmlFor="entidadFiltro" style={{ fontWeight: "bold" }}>
+                  Entidad Comercial
+                </label>
+                <Dropdown
+                  id="entidadFiltro"
+                  value={entidadComercialSeleccionada}
+                  options={entidadesComercialesUnicas.map((e) => ({
+                    label: e.razonSocial,
+                    value: Number(e.id),
+                  }))}
+                  onChange={(e) => setEntidadComercialSeleccionada(e.value)}
+                  placeholder="Todas"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 1.5 }}>
+                <label htmlFor="tipoDocFiltro" style={{ fontWeight: "bold" }}>
+                  Tipo Documento
+                </label>
+                <Dropdown
+                  id="tipoDocFiltro"
+                  value={tipoDocumentoSeleccionado}
+                  options={tiposDocumentoUnicos.map((t) => ({
+                    label: t.descripcion || t.nombre,
+                    value: Number(t.id),
+                  }))}
+                  onChange={(e) => setTipoDocumentoSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaInicio" style={{ fontWeight: "bold" }}>
+                  Desde
+                </label>
+                <Calendar
+                  id="fechaInicio"
+                  value={fechaInicio}
+                  onChange={(e) => setFechaInicio(e.value)}
+                  placeholder="Fecha inicio"
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  showButtonBar
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaFin" style={{ fontWeight: "bold" }}>
+                  Hasta
+                </label>
+                <Calendar
+                  id="fechaFin"
+                  value={fechaFin}
+                  onChange={(e) => setFechaFin(e.value)}
+                  placeholder="Fecha fin"
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  showButtonBar
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontWeight: "bold", display: "block", marginBottom: "0.5rem" }}>
+                  Tipo Mercadería
+                </label>
+                <Button
+                  label={
+                    esCustodiaSeleccionado === null
+                      ? "TODAS"
+                      : esCustodiaSeleccionado
+                      ? "CUSTODIA"
+                      : "PROPIA"
+                  }
+                  icon={
+                    esCustodiaSeleccionado === null
+                      ? "pi pi-filter"
+                      : esCustodiaSeleccionado
+                      ? "pi pi-exclamation-circle"
+                      : "pi pi-check-circle"
+                  }
+                  severity={
+                    esCustodiaSeleccionado === null
+                      ? "secondary"
+                      : esCustodiaSeleccionado
+                      ? "danger"
+                      : "success"
+                  }
+                  onClick={() => {
+                    if (esCustodiaSeleccionado === null) {
+                      setEsCustodiaSeleccionado(false); // TODAS -> PROPIA
+                    } else if (esCustodiaSeleccionado === false) {
+                      setEsCustodiaSeleccionado(true); // PROPIA -> CUSTODIA
+                    } else {
+                      setEsCustodiaSeleccionado(null); // CUSTODIA -> TODAS
+                    }
+                  }}
+                  disabled={loading}
+                  style={{ width: "100%", fontWeight: "bold" }}
+                />
+              </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                label="Consulta de Stock"
-                icon="pi pi-chart-bar"
-                className="p-button-info"
-                size="small"
-                outlined
-                onClick={() => setShowConsultaStock(true)}
-                disabled={loading || !empresaSeleccionada}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                label="Nuevo"
-                icon="pi pi-plus"
-                className="p-button-success"
-                size="small"
-                outlined
-                onClick={handleAdd}
-                disabled={loading || !empresaSeleccionada}
-              />
+            {/* Tercera fila */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <label htmlFor="conceptoFiltro" style={{ fontWeight: "bold" }}>
+                  Concepto Movimiento
+                </label>
+                <Dropdown
+                  id="conceptoFiltro"
+                  value={conceptoMovAlmacenSeleccionado}
+                  options={conceptosMovAlmacen.map((c) => ({
+                    label: c.descripcionArmada,
+                    value: Number(c.id),
+                  }))}
+                  onChange={(e) => setConceptoMovAlmacenSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="almacenOrigenFiltro" style={{ fontWeight: "bold" }}>
+                  Almacén Origen
+                </label>
+                <Dropdown
+                  id="almacenOrigenFiltro"
+                  value={almacenOrigenSeleccionado}
+                  options={almacenesOrigen.map((a) => ({
+                    label: a.nombre || a.descripcion,
+                    value: Number(a.id),
+                  }))}
+                  onChange={(e) => setAlmacenOrigenSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="almacenDestinoFiltro" style={{ fontWeight: "bold" }}>
+                  Almacén Destino
+                </label>
+                <Dropdown
+                  id="almacenDestinoFiltro"
+                  value={almacenDestinoSeleccionado}
+                  options={almacenesDestino.map((a) => ({
+                    label: a.nombre || a.descripcion,
+                    value: Number(a.id),
+                  }))}
+                  onChange={(e) => setAlmacenDestinoSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                />
+              </div>
             </div>
           </div>
         }
@@ -480,6 +837,11 @@ export default function MovimientoAlmacen() {
           body={tipoDocumentoNombre}
         />
         <Column
+          field="conceptoMovAlmacenId"
+          header="Concepto"
+          body={conceptoNombre}
+        />
+        <Column
           field="fechaDocumento"
           header="Fecha"
           body={(rowData) => fechaTemplate(rowData, "fechaDocumento")}
@@ -491,8 +853,9 @@ export default function MovimientoAlmacen() {
         />
         <Column
           field="esCustodia"
-          header="Es Custodia"
-          body={(rowData) => booleanTemplate(rowData, "esCustodia")}
+          header="Tipo Mercadería"
+          body={mercaderiaTemplate}
+          style={{ width: 80, textAlign: "center" }}
         />
         <Column
           body={actionBody}

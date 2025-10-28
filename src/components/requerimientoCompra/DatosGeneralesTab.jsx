@@ -41,6 +41,8 @@ export default function DatosGeneralesTab({
   subtotal = null,
   totalIGV = null,
   total = null,
+  // Objeto moneda del requerimiento (viene de la relación)
+  monedaRequerimiento = null,
 }) {
   // Helper para obtener nombre completo del personal por ID
   const getNombrePersonal = (personalId) => {
@@ -53,8 +55,12 @@ export default function DatosGeneralesTab({
 
   // Helper para obtener código de moneda (ISO)
   const getCodigoMoneda = () => {
+    // Prioridad 1: Usar la relación directa del requerimiento (más eficiente)
+    if (monedaRequerimiento?.codigoSunat) {
+      return monedaRequerimiento.codigoSunat;
+    }
+    // Prioridad 2: Buscar en el array de opciones (fallback)
     const moneda = monedasOptions.find((m) => m.value === formData.monedaId);
-    // Usar codigoSunat que contiene los códigos ISO (PEN, USD, EUR, etc.)
     return moneda?.codigoSunat || "PEN";
   };
 

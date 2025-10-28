@@ -268,8 +268,8 @@ export default function DetalleMovimientoList({
         onRowClick={(e) => onEdit(e.data)}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         paginator
-        rows={8}
-        rowsPerPageOptions={[8, 16, 24, 50]}
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 25]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} detalles"
       >

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
+import { InputNumber } from "primereact/inputnumber";
 import DetalleDialog from "./DetalleDialog";
 import {
   getDetallesOrdenCompra,
@@ -15,6 +16,12 @@ export default function DetallesTab({
   puedeEditar,
   toast,
   onCountChange,
+  subtotal = 0,
+  totalIGV = 0,
+  total = 0,
+  porcentajeIGV = 0,
+  monedas = [],
+  monedaId = null,
 }) {
   const [detalles, setDetalles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -106,23 +113,91 @@ export default function DetallesTab({
     </div>
   );
 
-  const totalGeneral = detalles.reduce(
-    (sum, det) => sum + (Number(det.subtotal) || 0),
-    0
-  );
+  // Helper para obtener código de moneda (ISO)
+  const getCodigoMoneda = () => {
+    if (!monedaId) return "PEN";
+    const moneda = monedas.find((m) => Number(m.id) === Number(monedaId));
+    return moneda?.codigoSunat || "PEN";
+  };
 
   return (
     <div>
-      <div className="mb-3 flex justify-content-between align-items-center">
-        <Button
-          label="Agregar Detalle"
-          icon="pi pi-plus"
-          className="p-button-success"
-          onClick={handleAdd}
-          disabled={!puedeEditar}
-        />
-        <div className="text-xl font-bold">
-          Total: S/ {totalGeneral.toFixed(2)}
+      {/* FILA: TOTALES Y BOTÓN */}
+      <div
+        style={{
+          alignItems: "end",
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+          marginBottom: 5,
+          padding: "5px",
+          backgroundColor: "#f8f9fa",
+          borderRadius: "8px",
+          border: "2px solid #dee2e6",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label style={{ opacity: 0 }}>.</label>
+          <Button
+            label="Agregar Detalle"
+            icon="pi pi-plus"
+            className="p-button-success"
+            onClick={handleAdd}
+            disabled={!puedeEditar}
+            style={{ width: "100%", fontWeight: "bold" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontWeight: "bold" }}>Valor Compra</label>
+          <InputNumber
+            value={subtotal || 0}
+            mode="currency"
+            currency={getCodigoMoneda()}
+            locale="es-PE"
+            minFractionDigits={2}
+            disabled
+            inputStyle={{
+              fontWeight: "bold",
+              fontSize: "1.1rem",
+              backgroundColor: "#fff",
+              textAlign: "right",
+            }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontWeight: "bold" }}>IGV ({porcentajeIGV || 0}%)</label>
+          <InputNumber
+            value={totalIGV || 0}
+            mode="currency"
+            currency={getCodigoMoneda()}
+            locale="es-PE"
+            minFractionDigits={2}
+            disabled
+            inputStyle={{
+              fontWeight: "bold",
+              fontSize: "1.1rem",
+              backgroundColor: "#fff",
+              textAlign: "right",
+            }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontWeight: "bold", color: "#2196F3" }}>Precio Compra Total</label>
+          <InputNumber
+            value={total || 0}
+            mode="currency"
+            currency={getCodigoMoneda()}
+            locale="es-PE"
+            minFractionDigits={2}
+            disabled
+            inputStyle={{
+              fontWeight: "bold",
+              fontSize: "1.2rem",
+              backgroundColor: "#e3f2fd",
+              color: "#1976D2",
+              textAlign: "right",
+            }}
+          />
         </div>
       </div>
 
@@ -131,7 +206,7 @@ export default function DetallesTab({
         loading={loading}
         emptyMessage="No hay detalles agregados"
       >
-        <Column field="producto.nombre" header="Producto" />
+        <Column field="producto.descripcionArmada" header="Producto" />
         <Column field="cantidad" header="Cantidad" style={{ width: "100px" }} />
         <Column
           field="producto.unidadMedida.nombre"

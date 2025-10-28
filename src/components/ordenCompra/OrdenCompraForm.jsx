@@ -4,8 +4,7 @@ import { TabView, TabPanel } from "primereact/tabview";
 import { Button } from "primereact/button";
 import { Tag } from "primereact/tag";
 import DatosGeneralesTab from "./DatosGeneralesTab";
-import DetallesTab from "./DetallesTab";
-import MovimientosTab from "./MovimientosTab";
+import VerImpresionOrdenCompraPDF from "./VerImpresionOrdenCompraPDF";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 export default function OrdenCompraForm({
@@ -17,6 +16,11 @@ export default function OrdenCompraForm({
   productos,
   personalOptions,
   requerimientos,
+  monedas,
+  centrosCosto,
+  tiposDocumento,
+  seriesDoc,
+  estadosOrden,
   empresaFija,
   onSubmit,
   onCancel,
@@ -55,11 +59,13 @@ export default function OrdenCompraForm({
   const [centroCostoId, setCentroCostoId] = useState(defaultValues?.centroCostoId || null);
   const [movIngresoAlmacenId, setMovIngresoAlmacenId] = useState(defaultValues?.movIngresoAlmacenId || null);
   const [observaciones, setObservaciones] = useState(defaultValues?.observaciones || "");
+  const [porcentajeIGV, setPorcentajeIGV] = useState(defaultValues?.porcentajeIGV || null);
+  const [esExoneradoAlIGV, setEsExoneradoAlIGV] = useState(defaultValues?.esExoneradoAlIGV || false);
 
   const [proveedoresFiltrados, setProveedoresFiltrados] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
   const [detallesCount, setDetallesCount] = useState(0);
-  const [movimientosCount, setMovimientosCount] = useState(0);
+  const [totales, setTotales] = useState({ subtotal: 0, igv: 0, total: 0 });
 
   // Filtrar proveedores por empresaId
   useEffect(() => {
@@ -96,6 +102,8 @@ export default function OrdenCompraForm({
       setCentroCostoId(defaultValues.centroCostoId ? Number(defaultValues.centroCostoId) : null);
       setMovIngresoAlmacenId(defaultValues.movIngresoAlmacenId ? Number(defaultValues.movIngresoAlmacenId) : null);
       setObservaciones(defaultValues.observaciones || "");
+      setPorcentajeIGV(defaultValues.porcentajeIGV || null);
+      setEsExoneradoAlIGV(defaultValues.esExoneradoAlIGV || false);
     }
   }, [defaultValues, empresaFija]);
 
@@ -116,6 +124,67 @@ export default function OrdenCompraForm({
       }
     }
   }, [isEdit, usuario?.personalId, toast]);
+
+  // Recalcular totales cuando cambien los detalles, porcentaje IGV o estado IGV
+  useEffect(() => {
+    const calcularTotales = async () => {
+      if (!defaultValues?.id || !isEdit) return;
+
+      try {
+        const { getDetallesOrdenCompra } = await import(
+          "../../api/detalleOrdenCompra"
+        );
+        const detalles = await getDetallesOrdenCompra(defaultValues.id);
+
+        const subtotalCalc = detalles.reduce(
+          (sum, det) => sum + (Number(det.subtotal) || 0),
+          0
+        );
+        const igvCalc = esExoneradoAlIGV
+          ? 0
+          : subtotalCalc * (Number(porcentajeIGV) / 100);
+        const totalCalc = subtotalCalc + igvCalc;
+
+        setTotales({ subtotal: subtotalCalc, igv: igvCalc, total: totalCalc });
+      } catch (err) {
+        console.error("Error al calcular totales:", err);
+      }
+    };
+
+    calcularTotales();
+  }, [
+    detallesCount,
+    porcentajeIGV,
+    esExoneradoAlIGV,
+    isEdit,
+    defaultValues?.id,
+  ]);
+
+  // Handler para cambio de serie - Calcula y muestra el próximo correlativo
+  const handleSerieChange = (serieId) => {
+    if (serieId) {
+      const serie = seriesDoc.find((s) => Number(s.id) === Number(serieId));
+      if (serie) {
+        // Mostrar formato de referencia (no el número real)
+        const correlativoActual = Number(serie.correlativo);
+        const proximoCorrelativo = correlativoActual + 1;
+        const numSerie = String(serie.serie).padStart(
+          serie.numCerosIzqSerie,
+          "0"
+        );
+
+        setSerieDocId(serieId);
+        setNumSerieDoc(numSerie);
+        setNumCorreDoc(`PRÓXIMO: ${proximoCorrelativo}`);
+        setNumeroDocumento("Se generará al guardar");
+      }
+    } else {
+      setSerieDocId(null);
+      setNumSerieDoc("");
+      setNumCorreDoc("");
+      setNumeroDocumento("");
+    }
+  };
 
   // Handler genérico para cambios de campos
   const handleChange = (field, value) => {
@@ -140,6 +209,8 @@ export default function OrdenCompraForm({
       centroCostoId: setCentroCostoId,
       movIngresoAlmacenId: setMovIngresoAlmacenId,
       observaciones: setObservaciones,
+      porcentajeIGV: setPorcentajeIGV,
+      esExoneradoAlIGV: setEsExoneradoAlIGV,
     };
     
     const setter = setters[field];
@@ -171,6 +242,8 @@ export default function OrdenCompraForm({
       centroCostoId: centroCostoId ? Number(centroCostoId) : null,
       movIngresoAlmacenId: movIngresoAlmacenId ? Number(movIngresoAlmacenId) : null,
       observaciones,
+      porcentajeIGV,
+      esExoneradoAlIGV,
     };
 
     if (!data.empresaId || !data.proveedorId) {
@@ -212,11 +285,69 @@ export default function OrdenCompraForm({
     onAnular(defaultValues.id);
   };
 
+  const handlePdfGenerated = (urlPdf) => {
+    // Actualizar defaultValues con la nueva URL del PDF
+    if (defaultValues) {
+      defaultValues.urlOrdenCompraPdf = urlPdf;
+    }
+  };
+
+  // Objeto formData para pasar a componentes hijos
+  const formData = {
+    empresaId,
+    tipoDocumentoId,
+    serieDocId,
+    numSerieDoc,
+    numCorreDoc,
+    numeroDocumento,
+    fechaDocumento,
+    requerimientoCompraId,
+    proveedorId,
+    formaPagoId,
+    monedaId,
+    tipoCambio,
+    fechaEntrega,
+    fechaRecepcion,
+    solicitanteId,
+    aprobadoPorId,
+    estadoId,
+    centroCostoId,
+    movIngresoAlmacenId,
+    observaciones,
+    porcentajeIGV,
+    esExoneradoAlIGV,
+  };
+
   // Estados del documento
-  const estaAprobado = formData.estadoId === 33;
-  const estaAnulado = formData.estadoId === 34;
-  const estaPendiente = formData.estadoId === 32 || !formData.estadoId;
+  const estaAprobado = estadoId === 33;
+  const estaAnulado = estadoId === 40;
+  const estaPendiente = estadoId === 38 || !estadoId;
   const puedeEditar = estaPendiente && !loading;
+
+  // Preparar options para dropdowns siguiendo patrón RequerimientoCompraForm
+  const tiposDocumentoOptions = (tiposDocumento || []).map((t) => ({
+    ...t,
+    id: Number(t.id),
+    label: t.descripcion || t.nombre,
+    value: Number(t.id),
+  }));
+
+  const seriesDocOptions = (seriesDoc || []).map((s) => {
+    const correlativoActual = Number(s.correlativo);
+    return {
+      ...s,
+      id: Number(s.id),
+      label: `${s.serie} (Correlativo: ${correlativoActual})`,
+      value: Number(s.id),
+    };
+  });
+
+  const estadosOrdenOptions = (estadosOrden || []).map((e) => ({
+    ...e,
+    id: Number(e.id),
+    label: e.descripcion || e.nombre,
+    value: Number(e.id),
+  }));
 
   return (
     <div className="p-fluid">
@@ -226,42 +357,38 @@ export default function OrdenCompraForm({
           <DatosGeneralesTab
             formData={formData}
             onChange={handleChange}
+            onSerieChange={handleSerieChange}
             empresas={empresas}
             proveedores={proveedoresFiltrados}
             formasPago={formasPago}
             personalOptions={personalOptions}
-            requerimientos={requerimientos}
+            monedas={monedas}
+            centrosCosto={centrosCosto}
+            tiposDocumentoOptions={tiposDocumentoOptions}
+            seriesDocOptions={seriesDocOptions}
+            estadosOrdenOptions={estadosOrdenOptions}
             isEdit={isEdit}
             puedeEditar={puedeEditar}
-            onGenerarDesdeRequerimiento={onGenerarDesdeRequerimiento}
-          />
-        </TabPanel>
-
-        {/* TAB 2: DETALLES */}
-        <TabPanel
-          header={`Detalles ${detallesCount > 0 ? `(${detallesCount})` : ""}`}
-          leftIcon="pi pi-list"
-          disabled={!isEdit}
-        >
-          <DetallesTab
+            detallesCount={detallesCount}
             ordenCompraId={defaultValues?.id}
             productos={productos}
-            puedeEditar={puedeEditar}
             toast={toast}
             onCountChange={setDetallesCount}
+            subtotal={totales.subtotal}
+            totalIGV={totales.igv}
+            total={totales.total}
+            monedaOrden={defaultValues?.moneda}
           />
         </TabPanel>
 
-        {/* TAB 3: MOVIMIENTOS DE ALMACÉN */}
-        <TabPanel
-          header={`Movimientos ${movimientosCount > 0 ? `(${movimientosCount})` : ""}`}
-          leftIcon="pi pi-warehouse"
-          disabled={!isEdit || !estaAprobado}
-        >
-          <MovimientosTab
+        {/* TAB 2: IMPRESIÓN PDF */}
+        <TabPanel header="Impresión PDF" leftIcon="pi pi-file-pdf" disabled={!isEdit}>
+          <VerImpresionOrdenCompraPDF
             ordenCompraId={defaultValues?.id}
+            datosOrdenCompra={defaultValues}
             toast={toast}
-            onCountChange={setMovimientosCount}
+            personalOptions={personalOptions}
+            onPdfGenerated={handlePdfGenerated}
           />
         </TabPanel>
       </TabView>

@@ -632,6 +632,7 @@ export default function PersonalPage() {
         emptyMessage="No se encontraron registros que coincidan con la búsqueda."
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
+        <Column field="id" header="ID" sortable />
         <Column
           header="Foto"
           body={(row) => {

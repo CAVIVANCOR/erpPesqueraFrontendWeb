@@ -12,6 +12,7 @@ import { getDetallesMovimientoAlmacen, crearDetalleMovimientoAlmacen, actualizar
 import { getMovimientosAlmacen } from "../api/movimientoAlmacen";
 import { getEmpresas } from "../api/empresa";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { formatearFecha } from "../utils/utils";
 
 /**
  * Pantalla profesional para gestión de Detalles de Movimiento de Almacén.
@@ -123,7 +124,7 @@ export default function DetalleMovimientoAlmacen() {
   };
 
   const fechaTemplate = (rowData, field) => {
-    return rowData[field] ? new Date(rowData[field]).toLocaleDateString() : '';
+    return formatearFecha(rowData[field], "");
   };
 
   const booleanTemplate = (rowData, field) => (
