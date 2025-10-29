@@ -16,15 +16,22 @@
 import React, { useState, useEffect, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { Button } from 'primereact/button';
-import { Dialog } from 'primereact/dialog';
-import { Toast } from 'primereact/toast';
-import { ConfirmDialog } from 'primereact/confirmdialog';
-import { useAuthStore } from '../shared/stores/useAuthStore';
-import { InputText } from 'primereact/inputtext';
-import { Avatar } from 'primereact/avatar'; // Importación necesaria para mostrar avatares profesionales
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
+import { Dropdown } from "primereact/dropdown";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import { InputText } from "primereact/inputtext";
+import { Avatar } from "primereact/avatar"; // Importación necesaria para mostrar avatares profesionales
 import UsuarioForm from "../components/usuarios/UsuarioForm";
-import { getUsuarios, crearUsuario, actualizarUsuario, eliminarUsuario } from "../api/usuarios";
+import {
+  getUsuarios,
+  crearUsuario,
+  actualizarUsuario,
+  eliminarUsuario,
+} from "../api/usuarios";
+import { getEmpresas } from "../api/empresa";
 import { getResponsiveFontSize } from "../utils/utils";
 /**
  * Pantalla profesional de gestión de usuarios del ERP Megui.
@@ -43,8 +50,11 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - El usuario autenticado se obtiene siempre desde useAuthStore.
  */
 export default function Usuarios() {
-  const usuario = useAuthStore(state => state.usuario);
-  const [confirmState, setConfirmState] = useState({ visible: false, row: null });
+  const usuario = useAuthStore((state) => state.usuario);
+  const [confirmState, setConfirmState] = useState({
+    visible: false,
+    row: null,
+  });
   // Referencia para Toast de notificaciones
   const toast = useRef(null);
 
@@ -57,18 +67,38 @@ export default function Usuarios() {
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(7);
   const [globalFilter, setGlobalFilter] = useState("");
+  
+  // Estado para filtro de empresa
+  const [empresas, setEmpresas] = useState([]);
+  const [empresaFiltro, setEmpresaFiltro] = useState(null);
 
   // Estado para modal de alta/edición
   const [mostrarDialogo, setMostrarDialogo] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [usuarioEdit, setUsuarioEdit] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [dialogKey, setDialogKey] = useState(0); // Contador para forzar re-render
+
+  // Carga inicial de empresas
+  useEffect(() => {
+    cargarEmpresas();
+  }, []);
 
   // Carga inicial y búsqueda/paginación
   useEffect(() => {
     cargarUsuarios();
     // eslint-disable-next-line
-  }, [first, rows, globalFilter]);
+  }, [first, rows, globalFilter, empresaFiltro]);
+
+  // Función para cargar empresas
+  async function cargarEmpresas() {
+    try {
+      const data = await getEmpresas();
+      setEmpresas(data);
+    } catch (err) {
+      mostrarToast("error", "Error", "No se pudieron cargar las empresas");
+    }
+  }
 
   // Función para cargar usuarios del backend
   async function cargarUsuarios() {
@@ -77,9 +107,15 @@ export default function Usuarios() {
       const params = { skip: first, take: rows, search: globalFilter };
       const data = await getUsuarios(params);
       // Soporte para respuesta tipo array o tipo objeto
-      const lista = Array.isArray(data) ? data : (data.usuarios || []);
+      let lista = Array.isArray(data) ? data : data.usuarios || [];
+      
+      // Filtrar por empresa si hay filtro activo
+      if (empresaFiltro) {
+        lista = lista.filter(u => u.empresaId === empresaFiltro);
+      }
+      
       setUsuarios(lista);
-      setTotalRecords(Array.isArray(data) ? lista.length : (data.total || lista.length));
+      setTotalRecords(lista.length);
     } catch (err) {
       mostrarToast("error", "Error", "No se pudieron cargar los usuarios");
     } finally {
@@ -93,17 +129,24 @@ export default function Usuarios() {
   }
 
   // Estado para el formulario de nuevo usuario
-  const [form, setForm] = useState({ nombre: '', usuario: '', email: '', password: '', rol: '', estado: 'Activo' });
+  const [form, setForm] = useState({
+    nombre: "",
+    usuario: "",
+    email: "",
+    password: "",
+    rol: "",
+    estado: "Activo",
+  });
   const [errores, setErrores] = useState({});
 
   // Validación simple (puedes luego migrar a Yup)
   const validar = () => {
     const errs = {};
-    if (!form.nombre) errs.nombre = 'El nombre es obligatorio';
-    if (!form.usuario) errs.usuario = 'El usuario es obligatorio';
-    if (!form.email) errs.email = 'El email es obligatorio';
-    if (!form.password) errs.password = 'La contraseña es obligatoria';
-    if (!form.rol) errs.rol = 'El rol es obligatorio';
+    if (!form.nombre) errs.nombre = "El nombre es obligatorio";
+    if (!form.usuario) errs.usuario = "El usuario es obligatorio";
+    if (!form.email) errs.email = "El email es obligatorio";
+    if (!form.password) errs.password = "La contraseña es obligatoria";
+    if (!form.rol) errs.rol = "El rol es obligatorio";
     return errs;
   };
 
@@ -116,7 +159,14 @@ export default function Usuarios() {
       // Agrega el usuario a la tabla mock
       setUsuarios([...usuarios, { ...form, id: usuarios.length + 1 }]);
       setMostrarDialogo(false);
-      setForm({ nombre: '', usuario: '', email: '', password: '', rol: '', estado: 'Activo' });
+      setForm({
+        nombre: "",
+        usuario: "",
+        email: "",
+        password: "",
+        rol: "",
+        estado: "Activo",
+      });
       setErrores({});
     }
   };
@@ -126,11 +176,15 @@ export default function Usuarios() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-
-  // Acción: abrir modal para nuevo usuario
+  // Abre el diálogo para crear un nuevo usuario
   function handleNuevo() {
+    if (!empresaFiltro) {
+      mostrarToast("warn", "Advertencia", "Debe seleccionar una empresa primero");
+      return;
+    }
     setModoEdicion(false);
     setUsuarioEdit(null);
+    setDialogKey(prev => prev + 1);
     setMostrarDialogo(true);
   }
 
@@ -144,7 +198,7 @@ export default function Usuarios() {
   // Edición con un solo clic en la fila
   const onRowClick = (e) => {
     handleEditar(e.data);
-  }
+  };
 
   // Acción: eliminar usuario
   function handleEliminar(usuario) {
@@ -158,22 +212,43 @@ export default function Usuarios() {
     setLoading(true);
     try {
       await eliminarUsuario(usuarioRow.id);
-      mostrarToast("success", "Usuario eliminado", `El usuario fue eliminado correctamente.`);
+      mostrarToast(
+        "success",
+        "Usuario eliminado",
+        `El usuario fue eliminado correctamente.`
+      );
       cargarUsuarios();
     } catch (err) {
       mostrarToast("error", "Error", "No se pudo eliminar el usuario.");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   // Renderiza los botones de acción en cada fila
   function accionesTemplate(rowData) {
     return (
       <span>
-        <Button icon="pi pi-pencil" className="p-button-rounded p-button-text p-button-info" style={{ marginRight: 8 }} onClick={e => { e.stopPropagation(); handleEditar(rowData); }} tooltip="Editar" />
-        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-          <Button icon="pi pi-trash" className="p-button-rounded p-button-text p-button-danger" onClick={e => { e.stopPropagation(); handleEliminar(rowData); }} tooltip="Eliminar" />
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-rounded p-button-text p-button-info"
+          style={{ marginRight: 8 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEditar(rowData);
+          }}
+          tooltip="Editar"
+        />
+        {usuario?.esSuperUsuario && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-rounded p-button-text p-button-danger"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEliminar(rowData);
+            }}
+            tooltip="Eliminar usuario"
+          />
         )}
       </span>
     );
@@ -191,16 +266,23 @@ export default function Usuarios() {
         esSuperUsuario: !!data.esSuperUsuario,
         esAdmin: !!data.esAdmin,
         esUsuario: !!data.esUsuario,
-        cesado: !!data.cesado,
+        activo: !!data.activo,
         password: data.password,
-        // password: data.password, // Solo si se permite cambiar
       };
       if (modoEdicion && usuarioEdit) {
         await actualizarUsuario(usuarioEdit.id, usuarioPayload);
-        mostrarToast("success", "Usuario actualizado", `El usuario ${data.username} fue actualizado correctamente.`);
+        mostrarToast(
+          "success",
+          "Usuario actualizado",
+          `El usuario ${data.username} fue actualizado correctamente.`
+        );
       } else {
         await crearUsuario(usuarioPayload);
-        mostrarToast("success", "Usuario creado", `El usuario ${data.username} fue registrado correctamente.`);
+        mostrarToast(
+          "success",
+          "Usuario creado",
+          `El usuario ${data.username} fue registrado correctamente.`
+        );
       }
       setMostrarDialogo(false);
       cargarUsuarios();
@@ -218,11 +300,24 @@ export default function Usuarios() {
       <ConfirmDialog
         visible={confirmState.visible}
         onHide={() => setConfirmState({ visible: false, row: null })}
-        message={<span style={{ color: '#b71c1c', fontWeight: 600 }}>
-          ¿Está seguro que desea <span style={{ color: '#b71c1c' }}>eliminar</span> el usuario <b>{confirmState.row ? (confirmState.row.personal ? `${confirmState.row.personal.nombres} ${confirmState.row.personal.apellidos}` : confirmState.row.username) : ''}</b>?<br/>
-          <span style={{ fontWeight: 400, color: '#b71c1c' }}>Esta acción no se puede deshacer.</span>
-        </span>}
-        header={<span style={{ color: '#b71c1c' }}>Confirmar eliminación</span>}
+        message={
+          <span style={{ color: "#b71c1c", fontWeight: 600 }}>
+            ¿Está seguro que desea{" "}
+            <span style={{ color: "#b71c1c" }}>eliminar</span> el usuario{" "}
+            <b>
+              {confirmState.row
+                ? confirmState.row.personal
+                  ? `${confirmState.row.personal.nombres} ${confirmState.row.personal.apellidos}`
+                  : confirmState.row.username
+                : ""}
+            </b>
+            ?<br />
+            <span style={{ fontWeight: 400, color: "#b71c1c" }}>
+              Esta acción no se puede deshacer.
+            </span>
+          </span>
+        }
+        header={<span style={{ color: "#b71c1c" }}>Confirmar eliminación</span>}
         icon="pi pi-exclamation-triangle"
         acceptClassName="p-button-danger"
         acceptLabel="Eliminar"
@@ -231,35 +326,79 @@ export default function Usuarios() {
         reject={() => setConfirmState({ visible: false, row: null })}
         style={{ minWidth: 400 }}
       />
-      <DataTable value={usuarios}
+      <DataTable
+        value={usuarios}
         paginator
         rows={rows}
         first={first}
         totalRecords={totalRecords}
         loading={loading}
-        onPage={(e) => { setFirst(e.first); setRows(e.rows); }}
+        onPage={(e) => {
+          setFirst(e.first);
+          setRows(e.rows);
+        }}
         globalFilter={globalFilter}
         stripedRows
         emptyMessage="No hay usuarios registrados."
         header={
-          <div className="flex align-items-center gap-2">
+          <div className="flex align-items-center gap-2" style={{ flexWrap: "wrap" }}>
             <h2 style={{ margin: 0 }}>Gestión de Usuarios</h2>
-            <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleNuevo} />
-            <InputText type="search" onInput={e => setGlobalFilter(e.target.value)} placeholder="Buscar usuarios..." style={{ width: 240 }} />
+            <Dropdown
+              value={empresaFiltro}
+              options={empresas.map(e => ({ label: e.razonSocial || e.nombre, value: e.id }))}
+              onChange={(e) => setEmpresaFiltro(e.value)}
+              placeholder="Seleccione Empresa"
+              showClear
+              style={{ width: 250 }}
+              filter
+            />
+            <Button
+              label="Nuevo"
+              icon="pi pi-plus"
+              className="p-button-success"
+              size="small"
+              outlined
+              onClick={handleNuevo}
+              disabled={!usuario?.esSuperUsuario || !empresaFiltro}
+              tooltip={
+                !usuario?.esSuperUsuario 
+                  ? "Solo Superusuarios pueden crear usuarios" 
+                  : !empresaFiltro 
+                  ? "Debe seleccionar una empresa primero"
+                  : ""
+              }
+              tooltipOptions={{ position: "bottom" }}
+            />
+            <InputText
+              type="search"
+              onInput={(e) => setGlobalFilter(e.target.value)}
+              placeholder="Buscar usuarios..."
+              style={{ width: 240 }}
+            />
           </div>
         }
         onRowClick={onRowClick}
-        style={{cursor: 'pointer', fontSize: getResponsiveFontSize()}}
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
+        <Column field="id" header="ID" style={{ width: 70 }} />
+        <Column 
+          header="Empresa" 
+          body={(rowData) => rowData.empresa?.razonSocial || rowData.empresa?.nombre || "Sin empresa"}
+          style={{ minWidth: 150 }}
+        />
+        <Column field="username" header="Nombre de usuario" />
+
         {/* Columna: Avatar profesional del personal relacionado (foto o iniciales) */}
         <Column
           header="Foto"
-          body={rowData => {
-            const nombres = rowData.personal?.nombres || '';
-            const apellidos = rowData.personal?.apellidos || '';
+          body={(rowData) => {
+            const nombres = rowData.personal?.nombres || "";
+            const apellidos = rowData.personal?.apellidos || "";
             const nombreCompleto = `${nombres} ${apellidos}`.trim();
             const urlFoto = rowData.personal?.urlFotoPersona
-              ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${rowData.personal.urlFotoPersona}`
+              ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${
+                  rowData.personal.urlFotoPersona
+                }`
               : undefined;
             return (
               <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
@@ -273,45 +412,138 @@ export default function Usuarios() {
               </span>
             );
           }}
-          style={{ minWidth: 80, textAlign: 'center' }}
+          style={{ minWidth: 80, textAlign: "center" }}
         />
         {/* Columna: Nombre completo del personal relacionado */}
         <Column
           header="Nombre completo"
-          body={rowData =>
+          body={(rowData) =>
             rowData.personal
               ? `${rowData.personal.nombres} ${rowData.personal.apellidos}`
-              : ''
+              : ""
           }
         />
         {/* Columnas alineadas con los campos reales del backend */}
-        <Column field="id" header="ID" style={{ width: 70 }} />
-        <Column field="username" header="Nombre de usuario" />
         {/* Columna: Correo electrónico del personal relacionado */}
         <Column
           header="Correo"
-          body={rowData =>
+          body={(rowData) =>
             rowData.personal && rowData.personal.correo
               ? rowData.personal.correo
-              : ''
+              : ""
           }
         />
-        <Column field="esSuperUsuario" header="¿Superusuario?" body={rowData => rowData.esSuperUsuario ? 'Sí' : 'No'} />
-        <Column field="esAdmin" header="¿Administrador?" body={rowData => rowData.esAdmin ? 'Sí' : 'No'} />
-        {/* Puedes agregar más columnas según los campos de tu backend, por ejemplo activo, fechaCreacion, etc. */}
-        <Column header="Acciones" body={accionesTemplate} style={{ minWidth: 150, textAlign: 'center' }} />
+        <Column
+          header="Roles"
+          body={(rowData) => (
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              {rowData.esSuperUsuario && (
+                <span
+                  style={{
+                    backgroundColor: "#4caf50",
+                    color: "white",
+                    padding: "2px 8px",
+                    borderRadius: "4px",
+                    fontSize: "11px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    display: "block"
+                  }}
+                >
+                  SUPERUSUARIO
+                </span>
+              )}
+              {rowData.esAdmin && (
+                <span
+                  style={{
+                    backgroundColor: "#ff9800",
+                    color: "white",
+                    padding: "2px 8px",
+                    borderRadius: "4px",
+                    fontSize: "11px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    display: "block"
+                  }}
+                >
+                  ADMINISTRADOR
+                </span>
+              )}
+              {rowData.esUsuario && (
+                <span
+                  style={{
+                    backgroundColor: "#9e9e9e",
+                    color: "white",
+                    padding: "2px 8px",
+                    borderRadius: "4px",
+                    fontSize: "11px",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    display: "block"
+                  }}
+                >
+                  USUARIO
+                </span>
+              )}
+            </div>
+          )}
+          style={{ minWidth: 130, textAlign: "center" }}
+        />
+        <Column
+          field="activo"
+          header="Estado"
+          body={(rowData) => (
+            <span
+              style={{
+                padding: "4px 8px",
+                borderRadius: "4px",
+                fontWeight: "bold",
+                backgroundColor: rowData.activo ? "#c8e6c9" : "#ffcdd2",
+                color: rowData.activo ? "#2e7d32" : "#c62828",
+              }}
+            >
+              {rowData.activo ? "Activo" : "Inactivo"}
+            </span>
+          )}
+        />
+        <Column
+          header="Acciones"
+          body={accionesTemplate}
+          style={{ minWidth: 150, textAlign: "center" }}
+        />
       </DataTable>
       {/* Dialogo de alta/edición de usuario */}
-      <Dialog header={modoEdicion ? "Editar Usuario" : "Nuevo Usuario"} visible={mostrarDialogo} style={{ width: 500 }} modal onHide={() => setMostrarDialogo(false)}>
-        <UsuarioForm
-          isEdit={modoEdicion}
-          defaultValues={usuarioEdit || { nombre: '', usuario: '', email: '', password: '', rol: '', estado: 'Activo' }}
-          onSubmit={onSubmitForm}
-          onCancel={() => setMostrarDialogo(false)}
-          loading={formLoading}
-        />
-      </Dialog>
+      {mostrarDialogo && (
+        <Dialog
+          header={modoEdicion ? "Editar Usuario" : "Nuevo Usuario"}
+          visible={true}
+          style={{ width: 1300 }}
+          modal
+          onHide={() => {
+            setMostrarDialogo(false);
+            setUsuarioEdit(null);
+          }}
+        >
+          <UsuarioForm
+            isEdit={modoEdicion}
+            defaultValues={
+              !modoEdicion ? {
+                username: "",
+                password: "",
+                empresaId: empresaFiltro,
+                personalId: null,
+                esSuperUsuario: false,
+                esAdmin: false,
+                esUsuario: true,
+                activo: true,
+              } : usuarioEdit
+            }
+            onSubmit={onSubmitForm}
+            onCancel={() => setMostrarDialogo(false)}
+            loading={formLoading}
+          />
+        </Dialog>
+      )}
     </div>
   );
 }
-

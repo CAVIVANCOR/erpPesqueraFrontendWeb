@@ -24,6 +24,16 @@ export const getUsuarios = async (params) => {
 };
 
 /**
+ * Obtiene un usuario por ID.
+ * @param {number|string} id ID del usuario
+ * @returns {Promise<Object>} Usuario encontrado
+ */
+export const getUsuarioPorId = async (id) => {
+  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeader() });
+  return res.data;
+};
+
+/**
  * Crea un nuevo usuario.
  * @param {Object} data Datos del usuario
  * @returns {Promise<Object>} Usuario creado

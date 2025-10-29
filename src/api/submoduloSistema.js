@@ -34,3 +34,13 @@ export async function eliminarSubmodulo(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Obtiene todos los submódulos de un módulo específico
+ * @param {number} moduloId - ID del módulo
+ * @returns {Promise<Array>} Lista de submódulos del módulo
+ */
+export async function getSubmodulosPorModulo(moduloId) {
+  const res = await axios.get(`${API_URL}/modulo/${moduloId}`, { headers: getAuthHeaders() });
+  return res.data;
+}

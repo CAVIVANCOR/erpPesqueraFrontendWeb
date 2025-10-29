@@ -238,15 +238,17 @@ export default function SubmodulosSistemaPage() {
         globalFilter={globalFilter}
         globalFilterFields={["nombre", "descripcion"]}
         emptyMessage="No se encontraron registros que coincidan con la búsqueda."
-        style={{ cursor: 'pointer', fontSize: getResponsiveFontSize() }}
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
-        <Column field="modulo.nombre" header="Módulo" />
-        <Column field="nombre" header="Nombre" />
-        <Column field="descripcion" header="Descripción" />
+        <Column field="id" header="ID" sortable />
+        <Column field="modulo.nombre" header="Módulo" sortable />
+        <Column field="nombre" header="Nombre" sortable />
+        <Column field="descripcion" header="Descripción" sortable />
         <Column
           field="activo"
           header="Activo"
           body={(row) => (row.activo ? "Sí" : "No")}
+          sortable
         />
         <Column
           header="Acciones"
