@@ -77,22 +77,15 @@ const esquemaValidacionLineaCredito = yup.object().shape({
  * Componente DetalleLineasCreditoEntidad
  * @param {Object} props - Props del componente
  * @param {number} props.entidadComercialId - ID de la entidad comercial
- * @param {Array} props.lineasCredito - Lista de líneas de crédito
- * @param {Function} props.onLineasCreditoChange - Callback cuando cambian las líneas de crédito
  * @param {Array} props.monedas - Lista de monedas
  */
 const DetalleLineasCreditoEntidad = forwardRef(
   (
-    {
-      entidadComercialId,
-      lineasCredito = [],
-      onLineasCreditoChange,
-      monedas = [],
-    },
+    { entidadComercialId, monedas = [], readOnly = false, permisos = {} },
     ref
   ) => {
     // Estados del componente
-    const [lineasCreditoData, setLineasCreditoData] = useState(lineasCredito);
+    const [lineasCreditoData, setLineasCreditoData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [dialogVisible, setDialogVisible] = useState(false);
     const [lineaCreditoSeleccionada, setLineaCreditoSeleccionada] =
@@ -140,13 +133,13 @@ const DetalleLineasCreditoEntidad = forwardRef(
      */
     const cargarMonedas = async () => {
       try {
-        const data = await getMonedas();        
+        const data = await getMonedas();
         // Formatear monedas para el dropdown
         const monedasFormateadas = data
-          .filter(moneda => moneda.activo)
-          .map(moneda => ({
+          .filter((moneda) => moneda.activo)
+          .map((moneda) => ({
             value: Number(moneda.id),
-            label: `${moneda.codigoSunat} - ${moneda.nombreLargo}`
+            label: `${moneda.codigoSunat} - ${moneda.nombreLargo}`,
           }));
         setMonedasData(monedasFormateadas);
       } catch (error) {
@@ -168,7 +161,6 @@ const DetalleLineasCreditoEntidad = forwardRef(
         setLoading(true);
         const data = await obtenerLineasCreditoPorEntidad(entidadComercialId);
         setLineasCreditoData(data);
-        onLineasCreditoChange?.(data);
       } catch (error) {
         console.error("Error al cargar líneas de crédito:", error);
         toast.current?.show({
@@ -241,7 +233,6 @@ const DetalleLineasCreditoEntidad = forwardRef(
           (l) => l.id !== lineaCreditoAEliminar.id
         );
         setLineasCreditoData(nuevasLineas);
-        onLineasCreditoChange?.(nuevasLineas);
 
         toast.current?.show({
           severity: "success",
@@ -308,9 +299,24 @@ const DetalleLineasCreditoEntidad = forwardRef(
 
         if (esEdicion) {
           // Actualizar línea de crédito existente
+          // Agregar campos de auditoría para actualización
+          const datosActualizacion = {
+            ...datosNormalizados,
+            // Si fechaCreacion o creadoPor son null/vacíos, asignarlos ahora
+            fechaCreacion: lineaCreditoSeleccionada.fechaCreacion || new Date(),
+            creadoPor:
+              lineaCreditoSeleccionada.creadoPor ||
+              (usuario?.personalId ? Number(usuario.personalId) : null),
+            // Siempre actualizar estos campos
+            fechaActualizacion: new Date(),
+            actualizadoPor: usuario?.personalId
+              ? Number(usuario.personalId)
+              : null,
+          };
+
           resultado = await actualizarLineaCreditoEntidad(
             lineaCreditoSeleccionada.id,
-            datosNormalizados
+            datosActualizacion
           );
 
           // Actualizar en el estado local
@@ -318,15 +324,24 @@ const DetalleLineasCreditoEntidad = forwardRef(
             linea.id === lineaCreditoSeleccionada.id ? resultado : linea
           );
           setLineasCreditoData(nuevasLineas);
-          onLineasCreditoChange?.(nuevasLineas);
         } else {
           // Crear nueva línea de crédito
-          resultado = await crearLineaCreditoEntidad(datosNormalizados);
+          // Agregar campos de auditoría para creación
+          const datosCreacion = {
+            ...datosNormalizados,
+            fechaCreacion: new Date(),
+            creadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
+            fechaActualizacion: new Date(),
+            actualizadoPor: usuario?.personalId
+              ? Number(usuario.personalId)
+              : null,
+          };
+
+          resultado = await crearLineaCreditoEntidad(datosCreacion);
 
           // Agregar al estado local
           const nuevasLineas = [...lineasCreditoData, resultado];
           setLineasCreditoData(nuevasLineas);
-          onLineasCreditoChange?.(nuevasLineas);
         }
 
         toast.current?.show({
@@ -401,32 +416,37 @@ const DetalleLineasCreditoEntidad = forwardRef(
       );
     };
 
-    const accionesTemplate = (rowData) => {
-      return (
-        <div className="flex gap-2">
-          <Button
-            icon="pi pi-pencil"
-            className="p-button-text p-mr-2"
-            onClick={(ev) => {
-              ev.stopPropagation();
+    // Renderizado de botones de acción
+    const accionesTemplate = (rowData) => (
+      <div onClick={(e) => e.stopPropagation()}>
+        <Button
+          type="button"
+          icon="pi pi-pencil"
+          className="p-button-text p-mr-2"
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          onClick={(ev) => {
+            ev.stopPropagation();
+            if (permisos.puedeVer || permisos.puedeEditar) {
               abrirDialogoEdicion(rowData);
-            }}
-            tooltip="Editar"
-            tooltipOptions={{ position: "top" }}
-            type="button"
-          />
-          {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-            <Button
-              icon="pi pi-trash"
-              className="p-button-text p-button-danger"
-              onClick={() => confirmarEliminacion(rowData)}
-              tooltip="Eliminar"
-              type="button"
-            />
-          )}
-        </div>
-      );
-    };
+            }
+          }}
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+        />
+        <Button
+          type="button"
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger"
+          disabled={!permisos.puedeEliminar}
+          onClick={(ev) => {
+            ev.stopPropagation();
+            if (permisos.puedeEliminar) {
+              confirmarEliminacion(rowData);
+            }
+          }}
+          tooltip="Eliminar"
+        />
+      </div>
+    );
 
     useImperativeHandle(ref, () => ({
       recargar: cargarLineasCredito,
@@ -459,6 +479,7 @@ const DetalleLineasCreditoEntidad = forwardRef(
                 className="p-button-success"
                 onClick={abrirDialogoNuevo}
                 type="button"
+                disabled={readOnly || loading}
               />
               <span className="p-input-icon-left">
                 <InputText
@@ -554,6 +575,7 @@ const DetalleLineasCreditoEntidad = forwardRef(
                         minFractionDigits={2}
                         maxFractionDigits={2}
                         className={getFieldClass("montoMaximo")}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -572,6 +594,7 @@ const DetalleLineasCreditoEntidad = forwardRef(
                         options={monedasData}
                         placeholder="Seleccione moneda"
                         className={getFieldClass("monedaId")}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -591,61 +614,14 @@ const DetalleLineasCreditoEntidad = forwardRef(
                         max={365}
                         useGrouping={false}
                         className={getFieldClass("diasCredito")}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
                   {getFormErrorMessage("diasCredito")}
                 </div>
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  gap: 10,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                  marginBottom: 10,
-                  marginTop: 10,
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="vigenteDesde">Vigente Desde *</label>
-                  <Controller
-                    name="vigenteDesde"
-                    control={control}
-                    render={({ field }) => (
-                      <Calendar
-                        id="vigenteDesde"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.value)}
-                        dateFormat="dd/mm/yy"
-                        placeholder="Seleccione fecha de inicio"
-                        className={getFieldClass("vigenteDesde")}
-                        showIcon
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("vigenteDesde")}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="vigenteHasta">Vigente Hasta</label>
-                  <Controller
-                    name="vigenteHasta"
-                    control={control}
-                    render={({ field }) => (
-                      <Calendar
-                        id="vigenteHasta"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.value)}
-                        dateFormat="dd/mm/yy"
-                        placeholder="Seleccione fecha de fin"
-                        className={getFieldClass("vigenteHasta")}
-                        showIcon
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("vigenteHasta")}
-                </div>
-              </div>
+
               <div
                 style={{
                   display: "flex",
@@ -671,6 +647,7 @@ const DetalleLineasCreditoEntidad = forwardRef(
                         className={getFieldClass("condiciones")}
                         maxLength={500}
                         style={{ textTransform: "uppercase" }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -702,6 +679,7 @@ const DetalleLineasCreditoEntidad = forwardRef(
                         className={getFieldClass("observaciones")}
                         maxLength={500}
                         style={{ textTransform: "uppercase" }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -711,15 +689,54 @@ const DetalleLineasCreditoEntidad = forwardRef(
               <div
                 style={{
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginTop: 10,
-                  marginBottom: 10,
-                  gap: 5,
+                  alignItems: "end",
+                  gap: 10,
                   flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  marginBottom: 20,
+                  marginTop: 10,
                 }}
               >
-                <ButtonGroup style={{ gap: 5 }}>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="vigenteDesde">Vigente Desde *</label>
+                  <Controller
+                    name="vigenteDesde"
+                    control={control}
+                    render={({ field }) => (
+                      <Calendar
+                        id="vigenteDesde"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.value)}
+                        dateFormat="dd/mm/yy"
+                        placeholder="Seleccione fecha de inicio"
+                        className={getFieldClass("vigenteDesde")}
+                        showIcon
+                        disabled={readOnly || loading}
+                      />
+                    )}
+                  />
+                  {getFormErrorMessage("vigenteDesde")}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="vigenteHasta">Vigente Hasta</label>
+                  <Controller
+                    name="vigenteHasta"
+                    control={control}
+                    render={({ field }) => (
+                      <Calendar
+                        id="vigenteHasta"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.value)}
+                        dateFormat="dd/mm/yy"
+                        placeholder="Seleccione fecha de fin"
+                        className={getFieldClass("vigenteHasta")}
+                        showIcon
+                        disabled={readOnly || loading}
+                      />
+                    )}
+                  />
+                  {getFormErrorMessage("vigenteHasta")}
+                </div>
+                <div style={{ flex: 1 }}>
                   <Controller
                     name="activo"
                     control={control}
@@ -734,44 +751,139 @@ const DetalleLineasCreditoEntidad = forwardRef(
                         size="small"
                         onChange={(e) => field.onChange(e.value)}
                         className={`${getFieldClass("activo")}`}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
-                </ButtonGroup>
+                </div>
               </div>
             </div>
 
             <div
               style={{
                 display: "flex",
-                justifyContent: "center",
+                alignItems: "end",
                 gap: 10,
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
                 marginBottom: 10,
                 marginTop: 10,
               }}
             >
-              <Button
-                label="Cancelar"
-                icon="pi pi-times"
-                className="p-button-secondary"
-                type="button"
-                onClick={cerrarDialogo}
-                raised
-                outlined
-                size="small"
-              />
-              <Button
-                label={lineaCreditoSeleccionada ? "Actualizar" : "Crear"}
-                icon={lineaCreditoSeleccionada ? "pi pi-check" : "pi pi-plus"}
-                className="p-button-success"
-                type="button"
-                onClick={handleSubmit(onSubmitLineaCredito)}
-                loading={loading}
-                raised
-                outlined
-                size="small"
-              />
+              {/* Información de Auditoría */}
+              {lineaCreditoSeleccionada && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: 10,
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: 5,
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 20,
+                      flexDirection: window.innerWidth < 768 ? "column" : "row",
+                    }}
+                  >
+                    {/* Creado */}
+                    <div style={{ flex: 1 }}>
+                      <strong style={{ fontSize: "0.9rem", color: "#495057" }}>
+                        Creado:
+                      </strong>
+                      <div style={{ marginTop: 5 }}>
+                        <div style={{ fontSize: "0.85rem", color: "#6c757d" }}>
+                          {lineaCreditoSeleccionada.fechaCreacion
+                            ? new Date(
+                                lineaCreditoSeleccionada.fechaCreacion
+                              ).toLocaleString("es-PE", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                            : "N/A"}
+                        </div>
+                        {lineaCreditoSeleccionada.personalCreador && (
+                          <Tag
+                            value={`${lineaCreditoSeleccionada.personalCreador.nombres} ${lineaCreditoSeleccionada.personalCreador.apellidos}`}
+                            style={{
+                              marginTop: 5,
+                              backgroundColor: "#cfe2ff",
+                              color: "#000",
+                              fontSize: "0.8rem",
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actualizado */}
+                    <div style={{ flex: 1 }}>
+                      <strong style={{ fontSize: "0.9rem", color: "#495057" }}>
+                        Actualizado:
+                      </strong>
+                      <div style={{ marginTop: 5 }}>
+                        <div style={{ fontSize: "0.85rem", color: "#6c757d" }}>
+                          {lineaCreditoSeleccionada.fechaActualizacion
+                            ? new Date(
+                                lineaCreditoSeleccionada.fechaActualizacion
+                              ).toLocaleString("es-PE", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                            : "N/A"}
+                        </div>
+                        {lineaCreditoSeleccionada.personalActualizador && (
+                          <Tag
+                            value={`${lineaCreditoSeleccionada.personalActualizador.nombres} ${lineaCreditoSeleccionada.personalActualizador.apellidos}`}
+                            style={{
+                              marginTop: 5,
+                              backgroundColor: "#f8d7da",
+                              color: "#000",
+                              fontSize: "0.8rem",
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Cancelar"
+                  icon="pi pi-times"
+                  type="button"
+                  onClick={cerrarDialogo}
+                  className="p-button-warning"
+                  severity="warning"
+                  raised
+                  size="small"
+                  outlined
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label={lineaCreditoSeleccionada ? "Actualizar" : "Crear"}
+                  icon={lineaCreditoSeleccionada ? "pi pi-check" : "pi pi-plus"}
+                  className="p-button-success"
+                  type="button"
+                  onClick={handleSubmit(onSubmitLineaCredito)}
+                  loading={loading}
+                  raised
+                  size="small"
+                  disabled={readOnly || loading}
+                />
+              </div>
             </div>
           </form>
         </Dialog>

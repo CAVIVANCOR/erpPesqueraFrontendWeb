@@ -4,6 +4,7 @@
 // Documentado en español técnico.
 
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -11,7 +12,9 @@ import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { InputText } from "primereact/inputtext";
+import { Tag } from "primereact/tag";
 import {
   getCargosPersonal,
   crearCargoPersonal,
@@ -36,8 +39,14 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
  * - El usuario autenticado se obtiene siempre desde useAuthStore.
  */
-export default function CargosPersonal() {
+export default function CargosPersonal({ ruta }) {
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const [confirmState, setConfirmState] = useState({
     visible: false,
     row: null,
@@ -76,6 +85,9 @@ export default function CargosPersonal() {
   }
 
   async function onSubmitForm(data) {
+    if (modoEdicion && !permisos.puedeEditar) return;
+    if (!modoEdicion && !permisos.puedeCrear) return;
+
     setFormLoading(true);
     try {
       // Filtrado profesional del payload: solo los campos válidos para el modelo Prisma
@@ -149,35 +161,46 @@ export default function CargosPersonal() {
       setLoading(false);
     }
   };
+  const cesadoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.cesado ? "CESADO" : "ACTIVO"}
+        severity={rowData.cesado ? "danger" : "success"}
+        style={{ fontSize: "10px", padding: "2px 8px" }}
+      />
+    );
+  };
 
   const accionesTemplate = (rowData) => (
-    <span>
+    <div onClick={(e) => e.stopPropagation()}>
       <Button
         icon="pi pi-pencil"
         className="p-button-rounded p-button-text p-button-info"
         style={{ marginRight: 8 }}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleEditar(rowData);
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        onClick={() => {
+          if (permisos.puedeVer || permisos.puedeEditar) {
+            handleEditar(rowData);
+          }
         }}
-        tooltip="Editar"
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button
-          icon="pi pi-trash"
-          className="p-button-rounded p-button-text p-button-danger"
-          onClick={(e) => {
-            e.stopPropagation();
+      <Button
+        icon="pi pi-trash"
+        className="p-button-rounded p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={() => {
+          if (permisos.puedeEliminar) {
             handleEliminar(rowData);
-          }}
-          tooltip="Eliminar"
-        />
-      )}
-    </span>
+          }
+        }}
+        tooltip="Eliminar"
+      />
+    </div>
   );
 
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto", padding: "2rem 0" }}>
+    <div className="p-m-4">
       <Toast ref={toast} position="top-right" />
       <ConfirmDialog
         visible={confirmState.visible}
@@ -204,57 +227,88 @@ export default function CargosPersonal() {
       <DataTable
         value={cargos}
         loading={loading}
-        paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 20]}
-        globalFilter={globalFilter}
+        size="small"
+        showGridlines
         stripedRows
+        paginator
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} personal"
+        globalFilter={globalFilter}
         emptyMessage="No hay cargos registrados."
         header={
-          <div className="flex align-items-center gap-2">
-            <h2>Cargos del Personal</h2>
-            <Button
-              label="Nuevo"
-              icon="pi pi-plus"
-              className="p-button-success"
-              size="small"
-              outlined
-              raised
-              tooltip="Nuevo Cargo del Personal"
-              onClick={() => {
-                setCargoEdit(null);
-                setModoEdicion(false);
-                setMostrarDialogo(true);
-              }}
-            />
-            <InputText
-              type="search"
-              onInput={(e) => setGlobalFilter(e.target.value)}
-              placeholder="Buscar cargos..."
-              style={{ width: 240 }}
-            />
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h2>Cargos del Personal</h2>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                className="p-button-success"
+                size="small"
+                outlined
+                raised
+                tooltip="Nuevo Cargo del Personal"
+                disabled={!permisos.puedeCrear}
+                onClick={() => {
+                  setCargoEdit(null);
+                  setModoEdicion(false);
+                  setMostrarDialogo(true);
+                }}
+              />
+            </div>
+            <div style={{ flex: 2 }}>
+              <InputText
+                type="search"
+                onInput={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Buscar cargos..."
+                style={{ width: 240 }}
+              />
+            </div>
           </div>
         }
-        onRowClick={onRowClick}
-        style={{fontSize: getResponsiveFontSize()}}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
+        }
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
       >
         <Column field="id" header="ID" style={{ width: 80 }} sortable />
-        <Column field="descripcion" header="Descripción" sortable />
+        <Column field="descripcion" header="Descripción" style={{ width: 540 }} sortable />
         <Column
-          field="cesado"
-          header="¿Cesado?"
-          body={(rowData) => (rowData.cesado ? "Sí" : "No")}
+          header="Estado"
+          body={cesadoTemplate}
           sortable
+          style={{ width: "120px" }}
         />
         <Column
           header="Acciones"
+          align="center"
           body={accionesTemplate}
           style={{ minWidth: 150, textAlign: "center" }}
           sortable
         />
       </DataTable>
       <Dialog
-        header={modoEdicion ? "Editar Cargo" : "Nuevo Cargo"}
+        header={
+          modoEdicion
+            ? permisos.puedeEditar
+              ? "Editar Cargo"
+              : "Ver Cargo"
+            : "Nuevo Cargo"
+        }
         visible={mostrarDialogo}
         style={{ width: 500 }}
         modal
@@ -266,6 +320,7 @@ export default function CargosPersonal() {
           onSubmit={onSubmitForm}
           onCancel={() => setMostrarDialogo(false)}
           loading={formLoading}
+          readOnly={modoEdicion && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

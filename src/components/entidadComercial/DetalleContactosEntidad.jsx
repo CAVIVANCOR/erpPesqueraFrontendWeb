@@ -24,7 +24,6 @@ import { ToggleButton } from "primereact/togglebutton";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
-import { Checkbox } from "primereact/checkbox";
 import { Toast } from "primereact/toast";
 import { Tag } from "primereact/tag";
 import { ConfirmDialog } from "primereact/confirmdialog";
@@ -84,7 +83,7 @@ const esquemaValidacionContacto = yup.object().shape({
  * @param {Array} props.cargosPersonal - Lista de cargos de personal disponibles
  */
 const DetalleContactosEntidad = forwardRef(
-  ({ entidadComercialId, cargosPersonal = [] }, ref) => {
+  ({ entidadComercialId, readOnly = false, permisos = {} }, ref) => {
     // Estados del componente
     const [contactosData, setContactosData] = useState([]);
     const [cargosPersonalData, setCargosPersonalData] = useState([]);
@@ -304,11 +303,28 @@ const DetalleContactosEntidad = forwardRef(
         };
 
         let resultado;
-        if (contactoSeleccionado) {
+        const esEdicion = contactoSeleccionado && contactoSeleccionado.id;
+
+        if (esEdicion) {
           // Actualizar contacto existente
+          // Agregar campos de auditoría para actualización
+          const datosActualizacion = {
+            ...contactoNormalizado,
+            // Si fechaCreacion o creadoPor son null/vacíos, asignarlos ahora
+            fechaCreacion: contactoSeleccionado.fechaCreacion || new Date(),
+            creadoPor:
+              contactoSeleccionado.creadoPor ||
+              (usuario?.personalId ? Number(usuario.personalId) : null),
+            // Siempre actualizar estos campos
+            fechaActualizacion: new Date(),
+            actualizadoPor: usuario?.personalId
+              ? Number(usuario.personalId)
+              : null,
+          };
+
           resultado = await actualizarContactoEntidad(
             contactoSeleccionado.id,
-            contactoNormalizado
+            datosActualizacion
           );
 
           toast.current?.show({
@@ -320,7 +336,18 @@ const DetalleContactosEntidad = forwardRef(
           onGuardarExitoso();
         } else {
           // Crear nuevo contacto
-          resultado = await crearContactoEntidad(contactoNormalizado);
+          // Agregar campos de auditoría para creación
+          const datosCreacion = {
+            ...contactoNormalizado,
+            fechaCreacion: new Date(),
+            creadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
+            fechaActualizacion: new Date(),
+            actualizadoPor: usuario?.personalId
+              ? Number(usuario.personalId)
+              : null,
+          };
+
+          resultado = await crearContactoEntidad(datosCreacion);
 
           toast.current?.show({
             severity: "success",
@@ -382,32 +409,35 @@ const DetalleContactosEntidad = forwardRef(
       return rowData.nombres;
     };
 
-    const accionesTemplate = (rowData) => {
-      return (
-        <div className="flex gap-2">
-          <Button
-            icon="pi pi-pencil"
-            className="p-button-text p-mr-2"
-            onClick={(ev) => {
-              ev.stopPropagation();
+    // Renderizado de botones de acción
+    const accionesTemplate = (rowData) => (
+      <div onClick={(e) => e.stopPropagation()}>
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-mr-2"
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          onClick={(ev) => {
+            if (permisos.puedeVer || permisos.puedeEditar) {
               abrirDialogoEdicion(rowData);
-            }}
-            tooltip="Editar"
-            tooltipOptions={{ position: "top" }}
-            type="button"
-          />
-          {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-            <Button
-              icon="pi pi-trash"
-              className="p-button-text p-button-danger"
-              onClick={() => confirmarEliminacion(rowData)}
-              tooltip="Eliminar"
-              type="button"
-            />
-          )}
-        </div>
-      );
-    };
+            }
+          }}
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+          type="button"
+        />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger"
+          disabled={!permisos.puedeEliminar}
+          onClick={(ev) => {
+            if (permisos.puedeEliminar) {
+              confirmarEliminacion(rowData);
+            }
+          }}
+          tooltip="Eliminar"
+          type="button"
+        />
+      </div>
+    );
 
     return (
       <div className="p-4">
@@ -436,6 +466,7 @@ const DetalleContactosEntidad = forwardRef(
                 className="p-button-success"
                 onClick={abrirDialogoNuevo}
                 type="button"
+                disabled={readOnly || loading}
               />
               <span className="p-input-icon-left">
                 <InputText
@@ -486,7 +517,7 @@ const DetalleContactosEntidad = forwardRef(
           header={contactoSeleccionado ? "Editar Contacto" : "Nuevo Contacto"}
           visible={dialogVisible}
           onHide={cerrarDialogo}
-          style={{ width: "900px" }}
+          style={{ width: "1100px" }}
           modal
         >
           <form className="p-fluid">
@@ -504,7 +535,8 @@ const DetalleContactosEntidad = forwardRef(
                       placeholder="INGRESE NOMBRES"
                       className={getFieldClass("nombres")}
                       maxLength={255}
-                      style={{ textTransform: "uppercase" }}
+                      style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                      disabled={readOnly || loading}
                     />
                   )}
                 />
@@ -530,6 +562,11 @@ const DetalleContactosEntidad = forwardRef(
                         options={cargosOptions}
                         placeholder="Seleccione cargo"
                         className={getFieldClass("cargoId")}
+                        style={{
+                          fontWeight: "bold",
+                          textTransform: "uppercase",
+                        }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -549,7 +586,11 @@ const DetalleContactosEntidad = forwardRef(
                         placeholder="INGRESE TELÉFONO"
                         className={getFieldClass("telefono")}
                         maxLength={20}
-                        style={{ textTransform: "uppercase" }}
+                        style={{
+                          fontWeight: "bold",
+                          textTransform: "uppercase",
+                        }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -576,6 +617,11 @@ const DetalleContactosEntidad = forwardRef(
                         placeholder="INGRESE CORREO CORPORATIVO"
                         className={getFieldClass("correoCorportivo")}
                         maxLength={100}
+                        style={{
+                          fontWeight: "bold",
+                          textTransform: "uppercase",
+                        }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -595,6 +641,11 @@ const DetalleContactosEntidad = forwardRef(
                         placeholder="INGRESE CORREO PERSONAL"
                         className={getFieldClass("correoPersonal")}
                         maxLength={100}
+                        style={{
+                          fontWeight: "bold",
+                          textTransform: "uppercase",
+                        }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -614,7 +665,8 @@ const DetalleContactosEntidad = forwardRef(
                       placeholder="INGRESE OBSERVACIONES"
                       className={getFieldClass("observaciones")}
                       maxLength={500}
-                      style={{ textTransform: "uppercase" }}
+                      style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                      disabled={readOnly || loading}
                     />
                   )}
                 />
@@ -628,7 +680,7 @@ const DetalleContactosEntidad = forwardRef(
                   justifyContent: "center",
                   marginTop: 10,
                   marginBottom: 10,
-                  gap: 5,
+                  gap: 2,
                   flexDirection: window.innerWidth < 768 ? "column" : "row",
                 }}
               >
@@ -647,6 +699,7 @@ const DetalleContactosEntidad = forwardRef(
                         size="small"
                         onChange={(e) => field.onChange(e.value)}
                         className={`${getFieldClass("compras")}`}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -664,6 +717,7 @@ const DetalleContactosEntidad = forwardRef(
                         size="small"
                         onChange={(e) => field.onChange(e.value)}
                         className={`${getFieldClass("ventas")}`}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -681,6 +735,7 @@ const DetalleContactosEntidad = forwardRef(
                         size="small"
                         onChange={(e) => field.onChange(e.value)}
                         className={`${getFieldClass("finanzas")}`}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -698,6 +753,7 @@ const DetalleContactosEntidad = forwardRef(
                         size="small"
                         onChange={(e) => field.onChange(e.value)}
                         className={`${getFieldClass("logistica")}`}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -707,14 +763,15 @@ const DetalleContactosEntidad = forwardRef(
                     render={({ field }) => (
                       <ToggleButton
                         id="representanteLegal"
-                        onLabel="REP. LEGAL"
-                        offLabel="REP. LEGAL"
+                        onLabel="REPRESENTANTE LEGAL"
+                        offLabel="REPRESENTANTE LEGAL"
                         onIcon="pi pi-check"
                         offIcon="pi pi-times"
                         checked={field.value}
                         size="small"
                         onChange={(e) => field.onChange(e.value)}
                         className={`${getFieldClass("representanteLegal")}`}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -732,6 +789,7 @@ const DetalleContactosEntidad = forwardRef(
                         size="small"
                         onChange={(e) => field.onChange(e.value)}
                         className={`${getFieldClass("activo")}`}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -742,37 +800,138 @@ const DetalleContactosEntidad = forwardRef(
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginTop: 10,
-                marginBottom: 10,
-                gap: 5,
+                alignItems: "end",
+                gap: 10,
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
+                marginBottom: 10,
+                marginTop: 10,
               }}
             >
-              <Button
-                label="Cancelar"
-                icon="pi pi-times"
-                className="p-button-secondary"
-                type="button"
-                onClick={cerrarDialogo}
-              />
-              <Button
-                label={contactoSeleccionado ? "Actualizar" : "Crear"}
-                icon={contactoSeleccionado ? "pi pi-check" : "pi pi-plus"}
-                className="p-button-success"
-                type="button"
-                onClick={async () => {
-                  // Validar formulario manualmente
-                  const isValid = await trigger();
-                  if (isValid) {
-                    // Obtener datos del formulario y guardar
-                    const formData = getValues();
-                    await onSubmitContacto(formData);
-                  }
-                }}
-                loading={loading}
-              />
+              {/* Información de Auditoría */}
+              {contactoSeleccionado && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: 10,
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: 5,
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 20,
+                      flexDirection: window.innerWidth < 768 ? "column" : "row",
+                    }}
+                  >
+                    {/* Creado */}
+                    <div style={{ flex: 1 }}>
+                      <strong style={{ fontSize: "0.9rem", color: "#495057" }}>
+                        Creado:
+                      </strong>
+                      <div style={{ marginTop: 5 }}>
+                        <div style={{ fontSize: "0.85rem", color: "#6c757d" }}>
+                          {contactoSeleccionado.fechaCreacion
+                            ? new Date(
+                                contactoSeleccionado.fechaCreacion
+                              ).toLocaleString("es-PE", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                            : "N/A"}
+                        </div>
+                        {contactoSeleccionado.personalCreador && (
+                          <Tag
+                            value={`${contactoSeleccionado.personalCreador.nombres} ${contactoSeleccionado.personalCreador.apellidos}`}
+                            style={{
+                              marginTop: 5,
+                              backgroundColor: "#cfe2ff",
+                              color: "#000",
+                              fontSize: "0.8rem",
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actualizado */}
+                    <div style={{ flex: 1 }}>
+                      <strong style={{ fontSize: "0.9rem", color: "#495057" }}>
+                        Actualizado:
+                      </strong>
+                      <div style={{ marginTop: 5 }}>
+                        <div style={{ fontSize: "0.85rem", color: "#6c757d" }}>
+                          {contactoSeleccionado.fechaActualizacion
+                            ? new Date(
+                                contactoSeleccionado.fechaActualizacion
+                              ).toLocaleString("es-PE", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                            : "N/A"}
+                        </div>
+                        {contactoSeleccionado.personalActualizador && (
+                          <Tag
+                            value={`${contactoSeleccionado.personalActualizador.nombres} ${contactoSeleccionado.personalActualizador.apellidos}`}
+                            style={{
+                              marginTop: 5,
+                              backgroundColor: "#f8d7da",
+                              color: "#000",
+                              fontSize: "0.8rem",
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Cancelar"
+                  icon="pi pi-times"
+                  type="button"
+                  onClick={cerrarDialogo}
+                  className="p-button-warning"
+                  severity="warning"
+                  raised
+                  size="small"
+                  outlined
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label={contactoSeleccionado ? "Actualizar" : "Crear"}
+                  icon={contactoSeleccionado ? "pi pi-check" : "pi pi-plus"}
+                  type="button"
+                  onClick={async () => {
+                    // Validar formulario manualmente
+                    const isValid = await trigger();
+                    if (isValid) {
+                      // Obtener datos del formulario y guardar
+                      const formData = getValues();
+                      await onSubmitContacto(formData);
+                    }
+                  }}
+                  loading={loading}
+                  disabled={readOnly || loading}
+                  className="p-button-success"
+                  severity="success"
+                  raised
+                  size="small"
+                  outlined
+                />
+              </div>
             </div>
           </form>
         </Dialog>

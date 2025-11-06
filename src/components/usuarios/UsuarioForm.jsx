@@ -67,6 +67,8 @@ export default function UsuarioForm({
   onSubmit,
   onCancel,
   loading,
+  readOnly = false,
+  puedeCrear = false,
 }) {
   // Importa y usa watch y setValue de react-hook-form
   // Agrega 'control' de useForm para uso con Controller (formularios controlados)
@@ -180,8 +182,12 @@ export default function UsuarioForm({
                   options={empresas}
                   optionLabel="razonSocial"
                   optionValue="id"
-                  placeholder="Seleccione una empresa"
+                  placeholder="Seleccione empresa"
                   className={errors.empresaId ? "p-invalid" : ""}
+                  filter
+                  showClear
+                  style={{ fontWeight: "bold" }}
+                  disabled={readOnly}
                   onChange={(e) => {
                     if (field.value !== e.value) {
                       field.onChange(e.value);
@@ -189,9 +195,6 @@ export default function UsuarioForm({
                       cargarPersonal(e.value);
                     }
                   }}
-                  filter
-                  showClear
-                  style={{ fontWeight: "bold" }}
                 />
               )}
             />
@@ -227,7 +230,7 @@ export default function UsuarioForm({
                   optionValue="id"
                   placeholder="Seleccione personal"
                   className={errors.personalId ? "p-invalid" : ""}
-                  disabled={!watch("empresaId")}
+                  disabled={!watch("empresaId") || readOnly}
                   filter
                   showClear
                   style={{ fontWeight: "bold" }}
@@ -264,6 +267,7 @@ export default function UsuarioForm({
                   autoFocus
                   autoComplete="off"
                   style={{ fontWeight: "bold", backgroundColor: "#FFF82A" }}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -286,6 +290,7 @@ export default function UsuarioForm({
                     onChange={(e) => field.onChange(e.target.value)}
                     className={errors.password ? "p-invalid" : ""}
                     autoComplete="new-password"
+                    disabled={readOnly}
                   />
                 )}
               />
@@ -313,6 +318,7 @@ export default function UsuarioForm({
               style={{ width: "100%" }}
               size="small"
               raised
+              disabled={readOnly}
             />
           </div>
           <div style={{ flex: 1 }}>
@@ -329,6 +335,7 @@ export default function UsuarioForm({
               style={{ width: "100%" }}
               size="small"
               raised
+              disabled={readOnly}
             />
           </div>
           <div style={{ flex: 1 }}>
@@ -345,6 +352,7 @@ export default function UsuarioForm({
               style={{ width: "100%" }}
               size="small"
               raised
+              disabled={readOnly}
             />
           </div>
           <div style={{ flex: 1 }}>
@@ -361,6 +369,7 @@ export default function UsuarioForm({
               style={{ width: "100%" }}
               size="small"
               raised
+              disabled={readOnly}
             />
           </div>
         </div>
@@ -494,11 +503,12 @@ export default function UsuarioForm({
                 <DetListaAccesosAModulosUsuario
                   accesos={accesos}
                   onChange={handleAccesosChange}
-                  disabled={loading}
+                  disabled={readOnly || loading}
                   esSuperUsuario={watch("esSuperUsuario")}
                   esAdmin={watch("esAdmin")}
                   esUsuario={watch("esUsuario")}
                   usuarioId={defaultValues.id}
+                  puedeCrear={puedeCrear}
                 />
               </TabPanel>
             </TabView>
@@ -560,16 +570,18 @@ export default function UsuarioForm({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <Button
-              label={isEdit ? "Actualizar" : "Guardar"}
-              icon="pi pi-check"
-              type="submit"
-              loading={loading || isSubmitting}
-              className="p-button-success"
-              severity="success"
-              raised
-              size="small"
-            />
+            {!readOnly && (
+              <Button
+                label={isEdit ? "Actualizar" : "Guardar"}
+                icon="pi pi-check"
+                type="submit"
+                loading={loading || isSubmitting}
+                className="p-button-success"
+                severity="success"
+                raised
+                size="small"
+              />
+            )}
           </div>
         </div>
       </div>

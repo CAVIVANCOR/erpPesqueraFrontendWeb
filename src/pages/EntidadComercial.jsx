@@ -33,8 +33,15 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
 import EntidadComercialForm from "../components/entidadComercial/EntidadComercialForm";
 import { getResponsiveFontSize } from "../utils/utils";
 import { InputText } from "primereact/inputtext";
+import { usePermissions } from "../hooks/usePermissions";
+import { Navigate } from "react-router-dom";
 
-const EntidadComercial = () => {
+const EntidadComercial = ({ ruta }) => {
+  const permisos = usePermissions(ruta);
+  
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
   const [entidadesFiltradas, setEntidadesFiltradas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +49,8 @@ const EntidadComercial = () => {
   const [entidadSeleccionada, setEntidadSeleccionada] = useState(null);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [entidadAEliminar, setEntidadAEliminar] = useState(null);
+  const [formLoading, setFormLoading] = useState(false);
+  const [modoEdicion, setModoEdicion] = useState(false);
 
   // Estados para filtros
   const [empresas, setEmpresas] = useState([]);
@@ -163,17 +172,20 @@ const EntidadComercial = () => {
       ? { empresaId: Number(filtroEmpresa) }
       : null;
     setEntidadSeleccionada(entidadInicial);
+    setModoEdicion(false);
     setDialogVisible(true);
   };
 
   const abrirDialogoEdicion = (entidad) => {
     setEntidadSeleccionada(entidad);
+    setModoEdicion(true);
     setDialogVisible(true);
   };
 
   const cerrarDialogo = () => {
     setDialogVisible(false);
     setEntidadSeleccionada(null);
+    setModoEdicion(false);
   };
 
   const onGuardarExitoso = () => {
@@ -182,9 +194,10 @@ const EntidadComercial = () => {
     toast.current.show({
       severity: "success",
       summary: "Éxito",
-      detail: entidadSeleccionada && entidadSeleccionada.id
-        ? "Entidad comercial actualizada correctamente"
-        : "Entidad comercial creada correctamente",
+      detail:
+        entidadSeleccionada && entidadSeleccionada.id
+          ? "Entidad comercial actualizada correctamente"
+          : "Entidad comercial creada correctamente",
       life: 3000,
     });
   };
@@ -273,35 +286,38 @@ const EntidadComercial = () => {
     return (
       <Tag
         value={rowData.esAgenteRetencion ? "Sí" : "No"}
-        severity={rowData.esAgenteRetencion ? "info" : "secondary"}
+        severity={rowData.esAgenteRetencion ? "danger" : "secondary"}
       />
     );
   };
 
-  const accionesTemplate = (rowData) => {
-    return (
-      <div className="flex gap-2">
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-text p-mr-2"
-          onClick={(ev) => {
-            ev.stopPropagation();
+  const accionesTemplate = (rowData) => (
+    <div onClick={(e) => e.stopPropagation()}>
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-rounded p-button-text p-button-info"
+        style={{ marginRight: 8 }}
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        onClick={() => {
+          if (permisos.puedeVer || permisos.puedeEditar) {
             abrirDialogoEdicion(rowData);
-          }}
-          tooltip="Editar"
-          tooltipOptions={{ position: "top" }}
-        />
-        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-text p-button-danger"
-            onClick={() => confirmarEliminacion(rowData)}
-            tooltip="Eliminar"
-          />
-        )}
-      </div>
-    );
-  };
+          }
+        }}
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+      />
+      <Button
+        icon="pi pi-trash"
+        className="p-button-rounded p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={() => {
+          if (permisos.puedeEliminar) {
+            confirmarEliminacion(rowData);
+          }
+        }}
+        tooltip="Eliminar"
+      />
+    </div>
+  );
 
   // Normalizar opciones para dropdowns
   const empresasOptions = empresas.map((e) => ({
@@ -356,10 +372,12 @@ const EntidadComercial = () => {
             label="Nuevo"
             icon="pi pi-plus"
             size="small"
+            outlined
             raised
             tooltip="Nueva Entidad Comercial"
             className="p-button-success"
             onClick={abrirDialogoNuevo}
+            disabled={!permisos.puedeCrear}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -437,18 +455,29 @@ const EntidadComercial = () => {
       <DataTable
         value={entidadesFiltradas}
         loading={loading}
+        size="small"
+        showGridlines
+        stripedRows
         paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
-        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} tipos de contrato"
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => abrirDialogoEdicion(e.data)
+            : undefined
+        }
         selectionMode="single"
-        className="p-datatable-hover cursor-pointer"
         emptyMessage="No se encontraron entidades comerciales"
         header={header}
         globalFilter={globalFilter}
         scrollable
-        scrollHeight="600px"
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
         <Column field="id" header="ID" sortable />
         <Column
@@ -505,6 +534,11 @@ const EntidadComercial = () => {
           entidadComercial={entidadSeleccionada}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
+          toast={toast}
+          modoEdicion={modoEdicion}
+          readOnly={(modoEdicion && !permisos.puedeEditar) || (!modoEdicion && !permisos.puedeCrear)}
+          loading={formLoading}
+          permisos={permisos}
         />
       </Dialog>
 

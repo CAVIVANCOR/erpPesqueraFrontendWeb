@@ -3,7 +3,6 @@ import React from "react";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
-import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
@@ -51,17 +50,6 @@ export default function DatosGeneralesTab({
       (p) => Number(p.value) === Number(personalId)
     );
     return personal ? personal.label : `ID: ${personalId}`;
-  };
-
-  // Helper para obtener código de moneda (ISO)
-  const getCodigoMoneda = () => {
-    // Prioridad 1: Usar la relación directa del requerimiento (más eficiente)
-    if (monedaRequerimiento?.codigoSunat) {
-      return monedaRequerimiento.codigoSunat;
-    }
-    // Prioridad 2: Buscar en el array de opciones (fallback)
-    const moneda = monedasOptions.find((m) => m.value === formData.monedaId);
-    return moneda?.codigoSunat || "PEN";
   };
 
   return (

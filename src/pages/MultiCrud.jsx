@@ -132,6 +132,9 @@ import TipoMovimientoAcceso from "./TipoMovimientoAcceso";
 import SedesEmpresa from "./SedesEmpresa";
 import TipoAlmacenamiento from "./TipoAlmacenamiento";
 import Marca from "./Marca";
+import DocRequeridaVentas from "./DocRequeridaVentas";
+import RequisitoDocPorPais from "./RequisitoDocPorPais";
+import CostoExportacionPorIncoterm from "./CostoExportacionPorIncoterm";
 
 /**
  * Componente MultiCrud
@@ -151,216 +154,273 @@ export default function MultiCrud() {
 
   // Catálogo de módulos disponibles (key -> componente)
   const modulos = {
-    almacen: { label: "Almacenes", componente: <Almacen /> },
+    almacen: { label: "Almacenes", componente: <Almacen ruta="almacen" /> },
     centrosAlmacen: {
       label: "Centros de Almacén",
-      componente: <CentrosAlmacen />,
+      componente: <CentrosAlmacen ruta="centrosAlmacen" />,
     },
     tipoAlmacenamiento: {
       label: "Tipo Almacenamiento",
-      componente: <TipoAlmacenamiento />,
+      componente: <TipoAlmacenamiento ruta="tipoAlmacenamiento" />,
     },
-    marca: { label: "Marca", componente: <Marca /> },
+    marca: { label: "Marca", componente: <Marca ruta="marca" /> },
     parametroAprobador: {
       label: "Aprobadores",
-      componente: <ParametroAprobador />,
+      componente: <ParametroAprobador ruta="parametroAprobador" />,
     },
     tiposDocIdentidad: {
       label: "Tipos de Documentos de Identidad",
-      componente: <TiposDocIdentidad />,
+      componente: <TiposDocIdentidad ruta="tiposDocIdentidad" />,
     },
     oTMantenimiento: {
       label: "Ordenes de Trabajo",
-      componente: <OTMantenimiento />,
+      componente: <OTMantenimiento ruta="oTMantenimiento" />,
     },
     detPermisoGestionadoOT: {
       label: "Detalle Permisos Gestionados OT",
-      componente: <DetPermisoGestionadoOT />,
+      componente: <DetPermisoGestionadoOT ruta="detPermisoGestionadoOT" />,
     },
-    detTareasOT: { label: "Detalle Tareas OT", componente: <DetTareasOT /> },
+    detTareasOT: {
+      label: "Detalle Tareas OT",
+      componente: <DetTareasOT ruta="detTareasOT" />,
+    },
     detInsumosTareaOT: {
       label: "Detalle Insumos de Tarea OT",
-      componente: <DetInsumosTareaOT />,
+      componente: <DetInsumosTareaOT ruta="detInsumosTareaOT" />,
     },
-    preFactura: { label: "Pre-Factura", componente: <PreFactura /> },
+    preFactura: {
+      label: "Pre-Factura",
+      componente: <PreFactura ruta="preFactura" />,
+    },
     detallePreFactura: {
       label: "Detalle Pre-Factura",
-      componente: <DetallePreFactura />,
+      componente: <DetallePreFactura ruta="detallePreFactura" />,
     },
-    ordenCompra: { label: "Orden Compra", componente: <OrdenCompra /> },
+    docRequeridaVentas: {
+      label: "Documentos Requeridos Ventas",
+      componente: <DocRequeridaVentas ruta="docRequeridaVentas" />,
+    },
+    requisitoDocPorPais: {
+      label: "Requisitos Documentales por País",
+      componente: <RequisitoDocPorPais ruta="requisitoDocPorPais" />,
+    },
+    costoExportacionPorIncoterm: {
+      label: "Costos de Exportación por Incoterm",
+      componente: (
+        <CostoExportacionPorIncoterm ruta="costoExportacionPorIncoterm" />
+      ),
+    },
+    ordenCompra: {
+      label: "Orden Compra",
+      componente: <OrdenCompra ruta="ordenCompra" />,
+    },
     detalleOrdenCompra: {
       label: "Detalle Orden Compra",
-      componente: <DetalleOrdenCompra />,
+      componente: <DetalleOrdenCompra ruta="detalleOrdenCompra" />,
     },
     requerimientoCompra: {
       label: "Requerimiento Compra",
-      componente: <RequerimientoCompra />,
+      componente: <RequerimientoCompra ruta="requerimientoCompra" />,
     },
     detalleReqCompra: {
       label: "Detalle Requerimiento Compra",
-      componente: <DetalleReqCompra />,
+      componente: <DetalleReqCompra ruta="detalleReqCompra" />,
     },
     detAccionesPreviasFaenaConsumo: {
       label: "Detalle Acciones Previas Faena Novedad Pesca Consumo",
-      componente: <DetAccionesPreviasFaenaConsumo />,
+      componente: (
+        <DetAccionesPreviasFaenaConsumo ruta="detAccionesPreviasFaenaConsumo" />
+      ),
     },
     detDescargaFaenaConsumo: {
       label: "Detalle Descargas Faena Novedad Pesca Consumo",
-      componente: <DetDescargaFaenaConsumo />,
+      componente: <DetDescargaFaenaConsumo ruta="detDescargaFaenaConsumo" />,
     },
     detCalaPescaConsumo: {
       label: "Detalle Cala Faena Novedad Pesca Consumo",
-      componente: <DetCalaPescaConsumo />,
+      componente: <DetCalaPescaConsumo ruta="detCalaPescaConsumo" />,
     },
     detalleCalaEspecie: {
       label: "Detalle Cala Faena Temporada Pesca",
-      componente: <DetalleCalaEspecie />,
+      componente: <DetalleCalaEspecie ruta="detalleCalaEspecie" />,
     },
-    cala: { label: "Cala Faena Temporada Pesca", componente: <Cala /> },
+    cala: {
+      label: "Cala Faena Temporada Pesca",
+      componente: <Cala ruta="cala" />,
+    },
     faenaPescaConsumo: {
       label: "Faena Novedad Pesca Consumo",
-      componente: <FaenaPescaConsumo />,
+      componente: <FaenaPescaConsumo ruta="faenaPescaConsumo" />,
     },
-    faenaPesca: { label: "Faena Temporada Pesca", componente: <FaenaPesca /> },
+    faenaPesca: {
+      label: "Faena Temporada Pesca",
+      componente: <FaenaPesca ruta="faenaPesca" />,
+    },
     tripulanteFaenaConsumo: {
       label: "Tripulante Faena Consumo",
-      componente: <TripulanteFaenaConsumo />,
+      componente: <TripulanteFaenaConsumo ruta="tripulanteFaenaConsumo" />,
     },
     novedadPescaConsumo: {
       label: "Novedad Pesca Consumo",
-      componente: <NovedadPescaConsumo />,
+      componente: <NovedadPescaConsumo ruta="novedadPescaConsumo" />,
     },
     tipoMovimiento: {
       label: "Tipo Movimiento",
-      componente: <TipoMovimiento />,
+      componente: <TipoMovimiento ruta="tipoMovimiento" />,
     },
     accesoInstalacion: {
       label: "Acceso Instalaciones",
-      componente: <AccesoInstalacion />,
+      componente: <AccesoInstalacion ruta="accesoInstalacion" />,
     },
     accesoInstalacionDetalle: {
       label: "Detalle Acceso Instalaciones",
-      componente: <AccesoInstalacionDetalle />,
+      componente: <AccesoInstalacionDetalle ruta="accesoInstalacionDetalle" />,
     },
     tipoMovimientoAcceso: {
       label: "Tipos de Movimiento de Acceso",
-      componente: <TipoMovimientoAcceso />,
+      componente: <TipoMovimientoAcceso ruta="tipoMovimientoAcceso" />,
     },
-    tipoEquipo: { label: "Tipo Equipo", componente: <TipoEquipo /> },
-    personal: { label: "Personal", componente: <Personal /> },
+    tipoEquipo: {
+      label: "Tipo Equipo",
+      componente: <TipoEquipo ruta="tipoEquipo" />,
+    },
+    personal: { label: "Personal", componente: <Personal ruta="personal" /> },
     cargosPersonal: {
       label: "Cargos del Personal",
-      componente: <CargosPersonal />,
+      componente: <CargosPersonal ruta="cargosPersonal" />,
     },
-    tipoContrato: { label: "Tipo Contrato", componente: <TipoContrato /> },
-    tipoDocumento: { label: "Tipo Documento", componente: <TipoDocumento /> },
-    usuarios: { label: "Usuarios", componente: <Usuarios /> },
+    tipoContrato: {
+      label: "Tipo Contrato",
+      componente: <TipoContrato ruta="tipoContrato" />,
+    },
+    tipoDocumento: {
+      label: "Tipo Documento",
+      componente: <TipoDocumento ruta="tipoDocumento" />,
+    },
+    usuarios: { label: "Usuarios", componente: <Usuarios ruta="usuarios" /> },
     modulosSistema: {
       label: "Módulos Sistema",
-      componente: <ModulosSistema />,
+      componente: <ModulosSistema ruta="modulosSistema" />,
     },
     SubmodulosSistema: {
       label: "Submódulos Sistema",
-      componente: <SubmodulosSistema />,
+      componente: <SubmodulosSistema ruta="SubmodulosSistema" />,
     },
-    empresas: { label: "Empresas", componente: <Empresas /> },
-    sedesEmpresa: { label: "Sedes Empresa", componente: <SedesEmpresa /> },
+    empresas: { label: "Empresas", componente: <Empresas ruta="empresas" /> },
+    sedesEmpresa: {
+      label: "Sedes Empresa",
+      componente: <SedesEmpresa ruta="sedesEmpresa" />,
+    },
     areasFisicasSede: {
       label: "Áreas Físicas Sede Empresa",
-      componente: <AreasFisicasSede />,
+      componente: <AreasFisicasSede ruta="areasFisicasSede" />,
     },
-    activo: { label: "Activos", componente: <Activo /> },
+    activo: { label: "Activos", componente: <Activo ruta="activo" /> },
     detallePermisoActivo: {
       label: "Detalle Permisos Activo",
-      componente: <DetallePermisoActivo />,
+      componente: <DetallePermisoActivo ruta="detallePermisoActivo" />,
     },
-    especie: { label: "Especies", componente: <Especie /> },
+    especie: { label: "Especies", componente: <Especie ruta="especie" /> },
     estadoMultiFuncion: {
       label: "Estado Multifunción",
-      componente: <EstadoMultiFuncion />,
+      componente: <EstadoMultiFuncion ruta="estadoMultiFuncion" />,
     },
     permisoAutorizacion: {
       label: "Permisos para Activos",
-      componente: <PermisoAutorizacion />,
+      componente: <PermisoAutorizacion ruta="permisoAutorizacion" />,
     },
-    tipoActivo: { label: "Tipos de Activo", componente: <TipoActivo /> },
+    tipoActivo: {
+      label: "Tipos de Activo",
+      componente: <TipoActivo ruta="tipoActivo" />,
+    },
     tipoProvieneDe: {
       label: "Tipo Proviene De",
-      componente: <TipoProvieneDe />,
+      componente: <TipoProvieneDe ruta="tipoProvieneDe" />,
     },
-    monedas: { label: "Monedas", componente: <Moneda /> },
-    puertoPesca: { label: "Puerto de Pesca", componente: <PuertoPesca /> },
+    monedas: { label: "Monedas", componente: <Moneda ruta="monedas" /> },
+    puertoPesca: {
+      label: "Puerto de Pesca",
+      componente: <PuertoPesca ruta="puertoPesca" />,
+    },
     tipoMantenimiento: {
       label: "Tipo de Mantenimiento",
-      componente: <TipoMantenimiento />,
+      componente: <TipoMantenimiento ruta="tipoMantenimiento" />,
     },
     motivoOriginoOT: {
       label: "Motivo Origino OT",
-      componente: <MotivoOriginoOT />,
+      componente: <MotivoOriginoOT ruta="motivoOriginoOT" />,
     },
-    banco: { label: "Bancos", componente: <Banco /> },
-    incoterm: { label: "Incoterms", componente: <Incoterm /> },
+    banco: { label: "Bancos", componente: <Banco ruta="banco" /> },
+    incoterm: { label: "Incoterms", componente: <Incoterm ruta="incoterm" /> },
     movimientoCaja: {
       label: "Movimientos de Caja",
-      componente: <MovimientoCaja />,
+      componente: <MovimientoCaja ruta="movimientoCaja" />,
     },
     detalleEmbarcacion: {
       label: "Detalle Embarcación",
-      componente: <DetalleEmbarcacion />,
+      componente: <DetalleEmbarcacion ruta="detalleEmbarcacion" />,
     },
     cuentaCorriente: {
       label: "Cuenta Corriente",
-      componente: <CuentaCorriente />,
+      componente: <CuentaCorriente ruta="cuentaCorriente" />,
     },
     tipoCuentaCorriente: {
       label: "Tipo Cuenta Corriente",
-      componente: <TipoCuentaCorriente />,
+      componente: <TipoCuentaCorriente ruta="tipoCuentaCorriente" />,
     },
     tipoReferenciaMovimientoCaja: {
       label: "Tipo Referencia Movimiento Caja",
-      componente: <TipoReferenciaMovimientoCaja />,
+      componente: (
+        <TipoReferenciaMovimientoCaja ruta="tipoReferenciaMovimientoCaja" />
+      ),
     },
     asientoContableInterfaz: {
       label: "Asientos Contable Generados",
-      componente: <AsientoContableInterfaz />,
+      componente: <AsientoContableInterfaz ruta="asientoContableInterfaz" />,
     },
     tipoEmbarcacion: {
       label: "Tipo Embarcación",
-      componente: <TipoEmbarcacion />,
+      componente: <TipoEmbarcacion ruta="tipoEmbarcacion" />,
     },
     documentoPesca: {
       label: "Documento Pesca",
-      componente: <DocumentoPesca />,
+      componente: <DocumentoPesca ruta="documentoPesca" />,
     },
     documentacionEmbarcacion: {
       label: "Documentación Embarcación",
-      componente: <DocumentacionEmbarcacion />,
+      componente: <DocumentacionEmbarcacion ruta="documentacionEmbarcacion" />,
     },
     detalleDocEmbarcacion: {
       label: "Detalle Doc Embarcación",
-      componente: <DetalleDocEmbarcacion />,
+      componente: <DetalleDocEmbarcacion ruta="detalleDocEmbarcacion" />,
     },
-    bolicheRed: { label: "Boliche Red", componente: <BolicheRed /> },
+    bolicheRed: {
+      label: "Boliche Red",
+      componente: <BolicheRed ruta="bolicheRed" />,
+    },
     accesosUsuario: {
       label: "Accesos Usuario",
-      componente: <AccesosUsuario />,
+      componente: <AccesosUsuario ruta="accesosUsuario" />,
     },
     documentacionPersonal: {
       label: "Documentación Personal",
-      componente: <DocumentacionPersonal />,
+      componente: <DocumentacionPersonal ruta="documentacionPersonal" />,
     },
     tipoMovEntregaRendir: {
       label: "Tipo Movimiento Entrega a Rendir",
-      componente: <TipoMovEntregaRendir />,
+      componente: <TipoMovEntregaRendir ruta="tipoMovEntregaRendir" />,
     },
-    centroCosto: { label: "Centro de Costo", componente: <CentroCosto /> },
+    centroCosto: {
+      label: "Centro de Costo",
+      componente: <CentroCosto ruta="centroCosto" />,
+    },
     categoriaCCosto: {
       label: "Categoría Centro de Costo",
-      componente: <CategoriaCCosto />,
+      componente: <CategoriaCCosto ruta="categoriaCCosto" />,
     },
     empresaCentroCosto: {
       label: "Empresa Centro de Costo",
-      componente: <EmpresaCentroCosto />,
+      componente: <EmpresaCentroCosto ruta="empresaCentroCosto" />,
     },
     detalleDescargaFaena: {
       label: "Detalle Descarga Faena Temporada Pesca",
@@ -386,7 +446,7 @@ export default function MultiCrud() {
     },
     entidadComercial: {
       label: "Entidades Comerciales",
-      componente: <EntidadComercial />,
+      componente: <EntidadComercial ruta="entidadComercial" />,
     },
     direccionEntidad: {
       label: "Direcciones de Entidad Comercial",
@@ -551,696 +611,775 @@ export default function MultiCrud() {
    * Cada opción con command abre su módulo en pestaña.
    * Submenús y estructura visual se mantienen.
    */
-const menuItems = [
-  {
-    label: "INICIO",
-    icon: "pi pi-home",
-    command: () => abrirModulo("inicio", "Inicio"),
-  },
-  {
-    label: "ACCESO INSTALACIONES",
-    icon: "pi pi-shield",
-    items: [
-      [
-        {
-          label: "Movimientos",
-          items: [
-            {
-              label: "Movimientos Acceso",
-              icon: "pi pi-sign-in", // ✅ Entrada/Salida
-              command: () =>
-                abrirModulo("accesoInstalacion", "Movimientos Acceso Instalaciones"),
-            },
-          ],
-        },
-        {
-          label: "Configuración",
-          items: [
-            {
-              label: "Tipos de Movimiento",
-              icon: "pi pi-arrows-h", // ✅ Movimientos bidireccionales
-              command: () =>
-                abrirModulo("tipoMovimientoAcceso", "Tipos de Movimiento de Acceso"),
-            },
-            {
-              label: "Tipo Equipos",
-              icon: "pi pi-desktop", // ✅ Equipos tecnológicos
-              command: () => abrirModulo("tipoEquipo", "Tipo Equipos"),
-            },
-            {
-              label: "Tipos de Persona",
-              icon: "pi pi-users", // ✅ Correcto
-              command: () => abrirModulo("tipoPersona", "Tipos de Persona"),
-            },
-            {
-              label: "Motivos de Acceso",
-              icon: "pi pi-question-circle", // ✅ Correcto
-              command: () => abrirModulo("motivoAcceso", "Motivos de Acceso"),
-            },
-            {
-              label: "Tipos de Acceso",
-              icon: "pi pi-key", // ✅ Correcto
-              command: () =>
-                abrirModulo("tipoAccesoInstalacion", "Tipos de Acceso a Instalaciones"),
-            },
-          ],
-        },
+  const menuItems = [
+    {
+      label: "INICIO",
+      icon: "pi pi-home",
+      command: () => abrirModulo("inicio", "Inicio"),
+    },
+    {
+      label: "ACCESO INSTALACIONES",
+      icon: "pi pi-shield",
+      items: [
+        [
+          {
+            label: "Movimientos",
+            items: [
+              {
+                label: "Movimientos Acceso",
+                icon: "pi pi-sign-in", // ✅ Entrada/Salida
+                command: () =>
+                  abrirModulo(
+                    "accesoInstalacion",
+                    "Movimientos Acceso Instalaciones"
+                  ),
+              },
+            ],
+          },
+          {
+            label: "Configuración",
+            items: [
+              {
+                label: "Tipos de Movimiento",
+                icon: "pi pi-arrows-h", // ✅ Movimientos bidireccionales
+                command: () =>
+                  abrirModulo(
+                    "tipoMovimientoAcceso",
+                    "Tipos de Movimiento de Acceso"
+                  ),
+              },
+              {
+                label: "Tipo Equipos",
+                icon: "pi pi-desktop", // ✅ Equipos tecnológicos
+                command: () => abrirModulo("tipoEquipo", "Tipo Equipos"),
+              },
+              {
+                label: "Tipos de Persona",
+                icon: "pi pi-users", // ✅ Correcto
+                command: () => abrirModulo("tipoPersona", "Tipos de Persona"),
+              },
+              {
+                label: "Motivos de Acceso",
+                icon: "pi pi-question-circle", // ✅ Correcto
+                command: () => abrirModulo("motivoAcceso", "Motivos de Acceso"),
+              },
+              {
+                label: "Tipos de Acceso",
+                icon: "pi pi-key", // ✅ Correcto
+                command: () =>
+                  abrirModulo(
+                    "tipoAccesoInstalacion",
+                    "Tipos de Acceso a Instalaciones"
+                  ),
+              },
+            ],
+          },
+        ],
       ],
-    ],
-  },
-  {
-    label: "PESCA",
-    icon: "pi pi-anchor",
-    items: [
-      [
-        {
-          label: "Pesca",
-          items: [
-            {
-              label: "Pesca Industrial",
-              icon: "pi pi-compass", // ✅ Navegación/Faenas
-              command: () => abrirModulo("temporadaPesca", "Pesca Industrial"),
-            },
-            {
-              label: "Pesca de Consumo",
-              icon: "pi pi-shopping-bag", // ✅ Consumo directo
-              command: () => abrirModulo("novedadPescaConsumo", "Pesca de Consumo"),
-            },
-          ],
-        },
+    },
+    {
+      label: "PESCA",
+      icon: "pi pi-anchor",
+      items: [
+        [
+          {
+            label: "Pesca",
+            items: [
+              {
+                label: "Pesca Industrial",
+                icon: "pi pi-compass", // ✅ Navegación/Faenas
+                command: () =>
+                  abrirModulo("temporadaPesca", "Pesca Industrial"),
+              },
+              {
+                label: "Pesca de Consumo",
+                icon: "pi pi-shopping-bag", // ✅ Consumo directo
+                command: () =>
+                  abrirModulo("novedadPescaConsumo", "Pesca de Consumo"),
+              },
+            ],
+          },
+        ],
+        [
+          {
+            label: "Configuración",
+            items: [
+              {
+                label: "Especies",
+                icon: "pi pi-star", // ✅ Especies destacadas
+                command: () => abrirModulo("especie", "Especies"),
+              },
+              {
+                label: "Acciones Previas",
+                icon: "pi pi-list-check", // ✅ Checklist de acciones
+                command: () =>
+                  abrirModulo("accionesPreviasFaena", "Acciones previas Faena"),
+              },
+              {
+                label: "Embarcaciones",
+                icon: "pi pi-directions", // ✅ Embarcaciones/Navegación
+                command: () => abrirModulo("embarcacion", "Embarcaciones"),
+              },
+              {
+                label: "Tipo Embarcación",
+                icon: "pi pi-tags", // ✅ Clasificación
+                command: () =>
+                  abrirModulo("tipoEmbarcacion", "Tipo Embarcación"),
+              },
+              {
+                label: "Boliche de Red",
+                icon: "pi pi-circle", // ✅ Correcto
+                command: () => abrirModulo("bolicheRed", "Boliche de Red"),
+              },
+              {
+                label: "Documentación Pesca",
+                icon: "pi pi-file-pdf", // ✅ Documentos
+                command: () =>
+                  abrirModulo("documentoPesca", "Documentación Pesca"),
+              },
+              {
+                label: "Documentación Embarcación",
+                icon: "pi pi-folder-open", // ✅ Carpeta de documentos
+                command: () =>
+                  abrirModulo(
+                    "documentacionEmbarcacion",
+                    "Detalle Documentación Embarcación"
+                  ),
+              },
+              {
+                label: "Documentación Personal",
+                icon: "pi pi-id-card", // ✅ Correcto
+                command: () =>
+                  abrirModulo(
+                    "documentacionPersonal",
+                    "Documentación Personal"
+                  ),
+              },
+              {
+                label: "Puerto de Pesca",
+                icon: "pi pi-map-marker", // ✅ Ubicación de puertos
+                command: () => abrirModulo("puertoPesca", "Puerto de Pesca"),
+              },
+            ],
+          },
+        ],
       ],
-      [
-        {
-          label: "Configuración",
-          items: [
-            {
-              label: "Especies",
-              icon: "pi pi-star", // ✅ Especies destacadas
-              command: () => abrirModulo("especie", "Especies"),
-            },
-            {
-              label: "Acciones Previas",
-              icon: "pi pi-list-check", // ✅ Checklist de acciones
-              command: () =>
-                abrirModulo("accionesPreviasFaena", "Acciones previas Faena"),
-            },
-            {
-              label: "Embarcaciones",
-              icon: "pi pi-directions", // ✅ Embarcaciones/Navegación
-              command: () => abrirModulo("embarcacion", "Embarcaciones"),
-            },
-            {
-              label: "Tipo Embarcación",
-              icon: "pi pi-tags", // ✅ Clasificación
-              command: () => abrirModulo("tipoEmbarcacion", "Tipo Embarcación"),
-            },
-            {
-              label: "Boliche de Red",
-              icon: "pi pi-circle", // ✅ Correcto
-              command: () => abrirModulo("bolicheRed", "Boliche de Red"),
-            },
-            {
-              label: "Documentación Pesca",
-              icon: "pi pi-file-pdf", // ✅ Documentos
-              command: () => abrirModulo("documentoPesca", "Documentación Pesca"),
-            },
-            {
-              label: "Documentación Embarcación",
-              icon: "pi pi-folder-open", // ✅ Carpeta de documentos
-              command: () =>
-                abrirModulo("documentacionEmbarcacion", "Detalle Documentación Embarcación"),
-            },
-            {
-              label: "Documentación Personal",
-              icon: "pi pi-id-card", // ✅ Correcto
-              command: () =>
-                abrirModulo("documentacionPersonal", "Documentación Personal"),
-            },
-            {
-              label: "Puerto de Pesca",
-              icon: "pi pi-map-marker", // ✅ Ubicación de puertos
-              command: () => abrirModulo("puertoPesca", "Puerto de Pesca"),
-            },
-          ],
-        },
+    },
+    {
+      label: "COMPRAS",
+      icon: "pi pi-shopping-cart",
+      items: [
+        [
+          {
+            label: "Proceso de Compras",
+            items: [
+              {
+                label: "Requerimiento Compra",
+                icon: "pi pi-file-edit", // ✅ Editar solicitud
+                command: () =>
+                  abrirModulo("requerimientoCompra", "Requerimiento Compra"),
+              },
+              {
+                label: "Orden de Compra",
+                icon: "pi pi-shopping-cart", // ✅ Compra confirmada
+                command: () => abrirModulo("ordenCompra", "Orden de Compra"),
+              },
+            ],
+          },
+          {
+            label: "Configuración",
+            items: [
+              {
+                label: "Tipo Producto",
+                icon: "pi pi-box", // ✅ Productos
+                command: () => abrirModulo("tipoProducto", "Tipo Producto"),
+              },
+              {
+                label: "Tipo Estado Producto",
+                icon: "pi pi-flag", // ✅ Estados
+                command: () =>
+                  abrirModulo("tipoEstadoProducto", "Tipo Estado Producto"),
+              },
+              {
+                label: "Destino Producto",
+                icon: "pi pi-send", // ✅ Envío/Destino
+                command: () =>
+                  abrirModulo("destinoProducto", "Destino Producto"),
+              },
+              {
+                label: "Forma de Pago",
+                icon: "pi pi-credit-card", // ✅ Pago
+                command: () => abrirModulo("formaPago", "Forma de Pago"),
+              },
+              {
+                label: "Modo Despacho/Recepción",
+                icon: "pi pi-truck", // ✅ Transporte
+                command: () =>
+                  abrirModulo(
+                    "modoDespachoRecepcion",
+                    "Modo Despacho/Recepción"
+                  ),
+              },
+            ],
+          },
+        ],
       ],
-    ],
-  },
-  {
-    label: "COMPRAS",
-    icon: "pi pi-shopping-cart",
-    items: [
-      [
-        {
-          label: "Proceso de Compras",
-          items: [
-            {
-              label: "Requerimiento Compra",
-              icon: "pi pi-file-edit", // ✅ Editar solicitud
-              command: () =>
-                abrirModulo("requerimientoCompra", "Requerimiento Compra"),
-            },
-            {
-              label: "Orden de Compra",
-              icon: "pi pi-shopping-cart", // ✅ Compra confirmada
-              command: () => abrirModulo("ordenCompra", "Orden de Compra"),
-            },
-          ],
-        },
-        {
-          label: "Configuración",
-          items: [
-            {
-              label: "Tipo Producto",
-              icon: "pi pi-box", // ✅ Productos
-              command: () => abrirModulo("tipoProducto", "Tipo Producto"),
-            },
-            {
-              label: "Tipo Estado Producto",
-              icon: "pi pi-flag", // ✅ Estados
-              command: () =>
-                abrirModulo("tipoEstadoProducto", "Tipo Estado Producto"),
-            },
-            {
-              label: "Destino Producto",
-              icon: "pi pi-send", // ✅ Envío/Destino
-              command: () => abrirModulo("destinoProducto", "Destino Producto"),
-            },
-            {
-              label: "Forma de Pago",
-              icon: "pi pi-credit-card", // ✅ Pago
-              command: () => abrirModulo("formaPago", "Forma de Pago"),
-            },
-            {
-              label: "Modo Despacho/Recepción",
-              icon: "pi pi-truck", // ✅ Transporte
-              command: () =>
-                abrirModulo("modoDespachoRecepcion", "Modo Despacho/Recepción"),
-            },
-          ],
-        },
+    },
+    {
+      label: "VENTAS",
+      icon: "pi pi-dollar",
+      items: [
+        [
+          {
+            label: "Proceso de Ventas",
+            items: [
+              {
+                label: "Cotización Ventas",
+                icon: "pi pi-file-edit", // ✅ Editar cotización
+                command: () =>
+                  abrirModulo("cotizacionVentas", "Cotización Ventas"),
+              },
+              {
+                label: "Pre-Factura",
+                icon: "pi pi-file-pdf", // ✅ Documento PDF
+                command: () => abrirModulo("preFactura", "Pre-Factura"),
+              },
+            ],
+          },
+          {
+            label: "Configuración",
+            items: [
+              {
+                label: "Documentos Requeridos",
+                icon: "pi pi-file-check", // ✅ Correcto
+                command: () =>
+                  abrirModulo(
+                    "detDocsReqCotizaVentas",
+                    "Documentos Requeridos Cotización Ventas"
+                  ),
+              },
+              {
+                label: "Formas de Transacción",
+                icon: "pi pi-sync", // ✅ Transacciones
+                command: () =>
+                  abrirModulo(
+                    "formaTransaccion",
+                    "Formas de Transacción Venta"
+                  ),
+              },
+              {
+                label: "Incoterms",
+                icon: "pi pi-globe", // ✅ Internacional
+                command: () => abrirModulo("incoterm", "Incoterms"),
+              },
+              {
+                label: "Documentos Requeridos Ventas",
+                icon: "pi pi-file-check",
+                command: () =>
+                  abrirModulo(
+                    "docRequeridaVentas",
+                    "Documentos Requeridos Ventas"
+                  ),
+              },
+              {
+                label: "Requisitos Doc. por País",
+                icon: "pi pi-map",
+                command: () =>
+                  abrirModulo(
+                    "requisitoDocPorPais",
+                    "Requisitos Documentales por País"
+                  ),
+              },
+              {
+                label: "Costos Exportación Incoterm",
+                icon: "pi pi-money-bill",
+                command: () =>
+                  abrirModulo(
+                    "costoExportacionPorIncoterm",
+                    "Costos de Exportación por Incoterm"
+                  ),
+              },
+            ],
+          },
+        ],
       ],
-    ],
-  },
-  {
-    label: "VENTAS",
-    icon: "pi pi-dollar",
-    items: [
-      [
-        {
-          label: "Proceso de Ventas",
-          items: [
-            {
-              label: "Cotización Ventas",
-              icon: "pi pi-file-edit", // ✅ Editar cotización
-              command: () =>
-                abrirModulo("cotizacionVentas", "Cotización Ventas"),
-            },
-            {
-              label: "Pre-Factura",
-              icon: "pi pi-file-pdf", // ✅ Documento PDF
-              command: () => abrirModulo("preFactura", "Pre-Factura"),
-            },
-          ],
-        },
-        {
-          label: "Configuración",
-          items: [
-            {
-              label: "Documentos Requeridos",
-              icon: "pi pi-file-check", // ✅ Correcto
-              command: () =>
-                abrirModulo("detDocsReqCotizaVentas", "Documentos Requeridos Cotización Ventas"),
-            },
-            {
-              label: "Formas de Transacción",
-              icon: "pi pi-sync", // ✅ Transacciones
-              command: () =>
-                abrirModulo("formaTransaccion", "Formas de Transacción Venta"),
-            },
-            {
-              label: "Incoterms",
-              icon: "pi pi-globe", // ✅ Internacional
-              command: () => abrirModulo("incoterm", "Incoterms"),
-            },
-          ],
-        },
+    },
+    {
+      label: "INVENTARIOS",
+      icon: "pi pi-warehouse",
+      items: [
+        [
+          {
+            label: "Movimientos",
+            items: [
+              {
+                label: "Movimientos Almacén",
+                icon: "pi pi-arrows-h", // ✅ Movimientos
+                command: () =>
+                  abrirModulo("movimientoAlmacen", "Movimientos Almacén"),
+              },
+            ],
+          },
+          {
+            label: "Reportes",
+            items: [
+              {
+                label: "Kardex Almacén",
+                icon: "pi pi-chart-line", // ✅ Correcto
+                command: () => abrirModulo("kardexAlmacen", "Kardex Almacén"),
+              },
+              {
+                label: "Saldos Productos-Cliente",
+                icon: "pi pi-chart-bar", // ✅ Correcto
+                command: () =>
+                  abrirModulo(
+                    "saldosProductoCliente",
+                    "Saldos Productos-Cliente"
+                  ),
+              },
+              {
+                label: "Saldos Productos-Cliente por Variables Control Stock",
+                icon: "pi pi-table", // ✅ Correcto
+                command: () =>
+                  abrirModulo(
+                    "saldosDetProductoCliente",
+                    "Saldos Productos-Cliente Variables Control Stock"
+                  ),
+              },
+            ],
+          },
+          {
+            label: "Configuración",
+            items: [
+              {
+                label: "Conceptos Movimientos",
+                icon: "pi pi-bookmark", // ✅ Correcto
+                command: () =>
+                  abrirModulo(
+                    "conceptoMovAlmacen",
+                    "Conceptos Movimientos Almacén"
+                  ),
+              },
+              {
+                label: "Tipos de Documento",
+                icon: "pi pi-file", // ✅ Documentos
+                command: () =>
+                  abrirModulo("tipoDocumento", "Tipos de Documento"),
+              },
+              {
+                label: "Tipos de Concepto",
+                icon: "pi pi-tags", // ✅ Correcto
+                command: () =>
+                  abrirModulo(
+                    "tipoConcepto",
+                    "Tipos de Concepto Movimientos Almacén"
+                  ),
+              },
+              {
+                label: "Tipos de Movimiento",
+                icon: "pi pi-sort-alt", // ✅ Clasificación de movimientos
+                command: () =>
+                  abrirModulo(
+                    "tipoMovimientoAlmacen",
+                    "Tipos de Movimiento Almacén"
+                  ),
+              },
+              {
+                label: "Tipos de Almacén",
+                icon: "pi pi-building", // ✅ Correcto
+                command: () => abrirModulo("tipoAlmacen", "Tipos de Almacén"),
+              },
+              {
+                label: "Centros de Almacén",
+                icon: "pi pi-sitemap", // ✅ Estructura organizacional
+                command: () =>
+                  abrirModulo("centrosAlmacen", "Centros de Almacén"),
+              },
+              {
+                label: "Almacenes",
+                icon: "pi pi-warehouse", // ✅ Almacenes
+                command: () => abrirModulo("almacen", "Almacenes"),
+              },
+              {
+                label: "Series de Documento",
+                icon: "pi pi-hashtag", // ✅ Numeración
+                command: () => abrirModulo("serieDoc", "Series de Documento"),
+              },
+            ],
+          },
+        ],
       ],
-    ],
-  },
-  {
-    label: "INVENTARIOS",
-    icon: "pi pi-warehouse",
-    items: [
-      [
-        {
-          label: "Movimientos",
-          items: [
-            {
-              label: "Movimientos Almacén",
-              icon: "pi pi-arrows-h", // ✅ Movimientos
-              command: () =>
-                abrirModulo("movimientoAlmacen", "Movimientos Almacén"),
-            },
-          ],
-        },
-        {
-          label: "Reportes",
-          items: [
-            {
-              label: "Kardex Almacén",
-              icon: "pi pi-chart-line", // ✅ Correcto
-              command: () => abrirModulo("kardexAlmacen", "Kardex Almacén"),
-            },
-            {
-              label: "Saldos Productos-Cliente",
-              icon: "pi pi-chart-bar", // ✅ Correcto
-              command: () =>
-                abrirModulo("saldosProductoCliente", "Saldos Productos-Cliente"),
-            },
-            {
-              label: "Saldos Productos-Cliente por Variables Control Stock",
-              icon: "pi pi-table", // ✅ Correcto
-              command: () =>
-                abrirModulo("saldosDetProductoCliente", "Saldos Productos-Cliente Variables Control Stock"),
-            },
-          ],
-        },
-        {
-          label: "Configuración",
-          items: [
-            {
-              label: "Conceptos Movimientos",
-              icon: "pi pi-bookmark", // ✅ Correcto
-              command: () =>
-                abrirModulo("conceptoMovAlmacen", "Conceptos Movimientos Almacén"),
-            },
-            {
-              label: "Tipos de Documento",
-              icon: "pi pi-file", // ✅ Documentos
-              command: () => abrirModulo("tipoDocumento", "Tipos de Documento"),
-            },
-            {
-              label: "Tipos de Concepto",
-              icon: "pi pi-tags", // ✅ Correcto
-              command: () =>
-                abrirModulo("tipoConcepto", "Tipos de Concepto Movimientos Almacén"),
-            },
-            {
-              label: "Tipos de Movimiento",
-              icon: "pi pi-sort-alt", // ✅ Clasificación de movimientos
-              command: () =>
-                abrirModulo("tipoMovimientoAlmacen", "Tipos de Movimiento Almacén"),
-            },
-            {
-              label: "Tipos de Almacén",
-              icon: "pi pi-building", // ✅ Correcto
-              command: () => abrirModulo("tipoAlmacen", "Tipos de Almacén"),
-            },
-            {
-              label: "Centros de Almacén",
-              icon: "pi pi-sitemap", // ✅ Estructura organizacional
-              command: () =>
-                abrirModulo("centrosAlmacen", "Centros de Almacén"),
-            },
-            {
-              label: "Almacenes",
-              icon: "pi pi-warehouse", // ✅ Almacenes
-              command: () => abrirModulo("almacen", "Almacenes"),
-            },
-            {
-              label: "Series de Documento",
-              icon: "pi pi-hashtag", // ✅ Numeración
-              command: () => abrirModulo("serieDoc", "Series de Documento"),
-            },
-          ],
-        },
+    },
+    {
+      label: "MANTENIMIENTO",
+      icon: "pi pi-wrench",
+      items: [
+        [
+          {
+            label: "Órdenes de Trabajo",
+            items: [
+              {
+                label: "Ordenes de Trabajo",
+                icon: "pi pi-wrench", // ✅ Mantenimiento
+                command: () =>
+                  abrirModulo("oTMantenimiento", "Ordenes de Trabajo"),
+              },
+            ],
+          },
+          {
+            label: "Configuración",
+            items: [
+              {
+                label: "Tipo de Mantenimiento",
+                icon: "pi pi-cog", // ✅ Configuración
+                command: () =>
+                  abrirModulo("tipoMantenimiento", "Tipo de Mantenimiento"),
+              },
+              {
+                label: "Motivo Origino OT",
+                icon: "pi pi-exclamation-circle", // ✅ Motivo/Alerta
+                command: () =>
+                  abrirModulo("motivoOriginoOT", "Motivo Origino OT"),
+              },
+            ],
+          },
+        ],
       ],
-    ],
-  },
-  {
-    label: "MANTENIMIENTO",
-    icon: "pi pi-wrench",
-    items: [
-      [
-        {
-          label: "Órdenes de Trabajo",
-          items: [
-            {
-              label: "Ordenes de Trabajo",
-              icon: "pi pi-wrench", // ✅ Mantenimiento
-              command: () =>
-                abrirModulo("oTMantenimiento", "Ordenes de Trabajo"),
-            },
-          ],
-        },
-        {
-          label: "Configuración",
-          items: [
-            {
-              label: "Tipo de Mantenimiento",
-              icon: "pi pi-cog", // ✅ Configuración
-              command: () =>
-                abrirModulo("tipoMantenimiento", "Tipo de Mantenimiento"),
-            },
-            {
-              label: "Motivo Origino OT",
-              icon: "pi pi-exclamation-circle", // ✅ Motivo/Alerta
-              command: () =>
-                abrirModulo("motivoOriginoOT", "Motivo Origino OT"),
-            },
-          ],
-        },
+    },
+    {
+      label: "FLUJO DE CAJA",
+      icon: "pi pi-money-bill",
+      items: [
+        [
+          {
+            label: "Movimientos",
+            items: [
+              {
+                label: "Movimientos de Caja",
+                icon: "pi pi-money-bill", // ✅ Correcto
+                command: () =>
+                  abrirModulo("movimientoCaja", "Movimientos de Caja"),
+              },
+              {
+                label: "Cuenta Corriente",
+                icon: "pi pi-wallet", // ✅ Correcto
+                command: () =>
+                  abrirModulo("cuentaCorriente", "Cuenta Corriente"),
+              },
+              {
+                label: "Tipos Movimiento Entregas a Rendir",
+                icon: "pi pi-send", // ✅ Entregas
+                command: () =>
+                  abrirModulo(
+                    "tipoMovEntregaRendir",
+                    "Tipos Movimiento Entrega a Rendir"
+                  ),
+              },
+            ],
+          },
+          {
+            label: "Contabilidad",
+            items: [
+              {
+                label: "Asientos Contables",
+                icon: "pi pi-book", // ✅ Correcto
+                command: () =>
+                  abrirModulo(
+                    "asientoContableInterfaz",
+                    "Asientos Contables Generados"
+                  ),
+              },
+              {
+                label: "Centros de Costo",
+                icon: "pi pi-sitemap", // ✅ Estructura de costos
+                command: () => abrirModulo("centroCosto", "Centros de Costo"),
+              },
+              {
+                label: "Categorías Centro Costo",
+                icon: "pi pi-tags", // ✅ Categorías
+                command: () =>
+                  abrirModulo(
+                    "categoriaCCosto",
+                    "Categorias de Centros de Costo"
+                  ),
+              },
+              {
+                label: "Empresa por Centro Costo",
+                icon: "pi pi-building", // ✅ Empresas
+                command: () =>
+                  abrirModulo("empresaCentroCosto", "Empresa por Centro Costo"),
+              },
+            ],
+          },
+          {
+            label: "Configuración",
+            items: [
+              {
+                label: "Tipo Cuenta Corriente",
+                icon: "pi pi-list", // ✅ Listado
+                command: () =>
+                  abrirModulo("tipoCuentaCorriente", "Tipo Cuenta Corriente"),
+              },
+              {
+                label: "Tipo Referencia",
+                icon: "pi pi-tag", // ✅ Correcto
+                command: () =>
+                  abrirModulo(
+                    "tipoReferenciaMovimientoCaja",
+                    "Tipo Referencia Movimiento Caja"
+                  ),
+              },
+              {
+                label: "Bancos",
+                icon: "pi pi-credit-card", // ✅ Correcto
+                command: () => abrirModulo("banco", "Bancos"),
+              },
+            ],
+          },
+        ],
       ],
-    ],
-  },
-  {
-    label: "FLUJO DE CAJA",
-    icon: "pi pi-money-bill",
-    items: [
-      [
-        {
-          label: "Movimientos",
-          items: [
-            {
-              label: "Movimientos de Caja",
-              icon: "pi pi-money-bill", // ✅ Correcto
-              command: () =>
-                abrirModulo("movimientoCaja", "Movimientos de Caja"),
-            },
-            {
-              label: "Cuenta Corriente",
-              icon: "pi pi-wallet", // ✅ Correcto
-              command: () =>
-                abrirModulo("cuentaCorriente", "Cuenta Corriente"),
-            },
-            {
-              label: "Tipos Movimiento Entregas a Rendir",
-              icon: "pi pi-send", // ✅ Entregas
-              command: () =>
-                abrirModulo("tipoMovEntregaRendir", "Tipos Movimiento Entrega a Rendir"),
-            },
-          ],
-        },
-        {
-          label: "Contabilidad",
-          items: [
-            {
-              label: "Asientos Contables",
-              icon: "pi pi-book", // ✅ Correcto
-              command: () =>
-                abrirModulo("asientoContableInterfaz", "Asientos Contables Generados"),
-            },
-            {
-              label: "Centros de Costo",
-              icon: "pi pi-sitemap", // ✅ Estructura de costos
-              command: () => abrirModulo("centroCosto", "Centros de Costo"),
-            },
-            {
-              label: "Categorías Centro Costo",
-              icon: "pi pi-tags", // ✅ Categorías
-              command: () =>
-                abrirModulo("categoriaCCosto", "Categorias de Centros de Costo"),
-            },
-            {
-              label: "Empresa por Centro Costo",
-              icon: "pi pi-building", // ✅ Empresas
-              command: () =>
-                abrirModulo("empresaCentroCosto", "Empresa por Centro Costo"),
-            },
-          ],
-        },
-        {
-          label: "Configuración",
-          items: [
-            {
-              label: "Tipo Cuenta Corriente",
-              icon: "pi pi-list", // ✅ Listado
-              command: () =>
-                abrirModulo("tipoCuentaCorriente", "Tipo Cuenta Corriente"),
-            },
-            {
-              label: "Tipo Referencia",
-              icon: "pi pi-tag", // ✅ Correcto
-              command: () =>
-                abrirModulo("tipoReferenciaMovimientoCaja", "Tipo Referencia Movimiento Caja"),
-            },
-            {
-              label: "Bancos",
-              icon: "pi pi-credit-card", // ✅ Correcto
-              command: () => abrirModulo("banco", "Bancos"),
-            },
-          ],
-        },
+    },
+    {
+      label: "USUARIOS",
+      icon: "pi pi-users",
+      items: [
+        [
+          {
+            label: "Gestión Usuarios",
+            items: [
+              {
+                label: "Usuarios del Sistema",
+                icon: "pi pi-user", // ✅ Usuario individual
+                command: () => abrirModulo("usuarios", "Usuarios del Sistema"),
+              },
+              {
+                label: "Accesos Usuario",
+                icon: "pi pi-lock", // ✅ Permisos/Seguridad
+                command: () => abrirModulo("accesosUsuario", "Accesos Usuario"),
+              },
+              {
+                label: "Módulos Sistema",
+                icon: "pi pi-th-large", // ✅ Módulos/Grid
+                command: () => abrirModulo("modulosSistema", "Módulos Sistema"),
+              },
+              {
+                label: "Submódulos Sistema",
+                icon: "pi pi-sitemap", // ✅ Estructura jerárquica
+                command: () =>
+                  abrirModulo("SubmodulosSistema", "Submódulos Sistema"),
+              },
+            ],
+          },
+        ],
       ],
-    ],
-  },
-  {
-    label: "USUARIOS",
-    icon: "pi pi-users",
-    items: [
-      [
-        {
-          label: "Gestión Usuarios",
-          items: [
-            {
-              label: "Usuarios del Sistema",
-              icon: "pi pi-user", // ✅ Usuario individual
-              command: () => abrirModulo("usuarios", "Usuarios del Sistema"),
-            },
-            {
-              label: "Accesos Usuario",
-              icon: "pi pi-lock", // ✅ Permisos/Seguridad
-              command: () => abrirModulo("accesosUsuario", "Accesos Usuario"),
-            },
-            {
-              label: "Módulos Sistema",
-              icon: "pi pi-th-large", // ✅ Módulos/Grid
-              command: () => abrirModulo("modulosSistema", "Módulos Sistema"),
-            },
-            {
-              label: "Submódulos Sistema",
-              icon: "pi pi-sitemap", // ✅ Estructura jerárquica
-              command: () =>
-                abrirModulo("SubmodulosSistema", "Submódulos Sistema"),
-            },
-          ],
-        },
-        {
-          label: "Personal",
-          items: [
-            {
-              label: "Personal",
-              icon: "pi pi-id-card", // ✅ Identificación personal
-              command: () => abrirModulo("personal", "Personal"),
-            },
-            {
-              label: "Cargos Personal",
-              icon: "pi pi-briefcase", // ✅ Cargos/Puestos
-              command: () =>
-                abrirModulo("cargosPersonal", "Cargos del Personal"),
-            },
-            {
-              label: "Tipo Contrato",
-              icon: "pi pi-file-edit", // ✅ Contratos
-              command: () => abrirModulo("tipoContrato", "Tipo Contrato"),
-            },
-            {
-              label: "Aprobadores",
-              icon: "pi pi-check-circle", // ✅ Aprobación
-              command: () => abrirModulo("parametroAprobador", "Aprobadores"),
-            },
-            {
-              label: "Tipos Documento Identidad",
-              icon: "pi pi-id-card", // ✅ Documentos de identidad
-              command: () =>
-                abrirModulo("tiposDocIdentidad", "Tipos Documento Identidad"),
-            },
-          ],
-        },
+    },
+    {
+      label: "MAESTROS",
+      icon: "pi pi-database",
+      items: [
+        [
+          {
+            label: "Organización",
+            items: [
+              {
+                label: "Empresas",
+                icon: "pi pi-building", // ✅ Correcto
+                command: () => abrirModulo("empresas", "Empresas"),
+              },
+              {
+                label: "Sedes Empresa",
+                icon: "pi pi-map-marker", // ✅ Correcto
+                command: () => abrirModulo("sedesEmpresa", "Sedes Empresa"),
+              },
+              {
+                label: "Areas Físicas Sede",
+                icon: "pi pi-map", // ✅ Correcto
+                command: () =>
+                  abrirModulo("areasFisicasSede", "Areas Fisicas Sede"),
+              },
+              {
+                label: "Estado Multi Función",
+                icon: "pi pi-flag", // ✅ Estados
+                command: () =>
+                  abrirModulo("estadoMultiFuncion", "Estado Multi Funcion"),
+              },
+              {
+                label: "Tipo Proviene De",
+                icon: "pi pi-arrow-circle-left", // ✅ Procedencia
+                command: () =>
+                  abrirModulo("tipoProvieneDe", "Tipo Proviene De"),
+              },
+              {
+                label: "Monedas",
+                icon: "pi pi-dollar", // ✅ Correcto
+                command: () => abrirModulo("monedas", "Monedas"),
+              },
+              {
+                label: "Personal",
+                icon: "pi pi-id-card", // ✅ Identificación personal
+                command: () => abrirModulo("personal", "Personal"),
+              },
+              {
+                label: "Cargos Personal",
+                icon: "pi pi-briefcase", // ✅ Cargos/Puestos
+                command: () =>
+                  abrirModulo("cargosPersonal", "Cargos del Personal"),
+              },
+              {
+                label: "Tipo Contrato",
+                icon: "pi pi-file-edit", // ✅ Contratos
+                command: () => abrirModulo("tipoContrato", "Tipo Contrato"),
+              },
+              {
+                label: "Aprobadores",
+                icon: "pi pi-check-circle", // ✅ Aprobación
+                command: () => abrirModulo("parametroAprobador", "Aprobadores"),
+              },
+              {
+                label: "Tipos Documento Identidad",
+                icon: "pi pi-id-card", // ✅ Documentos de identidad
+                command: () =>
+                  abrirModulo("tiposDocIdentidad", "Tipos Documento Identidad"),
+              },
+            ],
+          },
+        ],
+        [
+          {
+            label: "Operaciones",
+            items: [
+              {
+                label: "Entidad Comercial",
+                icon: "pi pi-briefcase", // ✅ Correcto
+                command: () =>
+                  abrirModulo("entidadComercial", "Entidad Comercial"),
+              },
+              {
+                label: "Tipo Entidad",
+                icon: "pi pi-tags", // ✅ Clasificación
+                command: () => abrirModulo("tipoEntidad", "Tipo Entidad"),
+              },
+              {
+                label: "Agrupaciones Entidad",
+                icon: "pi pi-users", // ✅ Agrupaciones
+                command: () =>
+                  abrirModulo("agrupacionEntidad", "Agrupaciones Entidad"),
+              },
+              {
+                label: "Forma Pago",
+                icon: "pi pi-credit-card", // ✅ Pago
+                command: () => abrirModulo("formaPago", "Forma Pago"),
+              },
+              {
+                label: "Productos y Servicios",
+                icon: "pi pi-box", // ✅ Productos
+                command: () => abrirModulo("producto", "Productos y Servicios"),
+              },
+              {
+                label: "Familia Producto",
+                icon: "pi pi-sitemap", // ✅ Jerarquía
+                command: () =>
+                  abrirModulo("familiaProducto", "Familia Producto"),
+              },
+              {
+                label: "Subfamilia Producto",
+                icon: "pi pi-list", // ✅ Sublista
+                command: () =>
+                  abrirModulo("subfamiliaProducto", "Subfamilia Producto"),
+              },
+              {
+                label: "Tipo Almacenamiento",
+                icon: "pi pi-database", // ✅ Almacenamiento
+                command: () =>
+                  abrirModulo("tipoAlmacenamiento", "Tipo Almacenamiento"),
+              },
+              {
+                label: "Marca",
+                icon: "pi pi-tag", // ✅ Marca/Etiqueta
+                command: () => abrirModulo("marca", "Marca"),
+              },
+              {
+                label: "Unidad Medida",
+                icon: "pi pi-calculator", // ✅ Medidas
+                command: () => abrirModulo("unidadMedida", "Unidad Medida"),
+              },
+              {
+                label: "Tipo Material",
+                icon: "pi pi-box", // ✅ Materiales
+                command: () => abrirModulo("tipoMaterial", "Tipo Material"),
+              },
+              {
+                label: "Color",
+                icon: "pi pi-palette", // ✅ Paleta de colores
+                command: () => abrirModulo("color", "Color"),
+              },
+              {
+                label: "Tipo Vehiculos",
+                icon: "pi pi-car", // ✅ Vehículos
+                command: () => abrirModulo("tipoVehiculo", "Tipo Vehiculos"),
+              },
+            ],
+          },
+        ],
+        [
+          {
+            label: "Ubicaciones",
+            items: [
+              {
+                label: "Pais",
+                icon: "pi pi-globe", // ✅ Global/País
+                command: () => abrirModulo("pais", "Pais"),
+              },
+              {
+                label: "Departamento",
+                icon: "pi pi-map", // ✅ Región
+                command: () => abrirModulo("departamento", "Departamento"),
+              },
+              {
+                label: "Provincia",
+                icon: "pi pi-map-marker", // ✅ Ubicación específica
+                command: () => abrirModulo("provincia", "Provincia"),
+              },
+              {
+                label: "Ubigeo",
+                icon: "pi pi-compass", // ✅ Coordenadas/Ubicación
+                command: () => abrirModulo("ubigeo", "Ubigeo"),
+              },
+            ],
+          },
+        ],
+        [
+          {
+            label: "Activos",
+            items: [
+              {
+                label: "Activos",
+                icon: "pi pi-cog", // ✅ Correcto
+                command: () => abrirModulo("activo", "Activos"),
+              },
+              {
+                label: "Tipo Activo",
+                icon: "pi pi-tags", // ✅ Clasificación
+                command: () => abrirModulo("tipoActivo", "Tipo Activo"),
+              },
+              {
+                label: "Detalle Permiso Activo",
+                icon: "pi pi-lock-open", // ✅ Permisos detallados
+                command: () =>
+                  abrirModulo("detallePermisoActivo", "Detalle Permiso Activo"),
+              },
+              {
+                label: "Permiso Autorización",
+                icon: "pi pi-key", // ✅ Correcto
+                command: () =>
+                  abrirModulo("permisoAutorizacion", "Permiso Autorizacion"),
+              },
+            ],
+          },
+        ],
       ],
-    ],
-  },
-  {
-    label: "MAESTROS",
-    icon: "pi pi-database",
-    items: [
-      [
-        {
-          label: "Organización",
-          items: [
-            {
-              label: "Empresas",
-              icon: "pi pi-building", // ✅ Correcto
-              command: () => abrirModulo("empresas", "Empresas"),
-            },
-            {
-              label: "Sedes Empresa",
-              icon: "pi pi-map-marker", // ✅ Correcto
-              command: () => abrirModulo("sedesEmpresa", "Sedes Empresa"),
-            },
-            {
-              label: "Areas Físicas Sede",
-              icon: "pi pi-map", // ✅ Correcto
-              command: () =>
-                abrirModulo("areasFisicasSede", "Areas Fisicas Sede"),
-            },
-            {
-              label: "Estado Multi Función",
-              icon: "pi pi-flag", // ✅ Estados
-              command: () =>
-                abrirModulo("estadoMultiFuncion", "Estado Multi Funcion"),
-            },
-            {
-              label: "Tipo Proviene De",
-              icon: "pi pi-arrow-circle-left", // ✅ Procedencia
-              command: () =>
-                abrirModulo("tipoProvieneDe", "Tipo Proviene De"),
-            },
-            {
-              label: "Monedas",
-              icon: "pi pi-dollar", // ✅ Correcto
-              command: () => abrirModulo("monedas", "Monedas"),
-            },
-          ],
-        },
-      ],
-      [
-        {
-          label: "Operaciones",
-          items: [
-            {
-              label: "Entidad Comercial",
-              icon: "pi pi-briefcase", // ✅ Correcto
-              command: () =>
-                abrirModulo("entidadComercial", "Entidad Comercial"),
-            },
-            {
-              label: "Tipo Entidad",
-              icon: "pi pi-tags", // ✅ Clasificación
-              command: () => abrirModulo("tipoEntidad", "Tipo Entidad"),
-            },
-            {
-              label: "Agrupaciones Entidad",
-              icon: "pi pi-users", // ✅ Agrupaciones
-              command: () =>
-                abrirModulo("agrupacionEntidad", "Agrupaciones Entidad"),
-            },
-            {
-              label: "Forma Pago",
-              icon: "pi pi-credit-card", // ✅ Pago
-              command: () => abrirModulo("formaPago", "Forma Pago"),
-            },
-            {
-              label: "Productos y Servicios",
-              icon: "pi pi-box", // ✅ Productos
-              command: () => abrirModulo("producto", "Productos y Servicios"),
-            },
-            {
-              label: "Familia Producto",
-              icon: "pi pi-sitemap", // ✅ Jerarquía
-              command: () =>
-                abrirModulo("familiaProducto", "Familia Producto"),
-            },
-            {
-              label: "Subfamilia Producto",
-              icon: "pi pi-list", // ✅ Sublista
-              command: () =>
-                abrirModulo("subfamiliaProducto", "Subfamilia Producto"),
-            },
-            {
-              label: "Tipo Almacenamiento",
-              icon: "pi pi-database", // ✅ Almacenamiento
-              command: () =>
-                abrirModulo("tipoAlmacenamiento", "Tipo Almacenamiento"),
-            },
-            {
-              label: "Marca",
-              icon: "pi pi-tag", // ✅ Marca/Etiqueta
-              command: () => abrirModulo("marca", "Marca"),
-            },
-            {
-              label: "Unidad Medida",
-              icon: "pi pi-calculator", // ✅ Medidas
-              command: () => abrirModulo("unidadMedida", "Unidad Medida"),
-            },
-            {
-              label: "Tipo Material",
-              icon: "pi pi-box", // ✅ Materiales
-              command: () => abrirModulo("tipoMaterial", "Tipo Material"),
-            },
-            {
-              label: "Color",
-              icon: "pi pi-palette", // ✅ Paleta de colores
-              command: () => abrirModulo("color", "Color"),
-            },
-            {
-              label: "Tipo Vehiculos",
-              icon: "pi pi-car", // ✅ Vehículos
-              command: () => abrirModulo("tipoVehiculo", "Tipo Vehiculos"),
-            },
-          ],
-        },
-      ],
-      [
-        {
-          label: "Ubicaciones",
-          items: [
-            {
-              label: "Pais",
-              icon: "pi pi-globe", // ✅ Global/País
-              command: () => abrirModulo("pais", "Pais"),
-            },
-            {
-              label: "Departamento",
-              icon: "pi pi-map", // ✅ Región
-              command: () => abrirModulo("departamento", "Departamento"),
-            },
-            {
-              label: "Provincia",
-              icon: "pi pi-map-marker", // ✅ Ubicación específica
-              command: () => abrirModulo("provincia", "Provincia"),
-            },
-            {
-              label: "Ubigeo",
-              icon: "pi pi-compass", // ✅ Coordenadas/Ubicación
-              command: () => abrirModulo("ubigeo", "Ubigeo"),
-            },
-          ],
-        },
-      ],
-      [
-        {
-          label: "Activos",
-          items: [
-            {
-              label: "Activos",
-              icon: "pi pi-cog", // ✅ Correcto
-              command: () => abrirModulo("activo", "Activos"),
-            },
-            {
-              label: "Tipo Activo",
-              icon: "pi pi-tags", // ✅ Clasificación
-              command: () => abrirModulo("tipoActivo", "Tipo Activo"),
-            },
-            {
-              label: "Detalle Permiso Activo",
-              icon: "pi pi-lock-open", // ✅ Permisos detallados
-              command: () =>
-                abrirModulo("detallePermisoActivo", "Detalle Permiso Activo"),
-            },
-            {
-              label: "Permiso Autorización",
-              icon: "pi pi-key", // ✅ Correcto
-              command: () =>
-                abrirModulo("permisoAutorizacion", "Permiso Autorizacion"),
-            },
-          ],
-        },
-      ],
-    ],
-  },
-];
+    },
+  ];
 
   // Cierra una pestaña por índice
   const cerrarTab = (index) => {

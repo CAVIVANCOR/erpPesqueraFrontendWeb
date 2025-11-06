@@ -20,6 +20,7 @@ import { getUsuarios } from "../api/usuarios";
 import { getModulos } from "../api/moduloSistema";
 import { getSubmodulos } from "../api/submoduloSistema";
 import { getResponsiveFontSize } from "../utils/utils";
+import { usePermissions } from "../hooks/usePermissions";
 
 /**
  * Pantalla profesional para gestión de Accesos de Usuario.
@@ -31,7 +32,15 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - Filtros dinámicos según datos existentes.
  * - Documentación de la regla en el encabezado.
  */
-export default function AccesosUsuario() {
+export default function AccesosUsuario({ ruta }) {
+  const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+  
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+  
   const toast = useRef(null);
   const [items, setItems] = useState([]);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
@@ -40,8 +49,8 @@ export default function AccesosUsuario() {
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore((state) => state.usuario);
-
+  const [dialogKey, setDialogKey] = useState(0); // Key para forzar re-render del formulario
+  
   // Catálogos
   const [usuarios, setUsuarios] = useState([]);
   const [modulos, setModulos] = useState([]);
@@ -201,8 +210,11 @@ export default function AccesosUsuario() {
   };
 
   const handleEdit = (rowData) => {
-    setEditing(rowData);
-    setShowDialog(true);
+    if (permisos.puedeEditar || permisos.puedeVer) {
+      setEditing(rowData);
+      setDialogKey(prev => prev + 1); // Incrementar key para forzar re-render
+      setShowDialog(true);
+    }
   };
 
   const handleDelete = (rowData) => {
@@ -234,9 +246,11 @@ export default function AccesosUsuario() {
   };
 
   const handleFormSubmit = async (data) => {
+   
     setLoading(true);
     try {
       if (editing && editing.id) {
+        console.log('Llamando updateAccesosUsuario con ID:', editing.id, 'y data:', data);
         await updateAccesosUsuario(editing.id, data);
         toast.current.show({
           severity: "success",
@@ -244,6 +258,7 @@ export default function AccesosUsuario() {
           detail: "Registro actualizado.",
         });
       } else {
+        console.log('Llamando createAccesosUsuario con data:', data);
         await createAccesosUsuario(data);
         toast.current.show({
           severity: "success",
@@ -255,10 +270,11 @@ export default function AccesosUsuario() {
       setEditing(null);
       cargarItems();
     } catch (err) {
+      console.error('Error al guardar:', err);
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo guardar.",
+        detail: err.response?.data?.message || "No se pudo guardar.",
       });
     }
     setLoading(false);
@@ -266,18 +282,21 @@ export default function AccesosUsuario() {
 
   const handleAdd = () => {
     setEditing(null);
+    setDialogKey(prev => prev + 1); // Incrementar key para forzar re-render
     setShowDialog(true);
   };
 
   const actionBody = (rowData) => (
     <>
-      <Button
-        icon="pi pi-pencil"
-        className="p-button-text p-button-sm"
-        onClick={() => handleEdit(rowData)}
-        aria-label="Editar"
-      />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+      {(permisos.puedeEditar || permisos.puedeVer) && (
+        <Button
+          icon="pi pi-eye"
+          className="p-button-text p-button-sm"
+          onClick={() => handleEdit(rowData)}
+          aria-label={permisos.puedeEditar ? "Editar" : "Ver"}
+        />
+      )}
+      {permisos.puedeEliminar && (
         <Button
           icon="pi pi-trash"
           className="p-button-text p-button-danger p-button-sm"
@@ -315,7 +334,7 @@ export default function AccesosUsuario() {
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} accesos"
         onRowClick={(e) => handleEdit(e.data)}
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        style={{ cursor: (permisos.puedeEditar || permisos.puedeVer) ? "pointer" : "default", fontSize: getResponsiveFontSize() }}
         header={
           <div
             style={{
@@ -337,15 +356,17 @@ export default function AccesosUsuario() {
               <h2 style={{ margin: 0 }}>
                 Gestión de Accesos de Usuario ({itemsFiltrados.length})
               </h2>
-              <Button
-                label="Nuevo"
-                icon="pi pi-plus"
-                className="p-button-success"
-                size="small"
-                outlined
-                onClick={handleAdd}
-                disabled={loading}
-              />
+              {permisos.puedeCrear && (
+                <Button
+                  label="Nuevo"
+                  icon="pi pi-plus"
+                  className="p-button-success"
+                  size="small"
+                  outlined
+                  onClick={handleAdd}
+                  disabled={loading}
+                />
+              )}
             </div>
 
             {/* Filtros */}
@@ -671,7 +692,12 @@ export default function AccesosUsuario() {
 
       {showDialog && (
         <Dialog
-          header={editing ? "Editar Acceso" : "Nuevo Acceso"}
+          key={`dialog-${dialogKey}`}
+          header={
+            editing 
+              ? (permisos.puedeEditar ? "Editar Acceso" : "Ver Acceso")
+              : "Nuevo Acceso"
+          }
           visible={true}
           style={{ width: 900 }}
           onHide={() => {
@@ -681,11 +707,13 @@ export default function AccesosUsuario() {
           modal
         >
           <AccesosUsuarioForm
+            key={`form-${dialogKey}`}
             isEdit={!!editing}
             defaultValues={editing || {}}
             onSubmit={handleFormSubmit}
             onCancel={() => setShowDialog(false)}
             loading={loading}
+            readOnly={!permisos.puedeEditar}
           />
         </Dialog>
       )}

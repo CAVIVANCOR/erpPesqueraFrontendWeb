@@ -4,6 +4,7 @@
 // Documentado en español técnico.
 
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -11,6 +12,7 @@ import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { InputText } from "primereact/inputtext";
 import {
   getEmpresas,
@@ -36,8 +38,15 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
  * - El usuario autenticado se obtiene siempre desde useAuthStore.
  */
-export default function Empresas() {
+export default function Empresas({ ruta }) {
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const [confirmState, setConfirmState] = useState({
     visible: false,
     row: null,
@@ -79,6 +88,14 @@ export default function Empresas() {
 
   // Maneja el submit del formulario (alta o edición)
   async function onSubmitForm(data) {
+    // Validar permisos antes de guardar
+    if (modoEdicion && !permisos.puedeEditar) {
+      return;
+    }
+    if (!modoEdicion && !permisos.puedeCrear) {
+      return;
+    }
+
     setFormLoading(true);
     try {
       // Filtrado profesional del payload: solo los campos válidos para el modelo Prisma
@@ -165,29 +182,31 @@ export default function Empresas() {
 
   // Renderiza los botones de acción en cada fila
   const accionesTemplate = (rowData) => (
-    <span>
+    <div onClick={(e) => e.stopPropagation()}>
       <Button
         icon="pi pi-pencil"
         className="p-button-rounded p-button-text p-button-info"
         style={{ marginRight: 8 }}
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
         onClick={(e) => {
-          e.stopPropagation();
-          handleEditar(rowData);
+          if (permisos.puedeVer || permisos.puedeEditar) {
+            handleEditar(rowData);
+          }
         }}
-        tooltip="Editar"
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button
-          icon="pi pi-trash"
-          className="p-button-rounded p-button-text p-button-danger"
-          onClick={(e) => {
-            e.stopPropagation();
+      <Button
+        icon="pi pi-trash"
+        className="p-button-rounded p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={(e) => {
+          if (permisos.puedeEliminar) {
             handleEliminar(rowData);
-          }}
-          tooltip="Eliminar"
-        />
-      )}
-    </span>
+          }
+        }}
+        tooltip="Eliminar"
+      />
+    </div>
   );
 
   return (
@@ -219,40 +238,73 @@ export default function Empresas() {
         value={empresas}
         loading={loading}
         paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 20]}
-        globalFilter={globalFilter}
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} empresas"
+        size="small"
+        showGridlines
         stripedRows
+        globalFilter={globalFilter}
         emptyMessage="No hay empresas registradas."
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
         header={
-          <div className="flex align-items-center gap-2">
-            <h2>Empresas</h2>
-            <Button
-              label="Nueva Empresa"
-              icon="pi pi-plus"
-              className="p-button-success"
-              size="small"
-              raised
-              onClick={() => {
-                setEmpresaEdit(null);
-                setModoEdicion(false);
-                setMostrarDialogo(true);
-              }}
-            />
-            <span className="p-input-icon-left">
-              <InputText
-                type="search"
-                onInput={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Buscar empresas..."
-                style={{ width: 240 }}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 18,
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h2>Empresas</h2>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Nueva Empresa"
+                icon="pi pi-plus"
+                className="p-button-success"
+                size="small"
+                raised
+                disabled={!permisos.puedeCrear}
+                onClick={() => {
+                  setEmpresaEdit(null);
+                  setModoEdicion(false);
+                  setMostrarDialogo(true);
+                }}
               />
-            </span>
+            </div>
+            <div style={{ flex: 3 }}>
+              <span className="p-input-icon-left">
+                <InputText
+                  type="search"
+                  onInput={(e) => setGlobalFilter(e.target.value)}
+                  placeholder="Buscar Razon Social, Nombre Comercial, RUC..."
+                  style={{ width: 300 }}
+                />
+              </span>
+            </div>
           </div>
         }
-        onRowClick={onRowClick}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
+        }
+        globalFilterFields={[
+          "razonSocial",
+          "nombreComercial",
+          "ruc",
+          "direccion",
+          "telefono",
+          "email",
+          "cuentaDetraccion",
+        ]}
       >
-        <Column field="id" header="ID" style={{ width: 80 }} />
+        <Column field="id" header="ID" />
         <Column field="razonSocial" header="Razón Social" />
         <Column field="nombreComercial" header="Nombre Comercial" />
         <Column field="ruc" header="RUC" />
@@ -270,9 +322,15 @@ export default function Empresas() {
         />
       </DataTable>
       <Dialog
-        header={modoEdicion ? "Editar Empresa" : "Nueva Empresa"}
+        header={
+          modoEdicion
+            ? permisos.puedeEditar
+              ? "Editar Empresa"
+              : "Ver Empresa"
+            : "Nueva Empresa"
+        }
         visible={mostrarDialogo}
-        style={{ width: 600 }}
+        style={{ width: 1300 }}
         modal
         onHide={() => setMostrarDialogo(false)}
       >
@@ -288,6 +346,7 @@ export default function Empresas() {
           onSubmit={onSubmitForm}
           onCancel={() => setMostrarDialogo(false)}
           loading={formLoading}
+          readOnly={modoEdicion && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

@@ -1,102 +1,66 @@
-/**
- * Formulario para gestión de Parámetros Aprobador
- *
- * Características implementadas:
- * - React Hook Form con Controller para manejo de formularios
- * - Validaciones con Yup para campos obligatorios y tipos de datos
- * - Normalización de datos antes del envío
- * - Campos: personalRespId, moduloSistemaId, empresaId, embarcacionId, sedeId, vigenteDesde, vigenteHasta, cesado
- * - Integración con API usando funciones en español
- * - Feedback visual y manejo de errores
- * - Cumple estándar ERP Megui completo
- *
- * @author ERP Megui
- * @version 1.0.0
- */
+// src/components/parametroAprobador/ParametroAprobadorForm.jsx
+// Formulario profesional para alta y edición de ParametroAprobador en el ERP Megui.
+// Usa react-hook-form y validación Yup. Documentado en español técnico.
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
-import { ToggleButton } from "primereact/togglebutton";
-import { InputText } from "primereact/inputtext";
+import * as Yup from "yup";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
-import { Checkbox } from "primereact/checkbox";
+import { ToggleButton } from "primereact/togglebutton";
 import { Button } from "primereact/button";
-import { classNames } from "primereact/utils";
-import {
-  crearParametroAprobador,
-  actualizarParametroAprobador,
-} from "../../api/parametroAprobador";
-import { getPersonal } from "../../api/personal";
-import { getModulos } from "../../api/moduloSistema";
-import { getEmpresas } from "../../api/empresa";
-import { getSedes } from "../../api/sedes";
-import { getActivosPorEmpresaYTipo } from "../../api/activo";
 
-// Esquema de validación con Yup
-const esquemaValidacion = yup.object().shape({
-  personalRespId: yup
-    .number()
+// Esquema de validación profesional
+const schema = Yup.object().shape({
+  personalRespId: Yup.number()
     .required("El personal responsable es obligatorio")
-    .transform((value, originalValue) => {
-      return originalValue === "" ? null : value;
-    }),
-  moduloSistemaId: yup
-    .number()
+    .nullable()
+    .transform((value, originalValue) => (originalValue === "" ? null : value)),
+  moduloSistemaId: Yup.number()
     .required("El módulo sistema es obligatorio")
-    .transform((value, originalValue) => {
-      return originalValue === "" ? null : value;
-    }),
-  empresaId: yup
-    .number()
+    .nullable()
+    .transform((value, originalValue) => (originalValue === "" ? null : value)),
+  empresaId: Yup.number()
     .required("La empresa es obligatoria")
-    .transform((value, originalValue) => {
-      return originalValue === "" ? null : value;
-    }),
-  embarcacionId: yup
-    .number()
     .nullable()
-    .transform((value, originalValue) => {
-      return originalValue === "" ? null : value;
-    }),
-  sedeId: yup
-    .number()
+    .transform((value, originalValue) => (originalValue === "" ? null : value)),
+  embarcacionId: Yup.number()
     .nullable()
-    .transform((value, originalValue) => {
-      return originalValue === "" ? null : value;
-    }),
-  vigenteDesde: yup.date().required("La fecha vigente desde es obligatoria"),
-  vigenteHasta: yup.date().nullable(),
-  cesado: yup.boolean().default(false),
+    .transform((value, originalValue) => (originalValue === "" ? null : value)),
+  sedeId: Yup.number()
+    .nullable()
+    .transform((value, originalValue) => (originalValue === "" ? null : value)),
+  vigenteDesde: Yup.date().required("La fecha vigente desde es obligatoria"),
+  vigenteHasta: Yup.date().nullable(),
+  cesado: Yup.boolean(),
 });
 
-const ParametroAprobadorForm = ({
-  parametroAprobador,
-  onGuardar,
-  onCancelar,
-}) => {
-  const [loading, setLoading] = useState(false);
-  const [personal, setPersonal] = useState([]);
-  const [modulosSistema, setModulosSistema] = useState([]);
-  const [empresas, setEmpresas] = useState([]);
-  const [activosEmbarcacion, setActivosEmbarcacion] = useState([]);
-  const [sedes, setSedes] = useState([]);
-  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
-  const esEdicion = !!parametroAprobador;
-
-  // Configuración del formulario con React Hook Form
+/**
+ * Formulario desacoplado para alta/edición de ParametroAprobador
+ * Recibe props: isEdit, defaultValues, onSubmit, onCancel, loading, readOnly, y datos de combos
+ */
+export default function ParametroAprobadorForm({
+  isEdit = false,
+  defaultValues,
+  onSubmit,
+  onCancel,
+  loading = false,
+  readOnly = false,
+  personal = [],
+  modulosSistema = [],
+  empresas = [],
+  sedes = [],
+}) {
   const {
     control,
     handleSubmit,
     formState: { errors },
-    reset,
-    setValue,
     watch,
+    reset,
   } = useForm({
-    resolver: yupResolver(esquemaValidacion),
-    defaultValues: {
+    resolver: yupResolver(schema),
+    defaultValues: defaultValues || {
       personalRespId: null,
       moduloSistemaId: null,
       empresaId: null,
@@ -108,225 +72,43 @@ const ParametroAprobadorForm = ({
     },
   });
 
-  // Cargar datos de combos al montar
-  useEffect(() => {
-    cargarCombos();
-  }, []);
-
-  // Efecto para cargar activos cuando cambia la empresa
+  // Watch empresaId para filtrar sedes
   const empresaWatched = watch("empresaId");
+
+  // Cargar valores en edición
   useEffect(() => {
-    if (empresaWatched) {
-      const moduloSistemaId = watch("moduloSistemaId");
-      if (moduloSistemaId) {
-        const tipoId = obtenerTipoIdPorModulo(moduloSistemaId);
-        cargarActivosEmbarcacion(empresaWatched, tipoId);
-      }
-      setEmpresaSeleccionada(empresaWatched);
-    } else {
-      setActivosEmbarcacion([]);
-      setEmpresaSeleccionada(null);
-    }
-  }, [empresaWatched]);
-
-  // Efecto para recargar embarcaciones cuando cambia el módulo sistema
-  const moduloSistemaWatched = watch("moduloSistemaId");
-  useEffect(() => {
-    const empresaId = watch("empresaId");
-    if (empresaId && moduloSistemaWatched) {
-      const tipoId = obtenerTipoIdPorModulo(moduloSistemaWatched);
-      cargarActivosEmbarcacion(empresaId, tipoId);
-    } else if (!moduloSistemaWatched) {
-      setActivosEmbarcacion([]);
-    }
-  }, [moduloSistemaWatched]);
-
-  // Efecto para autocompletar empresa al seleccionar persona
-  const personalWatched = watch("personalRespId");
-  useEffect(() => {
-    if (personalWatched && !esEdicion) {
-      // Solo autocompletar en modo creación, no en edición
-      const personaSeleccionada = personal.find(
-        (p) => Number(p.id) === Number(personalWatched)
-      );
-      if (personaSeleccionada && personaSeleccionada.empresaId) {
-        const empresaId = Number(personaSeleccionada.empresaId);
-        setValue("empresaId", empresaId);
-        // Las embarcaciones se cargarán cuando se seleccione el módulo sistema
-      }
-    }
-  }, [personalWatched, personal, esEdicion, setValue]);
-
-  /**
-   * Cargar datos para combos
-   */
-  const cargarCombos = async () => {
-    try {
-      const [personalData, modulosData, empresasData, sedesData] =
-        await Promise.all([
-          getPersonal(),
-          getModulos(),
-          getEmpresas(),
-          getSedes(),
-        ]);
-
-      setPersonal(personalData);
-      setModulosSistema(modulosData);
-      setEmpresas(empresasData);
-      setSedes(sedesData);
-    } catch (error) {
-      console.error("Error al cargar combos:", error);
-    }
-  };
-
-  /**
-   * Cargar activos de embarcación filtrados por empresa y tipo
-   * @param {number} empresaId - ID de la empresa seleccionada
-   * @param {number} tipoId - ID del tipo de embarcación
-   */
-  const cargarActivosEmbarcacion = async (empresaId, tipoId) => {
-    try {
-      const activosData = await getActivosPorEmpresaYTipo(empresaId, tipoId);
-      setActivosEmbarcacion(activosData);
-    } catch (error) {
-      console.error("Error al cargar activos de embarcación:", error);
-      setActivosEmbarcacion([]);
-    }
-  };
-
-  /**
-   * Mapea el ID del módulo sistema al tipoId de embarcación correspondiente
-   * @param {number} moduloSistemaId - ID del módulo sistema seleccionado
-   * @returns {number} tipoId correspondiente (1 = Pesca Industrial, 2 = Pesca de Consumo)
-   */
-  const obtenerTipoIdPorModulo = (moduloSistemaId) => {
-    const modulo = modulosSistema.find(
-      (m) => Number(m.id) === Number(moduloSistemaId)
-    );
-    if (!modulo) return 1; // Default a Pesca Industrial
-
-    const nombreModulo = modulo.nombre?.toUpperCase() || "";
-
-    if (nombreModulo.includes("PESCA INDUSTRIAL")) {
-      return 1; // tipoId=1 para Embarcación pesquera Industrial
-    } else if (nombreModulo.includes("PESCA DE CONSUMO")) {
-      return 2; // tipoId=2 para Embarcación de consumo
-    }
-
-    return 1; // Default a Pesca Industrial
-  };
-
-  // Efecto para cargar datos en modo edición
-  useEffect(() => {
-    if (parametroAprobador) {
-      setValue(
-        "personalRespId",
-        Number(parametroAprobador.personalRespId) || null
-      );
-      setValue(
-        "moduloSistemaId",
-        Number(parametroAprobador.moduloSistemaId) || null
-      );
-      setValue("empresaId", Number(parametroAprobador.empresaId) || null);
-      setValue(
-        "embarcacionId",
-        parametroAprobador.embarcacionId
-          ? Number(parametroAprobador.embarcacionId)
-          : null
-      );
-      setValue(
-        "sedeId",
-        parametroAprobador.sedeId ? Number(parametroAprobador.sedeId) : null
-      );
-      setValue(
-        "vigenteDesde",
-        parametroAprobador.vigenteDesde
-          ? new Date(parametroAprobador.vigenteDesde)
-          : null
-      );
-      setValue(
-        "vigenteHasta",
-        parametroAprobador.vigenteHasta
-          ? new Date(parametroAprobador.vigenteHasta)
-          : null
-      );
-      setValue("cesado", parametroAprobador.cesado || false);
-
-      // Cargar embarcaciones para el registro en edición
-      if (parametroAprobador.empresaId && parametroAprobador.moduloSistemaId) {
-        const tipoId = obtenerTipoIdPorModulo(
-          Number(parametroAprobador.moduloSistemaId)
-        );
-        cargarActivosEmbarcacion(Number(parametroAprobador.empresaId), tipoId);
-      }
-    } else {
+    if (defaultValues && isEdit) {
       reset({
-        personalRespId: null,
-        moduloSistemaId: null,
-        empresaId: null,
-        embarcacionId: null,
-        sedeId: null,
-        vigenteDesde: null,
-        vigenteHasta: null,
-        cesado: false,
+        personalRespId: defaultValues.personalRespId
+          ? Number(defaultValues.personalRespId)
+          : null,
+        moduloSistemaId: defaultValues.moduloSistemaId
+          ? Number(defaultValues.moduloSistemaId)
+          : null,
+        empresaId: defaultValues.empresaId
+          ? Number(defaultValues.empresaId)
+          : null,
+        embarcacionId: defaultValues.embarcacionId
+          ? Number(defaultValues.embarcacionId)
+          : null,
+        sedeId: defaultValues.sedeId ? Number(defaultValues.sedeId) : null,
+        vigenteDesde: defaultValues.vigenteDesde
+          ? new Date(defaultValues.vigenteDesde)
+          : null,
+        vigenteHasta: defaultValues.vigenteHasta
+          ? new Date(defaultValues.vigenteHasta)
+          : null,
+        cesado: defaultValues.cesado || false,
       });
     }
-  }, [parametroAprobador, setValue, reset, modulosSistema]);
-
-  /**
-   * Maneja el envío del formulario
-   * @param {Object} data - Datos del formulario
-   */
-  const onSubmit = async (data) => {
-    try {
-      setLoading(true);
-
-      // Normalización de datos antes del envío
-      const datosNormalizados = {
-        personalRespId: Number(data.personalRespId),
-        moduloSistemaId: Number(data.moduloSistemaId),
-        empresaId: Number(data.empresaId),
-        embarcacionId: data.embarcacionId ? Number(data.embarcacionId) : null,
-        sedeId: data.sedeId ? Number(data.sedeId) : null,
-        vigenteDesde: data.vigenteDesde,
-        vigenteHasta: data.vigenteHasta || null,
-        cesado: data.cesado,
-      };
-
-      if (esEdicion) {
-        await actualizarParametroAprobador(
-          parametroAprobador.id,
-          datosNormalizados
-        );
-      } else {
-        await crearParametroAprobador(datosNormalizados);
-      }
-
-      onGuardar();
-    } catch (error) {
-      console.error("Error al guardar parámetro aprobador:", error);
-      // El manejo de errores se realiza en el componente padre
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Obtiene la clase CSS para campos con errores
-   * @param {string} fieldName - Nombre del campo
-   * @returns {string} Clase CSS
-   */
-  const getFieldClass = (fieldName) => {
-    return classNames({
-      "p-invalid": errors[fieldName],
-    });
-  };
+  }, [defaultValues, isEdit, reset]);
 
   // Opciones para combos
   const personalOptions = personal.map((persona) => {
-    const empresa = empresas.find(emp => Number(emp.id) === Number(persona.empresaId));
-    const empresaNombre = empresa ? empresa.razonSocial : 'Sin empresa';
-    
+    const empresa = empresas.find(
+      (emp) => Number(emp.id) === Number(persona.empresaId)
+    );
+    const empresaNombre = empresa ? empresa.razonSocial : "Sin empresa";
     return {
       label: `${persona.nombres} ${persona.apellidos} - ${empresaNombre}`,
       value: Number(persona.id),
@@ -343,13 +125,8 @@ const ParametroAprobadorForm = ({
     value: Number(empresa.id),
   }));
 
-  const activosEmbarcacionOptions = activosEmbarcacion.map((activo) => ({
-    label: activo.nombre,
-    value: Number(activo.embarcacion?.id || activo.id),
-  }));
-
   const sedesOptions = sedes
-    .filter((sede) => Number(sede.empresaId) === Number(empresaSeleccionada))
+    .filter((sede) => Number(sede.empresaId) === Number(empresaWatched))
     .map((sede) => ({
       label: sede.nombre,
       value: Number(sede.id),
@@ -366,7 +143,7 @@ const ParametroAprobadorForm = ({
       >
         {/* Campo Empresa */}
         <div style={{ flex: 1 }}>
-          <label htmlFor="empresaId" className="p-d-block">
+          <label htmlFor="empresaId">
             Empresa <span className="p-error">*</span>
           </label>
           <Controller
@@ -379,22 +156,22 @@ const ParametroAprobadorForm = ({
                 onChange={(e) => field.onChange(e.value)}
                 options={empresasOptions}
                 placeholder="Seleccione una empresa"
-                className={getFieldClass("empresaId")}
+                className={errors.empresaId ? "p-invalid" : ""}
                 filter
                 showClear
+                disabled={readOnly || loading}
                 style={{ fontWeight: "bold" }}
               />
             )}
           />
           {errors.empresaId && (
-            <small className="p-error p-d-block">
-              {errors.empresaId.message}
-            </small>
+            <small className="p-error">{errors.empresaId.message}</small>
           )}
         </div>
+
         {/* Campo Personal Responsable */}
         <div style={{ flex: 1 }}>
-          <label htmlFor="personalRespId" className="p-d-block">
+          <label htmlFor="personalRespId">
             Personal Responsable <span className="p-error">*</span>
           </label>
           <Controller
@@ -407,17 +184,16 @@ const ParametroAprobadorForm = ({
                 onChange={(e) => field.onChange(e.value)}
                 options={personalOptions}
                 placeholder="Seleccione personal responsable"
-                className={getFieldClass("personalRespId")}
+                className={errors.personalRespId ? "p-invalid" : ""}
                 filter
                 showClear
+                disabled={readOnly || loading}
                 style={{ fontWeight: "bold" }}
               />
             )}
           />
           {errors.personalRespId && (
-            <small className="p-error p-d-block">
-              {errors.personalRespId.message}
-            </small>
+            <small className="p-error">{errors.personalRespId.message}</small>
           )}
         </div>
       </div>
@@ -427,11 +203,12 @@ const ParametroAprobadorForm = ({
           display: "flex",
           gap: 10,
           flexDirection: window.innerWidth < 768 ? "column" : "row",
+          marginTop: 12,
         }}
       >
         {/* Campo Módulo Sistema */}
         <div style={{ flex: 1 }}>
-          <label htmlFor="moduloSistemaId" className="p-d-block">
+          <label htmlFor="moduloSistemaId">
             Módulo Sistema <span className="p-error">*</span>
           </label>
           <Controller
@@ -444,51 +221,46 @@ const ParametroAprobadorForm = ({
                 onChange={(e) => field.onChange(e.value)}
                 options={modulosSistemaOptions}
                 placeholder="Seleccione módulo sistema"
-                className={getFieldClass("moduloSistemaId")}
+                className={errors.moduloSistemaId ? "p-invalid" : ""}
                 filter
                 showClear
+                disabled={readOnly || loading}
                 style={{ fontWeight: "bold" }}
               />
             )}
           />
           {errors.moduloSistemaId && (
-            <small className="p-error p-d-block">
-              {errors.moduloSistemaId.message}
-            </small>
+            <small className="p-error">{errors.moduloSistemaId.message}</small>
           )}
         </div>
 
-        {/* Campo Embarcación */}
+        {/* Campo Sede */}
         <div style={{ flex: 1 }}>
-          <label htmlFor="embarcacionId" className="p-d-block">
-            Embarcación
-          </label>
+          <label htmlFor="sedeId">Sede</label>
           <Controller
-            name="embarcacionId"
+            name="sedeId"
             control={control}
             render={({ field }) => (
               <Dropdown
-                id="embarcacionId"
+                id="sedeId"
                 value={field.value}
                 onChange={(e) => field.onChange(e.value)}
-                options={activosEmbarcacionOptions}
+                options={sedesOptions}
                 placeholder={
-                  empresaSeleccionada
-                    ? "Seleccione embarcación (opcional)"
+                  empresaWatched
+                    ? "Seleccione sede (opcional)"
                     : "Primero seleccione una empresa"
                 }
-                className={getFieldClass("embarcacionId")}
-                disabled={!empresaSeleccionada}
+                className={errors.sedeId ? "p-invalid" : ""}
                 filter
                 showClear
+                disabled={readOnly || loading || !empresaWatched}
                 style={{ fontWeight: "bold" }}
               />
             )}
           />
-          {errors.embarcacionId && (
-            <small className="p-error p-d-block">
-              {errors.embarcacionId.message}
-            </small>
+          {errors.sedeId && (
+            <small className="p-error">{errors.sedeId.message}</small>
           )}
         </div>
       </div>
@@ -497,12 +269,14 @@ const ParametroAprobadorForm = ({
         style={{
           display: "flex",
           gap: 10,
+          alignItems: "end",
           flexDirection: window.innerWidth < 768 ? "column" : "row",
+          marginTop: 12,
         }}
       >
         {/* Campo Vigente Desde */}
         <div style={{ flex: 1 }}>
-          <label htmlFor="vigenteDesde" className="p-d-block">
+          <label htmlFor="vigenteDesde">
             Vigente Desde <span className="p-error">*</span>
           </label>
           <Controller
@@ -514,25 +288,22 @@ const ParametroAprobadorForm = ({
                 value={field.value}
                 onChange={(e) => field.onChange(e.value)}
                 placeholder="Seleccione fecha desde"
-                className={getFieldClass("vigenteDesde")}
+                className={errors.vigenteDesde ? "p-invalid" : ""}
                 dateFormat="dd/mm/yy"
                 showIcon
+                disabled={readOnly || loading}
                 style={{ fontWeight: "bold" }}
               />
             )}
           />
           {errors.vigenteDesde && (
-            <small className="p-error p-d-block">
-              {errors.vigenteDesde.message}
-            </small>
+            <small className="p-error">{errors.vigenteDesde.message}</small>
           )}
         </div>
 
         {/* Campo Vigente Hasta */}
         <div style={{ flex: 1 }}>
-          <label htmlFor="vigenteHasta" className="p-d-block">
-            Vigente Hasta
-          </label>
+          <label htmlFor="vigenteHasta">Vigente Hasta</label>
           <Controller
             name="vigenteHasta"
             control={control}
@@ -542,77 +313,34 @@ const ParametroAprobadorForm = ({
                 value={field.value}
                 onChange={(e) => field.onChange(e.value)}
                 placeholder="Seleccione fecha hasta (opcional)"
-                className={getFieldClass("vigenteHasta")}
+                className={errors.vigenteHasta ? "p-invalid" : ""}
                 dateFormat="dd/mm/yy"
                 showIcon
+                disabled={readOnly || loading}
                 style={{ fontWeight: "bold" }}
               />
             )}
           />
           {errors.vigenteHasta && (
-            <small className="p-error p-d-block">
-              {errors.vigenteHasta.message}
-            </small>
+            <small className="p-error">{errors.vigenteHasta.message}</small>
           )}
         </div>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          alignItems: "flex-end",
-          marginBottom: 12,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        {/* Campo Sede */}
-        <div style={{ flex: 1 }}>
-          <label htmlFor="sedeId" className="p-d-block">
-            Sede
-          </label>
-          <Controller
-            name="sedeId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="sedeId"
-                value={field.value}
-                onChange={(e) => field.onChange(e.value)}
-                options={sedesOptions}
-                placeholder="Seleccione sede (opcional)"
-                className={getFieldClass("sedeId")}
-                filter
-                showClear
-                style={{ fontWeight: "bold" }}
-              />
-            )}
-          />
-          {errors.sedeId && (
-            <small className="p-error p-d-block">{errors.sedeId.message}</small>
-          )}
-        </div>
-
-        {/* Campo Cesado */}
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1}}>
           <Controller
             name="cesado"
             control={control}
             render={({ field }) => (
-              <ToggleButton
-                id="cesado"
-                onLabel="Cesado"
-                offLabel="Cesado"
-                onIcon="pi pi-check"
-                offIcon="pi pi-times"
-                checked={field.value || false}
-                onChange={(e) => field.onChange(e.value)}
+              <Button
+                type="button"
+                label={field.value ? "CESADO" : "ACTIVO"}
+                className={field.value ? "p-button-danger" : "p-button-primary"}
+                icon={field.value ? "pi pi-times-circle" : "pi pi-check-circle"}
+                onClick={() => !readOnly && field.onChange(!field.value)}
+                disabled={readOnly || loading}
+                style={{ fontWeight: "bold" }}
               />
             )}
           />
-          {errors.cesado && (
-            <small className="p-error p-d-block">{errors.cesado.message}</small>
-          )}
         </div>
       </div>
 
@@ -627,26 +355,27 @@ const ParametroAprobadorForm = ({
         <Button
           type="button"
           label="Cancelar"
-          className="p-button-text"
-          onClick={onCancelar}
+          onClick={onCancel}
           disabled={loading}
+          className="p-button-warning"
+          severity="warning"
           raised
-          outlined
           size="small"
+          outlined
         />
         <Button
           type="submit"
-          label={esEdicion ? "Actualizar" : "Crear"}
-          icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
+          label={isEdit ? "Actualizar" : "Guardar"}
+          icon="pi pi-save"
           loading={loading}
+          disabled={readOnly || loading}
           className="p-button-success"
+          severity="success"
           raised
-          outlined
           size="small"
+          outlined
         />
       </div>
     </form>
   );
-};
-
-export default ParametroAprobadorForm;
+}

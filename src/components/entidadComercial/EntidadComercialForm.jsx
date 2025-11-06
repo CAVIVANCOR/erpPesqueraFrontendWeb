@@ -19,6 +19,7 @@ import { Toolbar } from "primereact/toolbar";
 import { Button } from "primereact/button";
 import { ButtonGroup } from "primereact/buttongroup";
 import { Tag } from "primereact/tag";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 import {
   getEntidadesComerciales,
@@ -38,6 +39,7 @@ import { getTiposEntidad } from "../../api/tipoEntidad";
 import { getFormasPago } from "../../api/formaPago";
 import { getAgrupacionesEntidad } from "../../api/agrupacionEntidad";
 import { getVendedoresPorEmpresa } from "../../api/personal";
+import { getMonedas } from "../../api/moneda";
 
 // Importar componentes de cards
 import DatosGeneralesEntidad from "./DatosGeneralesEntidad";
@@ -47,6 +49,7 @@ import DetalleDireccionesEntidad from "./DetalleDireccionesEntidad";
 import DetalleVehiculosEntidad from "./DetalleVehiculosEntidad";
 import DetallePreciosEntidad from "./DetallePreciosEntidad";
 import DetalleLineasCreditoEntidad from "./DetalleLineasCreditoEntidad";
+import DetalleCtasCteEntidad from "./DetalleCtasCteEntidad";
 
 // Esquema de validación básico para EntidadComercial
 const validationSchema = yup.object().shape({
@@ -77,9 +80,19 @@ const validationSchema = yup.object().shape({
   sujetoPercepcion: yup.boolean(),
 });
 
-const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
+const EntidadComercialForm = ({
+  entidadComercial,
+  onGuardar,
+  onCancelar,
+  toast: toastProp,
+  modoEdicion = false,
+  readOnly = false,
+  loading: loadingProp = false,
+  permisos = {},
+}) => {
   // Estados del componente
   const [loading, setLoading] = useState(false);
+  const isLoading = loading || loadingProp; // Combinar ambos estados de loading
   const [activeCard, setActiveCard] = useState("datos-generales");
   const [datosGenerales, setDatosGenerales] = useState({});
   const [datosOperativos, setDatosOperativos] = useState({});
@@ -92,12 +105,14 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
   const [agrupaciones, setAgrupaciones] = useState([]);
   const [vendedores, setVendedores] = useState([]);
   const [agenciasEnvio, setAgenciasEnvio] = useState([]);
+  const [monedas, setMonedas] = useState([]);
 
   const toast = useRef(null);
   const direccionesRef = useRef(null);
   const contactosRef = useRef(null);
   const vehiculosRef = useRef(null);
   const lineasCreditoRef = useRef(null);
+  const ctasCteRef = useRef(null);
   const preciosRef = useRef(null);
   const esEdicion = !!(entidadComercial && entidadComercial.id);
 
@@ -154,18 +169,21 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
         tiposEntData,
         formasPagoData,
         agrupacionesData,
+        monedasData,
       ] = await Promise.all([
         getEmpresas(),
         getTiposDocIdentidad(),
         getTiposEntidad(),
         getFormasPago(),
         getAgrupacionesEntidad(),
+        getMonedas(),
       ]);
       setEmpresas(empresasData || []);
       setTiposDocumento(tiposDocData || []);
       setTiposEntidad(tiposEntData || []);
       setFormasPago(formasPagoData || []);
       setAgrupaciones(agrupacionesData || []);
+      setMonedas(monedasData || []);
     } catch (error) {
       console.error(" Error al cargar catálogos:", error);
       toast.current?.show({
@@ -183,22 +201,21 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
       try {
         // Cargar catálogos básicos
         await cargarCatalogos();
-        
+
         // Cargar agencias de envío
         const agencias = await getAgenciasEnvio();
         setAgenciasEnvio(agencias || []);
-        
       } catch (error) {
-        console.error('Error al cargar datos iniciales:', error);
+        console.error("Error al cargar datos iniciales:", error);
         toast.current?.show({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Error al cargar los datos iniciales',
+          severity: "error",
+          summary: "Error",
+          detail: "Error al cargar los datos iniciales",
           life: 3000,
         });
       }
     };
-    
+
     cargarDatosIniciales();
   }, []);
 
@@ -421,6 +438,9 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
       case "lineas-credito":
         lineasCreditoRef.current?.recargar();
         break;
+      case "ctas-cte":
+        ctasCteRef.current?.recargar();
+        break;
       default:
         // Para datos-generales y datos-operativos no necesitamos cargar datos adicionales
         break;
@@ -473,12 +493,40 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
 
       let resultado;
       if (esEdicion) {
+        // Actualizar entidad existente
+        // Agregar campos de auditoría para actualización
+        const datosActualizacion = {
+          ...entidadNormalizada,
+          // Si creadoEn o creadoPor son null/vacíos, asignarlos ahora
+          creadoEn: entidadComercial.creadoEn || new Date(),
+          creadoPor:
+            entidadComercial.creadoPor ||
+            (usuario?.personalId ? Number(usuario.personalId) : null),
+          // Siempre actualizar estos campos
+          actualizadoEn: new Date(),
+          actualizadoPor: usuario?.personalId
+            ? Number(usuario.personalId)
+            : null,
+        };
+
         resultado = await actualizarEntidadComercial(
           entidadComercial.id,
-          entidadNormalizada
+          datosActualizacion
         );
       } else {
-        resultado = await crearEntidadComercial(entidadNormalizada);
+        // Crear nueva entidad
+        // Agregar campos de auditoría para creación
+        const datosCreacion = {
+          ...entidadNormalizada,
+          creadoEn: new Date(),
+          creadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
+          actualizadoEn: new Date(),
+          actualizadoPor: usuario?.personalId
+            ? Number(usuario.personalId)
+            : null,
+        };
+
+        resultado = await crearEntidadComercial(datosCreacion);
       }
 
       toast.current?.show({
@@ -625,6 +673,18 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
               onClick={() => handleCardChange("lineas-credito")}
               type="button"
             />
+            <Button
+              icon="pi pi-wallet"
+              tooltip="Cuentas Corrientes - Cuentas bancarias de la entidad"
+              tooltipOptions={{ position: "bottom" }}
+              className={
+                activeCard === "ctas-cte"
+                  ? "p-button-help"
+                  : "p-button-outlined"
+              }
+              onClick={() => handleCardChange("ctas-cte")}
+              type="button"
+            />
           </ButtonGroup>
         }
       />
@@ -644,6 +704,8 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
             setValue={setValue}
             getValues={getValues}
             toast={toast}
+            readOnly={readOnly}
+            loading={loading}
           />
         )}
 
@@ -655,17 +717,17 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
             datosOperativos={datosOperativos}
             onDatosOperativosChange={handleDatosOperativosChange}
             vendedores={vendedores}
-            agenciasEnvio={agenciasEnvio} // Pasar agencias de envío
+            agenciasEnvio={agenciasEnvio}
+            readOnly={readOnly}
           />
         )}
 
         {activeCard === "contactos" && (
           <DetalleContactosEntidad
             entidadComercialId={entidadComercial?.id}
-            // contactos={contactos}
-            // onContactosChange={setContactos}
-            tiposContacto={[]} // Se cargarán desde el componente
             ref={contactosRef}
+            readOnly={readOnly}
+            permisos={permisos}
           />
         )}
 
@@ -673,6 +735,8 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
           <DetalleDireccionesEntidad
             entidadComercialId={entidadComercial?.id}
             ref={direccionesRef}
+            readOnly={readOnly}
+            permisos={permisos}
           />
         )}
 
@@ -680,11 +744,10 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
           <DetallePreciosEntidad
             entidadComercialId={entidadComercial?.id}
             empresaId={entidadComercial?.empresaId}
-            // precios={precios}
-            // onPreciosChange={setPrecios}
-            productos={[]} // Se cargarán desde el componente
-            monedas={[]} // Se cargarán desde el componente
+            monedas={monedas}
             ref={preciosRef}
+            readOnly={readOnly}
+            permisos={permisos}
           />
         )}
 
@@ -692,20 +755,28 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
           <DetalleVehiculosEntidad
             entidadComercialId={entidadComercial?.id}
             entidadComercial={entidadComercial}
-            //vehiculos={vehiculos}
-            //onVehiculosChange={setVehiculos}
-            tiposVehiculo={[]} // Se cargarán desde el componente
             ref={vehiculosRef}
+            readOnly={readOnly}
+            permisos={permisos}
           />
         )}
 
         {activeCard === "lineas-credito" && (
           <DetalleLineasCreditoEntidad
             entidadComercialId={entidadComercial?.id}
-            // lineasCredito={lineasCredito}
-            // onLineasCreditoChange={setLineasCredito}
-            monedas={[]} // Se cargarán desde el componente
+            monedas={monedas}
             ref={lineasCreditoRef}
+            readOnly={readOnly}
+            permisos={permisos}
+          />
+        )}
+
+        {activeCard === "ctas-cte" && (
+          <DetalleCtasCteEntidad
+            entidadComercialId={entidadComercial?.id}
+            ref={ctasCteRef}
+            readOnly={readOnly}
+            permisos={permisos}
           />
         )}
         {/* Botones de acción */}
@@ -723,7 +794,8 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
             type="button"
             label="Cancelar"
             icon="pi pi-times"
-            className="p-button-secondary"
+            className="p-button-warning"
+            severity="warning"
             onClick={onCancelar}
             disabled={loading}
             raised
@@ -732,11 +804,18 @@ const EntidadComercialForm = ({ entidadComercial, onGuardar, onCancelar }) => {
           />
           <Button
             type="button"
-            label={esEdicion ? "Actualizar" : "Crear"}
-            icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
+            label={modoEdicion ? "Actualizar" : "Guardar"}
+            icon="pi pi-save"
             className="p-button-success"
+            severity="success"
             onClick={handleSubmit(onSubmit)}
             loading={loading}
+            disabled={
+              readOnly ||
+              loading ||
+              (modoEdicion && !permisos.puedeEditar) ||
+              (!modoEdicion && !permisos.puedeCrear)
+            }
             raised
             size="small"
             outlined

@@ -4,6 +4,7 @@
 // Documentado en español técnico.
 
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -11,6 +12,7 @@ import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { InputText } from "primereact/inputtext";
 import {
   getAreasFisicas,
@@ -21,6 +23,7 @@ import {
 import { getSedes } from "../api/sedes";
 import { getEmpresas } from "../api/empresa"; // Importa la API profesional de empresas
 import AreaFisicaForm from "../components/areasFisicas/AreaFisicaForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Página de gestión de áreas físicas de sede.
@@ -37,8 +40,14 @@ import AreaFisicaForm from "../components/areasFisicas/AreaFisicaForm";
  * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
  * - El usuario autenticado se obtiene siempre desde useAuthStore.
  */
-export default function AreasFisicasSede() {
+export default function AreasFisicasSede({ ruta }) {
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const [confirmState, setConfirmState] = useState({
     visible: false,
     row: null,
@@ -100,6 +109,9 @@ export default function AreasFisicasSede() {
   }
 
   async function onSubmitForm(data) {
+    if (modoEdicion && !permisos.puedeEditar) return;
+    if (!modoEdicion && !permisos.puedeCrear) return;
+
     setFormLoading(true);
     try {
       if (modoEdicion && areaEdit) {
@@ -175,29 +187,31 @@ export default function AreasFisicasSede() {
   };
 
   const accionesTemplate = (rowData) => (
-    <span>
+    <div onClick={(e) => e.stopPropagation()}>
       <Button
         icon="pi pi-pencil"
         className="p-button-rounded p-button-text p-button-info"
         style={{ marginRight: 8 }}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleEditar(rowData);
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        onClick={() => {
+          if (permisos.puedeVer || permisos.puedeEditar) {
+            handleEditar(rowData);
+          }
         }}
-        tooltip="Editar"
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button
-          icon="pi pi-trash"
-          className="p-button-rounded p-button-text p-button-danger"
-          onClick={(e) => {
-            e.stopPropagation();
+      <Button
+        icon="pi pi-trash"
+        className="p-button-rounded p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={() => {
+          if (permisos.puedeEliminar) {
             handleEliminar(rowData);
-          }}
-          tooltip="Eliminar"
-        />
-      )}
-    </span>
+          }
+        }}
+        tooltip="Eliminar"
+      />
+    </div>
   );
 
   return (
@@ -229,10 +243,21 @@ export default function AreasFisicasSede() {
         value={areas}
         loading={loading}
         paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 20]}
-        globalFilter={globalFilter}
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} áreas físicas"
+        size="small"
+        showGridlines
         stripedRows
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
+        }
+        style={{
+          fontSize: getResponsiveFontSize(),
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+        }}
         emptyMessage="No hay áreas físicas registradas."
         header={
           <div className="flex align-items-center gap-2">
@@ -245,6 +270,7 @@ export default function AreasFisicasSede() {
               raised
               tooltip="Nueva Área Física"
               outlined
+              disabled={!permisos.puedeCrear}
               onClick={() => {
                 setAreaEdit(null);
                 setModoEdicion(false);
@@ -261,7 +287,6 @@ export default function AreasFisicasSede() {
             </span>
           </div>
         }
-        onRowClick={onRowClick}
       >
         <Column field="id" header="ID" style={{ width: 80 }} />
         <Column field="nombre" header="Nombre" />
@@ -283,7 +308,13 @@ export default function AreasFisicasSede() {
         />
       </DataTable>
       <Dialog
-        header={modoEdicion ? "Editar Área" : "Nueva Área"}
+        header={
+          modoEdicion
+            ? permisos.puedeEditar
+              ? "Editar Área"
+              : "Ver Área"
+            : "Nueva Área"
+        }
         visible={mostrarDialogo}
         style={{ width: 600 }}
         modal
@@ -301,6 +332,7 @@ export default function AreasFisicasSede() {
           loading={formLoading}
           empresas={React.useMemo(() => empresas, [empresas])}
           sedes={sedes}
+          readOnly={modoEdicion && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

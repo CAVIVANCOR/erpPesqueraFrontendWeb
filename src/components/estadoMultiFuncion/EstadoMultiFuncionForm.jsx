@@ -23,7 +23,10 @@ import { Dropdown } from "primereact/dropdown";
 import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import { classNames } from "primereact/utils";
-import { crearEstadoMultiFuncion, actualizarEstadoMultiFuncion } from "../../api/estadoMultiFuncion";
+import {
+  crearEstadoMultiFuncion,
+  actualizarEstadoMultiFuncion,
+} from "../../api/estadoMultiFuncion";
 import { getTiposProvieneDe } from "../../api/tipoProvieneDe";
 
 // Esquema de validación con Yup
@@ -40,12 +43,15 @@ const esquemaValidacion = yup.object().shape({
     .transform((value, originalValue) => {
       return originalValue === "" ? null : value;
     }),
-  cesado: yup
-    .boolean()
-    .default(false),
+  cesado: yup.boolean().default(false),
 });
 
-const EstadoMultiFuncionForm = ({ estadoMultiFuncion, onGuardar, onCancelar }) => {
+const EstadoMultiFuncionForm = ({
+  estadoMultiFuncion,
+  onGuardar,
+  onCancelar,
+  readOnly = false,
+}) => {
   const [loading, setLoading] = useState(false);
   const [tiposProvieneDe, setTiposProvieneDe] = useState([]);
   const esEdicion = !!estadoMultiFuncion;
@@ -74,7 +80,12 @@ const EstadoMultiFuncionForm = ({ estadoMultiFuncion, onGuardar, onCancelar }) =
   // Efecto para cargar datos en modo edición
   useEffect(() => {
     if (estadoMultiFuncion) {
-      setValue("tipoProvieneDeId", estadoMultiFuncion.tipoProvieneDeId ? Number(estadoMultiFuncion.tipoProvieneDeId) : null);
+      setValue(
+        "tipoProvieneDeId",
+        estadoMultiFuncion.tipoProvieneDeId
+          ? Number(estadoMultiFuncion.tipoProvieneDeId)
+          : null
+      );
       setValue("descripcion", estadoMultiFuncion.descripcion || "");
       setValue("cesado", estadoMultiFuncion.cesado || false);
     } else {
@@ -92,12 +103,14 @@ const EstadoMultiFuncionForm = ({ estadoMultiFuncion, onGuardar, onCancelar }) =
   const cargarTiposProvieneDe = async () => {
     try {
       const data = await getTiposProvieneDe();
-      setTiposProvieneDe(data.map(item => ({
-        value: Number(item.id),
-        label: item.nombre || item.descripcion || `ID: ${item.id}`,
-      })));
+      setTiposProvieneDe(
+        data.map((item) => ({
+          value: Number(item.id),
+          label: item.nombre || item.descripcion || `ID: ${item.id}`,
+        }))
+      );
     } catch (error) {
-      console.error('Error al cargar tipos proviene de:', error);
+      console.error("Error al cargar tipos proviene de:", error);
       setTiposProvieneDe([]);
     }
   };
@@ -112,13 +125,18 @@ const EstadoMultiFuncionForm = ({ estadoMultiFuncion, onGuardar, onCancelar }) =
 
       // Normalización de datos antes del envío
       const datosNormalizados = {
-        tipoProvieneDeId: data.tipoProvieneDeId ? Number(data.tipoProvieneDeId) : null,
+        tipoProvieneDeId: data.tipoProvieneDeId
+          ? Number(data.tipoProvieneDeId)
+          : null,
         descripcion: data.descripcion?.trim().toUpperCase() || null,
         cesado: data.cesado || false,
       };
 
       if (esEdicion) {
-        await actualizarEstadoMultiFuncion(estadoMultiFuncion.id, datosNormalizados);
+        await actualizarEstadoMultiFuncion(
+          estadoMultiFuncion.id,
+          datosNormalizados
+        );
       } else {
         await crearEstadoMultiFuncion(datosNormalizados);
       }
@@ -163,13 +181,16 @@ const EstadoMultiFuncionForm = ({ estadoMultiFuncion, onGuardar, onCancelar }) =
                 optionValue="value"
                 placeholder="Seleccionar tipo..."
                 className={getFieldClass("tipoProvieneDeId")}
-                disabled={loading}
+                disabled={readOnly || loading}
                 showClear
+                style={{ fontWeight: "bold" }}
               />
             )}
           />
           {errors.tipoProvieneDeId && (
-            <small className="p-error p-d-block">{errors.tipoProvieneDeId.message}</small>
+            <small className="p-error p-d-block">
+              {errors.tipoProvieneDeId.message}
+            </small>
           )}
         </div>
 
@@ -187,32 +208,36 @@ const EstadoMultiFuncionForm = ({ estadoMultiFuncion, onGuardar, onCancelar }) =
                 {...field}
                 placeholder="Descripción del estado multifunción (opcional)"
                 className={getFieldClass("descripcion")}
-                style={{ textTransform: 'uppercase' }}
+                disabled={readOnly}
+                style={{ textTransform: "uppercase", fontWeight: "bold" }}
               />
             )}
           />
           {errors.descripcion && (
-            <small className="p-error p-d-block">{errors.descripcion.message}</small>
+            <small className="p-error p-d-block">
+              {errors.descripcion.message}
+            </small>
           )}
         </div>
 
         {/* Campo Cesado */}
         <div className="p-col-12 p-field">
+          <label htmlFor="cesado" className="p-d-block">
+            Estado
+          </label>
           <Controller
             name="cesado"
             control={control}
             render={({ field }) => (
-              <div className="p-field-checkbox">
-                <Checkbox
-                  id="cesado"
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.checked)}
-                  className={getFieldClass("cesado")}
-                />
-                <label htmlFor="cesado" className="p-checkbox-label">
-                  Estado multifunción cesado
-                </label>
-              </div>
+              <Button
+                type="button"
+                label={field.value ? "CESADO" : "ACTIVO"}
+                className={field.value ? "p-button-danger" : "p-button-primary"}
+                icon={field.value ? "pi pi-times-circle" : "pi pi-check-circle"}
+                onClick={() => !readOnly && field.onChange(!field.value)}
+                disabled={readOnly}
+                style={{ width: "100%", fontWeight: "bold" }}
+              />
             )}
           />
           {errors.cesado && (
@@ -220,20 +245,37 @@ const EstadoMultiFuncionForm = ({ estadoMultiFuncion, onGuardar, onCancelar }) =
           )}
         </div>
       </div>
-      
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 8,
+          marginTop: 18,
+        }}
+      >
         <Button
           type="button"
           label="Cancelar"
-          className="p-button-text"
           onClick={onCancelar}
           disabled={loading}
+          className="p-button-warning"
+          severity="warning"
+          raised
+          size="small"
+          outlined
         />
         <Button
           type="submit"
           label={esEdicion ? "Actualizar" : "Crear"}
           icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
           loading={loading}
+          disabled={readOnly || loading}
+          className="p-button-success"
+          severity="success"
+          raised
+          size="small"
+          outlined
         />
       </div>
     </form>

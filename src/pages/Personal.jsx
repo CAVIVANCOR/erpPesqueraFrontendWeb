@@ -3,6 +3,7 @@
 // Reutiliza patrones de Usuarios.jsx y documenta en español técnico.
 
 import React, { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -25,16 +26,27 @@ import { getSedes } from "../api/sedes";
 import { getAreasFisicas } from "../api/areasFisicas";
 import { Avatar } from "primereact/avatar";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Página de gestión de personal.
  * Incluye DataTable, alta, edición y eliminación, con feedback visual profesional.
  */
-export default function PersonalPage() {
+export default function PersonalPage({ ruta }) {
   // Obtener usuario autenticado para control de permisos
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
 
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
+  const [confirmState, setConfirmState] = useState({
+    visible: false,
+    row: null,
+  });
   const [personales, setPersonales] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -244,28 +256,30 @@ export default function PersonalPage() {
 
   // Renderizado de botones de acción
   const actionBodyTemplate = (rowData) => (
-    <>
+    <div onClick={(e) => e.stopPropagation()}>
       <Button
         icon="pi pi-pencil"
         className="p-button-text p-mr-2"
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
         onClick={(ev) => {
-          ev.stopPropagation();
-          onEdit(rowData);
+          if (permisos.puedeVer || permisos.puedeEditar) {
+            onEdit(rowData);
+          }
         }}
-        tooltip="Editar"
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button
-          icon="pi pi-trash"
-          className="p-button-text p-button-danger"
-          onClick={(ev) => {
-            ev.stopPropagation();
+      <Button
+        icon="pi pi-trash"
+        className="p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={(ev) => {
+          if (permisos.puedeEliminar) {
             onDelete(rowData);
-          }}
-          tooltip="Eliminar"
-        />
-      )}
-    </>
+          }
+        }}
+        tooltip="Eliminar"
+      />
+    </div>
   );
 
   const cesadoTemplate = (rowData) => {
@@ -297,11 +311,6 @@ export default function PersonalPage() {
     setIsEdit(true);
     setShowForm(true);
   };
-
-  const [confirmState, setConfirmState] = useState({
-    visible: false,
-    row: null,
-  });
 
   const onDelete = (row) => {
     setConfirmState({ visible: true, row });
@@ -358,6 +367,14 @@ export default function PersonalPage() {
    * Cumple las reglas de logging y validación previas a producción.
    */
   const onSubmit = async (data) => {
+    // Validar permisos antes de guardar
+    if (isEdit && !permisos.puedeEditar) {
+      return;
+    }
+    if (!isEdit && !permisos.puedeCrear) {
+      return;
+    }
+
     setLoading(true);
     try {
       // Construir payload limpio solo con campos válidos para el backend
@@ -506,131 +523,131 @@ export default function PersonalPage() {
       <DataTable
         value={filteredPersonales}
         loading={loading}
+        showGridlines
+        size="small"
+        stripedRows
         paginator
-        rows={10}
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} personal"
         selectionMode="single"
         selection={selected}
         onSelectionChange={(e) => setSelected(e.value)}
         header={
-          <div className="flex align-items-center gap-2">
-            <div
-              style={{
-                alignItems: "center",
-                display: "flex",
-                gap: 10,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div
-                style={{ flex: 2, display: "flex", flexDirection: "column" }}
-              >
-                <h2>Gestión de Personal</h2>
-              </div>
-              <div
-                style={{ flex: 1, display: "flex", flexDirection: "column" }}
-              >
-                <Button
-                  label="Nuevo"
-                  icon="pi pi-plus"
-                  className="p-button-success"
-                  size="small"
-                  raised
-                  tooltip="Nuevo Personal"
-                  outlined
-                  onClick={onNew}
-                />
-              </div>
-              <div
-                style={{ flex: 1, display: "flex", flexDirection: "column" }}
-              >
-                <span className="p-input-icon-left">
-                  <InputText
-                    value={globalFilter}
-                    onChange={(e) => setGlobalFilter(e.target.value)}
-                    placeholder="Buscar personal..."
-                    style={{ width: "300px" }}
-                  />
-                </span>
-              </div>
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <h2>Personal</h2>
             </div>
-
-            <div
-              style={{
-                alignItems: "center",
-                display: "flex",
-                gap: 10,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 2 }}>
-                <Dropdown
-                  value={empresaFilter}
-                  options={empresasLista}
-                  optionLabel="razonSocial"
-                  optionValue="id"
-                  placeholder="Filtrar por empresa"
-                  onChange={(e) => setEmpresaFilter(e.value)}
-                  showClear
-                  style={{ minWidth: "200px" }}
+            <div style={{ flex: 0.5 }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                className="p-button-success"
+                size="small"
+                raised
+                disabled={!permisos.puedeCrear}
+                tooltip="Nuevo Personal"
+                outlined
+                onClick={onNew}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="razonSocial">Filtrar por Empresa</label>
+              <Dropdown
+                value={empresaFilter}
+                options={empresasLista}
+                optionLabel="razonSocial"
+                optionValue="id"
+                placeholder="Filtrar por empresa"
+                onChange={(e) => setEmpresaFilter(e.value)}
+                showClear
+                style={{ minWidth: "200px" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="descripcion">Filtrar por Cargo</label>
+              <Dropdown
+                value={cargoFilter}
+                options={cargosLista}
+                optionLabel="descripcion"
+                optionValue="id"
+                placeholder="Filtrar por cargo"
+                onChange={(e) => setCargoFilter(e.value)}
+                showClear
+                style={{ minWidth: "200px" }}
+                filter
+                filterBy="descripcion"
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="tipoPesca">Filtrar por Tipo de Pesca</label>
+              <Button
+                label={obtenerConfigFiltro().label}
+                icon={obtenerConfigFiltro().icon}
+                severity={obtenerConfigFiltro().severity}
+                outlined
+                onClick={cambiarFiltroTipoPesca}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <label htmlFor="globalFilter">Buscar por Nombres</label>
+              <span className="p-input-icon-left">
+                <InputText
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  placeholder="Buscar personal..."
+                  style={{ width: "150px" }}
                 />
-              </div>
-              <div style={{ flex: 2 }}>
-                <Dropdown
-                  value={cargoFilter}
-                  options={cargosLista}
-                  optionLabel="descripcion"
-                  optionValue="id"
-                  placeholder="Filtrar por cargo"
-                  onChange={(e) => setCargoFilter(e.value)}
-                  showClear
-                  style={{ minWidth: "200px" }}
-                  filter
-                  filterBy="descripcion"
-                />
-              </div>
-              <div style={{ flex: 2 }}>
-                <Button
-                  label={obtenerConfigFiltro().label}
-                  icon={obtenerConfigFiltro().icon}
-                  severity={obtenerConfigFiltro().severity}
-                  size="small"
-                  outlined
-                  onClick={cambiarFiltroTipoPesca}
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 2 }}>
-                <Button
-                  label="Limpiar"
-                  icon="pi pi-filter-slash"
-                  className="p-button-secondary"
-                  size="small"
-                  raised
-                  tooltip="Limpiar todos los filtros"
-                  outlined
-                  onClick={() => {
-                    setEmpresaFilter(null);
-                    setCargoFilter(null);
-                    setGlobalFilter("");
-                    setFiltroTipoPesca("todos");
-                  }}
-                />
-              </div>
+              </span>
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <Button
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                className="p-button-secondary"
+                size="small"
+                raised
+                tooltip="Limpiar todos los filtros"
+                outlined
+                onClick={() => {
+                  setEmpresaFilter(null);
+                  setCargoFilter(null);
+                  setGlobalFilter("");
+                  setFiltroTipoPesca("todos");
+                }}
+              />
             </div>
           </div>
         }
-        onRowClick={(e) => onEdit(e.data)}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => onEdit(e.data)
+            : undefined
+        }
         globalFilter={globalFilter}
         globalFilterFields={[
-          "nombres", 
-          "apellidos", 
-          "numeroDocumento", 
-          "direccion", 
-          "telefono", 
-          "correo"
+          "nombres",
+          "apellidos",
+          "numeroDocumento",
+          "direccion",
+          "telefono",
+          "correo",
         ]}
         emptyMessage="No se encontraron registros que coincidan con la búsqueda."
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
       >
         <Column field="id" header="ID" sortable />
         <Column
@@ -718,7 +735,13 @@ export default function PersonalPage() {
         cumpliendo la regla de UX para no mostrarlo debajo de la lista.
       */}
       <Dialog
-        header={isEdit ? "Editar Personal" : "Nuevo Personal"}
+        header={
+          isEdit
+            ? permisos.puedeEditar
+              ? "Editar Personal"
+              : "Ver Personal"
+            : "Nuevo Personal"
+        }
         visible={showForm}
         style={{ width: "1300px" }}
         modal
@@ -733,6 +756,7 @@ export default function PersonalPage() {
           onSubmit={onSubmit}
           onCancel={onCancel}
           loading={loading}
+          readOnly={isEdit && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

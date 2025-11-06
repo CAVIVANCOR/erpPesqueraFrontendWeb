@@ -38,9 +38,10 @@ export default function DetListaAccesosAModulosUsuario({
   esAdmin = false,
   esUsuario = false,
   usuarioId = null,
+  puedeCrear = false,
 }) {
   const toast = useRef(null);
-  const [accesosInternos, setAccesosInternos] = useState([]);
+  const [accesosInternos, setAccesosInternos] = useState(accesos); // Inicializar con prop
   const [modulos, setModulos] = useState([]);
   const [submodulos, setSubmodulos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -52,26 +53,31 @@ export default function DetListaAccesosAModulosUsuario({
   const [filtroActivos, setFiltroActivos] = useState(null); // null=todos, true=activos, false=inactivos
   const [filtroAccesos, setFiltroAccesos] = useState(null); // null=todos, 'sin'=sin accesos, 'con'=con accesos
   const [accesosFiltrados, setAccesosFiltrados] = useState([]);
+  const [renderKey, setRenderKey] = useState(0); // Key para forzar re-render del DataTable
+  const [paginatorRows, setPaginatorRows] = useState(5); // Filas por página
+  const [paginatorFirst, setPaginatorFirst] = useState(0); // Primera fila visible
 
   // Cargar módulos y submódulos al montar
   useEffect(() => {
     cargarDatos();
+    setPaginatorRows(5);
+    setPaginatorFirst(0);
   }, []);
 
   // Cargar accesos desde BD cuando hay usuarioId
   useEffect(() => {
+    console.log('🔄 useEffect [usuarioId] ejecutado, usuarioId:', usuarioId);
     if (usuarioId) {
       cargarAccesosDesdeDB();
     }
   }, [usuarioId]);
 
-  // Sincronizar accesos internos con prop externa
-  useEffect(() => {
-    setAccesosInternos(accesos);
-  }, [accesos]);
+  // ELIMINADO: useEffect que sobrescribía cambios locales
+  // El estado se inicializa con la prop y luego se maneja internamente
 
   // Aplicar filtros cuando cambian
   useEffect(() => {
+    console.log('🔄 useEffect [filtros] ejecutado, accesosInternos.length:', accesosInternos.length);
     aplicarFiltros();
   }, [
     accesosInternos,
@@ -171,11 +177,16 @@ export default function DetListaAccesosAModulosUsuario({
   const cargarAccesosDesdeDB = async () => {
     if (!usuarioId) return;
 
+    console.log('📥 cargarAccesosDesdeDB llamado');
+    console.trace('Stack trace de cargarAccesosDesdeDB');
+
     setLoading(true);
     try {
       const accesosDB = await getAccesosPorUsuario(usuarioId);
+      console.log('📥 Accesos cargados desde BD:', accesosDB.length);
       setAccesosInternos(accesosDB);
       if (onChange) {
+        console.log('📤 Llamando onChange con accesos de BD');
         onChange(accesosDB);
       }
     } catch (error) {
@@ -421,16 +432,101 @@ export default function DetListaAccesosAModulosUsuario({
 
   /**
    * Actualiza un campo de un acceso específico
+   * OPTIMISTIC UPDATE: Actualiza UI inmediatamente, guarda en BD, revierte si falla
    */
-  const actualizarCampo = (rowData, campo, valor) => {
+  const actualizarCampo = async (rowData, campo, valor) => {
+    if (!usuarioId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "No se puede guardar sin un usuario válido",
+      });
+      return;
+    }
+
+    console.log('=== OPTIMISTIC UPDATE ===');
+    console.log('Usuario ID:', usuarioId);
+    console.log('Submódulo ID:', rowData.submoduloId);
+    console.log('Campo:', campo);
+    console.log('Valor:', valor);
+
+    // 1. GUARDAR ESTADO ANTERIOR para poder revertir si falla
+    const estadoAnterior = [...accesosInternos];
+    const estadoFiltradoAnterior = [...accesosFiltrados];
+
+    // 2. ACTUALIZAR UI INMEDIATAMENTE (optimistic update)
+    // CREAR NUEVOS OBJETOS para forzar re-render
     const nuevosAccesos = accesosInternos.map((acceso) => {
       if (acceso.submoduloId === rowData.submoduloId) {
         return { ...acceso, [campo]: valor };
       }
-      return acceso;
+      return { ...acceso }; // NUEVO objeto para forzar detección
     });
-    setAccesosInternos(nuevosAccesos);
-    onChange(nuevosAccesos);
+    
+    // Actualizar también los filtrados inmediatamente
+    const nuevosFiltrados = accesosFiltrados.map((acceso) => {
+      if (acceso.submoduloId === rowData.submoduloId) {
+        return { ...acceso, [campo]: valor };
+      }
+      return { ...acceso }; // NUEVO objeto para forzar detección
+    });
+    
+    console.log('✏️ Actualizando estados con NUEVOS objetos');
+    console.log('   Cambio en submoduloId:', rowData.submoduloId, campo, '=', valor);
+    
+    setAccesosInternos([...nuevosAccesos]);
+    setAccesosFiltrados([...nuevosFiltrados]);
+    setRenderKey(prev => prev + 1); // Forzar re-render del DataTable
+    onChange([...nuevosAccesos]);
+
+    try {
+      // 3. GUARDAR EN BASE DE DATOS
+      const accesoActualizado = {
+        ...rowData,
+        [campo]: valor,
+      };
+
+      console.log('Guardando en BD...');
+      await asignarAccesosEnLote(usuarioId, [
+        {
+          submoduloId: Number(accesoActualizado.submoduloId),
+          permisos: {
+            puedeVer: !!accesoActualizado.puedeVer,
+            puedeCrear: !!accesoActualizado.puedeCrear,
+            puedeEditar: !!accesoActualizado.puedeEditar,
+            puedeEliminar: !!accesoActualizado.puedeEliminar,
+            puedeReactivarDocs: !!accesoActualizado.puedeReactivarDocs,
+            puedeAprobarDocs: !!accesoActualizado.puedeAprobarDocs,
+            puedeRechazarDocs: !!accesoActualizado.puedeRechazarDocs,
+            activo: accesoActualizado.activo !== false,
+          },
+        },
+      ]);
+
+      console.log('✅ Guardado exitoso en BD');
+
+      // 4. Notificar éxito
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: `Permiso actualizado y guardado en BD`,
+        life: 2000,
+      });
+
+    } catch (error) {
+      // 5. SI FALLA, REVERTIR AL ESTADO ANTERIOR
+      console.error('❌ Error al guardar en BD, revirtiendo cambios...');
+      setAccesosInternos(estadoAnterior);
+      setAccesosFiltrados(estadoFiltradoAnterior);
+      onChange(estadoAnterior);
+      
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "No se pudo guardar en la base de datos",
+        life: 4000,
+      });
+    }
   };
 
   // Templates para columnas editables
@@ -484,6 +580,7 @@ export default function DetListaAccesosAModulosUsuario({
         rejectLabel="Cancelar"
       />
       <DataTable
+        key={renderKey}
         value={accesosFiltrados}
         loading={loading}
         dataKey="submoduloId"
@@ -494,10 +591,17 @@ export default function DetListaAccesosAModulosUsuario({
         stripedRows
         style={{ fontSize: getResponsiveFontSize() }}
         paginator
-        rows={5}
+        rows={paginatorRows}
+        first={paginatorFirst}
+        onPage={(e) => {
+          setPaginatorRows(e.rows);
+          setPaginatorFirst(e.first);
+        }}
         rowsPerPageOptions={[5, 10, 15, 20]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} accesos"
+        stateStorage="session"
+        stateKey={`dt-accesos-usuario-${usuarioId}`}
         header={
           <div>
             {/* Título y botón agregar */}
@@ -520,17 +624,19 @@ export default function DetListaAccesosAModulosUsuario({
                   {accesosInternos.length})
                 </h3>
               </div>
-              <div style={{ flex: 1 }}>
-                <Button
-                  type="button"
-                  label="Agregar Todos los Módulos"
-                  icon="pi pi-plus-circle"
-                  className="p-button-warning p-button-sm"
-                  onClick={confirmarAgregarTodos}
-                  disabled={disabled || loading}
-                  outlined
-                />
-              </div>
+              {puedeCrear && (
+                <div style={{ flex: 1 }}>
+                  <Button
+                    type="button"
+                    label="Agregar Todos los Módulos"
+                    icon="pi pi-plus-circle"
+                    className="p-button-warning p-button-sm"
+                    onClick={confirmarAgregarTodos}
+                    disabled={loading}
+                    outlined
+                  />
+                </div>
+              )}
             </div>
 
             {/* Panel de filtros */}
@@ -568,6 +674,7 @@ export default function DetListaAccesosAModulosUsuario({
                   onChange={(e) => setFiltroModulo(e.value)}
                   placeholder="Todos los módulos"
                   style={{ width: "100%", fontSize: "12px" }}
+                  filter
                   showClear
                 />
               </div>

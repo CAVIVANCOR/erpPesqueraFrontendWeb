@@ -21,19 +21,26 @@ import { Tag } from "primereact/tag";
 import {
   getTiposDocIdentidad,
   eliminarTipoDocIdentidad,
+  crearTipoDocIdentidad,
+  actualizarTipoDocIdentidad,
 } from "../api/tiposDocIdentidad";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import TiposDocIdentidadForm from "../components/tiposDocIdentidad/TiposDocIdentidadForm";
 import { getResponsiveFontSize } from "../utils/utils";
-
+import { Navigate } from "react-router-dom";
+import { usePermissions } from "../hooks/usePermissions";
 /**
  * Componente TiposDocIdentidad
  * Pantalla principal para gestión de tipos de documentos de identidad
  * Patrón aplicado: Edición por clic en fila, eliminación profesional con confirmación, búsqueda global.
  */
-const TiposDocIdentidad = () => {
+const TiposDocIdentidad = ({ ruta }) => {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
 
   // Estados del componente
   const [tiposDoc, setTiposDoc] = useState([]);
@@ -45,6 +52,8 @@ const TiposDocIdentidad = () => {
     visible: false,
     row: null,
   });
+  const [formLoading, setFormLoading] = useState(false);
+  const [modoEdicion, setModoEdicion] = useState(false);
 
   /**
    * Carga los tipos de documentos desde la API
@@ -85,6 +94,7 @@ const TiposDocIdentidad = () => {
    */
   const abrirDialogoNuevo = () => {
     setTipoDocSeleccionado(null);
+    setModoEdicion(false);
     setDialogoVisible(true);
   };
 
@@ -93,6 +103,7 @@ const TiposDocIdentidad = () => {
    */
   const editarTipoDoc = (tipoDoc) => {
     setTipoDocSeleccionado(tipoDoc);
+    setModoEdicion(true);
     setDialogoVisible(true);
   };
 
@@ -102,15 +113,58 @@ const TiposDocIdentidad = () => {
   const cerrarDialogo = () => {
     setDialogoVisible(false);
     setTipoDocSeleccionado(null);
+    setModoEdicion(false);
   };
 
   /**
-   * Maneja el guardado exitoso
+   * Maneja el submit del formulario
    */
-  const onGuardar = async () => {
-    cerrarDialogo();
-    await cargarTiposDoc();
-  };
+  async function onSubmitForm(data) {
+    if (modoEdicion && !permisos.puedeEditar) return;
+    if (!modoEdicion && !permisos.puedeCrear) return;
+
+    setFormLoading(true);
+    try {
+      const payload = {
+        codigo: data.codigo,
+        codSunat: data.codSunat,
+        nombre: data.nombre,
+        cesado: data.cesado || false,
+      };
+
+      if (modoEdicion) {
+        await actualizarTipoDocIdentidad(tipoDocSeleccionado.id, payload);
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Tipo de documento actualizado correctamente",
+          life: 3000,
+        });
+      } else {
+        await crearTipoDocIdentidad(payload);
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Tipo de documento creado correctamente",
+          life: 3000,
+        });
+      }
+
+      await cargarTiposDoc();
+      cerrarDialogo();
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: modoEdicion
+          ? "Error al actualizar tipo de documento"
+          : "Error al crear tipo de documento",
+        life: 3000,
+      });
+    } finally {
+      setFormLoading(false);
+    }
+  }
 
   /**
    * Confirma la eliminación de un tipo de documento
@@ -210,37 +264,33 @@ const TiposDocIdentidad = () => {
     return fecha ? new Date(fecha).toLocaleDateString("es-PE") : "-";
   };
 
-  /**
-   * Template para acciones
-   * Incluye botón de editar y eliminar (eliminar solo para superusuario/admin)
-   * Estilo idéntico a Personal.jsx: p-button-text, iconos pequeños
-   */
-  const accionesTemplate = (rowData) => {
-    return (
-      <>
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-text p-mr-2"
-          onClick={(e) => {
-            e.stopPropagation();
+  const accionesTemplate = (rowData) => (
+    <div onClick={(e) => e.stopPropagation()}>
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-rounded p-button-text p-button-info"
+        style={{ marginRight: 8 }}
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        onClick={() => {
+          if (permisos.puedeVer || permisos.puedeEditar) {
             editarTipoDoc(rowData);
-          }}
-          tooltip="Editar"
-        />
-        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-text p-button-danger"
-            onClick={(e) => {
-              e.stopPropagation();
-              confirmarEliminacion(rowData);
-            }}
-            tooltip="Eliminar"
-          />
-        )}
-      </>
-    );
-  };
+          }
+        }}
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+      />
+      <Button
+        icon="pi pi-trash"
+        className="p-button-rounded p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={() => {
+          if (permisos.puedeEliminar) {
+            confirmarEliminacion(rowData);
+          }
+        }}
+        tooltip="Eliminar"
+      />
+    </div>
+  );
 
   return (
     <div className="p-m-4">
@@ -274,11 +324,24 @@ const TiposDocIdentidad = () => {
         value={tiposDoc}
         loading={loading}
         dataKey="id"
+        size="small"
+        showGridlines
+        stripedRows
         paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} tipos de documentos"
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => editarTipoDoc(e.data)
+            : undefined
+        }
         globalFilter={globalFilter}
         globalFilterFields={["codigo", "codSunat", "nombre"]}
         emptyMessage="No se encontraron tipos de documentos"
@@ -290,6 +353,7 @@ const TiposDocIdentidad = () => {
               label="Nuevo"
               icon="pi pi-plus"
               className="p-button-success"
+              disabled={!permisos.puedeCrear}
               size="small"
               outlined
               raised
@@ -303,11 +367,8 @@ const TiposDocIdentidad = () => {
             />
           </div>
         }
-        onRowClick={(e) => editarTipoDoc(e.data)}
-        className="datatable-responsive"
         scrollable
         scrollHeight="600px"
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
         <Column field="id" header="ID" sortable style={{ minWidth: "60px" }} />
         <Column
@@ -379,10 +440,12 @@ const TiposDocIdentidad = () => {
         onHide={cerrarDialogo}
       >
         <TiposDocIdentidadForm
-          tipoDoc={tipoDocSeleccionado}
-          onSave={onGuardar}
+          isEdit={modoEdicion}
+          defaultValues={tipoDocSeleccionado}
+          onSubmit={onSubmitForm}
           onCancel={cerrarDialogo}
-          toast={toast}
+          loading={formLoading}
+          readOnly={modoEdicion && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

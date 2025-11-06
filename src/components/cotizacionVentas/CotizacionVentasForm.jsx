@@ -1,535 +1,1179 @@
-// src/components/cotizacionVentas/CotizacionVentasForm.jsx
-// Formulario profesional para CotizacionVentas con 4 pestañas y validaciones completas
-// Cumple regla transversal ERP Megui: normalización de IDs, campos decimales con 2 decimales, documentación en español
-import React, { useState, useEffect, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { InputText } from 'primereact/inputtext';
-import { InputNumber } from 'primereact/inputnumber';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { Dropdown } from 'primereact/dropdown';
-import { Calendar } from 'primereact/calendar';
-import { Button } from 'primereact/button';
-import { Toast } from 'primereact/toast';
-import { TabView, TabPanel } from 'primereact/tabview';
-import { crearCotizacionVentas, actualizarCotizacionVentas } from '../../api/cotizacionVentas';
-import { getEmpresas } from '../../api/empresa';
-import { getPersonal } from '../../api/personal';
-import { getCentrosCosto } from '../../api/centroCosto';
-
 /**
- * Componente CotizacionVentasForm
- * Formulario avanzado con 4 pestañas para gestión completa de cotizaciones de ventas
- * Incluye validaciones, normalización de IDs y manejo de múltiples relaciones según patrón ERP Megui
+ * Formulario principal para Cotización de Ventas
+ *
+ * Características:
+ * - Navegación por cards con 7 secciones
+ * - Validación completa con react-hook-form
+ * - Integración con múltiples catálogos
+ * - Cálculo automático de factor de exportación
+ * - Generación de PDFs
+ *
+ * @author ERP Megui
+ * @version 1.0.0
  */
-const CotizacionVentasForm = ({ cotizacion, onSave, onCancel }) => {
-  const { control, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm({
-    defaultValues: {
-      empresaId: null,
-      tipoProductoId: 1,
-      tipoEstadoProductoId: 1,
-      destinoProductoId: 1,
-      formaTransaccionId: 1,
-      modoDespachoRecepcionId: 1,
-      respVentasId: null,
-      fechaEntrega: null,
-      autorizaVentaId: null,
-      tipoCambio: 3.75,
-      contactoClienteId: 1,
-      clienteId: 1,
-      dirFiscalId: 1,
-      dirEntregaId: 1,
-      bancoId: 1,
-      formaPagoId: 1,
-      respEmbarqueId: null,
-      respProduccionId: null,
-      respAlmacenId: null,
-      incotermsId: 1,
-      idPaisDestino: 1,
-      estadoCotizacionId: 1,
-      centroCostoId: null,
-      observaciones: ''
+
+import React, { useState, useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { Dialog } from "primereact/dialog";
+import { Button } from "primereact/button";
+import { Toast } from "primereact/toast";
+import { Tag } from "primereact/tag";
+import { ConfirmDialog } from "primereact/confirmdialog";
+
+// Importar APIs
+import {
+  crearCotizacionVentas,
+  actualizarCotizacionVentas,
+  getCotizacionVentasPorId,
+  getSeriesDoc,
+} from "../../api/cotizacionVentas";
+import { getClientesPorEmpresa } from "../../api/entidadComercial";
+import { getIncoterms } from "../../api/incoterm";
+import { getPuertosActivos } from "../../api/puertoPesca";
+import { getBancos } from "../../api/banco";
+import { getPaises } from "../../api/pais";
+import { getAllFormaTransaccion } from "../../api/formaTransaccion";
+import { getAllModoDespachoRecepcion } from "../../api/modoDespachoRecepcion";
+import { getParametrosAprobadorPorModulo } from "../../api/parametroAprobador";
+
+// Importar componentes de cards
+import DatosGeneralesCotizacionCard from "./DatosGeneralesCotizacionCard";
+import DetCotizacionVentasCard from "./DetCotizacionVentasCard";
+import CostosExportacionCard from "./CostosExportacionCard";
+import DocumentosRequeridosCard from "./DocumentosRequeridosCard";
+import EntregaARendirCard from "./EntregaARendirCard";
+import VerImpresionCotizacionVentasPDF from "./VerImpresionCotizacionVentasPDF";
+import VerImpresionDocumentacionPDF from "./VerImpresionDocumentacionPDF";
+
+const CotizacionVentasForm = ({
+  cotizacion: cotizacionInicial = null,
+  onSave,
+  onCancel,
+  empresas = [],
+  tiposDocumento = [],
+  clientes: clientesProp = [],
+  tiposProducto = [],
+  tiposEstadoProducto = [],
+  destinosProducto = [],
+  formasPago = [],
+  productos = [],
+  personalOptions = [],
+  estadosDoc = [],
+  centrosCosto = [],
+  tiposMovimiento = [],
+  monedas = [],
+  empresaFija = null,
+  loading: loadingProp = false,
+  toast: toastProp,
+}) => {
+  const [activeCard, setActiveCard] = useState("datos-generales");
+  const [loading, setLoading] = useState(false);
+  const [cotizacion, setCotizacion] = useState(cotizacionInicial);
+  const toast = useRef(toastProp || null);
+
+  // Estados individuales para datos principales (siguiendo patrón RequerimientoCompraForm)
+  const [empresaId, setEmpresaId] = useState(
+    cotizacionInicial?.empresaId || empresaFija || null
+  );
+  const [clienteId, setClienteId] = useState(
+    cotizacionInicial?.clienteId || null
+  );
+  const [numeroDocumento, setNumeroDocumento] = useState(
+    cotizacionInicial?.numeroDocumento || ""
+  );
+  const [tipoDocumentoId, setTipoDocumentoId] = useState(
+    cotizacionInicial?.tipoDocumentoId || 18 // Cotización Venta - FIJO
+  );
+  const [serieDocId, setSerieDocId] = useState(
+    cotizacionInicial?.serieDocId || null
+  );
+  const [numSerieDoc, setNumSerieDoc] = useState(
+    cotizacionInicial?.numSerieDoc || ""
+  );
+  const [numCorreDoc, setNumCorreDoc] = useState(
+    cotizacionInicial?.numCorreDoc || ""
+  );
+
+  // Estados para fechas (modelo completo)
+  const [fechaDocumento, setFechaDocumento] = useState(
+    cotizacionInicial?.fechaDocumento
+      ? new Date(cotizacionInicial.fechaDocumento)
+      : new Date()
+  );
+  const [fechaVencimiento, setFechaVencimiento] = useState(
+    cotizacionInicial?.fechaVencimiento
+      ? new Date(cotizacionInicial.fechaVencimiento)
+      : null
+  );
+  const [fechaEntregaEstimada, setFechaEntregaEstimada] = useState(
+    cotizacionInicial?.fechaEntregaEstimada
+      ? new Date(cotizacionInicial.fechaEntregaEstimada)
+      : null
+  );
+  const [fechaZarpeEstimada, setFechaZarpeEstimada] = useState(
+    cotizacionInicial?.fechaZarpeEstimada
+      ? new Date(cotizacionInicial.fechaZarpeEstimada)
+      : null
+  );
+  const [fechaArriboEstimada, setFechaArriboEstimada] = useState(
+    cotizacionInicial?.fechaArriboEstimada
+      ? new Date(cotizacionInicial.fechaArriboEstimada)
+      : null
+  );
+  const [diasTransito, setDiasTransito] = useState(
+    cotizacionInicial?.diasTransito || null
+  );
+
+  // Estados para cliente y contactos
+  const [contactoClienteId, setContactoClienteId] = useState(
+    cotizacionInicial?.contactoClienteId || null
+  );
+  const [dirEntregaId, setDirEntregaId] = useState(
+    cotizacionInicial?.dirEntregaId || null
+  );
+  const [dirFiscalId, setDirFiscalId] = useState(
+    cotizacionInicial?.dirFiscalId || null
+  );
+
+  // Estados para responsables (6 responsables - modelo completo)
+  const [respVentasId, setRespVentasId] = useState(
+    cotizacionInicial?.respVentasId || null
+  );
+  const [autorizaVentaId, setAutorizaVentaId] = useState(
+    cotizacionInicial?.autorizaVentaId || null
+  );
+  const [supervisorVentaCampoId, setSupervisorVentaCampoId] = useState(
+    cotizacionInicial?.supervisorVentaCampoId || null
+  );
+  const [respEmbarqueId, setRespEmbarqueId] = useState(
+    cotizacionInicial?.respEmbarqueId || null
+  );
+  const [respProduccionId, setRespProduccionId] = useState(
+    cotizacionInicial?.respProduccionId || null
+  );
+  const [respAlmacenId, setRespAlmacenId] = useState(
+    cotizacionInicial?.respAlmacenId || null
+  );
+
+  // Estados para datos comerciales
+  const [tipoProductoId, setTipoProductoId] = useState(
+    cotizacionInicial?.tipoProductoId || null
+  );
+  const [formaPagoId, setFormaPagoId] = useState(
+    cotizacionInicial?.formaPagoId || null
+  );
+  const [bancoId, setBancoId] = useState(cotizacionInicial?.bancoId || null);
+  const [monedaId, setMonedaId] = useState(cotizacionInicial?.monedaId || null);
+  const [tipoCambio, setTipoCambio] = useState(
+    cotizacionInicial?.tipoCambio || 3.75
+  );
+
+  // Estados para exportación
+  const [esExportacion, setEsExportacion] = useState(
+    cotizacionInicial?.esExportacion !== undefined
+      ? cotizacionInicial.esExportacion
+      : true
+  );
+  const [paisDestinoId, setPaisDestinoId] = useState(
+    cotizacionInicial?.paisDestinoId || null
+  );
+  const [incotermsId, setIncotermsId] = useState(
+    cotizacionInicial?.incotermsId || null
+  );
+  const [puertoCargaId, setPuertoCargaId] = useState(
+    cotizacionInicial?.puertoCargaId || null
+  );
+  const [puertoDescargaId, setPuertoDescargaId] = useState(
+    cotizacionInicial?.puertoDescargaId || null
+  );
+
+  // Estados para logística
+  const [agenteAduanasId, setAgenteAduanasId] = useState(
+    cotizacionInicial?.agenteAduanasId || null
+  );
+  const [operadorLogisticoId, setOperadorLogisticoId] = useState(
+    cotizacionInicial?.operadorLogisticoId || null
+  );
+  const [navieraId, setNavieraId] = useState(
+    cotizacionInicial?.navieraId || null
+  );
+  const [tipoContenedorId, setTipoContenedorId] = useState(
+    cotizacionInicial?.tipoContenedorId || null
+  );
+  const [cantidadContenedores, setCantidadContenedores] = useState(
+    cotizacionInicial?.cantidadContenedores || null
+  );
+  const [pesoMaximoContenedor, setPesoMaximoContenedor] = useState(
+    cotizacionInicial?.pesoMaximoContenedor || null
+  );
+
+  // Estados para impuestos
+  const [porcentajeIGV, setPorcentajeIGV] = useState(
+    cotizacionInicial?.porcentajeIGV || null
+  );
+  const [esExoneradoAlIGV, setEsExoneradoAlIGV] = useState(
+    cotizacionInicial?.esExoneradoAlIGV !== undefined
+      ? cotizacionInicial.esExoneradoAlIGV
+      : false
+  );
+
+  // Estados para cálculos
+  const [metodoCalculoFactor, setMetodoCalculoFactor] = useState(
+    cotizacionInicial?.metodoCalculoFactor || "PORCENTUAL"
+  );
+  const [factorExportacion, setFactorExportacion] = useState(
+    cotizacionInicial?.factorExportacion || 1.0
+  );
+  const [margenUtilidadPorcentaje, setMargenUtilidadPorcentaje] = useState(
+    cotizacionInicial?.margenUtilidadPorcentaje || null
+  );
+
+  // Estados para adelantos
+  const [montoAdelantadoCliente, setMontoAdelantadoCliente] = useState(
+    cotizacionInicial?.montoAdelantadoCliente || null
+  );
+  const [porcentajeAdelanto, setPorcentajeAdelanto] = useState(
+    cotizacionInicial?.porcentajeAdelanto || null
+  );
+
+  // Estados para aprobación
+  const [estadoId, setEstadoId] = useState(cotizacionInicial?.estadoId || null);
+  const [motivoRechazo, setMotivoRechazo] = useState(
+    cotizacionInicial?.motivoRechazo || null
+  );
+  const [fechaAprobacion, setFechaAprobacion] = useState(
+    cotizacionInicial?.fechaAprobacion
+      ? new Date(cotizacionInicial.fechaAprobacion)
+      : null
+  );
+  const [aprobadoPorId, setAprobadoPorId] = useState(
+    cotizacionInicial?.aprobadoPorId || null
+  );
+
+  // Estados para conversión a prefactura
+  const [prefacturaVentaId, setPrefacturaVentaId] = useState(
+    cotizacionInicial?.prefacturaVentaId || null
+  );
+  const [fechaConversionPreFactura, setFechaConversionPreFactura] = useState(
+    cotizacionInicial?.fechaConversionPreFactura
+      ? new Date(cotizacionInicial.fechaConversionPreFactura)
+      : null
+  );
+  const [usuarioConversionId, setUsuarioConversionId] = useState(
+    cotizacionInicial?.usuarioConversionId || null
+  );
+
+  // Estados para campos SUNAT
+  const [destinoProductoId, setDestinoProductoId] = useState(
+    cotizacionInicial?.destinoProductoId || null
+  );
+  const [formaTransaccionId, setFormaTransaccionId] = useState(
+    cotizacionInicial?.formaTransaccionId || null
+  );
+  const [modoDespachoRecepcionId, setModoDespachoRecepcionId] = useState(
+    cotizacionInicial?.modoDespachoRecepcionId || null
+  );
+  const [tipoEstadoProductoId, setTipoEstadoProductoId] = useState(
+    cotizacionInicial?.tipoEstadoProductoId || null
+  );
+
+  // Estados para observaciones y URLs
+  const [observaciones, setObservaciones] = useState(
+    cotizacionInicial?.observaciones || ""
+  );
+  const [observacionesInternas, setObservacionesInternas] = useState(
+    cotizacionInicial?.observacionesInternas || ""
+  );
+  const [urlCotizacionPdf, setUrlCotizacionPdf] = useState(
+    cotizacionInicial?.urlCotizacionPdf || null
+  );
+  const [urlDocumentacionRequeridaPdf, setUrlDocumentacionRequeridaPdf] =
+    useState(cotizacionInicial?.urlDocumentacionRequeridaPdf || null);
+
+  // Estados para sistema
+  const [centroCostoId, setCentroCostoId] = useState(
+    cotizacionInicial?.centroCostoId || null
+  );
+  const [creadoPor, setCreadoPor] = useState(
+    cotizacionInicial?.creadoPor || null
+  );
+  const [actualizadoPor, setActualizadoPor] = useState(
+    cotizacionInicial?.actualizadoPor || null
+  );
+
+  // Estados para catálogos adicionales que no vienen de props
+  const [clientes, setClientes] = useState(clientesProp);
+  const [seriesDoc, setSeriesDoc] = useState([]);
+  const [incoterms, setIncoterms] = useState([]);
+  const [puertos, setPuertos] = useState([]);
+  const [bancos, setBancos] = useState([]);
+  const [paises, setPaises] = useState([]);
+  const [formasTransaccion, setFormasTransaccion] = useState([]);
+  const [modosDespacho, setModosDespacho] = useState([]);
+
+  // Estados para responsables (se cargan por empresa)
+  const [responsablesVentas, setResponsablesVentas] = useState([]);
+  const [responsablesEmbarque, setResponsablesEmbarque] = useState([]);
+  const [responsablesProduccion, setResponsablesProduccion] = useState([]);
+  const [responsablesAlmacen, setResponsablesAlmacen] = useState([]);
+  const [responsablesAutorizaVenta, setResponsablesAutorizaVenta] = useState(
+    []
+  );
+  const [responsablesSupervisorCampo, setResponsablesSupervisorCampo] =
+    useState([]);
+
+  // Estados para detalles
+  const [detalles, setDetalles] = useState([]);
+  const [costos, setCostos] = useState([]);
+  const [documentos, setDocumentos] = useState([]);
+
+  // useForm eliminado - ahora se usa estados individuales (patrón RequerimientoCompraForm)
+
+  // Handler genérico para cambios de campos (patrón RequerimientoCompraForm)
+  const handleChange = (field, value) => {
+    const setters = {
+      // Datos principales
+      empresaId: setEmpresaId,
+      clienteId: setClienteId,
+      tipoDocumentoId: setTipoDocumentoId,
+      serieDocId: setSerieDocId,
+      numSerieDoc: setNumSerieDoc,
+      numCorreDoc: setNumCorreDoc,
+      numeroDocumento: setNumeroDocumento,
+
+      // Fechas
+      fechaDocumento: setFechaDocumento,
+      fechaVencimiento: setFechaVencimiento,
+      fechaEntregaEstimada: setFechaEntregaEstimada,
+      fechaZarpeEstimada: setFechaZarpeEstimada,
+      fechaArriboEstimada: setFechaArriboEstimada,
+      diasTransito: setDiasTransito,
+
+      // Cliente y contactos
+      contactoClienteId: setContactoClienteId,
+      dirEntregaId: setDirEntregaId,
+      dirFiscalId: setDirFiscalId,
+
+      // Responsables
+      respVentasId: setRespVentasId,
+      autorizaVentaId: setAutorizaVentaId,
+      supervisorVentaCampoId: setSupervisorVentaCampoId,
+      respEmbarqueId: setRespEmbarqueId,
+      respProduccionId: setRespProduccionId,
+      respAlmacenId: setRespAlmacenId,
+
+      // Datos comerciales
+      tipoProductoId: setTipoProductoId,
+      formaPagoId: setFormaPagoId,
+      bancoId: setBancoId,
+      monedaId: setMonedaId,
+      tipoCambio: setTipoCambio,
+
+      // Exportación
+      esExportacion: setEsExportacion,
+      paisDestinoId: setPaisDestinoId,
+      incotermsId: setIncotermsId,
+      puertoCargaId: setPuertoCargaId,
+      puertoDescargaId: setPuertoDescargaId,
+
+      // Logística
+      agenteAduanasId: setAgenteAduanasId,
+      operadorLogisticoId: setOperadorLogisticoId,
+      navieraId: setNavieraId,
+      tipoContenedorId: setTipoContenedorId,
+      cantidadContenedores: setCantidadContenedores,
+      pesoMaximoContenedor: setPesoMaximoContenedor,
+
+      // Impuestos
+      porcentajeIGV: setPorcentajeIGV,
+      esExoneradoAlIGV: setEsExoneradoAlIGV,
+
+      // Cálculos
+      metodoCalculoFactor: setMetodoCalculoFactor,
+      factorExportacion: setFactorExportacion,
+      margenUtilidadPorcentaje: setMargenUtilidadPorcentaje,
+
+      // Adelantos
+      montoAdelantadoCliente: setMontoAdelantadoCliente,
+      porcentajeAdelanto: setPorcentajeAdelanto,
+
+      // Aprobación
+      estadoId: setEstadoId,
+      motivoRechazo: setMotivoRechazo,
+      fechaAprobacion: setFechaAprobacion,
+      aprobadoPorId: setAprobadoPorId,
+
+      // Conversión a prefactura
+      prefacturaVentaId: setPrefacturaVentaId,
+      fechaConversionPreFactura: setFechaConversionPreFactura,
+      usuarioConversionId: setUsuarioConversionId,
+
+      // Campos SUNAT
+      destinoProductoId: setDestinoProductoId,
+      formaTransaccionId: setFormaTransaccionId,
+      modoDespachoRecepcionId: setModosDespachoRecepcionId,
+      tipoEstadoProductoId: setTipoEstadoProductoId,
+
+      // Observaciones y URLs
+      observaciones: setObservaciones,
+      observacionesInternas: setObservacionesInternas,
+      urlCotizacionPdf: setUrlCotizacionPdf,
+      urlDocumentacionRequeridaPdf: setUrlDocumentacionRequeridaPdf,
+
+      // Sistema
+      centroCostoId: setCentroCostoId,
+      creadoPor: setCreadoPor,
+      actualizadoPor: setActualizadoPor,
+    };
+
+    const setter = setters[field];
+    if (setter) {
+      setter(value);
     }
+  };
+
+  // Handler especial para cambio de serie de documento (patrón RequerimientoCompraForm)
+  const handleSerieDocChange = (serieId) => {
+    if (serieId) {
+      const serie = seriesDoc.find((s) => Number(s.id) === Number(serieId));
+      if (serie) {
+        // Mostrar formato de referencia (no el número real)
+        const correlativoActual = Number(serie.correlativo);
+        const proximoCorrelativo = correlativoActual + 1;
+        const numSerie = String(serie.serie).padStart(
+          serie.numCerosIzqSerie,
+          "0"
+        );
+        const numCorre = String(proximoCorrelativo).padStart(
+          serie.numCerosIzqCorrelativo,
+          "0"
+        );
+
+        setSerieDocId(serieId);
+        setNumSerieDoc(numSerie);
+        setNumCorreDoc(numCorre);
+
+        // Construir número de documento completo
+        const numeroDocCompleto = `${numSerie}-${numCorre}`;
+        setNumeroDocumento(numeroDocCompleto);
+      }
+    } else {
+      // Limpiar campos si se deselecciona la serie
+      setSerieDocId(null);
+      setNumSerieDoc("");
+      setNumCorreDoc("");
+      setNumeroDocumento("");
+    }
+  };
+
+  // Crear objeto formData temporal para componentes hijos
+  const formData = {
+    // Datos principales (completos del modelo)
+    id: cotizacionInicial?.id,
+    codigo: cotizacionInicial?.codigo,
+    version: cotizacionInicial?.version || 1,
+    cotizacionPadreId: cotizacionInicial?.cotizacionPadreId,
+
+    // Datos del documento (estados individuales)
+    empresaId,
+    tipoDocumentoId,
+    serieDocId,
+    numSerieDoc,
+    numCorreDoc,
+    numeroDocumento,
+    fechaDocumento: cotizacionInicial?.fechaDocumento || new Date(),
+    fechaVencimiento: cotizacionInicial?.fechaVencimiento || null,
+
+    // Cliente
+    clienteId,
+    contactoClienteId: cotizacionInicial?.contactoClienteId || null,
+    dirEntregaId: cotizacionInicial?.dirEntregaId || null,
+    dirFiscalId: cotizacionInicial?.dirFiscalId || null,
+
+    // Responsables
+    respVentasId: cotizacionInicial?.respVentasId || null,
+    autorizaVentaId: cotizacionInicial?.autorizaVentaId || null,
+    supervisorVentaCampoId: cotizacionInicial?.supervisorVentaCampoId || null,
+    respEmbarqueId: cotizacionInicial?.respEmbarqueId || null,
+    respProduccionId: cotizacionInicial?.respProduccionId || null,
+    respAlmacenId: cotizacionInicial?.respAlmacenId || null,
+
+    // Datos comerciales (estados individuales)
+    tipoProductoId,
+    formaPagoId,
+    bancoId: cotizacionInicial?.bancoId || null,
+    monedaId: cotizacionInicial?.monedaId || null,
+    tipoCambio: cotizacionInicial?.tipoCambio || 3.75,
+
+    // Datos de exportación
+    esExportacion:
+      cotizacionInicial?.esExportacion !== undefined
+        ? cotizacionInicial.esExportacion
+        : true,
+    paisDestinoId: cotizacionInicial?.paisDestinoId || null,
+    incotermsId: cotizacionInicial?.incotermsId || null,
+    puertoCargaId: cotizacionInicial?.puertoCargaId || null,
+    puertoDescargaId: cotizacionInicial?.puertoDescargaId || null,
+
+    // Logística (campos completos del modelo)
+    agenteAduanasId: cotizacionInicial?.agenteAduanasId || null,
+    operadorLogisticoId: cotizacionInicial?.operadorLogisticoId || null,
+    navieraId: cotizacionInicial?.navieraId || null,
+    tipoContenedorId: cotizacionInicial?.tipoContenedorId || null,
+    cantidadContenedores: cotizacionInicial?.cantidadContenedores || null,
+    pesoMaximoContenedor: cotizacionInicial?.pesoMaximoContenedor || null,
+
+    // Fechas logísticas
+    fechaEntregaEstimada: cotizacionInicial?.fechaEntregaEstimada || null,
+    fechaZarpeEstimada: cotizacionInicial?.fechaZarpeEstimada || null,
+    fechaArriboEstimada: cotizacionInicial?.fechaArriboEstimada || null,
+    diasTransito: cotizacionInicial?.diasTransito || null,
+
+    // Impuestos
+    porcentajeIGV: cotizacionInicial?.porcentajeIGV || null,
+    esExoneradoAlIGV:
+      cotizacionInicial?.esExoneradoAlIGV !== undefined
+        ? cotizacionInicial.esExoneradoAlIGV
+        : false,
+
+    // Cálculo de costos y utilidad
+    metodoCalculoFactor: cotizacionInicial?.metodoCalculoFactor || "PORCENTUAL",
+    factorExportacion: cotizacionInicial?.factorExportacion || 1.0,
+    margenUtilidadPorcentaje:
+      cotizacionInicial?.margenUtilidadPorcentaje || null,
+
+    // Adelantos
+    montoAdelantadoCliente: cotizacionInicial?.montoAdelantadoCliente || null,
+    porcentajeAdelanto: cotizacionInicial?.porcentajeAdelanto || null,
+
+    // Estado y aprobación
+    estadoId: cotizacionInicial?.estadoId || null,
+    motivoRechazo: cotizacionInicial?.motivoRechazo || null,
+    fechaAprobacion: cotizacionInicial?.fechaAprobacion || null,
+    aprobadoPorId: cotizacionInicial?.aprobadoPorId || null,
+
+    // Conversión a PreFactura
+    prefacturaVentaId: cotizacionInicial?.prefacturaVentaId || null,
+    fechaConversionPreFactura:
+      cotizacionInicial?.fechaConversionPreFactura || null,
+    usuarioConversionId: cotizacionInicial?.usuarioConversionId || null,
+
+    // Campos SUNAT
+    destinoProductoId: cotizacionInicial?.destinoProductoId || null,
+    formaTransaccionId: cotizacionInicial?.formaTransaccionId || null,
+    modoDespachoRecepcionId: cotizacionInicial?.modoDespachoRecepcionId || null,
+    tipoEstadoProductoId: cotizacionInicial?.tipoEstadoProductoId || null,
+
+    // Observaciones
+    observaciones: cotizacionInicial?.observaciones || "",
+    observacionesInternas: cotizacionInicial?.observacionesInternas || "",
+    urlCotizacionPdf: cotizacionInicial?.urlCotizacionPdf || null,
+    urlDocumentacionRequeridaPdf:
+      cotizacionInicial?.urlDocumentacionRequeridaPdf || null,
+
+    // Centro de costo
+    centroCostoId: cotizacionInicial?.centroCostoId || null,
+
+    // Auditoría
+    fechaCreacion: cotizacionInicial?.fechaCreacion,
+    fechaActualizacion: cotizacionInicial?.fechaActualizacion,
+    creadoPor: cotizacionInicial?.creadoPor || null,
+    actualizadoPor: cotizacionInicial?.actualizadoPor || null,
+
+    // Relaciones completas del backend
+    empresa: cotizacionInicial?.empresa,
+    cliente: cotizacionInicial?.cliente,
+    tipoDocumento: cotizacionInicial?.tipoDocumento,
+    moneda: cotizacionInicial?.moneda,
+    formaPago: cotizacionInicial?.formaPago,
+    incoterms: cotizacionInicial?.incoterms,
+    tipoProducto: cotizacionInicial?.tipoProducto,
+    tipoEstadoProducto: cotizacionInicial?.tipoEstadoProducto,
+    destinoProducto: cotizacionInicial?.destinoProducto,
+    formaTransaccion: cotizacionInicial?.formaTransaccion,
+    modoDespachoRecepcion: cotizacionInicial?.modoDespachoRecepcion,
+  };
+
+  const seriesDocOptions = seriesDoc.map((s) => {
+    const correlativoActual = Number(s.correlativo);
+    return {
+      ...s,
+      id: Number(s.id),
+      label: `${s.serie} (Correlativo: ${correlativoActual})`,
+      value: Number(s.id),
+    };
   });
 
-  const [empresas, setEmpresas] = useState([]);
-  const [personal, setPersonal] = useState([]);
-  const [centrosCosto, setCentrosCosto] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const toast = useRef(null);
-
-  // Opciones para dropdowns estáticos
-  const tiposProducto = [
-    { label: 'Harina de Pescado', value: 1 },
-    { label: 'Aceite de Pescado', value: 2 },
-    { label: 'Conservas', value: 3 },
-    { label: 'Congelado', value: 4 }
-  ];
-
-  const estadosCotizacion = [
-    { label: 'Borrador', value: 1 },
-    { label: 'Enviada', value: 2 },
-    { label: 'Aprobada', value: 3 },
-    { label: 'Rechazada', value: 4 }
-  ];
-
   useEffect(() => {
-    cargarDatos();
+    cargarCatalogos();
   }, []);
 
-  const cargarDatos = async () => {
+  useEffect(() => {
+    if (cotizacionInicial) {
+      cargarDatosCotizacion(cotizacionInicial);
+    }
+  }, [cotizacionInicial]);
+
+  // Cargar clientes cuando cambie la empresa
+  useEffect(() => {
+    const cargarClientesEmpresa = async () => {
+      if (empresaId) {
+        try {
+          const clientesData = await getClientesPorEmpresa(empresaId);
+          setClientes(clientesData);
+        } catch (error) {
+          console.error("Error al cargar clientes:", error);
+        }
+      }
+    };
+    cargarClientesEmpresa();
+  }, [empresaId]);
+
+  // Cargar series de documento cuando cambie el tipo de documento
+  useEffect(() => {
+    const cargarSeriesDocumento = async () => {
+      if (empresaId && tipoDocumentoId) {
+        try {
+          const series = await getSeriesDoc(empresaId, tipoDocumentoId);
+          setSeriesDoc(series);
+        } catch (error) {
+          console.error("Error al cargar series:", error);
+          setSeriesDoc([]);
+        }
+      } else {
+        setSeriesDoc([]);
+      }
+    };
+    cargarSeriesDocumento();
+  }, [empresaId, tipoDocumentoId]);
+
+  // Cargar responsables de ventas (moduloSistemaId = 5)
+  useEffect(() => {
+    const cargarResponsablesVentas = async () => {
+      if (empresaId) {
+        try {
+          const responsables = await getParametrosAprobadorPorModulo(
+            empresaId,
+            5
+          );
+          setResponsablesVentas(responsables);
+          // Asignar automáticamente si solo hay uno
+          if (responsables.length === 1 && !cotizacionInicial?.respVentasId) {
+            setValue("respVentasId", Number(responsables[0].personalRespId));
+          }
+        } catch (err) {
+          console.error("Error al cargar responsables de ventas:", err);
+          setResponsablesVentas([]);
+        }
+      }
+    };
+    cargarResponsablesVentas();
+  }, [empresaId]);
+
+  // Cargar responsables de embarque (moduloSistemaId = 14)
+  useEffect(() => {
+    const cargarResponsablesEmbarque = async () => {
+      if (empresaId) {
+        try {
+          const responsables = await getParametrosAprobadorPorModulo(
+            empresaId,
+            14
+          );
+          setResponsablesEmbarque(responsables);
+          // Asignar automáticamente si solo hay uno
+          if (responsables.length === 1 && !cotizacionInicial?.respEmbarqueId) {
+            setRespEmbarqueId(Number(responsables[0].personalRespId));
+          }
+        } catch (err) {
+          console.error("Error al cargar responsables de embarque:", err);
+          setResponsablesEmbarque([]);
+        }
+      }
+    };
+    cargarResponsablesEmbarque();
+  }, [empresaId]);
+
+  // Cargar responsables de producción (moduloSistemaId = 13)
+  useEffect(() => {
+    const cargarResponsablesProduccion = async () => {
+      if (empresaId) {
+        try {
+          const responsables = await getParametrosAprobadorPorModulo(
+            empresaId,
+            13
+          );
+          setResponsablesProduccion(responsables);
+          // Asignar automáticamente si solo hay uno
+          if (
+            responsables.length === 1 &&
+            !cotizacionInicial?.respProduccionId
+          ) {
+            setRespProduccionId(Number(responsables[0].personalRespId));
+          }
+        } catch (err) {
+          console.error("Error al cargar responsables de producción:", err);
+          setResponsablesProduccion([]);
+        }
+      }
+    };
+    cargarResponsablesProduccion();
+  }, [empresaId]);
+
+  // Cargar responsables de almacén (moduloSistemaId = 6)
+  useEffect(() => {
+    const cargarResponsablesAlmacen = async () => {
+      if (empresaId) {
+        try {
+          const responsables = await getParametrosAprobadorPorModulo(
+            empresaId,
+            6
+          );
+          setResponsablesAlmacen(responsables);
+          // Asignar automáticamente si solo hay uno
+          if (responsables.length === 1 && !cotizacionInicial?.respAlmacenId) {
+            setRespAlmacenId(Number(responsables[0].personalRespId));
+          }
+        } catch (err) {
+          console.error("Error al cargar responsables de almacén:", err);
+          setResponsablesAlmacen([]);
+        }
+      }
+    };
+    cargarResponsablesAlmacen();
+  }, [empresaId]);
+
+  const cargarCatalogos = async () => {
     try {
-      const [empresasData, personalData, centrosCostoData] = await Promise.all([
-        getEmpresas(),
-        getPersonal(),
-        getCentrosCosto()
+      // Solo cargar catálogos que NO vienen como props
+      const [
+        incotermsData,
+        puertosData,
+        bancosData,
+        paisesData,
+        formasTransData,
+        modosDespachoData,
+      ] = await Promise.all([
+        getIncoterms(),
+        getPuertosActivos(),
+        getBancos(),
+        getPaises(),
+        getAllFormaTransaccion(),
+        getAllModoDespachoRecepcion(),
       ]);
 
-      // Normalizar IDs a números según regla ERP Megui
-      setEmpresas(empresasData.map(e => ({ 
-        ...e, 
-        id: Number(e.id),
-        label: e.razonSocial,
-        value: Number(e.id)
-      })));
-
-      setPersonal(personalData.map(p => ({ 
-        ...p, 
-        id: Number(p.id),
-        label: `${p.nombres} ${p.apellidos}`,
-        value: Number(p.id)
-      })));
-
-      setCentrosCosto(centrosCostoData.map(cc => ({ 
-        ...cc, 
-        id: Number(cc.id),
-        label: `${cc.codigo} - ${cc.nombre}`,
-        value: Number(cc.id)
-      })));
-
+      setIncoterms(incotermsData);
+      setPuertos(puertosData);
+      setBancos(bancosData);
+      setPaises(paisesData);
+      setFormasTransaccion(formasTransData);
+      setModosDespacho(modosDespachoData);
     } catch (error) {
-      console.error('Error al cargar datos:', error);
+      console.error("Error al cargar catálogos:", error);
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al cargar los datos del formulario'
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar datos del formulario",
+        life: 3000,
       });
     }
   };
 
-  const onSubmit = async (data) => {
+  const cargarDatosCotizacion = async (cot) => {
+    try {
+      setCotizacion(cot);
+
+      // Cargar clientes de la empresa
+      if (cot.empresaId) {
+        const clientesData = await getClientesPorEmpresa(cot.empresaId);
+        setClientes(clientesData);
+      }
+
+      // Cargar detalles si existe ID
+      if (cot.id) {
+        // Aquí cargarías los detalles desde la API
+        // setDetalles(await getDetallesCotizacion(cot.id));
+        // setCostos(await getCostosCotizacion(cot.id));
+        // setDocumentos(await getDocumentosCotizacion(cot.id));
+      }
+
+      // Setear valores en el formulario usando handleChange
+      Object.keys(cot).forEach((key) => {
+        if (cot[key] !== null && cot[key] !== undefined) {
+          handleChange(key, cot[key]);
+        }
+      });
+    } catch (error) {
+      console.error("Error al cargar cotización:", error);
+    }
+  };
+
+  const handleNavigateToCard = (cardName) => {
+    setActiveCard(cardName);
+  };
+
+  const handleFormSubmit = async () => {
     try {
       setLoading(true);
 
-      // Preparar payload con validaciones
+      // Usar formData actual en lugar de data de useForm
       const payload = {
-        empresaId: Number(data.empresaId),
-        tipoProductoId: Number(data.tipoProductoId),
-        tipoEstadoProductoId: Number(data.tipoEstadoProductoId),
-        destinoProductoId: Number(data.destinoProductoId),
-        formaTransaccionId: Number(data.formaTransaccionId),
-        modoDespachoRecepcionId: Number(data.modoDespachoRecepcionId),
-        respVentasId: Number(data.respVentasId),
-        fechaEntrega: data.fechaEntrega,
-        autorizaVentaId: Number(data.autorizaVentaId),
-        tipoCambio: Number(data.tipoCambio),
-        contactoClienteId: Number(data.contactoClienteId),
-        clienteId: Number(data.clienteId),
-        dirFiscalId: Number(data.dirFiscalId),
-        dirEntregaId: Number(data.dirEntregaId),
-        bancoId: Number(data.bancoId),
-        formaPagoId: Number(data.formaPagoId),
-        respEmbarqueId: Number(data.respEmbarqueId),
-        respProduccionId: Number(data.respProduccionId),
-        respAlmacenId: Number(data.respAlmacenId),
-        incotermsId: Number(data.incotermsId),
-        idPaisDestino: Number(data.idPaisDestino),
-        estadoCotizacionId: Number(data.estadoCotizacionId),
-        centroCostoId: Number(data.centroCostoId),
-        observaciones: data.observaciones?.trim() || null
+        ...formData,
+        empresaId: Number(formData.empresaId),
+        clienteId: Number(formData.clienteId),
+        tipoDocumentoId: Number(formData.tipoDocumentoId),
+        monedaId: Number(formData.monedaId),
+        formaPagoId: Number(formData.formaPagoId),
+        tipoProductoId: Number(formData.tipoProductoId),
+        respVentasId: Number(formData.respVentasId),
+        autorizaVentaId: Number(formData.autorizaVentaId),
+        estadoId: Number(formData.estadoId),
+        centroCostoId: formData.centroCostoId
+          ? Number(formData.centroCostoId)
+          : null,
+        incotermsId: formData.incotermsId ? Number(formData.incotermsId) : null,
+        paisDestinoId: formData.paisDestinoId
+          ? Number(formData.paisDestinoId)
+          : null,
+        bancoId: formData.bancoId ? Number(formData.bancoId) : null,
+        puertoCargaId: formData.puertoCargaId
+          ? Number(formData.puertoCargaId)
+          : null,
+        puertoDescargaId: formData.puertoDescargaId
+          ? Number(formData.puertoDescargaId)
+          : null,
+        respEmbarqueId: formData.respEmbarqueId
+          ? Number(formData.respEmbarqueId)
+          : null,
+        respProduccionId: formData.respProduccionId
+          ? Number(formData.respProduccionId)
+          : null,
+        respAlmacenId: formData.respAlmacenId
+          ? Number(formData.respAlmacenId)
+          : null,
+        tipoCambio: Number(formData.tipoCambio),
+        factorExportacion: Number(formData.factorExportacion),
+        margenUtilidadPorcentaje: formData.margenUtilidadPorcentaje
+          ? Number(formData.margenUtilidadPorcentaje)
+          : null,
       };
+
+      let resultado;
       if (cotizacion?.id) {
-        await actualizarCotizacionVentas(cotizacion.id, payload);
+        resultado = await actualizarCotizacionVentas(cotizacion.id, payload);
         toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Cotización actualizada correctamente'
+          severity: "success",
+          summary: "Actualizado",
+          detail: "Cotización actualizada correctamente",
+          life: 3000,
         });
       } else {
-        await crearCotizacionVentas(payload);
+        resultado = await crearCotizacionVentas(payload);
         toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Cotización creada correctamente'
+          severity: "success",
+          summary: "Creado",
+          detail: "Cotización creada correctamente",
+          life: 3000,
         });
+        setCotizacion(resultado);
       }
 
-      onSave();
+      if (onSave) {
+        onSave(resultado);
+      }
     } catch (error) {
-      console.error('Error al guardar cotización:', error);
+      console.error("Error al guardar cotización:", error);
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: error.response?.data?.error || 'Error al guardar la cotización'
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.message || "Error al guardar la cotización",
+        life: 3000,
       });
     } finally {
       setLoading(false);
     }
   };
 
+  const handleHide = () => {
+    setActiveCard("datos-generales");
+    // Reset no se necesita más con estados individuales
+    onHide();
+  };
+
+  const dialogFooter = (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 8,
+        marginTop: 2,
+      }}
+    >
+      <div
+        style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}
+      >
+        <Button
+          icon="pi pi-info-circle"
+          tooltip="Datos Generales"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "datos-generales"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("datos-generales")}
+          type="button"
+          size="small"
+        />
+        <Button
+          icon="pi pi-list"
+          tooltip="Detalle Productos"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "detalle-productos"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("detalle-productos")}
+          type="button"
+          size="small"
+          disabled={!cotizacion?.id}
+        />
+      </div>
+
+      <div
+        style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}
+      >
+        <Button
+          icon="pi pi-dollar"
+          tooltip="Costos Exportación"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "costos-exportacion"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("costos-exportacion")}
+          type="button"
+          size="small"
+          disabled={!cotizacion?.id}
+        />
+        <Button
+          icon="pi pi-file-check"
+          tooltip="Documentos Requeridos"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "documentos-requeridos"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("documentos-requeridos")}
+          type="button"
+          size="small"
+          disabled={!cotizacion?.id}
+        />
+      </div>
+
+      <div
+        style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}
+      >
+        <Button
+          icon="pi pi-money-bill"
+          tooltip="Entrega a Rendir"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "entrega-rendir"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("entrega-rendir")}
+          type="button"
+          size="small"
+          disabled={!cotizacion?.id}
+        />
+        <Button
+          icon="pi pi-file-pdf"
+          tooltip="PDF Cotización"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "pdf-cotizacion"
+              ? "p-button-warning"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("pdf-cotizacion")}
+          type="button"
+          size="small"
+          disabled={!cotizacion?.id}
+        />
+      </div>
+
+      <div
+        style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}
+      >
+        <Button
+          icon="pi pi-file-pdf"
+          tooltip="PDF Documentación"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "pdf-documentacion"
+              ? "p-button-warning"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("pdf-documentacion")}
+          type="button"
+          size="small"
+          disabled={!cotizacion?.id}
+        />
+      </div>
+
+      <div
+        style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}
+      >
+        <Button
+          label="Cancelar"
+          icon="pi pi-times"
+          onClick={handleHide}
+          className="p-button-secondary"
+          size="small"
+        />
+        <Button
+          label={cotizacion?.id ? "Actualizar" : "Crear"}
+          icon="pi pi-check"
+          onClick={handleFormSubmit}
+          loading={loading}
+          className="p-button-success"
+          size="small"
+        />
+      </div>
+    </div>
+  );
+
   return (
-    <div className="cotizacion-ventas-form">
+    <>
       <Toast ref={toast} />
-      
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
-          
-          {/* Pestaña 1: Información General */}
-          <TabPanel header="Información General">
-            <div className="grid">
-              <div className="col-12 md:col-6">
-                <label htmlFor="empresaId" className="block text-900 font-medium mb-2">
-                  Empresa *
-                </label>
-                <Controller
-                  name="empresaId"
-                  control={control}
-                  rules={{ required: 'La empresa es obligatoria' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="empresaId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={empresas}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccionar empresa"
-                      className={`w-full ${errors.empresaId ? 'p-invalid' : ''}`}
-                      filter
-                      showClear
-                    />
-                  )}
-                />
-                {errors.empresaId && (
-                  <small className="p-error">{errors.empresaId.message}</small>
-                )}
-              </div>
+      <ConfirmDialog />
 
-              <div className="col-12 md:col-6">
-                <label htmlFor="tipoProductoId" className="block text-900 font-medium mb-2">
-                  Tipo de Producto *
-                </label>
-                <Controller
-                  name="tipoProductoId"
-                  control={control}
-                  rules={{ required: 'El tipo de producto es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="tipoProductoId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={tiposProducto}
-                      placeholder="Seleccionar tipo de producto"
-                      className={`w-full ${errors.tipoProductoId ? 'p-invalid' : ''}`}
-                    />
-                  )}
-                />
-                {errors.tipoProductoId && (
-                  <small className="p-error">{errors.tipoProductoId.message}</small>
-                )}
-              </div>
+      {/* Tag con código de cotización */}
+      <div className="flex justify-content-center mb-4">
+        <Tag
+          value={cotizacion?.codigo || "Nueva Cotización de Venta"}
+          severity={cotizacion?.id ? "success" : "info"}
+          style={{
+            fontSize: "1.1rem",
+            padding: "0.75rem 1.25rem",
+            textTransform: "uppercase",
+            fontWeight: "bold",
+            textAlign: "center",
+            width: "100%",
+            marginTop: "0.5rem",
+          }}
+        />
+      </div>
 
-              <div className="col-12 md:col-6">
-                <label htmlFor="respVentasId" className="block text-900 font-medium mb-2">
-                  Responsable de Ventas *
-                </label>
-                <Controller
-                  name="respVentasId"
-                  control={control}
-                  rules={{ required: 'El responsable de ventas es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="respVentasId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={personal}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccionar responsable"
-                      className={`w-full ${errors.respVentasId ? 'p-invalid' : ''}`}
-                      filter
-                      showClear
-                    />
-                  )}
-                />
-                {errors.respVentasId && (
-                  <small className="p-error">{errors.respVentasId.message}</small>
-                )}
-              </div>
-
-              <div className="col-12 md:col-6">
-                <label htmlFor="fechaEntrega" className="block text-900 font-medium mb-2">
-                  Fecha de Entrega *
-                </label>
-                <Controller
-                  name="fechaEntrega"
-                  control={control}
-                  rules={{ required: 'La fecha de entrega es obligatoria' }}
-                  render={({ field }) => (
-                    <Calendar
-                      id="fechaEntrega"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      placeholder="Seleccionar fecha"
-                      className={`w-full ${errors.fechaEntrega ? 'p-invalid' : ''}`}
-                      dateFormat="dd/mm/yy"
-                      showIcon
-                    />
-                  )}
-                />
-                {errors.fechaEntrega && (
-                  <small className="p-error">{errors.fechaEntrega.message}</small>
-                )}
-              </div>
-
-              <div className="col-12 md:col-6">
-                <label htmlFor="tipoCambio" className="block text-900 font-medium mb-2">
-                  Tipo de Cambio *
-                </label>
-                <Controller
-                  name="tipoCambio"
-                  control={control}
-                  rules={{ 
-                    required: 'El tipo de cambio es obligatorio',
-                    min: { value: 0.01, message: 'Debe ser mayor a 0' }
-                  }}
-                  render={({ field }) => (
-                    <InputNumber
-                      id="tipoCambio"
-                      value={field.value}
-                      onValueChange={(e) => field.onChange(e.value)}
-                      placeholder="3.75"
-                      className={`w-full ${errors.tipoCambio ? 'p-invalid' : ''}`}
-                      minFractionDigits={2}
-                      maxFractionDigits={4}
-                    />
-                  )}
-                />
-                {errors.tipoCambio && (
-                  <small className="p-error">{errors.tipoCambio.message}</small>
-                )}
-              </div>
-
-              <div className="col-12 md:col-6">
-                <label htmlFor="centroCostoId" className="block text-900 font-medium mb-2">
-                  Centro de Costo *
-                </label>
-                <Controller
-                  name="centroCostoId"
-                  control={control}
-                  rules={{ required: 'El centro de costo es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="centroCostoId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={centrosCosto}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccionar centro de costo"
-                      className={`w-full ${errors.centroCostoId ? 'p-invalid' : ''}`}
-                      filter
-                      showClear
-                    />
-                  )}
-                />
-                {errors.centroCostoId && (
-                  <small className="p-error">{errors.centroCostoId.message}</small>
-                )}
-              </div>
-
-              <div className="col-12 md:col-6">
-                <label htmlFor="estadoCotizacionId" className="block text-900 font-medium mb-2">
-                  Estado *
-                </label>
-                <Controller
-                  name="estadoCotizacionId"
-                  control={control}
-                  rules={{ required: 'El estado es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="estadoCotizacionId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={estadosCotizacion}
-                      placeholder="Seleccionar estado"
-                      className={`w-full ${errors.estadoCotizacionId ? 'p-invalid' : ''}`}
-                    />
-                  )}
-                />
-                {errors.estadoCotizacionId && (
-                  <small className="p-error">{errors.estadoCotizacionId.message}</small>
-                )}
-              </div>
-
-              <div className="col-12">
-                <label htmlFor="observaciones" className="block text-900 font-medium mb-2">
-                  Observaciones
-                </label>
-                <Controller
-                  name="observaciones"
-                  control={control}
-                  render={({ field }) => (
-                    <InputTextarea
-                      id="observaciones"
-                      {...field}
-                      placeholder="Observaciones de la cotización"
-                      className="w-full"
-                      rows={3}
-                    />
-                  )}
-                />
-              </div>
-            </div>
-          </TabPanel>
-
-          {/* Pestaña 2: Responsables */}
-          <TabPanel header="Responsables">
-            <div className="grid">
-              <div className="col-12 md:col-6">
-                <label htmlFor="autorizaVentaId" className="block text-900 font-medium mb-2">
-                  Autoriza Venta *
-                </label>
-                <Controller
-                  name="autorizaVentaId"
-                  control={control}
-                  rules={{ required: 'El autorizador es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="autorizaVentaId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={personal}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccionar autorizador"
-                      className={`w-full ${errors.autorizaVentaId ? 'p-invalid' : ''}`}
-                      filter
-                      showClear
-                    />
-                  )}
-                />
-                {errors.autorizaVentaId && (
-                  <small className="p-error">{errors.autorizaVentaId.message}</small>
-                )}
-              </div>
-
-              <div className="col-12 md:col-6">
-                <label htmlFor="respEmbarqueId" className="block text-900 font-medium mb-2">
-                  Responsable Embarque *
-                </label>
-                <Controller
-                  name="respEmbarqueId"
-                  control={control}
-                  rules={{ required: 'El responsable de embarque es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="respEmbarqueId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={personal}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccionar responsable"
-                      className={`w-full ${errors.respEmbarqueId ? 'p-invalid' : ''}`}
-                      filter
-                      showClear
-                    />
-                  )}
-                />
-                {errors.respEmbarqueId && (
-                  <small className="p-error">{errors.respEmbarqueId.message}</small>
-                )}
-              </div>
-
-              <div className="col-12 md:col-6">
-                <label htmlFor="respProduccionId" className="block text-900 font-medium mb-2">
-                  Responsable Producción *
-                </label>
-                <Controller
-                  name="respProduccionId"
-                  control={control}
-                  rules={{ required: 'El responsable de producción es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="respProduccionId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={personal}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccionar responsable"
-                      className={`w-full ${errors.respProduccionId ? 'p-invalid' : ''}`}
-                      filter
-                      showClear
-                    />
-                  )}
-                />
-                {errors.respProduccionId && (
-                  <small className="p-error">{errors.respProduccionId.message}</small>
-                )}
-              </div>
-
-              <div className="col-12 md:col-6">
-                <label htmlFor="respAlmacenId" className="block text-900 font-medium mb-2">
-                  Responsable Almacén *
-                </label>
-                <Controller
-                  name="respAlmacenId"
-                  control={control}
-                  rules={{ required: 'El responsable de almacén es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="respAlmacenId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={personal}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccionar responsable"
-                      className={`w-full ${errors.respAlmacenId ? 'p-invalid' : ''}`}
-                      filter
-                      showClear
-                    />
-                  )}
-                />
-                {errors.respAlmacenId && (
-                  <small className="p-error">{errors.respAlmacenId.message}</small>
-                )}
-              </div>
-            </div>
-          </TabPanel>
-        </TabView>
-
-        <div className="flex justify-content-end gap-2 mt-4">
-          <Button
-            type="button"
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-secondary"
-            onClick={onCancel}
-            disabled={loading}
-          />
-          <Button
-            type="submit"
-            label={cotizacion?.id ? 'Actualizar' : 'Crear'}
-            icon={cotizacion?.id ? 'pi pi-check' : 'pi pi-plus'}
-            className="p-button-primary"
+      {/* Renderizado condicional de cards */}
+      <div className="p-fluid">
+        {activeCard === "datos-generales" && (
+          <DatosGeneralesCotizacionCard
+            // formData y handlers (patrón RequerimientoCompraForm)
+            formData={formData}
+            onChange={handleChange}
+            onSerieChange={handleSerieDocChange}
+            // Estados individuales
+            empresaId={empresaId}
+            setEmpresaId={setEmpresaId}
+            clienteId={clienteId}
+            setClienteId={setClienteId}
+            tipoDocumentoId={tipoDocumentoId}
+            setTipoDocumentoId={setTipoDocumentoId}
+            serieDocId={serieDocId}
+            setSerieDocId={setSerieDocId}
+            numSerieDoc={numSerieDoc}
+            setNumSerieDoc={setNumSerieDoc}
+            numCorreDoc={numCorreDoc}
+            setNumCorreDoc={setNumCorreDoc}
+            numeroDocumento={numeroDocumento}
+            setNumeroDocumento={setNumeroDocumento}
+            empresaFija={empresaFija}
+            // Catálogos
+            empresas={empresas}
+            clientes={clientes}
+            setClientes={setClientes}
+            tiposDocumento={tiposDocumento}
+            seriesDoc={seriesDoc}
+            monedas={monedas}
+            formasPago={formasPago}
+            incoterms={incoterms}
+            tiposProducto={tiposProducto}
+            puertos={puertos}
+            bancos={bancos}
+            paises={paises}
+            personal={personalOptions}
+            estados={estadosDoc}
+            centrosCosto={centrosCosto}
+            tiposEstadoProducto={tiposEstadoProducto}
+            destinosProducto={destinosProducto}
+            formasTransaccion={formasTransaccion}
+            modosDespacho={modosDespacho}
+            responsablesVentas={responsablesVentas}
+            responsablesEmbarque={responsablesEmbarque}
+            responsablesProduccion={responsablesProduccion}
+            responsablesAlmacen={responsablesAlmacen}
             loading={loading}
           />
-        </div>
-      </form>
-    </div>
+        )}
+
+        {activeCard === "detalle-productos" && (
+          <DetCotizacionVentasCard
+            cotizacionId={cotizacion?.id}
+            detalles={detalles}
+            setDetalles={setDetalles}
+            toast={toast}
+          />
+        )}
+
+        {activeCard === "costos-exportacion" && (
+          <CostosExportacionCard
+            cotizacionId={cotizacion?.id}
+            costos={costos}
+            setCostos={setCostos}
+            toast={toast}
+          />
+        )}
+
+        {activeCard === "documentos-requeridos" && (
+          <DocumentosRequeridosCard
+            cotizacionId={cotizacion?.id}
+            documentos={documentos}
+            setDocumentos={setDocumentos}
+            toast={toast}
+          />
+        )}
+
+        {activeCard === "entrega-rendir" && (
+          <EntregaARendirCard cotizacionId={cotizacion?.id} toast={toast} />
+        )}
+
+        {activeCard === "pdf-cotizacion" && (
+          <VerImpresionCotizacionVentasPDF
+            cotizacion={cotizacion}
+            detalles={detalles}
+            costos={costos}
+            toast={toast}
+          />
+        )}
+
+        {activeCard === "pdf-documentacion" && (
+          <VerImpresionDocumentacionPDF
+            cotizacion={cotizacion}
+            documentos={documentos}
+            toast={toast}
+          />
+        )}
+      </div>
+
+      {/* Footer con botones */}
+      {dialogFooter}
+    </>
   );
 };
 

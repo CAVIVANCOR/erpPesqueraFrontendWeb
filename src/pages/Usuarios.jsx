@@ -2,7 +2,7 @@
  * Página Usuarios
  *
  * Módulo de gestión de usuarios del ERP Megui.
- * Protegido por autenticación.
+ * Protegido por autenticación y control de permisos.
  */
 /**
  * Pantalla de Gestión de Usuarios
@@ -14,6 +14,7 @@
  * Documentación profesional en español técnico.
  */
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -23,8 +24,10 @@ import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dropdown } from "primereact/dropdown";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { InputText } from "primereact/inputtext";
-import { Avatar } from "primereact/avatar"; // Importación necesaria para mostrar avatares profesionales
+import { Avatar } from "primereact/avatar";
 import UsuarioForm from "../components/usuarios/UsuarioForm";
+import { usePermissions } from "../hooks/usePermissions";
+import PermissionGuard from "../components/common/PermissionGuard";
 import {
   getUsuarios,
   crearUsuario,
@@ -33,6 +36,7 @@ import {
 } from "../api/usuarios";
 import { getEmpresas } from "../api/empresa";
 import { getResponsiveFontSize } from "../utils/utils";
+
 /**
  * Pantalla profesional de gestión de usuarios del ERP Megui.
  * - CRUD completo con integración API REST.
@@ -45,52 +49,51 @@ import { getResponsiveFontSize } from "../utils/utils";
 /**
  * REGLA TRANSVERSAL ERP MEGUI:
  * - Edición profesional con un solo clic en la fila.
- * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin).
+ * - Botón de eliminar solo visible según permisos del usuario.
  * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
  * - El usuario autenticado se obtiene siempre desde useAuthStore.
+ * - Control de permisos por submódulo usando usePermissions.
  */
-export default function Usuarios() {
+export default function Usuarios({ ruta }) {
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+  
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const [confirmState, setConfirmState] = useState({
     visible: false,
     row: null,
   });
-  // Referencia para Toast de notificaciones
+  
   const toast = useRef(null);
-
-  // Estado para la lista de usuarios
   const [usuarios, setUsuarios] = useState([]);
-  // Estado para loading global de la tabla
   const [loading, setLoading] = useState(false);
-  // Estado para paginación y filtros
   const [totalRecords, setTotalRecords] = useState(0);
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(7);
   const [globalFilter, setGlobalFilter] = useState("");
   
-  // Estado para filtro de empresa
   const [empresas, setEmpresas] = useState([]);
   const [empresaFiltro, setEmpresaFiltro] = useState(null);
 
-  // Estado para modal de alta/edición
   const [mostrarDialogo, setMostrarDialogo] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [usuarioEdit, setUsuarioEdit] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
-  const [dialogKey, setDialogKey] = useState(0); // Contador para forzar re-render
+  const [dialogKey, setDialogKey] = useState(0);
 
-  // Carga inicial de empresas
   useEffect(() => {
     cargarEmpresas();
   }, []);
 
-  // Carga inicial y búsqueda/paginación
   useEffect(() => {
     cargarUsuarios();
     // eslint-disable-next-line
   }, [first, rows, globalFilter, empresaFiltro]);
 
-  // Función para cargar empresas
   async function cargarEmpresas() {
     try {
       const data = await getEmpresas();
@@ -100,16 +103,13 @@ export default function Usuarios() {
     }
   }
 
-  // Función para cargar usuarios del backend
   async function cargarUsuarios() {
     setLoading(true);
     try {
       const params = { skip: first, take: rows, search: globalFilter };
       const data = await getUsuarios(params);
-      // Soporte para respuesta tipo array o tipo objeto
       let lista = Array.isArray(data) ? data : data.usuarios || [];
       
-      // Filtrar por empresa si hay filtro activo
       if (empresaFiltro) {
         lista = lista.filter(u => u.empresaId === empresaFiltro);
       }
@@ -123,12 +123,10 @@ export default function Usuarios() {
     }
   }
 
-  // Muestra notificación Toast
   function mostrarToast(severity, summary, detail) {
     toast.current?.show({ severity, summary, detail, life: 3500 });
   }
 
-  // Estado para el formulario de nuevo usuario
   const [form, setForm] = useState({
     nombre: "",
     usuario: "",
@@ -139,7 +137,6 @@ export default function Usuarios() {
   });
   const [errores, setErrores] = useState({});
 
-  // Validación simple (puedes luego migrar a Yup)
   const validar = () => {
     const errs = {};
     if (!form.nombre) errs.nombre = "El nombre es obligatorio";
@@ -150,13 +147,11 @@ export default function Usuarios() {
     return errs;
   };
 
-  // Maneja el submit del formulario
   const handleGuardar = (e) => {
     e.preventDefault();
     const errs = validar();
     setErrores(errs);
     if (Object.keys(errs).length === 0) {
-      // Agrega el usuario a la tabla mock
       setUsuarios([...usuarios, { ...form, id: usuarios.length + 1 }]);
       setMostrarDialogo(false);
       setForm({
@@ -171,12 +166,10 @@ export default function Usuarios() {
     }
   };
 
-  // Maneja cambios en los campos del formulario
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // Abre el diálogo para crear un nuevo usuario
   function handleNuevo() {
     if (!empresaFiltro) {
       mostrarToast("warn", "Advertencia", "Debe seleccionar una empresa primero");
@@ -188,19 +181,19 @@ export default function Usuarios() {
     setMostrarDialogo(true);
   }
 
-  // Acción: abrir modal para editar usuario
   function handleEditar(usuario) {
     setUsuarioEdit(usuario);
     setModoEdicion(true);
     setMostrarDialogo(true);
   }
 
-  // Edición con un solo clic en la fila
   const onRowClick = (e) => {
-    handleEditar(e.data);
+    // Permitir abrir el formulario si tiene permiso de ver o editar
+    if (permisos.puedeEditar || permisos.puedeVer) {
+      handleEditar(e.data);
+    }
   };
 
-  // Acción: eliminar usuario
   function handleEliminar(usuario) {
     setConfirmState({ visible: true, row: usuario });
   }
@@ -225,21 +218,22 @@ export default function Usuarios() {
     }
   };
 
-  // Renderiza los botones de acción en cada fila
   function accionesTemplate(rowData) {
     return (
       <span>
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-rounded p-button-text p-button-info"
-          style={{ marginRight: 8 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleEditar(rowData);
-          }}
-          tooltip="Editar"
-        />
-        {usuario?.esSuperUsuario && (
+        <PermissionGuard ruta="usuarios" permiso="editar">
+          <Button
+            icon="pi pi-pencil"
+            className="p-button-rounded p-button-text p-button-info"
+            style={{ marginRight: 8 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditar(rowData);
+            }}
+            tooltip="Editar"
+          />
+        </PermissionGuard>
+        <PermissionGuard ruta="usuarios" permiso="eliminar">
           <Button
             icon="pi pi-trash"
             className="p-button-rounded p-button-text p-button-danger"
@@ -249,16 +243,14 @@ export default function Usuarios() {
             }}
             tooltip="Eliminar usuario"
           />
-        )}
+        </PermissionGuard>
       </span>
     );
   }
 
-  // Submit del formulario (alta o edición)
   async function onSubmitForm(data) {
     setFormLoading(true);
     try {
-      // Construye el payload limpio solo con los campos válidos para el backend
       const usuarioPayload = {
         username: data.username,
         empresaId: Number(data.empresaId),
@@ -296,7 +288,6 @@ export default function Usuarios() {
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 0" }}>
       <Toast ref={toast} position="top-right" />
-      {/* Tabla de usuarios con PrimeReact DataTable */}
       <ConfirmDialog
         visible={confirmState.visible}
         onHide={() => setConfirmState({ visible: false, row: null })}
@@ -352,23 +343,23 @@ export default function Usuarios() {
               style={{ width: 250 }}
               filter
             />
-            <Button
-              label="Nuevo"
-              icon="pi pi-plus"
-              className="p-button-success"
-              size="small"
-              outlined
-              onClick={handleNuevo}
-              disabled={!usuario?.esSuperUsuario || !empresaFiltro}
-              tooltip={
-                !usuario?.esSuperUsuario 
-                  ? "Solo Superusuarios pueden crear usuarios" 
-                  : !empresaFiltro 
+            <PermissionGuard ruta="usuarios" permiso="crear">
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                className="p-button-success"
+                size="small"
+                outlined
+                onClick={handleNuevo}
+                disabled={!empresaFiltro}
+                tooltip={
+                  !empresaFiltro 
                   ? "Debe seleccionar una empresa primero"
                   : ""
-              }
-              tooltipOptions={{ position: "bottom" }}
-            />
+                }
+                tooltipOptions={{ position: "bottom" }}
+              />
+            </PermissionGuard>
             <InputText
               type="search"
               onInput={(e) => setGlobalFilter(e.target.value)}
@@ -378,7 +369,7 @@ export default function Usuarios() {
           </div>
         }
         onRowClick={onRowClick}
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        style={{ cursor: (permisos.puedeEditar || permisos.puedeVer) ? "pointer" : "default", fontSize: getResponsiveFontSize() }}
       >
         <Column field="id" header="ID" style={{ width: 70 }} />
         <Column 
@@ -387,8 +378,6 @@ export default function Usuarios() {
           style={{ minWidth: 150 }}
         />
         <Column field="username" header="Nombre de usuario" />
-
-        {/* Columna: Avatar profesional del personal relacionado (foto o iniciales) */}
         <Column
           header="Foto"
           body={(rowData) => {
@@ -396,9 +385,7 @@ export default function Usuarios() {
             const apellidos = rowData.personal?.apellidos || "";
             const nombreCompleto = `${nombres} ${apellidos}`.trim();
             const urlFoto = rowData.personal?.urlFotoPersona
-              ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${
-                  rowData.personal.urlFotoPersona
-                }`
+              ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${rowData.personal.urlFotoPersona}`
               : undefined;
             return (
               <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
@@ -414,7 +401,6 @@ export default function Usuarios() {
           }}
           style={{ minWidth: 80, textAlign: "center" }}
         />
-        {/* Columna: Nombre completo del personal relacionado */}
         <Column
           header="Nombre completo"
           body={(rowData) =>
@@ -423,8 +409,6 @@ export default function Usuarios() {
               : ""
           }
         />
-        {/* Columnas alineadas con los campos reales del backend */}
-        {/* Columna: Correo electrónico del personal relacionado */}
         <Column
           header="Correo"
           body={(rowData) =>
@@ -512,10 +496,13 @@ export default function Usuarios() {
           style={{ minWidth: 150, textAlign: "center" }}
         />
       </DataTable>
-      {/* Dialogo de alta/edición de usuario */}
       {mostrarDialogo && (
         <Dialog
-          header={modoEdicion ? "Editar Usuario" : "Nuevo Usuario"}
+          header={
+            modoEdicion 
+              ? (permisos.puedeEditar ? "Editar Usuario" : "Ver Usuario")
+              : "Nuevo Usuario"
+          }
           visible={true}
           style={{ width: 1300 }}
           modal
@@ -541,6 +528,8 @@ export default function Usuarios() {
             onSubmit={onSubmitForm}
             onCancel={() => setMostrarDialogo(false)}
             loading={formLoading}
+            readOnly={!permisos.puedeEditar}
+            puedeCrear={permisos.puedeCrear}
           />
         </Dialog>
       )}

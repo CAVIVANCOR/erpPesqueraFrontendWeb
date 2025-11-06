@@ -1,6 +1,7 @@
 // src/pages/ModulosSistema.jsx
 // Página principal de gestión de módulos del sistema.
 import React, { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -8,6 +9,7 @@ import { Toast } from "primereact/toast";
 import { Dialog } from "primereact/dialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { InputText } from "primereact/inputtext";
 import {
   getModulos,
@@ -25,8 +27,15 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
  * - El usuario autenticado se obtiene siempre desde useAuthStore.
  */
-export default function ModulosSistemaPage() {
+export default function ModulosSistemaPage({ ruta }) {
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+  
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+  
   const [confirmState, setConfirmState] = useState({
     visible: false,
     row: null,
@@ -98,6 +107,14 @@ export default function ModulosSistemaPage() {
   };
 
   const handleSubmit = async (data) => {
+    // Validar permisos antes de guardar
+    if (isEdit && !permisos.puedeEditar) {
+      return;
+    }
+    if (!isEdit && !permisos.puedeCrear) {
+      return;
+    }
+    
     try {
       const payload = {
         nombre: data.nombre,
@@ -132,28 +149,30 @@ export default function ModulosSistemaPage() {
   };
 
   const actionBodyTemplate = (row) => (
-    <span>
+    <div onClick={(e) => e.stopPropagation()}>
       <Button
         icon="pi pi-pencil"
         className="p-button-text p-mr-2"
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
         onClick={(e) => {
-          e.stopPropagation();
-          handleEdit(row);
+          if (permisos.puedeVer || permisos.puedeEditar) {
+            handleEdit(row);
+          }
         }}
-        tooltip="Editar"
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button
-          icon="pi pi-trash"
-          className="p-button-text p-button-danger"
-          onClick={(e) => {
-            e.stopPropagation();
+      <Button
+        icon="pi pi-trash"
+        className="p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={(e) => {
+          if (permisos.puedeEliminar) {
             handleDelete(row);
-          }}
-          tooltip="Eliminar"
-        />
-      )}
-    </span>
+          }
+        }}
+        tooltip="Eliminar"
+      />
+    </div>
   );
 
   return (
@@ -185,11 +204,21 @@ export default function ModulosSistemaPage() {
         value={modulos}
         loading={loading}
         paginator
-        rows={10}
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} módulos"
+        size="small"
+        showGridlines
+        stripedRows
         selectionMode="single"
         selection={selected}
         onSelectionChange={(e) => setSelected(e.value)}
-        onRowClick={onRowClick}
+        onRowClick={(permisos.puedeVer || permisos.puedeEditar) ? onRowClick : undefined}
+        style={{ 
+          cursor: (permisos.puedeVer || permisos.puedeEditar) ? 'pointer' : 'default',
+          fontSize: getResponsiveFontSize()
+        }}
         header={
           <div className="flex align-items-center gap-2">
             <h2>Gestión de Módulos del Sistema</h2>
@@ -198,6 +227,7 @@ export default function ModulosSistemaPage() {
               size="small"
               raised
               outlined
+              disabled={!permisos.puedeCrear}
               tooltip="Nuevo Módulo del Sistema"
               className="p-button-success"
               icon="pi pi-plus"
@@ -215,7 +245,6 @@ export default function ModulosSistemaPage() {
             />
           </div>
         }
-        style={{ cursor: 'pointer', fontSize: getResponsiveFontSize() }}
       >
         <Column field="id" header="ID" sortable />
         <Column field="nombre" header="Nombre" sortable />
@@ -233,7 +262,11 @@ export default function ModulosSistemaPage() {
         />
       </DataTable>
       <Dialog
-        header={isEdit ? "Editar Módulo" : "Nuevo Módulo"}
+        header={
+          isEdit 
+            ? (permisos.puedeEditar ? "Editar Módulo" : "Ver Módulo")
+            : "Nuevo Módulo"
+        }
         visible={showForm}
         style={{ width: "400px" }}
         modal
@@ -244,6 +277,7 @@ export default function ModulosSistemaPage() {
           onSubmit={handleSubmit}
           onCancel={() => setShowForm(false)}
           loading={loading}
+          readOnly={isEdit && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

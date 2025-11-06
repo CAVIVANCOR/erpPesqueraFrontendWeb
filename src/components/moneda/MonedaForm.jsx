@@ -24,7 +24,7 @@ import { getMonedas, crearMoneda, actualizarMoneda } from "../../api/moneda";
  * @param {Function} props.onCancel - Función a ejecutar al cancelar
  * @param {Object} props.toast - Referencia al componente Toast para mostrar mensajes
  */
-const MonedaForm = ({ moneda, onSave, onCancel, toast }) => {
+const MonedaForm = ({ moneda, onSave, onCancel, toast, readOnly = false }) => {
   const [loading, setLoading] = useState(false);
   const isEdit = !!moneda?.id;
 
@@ -46,34 +46,20 @@ const MonedaForm = ({ moneda, onSave, onCancel, toast }) => {
 
   // Cargar datos si es edición
   useEffect(() => {
-    const cargarDatos = async () => {
-      if (!isEdit) return;
-
-      try {
-        setLoading(true);
-        const data = await getMonedas(moneda.id);
-
-        // Actualizar valores del formulario
-        Object.keys(data).forEach((key) => {
-          if (data[key] !== undefined) {
-            setValue(key, data[key]);
-          }
-        });
-      } catch (error) {
-        console.error("Error al cargar la moneda:", error);
-        toast.current?.show({
-          severity: "error",
-          summary: "Error",
-          detail: "No se pudo cargar los datos de la moneda",
-          life: 3000,
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    cargarDatos();
-  }, [isEdit, moneda?.id, setValue, toast]);
+    if (moneda) {
+      setValue("codigoSunat", moneda.codigoSunat || "");
+      setValue("nombreLargo", moneda.nombreLargo || "");
+      setValue("simbolo", moneda.simbolo || "");
+      setValue("activo", moneda.activo !== undefined ? moneda.activo : true);
+    } else {
+      reset({
+        codigoSunat: "",
+        nombreLargo: "",
+        simbolo: "",
+        activo: true,
+      });
+    }
+  }, [moneda, setValue, reset]);
 
   /**
    * Maneja el envío del formulario
@@ -91,10 +77,7 @@ const MonedaForm = ({ moneda, onSave, onCancel, toast }) => {
       let resultado;
       if (moneda?.id) {
         // Actualizar moneda existente
-        resultado = await actualizarMoneda(
-          moneda.id,
-          datosNormalizados
-        );
+        resultado = await actualizarMoneda(moneda.id, datosNormalizados);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -170,9 +153,10 @@ const MonedaForm = ({ moneda, onSave, onCancel, toast }) => {
                 value={field.value || ""}
                 onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                 className={classNames({ "p-invalid": fieldState.error })}
-                disabled={loading}
+                disabled={readOnly || loading}
                 maxLength={10}
                 placeholder="Ej: PEN, USD"
+                style={{ fontWeight: "bold" }}
               />
             </div>
           )}
@@ -210,9 +194,10 @@ const MonedaForm = ({ moneda, onSave, onCancel, toast }) => {
                 className={classNames("w-full", {
                   "p-invalid": fieldState.error,
                 })}
-                disabled={loading}
+                disabled={readOnly || loading}
                 maxLength={100}
                 placeholder="Ej: Nuevo Sol, Dólar Americano"
+                style={{ fontWeight: "bold" }}
               />
             </div>
           )}
@@ -248,9 +233,10 @@ const MonedaForm = ({ moneda, onSave, onCancel, toast }) => {
                 className={classNames("w-full", {
                   "p-invalid": fieldState.error,
                 })}
-                disabled={loading}
+                disabled={readOnly || loading}
                 maxLength={10}
                 placeholder="Ej: S/, $"
+                style={{ fontWeight: "bold" }}
               />
             </div>
           )}
@@ -258,33 +244,49 @@ const MonedaForm = ({ moneda, onSave, onCancel, toast }) => {
         {getFormErrorMessage("simbolo")}
       </div>
 
-      <div className="field-checkbox mt-4 mb-6">
+      <div className="p-col-12 p-field">
+        <label htmlFor="activo" className="p-d-block">
+          Estado
+        </label>
         <Controller
           name="activo"
           control={control}
           render={({ field }) => (
-            <Checkbox
-              inputId="activo"
-              inputRef={field.ref}
-              checked={field.value}
-              onChange={(e) => field.onChange(e.checked)}
-              disabled={loading}
+            <Button
+              type="button"
+              label={field.value ? "ACTIVO" : "CESADO"}
+              className={field.value ? "p-button-primary" : "p-button-danger"}
+              icon={field.value ? "pi pi-check-circle" : "pi pi-times-circle"}
+              onClick={() => !readOnly && field.onChange(!field.value)}
+              disabled={readOnly}
+              style={{ width: "100%" }}
             />
           )}
         />
-        <label htmlFor="activo" className="ml-2 font-medium">
-          Activo
-        </label>
+        {errors.activo && (
+          <small className="p-error p-d-block">{errors.activo.message}</small>
+        )}
       </div>
 
-      <div className="flex justify-content-end gap-2 mt-4">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 8,
+          marginTop: 18,
+        }}
+      >
         <Button
           type="button"
           label="Cancelar"
           icon="pi pi-times"
-          className="p-button-text"
           onClick={onCancel}
           disabled={loading}
+          className="p-button-warning"
+          severity="warning"
+          raised
+          size="small"
+          outlined
         />
         <Button
           type="submit"
@@ -292,6 +294,11 @@ const MonedaForm = ({ moneda, onSave, onCancel, toast }) => {
           icon="pi pi-check"
           loading={loading}
           disabled={loading}
+          className="p-button-success"
+          severity="success"
+          raised
+          size="small"
+          outlined
         />
       </div>
     </form>

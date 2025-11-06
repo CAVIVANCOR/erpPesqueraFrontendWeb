@@ -26,7 +26,6 @@ import { ToggleButton } from "primereact/togglebutton";
 import { InputNumber } from "primereact/inputnumber";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
-import { Checkbox } from "primereact/checkbox";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
@@ -42,7 +41,6 @@ import {
   actualizarPrecioEntidad,
   eliminarPrecioEntidad,
 } from "../../api/precioEntidad";
-import { getMonedas } from "../../api/moneda";
 import { getProductosPorEntidadYEmpresa } from "../../api/producto";
 
 // Esquema de validación para precios especiales - ALINEADO AL MODELO PRISMA
@@ -88,10 +86,18 @@ const esquemaValidacionPrecio = yup.object().shape({
  * @param {Array} props.productos - Lista de productos disponibles
  */
 const DetallePreciosEntidad = forwardRef(
-  ({ entidadComercialId, empresaId, productos = [] }, ref) => {
+  (
+    {
+      entidadComercialId,
+      empresaId,
+      monedas = [],
+      readOnly = false,
+      permisos = {},
+    },
+    ref
+  ) => {
     // Estados del componente
     const [preciosData, setPreciosData] = useState([]);
-    const [monedasData, setMonedasData] = useState([]);
     const [productosData, setProductosData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [dialogVisible, setDialogVisible] = useState(false);
@@ -125,13 +131,17 @@ const DetallePreciosEntidad = forwardRef(
       },
     });
 
+    useEffect(() => {
+      cargarProductos();
+    }, [entidadComercialId, empresaId]);
+
     // Normalizar opciones para dropdowns
     const productosOptions = productosData.map((producto) => ({
       label: producto.descripcionArmada,
       value: Number(producto.id),
     }));
 
-    const monedasOptions = monedasData.map((moneda) => ({
+    const monedasOptions = monedas.map((moneda) => ({
       label: `${moneda.codigoSunat} - ${moneda.nombreLargo || moneda.simbolo}`,
       value: Number(moneda.id),
     }));
@@ -169,6 +179,7 @@ const DetallePreciosEntidad = forwardRef(
         }
 
         setProductosData(response);
+        console.log("Productos cargados:", response);
         return response;
       } catch (error) {
         console.error("Error al cargar productos:", error);
@@ -185,27 +196,12 @@ const DetallePreciosEntidad = forwardRef(
       }
     };
 
-    useEffect(() => {
-      const cargarMonedas = async () => {
-        try {
-          const response = await getMonedas();
-          setMonedasData(response);
-        } catch (error) {
-          console.error("Error al cargar monedas:", error);
-        }
-      };
-      cargarMonedas();
-    }, []);
-
     /**
      * Abre el diálogo para crear un nuevo precio especial
      */
     const abrirDialogoNuevo = async () => {
       try {
         setLoading(true);
-        // Cargar productos antes de abrir el diálogo
-        await cargarProductos();
-
         // Restablecer el formulario
         reset({
           productoId: null,
@@ -323,12 +319,30 @@ const DetallePreciosEntidad = forwardRef(
           observaciones: data.observaciones?.trim().toUpperCase() || null,
           activo: Boolean(data.activo),
         };
+
         let resultado;
-        if (precioSeleccionado) {
+        const esEdicion = precioSeleccionado && precioSeleccionado.id;
+
+        if (esEdicion) {
           // Actualizar precio existente
+          // Agregar campos de auditoría para actualización
+          const datosActualizacion = {
+            ...precioNormalizado,
+            // Si fechaCreacion o creadoPor son null/vacíos, asignarlos ahora
+            fechaCreacion: precioSeleccionado.fechaCreacion || new Date(),
+            creadoPor:
+              precioSeleccionado.creadoPor ||
+              (usuario?.personalId ? Number(usuario.personalId) : null),
+            // Siempre actualizar estos campos
+            fechaActualizacion: new Date(),
+            actualizadoPor: usuario?.personalId
+              ? Number(usuario.personalId)
+              : null,
+          };
+
           resultado = await actualizarPrecioEntidad(
             precioSeleccionado.id,
-            precioNormalizado
+            datosActualizacion
           );
           toast.current?.show({
             severity: "success",
@@ -338,7 +352,18 @@ const DetallePreciosEntidad = forwardRef(
           });
         } else {
           // Crear nuevo precio
-          resultado = await crearPrecioEntidad(precioNormalizado);
+          // Agregar campos de auditoría para creación
+          const datosCreacion = {
+            ...precioNormalizado,
+            fechaCreacion: new Date(),
+            creadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
+            fechaActualizacion: new Date(),
+            actualizadoPor: usuario?.personalId
+              ? Number(usuario.personalId)
+              : null,
+          };
+
+          resultado = await crearPrecioEntidad(datosCreacion);
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
@@ -456,10 +481,27 @@ const DetallePreciosEntidad = forwardRef(
     };
 
     const precioTemplate = (rowData) => {
-      return new Intl.NumberFormat("es-PE", {
-        style: "currency",
-        currency: "PEN",
-      }).format(rowData.precioUnitario);
+      // Buscar la moneda del registro
+      const moneda = monedas.find(
+        (m) => Number(m.id) === Number(rowData.monedaId)
+      );
+
+      // Obtener código ISO de la moneda (PEN, USD, EUR, etc.)
+      const codigoMoneda = moneda?.codigoSunat || "PEN";
+      const simboloMoneda = moneda?.simbolo || "S/";
+
+      try {
+        // Intentar formatear con Intl.NumberFormat
+        return new Intl.NumberFormat("es-PE", {
+          style: "currency",
+          currency: codigoMoneda,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(rowData.precioUnitario);
+      } catch (error) {
+        // Si el código de moneda no es válido para Intl, usar formato manual
+        return `${simboloMoneda} ${Number(rowData.precioUnitario).toFixed(2)}`;
+      }
     };
 
     const fechaTemplate = (rowData, field) => {
@@ -476,32 +518,35 @@ const DetallePreciosEntidad = forwardRef(
       );
     };
 
-    const accionesTemplate = (rowData) => {
-      return (
-        <div className="flex gap-2">
-          <Button
-            icon="pi pi-pencil"
-            className="p-button-text p-mr-2"
-            onClick={(ev) => {
-              ev.stopPropagation();
+    // Renderizado de botones de acción
+    const accionesTemplate = (rowData) => (
+      <div onClick={(e) => e.stopPropagation()}>
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-mr-2"
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          onClick={(ev) => {
+            if (permisos.puedeVer || permisos.puedeEditar) {
               abrirDialogoEdicion(rowData);
-            }}
-            tooltip="Editar"
-            tooltipOptions={{ position: "top" }}
-            type="button"
-          />
-          {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-            <Button
-              icon="pi pi-trash"
-              className="p-button-text p-button-danger"
-              onClick={() => confirmarEliminacion(rowData)}
-              tooltip="Eliminar"
-              type="button"
-            />
-          )}
-        </div>
-      );
-    };
+            }
+          }}
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+          type="button"
+        />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger"
+          disabled={!permisos.puedeEliminar}
+          onClick={(ev) => {
+            if (permisos.puedeEliminar) {
+              confirmarEliminacion(rowData);
+            }
+          }}
+          tooltip="Eliminar"
+          type="button"
+        />
+      </div>
+    );
 
     return (
       <div className="p-4">
@@ -530,6 +575,7 @@ const DetallePreciosEntidad = forwardRef(
                 className="p-button-success"
                 onClick={abrirDialogoNuevo}
                 type="button"
+                disabled={readOnly || loading}
               />
               <span className="p-input-icon-left">
                 <InputText
@@ -634,6 +680,8 @@ const DetallePreciosEntidad = forwardRef(
                           filter
                           filterBy="label"
                           loading={loading}
+                          style={{ fontWeight: "bold" }}
+                          disabled={readOnly || loading}
                         />
                         {getFormErrorMessage("productoId")}
                       </div>
@@ -664,6 +712,8 @@ const DetallePreciosEntidad = forwardRef(
                         options={monedasOptions}
                         placeholder="Seleccione moneda"
                         className={getFieldClass("monedaId")}
+                        style={{ fontWeight: "bold" }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -685,6 +735,8 @@ const DetallePreciosEntidad = forwardRef(
                         minFractionDigits={2}
                         maxFractionDigits={4}
                         className={getFieldClass("precioUnitario")}
+                        inputStyle={{ fontWeight: "bold" }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -715,6 +767,8 @@ const DetallePreciosEntidad = forwardRef(
                         placeholder="Seleccione fecha vigencia desde"
                         className={getFieldClass("vigenteDesde")}
                         showIcon
+                        inputStyle={{ fontWeight: "bold" }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -735,6 +789,8 @@ const DetallePreciosEntidad = forwardRef(
                         placeholder="Seleccione fecha vigencia hasta"
                         className={getFieldClass("vigenteHasta")}
                         showIcon
+                        inputStyle={{ fontWeight: "bold" }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -744,7 +800,7 @@ const DetallePreciosEntidad = forwardRef(
               <div
                 style={{
                   display: "flex",
-                  alignItems: "center",
+                  alignItems: "end",
                   gap: 10,
                   flexDirection: window.innerWidth < 768 ? "column" : "row",
                   marginBottom: 10,
@@ -763,24 +819,14 @@ const DetallePreciosEntidad = forwardRef(
                         onChange={(e) => field.onChange(e.target.value)}
                         placeholder="Ingrese observaciones"
                         className={getFieldClass("observaciones")}
+                        style={{ fontWeight: "bold", width: "100%" }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
                   {getFormErrorMessage("observaciones")}
                 </div>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginTop: 10,
-                  marginBottom: 10,
-                  gap: 5,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              >
-                <ButtonGroup style={{ gap: 5 }}>
+                <div style={{ flex: 0.5 }}>
                   <Controller
                     name="activo"
                     control={control}
@@ -795,52 +841,161 @@ const DetallePreciosEntidad = forwardRef(
                         size="small"
                         onChange={(e) => field.onChange(e.value)}
                         className={`${getFieldClass("activo")}`}
+                        style={{ fontWeight: "bold" }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
-                </ButtonGroup>
+                </div>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginTop: 10,
+                  marginBottom: 10,
+                  gap: 5,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <ButtonGroup style={{ gap: 5 }}></ButtonGroup>
               </div>
             </div>
-
             <div
               style={{
                 display: "flex",
-                justifyContent: "center",
+                alignItems: "end",
                 gap: 10,
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
                 marginBottom: 10,
                 marginTop: 10,
               }}
             >
-              <Button
-                label="Cancelar"
-                icon="pi pi-times"
-                className="p-button-secondary"
-                type="button"
-                onClick={cerrarDialogo}
-                raised
-                size="small"
-                outlined
-              />
-              <Button
-                label={precioSeleccionado ? "Actualizar" : "Crear"}
-                icon={precioSeleccionado ? "pi pi-check" : "pi pi-plus"}
-                className="p-button-success"
-                type="button"
-                onClick={async () => {
-                  // Validar formulario manualmente
-                  const isValid = await trigger();
-                  if (isValid) {
-                    // Obtener datos del formulario y guardar
-                    const formData = getValues();
-                    await onSubmitPrecio(formData);
-                  }
-                }}
-                loading={loading}
-                raised
-                size="small"
-                outlined
-              />
+              {/* Información de Auditoría */}
+              {precioSeleccionado && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: 10,
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: 5,
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 20,
+                      flexDirection: window.innerWidth < 768 ? "column" : "row",
+                    }}
+                  >
+                    {/* Creado */}
+                    <div style={{ flex: 1 }}>
+                      <strong style={{ fontSize: "0.9rem", color: "#495057" }}>
+                        Creado:
+                      </strong>
+                      <div style={{ marginTop: 5 }}>
+                        <div style={{ fontSize: "0.85rem", color: "#6c757d" }}>
+                          {precioSeleccionado.fechaCreacion
+                            ? new Date(
+                                precioSeleccionado.fechaCreacion
+                              ).toLocaleString("es-PE", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                            : "N/A"}
+                        </div>
+                        {precioSeleccionado.personalCreador && (
+                          <Tag
+                            value={`${precioSeleccionado.personalCreador.nombres} ${precioSeleccionado.personalCreador.apellidos}`}
+                            style={{
+                              marginTop: 5,
+                              backgroundColor: "#cfe2ff",
+                              color: "#000",
+                              fontSize: "0.8rem",
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actualizado */}
+                    <div style={{ flex: 1 }}>
+                      <strong style={{ fontSize: "0.9rem", color: "#495057" }}>
+                        Actualizado:
+                      </strong>
+                      <div style={{ marginTop: 5 }}>
+                        <div style={{ fontSize: "0.85rem", color: "#6c757d" }}>
+                          {precioSeleccionado.fechaActualizacion
+                            ? new Date(
+                                precioSeleccionado.fechaActualizacion
+                              ).toLocaleString("es-PE", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                            : "N/A"}
+                        </div>
+                        {precioSeleccionado.personalActualizador && (
+                          <Tag
+                            value={`${precioSeleccionado.personalActualizador.nombres} ${precioSeleccionado.personalActualizador.apellidos}`}
+                            style={{
+                              marginTop: 5,
+                              backgroundColor: "#f8d7da",
+                              color: "#000",
+                              fontSize: "0.8rem",
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div style={{ flex: 1 }}>
+                <Button
+                  label="Cancelar"
+                  icon="pi pi-times"
+                  type="button"
+                  onClick={cerrarDialogo}
+                  className="p-button-warning"
+                  severity="warning"
+                  raised
+                  size="small"
+                  outlined
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label={precioSeleccionado ? "Actualizar" : "Crear"}
+                  icon={precioSeleccionado ? "pi pi-check" : "pi pi-plus"}
+                  type="button"
+                  onClick={async () => {
+                    // Validar formulario manualmente
+                    const isValid = await trigger();
+                    if (isValid) {
+                      // Obtener datos del formulario y guardar
+                      const formData = getValues();
+                      await onSubmitPrecio(formData);
+                    }
+                  }}
+                  loading={loading}
+                  disabled={readOnly || loading}
+                  className="p-button-success"
+                  severity="success"
+                  raised
+                  size="small"
+                />
+              </div>
             </div>
           </form>
         </Dialog>

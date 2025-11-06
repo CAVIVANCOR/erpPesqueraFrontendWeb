@@ -14,7 +14,7 @@ const API_URL = import.meta.env.VITE_API_URL;
  */
 export const getAllFormaTransaccion = async () => {
   const token = useAuthStore.getState().token;
-  const response = await axios.get(`${API_URL}/forma-transaccion`, {
+  const response = await axios.get(`${API_URL}/formas-transaccion`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -29,7 +29,7 @@ export const getAllFormaTransaccion = async () => {
  */
 export const crearFormaTransaccion = async (formaTransaccionData) => {
   const token = useAuthStore.getState().token;
-  const response = await axios.post(`${API_URL}/forma-transaccion`, formaTransaccionData, {
+  const response = await axios.post(`${API_URL}/formas-transaccion`, formaTransaccionData, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -45,7 +45,7 @@ export const crearFormaTransaccion = async (formaTransaccionData) => {
  */
 export const actualizarFormaTransaccion = async (id, formaTransaccionData) => {
   const token = useAuthStore.getState().token;
-  const response = await axios.put(`${API_URL}/forma-transaccion/${id}`, formaTransaccionData, {
+  const response = await axios.put(`${API_URL}/formas-transaccion/${id}`, formaTransaccionData, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -60,7 +60,7 @@ export const actualizarFormaTransaccion = async (id, formaTransaccionData) => {
  */
 export const deleteFormaTransaccion = async (id) => {
   const token = useAuthStore.getState().token;
-  const response = await axios.delete(`${API_URL}/forma-transaccion/${id}`, {
+  const response = await axios.delete(`${API_URL}/formas-transaccion/${id}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

@@ -99,11 +99,12 @@ export const eliminarAccesosUsuario = async (id) => {
 /**
  * Obtiene todos los accesos de un usuario específico
  * @param {number} usuarioId - ID del usuario
+ * @param {string} tokenOverride - Token opcional para usar en lugar del almacenado (usado durante login)
  * @returns {Promise<Array>} Lista de accesos del usuario
  */
-export const getAccesosPorUsuario = async (usuarioId) => {
+export const getAccesosPorUsuario = async (usuarioId, tokenOverride = null) => {
   try {
-    const token = getAuthToken();
+    const token = tokenOverride || getAuthToken();
     const response = await axios.get(`${API_URL}/accesos-usuario/usuario/${usuarioId}`, {
       headers: {
         'Authorization': `Bearer ${token}`,

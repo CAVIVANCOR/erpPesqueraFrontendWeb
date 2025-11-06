@@ -2,33 +2,80 @@
 // Pantalla CRUD profesional para CotizacionVentas. Cumple regla transversal ERP Megui:
 // - Edición por clic en fila, borrado seguro con roles, ConfirmDialog, Toast
 // - Autenticación JWT desde Zustand, normalización de IDs, documentación en español
-import React, { useState, useEffect, useRef } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Dialog } from 'primereact/dialog';
-import { Toast } from 'primereact/toast';
-import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
-import { Tag } from 'primereact/tag';
-import { useAuthStore } from '../shared/stores/useAuthStore';
-import { getAllCotizacionVentas, deleteCotizacionVentas } from '../api/cotizacionVentas';
-import CotizacionVentasForm from '../components/cotizacionVentas/CotizacionVentasForm';
+import React, { useState, useEffect, useRef } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { Tag } from "primereact/tag";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import {
+  getAllCotizacionVentas,
+  deleteCotizacionVentas,
+} from "../api/cotizacionVentas";
+import CotizacionVentasForm from "../components/cotizacionVentas/CotizacionVentasForm";
+import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
+import { getEmpresas } from "../api/empresa";
+import { getTiposDocumento } from "../api/tipoDocumento";
+import { getEntidadesComerciales } from "../api/entidadComercial";
+import { getTiposProducto } from "../api/tipoProducto";
+import { getAllTipoEstadoProducto } from "../api/tipoEstadoProducto";
+import { getAllDestinoProducto } from "../api/destinoProducto";
+import { getFormasPago } from "../api/formaPago";
+import { getProductos } from "../api/producto";
+import { getPersonal } from "../api/personal";
+import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
+import { getCentrosCosto } from "../api/centroCosto";
+import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
+import { getMonedas } from "../api/moneda";
+import { Calendar } from "primereact/calendar";
+import { Dropdown } from "primereact/dropdown";
 
 /**
  * Componente CotizacionVentas
  * Gestión CRUD de cotizaciones de ventas con patrón profesional ERP Megui
  */
 const CotizacionVentas = () => {
+  const [items, setItems] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
+  const [tiposDocumento, setTiposDocumento] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [tiposProducto, setTiposProducto] = useState([]);
+  const [tiposEstadoProducto, setTiposEstadoProducto] = useState([]);
+  const [destinosProducto, setDestinosProducto] = useState([]);
+  const [formasPago, setFormasPago] = useState([]);
+  const [productos, setProductos] = useState([]);
+  const [personalOptions, setPersonalOptions] = useState([]);
+  const [estadosDoc, setEstadosDoc] = useState([]);
+  const [centrosCosto, setCentrosCosto] = useState([]);
+  const [tiposMovimiento, setTiposMovimiento] = useState([]);
+  const [monedas, setMonedas] = useState([]);
+  const [showDialog, setShowDialog] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [toDelete, setToDelete] = useState(null);
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
+  const [fechaInicio, setFechaInicio] = useState(null);
+  const [fechaFin, setFechaFin] = useState(null);
+  const [tipoSeleccionado, setTipoSeleccionado] = useState(null);
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
+  const [itemsFiltrados, setItemsFiltrados] = useState([]);
+  const [clientesUnicos, setClientesUnicos] = useState([]);
+  const usuario = useAuthStore((state) => state.usuario);
+
   const [cotizaciones, setCotizaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [selectedCotizacion, setSelectedCotizacion] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const toast = useRef(null);
-  const { usuario } = useAuthStore();
 
   useEffect(() => {
     cargarCotizaciones();
+    cargarDatos();
   }, []);
 
   const cargarCotizaciones = async () => {
@@ -38,14 +85,155 @@ const CotizacionVentas = () => {
       setCotizaciones(data);
     } catch (error) {
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al cargar cotizaciones de ventas'
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar cotizaciones de ventas",
       });
     } finally {
       setLoading(false);
     }
   };
+
+  // Extraer proveedores únicos de los requerimientos
+  useEffect(() => {
+    const clientesMap = new Map();
+    items.forEach((item) => {
+      if (item.clienteId && item.cliente) {
+        clientesMap.set(item.clienteId, item.cliente);
+      }
+    });
+    const clientesArray = Array.from(clientesMap.values());
+    setClientesUnicos(clientesArray);
+  }, [items]);
+
+  const cargarDatos = async () => {
+    setLoading(true);
+    try {
+      const [
+        empresasData,
+        tiposDocData,
+        clientesData,
+        tiposProductoData,
+        tiposEstadoProductoData,
+        destinosProductoData,
+        formasPagoData,
+        productosData,
+        personalData,
+        estadosData,
+        centrosCostoData,
+        tiposMovimientoData,
+        monedasData,
+      ] = await Promise.all([
+        getEmpresas(),
+        getTiposDocumento(),
+        getEntidadesComerciales(),
+        getTiposProducto(),
+        getAllTipoEstadoProducto(),
+        getAllDestinoProducto(),
+        getFormasPago(),
+        getProductos(),
+        getPersonal(),
+        getEstadosMultiFuncion(),
+        getCentrosCosto(),
+        getAllTipoMovEntregaRendir(),
+        getMonedas(),
+      ]);
+      setEmpresas(empresasData);
+      setTiposDocumento(tiposDocData);
+      setClientes(clientesData);
+      setTiposProducto(tiposProductoData);
+      setTiposEstadoProducto(tiposEstadoProductoData);
+      setDestinosProducto(destinosProductoData);
+      setFormasPago(formasPagoData);
+      setProductos(productosData);
+
+      // Mapear personal con nombreCompleto
+      const personalConNombres = personalData.map((p) => ({
+        ...p,
+        nombreCompleto: `${p.nombres || ""} ${p.apellidos || ""}`.trim(),
+      }));
+      setPersonalOptions(personalConNombres);
+
+      // Filtrar estados de documentos (tipoProvieneDeId = 13 para COTIZACION VENTA)
+      const estadosDocFiltrados = estadosData.filter(
+        (e) => Number(e.tipoProvieneDeId) === 13 && !e.cesado
+      );
+      setEstadosDoc(estadosDocFiltrados);
+
+      // Normalizar cotizaciones agregando estadoDoc manualmente
+      const cotizacionesNormalizadas = cotizaciones.map((req) => ({
+        ...req,
+        estadoDoc: estadosDocFiltrados.find(
+          (e) => Number(e.id) === Number(req.estadoId)
+        ),
+      }));
+      setItems(cotizacionesNormalizadas);
+      setCentrosCosto(centrosCostoData);
+      setTiposMovimiento(tiposMovimientoData);
+      setMonedas(monedasData);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar los datos.",
+      });
+    }
+    setLoading(false);
+  };
+
+  // Filtrar items cuando cambien los filtros
+  useEffect(() => {
+    let filtrados = items;
+
+    // Filtro por empresa
+    if (empresaSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.empresaId) === Number(empresaSeleccionada)
+      );
+    }
+
+    // Filtro por proveedor
+    if (clienteSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.clienteId) === Number(clienteSeleccionado)
+      );
+    }
+
+    // Filtro por rango de fechas
+    if (fechaInicio) {
+      filtrados = filtrados.filter((item) => {
+        const fechaDoc = new Date(item.fechaDocumento);
+        const fechaIni = new Date(fechaInicio);
+        fechaIni.setHours(0, 0, 0, 0);
+        return fechaDoc >= fechaIni;
+      });
+    }
+
+    if (fechaFin) {
+      filtrados = filtrados.filter((item) => {
+        const fechaDoc = new Date(item.fechaDocumento);
+        const fechaFinDia = new Date(fechaFin);
+        fechaFinDia.setHours(23, 59, 59, 999);
+        return fechaDoc <= fechaFinDia;
+      });
+    }
+
+    // Filtro por estado
+    if (estadoSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.estadoId) === Number(estadoSeleccionado)
+      );
+    }
+
+    setItemsFiltrados(filtrados);
+  }, [
+    empresaSeleccionada,
+    clienteSeleccionado,
+    fechaInicio,
+    fechaFin,
+    estadoSeleccionado,
+    items,
+  ]);
 
   const abrirDialogoNuevo = () => {
     setSelectedCotizacion(null);
@@ -68,12 +256,12 @@ const CotizacionVentas = () => {
   const confirmarEliminacion = (cotizacion) => {
     confirmDialog({
       message: `¿Está seguro de eliminar la cotización ${cotizacion.id}?`,
-      header: 'Confirmar Eliminación',
-      icon: 'pi pi-exclamation-triangle',
-      acceptClassName: 'p-button-danger',
-      acceptLabel: 'Eliminar',
-      rejectLabel: 'Cancelar',
-      accept: () => eliminarCotizacion(cotizacion.id)
+      header: "Confirmar Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
+      acceptLabel: "Eliminar",
+      rejectLabel: "Cancelar",
+      accept: () => eliminarCotizacion(cotizacion.id),
     });
   };
 
@@ -81,16 +269,16 @@ const CotizacionVentas = () => {
     try {
       await deleteCotizacionVentas(id);
       toast.current?.show({
-        severity: 'success',
-        summary: 'Éxito',
-        detail: 'Cotización eliminada correctamente'
+        severity: "success",
+        summary: "Éxito",
+        detail: "Cotización eliminada correctamente",
       });
       cargarCotizaciones();
     } catch (error) {
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al eliminar la cotización'
+        severity: "error",
+        summary: "Error",
+        detail: "Error al eliminar la cotización",
       });
     }
   };
@@ -100,123 +288,100 @@ const CotizacionVentas = () => {
   };
 
   const formatearMoneda = (valor) => {
-    if (!valor) return 'S/ 0.00';
-    return new Intl.NumberFormat('es-PE', {
-      style: 'currency',
-      currency: 'PEN',
+    if (!valor) return "S/ 0.00";
+    return new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: "PEN",
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     }).format(valor);
-  };
-
-  const formatearFecha = (fecha) => {
-    if (!fecha) return '';
-    return new Date(fecha).toLocaleDateString('es-PE', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
   };
 
   const fechaRegistroTemplate = (rowData) => {
     return (
       <div>
-        <div className="font-bold text-primary">COT-{String(rowData.id).padStart(6, '0')}</div>
-        <div className="text-sm text-gray-600">{formatearFecha(rowData.fechaRegistro)}</div>
+        <div className="font-bold text-primary">
+          {rowData.codigo || `ID: ${rowData.id}`}
+        </div>
+        <div className="text-sm text-gray-600">
+          {formatearFecha(rowData.fechaDocumento || rowData.fechaRegistro)}
+        </div>
       </div>
     );
   };
 
   const empresaTemplate = (rowData) => {
-    // Simulación de empresa basado en ID
-    const empresas = {
-      1: { razonSocial: 'Pesquera del Sur S.A.', ruc: '20123456789' },
-      2: { razonSocial: 'Industrias Marinas SAC', ruc: '20987654321' },
-      3: { razonSocial: 'Exportadora Oceánica EIRL', ruc: '20456789123' },
-      4: { razonSocial: 'Pesca y Conservas del Norte', ruc: '20789123456' }
-    };
-    
-    const empresa = empresas[rowData.empresaId] || { 
-      razonSocial: `Empresa ${rowData.empresaId}`, 
-      ruc: `20${String(rowData.empresaId).padStart(9, '0')}` 
-    };
-    
+    if (!rowData.empresa) return "N/A";
+
     return (
       <div>
-        <div className="font-medium text-blue-600">{empresa.razonSocial}</div>
-        <div className="text-sm text-gray-600">RUC: {empresa.ruc}</div>
+        <div className="font-medium text-blue-600">
+          {rowData.empresa.razonSocial || "Sin nombre"}
+        </div>
+        <div className="text-sm text-gray-600">
+          RUC: {rowData.empresa.ruc || "N/A"}
+        </div>
       </div>
     );
   };
 
   const tipoProductoTemplate = (rowData) => {
-    // Simulación de tipos de producto
-    const tiposProducto = {
-      1: { nombre: 'Harina de Pescado', descripcion: 'Prime', paraVentas: true },
-      2: { nombre: 'Aceite de Pescado', descripcion: 'Crudo', paraVentas: true },
-      3: { nombre: 'Conservas', descripcion: 'Atún en aceite', paraVentas: true },
-      4: { nombre: 'Congelado', descripcion: 'Filete de pescado', paraVentas: true }
-    };
-    
-    const tipo = tiposProducto[rowData.tipoProductoId] || { 
-      nombre: `Tipo ${rowData.tipoProductoId}`, 
-      descripcion: 'N/A',
-      paraVentas: true
-    };
-    
+    if (!rowData.tipoProducto) return "N/A";
+
     return (
       <div>
-        <div className="font-medium">{tipo.nombre}</div>
-        <div className="text-sm text-gray-600">{tipo.descripcion}</div>
-        {tipo.paraVentas && (
-          <Tag value="Para Ventas" severity="success" className="text-xs mt-1" />
+        <div className="font-medium">{rowData.tipoProducto.nombre || "N/A"}</div>
+        <div className="text-sm text-gray-600">
+          {rowData.tipoProducto.descripcion || ""}
+        </div>
+        {rowData.tipoProducto.paraVentas && (
+          <Tag
+            value="Para Ventas"
+            severity="success"
+            className="text-xs mt-1"
+          />
         )}
       </div>
     );
   };
 
   const clienteTemplate = (rowData) => {
-    // Simulación de clientes
-    const clientes = {
-      1: { razonSocial: 'Distribuidora Internacional SAC', pais: 'Perú' },
-      2: { razonSocial: 'Global Fish Trading Ltd', pais: 'China' },
-      3: { razonSocial: 'European Seafood Import', pais: 'España' },
-      4: { razonSocial: 'Asian Marine Products', pais: 'Japón' }
-    };
-    
-    const cliente = clientes[rowData.clienteId] || { 
-      razonSocial: `Cliente ${rowData.clienteId}`, 
-      pais: 'N/A'
-    };
-    
+    if (!rowData.cliente) return "N/A";
+
     return (
       <div>
-        <div className="font-medium text-green-600">{cliente.razonSocial}</div>
-        <div className="text-sm text-gray-600">{cliente.pais}</div>
+        <div className="font-medium text-green-600">
+          {rowData.cliente.razonSocial || "Sin nombre"}
+        </div>
+        <div className="text-sm text-gray-600">
+          {rowData.cliente.ruc || rowData.cliente.numeroDocumento || ""}
+        </div>
       </div>
     );
   };
 
   const estadoTemplate = (rowData) => {
-    // Simulación de estados de cotización
-    const estados = {
-      1: { nombre: 'Borrador', severity: 'secondary' },
-      2: { nombre: 'Enviada', severity: 'info' },
-      3: { nombre: 'Aprobada', severity: 'success' },
-      4: { nombre: 'Rechazada', severity: 'danger' },
-      5: { nombre: 'Vencida', severity: 'warning' },
-      6: { nombre: 'Convertida', severity: 'success' }
+    if (!rowData.estadoDoc) return "N/A";
+
+    // Mapeo de colores según el nombre del estado
+    const getSeverity = (nombre) => {
+      const nombreLower = nombre?.toLowerCase() || "";
+      if (nombreLower.includes("borrador") || nombreLower.includes("pendiente"))
+        return "secondary";
+      if (nombreLower.includes("enviada") || nombreLower.includes("proceso"))
+        return "info";
+      if (nombreLower.includes("aprobada") || nombreLower.includes("convertida"))
+        return "success";
+      if (nombreLower.includes("rechazada") || nombreLower.includes("anulada"))
+        return "danger";
+      if (nombreLower.includes("vencida")) return "warning";
+      return "secondary";
     };
-    
-    const estado = estados[rowData.estadoCotizacionId] || { 
-      nombre: 'Borrador', 
-      severity: 'secondary'
-    };
-    
+
     return (
-      <Tag 
-        value={estado.nombre} 
-        severity={estado.severity} 
+      <Tag
+        value={rowData.estadoDoc.nombre}
+        severity={getSeverity(rowData.estadoDoc.nombre)}
       />
     );
   };
@@ -225,16 +390,19 @@ const CotizacionVentas = () => {
     return (
       <div className="text-sm">
         <div>
-          <span className="font-medium">Entrega:</span> {formatearFecha(rowData.fechaEntrega)}
+          <span className="font-medium">Entrega:</span>{" "}
+          {formatearFecha(rowData.fechaEntrega)}
         </div>
         {rowData.fechaZarpe && (
           <div>
-            <span className="font-medium">Zarpe:</span> {formatearFecha(rowData.fechaZarpe)}
+            <span className="font-medium">Zarpe:</span>{" "}
+            {formatearFecha(rowData.fechaZarpe)}
           </div>
         )}
         {rowData.fechaArribo && (
           <div>
-            <span className="font-medium">Arribo:</span> {formatearFecha(rowData.fechaArribo)}
+            <span className="font-medium">Arribo:</span>{" "}
+            {formatearFecha(rowData.fechaArribo)}
           </div>
         )}
       </div>
@@ -242,63 +410,53 @@ const CotizacionVentas = () => {
   };
 
   const responsablesTemplate = (rowData) => {
-    // Simulación de responsables
-    const personal = {
-      1: { nombres: 'Carlos', apellidos: 'Mendoza García', cargo: 'Jefe Ventas' },
-      2: { nombres: 'Ana María', apellidos: 'Torres Vega', cargo: 'Supervisor Embarque' },
-      3: { nombres: 'Luis Alberto', apellidos: 'Ramírez Silva', cargo: 'Jefe Producción' },
-      4: { nombres: 'Patricia', apellidos: 'Flores Díaz', cargo: 'Jefe Almacén' }
-    };
-    
-    const respVentas = personal[rowData.respVentasId] || { nombres: 'N/A', apellidos: '', cargo: '' };
-    const respEmbarque = personal[rowData.respEmbarqueId] || { nombres: 'N/A', apellidos: '', cargo: '' };
-    
+    const respVentas = personalOptions.find(
+      (p) => Number(p.id) === Number(rowData.respVentasId)
+    );
+    const respEmbarque = personalOptions.find(
+      (p) => Number(p.id) === Number(rowData.respEmbarqueId)
+    );
+
     return (
       <div className="text-sm">
         <div>
-          <span className="font-medium">Ventas:</span> {respVentas.nombres} {respVentas.apellidos}
+          <span className="font-medium">Ventas:</span>{" "}
+          {respVentas?.nombreCompleto || "N/A"}
         </div>
-        <div>
-          <span className="font-medium">Embarque:</span> {respEmbarque.nombres} {respEmbarque.apellidos}
-        </div>
+        {rowData.respEmbarqueId && (
+          <div>
+            <span className="font-medium">Embarque:</span>{" "}
+            {respEmbarque?.nombreCompleto || "N/A"}
+          </div>
+        )}
       </div>
     );
   };
 
   const destinoTemplate = (rowData) => {
-    // Simulación de destinos
-    const destinos = {
-      1: { nombre: 'Exportación', descripcion: 'Mercado Internacional' },
-      2: { nombre: 'Nacional', descripcion: 'Mercado Local' },
-      3: { nombre: 'Zona Franca', descripcion: 'Zona Especial' },
-      4: { nombre: 'Reexportación', descripcion: 'Tránsito' }
-    };
-    
-    const destino = destinos[rowData.destinoProductoId] || { 
-      nombre: `Destino ${rowData.destinoProductoId}`, 
-      descripcion: 'N/A'
-    };
-    
+    if (!rowData.destinoProducto) return "N/A";
+
     return (
       <div>
-        <div className="font-medium">{destino.nombre}</div>
-        <div className="text-sm text-gray-600">{destino.descripcion}</div>
+        <div className="font-medium">{rowData.destinoProducto.nombre || "N/A"}</div>
+        <div className="text-sm text-gray-600">
+          {rowData.destinoProducto.descripcion || ""}
+        </div>
       </div>
     );
   };
 
   const montosTemplate = (rowData) => {
-    const tipoCambio = rowData.tipoCambio || 3.75;
-    const montoAdelantado = rowData.montoAdelantadoCliente || 0;
-    
     return (
       <div className="text-right">
-        <div className="font-medium">
-          T.C: {Number(tipoCambio).toFixed(2)}
-        </div>
-        {montoAdelantado > 0 && (
+        {rowData.tipoCambio && (
+          <div className="font-medium">
+            T.C: {Number(rowData.tipoCambio).toFixed(2)}
+          </div>
+        )}
+        {rowData.montoAdelantadoCliente > 0 && (
           <div className="text-green-600">
-            Adelanto: {formatearMoneda(montoAdelantado)}
+            Adelanto: {formatearMoneda(rowData.montoAdelantadoCliente)}
           </div>
         )}
       </div>
@@ -306,35 +464,24 @@ const CotizacionVentas = () => {
   };
 
   const logisticaTemplate = (rowData) => {
-    // Simulación de datos logísticos
-    const incoterms = {
-      1: 'FOB',
-      2: 'CIF',
-      3: 'CFR',
-      4: 'EXW'
-    };
-    
-    const puertos = {
-      1: 'Callao',
-      2: 'Paita',
-      3: 'Chimbote',
-      4: 'Ilo'
-    };
-    
-    const incoterm = incoterms[rowData.incotermsId] || 'FOB';
-    const puertoCarga = puertos[rowData.puertoCargaId] || 'N/A';
-    
     return (
       <div className="text-sm">
-        <div>
-          <span className="font-medium">Incoterm:</span> {incoterm}
-        </div>
-        <div>
-          <span className="font-medium">Puerto:</span> {puertoCarga}
-        </div>
+        {rowData.incoterms && (
+          <div>
+            <span className="font-medium">Incoterm:</span>{" "}
+            {rowData.incoterms.codigo || rowData.incoterms.nombre || "N/A"}
+          </div>
+        )}
+        {rowData.cantidadContenedores && (
+          <div>
+            <span className="font-medium">Contenedores:</span>{" "}
+            {rowData.cantidadContenedores}
+          </div>
+        )}
         {rowData.pesoMaximoContenedor && (
           <div>
-            <span className="font-medium">Peso Max:</span> {Number(rowData.pesoMaximoContenedor).toFixed(2)} TM
+            <span className="font-medium">Peso Max:</span>{" "}
+            {Number(rowData.pesoMaximoContenedor).toFixed(2)} TM
           </div>
         )}
       </div>
@@ -342,12 +489,12 @@ const CotizacionVentas = () => {
   };
 
   const observacionesTemplate = (rowData) => {
-    if (!rowData.observaciones) return '';
+    if (!rowData.observaciones) return "";
     return (
       <span title={rowData.observaciones}>
-        {rowData.observaciones.length > 30 ? 
-          `${rowData.observaciones.substring(0, 30)}...` : 
-          rowData.observaciones}
+        {rowData.observaciones.length > 30
+          ? `${rowData.observaciones.substring(0, 30)}...`
+          : rowData.observaciones}
       </span>
     );
   };
@@ -355,7 +502,7 @@ const CotizacionVentas = () => {
   const accionesTemplate = (rowData) => {
     // Solo mostrar botón eliminar para superusuario o admin
     const puedeEliminar = usuario?.esSuperUsuario || usuario?.esAdmin;
-    
+
     return (
       <div className="flex gap-2">
         {puedeEliminar && (
@@ -373,20 +520,21 @@ const CotizacionVentas = () => {
     );
   };
 
+  const limpiarFiltros = () => {
+    setClienteSeleccionado(null);
+    setFechaInicio(null);
+    setFechaFin(null);
+    setEstadoSeleccionado(null);
+  };
+
   return (
     <div className="cotizacion-ventas-container">
       <Toast ref={toast} />
       <ConfirmDialog />
-      
+
       <div className="card">
         <div className="flex justify-content-between align-items-center mb-4">
           <h2>Cotizaciones de Ventas</h2>
-          <Button
-            label="Nueva Cotización"
-            icon="pi pi-plus"
-            onClick={abrirDialogoNuevo}
-            className="p-button-primary"
-          />
         </div>
 
         <DataTable
@@ -394,91 +542,234 @@ const CotizacionVentas = () => {
           loading={loading}
           dataKey="id"
           paginator
-          rows={10}
-          rowsPerPageOptions={[5, 10, 25]}
+          size="small"
+          showGridlines
+          stripedRows
+          rows={5}
+          rowsPerPageOptions={[5, 10, 15, 20]}
+          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cotizaciones"
+          style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
           onRowClick={onRowClick}
           selectionMode="single"
           className="datatable-responsive"
           emptyMessage="No se encontraron cotizaciones de ventas"
           scrollable
           scrollHeight="600px"
+          header={
+            <div>
+              <div
+                style={{
+                  alignItems: "end",
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 2 }}>
+                  <h2>Requerimientos de Compra</h2>
+                </div>
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="empresaFiltro" style={{ fontWeight: "bold" }}>
+                    Empresa*
+                  </label>
+                  <Dropdown
+                    id="empresaFiltro"
+                    value={empresaSeleccionada}
+                    options={empresas.map((e) => ({
+                      label: e.razonSocial,
+                      value: Number(e.id),
+                    }))}
+                    onChange={(e) => setEmpresaSeleccionada(e.value)}
+                    placeholder="Seleccionar empresa para filtrar"
+                    optionLabel="label"
+                    optionValue="value"
+                    showClear
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Nuevo"
+                    icon="pi pi-plus"
+                    onClick={abrirDialogoNuevo}
+                    className="p-button-primary"
+                    disabled={loading || !empresaSeleccionada}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Limpiar Filtros"
+                    icon="pi pi-filter-slash"
+                    className="p-button-secondary"
+                    outlined
+                    onClick={limpiarFiltros}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+              <div
+                style={{
+                  alignItems: "end",
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="clienteFiltro" style={{ fontWeight: "bold" }}>
+                    Cliente
+                  </label>
+                  <Dropdown
+                    id="clienteFiltro"
+                    value={clienteSeleccionado}
+                    options={clientesUnicos.map((p) => ({
+                      label: p.razonSocial,
+                      value: Number(p.id),
+                    }))}
+                    onChange={(e) => setClienteSeleccionado(e.value)}
+                    placeholder="Todos"
+                    optionLabel="label"
+                    optionValue="value"
+                    showClear
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="fechaInicio" style={{ fontWeight: "bold" }}>
+                    Desde
+                  </label>
+                  <Calendar
+                    id="fechaInicio"
+                    value={fechaInicio}
+                    onChange={(e) => setFechaInicio(e.value)}
+                    placeholder="Fecha inicio"
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    showButtonBar
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="fechaFin" style={{ fontWeight: "bold" }}>
+                    Hasta
+                  </label>
+                  <Calendar
+                    id="fechaFin"
+                    value={fechaFin}
+                    onChange={(e) => setFechaFin(e.value)}
+                    placeholder="Fecha fin"
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    showButtonBar
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="estadoFiltro" style={{ fontWeight: "bold" }}>
+                    Estado
+                  </label>
+                  <Dropdown
+                    id="estadoFiltro"
+                    value={estadoSeleccionado}
+                    options={estadosDoc.map((e) => ({
+                      label: e.descripcion,
+                      value: Number(e.id),
+                    }))}
+                    onChange={(e) => setEstadoSeleccionado(e.value)}
+                    placeholder="Todos"
+                    optionLabel="label"
+                    optionValue="value"
+                    showClear
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            </div>
+          }
         >
-          <Column field="id" header="ID" sortable style={{ width: '80px' }} frozen />
-          <Column 
-            field="fechaRegistro" 
-            header="N° Cotización" 
+          <Column
+            field="id"
+            header="ID"
+            sortable
+            style={{ width: "80px" }}
+            frozen
+          />
+          <Column
+            field="fechaRegistro"
+            header="N° Cotización"
             body={fechaRegistroTemplate}
-            sortable 
-            style={{ width: '150px' }}
+            sortable
+            style={{ width: "150px" }}
           />
-          <Column 
-            field="empresaId" 
-            header="Empresa" 
+          <Column
+            field="empresaId"
+            header="Empresa"
             body={empresaTemplate}
-            sortable 
-            style={{ width: '200px' }}
+            sortable
+            style={{ width: "200px" }}
           />
-          <Column 
-            field="tipoProductoId" 
-            header="Tipo Producto" 
+          <Column
+            field="tipoProductoId"
+            header="Tipo Producto"
             body={tipoProductoTemplate}
-            sortable 
-            style={{ width: '180px' }}
+            sortable
+            style={{ width: "180px" }}
           />
-          <Column 
-            field="clienteId" 
-            header="Cliente" 
+          <Column
+            field="clienteId"
+            header="Cliente"
             body={clienteTemplate}
-            sortable 
-            style={{ width: '200px' }}
+            sortable
+            style={{ width: "200px" }}
           />
-          <Column 
-            field="destinoProductoId" 
-            header="Destino" 
+          <Column
+            field="destinoProductoId"
+            header="Destino"
             body={destinoTemplate}
-            sortable 
-            style={{ width: '150px' }}
+            sortable
+            style={{ width: "150px" }}
           />
-          <Column 
-            field="estadoCotizacionId" 
-            header="Estado" 
+          <Column
+            field="estadoCotizacionId"
+            header="Estado"
             body={estadoTemplate}
-            sortable 
-            style={{ width: '120px' }}
+            sortable
+            style={{ width: "120px" }}
             className="text-center"
           />
-          <Column 
-            header="Fechas" 
+          <Column
+            header="Fechas"
             body={fechasTemplate}
-            style={{ width: '150px' }}
+            style={{ width: "150px" }}
           />
-          <Column 
-            header="Responsables" 
+          <Column
+            header="Responsables"
             body={responsablesTemplate}
-            style={{ width: '180px' }}
+            style={{ width: "180px" }}
           />
-          <Column 
-            header="Logística" 
+          <Column
+            header="Logística"
             body={logisticaTemplate}
-            style={{ width: '150px' }}
+            style={{ width: "150px" }}
           />
-          <Column 
-            header="Montos" 
+          <Column
+            header="Montos"
             body={montosTemplate}
-            style={{ width: '120px' }}
+            style={{ width: "120px" }}
             className="text-right"
           />
-          <Column 
-            field="observaciones" 
-            header="Observaciones" 
+          <Column
+            field="observaciones"
+            header="Observaciones"
             body={observacionesTemplate}
-            sortable 
-            style={{ minWidth: '150px' }}
+            sortable
+            style={{ minWidth: "150px" }}
           />
           <Column
             header="Acciones"
             body={accionesTemplate}
-            style={{ width: '100px' }}
+            style={{ width: "100px" }}
             className="text-center"
             frozen
             alignFrozen="right"
@@ -488,8 +779,12 @@ const CotizacionVentas = () => {
 
       <Dialog
         visible={dialogVisible}
-        style={{ width: '1200px' }}
-        header={isEditing ? 'Editar Cotización de Ventas' : 'Nueva Cotización de Ventas'}
+        style={{ width: "1200px" }}
+        header={
+          isEditing
+            ? "Editar Cotización de Ventas"
+            : "Nueva Cotización de Ventas"
+        }
         modal
         onHide={cerrarDialogo}
       >
@@ -500,6 +795,21 @@ const CotizacionVentas = () => {
             cerrarDialogo();
           }}
           onCancel={cerrarDialogo}
+
+          empresas={empresas}
+          tiposDocumento={tiposDocumento}
+          clientes={clientes}
+          tiposProducto={tiposProducto}
+          tiposEstadoProducto={tiposEstadoProducto}
+          destinosProducto={destinosProducto}
+          formasPago={formasPago}
+          productos={productos}
+          personalOptions={personalOptions}
+          estadosDoc={estadosDoc}
+          centrosCosto={centrosCosto}
+          tiposMovimiento={tiposMovimiento}
+          monedas={monedas}
+          empresaFija={empresaSeleccionada}
         />
       </Dialog>
     </div>

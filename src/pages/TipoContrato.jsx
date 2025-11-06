@@ -12,6 +12,7 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { InputText } from "primereact/inputtext";
+import { Tag } from "primereact/tag";
 import {
   getTiposContrato,
   crearTipoContrato,
@@ -20,6 +21,8 @@ import {
 } from "../api/tipoContrato";
 import TipoContratoForm from "../components/tipoContrato/TipoContratoForm";
 import { getResponsiveFontSize } from "../utils/utils";
+import { Navigate } from "react-router-dom";
+import { usePermissions } from "../hooks/usePermissions";
 
 /**
  * Página de gestión de tipos de contrato.
@@ -36,8 +39,12 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
  * - El usuario autenticado se obtiene siempre desde useAuthStore.
  */
-export default function TipoContrato() {
+export default function TipoContrato({ ruta }) {
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
   const [confirmState, setConfirmState] = useState({
     visible: false,
     row: null,
@@ -76,6 +83,9 @@ export default function TipoContrato() {
   }
 
   async function onSubmitForm(data) {
+    if (modoEdicion && !permisos.puedeEditar) return;
+    if (!modoEdicion && !permisos.puedeCrear) return;
+
     setFormLoading(true);
     try {
       // Filtrado profesional del payload: solo los campos válidos para el modelo Prisma
@@ -150,35 +160,46 @@ export default function TipoContrato() {
       setLoading(false);
     }
   };
+  const cesadoTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.cesado ? "CESADO" : "ACTIVO"}
+        severity={rowData.cesado ? "danger" : "success"}
+        style={{ fontSize: "10px", padding: "2px 8px" }}
+      />
+    );
+  };
 
   const accionesTemplate = (rowData) => (
-    <span>
+    <div onClick={(e) => e.stopPropagation()}>
       <Button
         icon="pi pi-pencil"
         className="p-button-rounded p-button-text p-button-info"
         style={{ marginRight: 8 }}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleEditar(rowData);
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        onClick={() => {
+          if (permisos.puedeVer || permisos.puedeEditar) {
+            handleEditar(rowData);
+          }
         }}
-        tooltip="Editar"
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button
-          icon="pi pi-trash"
-          className="p-button-rounded p-button-text p-button-danger"
-          onClick={(e) => {
-            e.stopPropagation();
+      <Button
+        icon="pi pi-trash"
+        className="p-button-rounded p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={() => {
+          if (permisos.puedeEliminar) {
             handleEliminar(rowData);
-          }}
-          tooltip="Eliminar"
-        />
-      )}
-    </span>
+          }
+        }}
+        tooltip="Eliminar"
+      />
+    </div>
   );
 
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto", padding: "2rem 0" }}>
+    <div className="p-m-4">
       <Toast ref={toast} position="top-right" />
       <div
         style={{
@@ -214,11 +235,21 @@ export default function TipoContrato() {
       <DataTable
         value={tipos}
         loading={loading}
-        paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 20]}
-        globalFilter={globalFilter}
+        size="small"
+        showGridlines
         stripedRows
+        paginator
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} tipos de contrato"
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
+        onRowClick={permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined}
+        globalFilter={globalFilter}
         emptyMessage="No hay tipos de contrato registrados."
         header={
           <div className="flex align-items-center gap-2">
@@ -231,6 +262,7 @@ export default function TipoContrato() {
               tooltip="Nuevo Tipo de Contrato"
               className="p-button-success"
               icon="pi pi-plus"
+              disabled={!permisos.puedeCrear}
               onClick={() => {
                 setTipoEdit(null);
                 setModoEdicion(false);
@@ -245,21 +277,22 @@ export default function TipoContrato() {
             />
           </div>
         }
-        onRowClick={onRowClick}
-        style={{ cursor: 'pointer', fontSize: getResponsiveFontSize() }}
       >
         <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="codigo" header="Código" />
-        <Column field="nombre" header="Nombre" />
+        <Column field="codigo" header="Código" style={{width:100}} />
+        <Column field="nombre" header="Nombre" style={{width:500}} />
         <Column
-          field="cesado"
-          header="¿Cesado?"
-          body={(rowData) => (rowData.cesado ? "Sí" : "No")}
+          header="Estado"
+          align="center"
+          body={cesadoTemplate}
+          sortable
+          style={{ width: "200px", textAlign: "center" }}
         />
         <Column
           header="Acciones"
+          align="center"
           body={accionesTemplate}
-          style={{ minWidth: 150, textAlign: "center" }}
+          style={{ minWidth: 100, textAlign: "center" }}
         />
       </DataTable>
       <Dialog
@@ -277,6 +310,7 @@ export default function TipoContrato() {
           onSubmit={onSubmitForm}
           onCancel={() => setMostrarDialogo(false)}
           loading={formLoading}
+          readOnly={modoEdicion && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

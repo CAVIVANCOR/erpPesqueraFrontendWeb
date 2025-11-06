@@ -4,6 +4,7 @@
 // Documentado en español técnico.
 
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -11,6 +12,7 @@ import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { InputText } from "primereact/inputtext";
 import {
   getSedes,
@@ -20,6 +22,7 @@ import {
 } from "../api/sedes";
 import { getEmpresas } from "../api/empresa";
 import SedeForm from "../components/sedes/SedeForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Página de gestión de sedes de empresa.
@@ -36,8 +39,14 @@ import SedeForm from "../components/sedes/SedeForm";
  * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
  * - El usuario autenticado se obtiene siempre desde useAuthStore.
  */
-export default function SedesEmpresa() {
+export default function SedesEmpresa({ ruta }) {
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const [confirmState, setConfirmState] = useState({
     visible: false,
     row: null,
@@ -84,6 +93,9 @@ export default function SedesEmpresa() {
   }
 
   async function onSubmitForm(data) {
+    if (modoEdicion && !permisos.puedeEditar) return;
+    if (!modoEdicion && !permisos.puedeCrear) return;
+
     setFormLoading(true);
     try {
       // Filtrado profesional del payload: solo los campos válidos para el modelo Prisma
@@ -158,29 +170,31 @@ export default function SedesEmpresa() {
   };
 
   const accionesTemplate = (rowData) => (
-    <span>
+    <div onClick={(e) => e.stopPropagation()}>
       <Button
         icon="pi pi-pencil"
         className="p-button-rounded p-button-text p-button-info"
         style={{ marginRight: 8 }}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleEditar(rowData);
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        onClick={() => {
+          if (permisos.puedeVer || permisos.puedeEditar) {
+            handleEditar(rowData);
+          }
         }}
-        tooltip="Editar"
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button
-          icon="pi pi-trash"
-          className="p-button-rounded p-button-text p-button-danger"
-          onClick={(e) => {
-            e.stopPropagation();
+      <Button
+        icon="pi pi-trash"
+        className="p-button-rounded p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={() => {
+          if (permisos.puedeEliminar) {
             handleEliminar(rowData);
-          }}
-          tooltip="Eliminar"
-        />
-      )}
-    </span>
+          }
+        }}
+        tooltip="Eliminar"
+      />
+    </div>
   );
 
   return (
@@ -212,52 +226,79 @@ export default function SedesEmpresa() {
         value={sedes}
         loading={loading}
         paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 20]}
-        globalFilter={globalFilter}
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} sedes"
+        size="small"
+        showGridlines
         stripedRows
+        globalFilter={globalFilter}
         emptyMessage="No hay sedes registradas."
         header={
-          <div className="flex align-items-center gap-2">
-            <h2>Sedes de Empresa</h2>
-            <Button
-              label="Nueva Sede"
-              icon="pi pi-plus"
-              className="p-button-success"
-              size="small"
-              raised
-              onClick={() => {
-                setSedeEdit(null);
-                setModoEdicion(false);
-                setMostrarDialogo(true);
-              }}
-            />
-            <span className="p-input-icon-left">
-              <InputText
-                type="search"
-                onInput={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Buscar sedes..."
-                style={{ width: 240 }}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 18,
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h2>Sedes de Empresa</h2>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Nueva Sede"
+                icon="pi pi-plus"
+                className="p-button-success"
+                size="small"
+                raised
+                disabled={!permisos.puedeCrear}
+                onClick={() => {
+                  setSedeEdit(null);
+                  setModoEdicion(false);
+                  setMostrarDialogo(true);
+                }}
               />
-            </span>
+            </div>
+            <div style={{ flex: 3 }}>
+              <span className="p-input-icon-left">
+                <InputText
+                  type="search"
+                  onInput={(e) => setGlobalFilter(e.target.value)}
+                  placeholder="Buscar sedes..."
+                  style={{ width: 240 }}
+                />
+              </span>
+            </div>
           </div>
         }
-        onRowClick={onRowClick}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
+        }
+        style={{
+          fontSize: getResponsiveFontSize(),
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+        }}
       >
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="nombre" header="Nombre" />
+        <Column field="id" header="ID" style={{ width: 80 }} sortable/>
+        <Column field="nombre" header="Nombre" sortable/>
         <Column
           field="empresa.razonSocial"
           header="Empresa"
           body={(rowData) => rowData.empresa?.razonSocial}
+          sortable
         />
-        <Column field="direccion" header="Dirección" />
-        <Column field="telefono" header="Teléfono" />
-        <Column field="email" header="Email" />
+        <Column field="direccion" header="Dirección" sortable/>
+        <Column field="telefono" header="Teléfono" sortable/>
+        <Column field="email" header="Email" sortable/>
         <Column
           field="cesado"
           header="¿Cesada?"
           body={(rowData) => (rowData.cesado ? "Sí" : "No")}
+          sortable
         />
         <Column
           header="Acciones"
@@ -266,7 +307,13 @@ export default function SedesEmpresa() {
         />
       </DataTable>
       <Dialog
-        header={modoEdicion ? "Editar Sede" : "Nueva Sede"}
+        header={
+          modoEdicion
+            ? permisos.puedeEditar
+              ? "Editar Sede"
+              : "Ver Sede"
+            : "Nueva Sede"
+        }
         visible={mostrarDialogo}
         style={{ width: 600 }}
         modal
@@ -279,6 +326,7 @@ export default function SedesEmpresa() {
           onCancel={() => setMostrarDialogo(false)}
           loading={formLoading}
           empresas={empresas}
+          readOnly={modoEdicion && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

@@ -86,18 +86,11 @@ const esquemaValidacionVehiculo = yup.object().shape({
  * Componente DetalleVehiculosEntidad
  * @param {Object} props - Props del componente
  * @param {number} props.entidadComercialId - ID de la entidad comercial
- * @param {Array} props.vehiculos - Lista de vehículos
- * @param {Function} props.onVehiculosChange - Callback cuando cambian los vehículos
  * @param {Object} props.entidadComercial - Entidad comercial
  */
 const DetalleVehiculosEntidad = forwardRef(
   (
-    {
-      entidadComercialId,
-      vehiculos = [],
-      onVehiculosChange,
-      entidadComercial,
-    },
+    { entidadComercialId, entidadComercial, readOnly = false, permisos = {} },
     ref
   ) => {
     const [vehiculosData, setVehiculosData] = useState([]);
@@ -165,7 +158,10 @@ const DetalleVehiculosEntidad = forwardRef(
       setValue("capacidadTon", vehiculo.capacidadTon || null);
       setValue("observaciones", vehiculo.observaciones || "");
       setValue("cesado", Boolean(vehiculo.cesado));
-      setValue("activoId", vehiculo.activoId ? Number(vehiculo.activoId) : null);
+      setValue(
+        "activoId",
+        vehiculo.activoId ? Number(vehiculo.activoId) : null
+      );
       setDialogVisible(true);
     };
 
@@ -238,12 +234,31 @@ const DetalleVehiculosEntidad = forwardRef(
           numeroMotor: data.numeroMotor?.trim().toUpperCase() || null,
           numeroSerie: data.numeroSerie?.trim().toUpperCase() || null,
           observaciones: data.observaciones?.trim().toUpperCase() || null,
-          updatedAt: new Date().toISOString(),
         };
 
-        if (vehiculoSeleccionado && vehiculoSeleccionado.id) {
+        const esEdicion = vehiculoSeleccionado && vehiculoSeleccionado.id;
+
+        if (esEdicion) {
           // Actualizar vehículo existente en BD
-          await actualizarVehiculoEntidad(vehiculoSeleccionado.id, vehiculoNormalizado);
+          // Agregar campos de auditoría para actualización
+          const datosActualizacion = {
+            ...vehiculoNormalizado,
+            // Si fechaCreacion o creadoPor son null/vacíos, asignarlos ahora
+            fechaCreacion: vehiculoSeleccionado.fechaCreacion || new Date(),
+            creadoPor:
+              vehiculoSeleccionado.creadoPor ||
+              (usuario?.personalId ? Number(usuario.personalId) : null),
+            // Siempre actualizar estos campos
+            fechaActualizacion: new Date(),
+            actualizadoPor: usuario?.personalId
+              ? Number(usuario.personalId)
+              : null,
+          };
+
+          await actualizarVehiculoEntidad(
+            vehiculoSeleccionado.id,
+            datosActualizacion
+          );
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
@@ -252,7 +267,18 @@ const DetalleVehiculosEntidad = forwardRef(
           });
         } else {
           // Crear nuevo vehículo en BD
-          await crearVehiculoEntidad(vehiculoNormalizado);
+          // Agregar campos de auditoría para creación
+          const datosCreacion = {
+            ...vehiculoNormalizado,
+            fechaCreacion: new Date(),
+            creadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
+            fechaActualizacion: new Date(),
+            actualizadoPor: usuario?.personalId
+              ? Number(usuario.personalId)
+              : null,
+          };
+
+          await crearVehiculoEntidad(datosCreacion);
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
@@ -265,7 +291,7 @@ const DetalleVehiculosEntidad = forwardRef(
         await cargarVehiculos();
         cerrarDialogo();
       } catch (error) {
-        console.error('Error al guardar vehículo:', error);
+        console.error("Error al guardar vehículo:", error);
         toast.current?.show({
           severity: "error",
           summary: "Error",
@@ -322,47 +348,48 @@ const DetalleVehiculosEntidad = forwardRef(
       );
     };
 
-    const estadoTemplate = (rowData) => {
-      return (
-        <Tag
-          value={rowData.estado ? "Activo" : "Inactivo"}
-          severity={rowData.estado ? "success" : "danger"}
-        />
+    const activoTemplate = (rowData) => {
+      console.log("activoTemplate rowData", rowData, "activos", activos);
+      const activo = activos.find(
+        (t) => Number(t.value) === Number(rowData.activoId)
       );
+      return activo?.label || rowData.activoId;
     };
 
-    const accionesTemplate = (rowData) => {
-      return (
-        <div className="flex gap-2">
-          <Button
-            icon="pi pi-pencil"
-            className="p-button-text p-mr-2"
-            onClick={(ev) => {
-              ev.stopPropagation();
+    // Renderizado de botones de acción
+    const accionesTemplate = (rowData) => (
+      <div onClick={(e) => e.stopPropagation()}>
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-mr-2"
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          onClick={(ev) => {
+            if (permisos.puedeVer || permisos.puedeEditar) {
               abrirDialogoEdicion(rowData);
-            }}
-            tooltip="Editar"
-            tooltipOptions={{ position: "top" }}
-            type="button"
-          />
-          {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-            <Button
-              icon="pi pi-trash"
-              className="p-button-text p-button-danger"
-              onClick={() => confirmarEliminacion(rowData)}
-              tooltip="Eliminar"
-              type="button"
-            />
-          )}
-        </div>
-      );
-    };
+            }
+          }}
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+          type="button"
+        />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger"
+          disabled={!permisos.puedeEliminar}
+          onClick={(ev) => {
+            if (permisos.puedeEliminar) {
+              confirmarEliminacion(rowData);
+            }
+          }}
+          tooltip="Eliminar"
+          type="button"
+        />
+      </div>
+    );
 
     const cargarVehiculos = async () => {
       try {
         const vehiculos = await obtenerVehiculosPorEntidad(entidadComercialId);
         setVehiculosData(vehiculos);
-        onVehiculosChange?.(vehiculos);
       } catch (error) {
         toast.current?.show({
           severity: "error",
@@ -375,18 +402,18 @@ const DetalleVehiculosEntidad = forwardRef(
 
     const cargarTiposVehiculo = async () => {
       try {
-        const tipos = await getTiposVehiculo();        
+        const tipos = await getTiposVehiculo();
         // Transformar los datos al formato que espera el Dropdown (value/label)
         const tiposFormateados = tipos
-          .filter(tipo => tipo.activo) // Solo tipos activos
-          .map(tipo => ({
+          .filter((tipo) => tipo.activo) // Solo tipos activos
+          .map((tipo) => ({
             value: Number(tipo.id), // Asegurar que sea número
-            label: tipo.nombre
+            label: tipo.nombre,
           }));
-        
+
         setTiposVehiculo(tiposFormateados);
       } catch (error) {
-        console.error('Error al cargar tipos de vehículo:', error);
+        console.error("Error al cargar tipos de vehículo:", error);
         toast.current?.show({
           severity: "error",
           summary: "Error",
@@ -398,15 +425,19 @@ const DetalleVehiculosEntidad = forwardRef(
 
     const cargarActivos = async () => {
       try {
-        const activos = await getVehiculosPorRuc(entidadComercial.numeroDocumento);        
+        const activos = await getVehiculosPorRuc(
+          entidadComercial.numeroDocumento
+        );
         // Formatear activos para el dropdown
-        const activosFormateados = activos.map(activo => ({
+        const activosFormateados = activos.map((activo) => ({
           value: Number(activo.id),
-          label: `${activo.nombre}${activo.descripcion ? ' - ' + activo.descripcion : ''}`
+          label: `${activo.nombre}${
+            activo.descripcion ? " - " + activo.descripcion : ""
+          }`,
         }));
         setActivos(activosFormateados);
       } catch (error) {
-        console.error('Error al cargar activos:', error);
+        console.error("Error al cargar activos:", error);
         toast.current?.show({
           severity: "error",
           summary: "Error",
@@ -461,6 +492,7 @@ const DetalleVehiculosEntidad = forwardRef(
                 className="p-button-success"
                 onClick={abrirDialogoNuevo}
                 type="button"
+                disabled={readOnly || loading}
               />
               <span className="p-input-icon-left">
                 <InputText
@@ -493,9 +525,9 @@ const DetalleVehiculosEntidad = forwardRef(
             sortable
           />
           <Column
-            field="estado"
-            header="Estado"
-            body={estadoTemplate}
+            field="activoId"
+            header="Activo"
+            body={activoTemplate}
             sortable
           />
           <Column
@@ -538,6 +570,7 @@ const DetalleVehiculosEntidad = forwardRef(
                         placeholder="Seleccione tipo de vehículo"
                         className={getFieldClass("tipoVehiculoId")}
                         style={{ fontWeight: "bold" }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -556,7 +589,11 @@ const DetalleVehiculosEntidad = forwardRef(
                         placeholder="INGRESE PLACA"
                         className={getFieldClass("placa")}
                         maxLength={10}
-                        style={{ textTransform: "uppercase", fontWeight: "bold" }}
+                        style={{
+                          textTransform: "uppercase",
+                          fontWeight: "bold",
+                        }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -575,7 +612,11 @@ const DetalleVehiculosEntidad = forwardRef(
                         placeholder="INGRESE MARCA"
                         className={getFieldClass("marca")}
                         maxLength={50}
-                        style={{ textTransform: "uppercase", fontWeight: "bold" }}
+                        style={{
+                          textTransform: "uppercase",
+                          fontWeight: "bold",
+                        }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -605,7 +646,11 @@ const DetalleVehiculosEntidad = forwardRef(
                         placeholder="INGRESE MODELO"
                         className={getFieldClass("modelo")}
                         maxLength={50}
-                        style={{ textTransform: "uppercase", fontWeight: "bold" }}
+                        style={{
+                          textTransform: "uppercase",
+                          fontWeight: "bold",
+                        }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -624,7 +669,11 @@ const DetalleVehiculosEntidad = forwardRef(
                         placeholder="INGRESE COLOR"
                         className={getFieldClass("color")}
                         maxLength={30}
-                        style={{ textTransform: "uppercase", fontWeight: "bold" }}
+                        style={{
+                          textTransform: "uppercase",
+                          fontWeight: "bold",
+                        }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -644,6 +693,8 @@ const DetalleVehiculosEntidad = forwardRef(
                         max={new Date().getFullYear() + 1}
                         useGrouping={false}
                         className={getFieldClass("anio")}
+                        disabled={readOnly || loading}
+                        inputStyle={{ fontWeight: "bold" }}
                       />
                     )}
                   />
@@ -673,7 +724,11 @@ const DetalleVehiculosEntidad = forwardRef(
                         placeholder="INGRESE NÚMERO DE MOTOR"
                         className={getFieldClass("numeroMotor")}
                         maxLength={50}
-                        style={{ textTransform: "uppercase", fontWeight: "bold" }}
+                        style={{
+                          textTransform: "uppercase",
+                          fontWeight: "bold",
+                        }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
@@ -692,16 +747,18 @@ const DetalleVehiculosEntidad = forwardRef(
                         placeholder="INGRESE NÚMERO DE SERIE"
                         className={getFieldClass("numeroSerie")}
                         maxLength={50}
-                        style={{ textTransform: "uppercase", fontWeight: "bold" }}
+                        style={{
+                          textTransform: "uppercase",
+                          fontWeight: "bold",
+                        }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
                   {getFormErrorMessage("numeroSerie")}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="capacidadTon">
-                    Capacidad de Carga (kg)
-                  </label>
+                  <label htmlFor="capacidadTon">Capacidad de Carga (kg)</label>
                   <Controller
                     name="capacidadTon"
                     control={control}
@@ -713,6 +770,8 @@ const DetalleVehiculosEntidad = forwardRef(
                         min={0}
                         maxFractionDigits={2}
                         className={getFieldClass("capacidadTon")}
+                        disabled={readOnly || loading}
+                        inputStyle={{ fontWeight: "bold" }}
                       />
                     )}
                   />
@@ -722,62 +781,13 @@ const DetalleVehiculosEntidad = forwardRef(
               <div
                 style={{
                   display: "flex",
-                  justifyContent: "center",
-                  gap: 10,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                  marginBottom: 10,
-                  marginTop: 10,
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="observaciones">Observaciones</label>
-                  <Controller
-                    name="observaciones"
-                    control={control}
-                    render={({ field }) => (
-                      <InputTextarea
-                        id="observaciones"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.value)}
-                        placeholder="INGRESE OBSERVACIONES ADICIONALES"
-                        rows={3}
-                        className={getFieldClass("observaciones")}
-                        maxLength={500}
-                        style={{ textTransform: "uppercase", fontWeight: "bold" }}
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("observaciones")}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
                   marginTop: 10,
                   gap: 5,
                   flexDirection: window.innerWidth < 768 ? "column" : "row",
                 }}
               >
-                <ButtonGroup>
-                  <Controller
-                    name="cesado"
-                    control={control}
-                    render={({ field }) => (
-                      <ToggleButton
-                        id="cesado"
-                        onLabel="CESADO"
-                        offLabel="CESADO"
-                        onIcon="pi pi-check"
-                        offIcon="pi pi-times"
-                        checked={field.value}
-                        onChange={(e) => field.onChange(e.value)}
-                        className={`${getFieldClass("cesado")}`}
-                      />
-                    )}
-                  />
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="activoId">Enlace con Activos</label>
                   <Controller
                     name="activoId"
                     control={control}
@@ -789,33 +799,183 @@ const DetalleVehiculosEntidad = forwardRef(
                         options={activos}
                         placeholder="Seleccione activo"
                         className={getFieldClass("activoId")}
+                        style={{
+                          textTransform: "uppercase",
+                          fontWeight: "bold",
+                        }}
+                        disabled={readOnly || loading}
                       />
                     )}
                   />
                   {getFormErrorMessage("activoId")}
-                </ButtonGroup>
+                </div>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "end",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  marginBottom: 10,
+                  marginTop: 10,
+                }}
+              >
+                <div style={{ flex: 3 }}>
+                  <label htmlFor="observaciones">Observaciones</label>
+                  <Controller
+                    name="observaciones"
+                    control={control}
+                    render={({ field }) => (
+                      <InputText
+                        id="observaciones"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        placeholder="INGRESE OBSERVACIONES ADICIONALES"
+                        className={getFieldClass("observaciones")}
+                        style={{
+                          textTransform: "uppercase",
+                          fontWeight: "bold",
+                        }}
+                        disabled={readOnly || loading}
+                      />
+                    )}
+                  />
+                  {getFormErrorMessage("observaciones")}
+                </div>
+                <div style={{ flex: 0.5 }}>
+                  <Controller
+                    name="cesado"
+                    control={control}
+                    render={({ field }) => (
+                      <ToggleButton
+                        id="cesado"
+                        onLabel="CESADO"
+                        offLabel="ACTIVO"
+                        onIcon="pi pi-check"
+                        offIcon="pi pi-times"
+                        checked={field.value}
+                        onChange={(e) => field.onChange(e.value)}
+                        disabled={readOnly || loading}
+                      />
+                    )}
+                  />
+                </div>
               </div>
             </div>
+
             <div
               style={{
                 display: "flex",
-                justifyContent: "center",
+                alignItems: "end",
                 gap: 10,
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
                 marginBottom: 10,
                 marginTop: 10,
               }}
             >
+              {/* Información de Auditoría */}
+              {vehiculoSeleccionado && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: 10,
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: 5,
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 20,
+                      flexDirection: window.innerWidth < 768 ? "column" : "row",
+                    }}
+                  >
+                    {/* Creado */}
+                    <div style={{ flex: 1 }}>
+                      <strong style={{ fontSize: "0.9rem", color: "#495057" }}>
+                        Creado:
+                      </strong>
+                      <div style={{ marginTop: 5 }}>
+                        <div style={{ fontSize: "0.85rem", color: "#6c757d" }}>
+                          {vehiculoSeleccionado.fechaCreacion
+                            ? new Date(
+                                vehiculoSeleccionado.fechaCreacion
+                              ).toLocaleString("es-PE", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                            : "N/A"}
+                        </div>
+                        {vehiculoSeleccionado.personalCreador && (
+                          <Tag
+                            value={`${vehiculoSeleccionado.personalCreador.nombres} ${vehiculoSeleccionado.personalCreador.apellidos}`}
+                            style={{
+                              marginTop: 5,
+                              backgroundColor: "#cfe2ff",
+                              color: "#000",
+                              fontSize: "0.8rem",
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actualizado */}
+                    <div style={{ flex: 1 }}>
+                      <strong style={{ fontSize: "0.9rem", color: "#495057" }}>
+                        Actualizado:
+                      </strong>
+                      <div style={{ marginTop: 5 }}>
+                        <div style={{ fontSize: "0.85rem", color: "#6c757d" }}>
+                          {vehiculoSeleccionado.fechaActualizacion
+                            ? new Date(
+                                vehiculoSeleccionado.fechaActualizacion
+                              ).toLocaleString("es-PE", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                            : "N/A"}
+                        </div>
+                        {vehiculoSeleccionado.personalActualizador && (
+                          <Tag
+                            value={`${vehiculoSeleccionado.personalActualizador.nombres} ${vehiculoSeleccionado.personalActualizador.apellidos}`}
+                            style={{
+                              marginTop: 5,
+                              backgroundColor: "#f8d7da",
+                              color: "#000",
+                              fontSize: "0.8rem",
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div style={{ flex: 1 }}>
               <Button
                 label="Cancelar"
                 icon="pi pi-times"
-                className="p-button-secondary"
                 type="button"
-                raised
-                outlined
-                size="small"
                 onClick={cerrarDialogo}
+                className="p-button-warning"
+                severity="warning"
+                raised
+                size="small"
+                outlined
               />
+              </div>
+              <div style={{ flex: 1 }}>
               <Button
                 label={vehiculoSeleccionado ? "Actualizar" : "Crear"}
                 icon={vehiculoSeleccionado ? "pi pi-check" : "pi pi-plus"}
@@ -823,10 +983,12 @@ const DetalleVehiculosEntidad = forwardRef(
                 type="button"
                 onClick={handleSubmit(onSubmitVehiculo)}
                 raised
-                outlined
                 size="small"
                 loading={loading}
+                severity="success"
+                disabled={readOnly || loading}
               />
+              </div>
             </div>
           </form>
         </Dialog>

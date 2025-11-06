@@ -1,6 +1,7 @@
 // src/pages/SubmodulosSistema.jsx
 // Página principal de gestión de submódulos del sistema.
 import React, { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -8,6 +9,7 @@ import { Toast } from "primereact/toast";
 import { Dialog } from "primereact/dialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import {
   getSubmodulos,
   crearSubmodulo,
@@ -17,6 +19,7 @@ import {
 import { getModulos } from "../api/moduloSistema";
 import SubmoduloSistemaForm from "../components/submodulos/SubmoduloSistemaForm";
 import { InputText } from "primereact/inputtext";
+import { Dropdown } from "primereact/dropdown";
 import { getResponsiveFontSize } from "../utils/utils";
 
 /**
@@ -26,8 +29,15 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
  * - El usuario autenticado se obtiene siempre desde useAuthStore.
  */
-export default function SubmodulosSistemaPage() {
+export default function SubmodulosSistemaPage({ ruta }) {
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const [confirmState, setConfirmState] = useState({
     visible: false,
     row: null,
@@ -40,11 +50,25 @@ export default function SubmodulosSistemaPage() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [moduloFilter, setModuloFilter] = useState(null);
+  const [filteredSubmodulos, setFilteredSubmodulos] = useState([]);
 
   useEffect(() => {
     cargarSubmodulos();
     cargarModulos();
   }, []);
+
+  // Aplicar filtro por módulo
+  useEffect(() => {
+    if (moduloFilter) {
+      const filtered = submodulos.filter(
+        (sub) => Number(sub.moduloId) === Number(moduloFilter)
+      );
+      setFilteredSubmodulos(filtered);
+    } else {
+      setFilteredSubmodulos(submodulos);
+    }
+  }, [submodulos, moduloFilter]);
 
   const cargarSubmodulos = async () => {
     setLoading(true);
@@ -113,6 +137,14 @@ export default function SubmodulosSistemaPage() {
   };
 
   const handleSubmit = async (data) => {
+    // Validar permisos antes de guardar
+    if (isEdit && !permisos.puedeEditar) {
+      return;
+    }
+    if (!isEdit && !permisos.puedeCrear) {
+      return;
+    }
+
     // Solo los campos válidos
     const payload = {
       moduloId: data.moduloId,
@@ -149,28 +181,30 @@ export default function SubmodulosSistemaPage() {
   };
 
   const actionBodyTemplate = (row) => (
-    <span>
+    <div onClick={(e) => e.stopPropagation()}>
       <Button
         icon="pi pi-pencil"
         className="p-button-text p-mr-2"
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
         onClick={(e) => {
-          e.stopPropagation();
-          handleEdit(row);
+          if (permisos.puedeVer || permisos.puedeEditar) {
+            handleEdit(row);
+          }
         }}
-        tooltip="Editar"
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button
-          icon="pi pi-trash"
-          className="p-button-text p-button-danger"
-          onClick={(e) => {
-            e.stopPropagation();
+      <Button
+        icon="pi pi-trash"
+        className="p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={(e) => {
+          if (permisos.puedeEliminar) {
             handleDelete(row);
-          }}
-          tooltip="Eliminar"
-        />
-      )}
-    </span>
+          }
+        }}
+        tooltip="Eliminar"
+      />
+    </div>
   );
 
   return (
@@ -200,45 +234,80 @@ export default function SubmodulosSistemaPage() {
         style={{ minWidth: 400 }}
       />
       <DataTable
-        value={submodulos}
+        value={filteredSubmodulos}
         loading={loading}
+        showGridlines
+        size="small"
+        stripedRows
         paginator
         rows={10}
         selectionMode="single"
         selection={selected}
         onSelectionChange={(e) => setSelected(e.value)}
-        onRowClick={onRowClick}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
+        }
         header={
-          <div className="flex align-items-center gap-2">
-            <h2>Gestión de Submódulos del Sistema</h2>
-            <Button
-              label="Nuevo"
-              icon="pi pi-plus"
-              className="p-button-success"
-              size="small"
-              raised
-              tooltip="Nuevo Submódulo"
-              outlined
-              onClick={() => {
-                setIsEdit(false);
-                setSelected(null);
-                setShowForm(true);
-              }}
-            />
-            <span className="p-input-icon-left">
-              <InputText
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Buscar submódulo..."
-                style={{ width: "300px" }}
+          <div
+            style={{
+              alignItems: "center",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h2>Gestión de Submódulos del Sistema</h2>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                className="p-button-success"
+                size="small"
+                raised
+                disabled={!permisos.puedeCrear}
+                tooltip="Nuevo Submódulo"
+                outlined
+                onClick={() => {
+                  setIsEdit(false);
+                  setSelected(null);
+                  setShowForm(true);
+                }}
               />
-            </span>
+            </div>
+            <div style={{ flex: 2 }}>
+              <Dropdown
+                value={moduloFilter}
+                options={modulos}
+                optionLabel="nombre"
+                optionValue="id"
+                placeholder="Filtrar por módulo"
+                onChange={(e) => setModuloFilter(e.value)}
+                showClear
+                style={{ minWidth: "200px" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <span className="p-input-icon-left">
+                <InputText
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  placeholder="Buscar submódulo..."
+                  style={{ width: "300px" }}
+                />
+              </span>
+            </div>
           </div>
         }
         globalFilter={globalFilter}
         globalFilterFields={["nombre", "descripcion"]}
         emptyMessage="No se encontraron registros que coincidan con la búsqueda."
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
       >
         <Column field="id" header="ID" sortable />
         <Column field="modulo.nombre" header="Módulo" sortable />
@@ -257,7 +326,13 @@ export default function SubmodulosSistemaPage() {
         />
       </DataTable>
       <Dialog
-        header={isEdit ? "Editar Submódulo" : "Nuevo Submódulo"}
+        header={
+          isEdit
+            ? permisos.puedeEditar
+              ? "Editar Submódulo"
+              : "Ver Submódulo"
+            : "Nuevo Submódulo"
+        }
         visible={showForm}
         style={{ width: "400px" }}
         modal
@@ -269,6 +344,7 @@ export default function SubmodulosSistemaPage() {
           onSubmit={handleSubmit}
           onCancel={() => setShowForm(false)}
           loading={loading}
+          readOnly={isEdit && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

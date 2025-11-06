@@ -22,7 +22,10 @@ import { InputText } from "primereact/inputtext";
 import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import { classNames } from "primereact/utils";
-import { crearTipoProvieneDe, actualizarTipoProvieneDe } from "../../api/tipoProvieneDe";
+import {
+  crearTipoProvieneDe,
+  actualizarTipoProvieneDe,
+} from "../../api/tipoProvieneDe";
 
 // Esquema de validación con Yup
 const esquemaValidacion = yup.object().shape({
@@ -32,12 +35,15 @@ const esquemaValidacion = yup.object().shape({
     .transform((value, originalValue) => {
       return originalValue === "" ? null : value;
     }),
-  cesado: yup
-    .boolean()
-    .default(false),
+  cesado: yup.boolean().default(false),
 });
 
-const TipoProvieneDeForm = ({ tipoProvieneDe, onGuardar, onCancelar }) => {
+const TipoProvieneDeForm = ({
+  tipoProvieneDe,
+  onGuardar,
+  onCancelar,
+  readOnly = false,
+}) => {
   const [loading, setLoading] = useState(false);
   const esEdicion = !!tipoProvieneDe;
 
@@ -126,33 +132,38 @@ const TipoProvieneDeForm = ({ tipoProvieneDe, onGuardar, onCancelar }) => {
                 {...field}
                 placeholder="Descripción del tipo proviene de (opcional)"
                 className={getFieldClass("descripcion")}
-                style={{ textTransform: 'uppercase' }}
+                style={{ textTransform: "uppercase", fontWeight: "bold" }}
                 autoFocus
+                disabled={readOnly}
+                styled={{ fontWeight: "bold" }}
               />
             )}
           />
           {errors.descripcion && (
-            <small className="p-error p-d-block">{errors.descripcion.message}</small>
+            <small className="p-error p-d-block">
+              {errors.descripcion.message}
+            </small>
           )}
         </div>
 
         {/* Campo Cesado */}
         <div className="p-col-12 p-field">
+          <label htmlFor="cesado" className="p-d-block">
+            Estado
+          </label>
           <Controller
             name="cesado"
             control={control}
             render={({ field }) => (
-              <div className="p-field-checkbox">
-                <Checkbox
-                  id="cesado"
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.checked)}
-                  className={getFieldClass("cesado")}
-                />
-                <label htmlFor="cesado" className="p-checkbox-label">
-                  Tipo proviene de cesado
-                </label>
-              </div>
+              <Button
+                type="button"
+                label={field.value ? "CESADO" : "ACTIVO"}
+                className={field.value ? "p-button-danger" : "p-button-primary"}
+                icon={field.value ? "pi pi-times-circle" : "pi pi-check-circle"}
+                onClick={() => !readOnly && field.onChange(!field.value)}
+                disabled={readOnly}
+                style={{ width: "100%" }}
+              />
             )}
           />
           {errors.cesado && (
@@ -160,20 +171,37 @@ const TipoProvieneDeForm = ({ tipoProvieneDe, onGuardar, onCancelar }) => {
           )}
         </div>
       </div>
-      
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 8,
+          marginTop: 18,
+        }}
+      >
         <Button
           type="button"
           label="Cancelar"
-          className="p-button-text"
           onClick={onCancelar}
           disabled={loading}
+          className="p-button-warning"
+          severity="warning"
+          raised
+          size="small"
+          outlined
         />
         <Button
           type="submit"
           label={esEdicion ? "Actualizar" : "Crear"}
           icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
           loading={loading}
+          disabled={readOnly || loading}
+          className="p-button-success"
+          severity="success"
+          raised
+          size="small"
+          outlined
         />
       </div>
     </form>

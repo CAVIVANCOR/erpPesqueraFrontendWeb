@@ -9,6 +9,7 @@ import logotipoMegui from "../assets/Isotipo/Isotipo_Megui_Positivo.png";
 import apiBackend from "../api/axios";
 import { useAuthStore } from '../shared/stores/useAuthStore';
 import { useLocation } from 'react-router-dom';
+import { getAccesosPorUsuario } from '../api/accesosUsuario';
 
 /**
  * Componente Login
@@ -73,7 +74,25 @@ export default function Login({ onLogin }) {
 
       // Usa el valor que no sea undefined
       const rt = refreshToken || refresh_token;
-      loginStore.login(usuarioData, token, rt);
+      
+      // Cargar accesos del usuario para control de permisos
+      let accesos = [];
+      try {
+        console.log('🔄 Cargando accesos para usuario ID:', usuarioData.id);
+        // Pasar el token recién obtenido para autenticar la petición
+        accesos = await getAccesosPorUsuario(usuarioData.id, token);
+        console.log('✅ Accesos cargados:', accesos.length, 'accesos');
+        console.log('Detalle accesos:', accesos);
+      } catch (accesosErr) {
+        console.error('❌ Error al cargar accesos del usuario:', accesosErr);
+        console.error('Detalle del error:', accesosErr.response?.data || accesosErr.message);
+        // No bloqueamos el login si falla la carga de accesos
+      }
+      
+      // Guardar usuario, tokens y accesos en el store
+      console.log('💾 Guardando en store - Usuario:', usuarioData.username, 'Accesos:', accesos.length);
+      loginStore.login(usuarioData, token, rt, accesos);
+      
       setLoading(false);
       onLogin && onLogin({ token, refreshToken, usuario: usuarioData });
     } catch (err) {

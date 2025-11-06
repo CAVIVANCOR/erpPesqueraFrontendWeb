@@ -63,6 +63,8 @@ const DatosGeneralesEntidad = ({
   setValue,
   toast,
   getValues,
+  readOnly = false,
+  loading = false,
 }) => {
   // Referencias y estado
   const toastRef = useRef(null);
@@ -432,6 +434,7 @@ const DatosGeneralesEntidad = ({
                   options={empresasOptions}
                   style={{ fontWeight: "bold" }}
                   className={getFieldClass("empresaId")}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -450,6 +453,7 @@ const DatosGeneralesEntidad = ({
                   options={agrupacionesOptions}
                   style={{ fontWeight: "bold" }}
                   className={getFieldClass("agrupacionEntidadId")}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -470,6 +474,7 @@ const DatosGeneralesEntidad = ({
                   options={tiposEntidadOptions}
                   style={{ fontWeight: "bold" }}
                   className={getFieldClass("tipoEntidadId")}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -497,6 +502,7 @@ const DatosGeneralesEntidad = ({
                   style={{ fontWeight: "bold" }}
                   className={getFieldClass("formaPagoId")}
                   showClear
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -515,6 +521,7 @@ const DatosGeneralesEntidad = ({
                   className={getFieldClass("codigoErpFinanciero")}
                   maxLength={20}
                   style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -535,6 +542,7 @@ const DatosGeneralesEntidad = ({
                   options={tiposDocumentoOptions}
                   style={{ fontWeight: "bold" }}
                   className={getFieldClass("tipoDocumentoId")}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -560,7 +568,7 @@ const DatosGeneralesEntidad = ({
                     }}
                     className={getFieldClass("numeroDocumento")}
                     maxLength={20}
-                    disabled={buscandoDocumento}
+                    disabled={buscandoDocumento || readOnly || loading}
                   />
                 )}
               />
@@ -579,7 +587,9 @@ const DatosGeneralesEntidad = ({
                 disabled={
                   buscandoDocumento || 
                   !numeroDocumento || 
-                  !tipoDocumentoId
+                  !tipoDocumentoId ||
+                  readOnly ||
+                  loading
                 }
                 tooltip={
                   Number(tipoDocumentoId) === 1
@@ -628,6 +638,7 @@ const DatosGeneralesEntidad = ({
                   style={{ fontWeight: "bold", textTransform: "uppercase" }}
                   className={getFieldClass("razonSocial")}
                   maxLength={255}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -646,6 +657,7 @@ const DatosGeneralesEntidad = ({
                   style={{ fontWeight: "bold", textTransform: "uppercase" }}
                   className={getFieldClass("nombreComercial")}
                   maxLength={255}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -676,6 +688,7 @@ const DatosGeneralesEntidad = ({
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`${getFieldClass("estado")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -692,6 +705,7 @@ const DatosGeneralesEntidad = ({
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`${getFieldClass("esCliente")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -708,6 +722,7 @@ const DatosGeneralesEntidad = ({
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`${getFieldClass("esProveedor")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -724,6 +739,7 @@ const DatosGeneralesEntidad = ({
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`${getFieldClass("esCorporativo")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -755,6 +771,7 @@ const DatosGeneralesEntidad = ({
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`${getFieldClass("sujetoRetencion")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -771,6 +788,7 @@ const DatosGeneralesEntidad = ({
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`${getFieldClass("sujetoPercepcion")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -787,6 +805,7 @@ const DatosGeneralesEntidad = ({
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`${getFieldClass("estadoActivoSUNAT")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -803,6 +822,7 @@ const DatosGeneralesEntidad = ({
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`${getFieldClass("condicionHabidoSUNAT")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -819,6 +839,7 @@ const DatosGeneralesEntidad = ({
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`${getFieldClass("esAgenteRetencion")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />

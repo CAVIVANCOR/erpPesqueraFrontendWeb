@@ -62,6 +62,7 @@ export default function PersonalForm({
   onSubmit,
   onCancel,
   loading,
+  readOnly = false,
 }) {
   // Normalización profesional: forzar empresaId y combos a number para evitar errores de tipo
   const normalizedDefaults = {
@@ -500,7 +501,7 @@ export default function PersonalForm({
                   cancelLabel="Cancelar"
                   customUpload
                   uploadHandler={handleFotoUpload}
-                  disabled={!defaultValues.id || uploadingFoto}
+                  disabled={readOnly || !defaultValues.id || uploadingFoto}
                   auto
                   mode="basic"
                   className="p-mb-2"
@@ -513,6 +514,7 @@ export default function PersonalForm({
                   {...register("urlFotoPersona")}
                   className={errors.urlFotoPersona ? "p-invalid" : ""}
                   placeholder="URL de la foto (opcional)"
+                  disabled={readOnly || loading}
                 />
                 <small className="p-error">
                   {errors.urlFotoPersona?.message}
@@ -552,6 +554,7 @@ export default function PersonalForm({
                     filter
                     showClear
                     onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly || loading}
                   />
                 )}
               />
@@ -580,6 +583,7 @@ export default function PersonalForm({
                     filter
                     showClear
                     onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly || loading}
                   />
                 )}
               />
@@ -607,6 +611,7 @@ export default function PersonalForm({
                     filter
                     showClear
                     onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly || loading}
                   />
                 )}
               />
@@ -626,7 +631,7 @@ export default function PersonalForm({
               <Controller
                 name="nombres"
                 control={control}
-                render={({ field }) => <InputText style={{ fontWeight: "bold" }} {...field} autoFocus />}
+                render={({ field }) => <InputText style={{ fontWeight: "bold" }} {...field} autoFocus disabled={readOnly || loading} />}
               />
               <small className="p-error">{errors.nombres?.message}</small>
             </div>
@@ -635,7 +640,7 @@ export default function PersonalForm({
               <Controller
                 name="apellidos"
                 control={control}
-                render={({ field }) => <InputText style={{ fontWeight: "bold" }} {...field} />}
+                render={({ field }) => <InputText style={{ fontWeight: "bold" }} {...field} disabled={readOnly || loading} />}
               />
               <small className="p-error">{errors.apellidos?.message}</small>
             </div>
@@ -666,6 +671,7 @@ export default function PersonalForm({
                     filter
                     showClear
                     onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly || loading}
                   />
                 )}
               />
@@ -678,7 +684,7 @@ export default function PersonalForm({
               <Controller
                 name="numeroDocumento"
                 control={control}
-                render={({ field }) => <InputText style={{ fontWeight: "bold" }} {...field} />}
+                render={({ field }) => <InputText style={{ fontWeight: "bold" }} {...field} disabled={readOnly || loading} />}
               />
               <small className="p-error">
                 {errors.numeroDocumento?.message}
@@ -694,6 +700,7 @@ export default function PersonalForm({
                     {...field}
                     showIcon
                     dateFormat="dd/mm/yy"
+                    disabled={readOnly || loading}
                     style={{ width: "100%"}}
                   />
                 )}
@@ -712,6 +719,7 @@ export default function PersonalForm({
                     {...field}
                     showIcon
                     dateFormat="dd/mm/yy"
+                    disabled={readOnly || loading}
                     style={{ width: "100%"}}
                   />
                 )}
@@ -735,6 +743,7 @@ export default function PersonalForm({
                 maxLength={20}
                 className={errors.telefono ? "p-invalid" : ""}
                 style={{ fontWeight: "bold" }}
+                disabled={readOnly || loading}
               />
               <small className="p-error">{errors.telefono?.message}</small>
             </div>
@@ -745,6 +754,7 @@ export default function PersonalForm({
                 {...register("correo")}
                 className={errors.correo ? "p-invalid" : ""}
                 style={{ fontWeight: "bold" }}
+                disabled={readOnly || loading}
               />
               <small className="p-error">{errors.correo?.message}</small>
             </div>
@@ -776,6 +786,7 @@ export default function PersonalForm({
                     filter
                     showClear
                     onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly || loading}
                   />
                 )}
               />
@@ -802,6 +813,7 @@ export default function PersonalForm({
                     filter
                     showClear
                     onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly || loading}
                   />
                 )}
               />
@@ -834,6 +846,7 @@ export default function PersonalForm({
                       offIcon="pi pi-times"
                       checked={field.value || false}
                       onChange={(e) => field.onChange(e.value)}
+                      disabled={readOnly || loading}
                     />
                   )}
                 />
@@ -849,6 +862,7 @@ export default function PersonalForm({
                       offIcon="pi pi-times"
                       checked={field.value || false}
                       onChange={(e) => field.onChange(e.value)}
+                      disabled={readOnly || loading}
                     />
                   )}
                 />
@@ -864,6 +878,7 @@ export default function PersonalForm({
                       offIcon="pi pi-times"
                       checked={field.value || false}
                       onChange={(e) => field.onChange(e.value)}
+                      disabled={readOnly || loading}
                     />
                   )}
                 />
@@ -879,6 +894,7 @@ export default function PersonalForm({
                       offIcon="pi pi-times"
                       checked={field.value || false}
                       onChange={(e) => field.onChange(e.value)}
+                      disabled={readOnly || loading}
                     />
                   )}
                 />
@@ -894,6 +910,7 @@ export default function PersonalForm({
                       offIcon="pi pi-times"
                       checked={field.value || false}
                       onChange={(e) => field.onChange(e.value)}
+                      disabled={readOnly || loading}
                     />
                   )}
                 />
@@ -919,16 +936,19 @@ export default function PersonalForm({
               severity="warning"
               raised
               size="small"
+              outlined
             />
             <Button
               label={isEdit ? "Actualizar" : "Guardar"}
               icon="pi pi-check"
               type="submit"
               loading={loading}
+              disabled={readOnly || loading}
               className="p-button-success"
               severity="success"
               raised
               size="small"
+              outlined
             />
           </div>
         </div>

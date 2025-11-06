@@ -14,6 +14,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -27,12 +28,20 @@ import {
   eliminarEstadoMultiFuncion,
 } from "../api/estadoMultiFuncion";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import EstadoMultiFuncionForm from "../components/estadoMultiFuncion/EstadoMultiFuncionForm";
 import { getResponsiveFontSize } from "../utils/utils";
 import { getTiposProvieneDe } from "../api/tipoProvieneDe"; // Agregar esta línea
 import { Dropdown } from "primereact/dropdown"; // Agregar esta línea
 
-const EstadoMultiFuncion = () => {
+const EstadoMultiFuncion = ({ ruta }) => {
+  const usuario = useAuthStore();
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const [estadosMultiFuncion, setEstadosMultiFuncion] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -40,7 +49,6 @@ const EstadoMultiFuncion = () => {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [estadoAEliminar, setEstadoAEliminar] = useState(null);
   const toast = useRef(null);
-  const { usuario } = useAuthStore();
   const [globalFilter, setGlobalFilter] = useState("");
   const [tiposProvieneDe, setTiposProvieneDe] = useState([]); // Agregar
   const [filtroTipoProvieneDe, setFiltroTipoProvieneDe] = useState(null); // Agregar
@@ -176,30 +184,33 @@ const EstadoMultiFuncion = () => {
     );
   };
 
-  const accionesTemplate = (rowData) => {
-    return (
-      <div className="flex gap-2">
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-text p-mr-2"
-          onClick={(ev) => {
-            ev.stopPropagation();
+  const accionesTemplate = (rowData) => (
+    <div onClick={(e) => e.stopPropagation()}>
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-rounded p-button-text p-button-info"
+        style={{ marginRight: 8 }}
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        onClick={() => {
+          if (permisos.puedeVer || permisos.puedeEditar) {
             abrirDialogoEdicion(rowData);
-          }}
-          tooltip="Editar"
-          tooltipOptions={{ position: "top" }}
-        />
-        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-text p-button-danger"
-            onClick={() => confirmarEliminacion(rowData)}
-            tooltip="Eliminar"
-          />
-        )}
-      </div>
-    );
-  };
+          }
+        }}
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+      />
+      <Button
+        icon="pi pi-trash"
+        className="p-button-rounded p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={() => {
+          if (permisos.puedeEliminar) {
+            confirmarEliminacion(rowData);
+          }
+        }}
+        tooltip="Eliminar"
+      />
+    </div>
+  );
 
   return (
     <div className="p-4">
@@ -208,11 +219,23 @@ const EstadoMultiFuncion = () => {
         value={estadosMultiFuncion}
         loading={loading}
         paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
-        onRowClick={(e) => abrirDialogoEdicion(e.data)}
-        selectionMode="single"
-        className="p-datatable-hover cursor-pointer p-datatable-sm"
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} áreas físicas"
+        size="small"
+        showGridlines
+        stripedRows
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => abrirDialogoEdicion(e.data)
+            : undefined
+        }
+        style={{
+          fontSize: getResponsiveFontSize(),
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+        }}
         emptyMessage="No se encontraron estados multifunción"
         globalFilter={globalFilter}
         globalFilterFields={[
@@ -247,6 +270,7 @@ const EstadoMultiFuncion = () => {
                 tooltip="Nuevo Estado Multifunción"
                 className="p-button-success"
                 severity="success"
+                disabled={!permisos.puedeCrear}
                 onClick={abrirDialogoNuevo}
               />
             </div>
@@ -286,7 +310,6 @@ const EstadoMultiFuncion = () => {
         }
         scrollable
         scrollHeight="600px"
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
         <Column
           field="id"
@@ -296,15 +319,15 @@ const EstadoMultiFuncion = () => {
           style={{ width: "80px" }}
         />
         <Column
-          field="descripcion"
-          header="Descripción"
-          body={descripcionTemplate}
-          sortable
-        />
-        <Column
           field="tipoProvieneDe"
           header="Tipo Proviene De"
           body={tipoProvieneDeTemplate}
+          sortable
+        />
+        <Column
+          field="descripcion"
+          header="Descripción"
+          body={descripcionTemplate}
           sortable
         />
         <Column
@@ -323,7 +346,9 @@ const EstadoMultiFuncion = () => {
       <Dialog
         header={
           estadoSeleccionado
-            ? "Editar Estado Multifunción"
+            ? permisos.puedeEditar
+              ? "Editar Estado Multifunción"
+              : "Ver Estado Multifunción"
             : "Nuevo Estado Multifunción"
         }
         visible={dialogVisible}
@@ -335,6 +360,7 @@ const EstadoMultiFuncion = () => {
           estadoMultiFuncion={estadoSeleccionado}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
+          readOnly={estadoSeleccionado && !permisos.puedeEditar}
         />
       </Dialog>
 

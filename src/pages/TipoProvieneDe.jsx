@@ -14,6 +14,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -22,12 +23,23 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
-import { getTiposProvieneDe, eliminarTipoProvieneDe } from "../api/tipoProvieneDe";
+import {
+  getTiposProvieneDe,
+  eliminarTipoProvieneDe,
+} from "../api/tipoProvieneDe";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import TipoProvieneDeForm from "../components/tipoProvieneDe/TipoProvieneDeForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
-const TipoProvieneDe = () => {
+const TipoProvieneDe = ({ ruta }) => {
+  const usuario = useAuthStore();
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const [tiposProvieneDe, setTiposProvieneDe] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -35,7 +47,6 @@ const TipoProvieneDe = () => {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [tipoAEliminar, setTipoAEliminar] = useState(null);
   const toast = useRef(null);
-  const { usuario } = useAuthStore();
   const [globalFilter, setGlobalFilter] = useState("");
 
   useEffect(() => {
@@ -119,18 +130,12 @@ const TipoProvieneDe = () => {
 
   const idTemplate = (rowData) => {
     return (
-      <span style={{ fontWeight: "bold", color: "#2563eb" }}>
-        {rowData.id}
-      </span>
+      <span style={{ fontWeight: "bold", color: "#2563eb" }}>{rowData.id}</span>
     );
   };
 
   const descripcionTemplate = (rowData) => {
-    return (
-      <span style={{ fontWeight: "500" }}>
-        {rowData.descripcion}
-      </span>
-    );
+    return <span style={{ fontWeight: "500" }}>{rowData.descripcion}</span>;
   };
 
   const cesadoTemplate = (rowData) => {
@@ -143,30 +148,36 @@ const TipoProvieneDe = () => {
     );
   };
 
-  const accionesTemplate = (rowData) => {
-    return (
-      <div className="flex gap-2">
+
+    const accionesTemplate = (rowData) => (
+      <div onClick={(e) => e.stopPropagation()}>
         <Button
           icon="pi pi-pencil"
-          className="p-button-text p-mr-2"
-          onClick={(ev) => {
-            ev.stopPropagation();
-            abrirDialogoEdicion(rowData);
+          className="p-button-rounded p-button-text p-button-info"
+          style={{ marginRight: 8 }}
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          onClick={() => {
+            if (permisos.puedeVer || permisos.puedeEditar) {
+              abrirDialogoEdicion(rowData);
+            }
           }}
-          tooltip="Editar"
-          tooltipOptions={{ position: "top" }}
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
         />
-        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-text p-button-danger"
-            onClick={() => confirmarEliminacion(rowData)}
-            tooltip="Eliminar"
-          />
-        )}
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-text p-button-danger"
+          disabled={!permisos.puedeEliminar}
+          onClick={() => {
+            if (permisos.puedeEliminar) {
+              confirmarEliminacion(rowData);
+            }
+          }}
+          tooltip="Eliminar"
+        />
       </div>
     );
-  };
+
+
 
   return (
     <div className="p-4">
@@ -175,58 +186,73 @@ const TipoProvieneDe = () => {
         value={tiposProvieneDe}
         loading={loading}
         paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
-        onRowClick={(e) => abrirDialogoEdicion(e.data)}
-        selectionMode="single"
-        className="p-datatable-hover cursor-pointer"
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} tipos proviene de"
+        size="small"
+        showGridlines
+        stripedRows
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => abrirDialogoEdicion(e.data)
+            : undefined
+        }
+        style={{
+          fontSize: getResponsiveFontSize(),
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+        }}
         emptyMessage="No se encontraron tipos proviene de"
         globalFilter={globalFilter}
-        globalFilterFields={['descripcion']}
+        globalFilterFields={["descripcion"]}
+        scrollable
         header={
-          <div className="flex align-items-center gap-2">
-            <h2>Gestión de Tipos Proviene De</h2>
-            <Button
-              label="Nuevo"
-              icon="pi pi-plus"
-              size="small"
-              raised
-              tooltip="Nuevo Tipo Proviene De"
-              outlined
-              className="p-button-success"
-              onClick={abrirDialogoNuevo}
-            />
-            <span className="p-input-icon-left">
-              <InputText
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Buscar tipos proviene de..."
-                style={{ width: "300px" }}
+          <div
+            style={{
+              alignItems: "center",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h2>Gestión de Tipos Proviene De</h2>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                size="small"
+                raised
+                tooltip="Nuevo Tipo Proviene De"
+                outlined
+                className="p-button-success"
+                disabled={!permisos.puedeCrear}
+                onClick={abrirDialogoNuevo}
               />
-            </span>
+            </div>
+            <div style={{ flex: 3 }}>
+              <span className="p-input-icon-left">
+                <InputText
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  placeholder="Buscar tipos proviene de..."
+                  style={{ width: "300px" }}
+                />
+              </span>
+            </div>
           </div>
         }
-        scrollable
-        scrollHeight="600px"
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
-        <Column 
-          field="id" 
-          header="ID" 
-          body={idTemplate}
-          sortable 
-        />
-        <Column 
-          field="descripcion" 
-          header="Descripción" 
+        <Column field="id" header="ID" body={idTemplate} sortable />
+        <Column
+          field="descripcion"
+          header="Descripción"
           body={descripcionTemplate}
-          sortable 
+          sortable
         />
-        <Column 
-          header="Estado" 
-          body={cesadoTemplate}
-          sortable 
-        />
+        <Column header="Estado" body={cesadoTemplate} sortable />
         <Column
           body={accionesTemplate}
           header="Acciones"
@@ -237,7 +263,9 @@ const TipoProvieneDe = () => {
       <Dialog
         header={
           tipoSeleccionado
-            ? "Editar Tipo Proviene De"
+            ? permisos.puedeEditar
+              ? "Editar Tipo Proviene De"
+              : "Ver Tipo Proviene De"
             : "Nuevo Tipo Proviene De"
         }
         visible={dialogVisible}
@@ -249,13 +277,16 @@ const TipoProvieneDe = () => {
           tipoProvieneDe={tipoSeleccionado}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
+          readOnly={tipoSeleccionado && !permisos.puedeEditar}
         />
       </Dialog>
 
       <ConfirmDialog
         visible={confirmVisible}
         onHide={() => setConfirmVisible(false)}
-        message={`¿Está seguro de eliminar el tipo proviene de "${tipoAEliminar?.descripcion || `ID: ${tipoAEliminar?.id}`}"?`}
+        message={`¿Está seguro de eliminar el tipo proviene de "${
+          tipoAEliminar?.descripcion || `ID: ${tipoAEliminar?.id}`
+        }"?`}
         header="Confirmar Eliminación"
         icon="pi pi-exclamation-triangle"
         accept={eliminar}

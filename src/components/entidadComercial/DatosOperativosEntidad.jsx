@@ -33,6 +33,8 @@ const DatosOperativosEntidad = ({
   errors,
   vendedores = [],
   agenciasEnvio = [],
+  readOnly = false,
+  loading = false,
 }) => {
   /**
    * Obtiene la clase CSS para campos con errores
@@ -58,12 +60,15 @@ const DatosOperativosEntidad = ({
 
   // Preparar opciones para dropdowns
   const vendedoresOptions = vendedores.map((vendedor) => ({
-    label: vendedor.nombreCompleto || `${vendedor.nombres || ''} ${vendedor.apellidos || ''}`.trim() || 'Sin nombre',
+    label:
+      vendedor.nombreCompleto ||
+      `${vendedor.nombres || ""} ${vendedor.apellidos || ""}`.trim() ||
+      "Sin nombre",
     value: Number(vendedor.id),
   }));
 
   const agenciasEnvioOptions = agenciasEnvio.map((agencia) => ({
-    label: agencia.razonSocial || agencia.nombreComercial || 'Sin nombre',
+    label: agencia.razonSocial || agencia.nombreComercial || "Sin nombre",
     value: Number(agencia.id),
   }));
 
@@ -79,8 +84,10 @@ const DatosOperativosEntidad = ({
         >
           <div style={{ flex: 1 }}>
             <label htmlFor="vendedorId">Vendedor</label>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-            <Controller
+            <div
+              style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}
+            >
+              <Controller
                 name="vendedorId"
                 control={control}
                 render={({ field }) => (
@@ -91,6 +98,7 @@ const DatosOperativosEntidad = ({
                     tooltip="Quitar vendedor"
                     tooltipOptions={{ position: "top" }}
                     onClick={() => field.onChange(null)}
+                    disabled={readOnly || loading}
                   />
                 )}
               />
@@ -107,6 +115,7 @@ const DatosOperativosEntidad = ({
                     className={getFieldClass("vendedorId")}
                     style={{ fontWeight: "bold", flex: 1 }}
                     showClear
+                    disabled={readOnly || loading}
                   />
                 )}
               />
@@ -128,6 +137,7 @@ const DatosOperativosEntidad = ({
                   className={getFieldClass("agenciaEnvioId")}
                   style={{ fontWeight: "bold" }}
                   showClear
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -156,6 +166,7 @@ const DatosOperativosEntidad = ({
                   className={getFieldClass("observaciones")}
                   style={{ fontWeight: "bold" }}
                   maxLength={500}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -180,13 +191,14 @@ const DatosOperativosEntidad = ({
               render={({ field }) => (
                 <ToggleButton
                   id="custodiaStock"
-                  onLabel="CUSTODIA SI"
-                  offLabel="CUSTODIA NO"
+                  onLabel="CUSTODIA"
+                  offLabel="CUSTODIA"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`text-sm ${getFieldClass("custodiaStock")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -196,13 +208,14 @@ const DatosOperativosEntidad = ({
               render={({ field }) => (
                 <ToggleButton
                   id="controlLote"
-                  onLabel="LOTE SI"
-                  offLabel="LOTE NO"
+                  onLabel="LOTE"
+                  offLabel="LOTE"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`text-sm ${getFieldClass("controlLote")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -212,13 +225,14 @@ const DatosOperativosEntidad = ({
               render={({ field }) => (
                 <ToggleButton
                   id="controlFechaVenc"
-                  onLabel="VENCIMIENTO SI"
-                  offLabel="VENCIMIENTO NO"
+                  onLabel="VENCIMIENTO"
+                  offLabel="VENCIMIENTO"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`text-sm ${getFieldClass("controlFechaVenc")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -228,13 +242,14 @@ const DatosOperativosEntidad = ({
               render={({ field }) => (
                 <ToggleButton
                   id="controlFechaProd"
-                  onLabel="PRODUCCION SI"
-                  offLabel="PRODUCCION NO"
+                  onLabel="PRODUCCION"
+                  offLabel="PRODUCCION"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`text-sm ${getFieldClass("controlFechaProd")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -244,13 +259,14 @@ const DatosOperativosEntidad = ({
               render={({ field }) => (
                 <ToggleButton
                   id="controlFechaIngreso"
-                  onLabel="INGRESO SI"
-                  offLabel="INGRESO NO"
+                  onLabel="INGRESO"
+                  offLabel="INGRESO"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`text-sm ${getFieldClass("controlFechaIngreso")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -260,13 +276,14 @@ const DatosOperativosEntidad = ({
               render={({ field }) => (
                 <ToggleButton
                   id="controlSerie"
-                  onLabel="SERIE SI"
-                  offLabel="SERIE NO"
+                  onLabel="SERIE"
+                  offLabel="SERIE"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`text-sm ${getFieldClass("controlSerie")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />
@@ -276,13 +293,14 @@ const DatosOperativosEntidad = ({
               render={({ field }) => (
                 <ToggleButton
                   id="controlEnvase"
-                  onLabel="ENVASE SI"
-                  offLabel="ENVASE NO"
+                  onLabel="ENVASE"
+                  offLabel="ENVASE"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
                   className={`text-sm ${getFieldClass("controlEnvase")}`}
+                  disabled={readOnly || loading}
                 />
               )}
             />

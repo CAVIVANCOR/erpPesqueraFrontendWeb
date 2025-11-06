@@ -1,6 +1,6 @@
 // src/components/accesosUsuario/AccesosUsuarioForm.jsx
 // Formulario profesional para AccesosUsuario con react-hook-form y botones profesionales
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as Yup from 'yup';
@@ -26,7 +26,7 @@ const schema = Yup.object().shape({
   activo: Yup.boolean(),
 });
 
-export default function AccesosUsuarioForm({ isEdit, defaultValues, onSubmit, onCancel, loading }) {
+export default function AccesosUsuarioForm({ isEdit, defaultValues, onSubmit, onCancel, loading, readOnly = false }) {
   const [usuarios, setUsuarios] = useState([]);
   const [modulos, setModulos] = useState([]);
   const [submodulos, setSubmodulos] = useState([]);
@@ -38,6 +38,7 @@ export default function AccesosUsuarioForm({ isEdit, defaultValues, onSubmit, on
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(schema),
@@ -64,6 +65,26 @@ export default function AccesosUsuarioForm({ isEdit, defaultValues, onSubmit, on
   const puedeRechazarDocs = watch('puedeRechazarDocs');
   const puedeReactivarDocs = watch('puedeReactivarDocs');
   const activo = watch('activo');
+
+  // Memoizar valores para detectar cambios reales
+  const formValues = useMemo(() => ({
+    usuarioId: defaultValues.usuarioId || null,
+    submoduloId: defaultValues.submoduloId || null,
+    fechaOtorgado: defaultValues.fechaOtorgado ? new Date(defaultValues.fechaOtorgado) : new Date(),
+    puedeVer: defaultValues.puedeVer !== undefined ? defaultValues.puedeVer : true,
+    puedeCrear: defaultValues.puedeCrear !== undefined ? defaultValues.puedeCrear : false,
+    puedeEditar: defaultValues.puedeEditar !== undefined ? defaultValues.puedeEditar : false,
+    puedeEliminar: defaultValues.puedeEliminar !== undefined ? defaultValues.puedeEliminar : false,
+    puedeAprobarDocs: defaultValues.puedeAprobarDocs !== undefined ? defaultValues.puedeAprobarDocs : false,
+    puedeRechazarDocs: defaultValues.puedeRechazarDocs !== undefined ? defaultValues.puedeRechazarDocs : false,
+    puedeReactivarDocs: defaultValues.puedeReactivarDocs !== undefined ? defaultValues.puedeReactivarDocs : false,
+    activo: defaultValues.activo !== undefined ? defaultValues.activo : true,
+  }), [JSON.stringify(defaultValues)]);
+
+  // Resetear formulario cuando cambien los valores
+  useEffect(() => {
+    reset(formValues);
+  }, [formValues, reset]);
 
   // Cargar catálogos
   useEffect(() => {
@@ -131,7 +152,7 @@ export default function AccesosUsuarioForm({ isEdit, defaultValues, onSubmit, on
       icon={icon}
       className={field.value ? `p-button-${color}` : 'p-button-outlined p-button-secondary'}
       onClick={() => field.onChange(!field.value)}
-      disabled={loading}
+      disabled={readOnly || loading}
       style={{ width: '100%', justifyContent: 'flex-start' }}
     />
   );
@@ -153,7 +174,7 @@ export default function AccesosUsuarioForm({ isEdit, defaultValues, onSubmit, on
                 options={usuarios.map(u => ({ label: u.username, value: Number(u.id) }))}
                 onChange={(e) => field.onChange(e.value)}
                 placeholder="Seleccione un usuario"
-                disabled={loading || isEdit}
+                disabled={readOnly || loading || isEdit}
                 filter
                 showClear={!isEdit}
                 style={{ fontWeight: 'bold' }}
@@ -171,7 +192,7 @@ export default function AccesosUsuarioForm({ isEdit, defaultValues, onSubmit, on
             options={modulos.map(m => ({ label: m.nombre, value: Number(m.id) }))}
             onChange={(e) => handleModuloChange(e.value)}
             placeholder="Seleccione un módulo"
-            disabled={loading || isEdit}
+            disabled={readOnly || loading || isEdit}
             filter
             showClear={!isEdit}
             style={{ fontWeight: 'bold' }}
@@ -214,7 +235,7 @@ export default function AccesosUsuarioForm({ isEdit, defaultValues, onSubmit, on
               options={submodulosFiltrados.map(s => ({ label: s.nombre, value: Number(s.id) }))}
               onChange={(e) => field.onChange(e.value)}
               placeholder="Seleccione un submódulo"
-              disabled={loading || isEdit || !moduloSeleccionado}
+              disabled={readOnly || loading || isEdit || !moduloSeleccionado}
               filter
               showClear={!isEdit}
               style={{ fontWeight: 'bold' }}
@@ -297,12 +318,14 @@ export default function AccesosUsuarioForm({ isEdit, defaultValues, onSubmit, on
           onClick={onCancel} 
           disabled={loading} 
         />
-        <Button 
-          type="submit" 
-          label={isEdit ? "Actualizar" : "Crear"} 
-          icon="pi pi-save" 
-          loading={loading} 
-        />
+        {!readOnly && (
+          <Button 
+            type="submit" 
+            label={isEdit ? "Actualizar" : "Crear"} 
+            icon="pi pi-save" 
+            loading={loading} 
+          />
+        )}
       </div>
     </form>
   );

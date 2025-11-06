@@ -9,28 +9,35 @@
  * @version 1.0.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Dialog } from 'primereact/dialog';
-import { Toast } from 'primereact/toast';
-import { ConfirmDialog } from 'primereact/confirmdialog';
-import { InputText } from 'primereact/inputtext';
-import { Tag } from 'primereact/tag';
-import { getMonedas,eliminarMoneda } from '../api/moneda';
-import { useAuthStore } from '../shared/stores/useAuthStore';
-import MonedaForm from '../components/moneda/MonedaForm';
-import { getResponsiveFontSize } from '../utils/utils';
+import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
+import { InputText } from "primereact/inputtext";
+import { Tag } from "primereact/tag";
+import { getMonedas, eliminarMoneda } from "../api/moneda";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
+import MonedaForm from "../components/moneda/MonedaForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Componente Moneda
  * Pantalla principal para gestión de monedas
  * Patrón aplicado: Edición por clic en fila, eliminación profesional con confirmación, búsqueda global.
  */
-const Moneda = () => {
+const Moneda = ({ ruta }) => {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
 
   // Estados del componente
   const [monedas, setMonedas] = useState([]);
@@ -123,7 +130,9 @@ const Moneda = () => {
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: `Moneda "${confirmState.row.nombreLargo || confirmState.row.codigoSunat}" eliminada correctamente`,
+        detail: `Moneda "${
+          confirmState.row.nombreLargo || confirmState.row.codigoSunat
+        }" eliminada correctamente`,
       });
 
       await cargarMonedas();
@@ -170,32 +179,34 @@ const Moneda = () => {
   /**
    * Template para acciones
    */
-  const accionesTemplate = (rowData) => {
-    return (
-      <>
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-text p-mr-2"
-          onClick={(e) => {
-            e.stopPropagation();
+
+  const accionesTemplate = (rowData) => (
+    <div onClick={(e) => e.stopPropagation()}>
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-rounded p-button-text p-button-info"
+        style={{ marginRight: 8 }}
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        onClick={() => {
+          if (permisos.puedeVer || permisos.puedeEditar) {
             editarMoneda(rowData);
-          }}
-          tooltip="Editar"
-        />
-        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-text p-button-danger"
-            onClick={(e) => {
-              e.stopPropagation();
-              confirmarEliminacion(rowData);
-            }}
-            tooltip="Eliminar"
-          />
-        )}
-      </>
-    );
-  };
+          }
+        }}
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+      />
+      <Button
+        icon="pi pi-trash"
+        className="p-button-rounded p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={() => {
+          if (permisos.puedeEliminar) {
+            confirmarEliminacion(rowData);
+          }
+        }}
+        tooltip="Eliminar"
+      />
+    </div>
+  );
 
   return (
     <div className="crud-demo">
@@ -207,7 +218,14 @@ const Moneda = () => {
           <span>
             ¿Está seguro que desea{" "}
             <span style={{ color: "#b71c1c" }}>eliminar</span> la moneda{" "}
-            <b>{confirmState.row ? `"${confirmState.row.nombreLargo || confirmState.row.codigoSunat}"` : ""}</b>?
+            <b>
+              {confirmState.row
+                ? `"${
+                    confirmState.row.nombreLargo || confirmState.row.codigoSunat
+                  }"`
+                : ""}
+            </b>
+            ?
             <br />
             <span style={{ fontWeight: 400, color: "#b71c1c" }}>
               Esta acción no se puede deshacer.
@@ -229,39 +247,62 @@ const Moneda = () => {
         loading={loading}
         dataKey="id"
         paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} monedas"
+        size="small"
+        showGridlines
+        stripedRows
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => editarMoneda(e.data)
+            : undefined
+        }
+        style={{
+          fontSize: getResponsiveFontSize(),
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+        }}
         globalFilter={globalFilter}
         globalFilterFields={["codigoSunat", "nombreLargo", "simbolo"]}
         emptyMessage="No se encontraron monedas"
         header={
-          <div className="flex align-items-center gap-2">
-            <h2>Gestión de Monedas</h2>
-            <Button
-              type="button"
-              label="Nueva"
-              icon="pi pi-plus"
-              className="p-button-success"
-              size="small"
-              outlined
-              raised
-              onClick={abrirDialogoNuevo}
-            />
-            <InputText
-              type="search"
-              onInput={onGlobalFilterChange}
-              placeholder="Buscar monedas..."
-              style={{ width: 240 }}
-            />
+          <div
+            style={{
+              alignItems: "center",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h2>Gestión de Monedas</h2>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                type="button"
+                label="Nueva"
+                icon="pi pi-plus"
+                className="p-button-success"
+                size="small"
+                outlined
+                raised
+                disabled={!permisos.puedeCrear}
+                onClick={abrirDialogoNuevo}
+              />
+            </div>
+            <div style={{ flex: 2 }}>
+              <InputText
+                type="search"
+                onInput={onGlobalFilterChange}
+                placeholder="Buscar monedas..."
+                style={{ width: 240 }}
+              />
+            </div>
           </div>
         }
-        onRowClick={(e) => editarMoneda(e.data)}
-        className="datatable-responsive"
         scrollable
-        scrollHeight="600px"
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
         <Column field="id" header="ID" sortable style={{ minWidth: "60px" }} />
         <Column
@@ -301,7 +342,13 @@ const Moneda = () => {
       <Dialog
         visible={dialogoVisible}
         style={{ width: "600px" }}
-        header={monedaSeleccionada?.id ? "Editar Moneda" : "Nueva Moneda"}
+        header={
+          monedaSeleccionada?.id
+            ? permisos.puedeEditar
+              ? "Editar Moneda"
+              : "Ver Moneda"
+            : "Nueva Moneda"
+        }
         modal
         className="p-fluid"
         onHide={cerrarDialogo}
@@ -311,6 +358,7 @@ const Moneda = () => {
           onSave={onGuardar}
           onCancel={cerrarDialogo}
           toast={toast}
+          readOnly={monedaSeleccionada && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

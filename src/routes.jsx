@@ -18,6 +18,7 @@ import BaseLayout from "./components/layout/BaseLayout";
 import ProtectedRoute from "./shared/ProtectedRoute";
 import Login from "./pages/Login";
 import SetupSuperUser from "./pages/SetupSuperUser";
+import SinAcceso from "./pages/SinAcceso";
 import { useAuthStore } from "./shared/stores/useAuthStore";
 // Importación de todos los módulos internos del ERP
 import MultiCrud from "./pages/MultiCrud"; // Sistema profesional de pestañas dinámicas
@@ -79,6 +80,12 @@ export default function AppRoutes() {
       <Routes>
         <Route path="/login" element={
           isAuth ? <Navigate to="/" replace /> : <Login onLogin={() => window.location.href = "/"} />
+        } />
+        {/* Ruta pública para mostrar mensaje de acceso denegado */}
+        <Route path="/sin-acceso" element={
+          <ProtectedRoute>
+            <SinAcceso />
+          </ProtectedRoute>
         } />
         {/* Rutas protegidas para la app principal: cada módulo es una ruta hija dentro del layout */}
         {/* Todas las rutas internas ahora están protegidas por ProtectedRoute.

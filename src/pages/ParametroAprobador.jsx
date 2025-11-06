@@ -36,8 +36,15 @@ import { getSedes } from "../api/sedes";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import ParametroAprobadorForm from "../components/parametroAprobador/ParametroAprobadorForm";
 import { getResponsiveFontSize } from "../utils/utils";
+import { usePermissions } from "../hooks/usePermissions";
+import { Navigate } from "react-router-dom";
 
-const ParametroAprobador = () => {
+const ParametroAprobador = ({ ruta }) => {
+  const permisos = usePermissions(ruta);
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const [parametrosAprobador, setParametrosAprobador] = useState([]);
   const [personal, setPersonal] = useState([]);
   const [modulosSistema, setModulosSistema] = useState([]);
@@ -50,6 +57,8 @@ const ParametroAprobador = () => {
   const [parametroSeleccionado, setParametroSeleccionado] = useState(null);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [parametroAEliminar, setParametroAEliminar] = useState(null);
+  const [formLoading, setFormLoading] = useState(false);
+  const [modoEdicion, setModoEdicion] = useState(false);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
   const [globalFilter, setGlobalFilter] = useState("");
@@ -140,18 +149,77 @@ const ParametroAprobador = () => {
 
   const abrirDialogoNuevo = () => {
     setParametroSeleccionado(null);
+    setModoEdicion(false);
     setDialogVisible(true);
   };
 
   const abrirDialogoEdicion = (parametro) => {
     setParametroSeleccionado(parametro);
+    setModoEdicion(true);
     setDialogVisible(true);
   };
 
   const cerrarDialogo = () => {
     setDialogVisible(false);
     setParametroSeleccionado(null);
+    setModoEdicion(false);
   };
+
+  async function onSubmitForm(data) {
+    if (modoEdicion && !permisos.puedeEditar) return;
+    if (!modoEdicion && !permisos.puedeCrear) return;
+
+    setFormLoading(true);
+    try {
+      // Normalización de datos
+      const payload = {
+        personalRespId: data.personalRespId
+          ? Number(data.personalRespId)
+          : null,
+        moduloSistemaId: data.moduloSistemaId
+          ? Number(data.moduloSistemaId)
+          : null,
+        empresaId: data.empresaId ? Number(data.empresaId) : null,
+        embarcacionId: data.embarcacionId ? Number(data.embarcacionId) : null,
+        sedeId: data.sedeId ? Number(data.sedeId) : null,
+        vigenteDesde: data.vigenteDesde,
+        vigenteHasta: data.vigenteHasta || null,
+        cesado: data.cesado || false,
+      };
+
+      if (modoEdicion) {
+        await actualizarParametroAprobador(parametroSeleccionado.id, payload);
+        toast.current.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Parámetro aprobador actualizado correctamente",
+          life: 3000,
+        });
+      } else {
+        await crearParametroAprobador(payload);
+        toast.current.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Parámetro aprobador creado correctamente",
+          life: 3000,
+        });
+      }
+
+      cargarParametrosAprobador();
+      cerrarDialogo();
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: modoEdicion
+          ? "Error al actualizar parámetro aprobador"
+          : "Error al crear parámetro aprobador",
+        life: 3000,
+      });
+    } finally {
+      setFormLoading(false);
+    }
+  }
 
   const onGuardarExitoso = () => {
     cargarParametrosAprobador();
@@ -253,30 +321,33 @@ const ParametroAprobador = () => {
     );
   };
 
-  const accionesTemplate = (rowData) => {
-    return (
-      <div className="flex gap-2">
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-text p-mr-2"
-          onClick={(ev) => {
-            ev.stopPropagation();
+  const accionesTemplate = (rowData) => (
+    <div onClick={(e) => e.stopPropagation()}>
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-rounded p-button-text p-button-info"
+        style={{ marginRight: 8 }}
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        onClick={() => {
+          if (permisos.puedeVer || permisos.puedeEditar) {
             abrirDialogoEdicion(rowData);
-          }}
-          tooltip="Editar"
-          tooltipOptions={{ position: "top" }}
-        />
-        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-text p-button-danger"
-            onClick={() => confirmarEliminacion(rowData)}
-            tooltip="Eliminar"
-          />
-        )}
-      </div>
-    );
-  };
+          }
+        }}
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+      />
+      <Button
+        icon="pi pi-trash"
+        className="p-button-rounded p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={() => {
+          if (permisos.puedeEliminar) {
+            confirmarEliminacion(rowData);
+          }
+        }}
+        tooltip="Eliminar"
+      />
+    </div>
+  );
 
   const limpiarFiltros = () => {
     setFiltroModuloSistema(null);
@@ -305,12 +376,25 @@ const ParametroAprobador = () => {
       <DataTable
         value={datosFiltrados}
         loading={loading}
+        size="small"
+        showGridlines
+        stripedRows
         paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
-        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 20]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} personal"
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => abrirDialogoEdicion(e.data)
+            : undefined
+        }
         selectionMode="single"
-        className="p-datatable-hover cursor-pointer"
         emptyMessage="No se encontraron parámetros aprobador"
         globalFilter={globalFilter}
         globalFilterFields={["personalRespId", "moduloSistemaId", "empresaId"]}
@@ -340,6 +424,7 @@ const ParametroAprobador = () => {
                   tooltip="Nuevo Parámetro Aprobador"
                   outlined
                   className="p-button-success"
+                  disabled={!permisos.puedeEliminar}
                   onClick={abrirDialogoNuevo}
                 />
               </div>
@@ -416,8 +501,6 @@ const ParametroAprobador = () => {
           </div>
         }
         scrollable
-        scrollHeight="600px"
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
         <Column field="id" header="ID" sortable style={{ width: "80px" }} />
         <Column
@@ -487,9 +570,16 @@ const ParametroAprobador = () => {
         modal
       >
         <ParametroAprobadorForm
-          parametroAprobador={parametroSeleccionado}
-          onGuardar={onGuardarExitoso}
-          onCancelar={cerrarDialogo}
+          isEdit={modoEdicion}
+          defaultValues={parametroSeleccionado}
+          onSubmit={onSubmitForm}
+          onCancel={cerrarDialogo}
+          loading={formLoading}
+          readOnly={modoEdicion && !permisos.puedeEditar}
+          personal={personal}
+          modulosSistema={modulosSistema}
+          empresas={empresas}
+          sedes={sedes}
         />
       </Dialog>
 
