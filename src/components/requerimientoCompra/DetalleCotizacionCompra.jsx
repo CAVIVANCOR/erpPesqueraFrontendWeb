@@ -476,7 +476,7 @@ export default function DetalleCotizacionCompra({
             header="Precio Unit. Compra"
             editor={puedeEditar ? (options) => numberEditor(options) : null}
             onCellEditComplete={puedeEditar ? onCellEditComplete : null}
-            body={(row) => formatearNumero(row.precioUnitario || 0)}
+            body={(row) => `S/ ${formatearNumero(row.precioUnitario || 0)}`}
             style={{ width: "150px", textAlign: "right" }}
           />
           <Column
@@ -496,14 +496,13 @@ export default function DetalleCotizacionCompra({
                 }}
               >
                 <Button
-                  icon="pi pi-pencil"
+                  icon={puedeEditar ? "pi pi-pencil" : "pi pi-eye"}
                   className="p-button-sm p-button-rounded p-button-text p-button-info"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleEditarItem(row);
                   }}
-                  tooltip="Editar"
-                  disabled={!puedeEditar}
+                  tooltip={puedeEditar ? "Editar" : "Ver"}
                   tabIndex={-1}
                 />
                 <Button
@@ -681,6 +680,7 @@ export default function DetalleCotizacionCompra({
               minFractionDigits={2}
               maxFractionDigits={2}
               style={{ width: "100%" }}
+              disabled={!puedeEditar}
             />
           </div>
           <div className="field">
@@ -695,6 +695,7 @@ export default function DetalleCotizacionCompra({
               maxFractionDigits={2}
               prefix="S/ "
               style={{ width: "100%" }}
+              disabled={!puedeEditar}
             />
           </div>
           <div className="field">
@@ -706,7 +707,7 @@ export default function DetalleCotizacionCompra({
               fontWeight: "bold",
               fontSize: "1.1rem"
             }}>
-              S/ {(Number(formEditarItem.cantidad) * Number(formEditarItem.precioUnitario)).toFixed(2)}
+              S/ {formatearNumero(Number(formEditarItem.cantidad) * Number(formEditarItem.precioUnitario))}
             </div>
           </div>
         </div>
@@ -731,6 +732,7 @@ export default function DetalleCotizacionCompra({
             label="Guardar"
             icon="pi pi-check"
             onClick={handleGuardarEdicionItem}
+            disabled={!puedeEditar}
           />
         </div>
       </Dialog>

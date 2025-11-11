@@ -115,6 +115,7 @@ const EntidadComercialForm = ({
   const ctasCteRef = useRef(null);
   const preciosRef = useRef(null);
   const esEdicion = !!(entidadComercial && entidadComercial.id);
+  const usuario = useAuthStore((state) => state.usuario);
 
   // Configuración del formulario principal (solo para datos básicos)
   const {

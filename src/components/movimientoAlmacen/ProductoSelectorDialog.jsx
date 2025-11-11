@@ -182,15 +182,15 @@ export default function ProductoSelectorDialog({
    * Nivel 3: Stock con variables (al hacer clic en almacén)
    */
   const cargarDatos = async () => {
-    if (!empresaId || !clienteId) return;
+    if (!empresaId || !clienteId) {
+      return;
+    }
 
     setLoading(true);
     try {
       if (esIngreso) {
-        // INGRESO: Cargar productos con stock consolidado
         await cargarProductosConStockConsolidado();
       } else {
-        // EGRESO/TRANSFERENCIA: Cargar solo productos con stock disponible
         await cargarProductosConStock();
       }
     } catch (error) {
@@ -217,9 +217,7 @@ export default function ProductoSelectorDialog({
       clienteId, // Ya viene correcto desde el padre (entidadComercialId para propia)
       cesado: false,
     };
-    console.log('🔍 Filtros Productos:', filtrosProductos);
     const productosData = await getProductos(filtrosProductos);
-    console.log('📦 Productos cargados:', productosData.length);
 
     // 2. Cargar saldos generales desde SaldosProductoCliente (consolidado por producto)
     const filtrosSaldos = {
@@ -227,9 +225,7 @@ export default function ProductoSelectorDialog({
       clienteId, // Mismo clienteId correcto
       custodia: esCustodia,
     };
-    console.log('🔍 Filtros Saldos:', filtrosSaldos);
     const saldosData = await getSaldosProductoClienteConFiltros(filtrosSaldos);
-    console.log('📊 Saldos cargados:', saldosData.length);
 
     // 3. Mapear productos con stock consolidado
     const productosConStock = productosData.map((producto) => {
@@ -263,7 +259,6 @@ export default function ProductoSelectorDialog({
       };
     });
 
-    console.log('✅ Productos con stock consolidado:', productosConStock.length);
     setItems(productosConStock);
   };
 

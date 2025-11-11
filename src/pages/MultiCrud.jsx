@@ -135,7 +135,7 @@ import Marca from "./Marca";
 import DocRequeridaVentas from "./DocRequeridaVentas";
 import RequisitoDocPorPais from "./RequisitoDocPorPais";
 import CostoExportacionPorIncoterm from "./CostoExportacionPorIncoterm";
-
+import TipoContenedor from "./TipoContenedor";
 /**
  * Componente MultiCrud
  *
@@ -154,6 +154,10 @@ export default function MultiCrud() {
 
   // Catálogo de módulos disponibles (key -> componente)
   const modulos = {
+    tipoContenedor: {
+      label: "Tipo Contenedor",
+      componente: <TipoContenedor ruta="tipoContenedor" />,
+    },
     almacen: { label: "Almacenes", componente: <Almacen ruta="almacen" /> },
     centrosAlmacen: {
       label: "Centros de Almacén",
@@ -428,21 +432,21 @@ export default function MultiCrud() {
     },
     accionesPreviasFaena: {
       label: "Acciones Previas Faena",
-      componente: <AccionesPreviasFaena />,
+      componente: <AccionesPreviasFaena ruta="accionesPreviasFaena" />,
     },
     detAccionesPreviasFaena: {
       label: "Detalle Acciones Previas Faena Temporada Pesca",
-      componente: <DetAccionesPreviasFaena />,
+      componente: <DetAccionesPreviasFaena ruta="detAccionesPreviasFaena" />,
     },
-    tipoEntidad: { label: "Tipos de Entidad", componente: <TipoEntidad /> },
-    formaPago: { label: "Formas de Pago", componente: <FormaPago /> },
+    tipoEntidad: { label: "Tipos de Entidad", componente: <TipoEntidad ruta="tipoEntidad" /> },
+    formaPago: { label: "Formas de Pago", componente: <FormaPago ruta="formaPago" /> },
     agrupacionEntidad: {
       label: "Agrupaciones de Entidad Comercial",
-      componente: <AgrupacionEntidad />,
+      componente: <AgrupacionEntidad ruta="agrupacionEntidad" />,
     },
     contactoEntidad: {
       label: "Contactos de Entidad Comercial",
-      componente: <ContactoEntidad />,
+      componente: <ContactoEntidad ruta="contactoEntidad" />,
     },
     entidadComercial: {
       label: "Entidades Comerciales",
@@ -450,124 +454,124 @@ export default function MultiCrud() {
     },
     direccionEntidad: {
       label: "Direcciones de Entidad Comercial",
-      componente: <DireccionEntidad />,
+      componente: <DireccionEntidad ruta="direccionEntidad" />,
     },
     precioEntidad: {
       label: "Precios Especiales Entidad Comercial",
-      componente: <PrecioEntidad />,
+      componente: <PrecioEntidad ruta="precioEntidad" />,
     },
-    pais: { label: "Países", componente: <Pais /> },
-    departamento: { label: "Departamentos", componente: <Departamento /> },
-    provincia: { label: "Provincias", componente: <Provincia /> },
-    ubigeo: { label: "Ubigeos", componente: <Ubigeo /> },
-    tipoVehiculo: { label: "Tipos de Vehículo", componente: <TipoVehiculo /> },
+    pais: { label: "Países", componente: <Pais ruta="pais" /> },
+    departamento: { label: "Departamentos", componente: <Departamento ruta="departamento" /> },
+    provincia: { label: "Provincias", componente: <Provincia ruta="provincia" /> },
+    ubigeo: { label: "Ubigeos", componente: <Ubigeo ruta="ubigeo" /> },
+    tipoVehiculo: { label: "Tipos de Vehículo", componente: <TipoVehiculo ruta="tipoVehiculo" /> },
     vehiculoEntidad: {
       label: "Vehículos Entidad Comercial",
-      componente: <VehiculoEntidad />,
+      componente: <VehiculoEntidad ruta="vehiculoEntidad" />,
     },
     lineaCreditoEntidad: {
       label: "Líneas Crédito Entidad Comercial",
-      componente: <LineaCreditoEntidad />,
+      componente: <LineaCreditoEntidad ruta="lineaCreditoEntidad" />,
     },
     movimientoAlmacen: {
       label: "Movimientos de Almacén",
-      componente: <MovimientoAlmacen />,
+      componente: <MovimientoAlmacen ruta="movimientoAlmacen" />,
     },
     tipoConcepto: {
       label: "Tipos de Concepto Movimientos Almacén",
-      componente: <TipoConcepto />,
+      componente: <TipoConcepto ruta="tipoConcepto" />,
     },
     conceptoMovAlmacen: {
       label: "Conceptos Movimientos Almacén",
-      componente: <ConceptoMovAlmacen />,
+      componente: <ConceptoMovAlmacen ruta="conceptoMovAlmacen" />,
     },
     tipoMovimientoAlmacen: {
       label: "Tipos de Movimiento Almacén",
-      componente: <TipoMovimientoAlmacen />,
+      componente: <TipoMovimientoAlmacen ruta="tipoMovimientoAlmacen" />,
     },
-    tipoAlmacen: { label: "Tipos de Almacén", componente: <TipoAlmacen /> },
-    serieDoc: { label: "Series de Documento", componente: <SerieDoc /> },
+    tipoAlmacen: { label: "Tipos de Almacén", componente: <TipoAlmacen ruta="tipoAlmacen" /> },
+    serieDoc: { label: "Series de Documento", componente: <SerieDoc ruta="serieDoc" /> },
     familiaProducto: {
       label: "Familias de Producto",
-      componente: <FamiliaProducto />,
+      componente: <FamiliaProducto ruta="familiaProducto" />,
     },
     subfamiliaProducto: {
       label: "Subfamilias de Producto",
-      componente: <SubfamiliaProducto />,
+      componente: <SubfamiliaProducto ruta="subfamiliaProducto" />,
     },
     unidadMedida: {
       label: "Empaques Unidades de Medida",
-      componente: <UnidadMedida />,
+      componente: <UnidadMedida ruta="unidadMedida" />,
     },
     tipoMaterial: {
       label: "Tipos de Material Producto",
-      componente: <TipoMaterial />,
+      componente: <TipoMaterial ruta="tipoMaterial" />,
     },
-    color: { label: "Colores Producto", componente: <Color /> },
-    producto: { label: "Productos y Servicios", componente: <Producto /> },
+    color: { label: "Colores Producto", componente: <Color ruta="color" /> },
+    producto: { label: "Productos y Servicios", componente: <Producto ruta="producto" /> },
     kardexAlmacen: {
       label: "Kardex de Almacén",
-      componente: <KardexAlmacen />,
+      componente: <KardexAlmacen ruta="kardexAlmacen" />,
     },
     saldosProductoCliente: {
       label: "Saldos de Productos-Cliente",
-      componente: <SaldosProductoCliente />,
+      componente: <SaldosProductoCliente ruta="saldosProductoCliente" />,
     },
     saldosDetProductoCliente: {
       label: "Saldos de Productos-Cliente Variables Control",
-      componente: <SaldosDetProductoCliente />,
+      componente: <SaldosDetProductoCliente ruta="saldosDetProductoCliente" />,
     },
     cotizacionVentas: {
       label: "Cotización de Ventas",
-      componente: <CotizacionVentas />,
+      componente: <CotizacionVentas ruta="cotizacionVentas" />,
     },
     detCotizacionVentas: {
       label: "Detalle Cotización Ventas",
-      componente: <DetCotizacionVentas />,
+      componente: <DetCotizacionVentas ruta="detCotizacionVentas" />,
     },
     detDocsReqCotizaVentas: {
       label: "Documentos Requeridos Cotización Ventas",
-      componente: <DetDocsReqCotizaVentas />,
+      componente: <DetDocsReqCotizaVentas ruta="detDocsReqCotizaVentas" />,
     },
     tipoProducto: {
       label: "Tipos de Mercaderia",
-      componente: <TipoProducto />,
+      componente: <TipoProducto ruta="tipoProducto" />,
     },
     tipoEstadoProducto: {
       label: "Estado del Producto",
-      componente: <TipoEstadoProducto />,
+      componente: <TipoEstadoProducto ruta="tipoEstadoProducto" />,
     },
     destinoProducto: {
       label: "Destinos de Mercaderia",
-      componente: <DestinoProducto />,
+      componente: <DestinoProducto ruta="destinoProducto" />,
     },
     formaTransaccion: {
       label: "Formas de Transacción Venta",
-      componente: <FormaTransaccion />,
+      componente: <FormaTransaccion ruta="formaTransaccion" />,
     },
     modoDespachoRecepcion: {
       label: "Formas Entrega(Venta)/Recepción(Compra) de Mercaderia",
-      componente: <ModoDespachoRecepcion />,
+      componente: <ModoDespachoRecepcion ruta="modoDespachoRecepcion" />,
     },
     docRequeridaComprasVentas: {
       label: "Documentación Requerida Compras y Ventas",
-      componente: <DocRequeridaComprasVentas />,
+      componente: <DocRequeridaComprasVentas ruta="docRequeridaComprasVentas" />,
     },
     entregaARendirPVentas: {
       label: "Entregas a Rendir Cotización Ventas",
-      componente: <EntregaARendirPVentas />,
+      componente: <EntregaARendirPVentas ruta="entregaARendirPVentas" />,
     },
-    tipoPersona: { label: "Tipos de Persona", componente: <TipoPersona /> },
-    motivoAcceso: { label: "Motivos de Acceso", componente: <MotivoAcceso /> },
+    tipoPersona: { label: "Tipos de Persona", componente: <TipoPersona ruta="tipoPersona" /> },
+    motivoAcceso: { label: "Motivos de Acceso", componente: <MotivoAcceso ruta="motivoAcceso" /> },
     tipoAccesoInstalacion: {
       label: "Tipos de Acceso Instalación",
-      componente: <TipoAccesoInstalacion />,
+      componente: <TipoAccesoInstalacion ruta="tipoAccesoInstalacion" />,
     },
     temporadaPesca: {
       label: "Temporadas de Pesca",
-      componente: <TemporadaPesca />,
+      componente: <TemporadaPesca ruta="temporadaPesca" />,
     },
-    embarcacion: { label: "Embarcaciones", componente: <Embarcacion /> },
+    embarcacion: { label: "Embarcaciones", componente: <Embarcacion ruta="embarcacion" /> },
     // ...agrega aquí los componentes reales según los vayas creando
   };
 
@@ -899,6 +903,16 @@ export default function MultiCrud() {
                     "Costos de Exportación por Incoterm"
                   ),
               },
+              {
+                label: "Tipo Contenedor",
+                icon: "pi pi-box",
+                command: () => abrirModulo("tipoContenedor", "Tipo Contenedor"),
+              },
+              {
+                label: "Formas Transaccion",
+                icon: "pi pi-sync",
+                command: () => abrirModulo("formaTransaccion", "Formas Transaccion"),
+              }
             ],
           },
         ],

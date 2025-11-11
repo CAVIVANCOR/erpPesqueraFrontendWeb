@@ -29,6 +29,8 @@ export default function DatosGeneralesTab({
   monedasOptions,
   isEdit,
   puedeEditar,
+  puedeVerDetalles,
+  puedeEditarDetalles,
   detallesCount = 0,
   // Props para DetallesTab
   requerimientoId,
@@ -483,7 +485,10 @@ export default function DatosGeneralesTab({
             requerimientoId={requerimientoId}
             productos={productos}
             empresaId={empresaId}
+            empresasOptions={empresasOptions}
             puedeEditar={puedeEditar}
+            puedeVerDetalles={puedeVerDetalles}
+            puedeEditarDetalles={puedeEditarDetalles}
             datosGenerales={formData}
             toast={toast}
             onCountChange={onCountChange}
@@ -634,7 +639,7 @@ export default function DatosGeneralesTab({
             <label htmlFor="aprobadoPorId">Aprobado Por</label>
             <InputText
               id="aprobadoPorId"
-              value={formData.aprobadoPorId || ""}
+              value={getNombrePersonal(formData.aprobadoPorId)}
               disabled
               style={{
                 fontWeight: "bold",
@@ -664,7 +669,7 @@ export default function DatosGeneralesTab({
             <label htmlFor="autorizaCompraId">Autoriza Compra</label>
             <InputText
               id="autorizaCompraId"
-              value={formData.autorizaCompraId || ""}
+              value={getNombrePersonal(formData.autorizaCompraId)}
               disabled
               style={{
                 fontWeight: "bold",

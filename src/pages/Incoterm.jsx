@@ -1,130 +1,283 @@
 // src/pages/Incoterm.jsx
-// Pantalla CRUD profesional para Incoterm. Cumple la regla transversal ERP Megui.
-import React, { useRef, useState, useEffect } from "react";
+// Pantalla profesional de gestión de Incoterms para el ERP Megui.
+// Utiliza PrimeReact para tabla, diálogos y UX. Integración con API REST y JWT.
+// Documentado en español técnico.
+
+import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
-import { Dialog } from "primereact/dialog";
-import IncotermForm from "../components/incoterm/IncotermForm";
-import { getIncoterms, crearIncoterm, actualizarIncoterm, eliminarIncoterm } from "../api/incoterm";
+import { InputText } from "primereact/inputtext";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
+import { getIncoterms, crearIncoterm, actualizarIncoterm, eliminarIncoterm } from "../api/incoterm";
+import IncotermForm from "../components/incoterm/IncotermForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
 /**
- * Pantalla profesional para gestión de Incoterms.
- * Cumple la regla transversal ERP Megui:
- * - Edición profesional por clic en fila (abre modal).
- * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin), usando useAuthStore.
- * - Confirmación de borrado con ConfirmDialog visual rojo.
- * - Feedback visual con Toast.
- * - Documentación de la regla en el encabezado.
+ * Página de gestión de Incoterms.
+ * - CRUD completo con integración API REST.
+ * - Tabla con filtros, búsqueda y paginación avanzada.
+ * - Formularios desacoplados con validación profesional.
+ * - Feedback visual con Toast y loaders.
+ * Documentado en español técnico.
  */
-export default function Incoterm() {
-  const toast = useRef(null);
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showDialog, setShowDialog] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore(state => state.usuario);
+/**
+ * REGLA TRANSVERSAL ERP MEGUI:
+ * - Edición profesional con un solo clic en la fila.
+ * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin).
+ * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
+ * - El usuario autenticado se obtiene siempre desde useAuthStore.
+ */
+export default function Incoterm({ ruta }) {
+  const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
 
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
+  const [confirmState, setConfirmState] = useState({
+    visible: false,
+    row: null,
+  });
+  // Referencia para Toast de notificaciones
+  const toast = useRef(null);
+
+  // Estado para la lista de incoterms
+  const [incoterms, setIncoterms] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [mostrarDialogo, setMostrarDialogo] = useState(false);
+  const [modoEdicion, setModoEdicion] = useState(false);
+  const [incotermEdit, setIncotermEdit] = useState(null);
+  const [formLoading, setFormLoading] = useState(false);
+  const [globalFilter, setGlobalFilter] = useState("");
+
+  // Carga inicial de incoterms
   useEffect(() => {
-    cargarItems();
+    cargarIncoterms();
   }, []);
 
-  const cargarItems = async () => {
+  // Función para cargar incoterms del backend
+  async function cargarIncoterms() {
     setLoading(true);
     try {
       const data = await getIncoterms();
-      setItems(data);
+      setIncoterms(Array.isArray(data) ? data : []);
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar la lista." });
+      mostrarToast("error", "Error", "No se pudieron cargar los incoterms");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  };
+  }
 
-  const handleEdit = (rowData) => {
-    setEditing(rowData);
-    setShowDialog(true);
-  };
+  // Muestra notificación Toast
+  function mostrarToast(severity, summary, detail) {
+    toast.current?.show({ severity, summary, detail, life: 3500 });
+  }
 
-  const handleDelete = (rowData) => {
-    setToDelete(rowData);
-    setShowConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    setShowConfirm(false);
-    if (!toDelete) return;
-    setLoading(true);
-    try {
-      await eliminarIncoterm(toDelete.id);
-      toast.current.show({ severity: "success", summary: "Eliminado", detail: "Registro eliminado correctamente." });
-      cargarItems();
-    } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo eliminar." });
+  // Maneja el submit del formulario (alta o edición)
+  async function onSubmitForm(data) {
+    // Validar permisos antes de guardar
+    if (modoEdicion && !permisos.puedeEditar) {
+      return;
     }
-    setLoading(false);
-    setToDelete(null);
-  };
+    if (!modoEdicion && !permisos.puedeCrear) {
+      return;
+    }
 
-  const handleFormSubmit = async (data) => {
-    setLoading(true);
+    setFormLoading(true);
     try {
-      if (editing && editing.id) {
-        await actualizarIncoterm(editing.id, data);
-        toast.current.show({ severity: "success", summary: "Actualizado", detail: "Registro actualizado." });
+      // Filtrado profesional del payload: solo los campos válidos para el modelo Prisma
+      const payload = {
+        codigo: data.codigo,
+        nombre: data.nombre,
+        descripcion: data.descripcion || null,
+        activo: !!data.activo,
+      };
+      if (modoEdicion && incotermEdit) {
+        await actualizarIncoterm(incotermEdit.id, payload);
+        mostrarToast(
+          "success",
+          "Incoterm actualizado",
+          `El incoterm fue actualizado correctamente.`
+        );
       } else {
-        await crearIncoterm(data);
-        toast.current.show({ severity: "success", summary: "Creado", detail: "Registro creado." });
+        await crearIncoterm(payload);
+        mostrarToast(
+          "success",
+          "Incoterm creado",
+          `El incoterm fue registrado correctamente.`
+        );
       }
-      setShowDialog(false);
-      setEditing(null);
-      cargarItems();
+      setMostrarDialogo(false);
+      cargarIncoterms();
     } catch (err) {
-      toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo guardar." });
+      mostrarToast("error", "Error", "No se pudo guardar el incoterm.");
+    } finally {
+      setFormLoading(false);
     }
-    setLoading(false);
-  };
+  }
 
-  const handleAdd = () => {
-    setEditing(null);
-    setShowDialog(true);
-  };
+  // Maneja la edición
+  function handleEditar(incoterm) {
+    setIncotermEdit(incoterm);
+    setModoEdicion(true);
+    setMostrarDialogo(true);
+  }
 
+  // Maneja el alta
+  function handleNuevo() {
+    setIncotermEdit(null);
+    setModoEdicion(false);
+    setMostrarDialogo(true);
+  }
+
+  // Maneja la eliminación
+  function handleEliminar(incoterm) {
+    setConfirmState({ visible: true, row: incoterm });
+  }
+
+  async function confirmarEliminar() {
+    if (!confirmState.row) return;
+    setLoading(true);
+    try {
+      await eliminarIncoterm(confirmState.row.id);
+      mostrarToast(
+        "success",
+        "Incoterm eliminado",
+        "El incoterm fue eliminado correctamente."
+      );
+      cargarIncoterms();
+    } catch (err) {
+      mostrarToast("error", "Error", "No se pudo eliminar el incoterm.");
+    } finally {
+      setLoading(false);
+      setConfirmState({ visible: false, row: null });
+    }
+  }
+
+  // Renderiza las acciones de cada fila
   const actionBody = (rowData) => (
     <>
-      <Button icon="pi pi-pencil" className="p-button-text p-button-sm" onClick={() => handleEdit(rowData)} aria-label="Editar" />
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-text p-button-sm"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleEditar(rowData);
+        }}
+        aria-label="Editar"
+      />
       {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button icon="pi pi-trash" className="p-button-text p-button-danger p-button-sm" onClick={() => handleDelete(rowData)} aria-label="Eliminar" />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger p-button-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEliminar(rowData);
+          }}
+          aria-label="Eliminar"
+        />
       )}
     </>
+  );
+
+  // Header de la tabla con búsqueda
+  const header = (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
+      <h2 style={{ margin: 0, fontSize: getResponsiveFontSize() }}>
+        Gestión de Incoterms
+      </h2>
+      <span className="p-input-icon-left">
+        <i className="pi pi-search" />
+        <InputText
+          type="search"
+          value={globalFilter}
+          onChange={(e) => setGlobalFilter(e.target.value)}
+          placeholder="Buscar..."
+        />
+      </span>
+    </div>
   );
 
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
-      <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar este registro?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
-      <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
-        <h2>Gestión de Incoterms</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
+      <ConfirmDialog
+        visible={confirmState.visible}
+        onHide={() => setConfirmState({ visible: false, row: null })}
+        message="¿Está seguro que desea eliminar este incoterm?"
+        header="Confirmar eliminación"
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        accept={confirmarEliminar}
+        reject={() => setConfirmState({ visible: false, row: null })}
+      />
+      <div style={{ marginBottom: 16 }}>
+        <Button
+          label="Nuevo Incoterm"
+          icon="pi pi-plus"
+          className="p-button-success"
+          size="small"
+          outlined
+          onClick={handleNuevo}
+          disabled={loading || !permisos.puedeCrear}
+        />
       </div>
-      <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="codigo" header="Código" />
+      <DataTable
+        value={incoterms}
+        loading={loading}
+        dataKey="id"
+        paginator
+        rows={10}
+        globalFilter={globalFilter}
+        header={header}
+        onRowClick={(e) => handleEditar(e.data)}
+        style={{ cursor: "pointer" }}
+        emptyMessage="No se encontraron incoterms."
+      >
+        <Column field="id" header="ID" style={{ width: 80 }} sortable />
+        <Column field="codigo" header="Código" style={{ width: 120 }} sortable />
+        <Column field="nombre" header="Nombre" sortable />
         <Column field="descripcion" header="Descripción" />
-        <Column field="activo" header="Activo" body={rowData => rowData.activo ? "Sí" : "No"} />
-        <Column body={actionBody} header="Acciones" style={{ width: 130, textAlign: "center" }} />
+        <Column
+          field="activo"
+          header="Activo"
+          body={(rowData) => (rowData.activo ? "Sí" : "No")}
+          style={{ width: 100 }}
+          sortable
+        />
+        <Column
+          body={actionBody}
+          header="Acciones"
+          style={{ width: 130, textAlign: "center" }}
+        />
       </DataTable>
-      <Dialog header={editing ? "Editar Incoterm" : "Nuevo Incoterm"} visible={showDialog} style={{ width: 500 }} onHide={() => setShowDialog(false)} modal>
+      <Dialog
+        header={modoEdicion ? "Editar Incoterm" : "Nuevo Incoterm"}
+        visible={mostrarDialogo}
+        style={{ width: "600px" }}
+        onHide={() => setMostrarDialogo(false)}
+        modal
+      >
         <IncotermForm
-          isEdit={!!editing}
-          defaultValues={editing || {}}
-          onSubmit={handleFormSubmit}
-          onCancel={() => setShowDialog(false)}
-          loading={loading}
+          isEdit={modoEdicion}
+          defaultValues={incotermEdit || {}}
+          onSubmit={onSubmitForm}
+          onCancel={() => setMostrarDialogo(false)}
+          loading={formLoading}
         />
       </Dialog>
     </div>

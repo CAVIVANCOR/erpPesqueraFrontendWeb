@@ -179,7 +179,6 @@ const DetallePreciosEntidad = forwardRef(
         }
 
         setProductosData(response);
-        console.log("Productos cargados:", response);
         return response;
       } catch (error) {
         console.error("Error al cargar productos:", error);

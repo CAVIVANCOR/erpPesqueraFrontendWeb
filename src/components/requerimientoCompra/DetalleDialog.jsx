@@ -21,6 +21,8 @@ export default function DetalleDialog({
   productos,
   empresaId,
   datosGenerales,
+  empresas, // Agregar prop para obtener entidadComercialId
+  puedeEditarDetalles,
   onSaveSuccess,
   toast,
 }) {
@@ -35,6 +37,10 @@ export default function DetalleDialog({
   const [showProductoSelector, setShowProductoSelector] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
 
+  // Obtener entidadComercialId de la empresa seleccionada
+  const empresaSeleccionada = empresas?.find((e) => Number(e.id) === Number(empresaId));
+  const entidadComercialId = empresaSeleccionada?.entidadComercialId;
+
   useEffect(() => {
     if (detalle) {
       setFormData({
@@ -45,9 +51,7 @@ export default function DetalleDialog({
         observaciones: detalle.observaciones || "",
       });
       // Buscar el producto seleccionado
-      const producto = productos.find(
-        (p) => Number(p.id) === Number(detalle.productoId)
-      );
+      const producto = productos.find((p) => Number(p.id) === Number(detalle.productoId));
       setProductoSeleccionado(producto || null);
     } else {
       setFormData({
@@ -232,7 +236,7 @@ export default function DetalleDialog({
                     severity="primary"
                     raised
                     onClick={() => setShowProductoSelector(true)}
-                    disabled={saving}
+                    disabled={saving || !puedeEditarDetalles}
                   />
                 </div>
               </div>
@@ -246,7 +250,7 @@ export default function DetalleDialog({
               severity="primary"
               raised
               onClick={() => setShowProductoSelector(true)}
-              disabled={saving}
+              disabled={saving || !puedeEditarDetalles}
             />
           )}
         </div>
@@ -257,7 +261,7 @@ export default function DetalleDialog({
           onSelect={handleProductoSelect}
           modo="ingreso"
           empresaId={empresaId}
-          clienteId={datosGenerales.empresa?.entidadComercialId} // Productos de la empresa, no del proveedor
+          clienteId={entidadComercialId} // Usar entidadComercialId calculado
           esCustodia={false} // Requerimiento de compra siempre es mercadería propia
         />
 
@@ -282,7 +286,7 @@ export default function DetalleDialog({
               maxFractionDigits={2}
               min={0}
               required
-              disabled={saving}
+              disabled={saving || !puedeEditarDetalles}
               inputStyle={{ fontWeight: "bold" }}
             />
           </div>
@@ -319,7 +323,7 @@ export default function DetalleDialog({
               currency="PEN"
               locale="es-PE"
               min={0}
-              disabled={saving}
+              disabled={saving || !puedeEditarDetalles}
               inputStyle={{ fontWeight: "bold" }}
             />
           </div>
@@ -375,6 +379,7 @@ export default function DetalleDialog({
             icon="pi pi-check"
             onClick={handleSave}
             loading={saving}
+            disabled={!puedeEditarDetalles}
             className="p-button-success"
             severity="success"
             size="small"

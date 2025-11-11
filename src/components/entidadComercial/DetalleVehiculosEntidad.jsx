@@ -349,7 +349,6 @@ const DetalleVehiculosEntidad = forwardRef(
     };
 
     const activoTemplate = (rowData) => {
-      console.log("activoTemplate rowData", rowData, "activos", activos);
       const activo = activos.find(
         (t) => Number(t.value) === Number(rowData.activoId)
       );

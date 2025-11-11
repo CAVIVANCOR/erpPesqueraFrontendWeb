@@ -14,6 +14,8 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
 import {
   getAllCotizacionVentas,
   deleteCotizacionVentas,
+  crearCotizacionVentas,
+  actualizarCotizacionVentas,
 } from "../api/cotizacionVentas";
 import CotizacionVentasForm from "../components/cotizacionVentas/CotizacionVentasForm";
 import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
@@ -30,6 +32,14 @@ import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { getCentrosCosto } from "../api/centroCosto";
 import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { getMonedas } from "../api/moneda";
+import { getIncoterms } from "../api/incoterm";
+import { getPaises } from "../api/pais";
+import { getPuertosPesca } from "../api/puertoPesca";
+import { getBancos } from "../api/banco";
+import { getAllFormaTransaccion } from "../api/formaTransaccion";
+import { getAllModoDespachoRecepcion } from "../api/modoDespachoRecepcion";
+import { getTiposContenedor } from "../api/tipoContenedor";
+import { usePermissions } from "../hooks/usePermissions";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 
@@ -37,11 +47,16 @@ import { Dropdown } from "primereact/dropdown";
  * Componente CotizacionVentas
  * Gestión CRUD de cotizaciones de ventas con patrón profesional ERP Megui
  */
-const CotizacionVentas = () => {
+const CotizacionVentas = ({ ruta }) => {
+  const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
   const [items, setItems] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [clientes, setClientes] = useState([]);
+  const [agenteAduanas, setAgenteAduanas] = useState([]);
+  const [operadoresLogisticos, setOperadoresLogisticos] = useState([]);
+  const [navieras, setNavieras] = useState([]);
   const [tiposProducto, setTiposProducto] = useState([]);
   const [tiposEstadoProducto, setTiposEstadoProducto] = useState([]);
   const [destinosProducto, setDestinosProducto] = useState([]);
@@ -52,6 +67,13 @@ const CotizacionVentas = () => {
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [monedas, setMonedas] = useState([]);
+  const [incoterms, setIncoterms] = useState([]);
+  const [paises, setPaises] = useState([]);
+  const [puertos, setPuertos] = useState([]);
+  const [tiposContenedor, setTiposContenedor] = useState([]);
+  const [bancos, setBancos] = useState([]);
+  const [formasTransaccion, setFormasTransaccion] = useState([]);
+  const [modosDespacho, setModosDespacho] = useState([]);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -64,7 +86,6 @@ const CotizacionVentas = () => {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [clientesUnicos, setClientesUnicos] = useState([]);
-  const usuario = useAuthStore((state) => state.usuario);
 
   const [cotizaciones, setCotizaciones] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -84,10 +105,14 @@ const CotizacionVentas = () => {
       const data = await getAllCotizacionVentas();
       setCotizaciones(data);
     } catch (error) {
+      console.error('Error detallado al cargar cotizaciones:', error);
+      console.error('Response:', error.response);
+      console.error('Status:', error.response?.status);
+      console.error('Data:', error.response?.data);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar cotizaciones de ventas",
+        detail: `Error al cargar cotizaciones: ${error.response?.data?.message || error.message}`,
       });
     } finally {
       setLoading(false);
@@ -123,6 +148,13 @@ const CotizacionVentas = () => {
         centrosCostoData,
         tiposMovimientoData,
         monedasData,
+        incotermsData,
+        paisesData,
+        puertosData,
+        tiposContenedorData,
+        bancosData,
+        formasTransaccionData,
+        modosDespachoData,
       ] = await Promise.all([
         getEmpresas(),
         getTiposDocumento(),
@@ -137,10 +169,32 @@ const CotizacionVentas = () => {
         getCentrosCosto(),
         getAllTipoMovEntregaRendir(),
         getMonedas(),
+        getIncoterms(),
+        getPaises(),
+        getPuertosPesca(),
+        getTiposContenedor(),
+        getBancos(),
+        getAllFormaTransaccion(),
+        getAllModoDespachoRecepcion(),
       ]);
       setEmpresas(empresasData);
       setTiposDocumento(tiposDocData);
       setClientes(clientesData);
+      
+      // Filtrar entidades comerciales por tipo
+      const agenteAduanasData = clientesData.filter(
+        (e) => Number(e.tipoEntidadId) === 12
+      );
+      const operadoresLogisticosData = clientesData.filter(
+        (e) => Number(e.tipoEntidadId) === 13
+      );
+      const navierasData = clientesData.filter(
+        (e) => Number(e.tipoEntidadId) === 14
+      );
+      setAgenteAduanas(agenteAduanasData);
+      setOperadoresLogisticos(operadoresLogisticosData);
+      setNavieras(navierasData);
+      
       setTiposProducto(tiposProductoData);
       setTiposEstadoProducto(tiposEstadoProductoData);
       setDestinosProducto(destinosProductoData);
@@ -171,8 +225,16 @@ const CotizacionVentas = () => {
       setCentrosCosto(centrosCostoData);
       setTiposMovimiento(tiposMovimientoData);
       setMonedas(monedasData);
+      setIncoterms(incotermsData);
+      setPaises(paisesData);
+      setPuertos(puertosData);
+      setTiposContenedor(tiposContenedorData);
+      setBancos(bancosData);
+      setFormasTransaccion(formasTransaccionData);
+      setModosDespacho(modosDespachoData);
     } catch (err) {
-      toast.current.show({
+      console.error('Error al cargar datos:', err);
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar los datos.",
@@ -235,16 +297,122 @@ const CotizacionVentas = () => {
     items,
   ]);
 
-  const abrirDialogoNuevo = () => {
-    setSelectedCotizacion(null);
-    setIsEditing(false);
-    setDialogVisible(true);
+  const abrirDialogoNuevo = async () => {
+    try {
+      // Obtener autorizaVentaId desde ParametroAprobador
+      let autorizaVentaId = null;
+      if (empresaSeleccionada) {
+        const { getParametrosAprobadorPorModulo } = await import("../api/parametroAprobador");
+        const parametros = await getParametrosAprobadorPorModulo(empresaSeleccionada, 5); // 5 = VENTAS
+        
+        // Filtrar por cesado=false y tomar el primero
+        const parametroActivo = parametros.find(p => p.cesado === false);
+        if (parametroActivo) {
+          autorizaVentaId = parametroActivo.personalRespId;
+          console.log(`[CotizacionVentas] autorizaVentaId pre-cargado: ${autorizaVentaId}`);
+        } else {
+          console.warn(`[CotizacionVentas] No se encontró ParametroAprobador activo para empresa ${empresaSeleccionada}, módulo VENTAS`);
+        }
+      }
+
+      // Crear objeto inicial con autorizaVentaId pre-cargado
+      const cotizacionInicial = {
+        autorizaVentaId,
+      };
+
+      setSelectedCotizacion(cotizacionInicial);
+      setIsEditing(false);
+      setDialogVisible(true);
+    } catch (error) {
+      console.error("Error al obtener parámetro aprobador:", error);
+      // Abrir diálogo sin autorizaVentaId si hay error
+      setSelectedCotizacion(null);
+      setIsEditing(false);
+      setDialogVisible(true);
+    }
   };
 
   const abrirDialogoEdicion = (cotizacion) => {
     setSelectedCotizacion(cotizacion);
     setIsEditing(true);
     setDialogVisible(true);
+  };
+
+  const handleGuardarCotizacion = async (datos) => {
+    setLoading(true);
+    try {
+      const esEdicion = selectedCotizacion && selectedCotizacion.id && selectedCotizacion.numeroDocumento;
+
+      if (esEdicion) {
+        await actualizarCotizacionVentas(selectedCotizacion.id, datos);
+        toast.current.show({
+          severity: "success",
+          summary: "Actualizado",
+          detail: "Cotización actualizada. Puedes seguir agregando detalles.",
+        });
+
+        // Recargar la cotización actualizada para obtener campos actualizados
+        const { getCotizacionVentasPorId } = await import(
+          "../api/cotizacionVentas"
+        );
+        const cotizacionActualizada = await getCotizacionVentasPorId(
+          selectedCotizacion.id
+        );
+        setSelectedCotizacion(cotizacionActualizada);
+      } else {
+        const resultado = await crearCotizacionVentas(datos);
+        toast.current.show({
+          severity: "success",
+          summary: "Creado",
+          detail: `Cotización creada con número: ${resultado.numeroDocumento}. Ahora puedes agregar detalles.`,
+          life: 5000,
+        });
+
+        // Cargar la cotización recién creada
+        const { getCotizacionVentasPorId } = await import(
+          "../api/cotizacionVentas"
+        );
+        const cotizacionCompleta = await getCotizacionVentasPorId(
+          resultado.id
+        );
+        setSelectedCotizacion(cotizacionCompleta);
+      }
+
+      cargarCotizaciones();
+    } catch (err) {
+      // Si el backend devuelve campos faltantes, mostrar lista
+      if (err.response?.data?.camposFaltantes && Array.isArray(err.response.data.camposFaltantes)) {
+        toast.current.show({
+          severity: "warn",
+          summary: "Campos Obligatorios Faltantes",
+          detail: (
+            <div>
+              <p style={{ marginBottom: '8px', fontWeight: 'bold' }}>Los siguientes campos son obligatorios:</p>
+              <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                {err.response.data.camposFaltantes.map((campo, index) => (
+                  <li key={index}>{campo}</li>
+                ))}
+              </ul>
+            </div>
+          ),
+          life: 6000,
+        });
+      } else {
+        // Error genérico
+        const errorMsg =
+          err.response?.data?.mensaje ||
+          err.response?.data?.error ||
+          err.response?.data?.message ||
+          "No se pudo guardar.";
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: errorMsg,
+          life: 5000,
+        });
+      }
+    }
+    setLoading(false);
   };
 
   const cerrarDialogo = () => {
@@ -779,7 +947,7 @@ const CotizacionVentas = () => {
 
       <Dialog
         visible={dialogVisible}
-        style={{ width: "1200px" }}
+        style={{ width: "1300px" }}
         header={
           isEditing
             ? "Editar Cotización de Ventas"
@@ -789,16 +957,19 @@ const CotizacionVentas = () => {
         onHide={cerrarDialogo}
       >
         <CotizacionVentasForm
-          cotizacion={selectedCotizacion}
-          onSave={() => {
-            cargarCotizaciones();
-            cerrarDialogo();
-          }}
+          isEdit={isEditing}
+          defaultValues={selectedCotizacion}
+          onSubmit={handleGuardarCotizacion}
           onCancel={cerrarDialogo}
+          loading={loading}
+          toast={toast}
 
           empresas={empresas}
           tiposDocumento={tiposDocumento}
           clientes={clientes}
+          agenteAduanas={agenteAduanas}
+          operadoresLogisticos={operadoresLogisticos}
+          navieras={navieras}
           tiposProducto={tiposProducto}
           tiposEstadoProducto={tiposEstadoProducto}
           destinosProducto={destinosProducto}
@@ -809,6 +980,13 @@ const CotizacionVentas = () => {
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           monedas={monedas}
+          incoterms={incoterms}
+          paises={paises}
+          puertos={puertos}
+          tiposContenedor={tiposContenedor}
+          bancos={bancos}
+          formasTransaccion={formasTransaccion}
+          modosDespacho={modosDespacho}
           empresaFija={empresaSeleccionada}
         />
       </Dialog>

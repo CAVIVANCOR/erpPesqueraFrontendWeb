@@ -231,7 +231,6 @@ const DetMovsEntRendirNovedadForm = ({
     value: Number(m.id),
   }));
 
-  console.log('[DetMovsEntRendirNovedadForm] tiposDocumento recibidos:', tiposDocumento?.length, tiposDocumento);
 
   const tipoDocumentoOptions = tiposDocumento
     .filter((td) => td.esParaCompras === true || td.esParaVentas === true)
@@ -240,7 +239,6 @@ const DetMovsEntRendirNovedadForm = ({
       value: Number(td.id),
     }));
 
-  console.log('[DetMovsEntRendirNovedadForm] tipoDocumentoOptions filtrados:', tipoDocumentoOptions.length, tipoDocumentoOptions);
 
   // Función para manejar el toggle de operacionSinFactura
   const handleToggleOperacionSinFactura = () => {

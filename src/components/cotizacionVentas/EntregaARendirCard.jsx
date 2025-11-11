@@ -1,632 +1,540 @@
 /**
- * Card de Entrega a Rendir para Cotización de Ventas
- * 
- * Funcionalidades:
- * - Registro de entregas a rendir
- * - Control de montos y fechas
- * - Estado de rendición
- * - Observaciones
- * 
+ * EntregaARendirCard.jsx
+ *
+ * Card para gestionar la entrega a rendir única por cotización de ventas.
+ * Muestra el registro único de EntregaARendirPVentas y permite gestionar sus movimientos detallados.
+ * Se habilita solo cuando existe una cotización guardada con respVentasId válido.
+ *
  * @author ERP Megui
- * @version 1.0.0
+ * @version 2.0.0
  */
 
-import React, { useState, useEffect } from "react";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
+import React, { useState, useEffect, useRef } from "react";
+import { Card } from "primereact/card";
 import { Button } from "primereact/button";
-import { Dialog } from "primereact/dialog";
-import { InputNumber } from "primereact/inputnumber";
-import { InputText } from "primereact/inputtext";
-import { InputTextarea } from "primereact/inputtextarea";
-import { Calendar } from "primereact/calendar";
-import { Dropdown } from "primereact/dropdown";
-import { Checkbox } from "primereact/checkbox";
+import { Toast } from "primereact/toast";
 import { confirmDialog } from "primereact/confirmdialog";
-import { getPersonal } from "../../api/personal";
-import { getMonedas } from "../../api/moneda";
-import { getCentrosCosto } from "../../api/centroCosto";
+import { Message } from "primereact/message";
+import { Panel } from "primereact/panel";
+import { Divider } from "primereact/divider";
+import { InputText } from "primereact/inputtext";
+import { Dropdown } from "primereact/dropdown";
+import {
+  getAllEntregaARendirPVentas,
+  crearEntregaARendirPVentas,
+  actualizarEntregaARendirPVentas,
+  eliminarEntregaARendirPVentas,
+} from "../../api/entregaARendirPVentas";
+import {
+  getAllDetMovsEntregaRendirPVentas,
+} from "../../api/detMovsEntregaRendirPVentas";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
-const EntregaARendirCard = ({
-  cotizacionId,
-  entregas,
-  setEntregas,
-  toast,
-}) => {
-  const [personal, setPersonal] = useState([]);
-  const [monedas, setMonedas] = useState([]);
-  const [centrosCosto, setCentrosCosto] = useState([]);
-  const [showDialog, setShowDialog] = useState(false);
-  const [editingEntrega, setEditingEntrega] = useState(null);
-  const [loading, setLoading] = useState(false);
+export default function EntregaARendirCard({
+  cotizacionVentas,
+  personal = [],
+  centrosCosto = [],
+  puedeEditar = true,
+  onCountChange,
+}) {
+  const toast = useRef(null);
+  const usuario = useAuthStore((state) => state.usuario);
 
-  // Estados del formulario
-  const [personalId, setPersonalId] = useState(null);
-  const [centroCostoId, setCentroCostoId] = useState(null);
-  const [fechaEntrega, setFechaEntrega] = useState(null);
-  const [montoEntregado, setMontoEntregado] = useState(0);
-  const [monedaId, setMonedaId] = useState(null);
-  const [tipoCambio, setTipoCambio] = useState(3.75);
-  const [montoMonedaBase, setMontoMonedaBase] = useState(0);
-  const [concepto, setConcepto] = useState("");
-  const [observaciones, setObservaciones] = useState("");
-  const [fechaRendicion, setFechaRendicion] = useState(null);
-  const [montoRendido, setMontoRendido] = useState(null);
-  const [saldoPendiente, setSaldoPendiente] = useState(0);
-  const [estadoRendicion, setEstadoRendicion] = useState("PENDIENTE");
-  const [esUrgente, setEsUrgente] = useState(false);
+  // Estados para EntregaARendirPVentas (única)
+  const [entregaARendir, setEntregaARendir] = useState(null);
+  const [loadingEntrega, setLoadingEntrega] = useState(false);
+  const [verificandoEntrega, setVerificandoEntrega] = useState(true);
 
+  // Estados para cálculos automáticos
+  const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] = useState(0);
+  const [totalGastosEntregasRendir, setTotalGastosEntregasRendir] = useState(0);
+  const [totalSaldoEntregasRendir, setTotalSaldoEntregasRendir] = useState(0);
+
+  // Estados para DetMovsEntregaRendirPVentas
+  const [movimientos, setMovimientos] = useState([]);
+  const [loadingMovimientos, setLoadingMovimientos] = useState(false);
+
+  // Estados para edición de la entrega
+  const [responsableEditado, setResponsableEditado] = useState(null);
+  const [centroCostoEditado, setCentroCostoEditado] = useState(null);
+  const [hayCambios, setHayCambios] = useState(false);
+
+  // Verificar y cargar entrega a rendir cuando cambie la cotización
   useEffect(() => {
-    cargarDatos();
-  }, []);
+    if (cotizacionVentas?.id) {
+      verificarYCargarEntrega();
+    } else {
+      setEntregaARendir(null);
+      setVerificandoEntrega(false);
+    }
+  }, [cotizacionVentas?.id]);
 
-  // Calcular monto en moneda base
+  // Cargar movimientos cuando cambie la entrega
   useEffect(() => {
-    const montoBase = montoEntregado * tipoCambio;
-    setMontoMonedaBase(montoBase);
-  }, [montoEntregado, tipoCambio]);
+    if (entregaARendir?.id) {
+      cargarMovimientos();
+    } else {
+      setMovimientos([]);
+    }
+  }, [entregaARendir?.id]);
 
-  // Calcular saldo pendiente
+  // Notificar cambios en el contador
   useEffect(() => {
-    const saldo = montoEntregado - (montoRendido || 0);
-    setSaldoPendiente(saldo);
-  }, [montoEntregado, montoRendido]);
+    if (onCountChange) {
+      onCountChange(entregaARendir ? 1 : 0);
+    }
+  }, [entregaARendir, onCountChange]);
 
-  const cargarDatos = async () => {
+  const verificarYCargarEntrega = async () => {
+    setVerificandoEntrega(true);
     try {
-      const [personalData, monedasData, centrosData] = await Promise.all([
-        getPersonal(),
-        getMonedas(),
-        getCentrosCosto(),
-      ]);
+      const data = await getAllEntregaARendirPVentas();
+      const entregaExistente = data.find(
+        (e) => Number(e.cotizacionVentasId) === Number(cotizacionVentas.id)
+      );
 
-      setPersonal(personalData);
-      setMonedas(monedasData);
-      setCentrosCosto(centrosData);
+      if (entregaExistente) {
+        setEntregaARendir(entregaExistente);
+        setResponsableEditado(Number(entregaExistente.respEntregaRendirId));
+        setCentroCostoEditado(Number(entregaExistente.centroCostoId));
+        setHayCambios(false);
+      } else {
+        preguntarCrearEntrega();
+      }
     } catch (error) {
-      console.error("Error al cargar datos:", error);
+      console.error("Error al verificar entrega:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar datos",
+        detail: "No se pudo verificar la entrega a rendir",
         life: 3000,
       });
+    } finally {
+      setVerificandoEntrega(false);
     }
   };
 
-  const abrirDialogoNuevo = () => {
-    limpiarFormulario();
-    setEditingEntrega(null);
-    setFechaEntrega(new Date());
-    setEstadoRendicion("PENDIENTE");
-    setShowDialog(true);
+  const preguntarCrearEntrega = () => {
+    confirmDialog({
+      message: "No existe una entrega a rendir para esta cotización. ¿Desea crear una?",
+      header: "Crear Entrega a Rendir",
+      icon: "pi pi-question-circle",
+      acceptLabel: "Sí, Crear",
+      rejectLabel: "No",
+      accept: () => crearEntregaAutomatica(),
+      reject: () => {
+        setEntregaARendir(null);
+      },
+    });
   };
 
-  const abrirDialogoEditar = (entrega) => {
-    setEditingEntrega(entrega);
-    setPersonalId(entrega.personalId);
-    setCentroCostoId(entrega.centroCostoId);
-    setFechaEntrega(entrega.fechaEntrega ? new Date(entrega.fechaEntrega) : null);
-    setMontoEntregado(entrega.montoEntregado);
-    setMonedaId(entrega.monedaId);
-    setTipoCambio(entrega.tipoCambio || 3.75);
-    setMontoMonedaBase(entrega.montoMonedaBase);
-    setConcepto(entrega.concepto || "");
-    setObservaciones(entrega.observaciones || "");
-    setFechaRendicion(entrega.fechaRendicion ? new Date(entrega.fechaRendicion) : null);
-    setMontoRendido(entrega.montoRendido);
-    setSaldoPendiente(entrega.saldoPendiente || 0);
-    setEstadoRendicion(entrega.estadoRendicion || "PENDIENTE");
-    setEsUrgente(entrega.esUrgente || false);
-    setShowDialog(true);
-  };
-
-  const limpiarFormulario = () => {
-    setPersonalId(null);
-    setCentroCostoId(null);
-    setFechaEntrega(null);
-    setMontoEntregado(0);
-    setMonedaId(null);
-    setTipoCambio(3.75);
-    setMontoMonedaBase(0);
-    setConcepto("");
-    setObservaciones("");
-    setFechaRendicion(null);
-    setMontoRendido(null);
-    setSaldoPendiente(0);
-    setEstadoRendicion("PENDIENTE");
-    setEsUrgente(false);
-  };
-
-  const handleGuardarEntrega = () => {
-    if (!personalId || !fechaEntrega || montoEntregado <= 0 || !monedaId) {
+  const crearEntregaAutomatica = async () => {
+    if (!cotizacionVentas.respVentasId || Number(cotizacionVentas.respVentasId) <= 0) {
       toast.current?.show({
-        severity: "warn",
-        summary: "Validación",
-        detail: "Complete los campos obligatorios",
-        life: 3000,
+        severity: "error",
+        summary: "Error",
+        detail: "La cotización debe tener un Responsable de Ventas asignado para crear una entrega a rendir",
+        life: 5000,
       });
       return;
     }
 
-    const persona = personal.find((p) => Number(p.id) === Number(personalId));
-    const moneda = monedas.find((m) => Number(m.id) === Number(monedaId));
-    const centroCosto = centroCostoId
-      ? centrosCosto.find((c) => Number(c.id) === Number(centroCostoId))
-      : null;
+    setLoadingEntrega(true);
+    try {
+      const dataToCreate = {
+        cotizacionVentasId: Number(cotizacionVentas.id),
+        respEntregaRendirId: Number(cotizacionVentas.respVentasId),
+        centroCostoId: 15, // Ventas exportación
+        entregaLiquidada: false,
+        fechaCreacion: new Date().toISOString(),
+        fechaActualizacion: new Date().toISOString(),
+        creadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
+        actualizadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
+      };
 
-    const nuevaEntrega = {
-      id: editingEntrega?.id || Date.now(),
-      personalId: Number(personalId),
-      personal: persona,
-      centroCostoId: centroCostoId ? Number(centroCostoId) : null,
-      centroCosto: centroCosto,
-      fechaEntrega: fechaEntrega,
-      montoEntregado: Number(montoEntregado),
-      monedaId: Number(monedaId),
-      moneda: moneda,
-      tipoCambio: Number(tipoCambio),
-      montoMonedaBase: Number(montoMonedaBase),
-      concepto: concepto?.trim().toUpperCase() || null,
-      observaciones: observaciones?.trim().toUpperCase() || null,
-      fechaRendicion: fechaRendicion,
-      montoRendido: montoRendido ? Number(montoRendido) : null,
-      saldoPendiente: Number(saldoPendiente),
-      estadoRendicion: estadoRendicion,
-      esUrgente: esUrgente,
-    };
+      const nuevaEntrega = await crearEntregaARendirPVentas(dataToCreate);
 
-    if (editingEntrega) {
-      const nuevasEntregas = entregas.map((e) =>
-        e.id === editingEntrega.id ? nuevaEntrega : e
+      const entregaNormalizada = {
+        ...nuevaEntrega,
+        id: Number(nuevaEntrega.id),
+        cotizacionVentasId: Number(nuevaEntrega.cotizacionVentasId),
+        respEntregaRendirId: Number(nuevaEntrega.respEntregaRendirId),
+        centroCostoId: Number(nuevaEntrega.centroCostoId),
+        creadoPor: nuevaEntrega.creadoPor ? Number(nuevaEntrega.creadoPor) : null,
+        actualizadoPor: nuevaEntrega.actualizadoPor ? Number(nuevaEntrega.actualizadoPor) : null,
+      };
+
+      setEntregaARendir(entregaNormalizada);
+      setResponsableEditado(Number(entregaNormalizada.respEntregaRendirId));
+      setCentroCostoEditado(Number(entregaNormalizada.centroCostoId));
+      setHayCambios(false);
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Entrega a rendir creada correctamente",
+        life: 3000,
+      });
+    } catch (error) {
+      console.error("Error al crear entrega automática:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.mensaje || "Error al crear la entrega a rendir",
+        life: 3000,
+      });
+    } finally {
+      setLoadingEntrega(false);
+    }
+  };
+
+  const cargarMovimientos = async () => {
+    if (!entregaARendir?.id) return;
+
+    setLoadingMovimientos(true);
+    try {
+      const data = await getAllDetMovsEntregaRendirPVentas();
+      const movsFiltrados = data.filter(
+        (m) => Number(m.entregaARendirPVentasId) === Number(entregaARendir.id)
       );
-      setEntregas(nuevasEntregas);
+      setMovimientos(movsFiltrados);
+      calcularTotales(movsFiltrados);
+    } catch (error) {
+      console.error("Error al cargar movimientos:", error);
       toast.current?.show({
-        severity: "success",
-        summary: "Actualizado",
-        detail: "Entrega actualizada correctamente",
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar los movimientos",
         life: 3000,
       });
-    } else {
-      setEntregas([...entregas, nuevaEntrega]);
+    } finally {
+      setLoadingMovimientos(false);
+    }
+  };
+
+  const calcularTotales = (movs) => {
+    let totalAsignaciones = 0;
+    let totalGastos = 0;
+
+    movs.forEach((mov) => {
+      const monto = Number(mov.monto) || 0;
+      // Asumiendo que hay un campo que indica si es ingreso o egreso
+      // Ajustar según la lógica real del negocio
+      if (mov.esIngreso) {
+        totalAsignaciones += monto;
+      } else {
+        totalGastos += monto;
+      }
+    });
+
+    const saldo = totalAsignaciones - totalGastos;
+
+    setTotalAsignacionesEntregasRendir(totalAsignaciones);
+    setTotalGastosEntregasRendir(totalGastos);
+    setTotalSaldoEntregasRendir(saldo);
+  };
+
+  const handleResponsableChange = (value) => {
+    setResponsableEditado(value);
+    setHayCambios(
+      Number(value) !== Number(entregaARendir.respEntregaRendirId) ||
+      Number(centroCostoEditado) !== Number(entregaARendir.centroCostoId)
+    );
+  };
+
+  const handleCentroCostoChange = (value) => {
+    setCentroCostoEditado(value);
+    setHayCambios(
+      Number(responsableEditado) !== Number(entregaARendir.respEntregaRendirId) ||
+      Number(value) !== Number(entregaARendir.centroCostoId)
+    );
+  };
+
+  const handleGuardarCambios = async () => {
+    setLoadingEntrega(true);
+    try {
+      const dataToUpdate = {
+        cotizacionVentasId: Number(entregaARendir.cotizacionVentasId),
+        respEntregaRendirId: Number(responsableEditado),
+        centroCostoId: Number(centroCostoEditado),
+        entregaLiquidada: entregaARendir.entregaLiquidada,
+        actualizadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
+      };
+
+      const entregaActualizada = await actualizarEntregaARendirPVentas(
+        entregaARendir.id,
+        dataToUpdate
+      );
+
+      const entregaNormalizada = {
+        ...entregaActualizada,
+        id: Number(entregaActualizada.id),
+        cotizacionVentasId: Number(entregaActualizada.cotizacionVentasId),
+        respEntregaRendirId: Number(entregaActualizada.respEntregaRendirId),
+        centroCostoId: Number(entregaActualizada.centroCostoId),
+        creadoPor: entregaActualizada.creadoPor ? Number(entregaActualizada.creadoPor) : null,
+        actualizadoPor: entregaActualizada.actualizadoPor ? Number(entregaActualizada.actualizadoPor) : null,
+      };
+
+      setEntregaARendir(entregaNormalizada);
+      setResponsableEditado(Number(entregaNormalizada.respEntregaRendirId));
+      setCentroCostoEditado(Number(entregaNormalizada.centroCostoId));
+      setHayCambios(false);
+
       toast.current?.show({
         severity: "success",
-        summary: "Agregado",
-        detail: "Entrega agregada correctamente",
+        summary: "Éxito",
+        detail: "Entrega a rendir actualizada correctamente",
         life: 3000,
       });
+    } catch (error) {
+      console.error("Error al actualizar entrega:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.mensaje || "Error al actualizar la entrega",
+        life: 3000,
+      });
+    } finally {
+      setLoadingEntrega(false);
     }
-
-    setShowDialog(false);
-    limpiarFormulario();
   };
 
-  const confirmarEliminar = (entrega) => {
-    confirmDialog({
-      message: `¿Está seguro de eliminar la entrega a ${entrega.personal?.nombreCompleto}?`,
-      header: "Confirmar Eliminación",
-      icon: "pi pi-exclamation-triangle",
-      acceptClassName: "p-button-danger",
-      acceptLabel: "Eliminar",
-      rejectLabel: "Cancelar",
-      accept: () => eliminarEntrega(entrega),
-    });
-  };
-
-  const eliminarEntrega = (entrega) => {
-    const nuevasEntregas = entregas.filter((e) => e.id !== entrega.id);
-    setEntregas(nuevasEntregas);
-    toast.current?.show({
-      severity: "success",
-      summary: "Eliminado",
-      detail: "Entrega eliminada correctamente",
-      life: 3000,
-    });
-  };
-
-  // Templates
-  const personalTemplate = (rowData) => {
-    return <span>{rowData.personal?.nombreCompleto || "N/A"}</span>;
-  };
-
-  const fechaTemplate = (rowData) => {
-    if (rowData.fechaEntrega) {
-      return new Date(rowData.fechaEntrega).toLocaleDateString("es-PE");
-    }
-    return "-";
-  };
-
-  const montoTemplate = (rowData) => {
+  // Renderizado
+  if (!cotizacionVentas?.id) {
     return (
-      <span style={{ fontWeight: "bold" }}>
-        {rowData.moneda?.codigo || ""} {rowData.montoEntregado.toFixed(2)}
-      </span>
-    );
-  };
-
-  const estadoTemplate = (rowData) => {
-    const colores = {
-      PENDIENTE: "#FF9800",
-      PARCIAL: "#2196F3",
-      RENDIDO: "#4CAF50",
-      VENCIDO: "#F44336",
-    };
-
-    return (
-      <span
-        style={{
-          color: colores[rowData.estadoRendicion] || "#999",
-          fontWeight: "bold",
-        }}
-      >
-        {rowData.estadoRendicion}
-      </span>
-    );
-  };
-
-  const saldoTemplate = (rowData) => {
-    const color = rowData.saldoPendiente > 0 ? "#F44336" : "#4CAF50";
-    return (
-      <span style={{ color: color, fontWeight: "bold" }}>
-        $ {rowData.saldoPendiente.toFixed(2)}
-      </span>
-    );
-  };
-
-  const urgenteTemplate = (rowData) => {
-    return rowData.esUrgente ? (
-      <i className="pi pi-exclamation-triangle" style={{ color: "#F44336", fontSize: "1.2rem" }} />
-    ) : null;
-  };
-
-  const accionesTemplate = (rowData) => {
-    return (
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-rounded p-button-warning p-button-sm"
-          onClick={() => abrirDialogoEditar(rowData)}
-          tooltip="Editar"
-          tooltipOptions={{ position: "bottom" }}
+      <Card className="mt-3">
+        <Message
+          severity="info"
+          text="Guarde la cotización primero para poder gestionar entregas a rendir"
         />
-        <Button
-          icon="pi pi-trash"
-          className="p-button-rounded p-button-danger p-button-sm"
-          onClick={() => confirmarEliminar(rowData)}
-          tooltip="Eliminar"
-          tooltipOptions={{ position: "bottom" }}
-        />
-      </div>
+      </Card>
     );
-  };
+  }
 
-  // Calcular totales
-  const calcularTotales = () => {
-    const totalEntregado = entregas.reduce((sum, e) => sum + e.montoMonedaBase, 0);
-    const totalRendido = entregas.reduce((sum, e) => sum + (e.montoRendido || 0), 0);
-    const totalPendiente = entregas.reduce((sum, e) => sum + e.saldoPendiente, 0);
-    return {
-      totalEntregado: totalEntregado.toFixed(2),
-      totalRendido: totalRendido.toFixed(2),
-      totalPendiente: totalPendiente.toFixed(2),
-      cantidadEntregas: entregas.length,
-    };
-  };
+  if (verificandoEntrega) {
+    return (
+      <Card className="mt-3">
+        <Message severity="info" text="Verificando entrega a rendir..." />
+      </Card>
+    );
+  }
 
-  const totales = calcularTotales();
-
-  const dialogFooter = (
-    <div>
-      <Button
-        label="Cancelar"
-        icon="pi pi-times"
-        className="p-button-secondary"
-        onClick={() => setShowDialog(false)}
-      />
-      <Button
-        label="Guardar"
-        icon="pi pi-check"
-        className="p-button-success"
-        onClick={handleGuardarEntrega}
-        loading={loading}
-      />
-    </div>
-  );
+  if (!entregaARendir) {
+    return (
+      <Card className="mt-3">
+        <Message
+          severity="warn"
+          text="No existe una entrega a rendir para esta cotización"
+        />
+      </Card>
+    );
+  }
 
   return (
-    <div className="card">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <h3>Entrega a Rendir</h3>
-        <Button
-          label="Agregar Entrega"
-          icon="pi pi-plus"
-          className="p-button-success"
-          onClick={abrirDialogoNuevo}
-          disabled={!cotizacionId}
-        />
-      </div>
-
-      {!cotizacionId && (
-        <div className="p-message p-message-info" style={{ marginBottom: "1rem" }}>
-          <span>Debe guardar primero los datos generales para agregar entregas</span>
-        </div>
-      )}
-
-      <DataTable
-        value={entregas}
-        emptyMessage="No hay entregas registradas"
-        responsiveLayout="scroll"
-        stripedRows
-      >
-        <Column field="personal.nombreCompleto" header="Personal" body={personalTemplate} />
-        <Column field="fechaEntrega" header="Fecha Entrega" body={fechaTemplate} style={{ width: "130px" }} />
-        <Column field="montoEntregado" header="Monto" body={montoTemplate} style={{ width: "130px" }} />
-        <Column field="estadoRendicion" header="Estado" body={estadoTemplate} style={{ width: "110px" }} />
-        <Column field="saldoPendiente" header="Saldo" body={saldoTemplate} style={{ width: "120px" }} />
-        <Column field="esUrgente" header="Urgente" body={urgenteTemplate} style={{ width: "90px" }} />
-        <Column header="Acciones" body={accionesTemplate} style={{ width: "120px" }} />
-      </DataTable>
-
-      {/* Totales */}
-      {entregas.length > 0 && (
-        <div style={{ marginTop: "1rem", padding: "1rem", backgroundColor: "#f8f9fa", borderRadius: "5px" }}>
-          <div className="grid">
-            <div className="col-12 md:col-3">
-              <div style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>
-                <strong>Entregas:</strong> {totales.cantidadEntregas}
-              </div>
-            </div>
-            <div className="col-12 md:col-3">
-              <div style={{ fontSize: "1rem", color: "#2196F3", fontWeight: "bold" }}>
-                <strong>Total Entregado:</strong> $ {totales.totalEntregado}
-              </div>
-            </div>
-            <div className="col-12 md:col-3">
-              <div style={{ fontSize: "1rem", color: "#4CAF50", fontWeight: "bold" }}>
-                <strong>Total Rendido:</strong> $ {totales.totalRendido}
-              </div>
-            </div>
-            <div className="col-12 md:col-3">
-              <div style={{ fontSize: "1rem", color: "#F44336", fontWeight: "bold" }}>
-                <strong>Saldo Pendiente:</strong> $ {totales.totalPendiente}
-              </div>
-            </div>
+    <>
+      <Panel
+        header={
+          <div className="flex justify-content-between align-items-center w-full">
+            <span>
+              <i className="pi pi-money-bill mr-2" />
+              Entrega a Rendir - Cotización #{cotizacionVentas.id}
+            </span>
           </div>
-        </div>
-      )}
-
-      {/* Dialog para agregar/editar entrega */}
-      <Dialog
-        visible={showDialog}
-        style={{ width: "900px" }}
-        header={editingEntrega ? "Editar Entrega" : "Agregar Entrega"}
-        modal
-        footer={dialogFooter}
-        onHide={() => setShowDialog(false)}
+        }
+        className="mt-3"
+        toggleable
       >
-        <div className="grid">
-          <div className="col-12 md:col-6">
-            <label htmlFor="personalId" style={{ fontWeight: "bold" }}>
-              Personal *
+        {/* Información de la entrega */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "end",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Responsable
             </label>
             <Dropdown
-              id="personalId"
-              value={personalId}
+              value={responsableEditado}
               options={personal.map((p) => ({
-                label: p.nombreCompleto,
+                ...p,
+                label: p.nombreCompleto || `${p.nombres || ""} ${p.apellidos || ""}`,
                 value: Number(p.id),
               }))}
-              onChange={(e) => setPersonalId(e.value)}
-              placeholder="Seleccionar personal"
+              optionLabel="label"
+              optionValue="value"
+              onChange={(e) => handleResponsableChange(e.value)}
+              placeholder="Seleccione un responsable"
               filter
               showClear
               className="w-full"
+              style={{ fontWeight: "bold" }}
+              disabled={!puedeEditar || entregaARendir.entregaLiquidada}
             />
           </div>
-
-          <div className="col-12 md:col-6">
-            <label htmlFor="centroCostoId" style={{ fontWeight: "bold" }}>
+          <div style={{ flex: 0.5 }}>
+            <label className="block text-900 font-medium mb-2">
+              Estado
+            </label>
+            <Button
+              label={
+                entregaARendir.entregaLiquidada
+                  ? "LIQUIDADA"
+                  : "PENDIENTE"
+              }
+              severity={
+                entregaARendir.entregaLiquidada ? "success" : "danger"
+              }
+              className="w-full"
+              disabled
+              style={{ fontWeight: "bold" }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Fecha Liquidación
+            </label>
+            <InputText
+              value={
+                entregaARendir.fechaLiquidacion
+                  ? new Date(
+                      entregaARendir.fechaLiquidacion
+                    ).toLocaleDateString("es-PE")
+                  : "N/A"
+              }
+              readOnly
+              className="w-full"
+              style={{ fontWeight: "bold" }}
+            />
+          </div>
+          <div style={{ flex: 2 }}>
+            <label className="block text-900 font-medium mb-2">
               Centro de Costo
             </label>
             <Dropdown
-              id="centroCostoId"
-              value={centroCostoId}
+              value={centroCostoEditado}
               options={centrosCosto.map((c) => ({
-                label: c.nombre,
+                ...c,
+                label: `${c.Codigo} - ${c.Nombre}`,
                 value: Number(c.id),
               }))}
-              onChange={(e) => setCentroCostoId(e.value)}
-              placeholder="Seleccionar centro"
+              optionLabel="label"
+              optionValue="value"
+              onChange={(e) => handleCentroCostoChange(e.value)}
+              placeholder="Seleccione un centro de costo"
               filter
               showClear
               className="w-full"
+              style={{ fontWeight: "bold" }}
+              disabled={!puedeEditar || entregaARendir.entregaLiquidada}
             />
           </div>
-
-          <div className="col-12 md:col-4">
-            <label htmlFor="fechaEntrega" style={{ fontWeight: "bold" }}>
-              Fecha Entrega *
-            </label>
-            <Calendar
-              id="fechaEntrega"
-              value={fechaEntrega}
-              onChange={(e) => setFechaEntrega(e.value)}
-              dateFormat="dd/mm/yy"
-              className="w-full"
-            />
-          </div>
-
-          <div className="col-12 md:col-4">
-            <label htmlFor="montoEntregado" style={{ fontWeight: "bold" }}>
-              Monto Entregado *
-            </label>
-            <InputNumber
-              id="montoEntregado"
-              value={montoEntregado}
-              onValueChange={(e) => setMontoEntregado(e.value)}
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              className="w-full"
-            />
-          </div>
-
-          <div className="col-12 md:col-4">
-            <label htmlFor="monedaId" style={{ fontWeight: "bold" }}>
-              Moneda *
-            </label>
-            <Dropdown
-              id="monedaId"
-              value={monedaId}
-              options={monedas.map((m) => ({
-                label: `${m.codigo} - ${m.nombre}`,
-                value: Number(m.id),
-              }))}
-              onChange={(e) => setMonedaId(e.value)}
-              placeholder="Seleccionar moneda"
-              filter
-              showClear
-              className="w-full"
-            />
-          </div>
-
-          <div className="col-12 md:col-4">
-            <label htmlFor="tipoCambio" style={{ fontWeight: "bold" }}>
-              Tipo Cambio
-            </label>
-            <InputNumber
-              id="tipoCambio"
-              value={tipoCambio}
-              onValueChange={(e) => setTipoCambio(e.value)}
-              minFractionDigits={2}
-              maxFractionDigits={6}
-              className="w-full"
-            />
-          </div>
-
-          <div className="col-12 md:col-4">
-            <label htmlFor="montoMonedaBase" style={{ fontWeight: "bold" }}>
-              Monto en Moneda Base
-            </label>
-            <InputNumber
-              id="montoMonedaBase"
-              value={montoMonedaBase}
-              mode="currency"
-              currency="USD"
-              disabled
-              className="w-full"
-              style={{ backgroundColor: "#f0f0f0" }}
-            />
-          </div>
-
-          <div className="col-12 md:col-4">
-            <label htmlFor="estadoRendicion" style={{ fontWeight: "bold" }}>
-              Estado Rendición
-            </label>
-            <Dropdown
-              id="estadoRendicion"
-              value={estadoRendicion}
-              options={[
-                { label: "PENDIENTE", value: "PENDIENTE" },
-                { label: "PARCIAL", value: "PARCIAL" },
-                { label: "RENDIDO", value: "RENDIDO" },
-                { label: "VENCIDO", value: "VENCIDO" },
-              ]}
-              onChange={(e) => setEstadoRendicion(e.value)}
-              className="w-full"
-            />
-          </div>
-
-          <div className="col-12 md:col-6">
-            <label htmlFor="concepto" style={{ fontWeight: "bold" }}>
-              Concepto
-            </label>
-            <InputText
-              id="concepto"
-              value={concepto}
-              onChange={(e) => setConcepto(e.target.value.toUpperCase())}
-              placeholder="CONCEPTO DE LA ENTREGA"
-              className="w-full"
-              style={{ textTransform: "uppercase" }}
-            />
-          </div>
-
-          <div className="col-12 md:col-3">
-            <label htmlFor="fechaRendicion" style={{ fontWeight: "bold" }}>
-              Fecha Rendición
-            </label>
-            <Calendar
-              id="fechaRendicion"
-              value={fechaRendicion}
-              onChange={(e) => setFechaRendicion(e.value)}
-              dateFormat="dd/mm/yy"
-              className="w-full"
-            />
-          </div>
-
-          <div className="col-12 md:col-3">
-            <label htmlFor="montoRendido" style={{ fontWeight: "bold" }}>
-              Monto Rendido
-            </label>
-            <InputNumber
-              id="montoRendido"
-              value={montoRendido}
-              onValueChange={(e) => setMontoRendido(e.value)}
-              mode="currency"
-              currency="USD"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-              className="w-full"
-            />
-          </div>
-
-          <div className="col-12 md:col-4">
-            <label htmlFor="saldoPendiente" style={{ fontWeight: "bold" }}>
-              Saldo Pendiente
-            </label>
-            <InputNumber
-              id="saldoPendiente"
-              value={saldoPendiente}
-              mode="currency"
-              currency="USD"
-              disabled
-              className="w-full"
-              style={{ backgroundColor: "#f0f0f0" }}
-            />
-          </div>
-
-          <div className="col-12 md:col-8">
-            <div style={{ marginTop: "1.5rem" }}>
-              <div className="field-checkbox">
-                <Checkbox
-                  inputId="esUrgente"
-                  checked={esUrgente}
-                  onChange={(e) => setEsUrgente(e.checked)}
-                />
-                <label htmlFor="esUrgente" style={{ fontWeight: "bold", marginLeft: "0.5rem" }}>
-                  Es Urgente
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div className="col-12">
-            <label htmlFor="observaciones" style={{ fontWeight: "bold" }}>
-              Observaciones
-            </label>
-            <InputTextarea
-              id="observaciones"
-              value={observaciones}
-              onChange={(e) => setObservaciones(e.target.value.toUpperCase())}
-              rows={3}
-              className="w-full"
-              style={{ textTransform: "uppercase" }}
-              placeholder="OBSERVACIONES SOBRE LA ENTREGA..."
+          <div style={{ flex: 0.5 }}>
+            <Button
+              label="Actualizar"
+              icon="pi pi-check"
+              className="p-button-success"
+              onClick={handleGuardarCambios}
+              loading={loadingEntrega}
+              disabled={!hayCambios || entregaARendir.entregaLiquidada}
             />
           </div>
         </div>
-      </Dialog>
-    </div>
-  );
-};
 
-export default EntregaARendirCard;
+        <Divider />
+
+        {/* Totales con fondo verde */}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+            padding: 15,
+            backgroundColor: "#d4edda",
+            borderRadius: 8,
+            border: "1px solid #c3e6cb",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Total Asignaciones
+            </label>
+            <InputText
+              value={new Intl.NumberFormat("es-PE", {
+                style: "currency",
+                currency: "PEN",
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(totalAsignacionesEntregasRendir)}
+              readOnly
+              className="w-full"
+              style={{
+                fontWeight: "bold",
+                backgroundColor: "#d4edda",
+                border: "1px solid #28a745",
+                color: "#155724",
+              }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Total Gastos
+            </label>
+            <InputText
+              value={new Intl.NumberFormat("es-PE", {
+                style: "currency",
+                currency: "PEN",
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(totalGastosEntregasRendir)}
+              readOnly
+              className="w-full"
+              style={{
+                fontWeight: "bold",
+                backgroundColor: "#d4edda",
+                border: "1px solid #28a745",
+                color: "#155724",
+              }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label className="block text-900 font-medium mb-2">
+              Saldo Total
+            </label>
+            <InputText
+              value={new Intl.NumberFormat("es-PE", {
+                style: "currency",
+                currency: "PEN",
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(totalSaldoEntregasRendir)}
+              readOnly
+              className="w-full"
+              style={{
+                fontWeight: "bold",
+                backgroundColor: "#d4edda",
+                border: "1px solid #28a745",
+                color: totalSaldoEntregasRendir >= 0 ? "#155724" : "#721c24",
+              }}
+            />
+          </div>
+        </div>
+
+        <Divider />
+
+        {/* Aquí irá el componente de detalle de movimientos cuando lo crees */}
+        <Message
+          severity="info"
+          text="El componente DetEntregaRendirVentas para gestionar movimientos se implementará próximamente"
+        />
+      </Panel>
+
+      <Toast ref={toast} />
+    </>
+  );
+}

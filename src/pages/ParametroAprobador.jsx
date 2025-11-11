@@ -25,6 +25,8 @@ import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import {
   getParametrosAprobador,
+  crearParametroAprobador,
+  actualizarParametroAprobador,
   eliminarParametroAprobador,
 } from "../api/parametroAprobador";
 import { getPersonal } from "../api/personal";
@@ -208,13 +210,23 @@ const ParametroAprobador = ({ ruta }) => {
       cargarParametrosAprobador();
       cerrarDialogo();
     } catch (error) {
+      console.error("Error al guardar parámetro aprobador:", error);
+      console.error("Response:", error.response);
+      
+      const errorMsg = 
+        error.response?.data?.mensaje ||
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message ||
+        (modoEdicion
+          ? "Error al actualizar parámetro aprobador"
+          : "Error al crear parámetro aprobador");
+      
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: modoEdicion
-          ? "Error al actualizar parámetro aprobador"
-          : "Error al crear parámetro aprobador",
-        life: 3000,
+        detail: errorMsg,
+        life: 5000,
       });
     } finally {
       setFormLoading(false);

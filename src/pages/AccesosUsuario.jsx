@@ -250,7 +250,6 @@ export default function AccesosUsuario({ ruta }) {
     setLoading(true);
     try {
       if (editing && editing.id) {
-        console.log('Llamando updateAccesosUsuario con ID:', editing.id, 'y data:', data);
         await updateAccesosUsuario(editing.id, data);
         toast.current.show({
           severity: "success",
@@ -258,7 +257,6 @@ export default function AccesosUsuario({ ruta }) {
           detail: "Registro actualizado.",
         });
       } else {
-        console.log('Llamando createAccesosUsuario con data:', data);
         await createAccesosUsuario(data);
         toast.current.show({
           severity: "success",

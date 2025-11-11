@@ -216,8 +216,6 @@ const DetMovsEntregaRendirForm = ({
     value: Number(m.id), // Esto convierte el string a número
   }));
 
-  // Debug: verificar qué llega en tiposDocumento
-  console.log('tiposDocumento recibidos:', tiposDocumento);
   
   const tipoDocumentoOptions = tiposDocumento
     .filter((td) => td.esParaCompras === true || td.esParaVentas === true)
@@ -226,7 +224,6 @@ const DetMovsEntregaRendirForm = ({
       value: Number(td.id),
     }));
   
-  console.log('tipoDocumentoOptions filtrados:', tipoDocumentoOptions);
 
   // Función para manejar el toggle de operacionSinFactura
   const handleToggleOperacionSinFactura = () => {

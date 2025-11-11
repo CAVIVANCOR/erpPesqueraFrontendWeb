@@ -16,7 +16,10 @@ export default function DetallesTab({
   requerimientoId,
   productos,
   empresaId,
+  empresasOptions,
   puedeEditar,
+  puedeVerDetalles,
+  puedeEditarDetalles,
   datosGenerales,
   toast,
   onCountChange,
@@ -127,13 +130,13 @@ export default function DetallesTab({
   const accionesTemplate = (rowData) => (
     <div style={{ display: "flex", flexDirection: "row", gap: "8px", justifyContent: "center", alignItems: "center" }}>
       <Button
-        icon="pi pi-pencil"
+        icon={puedeEditarDetalles ? "pi pi-pencil" : "pi pi-eye"}
         className="p-button-text p-button-sm"
         onClick={(e) => {
           e.stopPropagation();
           handleEdit(rowData);
         }}
-        disabled={!puedeEditar}
+        tooltip={puedeEditarDetalles ? "Editar detalle" : "Ver detalle"}
         style={{ padding: "0.25rem" }}
       />
       <Button
@@ -143,7 +146,8 @@ export default function DetallesTab({
           e.stopPropagation();
           handleDelete(rowData);
         }}
-        disabled={!puedeEditar}
+        disabled={!puedeEditarDetalles}
+        tooltip={puedeEditarDetalles ? "Eliminar detalle" : "No se puede eliminar en este estado"}
         style={{ padding: "0.25rem" }}
       />
     </div>
@@ -184,7 +188,7 @@ export default function DetallesTab({
             icon="pi pi-plus"
             className="p-button-success"
             onClick={handleAdd}
-            disabled={!puedeEditar}
+            disabled={!puedeEditarDetalles}
             style={{ width: "100%", fontWeight: "bold" }}
           />
         </div>
@@ -250,7 +254,7 @@ export default function DetallesTab({
         showGridlines
         size="small"
         onRowClick={(e) => {
-          if (puedeEditar) {
+          if (puedeVerDetalles) {
             handleEdit(e.data);
           }
         }}
@@ -310,7 +314,9 @@ export default function DetallesTab({
         requerimientoId={requerimientoId}
         productos={productos}
         empresaId={empresaId}
+        empresas={empresasOptions}
         datosGenerales={datosGenerales}
+        puedeEditarDetalles={puedeEditarDetalles}
         onSaveSuccess={handleSaveSuccess}
         toast={toast}
       />

@@ -66,7 +66,6 @@ export default function DetListaAccesosAModulosUsuario({
 
   // Cargar accesos desde BD cuando hay usuarioId
   useEffect(() => {
-    console.log('🔄 useEffect [usuarioId] ejecutado, usuarioId:', usuarioId);
     if (usuarioId) {
       cargarAccesosDesdeDB();
     }
@@ -77,7 +76,6 @@ export default function DetListaAccesosAModulosUsuario({
 
   // Aplicar filtros cuando cambian
   useEffect(() => {
-    console.log('🔄 useEffect [filtros] ejecutado, accesosInternos.length:', accesosInternos.length);
     aplicarFiltros();
   }, [
     accesosInternos,
@@ -177,16 +175,11 @@ export default function DetListaAccesosAModulosUsuario({
   const cargarAccesosDesdeDB = async () => {
     if (!usuarioId) return;
 
-    console.log('📥 cargarAccesosDesdeDB llamado');
-    console.trace('Stack trace de cargarAccesosDesdeDB');
-
     setLoading(true);
     try {
       const accesosDB = await getAccesosPorUsuario(usuarioId);
-      console.log('📥 Accesos cargados desde BD:', accesosDB.length);
       setAccesosInternos(accesosDB);
       if (onChange) {
-        console.log('📤 Llamando onChange con accesos de BD');
         onChange(accesosDB);
       }
     } catch (error) {
@@ -444,12 +437,6 @@ export default function DetListaAccesosAModulosUsuario({
       return;
     }
 
-    console.log('=== OPTIMISTIC UPDATE ===');
-    console.log('Usuario ID:', usuarioId);
-    console.log('Submódulo ID:', rowData.submoduloId);
-    console.log('Campo:', campo);
-    console.log('Valor:', valor);
-
     // 1. GUARDAR ESTADO ANTERIOR para poder revertir si falla
     const estadoAnterior = [...accesosInternos];
     const estadoFiltradoAnterior = [...accesosFiltrados];
@@ -471,8 +458,6 @@ export default function DetListaAccesosAModulosUsuario({
       return { ...acceso }; // NUEVO objeto para forzar detección
     });
     
-    console.log('✏️ Actualizando estados con NUEVOS objetos');
-    console.log('   Cambio en submoduloId:', rowData.submoduloId, campo, '=', valor);
     
     setAccesosInternos([...nuevosAccesos]);
     setAccesosFiltrados([...nuevosFiltrados]);
@@ -486,7 +471,6 @@ export default function DetListaAccesosAModulosUsuario({
         [campo]: valor,
       };
 
-      console.log('Guardando en BD...');
       await asignarAccesosEnLote(usuarioId, [
         {
           submoduloId: Number(accesoActualizado.submoduloId),
@@ -503,7 +487,6 @@ export default function DetListaAccesosAModulosUsuario({
         },
       ]);
 
-      console.log('✅ Guardado exitoso en BD');
 
       // 4. Notificar éxito
       toast.current?.show({

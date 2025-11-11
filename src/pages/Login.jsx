@@ -78,11 +78,8 @@ export default function Login({ onLogin }) {
       // Cargar accesos del usuario para control de permisos
       let accesos = [];
       try {
-        console.log('🔄 Cargando accesos para usuario ID:', usuarioData.id);
         // Pasar el token recién obtenido para autenticar la petición
         accesos = await getAccesosPorUsuario(usuarioData.id, token);
-        console.log('✅ Accesos cargados:', accesos.length, 'accesos');
-        console.log('Detalle accesos:', accesos);
       } catch (accesosErr) {
         console.error('❌ Error al cargar accesos del usuario:', accesosErr);
         console.error('Detalle del error:', accesosErr.response?.data || accesosErr.message);
@@ -90,7 +87,6 @@ export default function Login({ onLogin }) {
       }
       
       // Guardar usuario, tokens y accesos en el store
-      console.log('💾 Guardando en store - Usuario:', usuarioData.username, 'Accesos:', accesos.length);
       loginStore.login(usuarioData, token, rt, accesos);
       
       setLoading(false);
