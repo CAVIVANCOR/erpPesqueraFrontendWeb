@@ -12,12 +12,11 @@
 import React, { useState, useEffect } from "react";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
-import { Checkbox } from "primereact/checkbox";
-import { InputTextarea } from "primereact/inputtextarea";
 import { Message } from "primereact/message";
 import PDFViewer from "../shared/PDFViewer";
 import { abrirPdfEnNuevaPestana, descargarPdf } from "../../utils/pdfUtils";
 import { generarYSubirPDFCotizacionVentas } from "./CotizacionVentasPDF";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 /**
  * Componente VerImpresionCotizacionVentasPDF
@@ -25,7 +24,6 @@ import { generarYSubirPDFCotizacionVentas } from "./CotizacionVentasPDF";
  * @param {number} props.cotizacionId - ID de la cotización
  * @param {Object} props.datosCotizacion - Datos completos de la cotización
  * @param {Array} props.detalles - Detalles de productos
- * @param {Array} props.costos - Costos de exportación
  * @param {Object} props.toast - Referencia al Toast para mensajes
  * @param {Function} props.onPdfGenerated - Callback cuando se genera el PDF
  */
@@ -33,32 +31,32 @@ const VerImpresionCotizacionVentasPDF = ({
   cotizacionId,
   datosCotizacion = {},
   detalles = [],
-  costos = [],
   toast,
   onPdfGenerated,
 }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [generando, setGenerando] = useState(false);
   const [pdfKey, setPdfKey] = useState(0);
+  const [idioma, setIdioma] = useState("en"); // "en" o "es", por defecto inglés
 
-  // Opciones de generación
-  const [incluirDetalles, setIncluirDetalles] = useState(true);
-  const [incluirCostos, setIncluirCostos] = useState(false);
-  const [incluirObservaciones, setIncluirObservaciones] = useState(true);
-  const [incluirTerminos, setIncluirTerminos] = useState(true);
-  const [notasAdicionales, setNotasAdicionales] = useState("");
+  // Sin opciones - el nuevo sistema genera todo automáticamente
 
   // Cargar URL del PDF si existe en datosCotizacion
   useEffect(() => {
-    if (datosCotizacion?.urlCotizacionVentaPdf) {
-      setPdfUrl(datosCotizacion.urlCotizacionVentaPdf);
+    if (datosCotizacion?.urlCotizacionPdf) {
+      setPdfUrl(datosCotizacion.urlCotizacionPdf);
     }
-  }, [datosCotizacion?.urlCotizacionVentaPdf]);
+  }, [datosCotizacion?.urlCotizacionPdf]);
 
   /**
    * Genera el PDF de la cotización
    */
   const handleGenerarPDF = async () => {
+    console.log("=== DEBUG GENERAR PDF ===");
+    console.log("cotizacionId:", cotizacionId);
+    console.log("datosCotizacion:", datosCotizacion);
+    console.log("detalles:", detalles);
+
     if (!datosCotizacion?.id) {
       toast.current.show({
         severity: "warn",
@@ -82,25 +80,115 @@ const VerImpresionCotizacionVentasPDF = ({
     setGenerando(true);
 
     try {
-      // Obtener empresa de la cotización
-      const empresa = datosCotizacion.empresa;
+      const token = useAuthStore.getState().token;
+      const headers = { Authorization: `Bearer ${token}` };
 
-      // Opciones de generación
-      const opciones = {
-        incluirDetalles,
-        incluirCostos,
-        incluirObservaciones,
-        incluirTerminos,
-        notasAdicionales: notasAdicionales.trim(),
-      };
+      // IMPORTANTE: Cargar la cotización completa desde el backend con todas las relaciones
+      let cotizacionCompleta;
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/cotizaciones-ventas/${datosCotizacion.id}`,
+          { headers }
+        );
+        if (response.ok) {
+          cotizacionCompleta = await response.json();
+        } else {
+          throw new Error("No se pudo cargar la cotización completa");
+        }
+      } catch (error) {
+        console.error("Error cargando cotización completa:", error);
+        throw new Error("No se pudo cargar la cotización completa desde el servidor");
+      }
 
-      // Generar y subir el PDF
+      console.log("cotizacionCompleta desde backend:", cotizacionCompleta);
+
+      // Obtener empresa de la cotización o buscarla por empresaId
+      let empresa = cotizacionCompleta.empresa;
+
+      // Si no está cargada, intentar obtenerla del API
+      if (!empresa && datosCotizacion.empresaId) {
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_API_URL}/empresas/${datosCotizacion.empresaId}`,
+            { headers }
+          );
+          if (response.ok) {
+            empresa = await response.json();
+          }
+        } catch (error) {
+          console.error("Error cargando empresa:", error);
+        }
+      }
+
+      if (!empresa) {
+        throw new Error("No se pudo cargar la información de la empresa");
+      }
+
+      // Cargar solo los datos que no están en el schema como relaciones
+      const promesas = [];
+
+      if (cotizacionCompleta.puertoCargaId && !cotizacionCompleta.puertoCarga) {
+        promesas.push(
+          fetch(`${import.meta.env.VITE_API_URL}/pesca/puertos-pesca/${cotizacionCompleta.puertoCargaId}`, { headers })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) cotizacionCompleta.puertoCarga = data; })
+            .catch(e => console.error("Error cargando puerto carga:", e))
+        );
+      }
+
+      if (cotizacionCompleta.puertoDescargaId && !cotizacionCompleta.puertoDescarga) {
+        promesas.push(
+          fetch(`${import.meta.env.VITE_API_URL}/pesca/puertos-pesca/${cotizacionCompleta.puertoDescargaId}`, { headers })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) cotizacionCompleta.puertoDescarga = data; })
+            .catch(e => console.error("Error cargando puerto descarga:", e))
+        );
+      }
+
+      if (cotizacionCompleta.paisDestinoId && !cotizacionCompleta.paisDestino) {
+        promesas.push(
+          fetch(`${import.meta.env.VITE_API_URL}/paises/${cotizacionCompleta.paisDestinoId}`, { headers })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) cotizacionCompleta.paisDestino = data; })
+            .catch(e => console.error("Error cargando país destino:", e))
+        );
+      }
+
+      // Cargar personal para firmas (respVentas y autorizaVenta)
+      if (cotizacionCompleta.respVentasId && !cotizacionCompleta.respVentas) {
+        promesas.push(
+          fetch(`${import.meta.env.VITE_API_URL}/personal/${cotizacionCompleta.respVentasId}`, { headers })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) cotizacionCompleta.respVentas = data; })
+            .catch(e => console.error("Error cargando resp ventas:", e))
+        );
+      }
+
+      if (cotizacionCompleta.autorizaVentaId && !cotizacionCompleta.autorizaVenta) {
+        promesas.push(
+          fetch(`${import.meta.env.VITE_API_URL}/personal/${cotizacionCompleta.autorizaVentaId}`, { headers })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) cotizacionCompleta.autorizaVenta = data; })
+            .catch(e => console.error("Error cargando autoriza venta:", e))
+        );
+      }
+
+      // Esperar a que todas las promesas se resuelvan
+      await Promise.all(promesas);
+
+      console.log("empresa:", empresa);
+      console.log("cotizacionCompleta final:", cotizacionCompleta);
+
+      // Usar detallesProductos de la cotización completa del backend (tiene todos los datos)
+      const detallesCompletos = cotizacionCompleta.detallesProductos || detalles;
+      console.log("detallesCompletos:", detallesCompletos);
+
+      // Generar y subir el PDF con la cotización completa del backend
       const resultado = await generarYSubirPDFCotizacionVentas(
-        datosCotizacion,
-        detalles,
-        costos,
+        cotizacionCompleta,
+        detallesCompletos,
         empresa,
-        opciones
+        idioma
       );
 
       if (resultado.success) {
@@ -109,7 +197,7 @@ const VerImpresionCotizacionVentasPDF = ({
 
         // Actualizar datosCotizacion con la nueva URL
         if (datosCotizacion && urlPdf) {
-          datosCotizacion.urlCotizacionVentaPdf = urlPdf;
+          datosCotizacion.urlCotizacionPdf = urlPdf;
         }
 
         // Notificar al componente padre
@@ -163,100 +251,6 @@ const VerImpresionCotizacionVentasPDF = ({
   return (
     <Card>
       <div className="p-fluid">
-        {/* Opciones de generación */}
-        <div
-          style={{
-            marginBottom: "1rem",
-            padding: "1rem",
-            backgroundColor: "#f8f9fa",
-            borderRadius: "5px",
-          }}
-        >
-          <h4 style={{ marginTop: 0, marginBottom: "1rem" }}>
-            Opciones de Generación
-          </h4>
-
-          <div className="grid">
-            <div className="col-12 md:col-3">
-              <div className="field-checkbox">
-                <Checkbox
-                  inputId="incluirDetalles"
-                  checked={incluirDetalles}
-                  onChange={(e) => setIncluirDetalles(e.checked)}
-                />
-                <label
-                  htmlFor="incluirDetalles"
-                  style={{ marginLeft: "0.5rem" }}
-                >
-                  Incluir Detalle de Productos
-                </label>
-              </div>
-            </div>
-
-            <div className="col-12 md:col-3">
-              <div className="field-checkbox">
-                <Checkbox
-                  inputId="incluirCostos"
-                  checked={incluirCostos}
-                  onChange={(e) => setIncluirCostos(e.checked)}
-                />
-                <label htmlFor="incluirCostos" style={{ marginLeft: "0.5rem" }}>
-                  Incluir Costos de Exportación
-                </label>
-              </div>
-            </div>
-
-            <div className="col-12 md:col-3">
-              <div className="field-checkbox">
-                <Checkbox
-                  inputId="incluirObservaciones"
-                  checked={incluirObservaciones}
-                  onChange={(e) => setIncluirObservaciones(e.checked)}
-                />
-                <label
-                  htmlFor="incluirObservaciones"
-                  style={{ marginLeft: "0.5rem" }}
-                >
-                  Incluir Observaciones
-                </label>
-              </div>
-            </div>
-
-            <div className="col-12 md:col-3">
-              <div className="field-checkbox">
-                <Checkbox
-                  inputId="incluirTerminos"
-                  checked={incluirTerminos}
-                  onChange={(e) => setIncluirTerminos(e.checked)}
-                />
-                <label
-                  htmlFor="incluirTerminos"
-                  style={{ marginLeft: "0.5rem" }}
-                >
-                  Incluir Términos y Condiciones
-                </label>
-              </div>
-            </div>
-
-            <div className="col-12">
-              <label
-                htmlFor="notasAdicionales"
-                style={{ fontWeight: "bold", display: "block", marginBottom: "0.5rem" }}
-              >
-                Notas Adicionales
-              </label>
-              <InputTextarea
-                id="notasAdicionales"
-                value={notasAdicionales}
-                onChange={(e) => setNotasAdicionales(e.target.value.toUpperCase())}
-                rows={2}
-                placeholder="NOTAS ADICIONALES PARA EL PDF..."
-                style={{ textTransform: "uppercase" }}
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Botones y URL */}
         <div
           style={{
@@ -266,6 +260,24 @@ const VerImpresionCotizacionVentasPDF = ({
             marginBottom: "1rem",
           }}
         >
+          {/* Botón de idioma */}
+          <div style={{ flex: 0.5 }}>
+            <label htmlFor="idiomaBtn" style={{ display: "block", marginBottom: "0.5rem" }}>
+              Idioma
+            </label>
+            <Button
+              type="button"
+              id="idiomaBtn"
+              icon={idioma === "en" ? "pi pi-flag" : "pi pi-flag-fill"}
+              label={idioma === "en" ? "English" : "Español"}
+              className={idioma === "en" ? "p-button-info" : "p-button-warning"}
+              onClick={() => setIdioma(idioma === "en" ? "es" : "en")}
+              tooltip={idioma === "en" ? "Cambiar a Español" : "Switch to English"}
+              tooltipOptions={{ position: "top" }}
+              style={{ width: "100%" }}
+            />
+          </div>
+
           <div style={{ flex: 2 }}>
             <label htmlFor="urlPdf">
               URL del PDF (se genera automáticamente)

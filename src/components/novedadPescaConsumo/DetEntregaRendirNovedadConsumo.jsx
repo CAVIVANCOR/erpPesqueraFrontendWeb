@@ -28,6 +28,7 @@ export default function DetEntregaRendirNovedadConsumo({
   entidadesComerciales = [],
   monedas = [],
   tiposDocumento = [],
+  productos = [], // Nueva prop para productos (gastos)
 
   // Props de estado
   novedadPescaConsumoIniciada = false,
@@ -613,6 +614,7 @@ export default function DetEntregaRendirNovedadConsumo({
           entidadesComerciales={entidadesComerciales}
           monedas={monedas}
           tiposDocumento={tiposDocumento}
+          productos={productos}
           onGuardadoExitoso={handleGuardarMovimiento}
           onCancelar={() => {
             setShowMovimientoForm(false);

@@ -23,6 +23,8 @@ const DatosGeneralesMovimientoCajaCard = ({
   setTipoMovimientoId,
   entidadComercialId,
   setEntidadComercialId,
+  cuentaDestinoEntidadComercialId,
+  setCuentaDestinoEntidadComercialId,
   monto,
   setMonto,
   monedaId,
@@ -58,10 +60,51 @@ const DatosGeneralesMovimientoCajaCard = ({
   tipoReferenciaMovimientoCaja,
   cuentasCorrientes,
   entidadesComerciales,
+  cuentasEntidadComercial,
   estadosMultiFuncion,
   cuentasOrigenFiltradas,
   cuentasDestinoFiltradas,
+  productos,
+  productoId,
+  setProductoId,
+  familiaFiltroId,
+  setFamiliaFiltroId,
 }) => {
+  // IDs de familias de gastos (igual que en DetMovsEntregaRendirForm)
+  const familiasGastosIds = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100];
+
+  // Filtrar productos por familias de gastos
+  const productosGastos = (productos || []).filter((p) => 
+    familiasGastosIds.includes(Number(p.familiaId))
+  );
+
+  // Obtener familias únicas de los productos filtrados
+  const familiasMap = new Map();
+  productosGastos.forEach(p => {
+    if (p.familia && p.familia.id && p.familia.nombre) {
+      const familiaId = Number(p.familia.id);
+      if (familiasGastosIds.includes(familiaId) && !familiasMap.has(familiaId)) {
+        familiasMap.set(familiaId, {
+          label: p.familia.nombre,
+          value: familiaId,
+        });
+      }
+    }
+  });
+  
+  const familiasUnicas = Array.from(familiasMap.values())
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  // Filtrar productos por familia seleccionada
+  const productosFiltrados = familiaFiltroId
+    ? productosGastos.filter(p => Number(p.familiaId) === Number(familiaFiltroId))
+    : productosGastos;
+
+  // Opciones de productos para el dropdown
+  const productoOptions = productosFiltrados.map((p) => ({
+    label: p.descripcionArmada || p.descripcionBase || p.codigo,
+    value: Number(p.id),
+  }));
   return (
     <Card
       title="Datos Generales del Movimiento de Caja"
@@ -131,7 +174,7 @@ const DatosGeneralesMovimientoCajaCard = ({
           }}
         >
           <div style={{ flex: 1 }}>
-            <label htmlFor="empresaDestinoId">Empresa Destino*</label>
+            <label htmlFor="empresaDestinoId">Empresa Destino (Opcional)</label>
             <Dropdown
               id="empresaDestinoId"
               value={empresaDestinoId}
@@ -140,16 +183,15 @@ const DatosGeneralesMovimientoCajaCard = ({
                 value: Number(empresa.id),
               }))}
               onChange={(e) => setEmpresaDestinoId(e.value)}
-              placeholder="Seleccione empresa destino"
-              required
+              placeholder="Solo para transferencias entre empresas"
               disabled={loading}
               filter
               showClear
-              style={{ fontWeight: "bold" }}
+              style={{ fontWeight: "normal" }}
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label htmlFor="cuentaCorrienteDestinoId">Cuenta Destino*</label>
+            <label htmlFor="cuentaCorrienteDestinoId">Cuenta Destino (Opcional)</label>
             <Dropdown
               id="cuentaCorrienteDestinoId"
               value={cuentaCorrienteDestinoId}
@@ -160,12 +202,11 @@ const DatosGeneralesMovimientoCajaCard = ({
                 value: Number(cuenta.id),
               }))}
               onChange={(e) => setCuentaCorrienteDestinoId(e.value)}
-              placeholder="Seleccione cuenta destino"
-              required
+              placeholder="Solo para transferencias/reembolsos"
               disabled={loading || !empresaDestinoId}
               filter
               showClear
-              style={{ fontWeight: "bold" }}
+              style={{ fontWeight: "normal" }}
             />
           </div>
         </div>
@@ -211,7 +252,7 @@ const DatosGeneralesMovimientoCajaCard = ({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label htmlFor="entidadComercialId">Entidad Comercial*</label>
+            <label htmlFor="entidadComercialId">Entidad Comercial (Opcional)</label>
             <Dropdown
               id="entidadComercialId"
               value={entidadComercialId}
@@ -220,12 +261,89 @@ const DatosGeneralesMovimientoCajaCard = ({
                 value: Number(entidad.id),
               }))}
               onChange={(e) => setEntidadComercialId(e.value)}
-              placeholder="Seleccione entidad comercial"
-              required
+              placeholder="Solo cuando hay proveedor/cliente"
               disabled={loading}
               filter
               showClear
-              style={{ fontWeight: "bold" }}
+              style={{ fontWeight: "normal" }}
+            />
+          </div>
+        </div>
+
+        {/* Cuenta Destino Entidad Comercial */}
+        {entidadComercialId && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 24,
+              marginTop: 8,
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="cuentaDestinoEntidadComercialId">
+                Cuenta Bancaria del Proveedor/Cliente (Opcional)
+              </label>
+              <Dropdown
+                id="cuentaDestinoEntidadComercialId"
+                value={cuentaDestinoEntidadComercialId}
+                options={cuentasEntidadComercial
+                  .filter((cta) => cta.entidadComercialId === entidadComercialId)
+                  .map((cta) => ({
+                    label: `${cta.banco?.nombre || 'N/A'} - ${cta.numeroCuenta || cta.numeroTelefonoBilletera || 'Sin número'} ${cta.BilleteraDigital ? '(Billetera Digital)' : ''} - ${cta.moneda?.simbolo || 'N/A'}`,
+                    value: Number(cta.id),
+                  }))}
+                onChange={(e) => setCuentaDestinoEntidadComercialId(e.value)}
+                placeholder="Seleccione cuenta bancaria del proveedor/cliente"
+                disabled={loading || !entidadComercialId}
+                filter
+                showClear
+                style={{ fontWeight: "normal" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}></div>
+          </div>
+        )}
+
+        {/* Filtro de Familia y Producto (Gasto) */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 24,
+            marginTop: 8,
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label htmlFor="familiaFiltro">Filtrar Gastos por Familia (Opcional)</label>
+            <Dropdown
+              id="familiaFiltro"
+              value={familiaFiltroId}
+              options={familiasUnicas}
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Todas las familias"
+              onChange={(e) => setFamiliaFiltroId(e.value)}
+              showClear
+              filter
+              style={{ fontWeight: "normal" }}
+              disabled={loading}
+            />
+          </div>
+          <div style={{ flex: 2 }}>
+            <label htmlFor="productoId">Gasto Asociado (Opcional)</label>
+            <Dropdown
+              id="productoId"
+              value={productoId}
+              options={productoOptions}
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccione producto/gasto"
+              onChange={(e) => setProductoId(e.value)}
+              filter
+              showClear
+              style={{ fontWeight: "normal" }}
+              disabled={loading}
             />
           </div>
         </div>

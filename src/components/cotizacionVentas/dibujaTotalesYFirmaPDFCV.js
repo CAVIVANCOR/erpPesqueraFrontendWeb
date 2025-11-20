@@ -1,297 +1,227 @@
-/**
- * Helper para dibujar totales y sección de firmas en PDFs de Cotización de Ventas usando pdf-lib
- * 
- * @param {PDFPage} page - Página del PDF
- * @param {Object} totales - Objeto con subtotal, igv, total, moneda
- * @param {number} yPosition - Posición Y inicial
- * @param {number} width - Ancho de la página
- * @param {number} height - Alto de la página
- * @param {PDFFont} font - Fuente normal
- * @param {PDFFont} fontBold - Fuente bold
- * @returns {number} - Nueva posición Y después de los totales
- * 
- * @author ERP Megui
- * @version 1.0.0
- */
-
+// src/components/cotizacionVentas/dibujaTotalesYFirmaPDFCV.js
+// Función para dibujar totales y firmas de la Cotización de Ventas
+// Patrón profesional siguiendo RequerimientoCompra
 import { rgb } from "pdf-lib";
+import { getTranslation } from "./translations";
 
-export async function dibujaTotalesYFirmaPDFCV(
+/**
+ * Dibuja los totales y firmas en la página
+ * @param {Object} params - Parámetros
+ * @param {Page} params.page - Página donde dibujar
+ * @param {Object} params.cotizacion - Datos de la cotización
+ * @param {number} params.subtotal - Subtotal calculado
+ * @param {Function} params.formatearNumero - Función para formatear números
+ * @param {number} params.width - Ancho de página
+ * @param {number} params.margin - Margen
+ * @param {Font} params.fontBold - Fuente negrita
+ * @param {Font} params.fontNormal - Fuente normal
+ * @returns {void}
+ */
+export function dibujaTotalesYFirmaPDFCV({
   page,
-  totales,
-  yPosition,
+  cotizacion,
+  subtotal,
+  formatearNumero,
   width,
-  height,
-  font,
-  fontBold
-) {
-  try {
-    const { subtotal, igv, total, moneda = "USD" } = totales;
+  margin,
+  fontBold,
+  fontNormal,
+  idioma = "en",
+}) {
+  // Función helper para obtener traducciones
+  const t = (key) => getTranslation(idioma, key);
 
-    // Cuadro de totales (lado derecho)
-    const boxWidth = 150;
-    const boxX = width - 50 - boxWidth;
-    const boxY = yPosition - 60;
+  // TOTALES - Posición fija para consistencia
+  let yPosition = 180; // Posición fija para totales
+  const totalesX = width - margin - 220;
+  const totalesWidth = 220;
+  const totalesLineHeight = 20;
 
-    // Fondo del cuadro
-    page.drawRectangle({
-      x: boxX,
-      y: boxY,
-      width: boxWidth,
-      height: 60,
-      color: rgb(0.96, 0.96, 0.96),
+  // Calcular IGV y Total
+  const porcentajeIGV = Number(cotizacion.porcentajeIGV) || 0;
+  const igv = cotizacion.esExoneradoAlIGV || porcentajeIGV === 0
+    ? 0
+    : subtotal * (porcentajeIGV / 100);
+  const total = subtotal + igv;
+
+  // Código de moneda SUNAT
+  const codigoMoneda = cotizacion.moneda?.codigoSunat || "USD";
+
+  // Si porcentajeIGV = 0, solo mostrar "Precio Venta Total"
+  if (porcentajeIGV === 0) {
+    page.drawText(t("totalSalesPrice"), {
+      x: totalesX,
+      y: yPosition,
+      size: 11,
+      font: fontBold,
     });
-
-    // Borde del cuadro
-    page.drawRectangle({
-      x: boxX,
-      y: boxY,
-      width: boxWidth,
-      height: 60,
-      borderColor: rgb(0.16, 0.5, 0.73),
-      borderWidth: 1,
+    const totalText = `${codigoMoneda} ${formatearNumero(total)}`;
+    const totalWidth = fontBold.widthOfTextAtSize(totalText, 11);
+    page.drawText(totalText, {
+      x: totalesX + totalesWidth - totalWidth - 10,
+      y: yPosition,
+      size: 11,
+      font: fontBold,
+      color: rgb(0, 0.4, 0),
     });
-
+  } else {
+    // Mostrar Subtotal, IGV y Total
     // Subtotal
-    page.drawText("SUBTOTAL:", {
-      x: boxX + 10,
-      y: boxY + 45,
+    page.drawText(t("subtotal"), {
+      x: totalesX,
+      y: yPosition,
       size: 9,
       font: fontBold,
     });
-
-    page.drawText(`${moneda} ${subtotal.toFixed(2)}`, {
-      x: boxX + boxWidth - 70,
-      y: boxY + 45,
+    const subtotalText = `${codigoMoneda} ${formatearNumero(subtotal)}`;
+    const subtotalWidth = fontNormal.widthOfTextAtSize(subtotalText, 9);
+    page.drawText(subtotalText, {
+      x: totalesX + totalesWidth - subtotalWidth - 10,
+      y: yPosition,
       size: 9,
-      font: font,
+      font: fontNormal,
     });
 
-    // IGV (18%)
-    page.drawText("IGV (18%):", {
-      x: boxX + 10,
-      y: boxY + 30,
+    yPosition -= totalesLineHeight;
+
+    // IGV
+    page.drawText(`${t("igv")} (${porcentajeIGV}%):`, {
+      x: totalesX,
+      y: yPosition,
       size: 9,
       font: fontBold,
     });
-
-    page.drawText(`${moneda} ${igv.toFixed(2)}`, {
-      x: boxX + boxWidth - 70,
-      y: boxY + 30,
+    const igvText = `${codigoMoneda} ${formatearNumero(igv)}`;
+    const igvWidth = fontNormal.widthOfTextAtSize(igvText, 9);
+    page.drawText(igvText, {
+      x: totalesX + totalesWidth - igvWidth - 10,
+      y: yPosition,
       size: 9,
-      font: font,
+      font: fontNormal,
     });
+
+    yPosition -= totalesLineHeight + 5;
 
     // Línea separadora
     page.drawLine({
-      start: { x: boxX + 10, y: boxY + 23 },
-      end: { x: boxX + boxWidth - 10, y: boxY + 23 },
-      thickness: 0.5,
-      color: rgb(0.16, 0.5, 0.73),
-    });
-
-    // Total (fondo azul)
-    page.drawRectangle({
-      x: boxX,
-      y: boxY,
-      width: boxWidth,
-      height: 20,
-      color: rgb(0.16, 0.5, 0.73),
-    });
-
-    page.drawText("TOTAL:", {
-      x: boxX + 10,
-      y: boxY + 7,
-      size: 11,
-      font: fontBold,
-      color: rgb(1, 1, 1),
-    });
-
-    page.drawText(`${moneda} ${total.toFixed(2)}`, {
-      x: boxX + boxWidth - 70,
-      y: boxY + 7,
-      size: 11,
-      font: fontBold,
-      color: rgb(1, 1, 1),
-    });
-
-    // Total en letras
-    yPosition = boxY - 10;
-    const totalEnLetras = numeroALetras(total);
-    const textoLetras = `SON: ${totalEnLetras} ${moneda === "USD" ? "DÓLARES AMERICANOS" : "SOLES"}`;
-
-    page.drawText(textoLetras, {
-      x: 50,
-      y: yPosition,
-      size: 8,
-      font: font,
-      color: rgb(0.3, 0.3, 0.3),
-    });
-
-    // Sección de firmas
-    yPosition -= 30;
-
-    // Verificar si hay espacio suficiente
-    if (yPosition < 100) {
-      // No hay espacio, retornar posición actual
-      return yPosition;
-    }
-
-    page.drawText("FIRMAS Y APROBACIONES", {
-      x: 50,
-      y: yPosition,
-      size: 9,
-      font: fontBold,
-    });
-
-    yPosition -= 15;
-
-    const firmaWidth = (width - 120) / 2;
-    const firmaHeight = 50;
-
-    // Firma 1: Elaborado por
-    page.drawRectangle({
-      x: 50,
-      y: yPosition - firmaHeight,
-      width: firmaWidth,
-      height: firmaHeight,
-      borderColor: rgb(0.6, 0.6, 0.6),
-      borderWidth: 0.5,
-    });
-
-    page.drawText("Elaborado por:", {
-      x: 55,
-      y: yPosition - 15,
-      size: 8,
-      font: font,
-    });
-
-    // Línea para firma
-    page.drawLine({
-      start: { x: 55, y: yPosition - 35 },
-      end: { x: 50 + firmaWidth - 5, y: yPosition - 35 },
-      thickness: 0.5,
+      start: { x: totalesX, y: yPosition },
+      end: { x: totalesX + totalesWidth, y: yPosition },
+      thickness: 1,
       color: rgb(0, 0, 0),
     });
 
-    page.drawText("Nombre y Firma", {
-      x: 55,
-      y: yPosition - 42,
-      size: 8,
+    // Total
+    yPosition -= totalesLineHeight;
+    page.drawText(t("total"), {
+      x: totalesX,
+      y: yPosition,
+      size: 10,
       font: fontBold,
     });
-
-    // Firma 2: Aprobado por
-    page.drawRectangle({
-      x: 50 + firmaWidth + 20,
-      y: yPosition - firmaHeight,
-      width: firmaWidth,
-      height: firmaHeight,
-      borderColor: rgb(0.6, 0.6, 0.6),
-      borderWidth: 0.5,
+    const totalText = `${codigoMoneda} ${formatearNumero(total)}`;
+    const totalWidth = fontBold.widthOfTextAtSize(totalText, 10);
+    page.drawText(totalText, {
+      x: totalesX + totalesWidth - totalWidth - 10,
+      y: yPosition,
+      size: 10,
+      font: fontBold,
+      color: rgb(0, 0.4, 0),
     });
+  }
 
-    page.drawText("Aprobado por:", {
-      x: 55 + firmaWidth + 20,
-      y: yPosition - 15,
-      size: 8,
-      font: font,
-    });
+  // SECCIÓN DE FIRMAS - Posición fija Y=90
+  const firmaYPosition = 90;
+  const firmaIzqX = margin + 20;
+  const firmaDerX = width - margin - 180;
+  const firmaWidth = 150;
+
+  // FIRMA IZQUIERDA - Responsable de Ventas
+  if (cotizacion.respVentas) {
+    let yFirma = firmaYPosition;
 
     // Línea para firma
     page.drawLine({
-      start: { x: 55 + firmaWidth + 20, y: yPosition - 35 },
-      end: { x: 50 + firmaWidth + 20 + firmaWidth - 5, y: yPosition - 35 },
-      thickness: 0.5,
+      start: { x: firmaIzqX, y: yFirma },
+      end: { x: firmaIzqX + firmaWidth, y: yFirma },
+      thickness: 1,
       color: rgb(0, 0, 0),
     });
 
-    page.drawText("Nombre y Firma", {
-      x: 55 + firmaWidth + 20,
-      y: yPosition - 42,
+    // Nombre completo del responsable
+    yFirma -= 12;
+    const nombreResp = `${cotizacion.respVentas.nombres || ""} ${cotizacion.respVentas.apellidos || ""}`.trim() || "-";
+    page.drawText(nombreResp, {
+      x: firmaIzqX,
+      y: yFirma,
       size: 8,
       font: fontBold,
     });
 
-    return yPosition - firmaHeight - 10;
-  } catch (error) {
-    console.error("Error al dibujar totales y firmas:", error);
-    return yPosition - 100; // Retornar posición por defecto en caso de error
-  }
-}
+    // Documento de identidad con tipo de documento
+    yFirma -= 10;
+    const tipoDoc = cotizacion.respVentas.tipoDocIdentidad?.codigo || "DOC";
+    const numDoc = cotizacion.respVentas.numeroDocumento || "-";
+    const docResp = `${tipoDoc}: ${numDoc}`;
+    page.drawText(docResp, {
+      x: firmaIzqX,
+      y: yFirma,
+      size: 7,
+      font: fontNormal,
+    });
 
-/**
- * Convierte un número a letras (español) - Versión simplificada
- */
-function numeroALetras(numero) {
-  const unidades = ["", "UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE"];
-  const decenas = ["", "DIEZ", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"];
-  const especiales = ["DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISÉIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE"];
-  const centenas = ["", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"];
-
-  if (numero === 0) return "CERO";
-
-  const entero = Math.floor(numero);
-  const decimales = Math.round((numero - entero) * 100);
-
-  let resultado = "";
-
-  // Miles
-  if (entero >= 1000) {
-    const miles = Math.floor(entero / 1000);
-    if (miles === 1) {
-      resultado += "MIL ";
-    } else {
-      resultado += convertirCentenas(miles, unidades, decenas, especiales, centenas) + " MIL ";
-    }
-    entero = entero % 1000;
+    // Etiqueta "Responsable de Ventas"
+    yFirma -= 10;
+    page.drawText(t("salesResponsible"), {
+      x: firmaIzqX,
+      y: yFirma,
+      size: 7,
+      font: fontNormal,
+      color: rgb(0.5, 0.5, 0.5),
+    });
   }
 
-  // Centenas
-  resultado += convertirCentenas(entero, unidades, decenas, especiales, centenas);
+  // FIRMA DERECHA - Autoriza Venta
+  if (cotizacion.autorizaVenta) {
+    let yFirma = firmaYPosition;
 
-  // Decimales
-  if (decimales > 0) {
-    resultado += ` CON ${decimales}/100`;
+    // Línea para firma
+    page.drawLine({
+      start: { x: firmaDerX, y: yFirma },
+      end: { x: firmaDerX + firmaWidth, y: yFirma },
+      thickness: 1,
+      color: rgb(0, 0, 0),
+    });
+
+    // Nombre completo del autorizador
+    yFirma -= 12;
+    const nombreAutoriza = `${cotizacion.autorizaVenta.nombres || ""} ${cotizacion.autorizaVenta.apellidos || ""}`.trim() || "-";
+    page.drawText(nombreAutoriza, {
+      x: firmaDerX,
+      y: yFirma,
+      size: 8,
+      font: fontBold,
+    });
+
+    // Documento de identidad con tipo de documento
+    yFirma -= 10;
+    const tipoDocAut = cotizacion.autorizaVenta.tipoDocIdentidad?.codigo || "DOC";
+    const numDocAut = cotizacion.autorizaVenta.numeroDocumento || "-";
+    const docAutoriza = `${tipoDocAut}: ${numDocAut}`;
+    page.drawText(docAutoriza, {
+      x: firmaDerX,
+      y: yFirma,
+      size: 7,
+      font: fontNormal,
+    });
+
+    // Etiqueta "Autoriza Venta"
+    yFirma -= 10;
+    page.drawText(t("authorizedBy"), {
+      x: firmaDerX,
+      y: yFirma,
+      size: 7,
+      font: fontNormal,
+      color: rgb(0.5, 0.5, 0.5),
+    });
   }
-
-  return resultado.trim();
-}
-
-function convertirCentenas(numero, unidades, decenas, especiales, centenas) {
-  let resultado = "";
-
-  // Centenas
-  const c = Math.floor(numero / 100);
-  if (c > 0) {
-    if (numero === 100) {
-      return "CIEN";
-    } else {
-      resultado += centenas[c] + " ";
-    }
-  }
-
-  numero = numero % 100;
-
-  // Decenas especiales (10-19)
-  if (numero >= 10 && numero <= 19) {
-    return resultado + especiales[numero - 10];
-  }
-
-  // Decenas
-  const d = Math.floor(numero / 10);
-  if (d > 0) {
-    resultado += decenas[d];
-    numero = numero % 10;
-    if (numero > 0) {
-      resultado += " Y ";
-    }
-  }
-
-  // Unidades
-  if (numero > 0) {
-    resultado += unidades[numero];
-  }
-
-  return resultado.trim();
 }

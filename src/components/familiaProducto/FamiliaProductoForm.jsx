@@ -38,7 +38,7 @@ const esquemaValidacion = yup.object().shape({
  * Formulario para crear/editar familias de producto
  * Patrón aplicado: React Hook Form + YUP, normalización, feedback profesional
  */
-const FamiliaProductoForm = ({ familiaProducto, onSave, onCancel, toast }) => {
+const FamiliaProductoForm = ({ familiaProducto, onSave, onCancel, toast, readOnly = false }) => {
   const modoEdicion = Boolean(familiaProducto?.id);
 
   // Configuración de React Hook Form con YUP
@@ -136,7 +136,7 @@ const FamiliaProductoForm = ({ familiaProducto, onSave, onCancel, toast }) => {
             className={getFormErrorClass("nombre")}
             placeholder="Ingrese el nombre de la familia de producto"
             maxLength={80}
-            disabled={isSubmitting}
+            disabled={isSubmitting || readOnly}
             style={{ textTransform: "uppercase" }}
           />
           {errors.nombre && (
@@ -156,36 +156,38 @@ const FamiliaProductoForm = ({ familiaProducto, onSave, onCancel, toast }) => {
           <div style={{ flex: 1 }}>
             <Button
               type="button"
-              label="Cancelar"
+              label={readOnly ? "Cerrar" : "Cancelar"}
               icon="pi pi-times"
               className="p-button-secondary"
               onClick={onCancel}
               disabled={isSubmitting}
             />
           </div>
-          <div style={{ flex: 1 }}>
-            <Button
-              type="submit"
-              label={
-                isSubmitting ? (
-                  <div className="flex align-items-center gap-2">
-                    <ProgressSpinner
-                      style={{ width: "16px", height: "16px" }}
-                      strokeWidth="4"
-                    />
-                    <span>Guardando...</span>
-                  </div>
-                ) : modoEdicion ? (
-                  "Actualizar"
-                ) : (
-                  "Crear"
-                )
-              }
-              icon={!isSubmitting ? "pi pi-check" : ""}
-              className="p-button-primary"
-              disabled={isSubmitting}
-            />
-          </div>
+          {!readOnly && (
+            <div style={{ flex: 1 }}>
+              <Button
+                type="submit"
+                label={
+                  isSubmitting ? (
+                    <div className="flex align-items-center gap-2">
+                      <ProgressSpinner
+                        style={{ width: "16px", height: "16px" }}
+                        strokeWidth="4"
+                      />
+                      <span>Guardando...</span>
+                    </div>
+                  ) : modoEdicion ? (
+                    "Actualizar"
+                  ) : (
+                    "Crear"
+                  )
+                }
+                icon={!isSubmitting ? "pi pi-check" : ""}
+                className="p-button-primary"
+                disabled={isSubmitting}
+              />
+            </div>
+          )}
         </div>
       </form>
     </div>

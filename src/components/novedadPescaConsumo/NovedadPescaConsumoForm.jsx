@@ -674,6 +674,7 @@ const handleFormSubmit = async (data) => {
             novedadPescaConsumoIniciada={
               editingItem?.novedadPescaConsumoIniciada || false
             }
+            empresaId={editingItem?.empresaId}
             personal={personal}
             centrosCosto={centrosCosto}
             tiposMovimiento={tiposMovimiento}

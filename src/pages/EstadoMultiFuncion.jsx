@@ -22,6 +22,7 @@ import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
+import { Badge } from "primereact/badge";
 import { InputText } from "primereact/inputtext";
 import {
   getEstadosMultiFuncion,
@@ -274,7 +275,7 @@ const EstadoMultiFuncion = ({ ruta }) => {
                 onClick={abrirDialogoNuevo}
               />
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 2 }}>
               <Dropdown
                 value={filtroTipoProvieneDe}
                 options={tiposProvieneDe.map((tipo) => ({
@@ -284,7 +285,7 @@ const EstadoMultiFuncion = ({ ruta }) => {
                 onChange={(e) => setFiltroTipoProvieneDe(e.value)}
                 placeholder="Filtrar por Tipo Proviene"
                 showClear
-                style={{ width: "200px" }}
+                style={{ width: "100%" }}
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -329,6 +330,22 @@ const EstadoMultiFuncion = ({ ruta }) => {
           header="Descripción"
           body={descripcionTemplate}
           sortable
+        />
+        <Column
+          field="severityColor"
+          header="Color Badge"
+          body={(rowData) => {
+            if (!rowData.severityColor) return <em style={{ color: "#999" }}>Sin color</em>;
+            return (
+              <Badge 
+                value={rowData.severityColor.toUpperCase()} 
+                severity={rowData.severityColor}
+                size="large"
+              />
+            );
+          }}
+          sortable
+          style={{ width: "150px" }}
         />
         <Column
           header="Estado"

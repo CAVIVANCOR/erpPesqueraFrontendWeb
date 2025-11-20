@@ -14,7 +14,12 @@ import { ConfirmDialog } from "primereact/confirmdialog";
 import { InputText } from "primereact/inputtext";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
-import { getIncoterms, crearIncoterm, actualizarIncoterm, eliminarIncoterm } from "../api/incoterm";
+import {
+  getIncoterms,
+  crearIncoterm,
+  actualizarIncoterm,
+  eliminarIncoterm,
+} from "../api/incoterm";
 import IncotermForm from "../components/incoterm/IncotermForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -188,30 +193,6 @@ export default function Incoterm({ ruta }) {
     </>
   );
 
-  // Header de la tabla con búsqueda
-  const header = (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}
-    >
-      <h2 style={{ margin: 0, fontSize: getResponsiveFontSize() }}>
-        Gestión de Incoterms
-      </h2>
-      <span className="p-input-icon-left">
-        <i className="pi pi-search" />
-        <InputText
-          type="search"
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          placeholder="Buscar..."
-        />
-      </span>
-    </div>
-  );
-
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
@@ -225,31 +206,66 @@ export default function Incoterm({ ruta }) {
         accept={confirmarEliminar}
         reject={() => setConfirmState({ visible: false, row: null })}
       />
-      <div style={{ marginBottom: 16 }}>
-        <Button
-          label="Nuevo Incoterm"
-          icon="pi pi-plus"
-          className="p-button-success"
-          size="small"
-          outlined
-          onClick={handleNuevo}
-          disabled={loading || !permisos.puedeCrear}
-        />
-      </div>
       <DataTable
         value={incoterms}
         loading={loading}
         dataKey="id"
-        paginator
-        rows={10}
-        globalFilter={globalFilter}
-        header={header}
+        size="small"
+        showGridlines
+        stripedRows
+        selectionMode="single"
         onRowClick={(e) => handleEditar(e.data)}
-        style={{ cursor: "pointer" }}
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        paginator
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 25]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} incoterms"
+        globalFilter={globalFilter}
         emptyMessage="No se encontraron incoterms."
+        header={
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h2>Gestión de Incoterms</h2>
+            </div>
+            <div style={{ flex: 2 }}>
+              <span className="p-input-icon-left">
+                <InputText
+                  type="search"
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  placeholder="Buscar..."
+                />
+              </span>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Nuevo Incoterm"
+                icon="pi pi-plus"
+                className="p-button-success"
+                size="small"
+                outlined
+                onClick={handleNuevo}
+                disabled={loading || !permisos.puedeCrear}
+              />
+            </div>
+          </div>
+        }
       >
         <Column field="id" header="ID" style={{ width: 80 }} sortable />
-        <Column field="codigo" header="Código" style={{ width: 120 }} sortable />
+        <Column
+          field="codigo"
+          header="Código"
+          style={{ width: 120 }}
+          sortable
+        />
         <Column field="nombre" header="Nombre" sortable />
         <Column field="descripcion" header="Descripción" />
         <Column
@@ -268,7 +284,7 @@ export default function Incoterm({ ruta }) {
       <Dialog
         header={modoEdicion ? "Editar Incoterm" : "Nuevo Incoterm"}
         visible={mostrarDialogo}
-        style={{ width: "600px" }}
+        style={{ width: "1300px" }}
         onHide={() => setMostrarDialogo(false)}
         modal
       >

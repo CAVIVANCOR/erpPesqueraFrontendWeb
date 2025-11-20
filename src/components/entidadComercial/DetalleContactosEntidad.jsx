@@ -27,6 +27,7 @@ import { Dropdown } from "primereact/dropdown";
 import { Toast } from "primereact/toast";
 import { Tag } from "primereact/tag";
 import { ConfirmDialog } from "primereact/confirmdialog";
+import AuditInfo from "../shared/AuditInfo";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -808,94 +809,7 @@ const DetalleContactosEntidad = forwardRef(
               }}
             >
               {/* Información de Auditoría */}
-              {contactoSeleccionado && (
-                <div
-                  style={{
-                    marginTop: 10,
-                    padding: 10,
-                    backgroundColor: "#f8f9fa",
-                    borderRadius: 5,
-                    border: "1px solid #dee2e6",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 20,
-                      flexDirection: window.innerWidth < 768 ? "column" : "row",
-                    }}
-                  >
-                    {/* Creado */}
-                    <div style={{ flex: 1 }}>
-                      <strong style={{ fontSize: "0.9rem", color: "#495057" }}>
-                        Creado:
-                      </strong>
-                      <div style={{ marginTop: 5 }}>
-                        <div style={{ fontSize: "0.85rem", color: "#6c757d" }}>
-                          {contactoSeleccionado.fechaCreacion
-                            ? new Date(
-                                contactoSeleccionado.fechaCreacion
-                              ).toLocaleString("es-PE", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              })
-                            : "N/A"}
-                        </div>
-                        {contactoSeleccionado.personalCreador && (
-                          <Tag
-                            value={`${contactoSeleccionado.personalCreador.nombres} ${contactoSeleccionado.personalCreador.apellidos}`}
-                            style={{
-                              marginTop: 5,
-                              backgroundColor: "#cfe2ff",
-                              color: "#000",
-                              fontSize: "0.8rem",
-                            }}
-                          />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Actualizado */}
-                    <div style={{ flex: 1 }}>
-                      <strong style={{ fontSize: "0.9rem", color: "#495057" }}>
-                        Actualizado:
-                      </strong>
-                      <div style={{ marginTop: 5 }}>
-                        <div style={{ fontSize: "0.85rem", color: "#6c757d" }}>
-                          {contactoSeleccionado.fechaActualizacion
-                            ? new Date(
-                                contactoSeleccionado.fechaActualizacion
-                              ).toLocaleString("es-PE", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              })
-                            : "N/A"}
-                        </div>
-                        {contactoSeleccionado.personalActualizador && (
-                          <Tag
-                            value={`${contactoSeleccionado.personalActualizador.nombres} ${contactoSeleccionado.personalActualizador.apellidos}`}
-                            style={{
-                              marginTop: 5,
-                              backgroundColor: "#f8d7da",
-                              color: "#000",
-                              fontSize: "0.8rem",
-                            }}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <AuditInfo data={contactoSeleccionado} />
               <div style={{ flex: 1 }}>
                 <Button
                   label="Cancelar"

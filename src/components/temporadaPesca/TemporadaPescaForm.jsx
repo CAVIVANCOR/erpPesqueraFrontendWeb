@@ -756,6 +756,7 @@ const TemporadaPescaForm = ({
             temporadaPescaIniciada={
               editingItem?.temporadaPescaIniciada || false
             }
+            empresaId={editingItem?.empresaId}
             personal={personal}
             centrosCosto={centrosCosto}
             tiposMovimiento={tiposMovimiento}

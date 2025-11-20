@@ -1,207 +1,317 @@
-/**
- * Helper para dibujar encabezado en PDFs de Cotización de Ventas usando pdf-lib
- * 
- * @param {PDFPage} page - Página del PDF
- * @param {Object} cotizacion - Datos de la cotización
- * @param {Object} empresa - Datos de la empresa
- * @param {number} yPosition - Posición Y inicial
- * @param {number} width - Ancho de la página
- * @param {number} height - Alto de la página
- * @param {PDFFont} font - Fuente normal
- * @param {PDFFont} fontBold - Fuente bold
- * @returns {number} - Nueva posición Y después del encabezado
- * 
- * @author ERP Megui
- * @version 1.0.0
- */
-
+// src/components/cotizacionVentas/dibujaEncabezadoPDFCV.js
+// Función para dibujar encabezado completo de la Cotización de Ventas
+// Patrón profesional siguiendo RequerimientoCompra
 import { rgb } from "pdf-lib";
+import { getTranslation } from "./translations";
 
-export async function dibujaEncabezadoPDFCV(
-  page,
-  cotizacion,
+/**
+ * Dibuja el encabezado completo del documento en una página
+ * @param {Object} params - Parámetros
+ * @param {Page} params.pag - Página donde dibujar
+ * @param {PDFDocument} params.pdfDoc - Documento PDF
+ * @param {Object} params.empresa - Datos de la empresa
+ * @param {Object} params.cotizacion - Datos de la cotización
+ * @param {Array} params.datosIzquierda - Datos columna izquierda
+ * @param {Array} params.datosDerecha - Datos columna derecha
+ * @param {number} params.width - Ancho de página
+ * @param {number} params.height - Alto de página
+ * @param {number} params.margin - Margen
+ * @param {number} params.lineHeight - Altura de línea
+ * @param {Font} params.fontBold - Fuente negrita
+ * @param {Font} params.fontNormal - Fuente normal
+ * @param {string} params.idioma - Idioma (opcional, por defecto "en")
+ * @returns {Promise<number>} - Nueva posición Y
+ */
+export async function dibujaEncabezadoPDFCV({
+  pag,
+  pdfDoc,
   empresa,
-  yPosition,
+  cotizacion,
+  datosIzquierda,
+  datosDerecha,
   width,
   height,
-  font,
-  fontBold
-) {
-  try {
-    // Rectángulo del encabezado
-    page.drawRectangle({
-      x: 40,
-      y: yPosition - 70,
-      width: width - 80,
-      height: 70,
-      borderColor: rgb(0.16, 0.5, 0.73),
-      borderWidth: 1.5,
-    });
+  margin,
+  lineHeight,
+  fontBold,
+  fontNormal,
+  idioma = "en",
+}) {
+  // Función helper para obtener traducciones
+  const t = (key) => getTranslation(idioma, key);
+  let yPos = height - 50;
 
-    // Logo placeholder (rectángulo azul)
-    page.drawRectangle({
-      x: 45,
-      y: yPosition - 65,
-      width: 60,
-      height: 30,
-      color: rgb(0.16, 0.5, 0.73),
-    });
+  // Cargar logo si existe
+  if (empresa?.logo && empresa?.id) {
+    try {
+      const logoUrl = `${import.meta.env.VITE_API_URL}/empresas-logo/${
+        empresa.id
+      }/logo`;
+      const logoResponse = await fetch(logoUrl);
 
-    page.drawText("LOGO", {
-      x: 60,
-      y: yPosition - 50,
-      size: 10,
-      font: fontBold,
-      color: rgb(1, 1, 1),
-    });
+      if (logoResponse.ok) {
+        const logoBytes = await logoResponse.arrayBuffer();
+        let logoImage;
 
-    // Información de la empresa
-    const empresaNombre = empresa?.razonSocial?.toUpperCase() || "EMPRESA";
-    page.drawText(empresaNombre, {
-      x: 115,
-      y: yPosition - 25,
-      size: 12,
-      font: fontBold,
-      color: rgb(0, 0, 0),
-    });
+        if (empresa.logo.toLowerCase().includes(".png")) {
+          logoImage = await pdfDoc.embedPng(logoBytes);
+        } else {
+          logoImage = await pdfDoc.embedJpg(logoBytes);
+        }
 
-    page.drawText(`RUC: ${empresa?.ruc || "N/A"}`, {
-      x: 115,
-      y: yPosition - 38,
-      size: 8,
-      font: font,
-    });
+        if (logoImage) {
+          const logoDims = logoImage.size();
+          const maxLogoWidth = 100;
+          const aspectRatio = logoDims.width / logoDims.height;
+          const finalWidth = maxLogoWidth;
+          const finalHeight = maxLogoWidth / aspectRatio;
 
-    page.drawText(`Dirección: ${empresa?.direccion || "N/A"}`, {
-      x: 115,
-      y: yPosition - 48,
-      size: 8,
-      font: font,
-    });
-
-    page.drawText(
-      `Teléfono: ${empresa?.telefono || "N/A"} | Email: ${empresa?.email || "N/A"}`,
-      {
-        x: 115,
-        y: yPosition - 58,
-        size: 8,
-        font: font,
+          pag.drawImage(logoImage, {
+            x: margin,
+            y: yPos - finalHeight,
+            width: finalWidth,
+            height: finalHeight,
+          });
+        }
       }
-    );
-
-    // Información del documento (lado derecho)
-    const rightX = width - 45;
-
-    // Rectángulo azul para título
-    page.drawRectangle({
-      x: rightX - 120,
-      y: yPosition - 30,
-      width: 120,
-      height: 20,
-      color: rgb(0.16, 0.5, 0.73),
-    });
-
-    page.drawText("COTIZACIÓN DE VENTAS", {
-      x: rightX - 115,
-      y: yPosition - 22,
-      size: 10,
-      font: fontBold,
-      color: rgb(1, 1, 1),
-    });
-
-    // N° Documento
-    page.drawText("N° Documento:", {
-      x: rightX - 120,
-      y: yPosition - 38,
-      size: 9,
-      font: fontBold,
-    });
-
-    page.drawText(cotizacion.numeroDocumento || "PENDIENTE", {
-      x: rightX - 50,
-      y: yPosition - 38,
-      size: 9,
-      font: font,
-    });
-
-    // Fecha Emisión
-    page.drawText("Fecha Emisión:", {
-      x: rightX - 120,
-      y: yPosition - 48,
-      size: 9,
-      font: fontBold,
-    });
-
-    const fechaEmision = cotizacion.fechaEmision
-      ? new Date(cotizacion.fechaEmision).toLocaleDateString("es-PE")
-      : new Date().toLocaleDateString("es-PE");
-
-    page.drawText(fechaEmision, {
-      x: rightX - 50,
-      y: yPosition - 48,
-      size: 9,
-      font: font,
-    });
-
-    // Fecha Vencimiento
-    page.drawText("Fecha Vencimiento:", {
-      x: rightX - 120,
-      y: yPosition - 58,
-      size: 9,
-      font: fontBold,
-    });
-
-    const fechaVencimiento = cotizacion.fechaVencimiento
-      ? new Date(cotizacion.fechaVencimiento).toLocaleDateString("es-PE")
-      : "-";
-
-    page.drawText(fechaVencimiento, {
-      x: rightX - 50,
-      y: yPosition - 58,
-      size: 9,
-      font: font,
-    });
-
-    // Estado
-    page.drawText("Estado:", {
-      x: rightX - 120,
-      y: yPosition - 68,
-      size: 9,
-      font: fontBold,
-    });
-
-    const estadoNombre = cotizacion.estadoCotizacionVenta?.nombre || "PENDIENTE";
-    
-    // Color según estado
-    let estadoColor = rgb(0, 0, 0);
-    if (estadoNombre.includes("APROBAD")) {
-      estadoColor = rgb(0.3, 0.69, 0.31); // Verde
-    } else if (estadoNombre.includes("RECHAZ")) {
-      estadoColor = rgb(0.96, 0.26, 0.21); // Rojo
-    } else if (estadoNombre.includes("PENDIENTE")) {
-      estadoColor = rgb(1, 0.6, 0); // Naranja
+    } catch (error) {
+      console.error("Error al cargar logo:", error);
     }
+  }
 
-    page.drawText(estadoNombre, {
-      x: rightX - 50,
-      y: yPosition - 68,
+  // ENCABEZADO - Datos de la empresa
+  pag.drawText(empresa?.razonSocial || "EMPRESA", {
+    x: margin + 110,
+    y: yPos,
+    size: 10,
+    font: fontBold,
+    color: rgb(0, 0, 0),
+  });
+
+  yPos -= lineHeight;
+  pag.drawText(`RUC: ${empresa?.ruc || "-"}`, {
+    x: margin + 110,
+    y: yPos,
+    size: 10,
+    font: fontNormal,
+  });
+
+  yPos -= lineHeight;
+  if (empresa?.direccion) {
+    pag.drawText(`${t("address")} ${empresa.direccion}`, {
+      x: margin + 110,
+      y: yPos,
+      size: 8,
+      font: fontNormal,
+    });
+    yPos -= 12;
+  }
+
+  // Título del documento
+  yPos -= 10;
+  const titulo = cotizacion.esExportacion
+    ? t("exportQuotation")
+    : t("salesQuotation");
+  const tituloWidth = titulo.length * 8;
+  const tituloX = (width - tituloWidth) / 2;
+
+  pag.drawText(titulo, {
+    x: tituloX,
+    y: yPos,
+    size: 14,
+    font: fontBold,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+
+  // Número de documento
+  yPos -= 14;
+  const numeroDoc = cotizacion.numeroDocumento || "-";
+  pag.drawText(`${t("documentNumber")} ${numeroDoc}`, {
+    x: width / 2 - 50,
+    y: yPos,
+    size: 12,
+    font: fontBold,
+  });
+
+  // Línea separadora
+  yPos -= 8;
+  pag.drawLine({
+    start: { x: margin, y: yPos },
+    end: { x: width - margin, y: yPos },
+    thickness: 1,
+    color: rgb(0, 0, 0),
+  });
+
+  // Datos de la cotización en dos columnas
+  yPos -= 12;
+  const yInicial = yPos;
+  const columnaDerechaX = width / 2 + 50;
+
+  // Dibujar columna izquierda
+  datosIzquierda.forEach(([label, value]) => {
+    pag.drawText(label, {
+      x: margin,
+      y: yPos,
       size: 9,
       font: fontBold,
-      color: estadoColor,
     });
-
-    // Línea separadora
-    const newYPosition = yPosition - 75;
-    page.drawLine({
-      start: { x: 40, y: newYPosition },
-      end: { x: width - 40, y: newYPosition },
-      thickness: 0.5,
-      color: rgb(0.78, 0.78, 0.78),
+    pag.drawText(String(value), {
+      x: margin + 120,
+      y: yPos,
+      size: 9,
+      font: fontNormal,
     });
+    yPos -= lineHeight;
+  });
 
-    return newYPosition - 5;
-  } catch (error) {
-    console.error("Error al dibujar encabezado PDF:", error);
-    return yPosition - 80; // Retornar posición por defecto en caso de error
+  // Dibujar columna derecha
+  yPos = yInicial;
+  datosDerecha.forEach(([label, value]) => {
+    pag.drawText(label, {
+      x: columnaDerechaX,
+      y: yPos,
+      size: 9,
+      font: fontBold,
+    });
+    pag.drawText(String(value), {
+      x: columnaDerechaX + 120,
+      y: yPos,
+      size: 9,
+      font: fontNormal,
+    });
+    yPos -= lineHeight;
+  });
+
+  // Ajustar yPos al final de las columnas
+  yPos =
+    yInicial -
+    Math.max(datosIzquierda.length, datosDerecha.length) * lineHeight;
+
+  // Línea separadora antes de información adicional
+  yPos -= 5;
+  pag.drawLine({
+    start: { x: margin, y: yPos },
+    end: { x: width - margin, y: yPos },
+    thickness: 0.5,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+  yPos -= 10;
+
+  // INFORMACIÓN ADICIONAL EN DOS COLUMNAS
+  const yInicialAdicional = yPos;
+  const columnaDerechaXAdicional = width / 2 + 50;
+
+  // Columna izquierda - Información adicional
+  const datosAdicionalesIzq = [];
+  
+  if (cotizacion.tipoContenedor || cotizacion.cantidadContenedores || cotizacion.pesoMaximoContenedor) {
+    const contenedorInfo = [];
+    if (cotizacion.tipoContenedor?.descripcion) contenedorInfo.push(cotizacion.tipoContenedor.descripcion);
+    if (cotizacion.cantidadContenedores) contenedorInfo.push(`${cotizacion.cantidadContenedores} und.`);
+    if (cotizacion.pesoMaximoContenedor) contenedorInfo.push(`${cotizacion.pesoMaximoContenedor} kg`);
+    datosAdicionalesIzq.push([t("containers"), contenedorInfo.join(" - ")]);
   }
+  
+  if (cotizacion.agenteAduanas?.razonSocial) {
+    datosAdicionalesIzq.push([t("customsAgent"), cotizacion.agenteAduanas.razonSocial]);
+  }
+  
+  if (cotizacion.operadorLogistico?.razonSocial) {
+    datosAdicionalesIzq.push([t("logisticsOperator"), cotizacion.operadorLogistico.razonSocial]);
+  }
+
+  // Columna derecha - Información adicional
+  const datosAdicionalesDer = [];
+  
+  if (cotizacion.naviera?.razonSocial) {
+    datosAdicionalesDer.push([t("shippingLine"), cotizacion.naviera.razonSocial]);
+  }
+  
+  if (cotizacion.respVentas?.nombreCompleto) {
+    datosAdicionalesDer.push([t("salesRep"), cotizacion.respVentas.nombreCompleto]);
+  }
+
+  // Dibujar columna izquierda adicional
+  datosAdicionalesIzq.forEach(([label, value]) => {
+    pag.drawText(label, {
+      x: margin,
+      y: yPos,
+      size: 9,
+      font: fontBold,
+    });
+    pag.drawText(String(value), {
+      x: margin + 120,
+      y: yPos,
+      size: 9,
+      font: fontNormal,
+    });
+    yPos -= lineHeight;
+  });
+
+  // Dibujar columna derecha adicional
+  yPos = yInicialAdicional;
+  datosAdicionalesDer.forEach(([label, value]) => {
+    pag.drawText(label, {
+      x: columnaDerechaXAdicional,
+      y: yPos,
+      size: 9,
+      font: fontBold,
+    });
+    pag.drawText(String(value), {
+      x: columnaDerechaXAdicional + 120,
+      y: yPos,
+      size: 9,
+      font: fontNormal,
+    });
+    yPos -= lineHeight;
+  });
+
+  // Ajustar yPos al final de las columnas adicionales
+  yPos = yInicialAdicional - Math.max(datosAdicionalesIzq.length, datosAdicionalesDer.length) * lineHeight;
+
+  // Observaciones
+  if (cotizacion.observaciones) {
+    pag.drawText(t("observations"), {
+      x: margin,
+      y: yPos,
+      size: 9,
+      font: fontBold,
+    });
+    
+    // Dividir observaciones en líneas si es muy largo
+    const obsMaxWidth = width - margin * 2 - 120;
+    const obsText = cotizacion.observaciones;
+    const words = obsText.split(' ');
+    let currentLine = '';
+    
+    words.forEach((word, idx) => {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const testWidth = fontNormal.widthOfTextAtSize(testLine, 9);
+      
+      if (testWidth > obsMaxWidth && currentLine) {
+        pag.drawText(currentLine, {
+          x: margin + 120,
+          y: yPos,
+          size: 9,
+          font: fontNormal,
+        });
+        currentLine = word;
+        yPos -= 10;
+      } else {
+        currentLine = testLine;
+      }
+      
+      if (idx === words.length - 1 && currentLine) {
+        pag.drawText(currentLine, {
+          x: margin + 120,
+          y: yPos,
+          size: 9,
+          font: fontNormal,
+        });
+        yPos -= lineHeight;
+      }
+    });
+  }
+
+  return yPos;
 }

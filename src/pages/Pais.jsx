@@ -157,12 +157,14 @@ const Pais = () => {
       <DataTable
         value={paises}
         loading={loading}
+        size="small"
+        showGridlines
+        stripedRows
         paginator
         rows={10}
         rowsPerPageOptions={[5, 10, 25, 50]}
         onRowClick={(e) => abrirDialogoEdicion(e.data)}
         selectionMode="single"
-        className="p-datatable-hover cursor-pointer"
         emptyMessage="No se encontraron países"
         globalFilter={globalFilter}
         header={

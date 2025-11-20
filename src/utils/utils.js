@@ -17,13 +17,14 @@ export const toUpperCaseSafe = (value) => {
 /**
  * Función para formatear números con comas para miles y apóstrofes para millones
  * @param {number|string} numero - Número a formatear
- * @returns {string} Número formateado con 2 decimales, comas para miles y apóstrofes para millones
+ * @param {number} numeroDecimales - Cantidad de decimales a mostrar (por defecto 2)
+ * @returns {string} Número formateado con decimales, comas para miles y apóstrofes para millones
  */
-export const formatearNumero = (numero) => {
+export const formatearNumero = (numero, numeroDecimales = 2) => {
     const num = Number(numero);
     if (isNaN(num)) return "";
     
-    const partes = num.toFixed(2).split(".");
+    const partes = num.toFixed(numeroDecimales).split(".");
     const entero = partes[0];
     const decimal = partes[1];
     
@@ -138,6 +139,47 @@ export const formatearFechaHora = (fechaHora, mensajePorDefecto = "Sin fecha") =
 };
 
 /**
+ * Función para formatear fecha y hora con formato AM/PM
+ * @param {Date|string|null} fechaHora - Fecha a formatear
+ * @param {string} mensajePorDefecto - Mensaje a mostrar si no hay fecha (opcional)
+ * @returns {string} Fecha formateada en formato DD/MM/YYYY HH:MM AM/PM
+ */
+export const formatearFechaHoraAMPM = (fechaHora, mensajePorDefecto = "Sin fecha") => {
+    if (!fechaHora) return mensajePorDefecto;
+    
+    let fecha;
+    
+    if (fechaHora instanceof Date) {
+        fecha = fechaHora;
+    } else if (typeof fechaHora === "string") {
+        try {
+            fecha = new Date(fechaHora);
+            if (isNaN(fecha.getTime())) {
+                return fechaHora;
+            }
+        } catch {
+            return fechaHora;
+        }
+    } else {
+        return mensajePorDefecto;
+    }
+    
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    const anio = fecha.getFullYear();
+    
+    let horas = fecha.getHours();
+    const minutos = String(fecha.getMinutes()).padStart(2, '0');
+    const ampm = horas >= 12 ? 'PM' : 'AM';
+    
+    horas = horas % 12;
+    horas = horas ? horas : 12; // 0 se convierte en 12
+    const horasStr = String(horas).padStart(2, '0');
+    
+    return `${dia}/${mes}/${anio} ${horasStr}:${minutos} ${ampm}`;
+};
+
+/**
  * Función genérica para crear templates de porcentaje con colores de fondo
  * @param {number} porcentaje - Valor del porcentaje
  * @param {Array} rangos - Array de objetos con {limite, color} ordenados de menor a mayor
@@ -194,4 +236,24 @@ export const createPorcentajeTemplate = (porcentaje, rangos = null, opciones = {
         estilos: estilosFinales,
         sufijo: sufijo
     };
+};
+
+/**
+ * Obtiene los colores de fondo y texto según el severity
+ * Centraliza los colores para mantener consistencia en toda la aplicación
+ * @param {string} severity - El severity color (success, info, warning, danger, secondary, contrast)
+ * @returns {object} - Objeto con bg (background) y text (color de texto)
+ */
+export const getSeverityColors = (severity) => {
+    const severityColors = {
+        success: { bg: "#22C55E", text: "#FFFFFF" },
+        info: { bg: "#0EA5E9", text: "#FFFFFF" },
+        warning: { bg: "#F97316", text: "#FFFFFF" },
+        danger: { bg: "#EF4444", text: "#FFFFFF" },
+        secondary: { bg: "#64748B", text: "#FFFFFF" },
+        contrast: { bg: "#3B82F6", text: "#FFFFFF" },
+        default: { bg: "#FFFFFF", text: "#000000" },
+    };
+
+    return severityColors[severity] || severityColors.default;
 };

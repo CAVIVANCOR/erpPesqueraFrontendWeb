@@ -130,7 +130,7 @@ const Producto = () => {
         getPaises(),
         getMarcas(),
         getUnidadMetricaDefault(),
-        getEspecies().catch(err => {
+        getEspecies().catch((err) => {
           return []; // Retornar array vacío si falla
         }),
       ]);
@@ -227,7 +227,9 @@ const Producto = () => {
 
     if (selectedTipoAlmacenamiento) {
       resultado = resultado.filter(
-        (p) => Number(p.tipoAlmacenamientoId) === Number(selectedTipoAlmacenamiento.id)
+        (p) =>
+          Number(p.tipoAlmacenamientoId) ===
+          Number(selectedTipoAlmacenamiento.id)
       );
     }
 
@@ -243,8 +245,10 @@ const Producto = () => {
       resultado = resultado.filter(
         (p) =>
           (p.codigo && p.codigo.toLowerCase().includes(busqueda)) ||
-          (p.descripcionBase && p.descripcionBase.toLowerCase().includes(busqueda)) ||
-          (p.familia?.nombre && p.familia.nombre.toLowerCase().includes(busqueda))
+          (p.descripcionBase &&
+            p.descripcionBase.toLowerCase().includes(busqueda)) ||
+          (p.familia?.nombre &&
+            p.familia.nombre.toLowerCase().includes(busqueda))
       );
     }
 
@@ -294,11 +298,16 @@ const Producto = () => {
           const clientesData = await getEntidadesComerciales();
           // Filtrar clientes por empresa seleccionada
           const clientesFiltrados = clientesData.filter(
-            (e) => e.esCliente === true && Number(e.empresaId) === Number(selectedEmpresa.id)
+            (e) =>
+              e.esCliente === true &&
+              Number(e.empresaId) === Number(selectedEmpresa.id)
           );
           setClientes(clientesFiltrados);
           // Limpiar cliente seleccionado si no pertenece a la empresa
-          if (selectedCliente && Number(selectedCliente.empresaId) !== Number(selectedEmpresa.id)) {
+          if (
+            selectedCliente &&
+            Number(selectedCliente.empresaId) !== Number(selectedEmpresa.id)
+          ) {
             setSelectedCliente(null);
           }
         } catch (error) {
@@ -360,9 +369,10 @@ const Producto = () => {
     toast.current.show({
       severity: "success",
       summary: "Éxito",
-      detail: productoSeleccionado && productoSeleccionado.id
-        ? "Producto actualizado correctamente"
-        : "Producto creado correctamente",
+      detail:
+        productoSeleccionado && productoSeleccionado.id
+          ? "Producto actualizado correctamente"
+          : "Producto creado correctamente",
       life: 3000,
     });
   };
@@ -435,19 +445,11 @@ const Producto = () => {
     aplicarFiltros();
   };
 
-  const codigoTemplate = (rowData) => {
-    return (
-      <span style={{ fontWeight: "bold", color: "#2563eb" }}>
-        {rowData.codigo}
-      </span>
-    );
-  };
-
   const descripcionTemplate = (rowData) => {
     return (
-      <span 
-        style={{ 
-          fontWeight: "500",
+      <span
+        style={{
+          fontWeight: "bold",
           whiteSpace: "normal",
           wordWrap: "break-word",
           display: "block"
@@ -460,7 +462,7 @@ const Producto = () => {
 
   const familiaTemplate = (rowData) => {
     return (
-      <span style={{ fontWeight: "400", color: "#6b7280" }}>
+      <span style={{ whiteSpace: "normal", wordWrap: "break-word", display: "block" }}>
         {rowData.familia?.nombre}
       </span>
     );
@@ -468,7 +470,13 @@ const Producto = () => {
 
   const subfamiliaTemplate = (rowData) => {
     return (
-      <span style={{ fontWeight: "400", color: "#6b7280" }}>
+      <span
+        style={{
+          whiteSpace: "normal",
+          wordWrap: "break-word",
+          display: "block",
+        }}
+      >
         {rowData.subfamilia?.nombre}
       </span>
     );
@@ -476,7 +484,7 @@ const Producto = () => {
 
   const tipoAlmacenamientoTemplate = (rowData) => {
     return (
-      <span style={{ fontWeight: "400", color: "#6b7280" }}>
+      <span style={{ whiteSpace: "normal", wordWrap: "break-word", display: "block" }}>
         {rowData.tipoAlmacenamiento?.nombre || "N/A"}
       </span>
     );
@@ -484,7 +492,7 @@ const Producto = () => {
 
   const unidadMedidaTemplate = (rowData) => {
     return (
-      <span style={{ fontWeight: "400" }}>
+      <span style={{ fontWeight: "bold", whiteSpace: "normal", wordWrap: "break-word", display: "block" }}>
         {rowData.unidadMedida?.nombre || "N/A"}
       </span>
     );
@@ -495,8 +503,24 @@ const Producto = () => {
       (e) => Number(e.id) === Number(rowData.especieId)
     );
     return (
-      <span style={{ fontWeight: "400", color: "#6b7280" }}>
+      <span style={{ whiteSpace: "normal", wordWrap: "break-word", display: "block" }}>
         {especie?.nombre || "N/A"}
+      </span>
+    );
+  };
+
+  const empresaTemplate = (rowData) => {
+    return (
+      <span style={{  whiteSpace: "normal", wordWrap: "break-word", display: "block" }}>
+        {rowData.empresa?.razonSocial || "N/A"}
+      </span>
+    );
+  };
+
+  const clienteTemplate = (rowData) => {
+    return (
+      <span style={{ fontStyle: "italic", whiteSpace: "normal", wordWrap: "break-word", display: "block" }}>
+        {rowData.cliente?.razonSocial || "N/A"}
       </span>
     );
   };
@@ -595,7 +619,7 @@ const Producto = () => {
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
             <Dropdown
               value={selectedEmpresa}
               options={empresas}
@@ -604,9 +628,11 @@ const Producto = () => {
               showClear
               onChange={onEmpresaFilterChange}
               className="w-15rem"
+              filter
+              style={{fontWeight:"bold"}}
             />
           </div>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
             <Dropdown
               value={selectedCliente}
               options={clientes}
@@ -616,6 +642,8 @@ const Producto = () => {
               onChange={onClienteFilterChange}
               className="w-15rem"
               disabled={!selectedEmpresa}
+              filter
+              style={{fontWeight:"bold"}}
             />
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -625,7 +653,7 @@ const Producto = () => {
               className={
                 isNuevoDisabled
                   ? "p-button-outlined p-button-sm"
-                  : "p-button-primary p-button-sm"
+                  : "p-button-success p-button-sm"
               }
               onClick={abrirDialogoNuevo}
               disabled={isNuevoDisabled}
@@ -643,7 +671,15 @@ const Producto = () => {
               icon="pi pi-filter-slash"
               className="p-button-outlined p-button-secondary p-button-sm"
               onClick={limpiarFiltros}
-              disabled={!selectedEmpresa && !selectedCliente && !selectedFamilia && !selectedSubfamilia && !selectedTipoAlmacenamiento && !selectedUnidadMedida && !globalFilterValue}
+              disabled={
+                !selectedEmpresa &&
+                !selectedCliente &&
+                !selectedFamilia &&
+                !selectedSubfamilia &&
+                !selectedTipoAlmacenamiento &&
+                !selectedUnidadMedida &&
+                !globalFilterValue
+              }
               tooltip="Limpiar todos los filtros aplicados"
               tooltipOptions={{ position: "top" }}
             />
@@ -665,6 +701,7 @@ const Producto = () => {
                 onChange={onGlobalFilterChange}
                 placeholder="Buscar..."
                 className="p-inputtext-sm"
+                style={{fontWeight:"bold"}}
               />
             </span>
           </div>
@@ -677,6 +714,8 @@ const Producto = () => {
               showClear
               onChange={onFamiliaFilterChange}
               className="w-15rem"
+              filter
+              style={{fontWeight:"bold"}}
             />
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -689,6 +728,8 @@ const Producto = () => {
               onChange={onSubfamiliaFilterChange}
               className="w-15rem"
               disabled={!selectedFamilia}
+              filter
+              style={{fontWeight:"bold"}}
             />
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -700,6 +741,8 @@ const Producto = () => {
               showClear
               onChange={onTipoAlmacenamientoFilterChange}
               className="w-15rem"
+              filter
+              style={{fontWeight:"bold"}}
             />
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -711,6 +754,8 @@ const Producto = () => {
               showClear
               onChange={onUnidadMedidaFilterChange}
               className="w-15rem"
+              filter
+              style={{fontWeight:"bold"}}
             />
           </div>
         </div>
@@ -738,7 +783,7 @@ const Producto = () => {
         value={productosFiltrados}
         paginator
         rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
+        rowsPerPageOptions={[5, 10, 25, 50, 100, 200]}
         loading={loading}
         header={renderHeader()}
         emptyMessage="No se encontraron productos"
@@ -755,73 +800,80 @@ const Producto = () => {
       >
         <Column field="id" header="ID" sortable style={{ width: "80px" }} />
         <Column
-          field="codigo"
-          header="Código"
+          field="empresa.razonSocial"
+          header="Empresa"
           sortable
-          body={codigoTemplate}
-          style={{ minWidth: "80px" }}
+          body={empresaTemplate}
+          style={{ width: "60px", whiteSpace: "normal", wordWrap: "break-word" }}
         />
         <Column
           field="descripcionArmada"
           header="Descripción"
           sortable
           body={descripcionTemplate}
-          style={{ minWidth: "100px" }}
-        />
-        <Column
-          field="familia.nombre"
-          header="Familia"
-          sortable
-          body={familiaTemplate}
-          style={{ minWidth: "100px" }}
-        />
-        <Column
-          field="subfamilia.nombre"
-          header="Subfamilia"
-          sortable
-          body={subfamiliaTemplate}
-          style={{ minWidth: "100px" }}
-        />
-        <Column
-          field="tipoAlmacenamiento.nombre"
-          header="Almacenamiento"
-          sortable
-          body={tipoAlmacenamientoTemplate}
-          style={{ minWidth: "80px" }}
+          style={{ width: "200px", whiteSpace: "normal", wordWrap: "break-word" }}
         />
         <Column
           field="unidadMedida.nombre"
           header="Unidad Medida"
           sortable
           body={unidadMedidaTemplate}
-          style={{ minWidth: "120px" }}
+          style={{ width: "120px", whiteSpace: "normal", wordWrap: "break-word" }}
+        />
+        <Column
+          field="cliente.razonSocial"
+          header="Cliente"
+          sortable
+          body={clienteTemplate}
+          style={{ width: "60px", whiteSpace: "normal", wordWrap: "break-word" }}
+        />
+        <Column
+          field="familia.nombre"
+          header="Familia"
+          sortable
+          body={familiaTemplate}
+          style={{ width: "80px" }}
+        />
+        <Column
+          field="subfamilia.nombre"
+          header="Subfamilia"
+          sortable
+          body={subfamiliaTemplate}
+          style={{ width: "80px" }}
+        />
+        <Column
+          field="tipoAlmacenamiento.nombre"
+          header="Almacena"
+          sortable
+          body={tipoAlmacenamientoTemplate}
+          style={{ width: "60px" }}
         />
         <Column
           header="Especie"
           body={especieTemplate}
-          style={{ minWidth: "100px" }}
+          style={{ width: "80px" }}
         />
         <Column
           header="Estado"
           body={cesadoTemplate}
-          style={{ minWidth: "100px", textAlign: "center" }}
+          style={{ width: "60px", textAlign: "center" }}
         />
         <Column
           body={accionesTemplate}
-          style={{ width: "120px", textAlign: "center" }}
+          style={{ width: "100px", textAlign: "center" }}
         />
       </DataTable>
 
       <Dialog
         visible={dialogVisible}
-        style={{ width: "80vw", maxWidth: "1200px" }}
+        style={{ width: "1350px", maxWidth: "95vw" }}
         header={
           productoSeleccionado && productoSeleccionado.id
             ? `Editar Producto - ID: ${productoSeleccionado.id}`
             : "Nuevo Producto"
         }
         modal
-        className="p-fluid"
+        maximizable
         onHide={cerrarDialogo}
       >
         <ProductoForm

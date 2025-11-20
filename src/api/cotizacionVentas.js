@@ -64,3 +64,32 @@ export async function getSeriesDoc(empresaId, tipoDocumentoId) {
   });
   return res.data;
 }
+
+/**
+ * Carga los costos de exportación según el Incoterm seleccionado
+ * @param {number} cotizacionId - ID de la cotización
+ * @returns {Promise} Respuesta con los costos creados
+ */
+export async function cargarCostosSegunIncoterm(cotizacionId) {
+  const res = await axios.post(
+    `${API_URL}/${cotizacionId}/cargar-costos-incoterm`,
+    {},
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
+
+/**
+ * Genera automáticamente los documentos requeridos para una cotización
+ * basándose en país destino, tipo de producto e incoterm
+ * @param {number} cotizacionId - ID de la cotización
+ * @returns {Promise} Respuesta con los documentos creados
+ */
+export async function generarDocumentosRequeridos(cotizacionId) {
+  const res = await axios.post(
+    `${API_URL}/${cotizacionId}/generar-documentos`,
+    {},
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}

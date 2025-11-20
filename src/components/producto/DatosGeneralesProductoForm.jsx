@@ -10,7 +10,7 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { Card } from "primereact/card";
+import { Fieldset } from "primereact/fieldset";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
@@ -24,6 +24,7 @@ import { Button } from "primereact/button";
 import { FileUpload } from "primereact/fileupload";
 import { Toast } from "primereact/toast";
 import { subirFotoProducto } from "../../api/producto";
+import { Panel } from "primereact/panel";
 
 export default function DatosGeneralesProductoForm({
   control,
@@ -47,6 +48,7 @@ export default function DatosGeneralesProductoForm({
   defaultValues = {},
 }) {
   const familiaIdWatch = watch("familiaId");
+  const empresaIdWatch = watch("empresaId");
 
   // Opciones normalizadas para dropdowns
   const familiasOptions = familias.map((f) => ({
@@ -81,8 +83,27 @@ export default function DatosGeneralesProductoForm({
     value: Number(e.id),
   }));
 
+  // Filtrar clientes por la empresa seleccionada
+  // EntidadComercial.empresaId debe coincidir con Producto.empresaId
+  const clienteIdActual = watch("clienteId");
+  
   const clientesOptions = clientes
-    .filter((c) => c.esCliente === true)
+    .filter((c) => {
+      // Debe ser cliente
+      if (!c.esCliente) return false;
+
+      // SIEMPRE incluir el cliente actual del producto (para modo edición)
+      if (clienteIdActual && Number(c.id) === Number(clienteIdActual)) {
+        return true;
+      }
+
+      // Si hay empresa seleccionada, filtrar por EntidadComercial.empresaId
+      if (empresaIdWatch) {
+        return Number(c.empresaId) === Number(empresaIdWatch);
+      }
+
+      return true; // Si no hay empresa seleccionada, mostrar todos los clientes
+    })
     .map((c) => ({
       label: c.razonSocial,
       value: Number(c.id),
@@ -127,6 +148,26 @@ export default function DatosGeneralesProductoForm({
       }
     }
   }, [familiaIdWatch, subfamilias, setValue, watch]);
+
+  // Limpiar cliente cuando cambie la empresa
+  useEffect(() => {
+    if (empresaIdWatch) {
+      const clienteActual = watch("clienteId");
+
+      // Validar que el cliente actual pertenezca a la empresa seleccionada
+      if (clienteActual) {
+        const clienteValido = clientes.find(
+          (c) =>
+            Number(c.id) === Number(clienteActual) &&
+            Number(c.empresaId) === Number(empresaIdWatch) &&
+            c.esCliente === true
+        );
+        if (!clienteValido) {
+          setValue("clienteId", null);
+        }
+      }
+    }
+  }, [empresaIdWatch, clientes, setValue, watch]);
 
   // Establecer estado inicial LIBERADO para productos nuevos
   useEffect(() => {
@@ -442,7 +483,7 @@ export default function DatosGeneralesProductoForm({
   // --- Fin gestión foto de producto ---
 
   return (
-    <Card title="Datos Generales" className="mt-3">
+    <Fieldset style={{ padding: 0, margin: 0, border: "none" }}>
       <Toast ref={toastFoto} />
       <div className="p-fluid formgrid grid">
         <div
@@ -470,6 +511,7 @@ export default function DatosGeneralesProductoForm({
                     "p-invalid": fieldState.error,
                   })}
                   style={{ fontWeight: "bold" }}
+                  filter
                 />
               )}
             />
@@ -490,11 +532,17 @@ export default function DatosGeneralesProductoForm({
                   id="clienteId"
                   {...field}
                   options={clientesOptions}
-                  placeholder="Seleccione un cliente"
+                  placeholder={
+                    empresaIdWatch
+                      ? "Seleccione un cliente"
+                      : "Primero seleccione una empresa"
+                  }
                   className={classNames({
                     "p-invalid": fieldState.error,
                   })}
                   style={{ fontWeight: "bold" }}
+                  filter
+                  disabled={!empresaIdWatch}
                 />
               )}
             />
@@ -552,6 +600,7 @@ export default function DatosGeneralesProductoForm({
                   className={classNames({
                     "p-invalid": fieldState.error,
                   })}
+                  filter
                   showClear
                 />
               )}
@@ -588,6 +637,7 @@ export default function DatosGeneralesProductoForm({
                   className={classNames({
                     "p-invalid": fieldState.error,
                   })}
+                  filter
                   showClear
                   disabled={!familiaIdWatch}
                 />
@@ -710,13 +760,16 @@ export default function DatosGeneralesProductoForm({
                 <InputTextarea
                   id="descripcionArmada"
                   {...field}
-                  rows={2}
+                  rows={1}
                   className={classNames({
                     "p-invalid": fieldState.error,
                   })}
                   style={{
                     textTransform: "uppercase",
+                    color: "#000000",
+                    fontSize: "large",
                     fontWeight: "bold",
+                    backgroundColor: "#FFFFCC",
                   }}
                   maxLength={500}
                   disabled
@@ -734,295 +787,407 @@ export default function DatosGeneralesProductoForm({
         <div
           style={{
             display: "flex",
-            gap: 10,
-            alignItems: "end",
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-            marginBottom: 20,
+            justifyContent: "flex-end",
+            gap: "2rem",
+            marginTop: "1rem",
+            marginBottom: "1rem",
           }}
         >
           <div style={{ flex: 1 }}>
-            <label htmlFor="procedenciaId" className="font-bold">
-              Procedencia *
-            </label>
-            <Controller
-              name="aplicaProcedencia"
-              control={control}
-              render={({ field }) => (
-                <Checkbox
-                  id="aplicaProcedencia"
-                  {...field}
-                  checked={field.value}
-                />
-              )}
-            />
-            <Controller
-              name="procedenciaId"
-              control={control}
-              render={({ field, fieldState }) => (
-                <Dropdown
-                  id="procedenciaId"
-                  {...field}
-                  options={paisesOptions}
-                  placeholder="Seleccione una procedencia"
-                  style={{ fontWeight: "bold" }}
-                  className={classNames({
-                    "p-invalid": fieldState.error,
-                  })}
-                  showClear
-                />
-              )}
-            />
-            {errors.procedenciaId && (
-              <small className="p-error">{errors.procedenciaId.message}</small>
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="tipoAlmacenamientoId" className="font-bold">
-              Tipo de Almacenamiento *
-            </label>
-            <Controller
-              name="aplicaTipoAlmacenamiento"
-              control={control}
-              render={({ field }) => (
-                <Checkbox
-                  id="aplicaTipoAlmacenamiento"
-                  {...field}
-                  checked={field.value}
-                />
-              )}
-            />
-            <Controller
-              name="tipoAlmacenamientoId"
-              control={control}
-              render={({ field, fieldState }) => (
-                <Dropdown
-                  id="tipoAlmacenamientoId"
-                  {...field}
-                  options={tiposAlmacenamientoOptions}
-                  placeholder="Seleccione tipo de almacenamiento"
-                  style={{ fontWeight: "bold" }}
-                  className={classNames({
-                    "p-invalid": fieldState.error,
-                  })}
-                  showClear
-                />
-              )}
-            />
-            {errors.tipoAlmacenamientoId && (
-              <small className="p-error">
-                {errors.tipoAlmacenamientoId.message}
-              </small>
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="unidadMedidaId" className="font-bold">
-              Unidad de Medida *
-            </label>
-            <Controller
-              name="aplicaUnidadMedida"
-              control={control}
-              render={({ field }) => (
-                <Checkbox
-                  id="aplicaUnidadMedida"
-                  {...field}
-                  checked={field.value}
-                />
-              )}
-            />
-            <Controller
-              name="unidadMedidaId"
-              control={control}
-              render={({ field, fieldState }) => (
-                <Dropdown
-                  id="unidadMedidaId"
-                  {...field}
-                  options={unidadesMedidaOptions}
-                  placeholder="Seleccione una unidad"
-                  style={{ fontWeight: "bold" }}
-                  className={classNames({
-                    "p-invalid": fieldState.error,
-                  })}
-                  showClear
-                />
-              )}
-            />
-            {errors.unidadMedidaId && (
-              <small className="p-error">{errors.unidadMedidaId.message}</small>
-            )}
-          </div>
-          <div style={{ flex: 0.5 }}>
-            <Controller
-              name="cesado"
-              control={control}
-              render={({ field }) => (
-                <Button
-                  id="cesado"
-                  type="button"
-                  label={field.value ? "CESADO" : "ACTIVO"}
-                  icon={
-                    field.value ? "pi pi-times-circle" : "pi pi-check-circle"
-                  }
-                  className={
-                    field.value ? "p-button-danger" : "p-button-primary"
-                  }
-                  onClick={() => field.onChange(!field.value)}
-                  style={{ marginTop: "0.5rem", width: "100%" }}
-                  raised
-                />
-              )}
-            />
-          </div>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="estadoInicialId" className="font-bold">
-              Estado Inicial *
-            </label>
-            <Controller
-              name="estadoInicialId"
-              control={control}
-              render={({ field, fieldState }) => (
-                <Dropdown
-                  id="estadoInicialId"
-                  {...field}
-                  options={estadosInicialesOptions}
-                  placeholder="Seleccione estado inicial"
-                  style={{ fontWeight: "bold" }}
-                  className={classNames({
-                    "p-invalid": fieldState.error,
-                  })}
-                  showClear
-                />
-              )}
-            />
-            {errors.estadoInicialId && (
-              <small className="p-error">
-                {errors.estadoInicialId.message}
-              </small>
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="porcentajeDetraccion" className="font-bold">
-              Detracción (%)
-            </label>
-            <Controller
-              name="porcentajeDetraccion"
-              control={control}
-              render={({ field, fieldState }) => (
-                <InputNumber
-                  id="porcentajeDetraccion"
-                  {...field}
-                  className={classNames({
-                    "p-invalid": fieldState.error,
-                  })}
-                  minFractionDigits={2}
-                  maxFractionDigits={2}
-                  min={0}
-                  max={100}
-                  suffix="%"
-                />
-              )}
-            />
-            {errors.porcentajeDetraccion && (
-              <small className="p-error">
-                {errors.porcentajeDetraccion.message}
-              </small>
-            )}
-          </div>
-
-          {/* Controles de carga y mensaje */}
-          <div style={{ flex: 2 }}>
-            <FileUpload
-              name="foto"
-              style={{ marginBottom: 10, marginTop: 10 }}
-              accept="image/*"
-              maxFileSize={10 * 1024 * 1024}
-              chooseLabel="Elegir foto"
-              uploadLabel="Subir"
-              cancelLabel="Cancelar"
-              customUpload
-              uploadHandler={handleFotoUpload}
-              disabled={!defaultValues.id || uploadingFoto}
-              auto
-              mode="basic"
-              className="p-mb-2"
-            />
-            <small className="p-d-block" style={{ color: "#888" }}>
-              Solo PNG/JPG. Máx 10MB.
-            </small>
-            {/* Input profesional para URL de la foto (solo input text, editable/deshabilitado según lógica) */}
-            <Controller
-              name="urlFotoProducto"
-              control={control}
-              disabled
-              render={({ field, fieldState }) => (
-                <InputText
-                  id="urlFotoProducto"
-                  {...field}
-                  className={classNames({
-                    "p-invalid": fieldState.error,
-                  })}
-                  placeholder="URL de la foto (opcional)"
-                />
-              )}
-            />
-            {errors.urlFotoProducto && (
-              <small className="p-error">
-                {errors.urlFotoProducto.message}
-              </small>
-            )}
-            {/* Mensaje profesional si no hay id disponible */}
-            {!defaultValues.id && (
-              <small className="p-error p-d-block">
-                Guarda primero el registro para habilitar la subida de foto.
-              </small>
-            )}
-          </div>
-          {/* Bloque izquierdo: título y preview de la foto */}
-          <div style={{ flex: 1 }}>
-            {fotoPreview ? (
-              <img
-                src={fotoPreview}
-                alt="Foto actual"
-                style={{
-                  marginTop: 10,
-                  marginBottom: 10,
-                  maxWidth: 450,
-                  maxHeight: 320,
-                  borderRadius: 6,
-                  border: "2px solid #ccc",
-                  background: "#fff",
-                }}
+            <div style={{ flex: 1 }}>
+              <label htmlFor="procedenciaId" className="font-bold">
+                Procedencia *
+              </label>
+              <Controller
+                name="aplicaProcedencia"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    id="aplicaProcedencia"
+                    {...field}
+                    checked={field.value}
+                  />
+                )}
               />
-            ) : (
-              <div
-                style={{
-                  marginTop: 10,
-                  marginBottom: 10,
-                  width: 180,
-                  height: 120,
-                  borderRadius: 6,
-                  border: "1px solid #ccc",
-                  background: "#f8f9fa",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#bbb",
-                  fontSize: 14,
-                }}
-              >
-                Sin foto
-              </div>
-            )}
+              <Controller
+                name="procedenciaId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Dropdown
+                    id="procedenciaId"
+                    {...field}
+                    options={paisesOptions}
+                    placeholder="Seleccione una procedencia"
+                    style={{ fontWeight: "bold" }}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    showClear
+                    filter
+                  />
+                )}
+              />
+              {errors.procedenciaId && (
+                <small className="p-error">
+                  {errors.procedenciaId.message}
+                </small>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="tipoAlmacenamientoId" className="font-bold">
+                Tipo de Almacenamiento *
+              </label>
+              <Controller
+                name="aplicaTipoAlmacenamiento"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    id="aplicaTipoAlmacenamiento"
+                    {...field}
+                    checked={field.value}
+                  />
+                )}
+              />
+              <Controller
+                name="tipoAlmacenamientoId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Dropdown
+                    id="tipoAlmacenamientoId"
+                    {...field}
+                    options={tiposAlmacenamientoOptions}
+                    placeholder="Seleccione tipo de almacenamiento"
+                    style={{ fontWeight: "bold" }}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    showClear
+                    filter
+                  />
+                )}
+              />
+              {errors.tipoAlmacenamientoId && (
+                <small className="p-error">
+                  {errors.tipoAlmacenamientoId.message}
+                </small>
+              )}
+            </div>
+            <div style={{ flex: 2 }}>
+              <label htmlFor="unidadMedidaId" className="font-bold">
+                Unidad de Medida *
+              </label>
+              <Controller
+                name="aplicaUnidadMedida"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    id="aplicaUnidadMedida"
+                    {...field}
+                    checked={field.value}
+                  />
+                )}
+              />
+              <Controller
+                name="unidadMedidaId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Dropdown
+                    id="unidadMedidaId"
+                    {...field}
+                    options={unidadesMedidaOptions}
+                    placeholder="Seleccione una unidad"
+                    style={{ fontWeight: "bold" }}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    showClear
+                    filter
+                  />
+                )}
+              />
+              {errors.unidadMedidaId && (
+                <small className="p-error">
+                  {errors.unidadMedidaId.message}
+                </small>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="porcentajeDetraccion" className="font-bold">
+                Detracción (%)
+              </label>
+              <Controller
+                name="porcentajeDetraccion"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <InputNumber
+                    id="porcentajeDetraccion"
+                    {...field}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    min={0}
+                    max={100}
+                    suffix="%"
+                  />
+                )}
+              />
+              {errors.porcentajeDetraccion && (
+                <small className="p-error">
+                  {errors.porcentajeDetraccion.message}
+                </small>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="estadoInicialId" className="font-bold">
+                Estado Inicial *
+              </label>
+              <Controller
+                name="estadoInicialId"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Dropdown
+                    id="estadoInicialId"
+                    {...field}
+                    options={estadosInicialesOptions}
+                    placeholder="Seleccione estado inicial"
+                    style={{ fontWeight: "bold" }}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    showClear
+                  />
+                )}
+              />
+              {errors.estadoInicialId && (
+                <small className="p-error">
+                  {errors.estadoInicialId.message}
+                </small>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <Controller
+                name="cesado"
+                control={control}
+                render={({ field }) => (
+                  <Button
+                    id="cesado"
+                    type="button"
+                    label={field.value ? "CESADO" : "ACTIVO"}
+                    icon={
+                      field.value ? "pi pi-times-circle" : "pi pi-check-circle"
+                    }
+                    className={
+                      field.value ? "p-button-danger" : "p-button-primary"
+                    }
+                    onClick={() => field.onChange(!field.value)}
+                    style={{ marginTop: "0.5rem", width: "100%" }}
+                    raised
+                  />
+                )}
+              />
+            </div>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: "2rem",
+              marginTop: 18,
+              border: "1px solid #ccc",
+              borderRadius: 6,
+              padding: "1rem",
+              backgroundColor: "#f8f9fa",
+            }}
+          >
+            {/* Controles de carga y mensaje */}
+            <div style={{ flex: 3 }}>
+              <FileUpload
+                name="foto"
+                accept="image/*"
+                maxFileSize={10 * 1024 * 1024}
+                chooseLabel="Elegir foto"
+                uploadLabel="Subir"
+                cancelLabel="Cancelar"
+                customUpload
+                uploadHandler={handleFotoUpload}
+                disabled={!defaultValues.id || uploadingFoto}
+                auto
+                mode="basic"
+              />
+              <small className="p-d-block" style={{ color: "#888" }}>
+                Solo PNG/JPG. Máx 10MB.
+              </small>
+              {/* Input profesional para URL de la foto (solo input text, editable/deshabilitado según lógica) */}
+              <Controller
+                name="urlFotoProducto"
+                control={control}
+                disabled
+                render={({ field, fieldState }) => (
+                  <InputText
+                    id="urlFotoProducto"
+                    {...field}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    placeholder="URL de la foto (opcional)"
+                  />
+                )}
+              />
+              {errors.urlFotoProducto && (
+                <small className="p-error">
+                  {errors.urlFotoProducto.message}
+                </small>
+              )}
+              {/* Mensaje profesional si no hay id disponible */}
+              {!defaultValues.id && (
+                <small className="p-error p-d-block">
+                  Guarda primero el registro para habilitar la subida de foto.
+                </small>
+              )}
+            </div>
+
+            {/* Bloque izquierdo: título y preview de la foto */}
+            <div style={{ flex: 2, display: "flex", justifyContent: "end" }}>
+              {fotoPreview ? (
+                <img
+                  src={fotoPreview}
+                  alt="Foto actual"
+                  style={{
+                    marginTop: "1rem",
+                    marginBottom: "1rem",
+                    maxWidth: 450,
+                    maxHeight: 320,
+                    borderRadius: 6,
+                    border: "2px solid #ccc",
+                    background: "#fff",
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    marginTop: "1rem",
+                    marginBottom: "1rem",
+                    width: 180,
+                    height: 120,
+                    borderRadius: 6,
+                    border: "1px solid #ccc",
+                    background: "#f8f9fa",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "end",
+                    color: "#bbb",
+                    fontSize: 14,
+                  }}
+                >
+                  Sin foto
+                </div>
+              )}
+            </div>
           </div>
         </div>
+        {/* Sección de Información Margenes de Utilidad */}
+        <Panel
+          header="Información Adicional"
+          toggleable
+          collapsed
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "end",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          ></div>
+          {/* Sección de Márgenes de Utilidad */}
+          <div
+            style={{
+              display: "flex",
+              padding: "1rem",
+              backgroundColor: "#f8f9fa",
+              borderRadius: "0.25rem",
+              border: "2px solid #dee2e6",
+              gap: "1rem",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <h3 style={{ margin: 0, color: "#495057" }}>
+                Márgenes de Utilidad
+              </h3>
+            </div>
+            <div style={{ flex: 1 }}>
+              <small style={{ display: "block", color: "#6c757d" }}>
+                Estos márgenes se heredan de la Empresa al crear el producto.
+                Puedes editarlos para este producto específico.
+              </small>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="margenMinimoPermitido" className="font-bold">
+                Margen Mínimo Permitido (%)
+              </label>
+              <Controller
+                name="margenMinimoPermitido"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <InputNumber
+                    id="margenMinimoPermitido"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    min={0}
+                    max={100}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    suffix=" %"
+                    placeholder="0.00 %"
+                  />
+                )}
+              />
+              {errors.margenMinimoPermitido && (
+                <small className="p-error">
+                  {errors.margenMinimoPermitido.message}
+                </small>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="margenUtilidadObjetivo" className="font-bold">
+                Margen Utilidad Objetivo (%)
+              </label>
+              <Controller
+                name="margenUtilidadObjetivo"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <InputNumber
+                    id="margenUtilidadObjetivo"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    className={classNames({
+                      "p-invalid": fieldState.error,
+                    })}
+                    min={0}
+                    max={100}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    suffix=" %"
+                    placeholder="0.00 %"
+                  />
+                )}
+              />
+              {errors.margenUtilidadObjetivo && (
+                <small className="p-error">
+                  {errors.margenUtilidadObjetivo.message}
+                </small>
+              )}
+            </div>
+          </div>
+        </Panel>
       </div>
-    </Card>
+    </Fieldset>
   );
 }

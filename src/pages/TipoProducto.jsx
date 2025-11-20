@@ -11,6 +11,7 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
+import { Dropdown } from "primereact/dropdown";
 import {
   getTiposProducto,
   eliminarTipoProducto,
@@ -31,6 +32,7 @@ const TipoProducto = () => {
   const toast = useRef(null);
   const { usuario } = useAuthStore();
   const [globalFilter, setGlobalFilter] = useState("");
+  const [subfamiliaFilter, setSubfamiliaFilter] = useState(null);
 
   useEffect(() => {
     cargarTiposProducto();
@@ -117,9 +119,7 @@ const TipoProducto = () => {
     try {
       await eliminarTipoProducto(tipoAEliminar.id);
       setTiposProducto(
-        tiposProducto.filter(
-          (t) => Number(t.id) !== Number(tipoAEliminar.id)
-        )
+        tiposProducto.filter((t) => Number(t.id) !== Number(tipoAEliminar.id))
       );
       toast.current.show({
         severity: "success",
@@ -174,6 +174,44 @@ const TipoProducto = () => {
     );
   };
 
+  const subfamiliaTemplate = (rowData) => {
+    return (
+      <span style={{ fontWeight: "500", color: "#495057" }}>
+        {rowData.subfamilia?.nombre || "Sin subfamilia"}
+      </span>
+    );
+  };
+
+  // Obtener subfamilias únicas de la lista actual
+  const getSubfamiliasUnicas = () => {
+    const subfamiliasMap = new Map();
+    tiposProducto.forEach((tipo) => {
+      if (tipo.subfamilia) {
+        subfamiliasMap.set(Number(tipo.subfamilia.id), {
+          label: tipo.subfamilia.nombre,
+          value: Number(tipo.subfamilia.id),
+        });
+      }
+    });
+    return Array.from(subfamiliasMap.values());
+  };
+
+  // Filtrar por subfamilia
+  const tiposFiltrados = subfamiliaFilter
+    ? tiposProducto.filter(
+        (tipo) => Number(tipo.subfamiliaId) === Number(subfamiliaFilter)
+      )
+    : tiposProducto;
+
+  // Limpiar todos los filtros
+  const limpiarFiltros = () => {
+    setSubfamiliaFilter(null);
+    setGlobalFilter("");
+  };
+
+  // Verificar si hay filtros activos
+  const hayFiltrosActivos = subfamiliaFilter !== null || globalFilter !== "";
+
   const accionesTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
@@ -203,8 +241,10 @@ const TipoProducto = () => {
     <div className="p-4">
       <Toast ref={toast} />
       <DataTable
-        value={tiposProducto}
+        value={tiposFiltrados}
         loading={loading}
+        showGridlines
+        stripedRows
         paginator
         rows={10}
         rowsPerPageOptions={[5, 10, 25, 50]}
@@ -213,40 +253,91 @@ const TipoProducto = () => {
         className="p-datatable-hover cursor-pointer"
         emptyMessage="No se encontraron tipos de producto"
         globalFilter={globalFilter}
-        globalFilterFields={["nombre", "descripcion"]}
+        globalFilterFields={["nombre", "descripcion", "subfamilia.nombre"]}
         header={
-          <div className="flex align-items-center gap-2">
-            <h2>Gestión de Tipos de Producto</h2>
-            <Button
-              label="Nuevo"
-              icon="pi pi-plus"
-              size="small"
-              raised
-              tooltip="Nuevo Tipo de Producto"
-              outlined
-              className="p-button-success"
-              onClick={abrirDialogoNuevo}
-            />
-            <span className="p-input-icon-left">
-              <InputText
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Buscar tipos de producto..."
-                style={{ width: "300px" }}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h2>Tipos de Producto</h2>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                size="small"
+                raised
+                tooltip="Nuevo Tipo de Producto"
+                outlined
+                className="p-button-success"
+                onClick={abrirDialogoNuevo}
               />
-            </span>
+            </div>
+            <div style={{ flex: 2 }}>
+              <Dropdown
+                value={subfamiliaFilter}
+                options={getSubfamiliasUnicas()}
+                onChange={(e) => setSubfamiliaFilter(e.value)}
+                placeholder="Filtrar por Subfamilia"
+                showClear
+                style={{ width: "100%", fontWeight: "bold" }}
+                emptyMessage="No hay subfamilias"
+              />
+            </div>
+            <div style={{ flex: 2 }}>
+              <span className="p-input-icon-left">
+                <InputText
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  placeholder="Buscar tipos de producto..."
+                  style={{ width: "100%" }}
+                />
+              </span>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                size="small"
+                outlined
+                severity={hayFiltrosActivos ? "warning" : "secondary"}
+                onClick={limpiarFiltros}
+                tooltip="Limpiar todos los filtros"
+                tooltipOptions={{ position: "top" }}
+                disabled={!hayFiltrosActivos}
+              />
+            </div>
           </div>
         }
         scrollable
-        scrollHeight="600px"
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
-        <Column field="id" header="ID" sortable />
+        <Column field="id" header="ID" sortable style={{ width: "3rem" }} />
         <Column field="nombre" header="Nombre" body={nombreTemplate} sortable />
+        <Column header="Subfamilia" body={subfamiliaTemplate} sortable />
         <Column field="descripcion" header="Descripción" sortable />
-        <Column header="Estado" body={activoTemplate} sortable />
-        <Column header="Para Compras" body={paraComprasTemplate} sortable />
-        <Column header="Para Ventas" body={paraVentasTemplate} sortable />
+        <Column
+          header="Estado"
+          body={activoTemplate}
+          sortable
+          style={{ width: "5rem" }}
+        />
+        <Column
+          header="Compra"
+          body={paraComprasTemplate}
+          sortable
+          style={{ width: "2rem" }}
+        />
+        <Column
+          header="Venta"
+          body={paraVentasTemplate}
+          sortable
+          style={{ width: "2rem" }}
+        />
         <Column
           body={accionesTemplate}
           header="Acciones"

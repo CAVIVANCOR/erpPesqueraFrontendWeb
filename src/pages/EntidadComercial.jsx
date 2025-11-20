@@ -38,7 +38,7 @@ import { Navigate } from "react-router-dom";
 
 const EntidadComercial = ({ ruta }) => {
   const permisos = usePermissions(ruta);
-  
+
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
@@ -243,7 +243,7 @@ const EntidadComercial = ({ ruta }) => {
   };
 
   const razonSocialTemplate = (rowData) => {
-    return <span style={{ fontWeight: "500" }}>{rowData.razonSocial}</span>;
+    return <span style={{fontSize: "small", fontWeight: "bold" }}>{rowData.razonSocial}</span>;
   };
 
   const tipoTemplate = (rowData) => {
@@ -253,6 +253,10 @@ const EntidadComercial = ({ ruta }) => {
     if (rowData.esCorporativo) tipos.push("Corporativo");
 
     return tipos.length > 0 ? tipos.join(", ") : "N/A";
+  };
+
+  const tipoEntidadTemplate = (rowData) => {
+    return rowData.tipoEntidad.nombre;
   };
 
   const estadoTemplate = (rowData) => {
@@ -481,6 +485,13 @@ const EntidadComercial = ({ ruta }) => {
       >
         <Column field="id" header="ID" sortable />
         <Column
+          field="tipoEntidadId"
+          header="Tipo Entidad"
+          body={tipoEntidadTemplate}
+          style={{width:"5rem"}}
+          sortable
+        />
+        <Column
           field="numeroDocumento"
           header="N° Documento"
           body={numeroDocumentoTemplate}
@@ -490,6 +501,7 @@ const EntidadComercial = ({ ruta }) => {
           field="razonSocial"
           header="Razón Social"
           body={razonSocialTemplate}
+          style={{width:"15rem"}}
           sortable
         />
         <Column header="Tipo" body={tipoTemplate} sortable />
@@ -536,7 +548,10 @@ const EntidadComercial = ({ ruta }) => {
           onCancelar={cerrarDialogo}
           toast={toast}
           modoEdicion={modoEdicion}
-          readOnly={(modoEdicion && !permisos.puedeEditar) || (!modoEdicion && !permisos.puedeCrear)}
+          readOnly={
+            (modoEdicion && !permisos.puedeEditar) ||
+            (!modoEdicion && !permisos.puedeCrear)
+          }
           loading={formLoading}
           permisos={permisos}
         />

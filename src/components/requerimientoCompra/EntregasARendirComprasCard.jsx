@@ -20,7 +20,9 @@ import { Panel } from "primereact/panel";
 import { Divider } from "primereact/divider";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
+import { TabView, TabPanel } from "primereact/tabview";
 import DetEntregaRendirCompras from "./DetEntregaRendirCompras";
+import VerImpresionLiquidacionCompras from "./VerImpresionLiquidacionCompras";
 import { formatearNumero } from "../../utils/utils";
 import {
   getAllEntregaARendirPCompras,
@@ -28,9 +30,8 @@ import {
   actualizarEntregaARendirPCompras,
   eliminarEntregaARendirPCompras,
 } from "../../api/entregaARendirPCompras";
-import {
-  getDetMovsEntregaRendirPCompras,
-} from "../../api/detMovsEntregaRendirPCompras";
+import { getDetMovsEntregaRendirPCompras } from "../../api/detMovsEntregaRendirPCompras";
+import { getProductos } from "../../api/producto";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 export default function EntregasARendirComprasCard({
@@ -53,13 +54,20 @@ export default function EntregasARendirComprasCard({
   const [verificandoEntrega, setVerificandoEntrega] = useState(true);
 
   // Estados para cálculos automáticos
-  const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] = useState(0);
+  const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] =
+    useState(0);
   const [totalGastosEntregasRendir, setTotalGastosEntregasRendir] = useState(0);
   const [totalSaldoEntregasRendir, setTotalSaldoEntregasRendir] = useState(0);
 
   // Estados para DetMovsEntregaRendirPCompras
   const [movimientos, setMovimientos] = useState([]);
   const [loadingMovimientos, setLoadingMovimientos] = useState(false);
+
+  // Estado para productos (gastos)
+  const [productos, setProductos] = useState([]);
+
+  // Estado para entidades comerciales filtradas por empresa
+  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] = useState([]);
 
   // Estados para edición de la entrega
   const [responsableEditado, setResponsableEditado] = useState(null);
@@ -92,6 +100,51 @@ export default function EntregasARendirComprasCard({
     }
   }, [entregaARendir, onCountChange]);
 
+  // Cargar productos cuando cambie el requerimiento
+  useEffect(() => {
+    if (requerimientoCompra?.empresaId) {
+      cargarProductos();
+    }
+  }, [requerimientoCompra?.empresaId]);
+
+  // Filtrar entidades comerciales por empresaId (clientes Y proveedores)
+  useEffect(() => {
+    if (requerimientoCompra?.empresaId && entidadesComerciales.length > 0) {
+      // Filtrar solo por empresaId, sin importar el tipo de entidad
+      // Esto incluirá clientes, proveedores y cualquier otro tipo de entidad comercial
+      const entidadesFiltradas = entidadesComerciales.filter(
+        (e) => Number(e.empresaId) === Number(requerimientoCompra.empresaId)
+      );
+      setEntidadesComercialesFiltradas(entidadesFiltradas);
+    } else {
+      setEntidadesComercialesFiltradas([]);
+    }
+  }, [requerimientoCompra?.empresaId, entidadesComerciales]);
+
+  /**
+   * Cargar productos filtrados por familias de gastos y empresaId
+   */
+  const cargarProductos = async () => {
+    try {
+      const familiasGastosIds = [2, 3, 4, 6, 7];
+      const productosData = await getProductos();
+      const productosFiltrados = productosData.filter(
+        (p) =>
+          familiasGastosIds.includes(Number(p.familiaId)) &&
+          Number(p.empresaId) === Number(requerimientoCompra?.empresaId)
+      );
+      setProductos(productosFiltrados);
+    } catch (error) {
+      console.error("Error al cargar productos:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar los productos",
+        life: 3000,
+      });
+    }
+  };
+
   /**
    * Verificar si existe una entrega a rendir para este requerimiento
    * Si no existe, preguntar si desea crearla
@@ -101,7 +154,8 @@ export default function EntregasARendirComprasCard({
     try {
       const data = await getAllEntregaARendirPCompras();
       const entregaExistente = data.find(
-        (e) => Number(e.requerimientoCompraId) === Number(requerimientoCompra.id)
+        (e) =>
+          Number(e.requerimientoCompraId) === Number(requerimientoCompra.id)
       );
 
       if (entregaExistente) {
@@ -131,7 +185,8 @@ export default function EntregasARendirComprasCard({
    */
   const preguntarCrearEntrega = () => {
     confirmDialog({
-      message: "No existe una entrega a rendir para este requerimiento. ¿Desea crear una?",
+      message:
+        "No existe una entrega a rendir para este requerimiento. ¿Desea crear una?",
       header: "Crear Entrega a Rendir",
       icon: "pi pi-question-circle",
       acceptLabel: "Sí, Crear",
@@ -148,11 +203,15 @@ export default function EntregasARendirComprasCard({
    */
   const crearEntregaAutomatica = async () => {
     // Validar que supervisorCampoId sea mayor a cero
-    if (!requerimientoCompra.supervisorCampoId || Number(requerimientoCompra.supervisorCampoId) <= 0) {
+    if (
+      !requerimientoCompra.supervisorCampoId ||
+      Number(requerimientoCompra.supervisorCampoId) <= 0
+    ) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "El requerimiento debe tener un Supervisor de Campo asignado para crear una entrega a rendir",
+        detail:
+          "El requerimiento debe tener un Supervisor de Campo asignado para crear una entrega a rendir",
         life: 5000,
       });
       return;
@@ -163,7 +222,7 @@ export default function EntregasARendirComprasCard({
       const dataToCreate = {
         requerimientoCompraId: Number(requerimientoCompra.id),
         respEntregaRendirId: Number(requerimientoCompra.supervisorCampoId),
-        centroCostoId: 14, // Compras materia prima
+        centroCostoId: 14, // Compras de Materia Prima
         entregaLiquidada: false,
         fechaCreacion: new Date().toISOString(),
         fechaActualizacion: new Date().toISOString(),
@@ -180,8 +239,12 @@ export default function EntregasARendirComprasCard({
         requerimientoCompraId: Number(nuevaEntrega.requerimientoCompraId),
         respEntregaRendirId: Number(nuevaEntrega.respEntregaRendirId),
         centroCostoId: Number(nuevaEntrega.centroCostoId),
-        creadoPor: nuevaEntrega.creadoPor ? Number(nuevaEntrega.creadoPor) : null,
-        actualizadoPor: nuevaEntrega.actualizadoPor ? Number(nuevaEntrega.actualizadoPor) : null,
+        creadoPor: nuevaEntrega.creadoPor
+          ? Number(nuevaEntrega.creadoPor)
+          : null,
+        actualizadoPor: nuevaEntrega.actualizadoPor
+          ? Number(nuevaEntrega.actualizadoPor)
+          : null,
       };
 
       setEntregaARendir(entregaNormalizada);
@@ -201,7 +264,8 @@ export default function EntregasARendirComprasCard({
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.mensaje || "Error al crear la entrega a rendir",
+        detail:
+          error.response?.data?.mensaje || "Error al crear la entrega a rendir",
         life: 3000,
       });
     } finally {
@@ -245,9 +309,16 @@ export default function EntregasARendirComprasCard({
 
     movs.forEach((mov) => {
       const monto = Number(mov.monto) || 0;
-      if (mov.ingresoEgreso === "INGRESO") {
+      
+      // Buscar el tipo de movimiento en el array tiposMovimiento usando el ID
+      const tipoMov = tiposMovimiento.find(
+        (t) => Number(t.id) === Number(mov.tipoMovimientoId)
+      );
+      
+      // Verificar si es ingreso o egreso usando el campo "esIngreso" (booleano)
+      if (tipoMov?.esIngreso === true) {
         totalAsignaciones += monto;
-      } else if (mov.ingresoEgreso === "EGRESO") {
+      } else if (tipoMov?.esIngreso === false) {
         totalGastos += monto;
       }
     });
@@ -261,19 +332,47 @@ export default function EntregasARendirComprasCard({
 
   /**
    * Obtener nombre del responsable
+   * Prioriza la relación del backend si está disponible
    */
   const getNombreResponsable = () => {
+    // Priorizar relación del backend
+    if (entregaARendir?.respEntregaRendir) {
+      const resp = entregaARendir.respEntregaRendir;
+      return (
+        resp.nombreCompleto ||
+        `${resp.nombres || ""} ${resp.apellidos || ""}`.trim() ||
+        "N/A"
+      );
+    }
+
+    // Fallback: buscar en el array de personal (retrocompatibilidad)
     if (!entregaARendir?.respEntregaRendirId) return "N/A";
-    const resp = personal.find((p) => Number(p.id) === Number(entregaARendir.respEntregaRendirId));
-    return resp?.nombreCompleto || `${resp?.nombres || ""} ${resp?.apellidos || ""}` || "N/A";
+    const resp = personal.find(
+      (p) => Number(p.id) === Number(entregaARendir.respEntregaRendirId)
+    );
+    return (
+      resp?.nombreCompleto ||
+      `${resp?.nombres || ""} ${resp?.apellidos || ""}` ||
+      "N/A"
+    );
   };
 
   /**
    * Obtener nombre del centro de costo
+   * Prioriza la relación del backend si está disponible
    */
   const getNombreCentroCosto = () => {
+    // Priorizar relación del backend
+    if (entregaARendir?.centroCosto) {
+      const centro = entregaARendir.centroCosto;
+      return `${centro.Codigo} - ${centro.Nombre}`;
+    }
+
+    // Fallback: buscar en el array de centrosCosto (retrocompatibilidad)
     if (!entregaARendir?.centroCostoId) return "N/A";
-    const centro = centrosCosto.find((c) => Number(c.id) === Number(entregaARendir.centroCostoId));
+    const centro = centrosCosto.find(
+      (c) => Number(c.id) === Number(entregaARendir.centroCostoId)
+    );
     return centro ? `${centro.Codigo} - ${centro.Nombre}` : "N/A";
   };
 
@@ -284,7 +383,7 @@ export default function EntregasARendirComprasCard({
     setResponsableEditado(value);
     setHayCambios(
       Number(value) !== Number(entregaARendir.respEntregaRendirId) ||
-      Number(centroCostoEditado) !== Number(entregaARendir.centroCostoId)
+        Number(centroCostoEditado) !== Number(entregaARendir.centroCostoId)
     );
   };
 
@@ -294,8 +393,9 @@ export default function EntregasARendirComprasCard({
   const handleCentroCostoChange = (value) => {
     setCentroCostoEditado(value);
     setHayCambios(
-      Number(responsableEditado) !== Number(entregaARendir.respEntregaRendirId) ||
-      Number(value) !== Number(entregaARendir.centroCostoId)
+      Number(responsableEditado) !==
+        Number(entregaARendir.respEntregaRendirId) ||
+        Number(value) !== Number(entregaARendir.centroCostoId)
     );
   };
 
@@ -325,8 +425,12 @@ export default function EntregasARendirComprasCard({
         requerimientoCompraId: Number(entregaActualizada.requerimientoCompraId),
         respEntregaRendirId: Number(entregaActualizada.respEntregaRendirId),
         centroCostoId: Number(entregaActualizada.centroCostoId),
-        creadoPor: entregaActualizada.creadoPor ? Number(entregaActualizada.creadoPor) : null,
-        actualizadoPor: entregaActualizada.actualizadoPor ? Number(entregaActualizada.actualizadoPor) : null,
+        creadoPor: entregaActualizada.creadoPor
+          ? Number(entregaActualizada.creadoPor)
+          : null,
+        actualizadoPor: entregaActualizada.actualizadoPor
+          ? Number(entregaActualizada.actualizadoPor)
+          : null,
       };
 
       setEntregaARendir(entregaNormalizada);
@@ -345,7 +449,8 @@ export default function EntregasARendirComprasCard({
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.mensaje || "Error al actualizar la entrega",
+        detail:
+          error.response?.data?.mensaje || "Error al actualizar la entrega",
         life: 3000,
       });
     } finally {
@@ -358,7 +463,8 @@ export default function EntregasARendirComprasCard({
    */
   const handleEliminarEntrega = () => {
     confirmDialog({
-      message: "¿Está seguro de eliminar esta entrega a rendir? Se eliminarán todos los movimientos asociados.",
+      message:
+        "¿Está seguro de eliminar esta entrega a rendir? Se eliminarán todos los movimientos asociados.",
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-danger",
@@ -378,7 +484,8 @@ export default function EntregasARendirComprasCard({
           toast.current?.show({
             severity: "error",
             summary: "Error",
-            detail: error.response?.data?.mensaje || "Error al eliminar la entrega",
+            detail:
+              error.response?.data?.mensaje || "Error al eliminar la entrega",
             life: 3000,
           });
         }
@@ -449,7 +556,8 @@ export default function EntregasARendirComprasCard({
               value={responsableEditado}
               options={personal.map((p) => ({
                 ...p,
-                label: p.nombreCompleto || `${p.nombres || ""} ${p.apellidos || ""}`,
+                label:
+                  p.nombreCompleto || `${p.nombres || ""} ${p.apellidos || ""}`,
                 value: Number(p.id),
               }))}
               optionLabel="label"
@@ -464,17 +572,21 @@ export default function EntregasARendirComprasCard({
             />
           </div>
           <div style={{ flex: 0.5 }}>
-            <label className="block text-900 font-medium mb-2">
-              Estado
-            </label>
+            <label className="block text-900 font-medium mb-2">Estado</label>
             <Button
               label={
                 entregaARendir.entregaLiquidada
                   ? "LIQUIDADA"
+                  : movimientos.length > 0 && totalSaldoEntregasRendir === 0
+                  ? "LISTA PARA LIQUIDAR"
                   : "PENDIENTE"
               }
               severity={
-                entregaARendir.entregaLiquidada ? "success" : "danger"
+                entregaARendir.entregaLiquidada
+                  ? "success"
+                  : movimientos.length > 0 && totalSaldoEntregasRendir === 0
+                  ? "info"
+                  : "danger"
               }
               className="w-full"
               disabled
@@ -520,20 +632,8 @@ export default function EntregasARendirComprasCard({
               disabled={!puedeEditar || entregaARendir.entregaLiquidada}
             />
           </div>
-                  {/* Botón de acción para actualizar */}
-          <div style={{ flex: 0.5 }}>
-          <Button
-            label="Actualizar"
-            icon="pi pi-check"
-            className="p-button-success"
-            onClick={handleGuardarCambios}
-            loading={loadingEntrega}
-            disabled={entregaARendir.entregaLiquidada}
-          />
-        </div>
-        </div>
 
-
+        </div>
 
         <Divider />
 
@@ -541,6 +641,7 @@ export default function EntregasARendirComprasCard({
         <div
           style={{
             display: "flex",
+            alignItems: "end",
             gap: 10,
             flexDirection: window.innerWidth < 768 ? "column" : "row",
             padding: 15,
@@ -612,23 +713,51 @@ export default function EntregasARendirComprasCard({
               }}
             />
           </div>
+                    {/* Botón de acción para actualizar */}
+          <div style={{ flex: 0.5 }}>
+            <Button
+              label="Actualizar"
+              icon="pi pi-check"
+              className="p-button-success"
+              onClick={handleGuardarCambios}
+              loading={loadingEntrega}
+              disabled={entregaARendir.entregaLiquidada}
+            />
+          </div>
         </div>
 
         <Divider />
 
-        {/* Componente de detalle de movimientos */}
-        <DetEntregaRendirCompras
-          entregaARendir={entregaARendir}
-          movimientos={movimientos}
-          personal={personal}
-          centrosCosto={centrosCosto}
-          tiposMovimiento={tiposMovimiento}
-          entidadesComerciales={entidadesComerciales}
-          monedas={monedas}
-          tiposDocumento={tiposDocumento}
-          requerimientoCompraAprobado={true}
-          onDataChange={cargarMovimientos}
-        />
+        {/* TabView: Movimientos y Liquidación */}
+        <TabView>
+          <TabPanel header="Movimientos" leftIcon="pi pi-list">
+            <DetEntregaRendirCompras
+              entregaARendir={entregaARendir}
+              movimientos={movimientos}
+              personal={personal}
+              centrosCosto={centrosCosto}
+              tiposMovimiento={tiposMovimiento}
+              entidadesComerciales={entidadesComercialesFiltradas}
+              monedas={monedas}
+              tiposDocumento={tiposDocumento}
+              productos={productos}
+              requerimientoCompraAprobado={true}
+              onDataChange={cargarMovimientos}
+            />
+          </TabPanel>
+
+          <TabPanel header="Liquidación PDF" leftIcon="pi pi-file-pdf">
+            <VerImpresionLiquidacionCompras
+              entregaARendirId={entregaARendir?.id}
+              datosEntrega={entregaARendir}
+              movimientos={movimientos}
+              toast={toast}
+              onPdfGenerated={(urlPdf) => {
+                cargarEntregaARendir();
+              }}
+            />
+          </TabPanel>
+        </TabView>
       </Panel>
 
       <Toast ref={toast} />

@@ -1,6 +1,7 @@
 // src/pages/FamiliaProducto.jsx
 // Pantalla CRUD profesional para FamiliaProducto. Cumple la regla transversal ERP Megui.
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -13,6 +14,7 @@ import {
   eliminarFamiliaProducto,
 } from "../api/familiaProducto";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import FamiliaProductoForm from "../components/familiaProducto/FamiliaProductoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -32,14 +34,21 @@ import { getResponsiveFontSize } from "../utils/utils";
  * Pantalla principal para gestión de familias de producto
  * Patrón aplicado: Edición por clic en fila, eliminación profesional con confirmación, búsqueda global.
  */
-const FamiliaProducto = () => {
+const FamiliaProducto = ({ ruta }) => {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
 
   // Estados del componente
   const [familiasProducto, setFamiliasProducto] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogoVisible, setDialogoVisible] = useState(false);
+  const [modoEdicion, setModoEdicion] = useState(false);
   const [familiaSeleccionada, setFamiliaSeleccionada] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const [confirmState, setConfirmState] = useState({
@@ -85,7 +94,9 @@ const FamiliaProducto = () => {
    * Abre el diálogo para crear nueva familia de producto
    */
   const abrirDialogoNuevo = () => {
+    if (!permisos.puedeCrear) return;
     setFamiliaSeleccionada(null);
+    setModoEdicion(false);
     setDialogoVisible(true);
   };
 
@@ -93,7 +104,9 @@ const FamiliaProducto = () => {
    * Abre el diálogo para editar familia de producto (clic en fila)
    */
   const editarFamiliaProducto = (familia) => {
+    if (!permisos.puedeVer && !permisos.puedeEditar) return;
     setFamiliaSeleccionada(familia);
+    setModoEdicion(true);
     setDialogoVisible(true);
   };
 
@@ -102,6 +115,7 @@ const FamiliaProducto = () => {
    */
   const cerrarDialogo = () => {
     setDialogoVisible(false);
+    setModoEdicion(false);
     setFamiliaSeleccionada(null);
   };
 
@@ -115,9 +129,10 @@ const FamiliaProducto = () => {
 
   /**
    * Confirma la eliminación de una familia de producto
-   * Solo visible para superusuario o admin (regla transversal ERP Megui)
+   * Solo permitido si tiene permisos de eliminación
    */
   const confirmarEliminacion = (familia) => {
+    if (!permisos.puedeEliminar) return;
     setConfirmState({ visible: true, row: familia });
   };
 
@@ -163,45 +178,39 @@ const FamiliaProducto = () => {
   };
 
   /**
-   * Template para fechas
-   */
-  const fechaTemplate = (rowData, field) => {
-    const fecha = new Date(rowData[field]);
-    return fecha.toLocaleDateString("es-PE");
-  };
-
-  /**
    * Template para acciones
-   * Incluye botón de editar y eliminar (eliminar solo para superusuario/admin)
-   * Estilo idéntico a TiposDocIdentidad.jsx: p-button-text, iconos pequeños
+   * Incluye botón de editar y eliminar (deshabilitados según permisos)
+   * Estilo idéntico a Empresas.jsx: botones siempre visibles, deshabilitados según permisos
    */
   const accionesTemplate = (rowData) => {
-    const esAdmin = usuario?.rol === "superusuario" || usuario?.rol === "admin";
-
     return (
-      <div className="flex gap-1">
+      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
         <Button
           icon="pi pi-pencil"
-          className="p-button-text p-button-sm"
-          tooltip="Editar"
+          className="p-button-rounded p-button-text p-button-info"
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
           tooltipOptions={{ position: "top" }}
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
           onClick={(e) => {
             e.stopPropagation();
-            editarFamiliaProducto(rowData);
+            if (permisos.puedeVer || permisos.puedeEditar) {
+              editarFamiliaProducto(rowData);
+            }
           }}
         />
-        {esAdmin && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-text p-button-danger p-button-sm"
-            tooltip="Eliminar"
-            tooltipOptions={{ position: "top" }}
-            onClick={(e) => {
-              e.stopPropagation();
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-text p-button-danger"
+          tooltip="Eliminar"
+          tooltipOptions={{ position: "top" }}
+          disabled={!permisos.puedeEliminar}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (permisos.puedeEliminar) {
               confirmarEliminacion(rowData);
-            }}
-          />
-        )}
+            }
+          }}
+        />
       </div>
     );
   };
@@ -216,7 +225,8 @@ const FamiliaProducto = () => {
         message={
           <span>
             ¿Está seguro de que desea{" "}
-            <span style={{ color: "#b71c1c" }}>eliminar</span> la familia de producto{" "}
+            <span style={{ color: "#b71c1c" }}>eliminar</span> la familia de
+            producto{" "}
             <b>{confirmState.row ? `"${confirmState.row.nombre}"` : ""}</b>?
             <br />
             <span style={{ fontWeight: 400, color: "#b71c1c" }}>
@@ -238,6 +248,9 @@ const FamiliaProducto = () => {
         value={familiasProducto}
         loading={loading}
         dataKey="id"
+        size="small"
+        showGridlines
+        stripedRows
         paginator
         rows={10}
         rowsPerPageOptions={[5, 10, 25, 50]}
@@ -247,31 +260,51 @@ const FamiliaProducto = () => {
         globalFilterFields={["nombre"]}
         emptyMessage="No se encontraron familias de producto"
         header={
-          <div className="flex align-items-center gap-2">
-            <h2>Gestión de Familias de Producto</h2>
-            <Button
-              type="button"
-              label="Nuevo"
-              icon="pi pi-plus"
-              className="p-button-success"
-              size="small"
-              outlined
-              raised
-              onClick={abrirDialogoNuevo}
-            />
-            <InputText
-              type="search"
-              onInput={(e) => setGlobalFilter(e.target.value)}
-              placeholder="Buscar familias de producto..."
-              style={{ width: 240 }}
-            />
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 2 }}>
+              <h2>Gestión de Familias de Producto</h2>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                type="button"
+                label="Nuevo"
+                icon="pi pi-plus"
+                className="p-button-success"
+                outlined
+                raised
+                disabled={!permisos.puedeCrear}
+                onClick={abrirDialogoNuevo}
+              />
+            </div>
+            <div style={{ flex: 2 }}>
+              <InputText
+                type="search"
+                onInput={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Buscar familias de producto..."
+                style={{ width: "100%" }}
+              />
+            </div>
           </div>
         }
-        onRowClick={(e) => editarFamiliaProducto(e.data)}
-        className="datatable-responsive"
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => editarFamiliaProducto(e.data)
+            : undefined
+        }
         scrollable
         scrollHeight="600px"
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
       >
         <Column field="id" header="ID" sortable style={{ minWidth: "60px" }} />
         <Column
@@ -294,8 +327,10 @@ const FamiliaProducto = () => {
         visible={dialogoVisible}
         style={{ width: "500px" }}
         header={
-          familiaSeleccionada?.id
-            ? "Editar Familia de Producto"
+          modoEdicion
+            ? permisos.puedeEditar
+              ? "Editar Familia de Producto"
+              : "Ver Familia de Producto"
             : "Nueva Familia de Producto"
         }
         modal
@@ -307,6 +342,7 @@ const FamiliaProducto = () => {
           onSave={onGuardar}
           onCancel={cerrarDialogo}
           toast={toast}
+          readOnly={modoEdicion && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

@@ -20,7 +20,9 @@ import { Divider } from "primereact/divider";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Message } from "primereact/message";
+import { TabView, TabPanel } from "primereact/tabview";
 import DetEntregaRendirNovedadConsumo from "./DetEntregaRendirNovedadConsumo";
+import VerImpresionLiquidacionPC from "./VerImpresionLiquidacionPC";
 import {
   getEntregasARendirPescaConsumo,
   crearEntregaARendirPescaConsumo,
@@ -29,11 +31,13 @@ import {
 } from "../../api/entregaARendirPescaConsumo";
 import { getAllDetMovsEntRendirPescaConsumo } from "../../api/detMovsEntRendirPescaConsumo";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
-import { getMonedas } from "../../api/moneda"; // ← AGREGAR ESTA LÍNEA
+import { getMonedas } from "../../api/moneda";
+import { getProductos } from "../../api/producto";
 
 const EntregasARendirNovedadCard = ({
   novedadPescaConsumoId,
   novedadPescaConsumoIniciada = false,
+  empresaId,
   personal = [],
   centrosCosto = [],
   tiposMovimiento = [],
@@ -48,6 +52,7 @@ const EntregasARendirNovedadCard = ({
   const [responsableEntrega, setResponsableEntrega] = useState(null);
   const [centroCostoEntrega, setCentroCostoEntrega] = useState(null);
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
+  const [productos, setProductos] = useState([]);
   const [monedas, setMonedas] = useState([]); // ← AGREGAR ESTA LÍNEA
 
 
@@ -75,7 +80,7 @@ const EntregasARendirNovedadCard = ({
       });
     }
   };
-  const cargarMonedas = async () => { // ← AGREGAR ESTA FUNCIÓN COMPLETA
+  const cargarMonedas = async () => {
     try {
       const data = await getMonedas();
       setMonedas(data);
@@ -89,6 +94,27 @@ const EntregasARendirNovedadCard = ({
       });
     }
   };
+
+  const cargarProductos = async () => {
+    try {
+      const familiasGastosIds = [2, 3, 4, 6, 7];
+      const productosData = await getProductos();
+      const productosFiltrados = productosData.filter(p => 
+        familiasGastosIds.includes(Number(p.familiaId)) &&
+        Number(p.empresaId) === Number(empresaId)
+      );
+      setProductos(productosFiltrados);
+    } catch (error) {
+      console.error("Error al cargar productos:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar los productos",
+        life: 3000,
+      });
+    }
+  };
+
   // Cargar entrega a rendir de la novedad
   const cargarEntregaARendir = async () => {
     if (!novedadPescaConsumoId) return;
@@ -127,6 +153,7 @@ const EntregasARendirNovedadCard = ({
           Number(mov.entregaARendirPescaConsumoId) === Number(entregaARendir.id)
       );
       setMovimientos(movimientosEntrega);
+      calcularTotales(movimientosEntrega);
     } catch (error) {
       console.error("Error al cargar movimientos:", error);
       toast.current?.show({
@@ -140,12 +167,48 @@ const EntregasARendirNovedadCard = ({
     }
   };
 
+  /**
+   * Calcular totales de asignaciones, gastos y saldo
+   */
+  const calcularTotales = (movs) => {
+    let totalAsignaciones = 0;
+    let totalGastos = 0;
+
+    movs.forEach((mov) => {
+      const monto = Number(mov.monto) || 0;
+      
+      // Buscar el tipo de movimiento en el array tiposMovimiento usando el ID
+      const tipoMov = tiposMovimiento.find(
+        (t) => Number(t.id) === Number(mov.tipoMovimientoId)
+      );
+      
+      // Verificar si es ingreso o egreso usando el campo "esIngreso" (booleano)
+      if (tipoMov?.esIngreso === true) {
+        totalAsignaciones += monto;
+      } else if (tipoMov?.esIngreso === false) {
+        totalGastos += monto;
+      }
+    });
+
+    const saldo = totalAsignaciones - totalGastos;
+
+    setTotalAsignacionesEntregasRendir(totalAsignaciones);
+    setTotalGastosEntregasRendir(totalGastos);
+    setTotalSaldoEntregasRendir(saldo);
+  };
+
   // Efectos
   useEffect(() => {
     cargarEntregaARendir();
     cargarEntidadesComerciales();
     cargarMonedas();
   }, [novedadPescaConsumoId]);
+
+  useEffect(() => {
+    if (empresaId) {
+      cargarProductos();
+    }
+  }, [empresaId]);
 
   useEffect(() => {
     if (entregaARendir) {
@@ -159,7 +222,20 @@ const EntregasARendirNovedadCard = ({
   }, [entregaARendir, personal, centrosCosto]);
 
   // Función para obtener el responsable específico de la entrega a rendir
+  // Prioriza la relación del backend si está disponible
   const obtenerResponsableEntrega = () => {
+    // Priorizar relación del backend
+    if (entregaARendir?.respEntregaRendir) {
+      const responsable = entregaARendir.respEntregaRendir;
+      const responsableNormalizado = {
+        id: Number(responsable.id),
+        label: `${responsable.nombres} ${responsable.apellidos}`.trim(),
+      };
+      setResponsableEntrega(responsableNormalizado);
+      return;
+    }
+
+    // Fallback: buscar en el array de personal (retrocompatibilidad)
     if (!entregaARendir?.respEntregaRendirId || !personal.length) {
       setResponsableEntrega(null);
       return;
@@ -183,7 +259,20 @@ const EntregasARendirNovedadCard = ({
   };
 
   // Función para obtener el centro de costo específico de la entrega a rendir
+  // Prioriza la relación del backend si está disponible
   const obtenerCentroCostoEntrega = () => {
+    // Priorizar relación del backend
+    if (entregaARendir?.centroCosto) {
+      const centroCosto = entregaARendir.centroCosto;
+      const centroCostoNormalizado = {
+        id: Number(centroCosto.id),
+        label: centroCosto.Codigo + " - " + centroCosto.Nombre || "N/A",
+      };
+      setCentroCostoEntrega(centroCostoNormalizado);
+      return;
+    }
+
+    // Fallback: buscar en el array de centrosCosto (retrocompatibilidad)
     if (!entregaARendir?.centroCostoId || !centrosCosto.length) {
       setCentroCostoEntrega(null);
       return;
@@ -258,10 +347,16 @@ const EntregasARendirNovedadCard = ({
                   label={
                     entregaARendir.entregaLiquidada
                       ? "NOVEDAD LIQUIDADA"
+                      : movimientos.length > 0 && totalSaldoEntregasRendir === 0
+                      ? "LISTA PARA LIQUIDAR"
                       : "PENDIENTE LIQUIDACION"
                   }
                   severity={
-                    entregaARendir.entregaLiquidada ? "success" : "danger"
+                    entregaARendir.entregaLiquidada
+                      ? "success"
+                      : movimientos.length > 0 && totalSaldoEntregasRendir === 0
+                      ? "info"
+                      : "danger"
                   }
                   className="w-full"
                   disabled
@@ -285,7 +380,7 @@ const EntregasARendirNovedadCard = ({
                   style={{ fontWeight: "bold" }}
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 2 }}>
                 <label className="block text-900 font-medium mb-2">
                   Centro de Costo
                 </label>
@@ -392,26 +487,43 @@ const EntregasARendirNovedadCard = ({
 
         <Divider />
 
-        {/* Sección de DetMovsEntRendirPescaConsumo */}
-        <DetEntregaRendirNovedadConsumo
-          entregaARendirPescaConsumo={entregaARendir}
-          movimientos={movimientos}
-          personal={personal}
-          centrosCosto={centrosCosto}
-          tiposMovimiento={tiposMovimiento}
-          entidadesComerciales={entidadesComerciales}
-          monedas={monedas}
-          tiposDocumento={tiposDocumento}
-          novedadPescaConsumoIniciada={novedadPescaConsumoIniciada}
-          loading={loadingMovimientos}
-          selectedMovimientos={selectedMovimientos}
-          onSelectionChange={(e) => setSelectedMovimientos(e.value)}
-          onDataChange={() => {
-            cargarMovimientos();
-            cargarEntregaARendir();
-            onDataChange?.();
-          }}
-        />
+        {/* TabView: Movimientos y Liquidación */}
+        <TabView>
+          <TabPanel header="Movimientos" leftIcon="pi pi-list">
+            <DetEntregaRendirNovedadConsumo
+              entregaARendirPescaConsumo={entregaARendir}
+              movimientos={movimientos}
+              personal={personal}
+              centrosCosto={centrosCosto}
+              tiposMovimiento={tiposMovimiento}
+              entidadesComerciales={entidadesComerciales}
+              monedas={monedas}
+              tiposDocumento={tiposDocumento}
+              productos={productos}
+              novedadPescaConsumoIniciada={novedadPescaConsumoIniciada}
+              loading={loadingMovimientos}
+              selectedMovimientos={selectedMovimientos}
+              onSelectionChange={(e) => setSelectedMovimientos(e.value)}
+              onDataChange={() => {
+                cargarMovimientos();
+                cargarEntregaARendir();
+                onDataChange?.();
+              }}
+            />
+          </TabPanel>
+
+          <TabPanel header="Liquidación PDF" leftIcon="pi pi-file-pdf">
+            <VerImpresionLiquidacionPC
+              entregaARendirId={entregaARendir?.id}
+              datosEntrega={entregaARendir}
+              movimientos={movimientos}
+              toast={toast}
+              onPdfGenerated={(urlPdf) => {
+                cargarEntregaARendir();
+              }}
+            />
+          </TabPanel>
+        </TabView>
       </Card>
 
       <Toast ref={toast} />

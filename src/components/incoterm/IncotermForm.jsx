@@ -11,6 +11,9 @@ import * as Yup from "yup";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
+import { Divider } from "primereact/divider";
+import CostosExportacionList from "./CostosExportacionList";
+import AuditInfo from "../shared/AuditInfo";
 
 // Esquema de validación profesional con Yup alineado al modelo Incoterm de Prisma
 const schema = Yup.object().shape({
@@ -46,6 +49,8 @@ export default function IncotermForm({
   loading,
   readOnly = false,
 }) {
+  // ID del Incoterm para cargar sus costos
+  const incotermId = defaultValues?.id ? Number(defaultValues.id) : null;
   // Extrae 'control' para uso con Controller
   const {
     register,
@@ -116,6 +121,34 @@ export default function IncotermForm({
               <small className="p-error">{errors.nombre.message}</small>
             )}
           </div>
+          {/* ACTIVO - Botón toggle */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "end",
+              gap: 24,
+              marginTop: 8,
+            }}
+          >
+            <div style={{ flex: 0.5 }}>
+              <Controller
+                name="activo"
+                control={control}
+                render={({ field }) => (
+                  <Button
+                    type="button"
+                    label={field.value ? "ACTIVO" : "INACTIVO"}
+                    className={
+                      field.value ? "p-button-primary" : "p-button-danger"
+                    }
+                    onClick={() => field.onChange(!field.value)}
+                    disabled={readOnly || loading}
+                    style={{ width: "100%" }}
+                  />
+                )}
+              />
+            </div>
+          </div>
         </div>
 
         {/* DESCRIPCIÓN - Opcional, texto largo */}
@@ -145,67 +178,50 @@ export default function IncotermForm({
           </div>
         </div>
 
-        {/* ACTIVO - Botón toggle */}
+        {/* LISTA DE COSTOS DE EXPORTACIÓN */}
+        {isEdit && (
+          <CostosExportacionList incotermId={incotermId} readOnly={readOnly} />
+        )}
+
+        {/* BOTONES E INFORMACIÓN DE AUDITORÍA */}
         <div
           style={{
             display: "flex",
             alignItems: "end",
-            gap: 24,
-            marginTop: 8,
+            gap: 8,
+            marginTop: "0.5rem",
           }}
         >
-          <div style={{ flex: 0.5 }}>
-            <Controller
-              name="activo"
-              control={control}
-              render={({ field }) => (
-                <Button
-                  type="button"
-                  label={field.value ? "ACTIVO" : "INACTIVO"}
-                  className={
-                    field.value ? "p-button-primary" : "p-button-danger"
-                  }
-                  onClick={() => field.onChange(!field.value)}
-                  disabled={readOnly || loading}
-                  style={{ width: "100%" }}
-                />
-              )}
+          {/* INFORMACIÓN DE AUDITORÍA */}
+          <div style={{ flex: 2 }}>
+            {isEdit && <AuditInfo data={defaultValues} />}
+          </div>
+          {/* BOTONES */}
+          <div style={{ flex: 1 }}>
+            <Button
+              type="button"
+              label="Cancelar"
+              onClick={onCancel}
+              disabled={loading || isSubmitting}
+              className="p-button-warning"
+              severity="warning"
+              raised
+              outlined
             />
           </div>
-        </div>
-
-        {/* BOTONES */}
-        <div
-          style={{
-            marginTop: 24,
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 12,
-          }}
-        >
-          <Button
-            type="button"
-            label="Cancelar"
-            onClick={onCancel}
-            disabled={loading || isSubmitting}
-            className="p-button-warning"
-            severity="warning"
-            raised
-            outlined
-            size="small"
-          />
-          <Button
-            type="submit"
-            label={isEdit ? "Actualizar" : "Registrar"}
-            icon="pi pi-save"
-            loading={loading || isSubmitting}
-            disabled={readOnly || loading || isSubmitting}
-            className="p-button-success"
-            severity="success"
-            raised
-            outlined
-            size="small"
-          />
+          <div style={{ flex: 1 }}>
+            <Button
+              type="submit"
+              label={isEdit ? "Actualizar" : "Registrar"}
+              icon="pi pi-save"
+              loading={loading || isSubmitting}
+              disabled={readOnly || loading || isSubmitting}
+              className="p-button-success"
+              severity="success"
+              raised
+              outlined
+            />
+          </div>
         </div>
       </div>
     </form>

@@ -27,6 +27,7 @@ export default function DetEntregaRendirCompras({
   entidadesComerciales = [],
   monedas = [],
   tiposDocumento = [],
+  productos = [], // Nueva prop para productos (gastos)
   requerimientoCompraAprobado = false,
   loading = false,
   selectedMovimientos = [],
@@ -384,7 +385,7 @@ export default function DetEntregaRendirCompras({
             <div>
               <div style={{ display: "flex", gap: 8, alignItems: "end", marginTop: 18 }}>
                 <div style={{ flex: 1 }}>
-                  <h3>Detalle Entrega a Rendir - Compras</h3>
+                  <h3>Detalle Entrega a Rendir - Compras HOLA</h3>
                 </div>
                 <div style={{ flex: 0.5 }}>
                   <Button
@@ -515,6 +516,7 @@ export default function DetEntregaRendirCompras({
           entidadesComerciales={entidadesComerciales}
           monedas={monedas}
           tiposDocumento={tiposDocumento}
+          productos={productos}
           onGuardadoExitoso={handleGuardarMovimiento}
           onCancelar={() => {
             setShowMovimientoForm(false);

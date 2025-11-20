@@ -10,10 +10,9 @@ import React, { useState } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
-import { InputText } from "primereact/inputtext";
-import { Dialog } from "primereact/dialog";
-import { Dropdown } from "primereact/dropdown";
-import { Checkbox } from "primereact/checkbox";
+import { generarDocumentosRequeridos } from "../../api/cotizacionVentas";
+import { formatearNumero, getResponsiveFontSize } from "../../utils/utils";
+import DocumentoRequeridoDialog from "./DocumentoRequeridoDialog";
 
 const DocumentosRequeridosCard = ({
   formData,
@@ -21,16 +20,31 @@ const DocumentosRequeridosCard = ({
   documentos,
   setDocumentos,
   disabled = false,
+  cotizacionId = null,
+  toast = null,
+  onDocumentosGenerados = null,
+  monedasOptions = [],
+  docRequeridaVentasOptions = [],
 }) => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingDocumento, setEditingDocumento] = useState(null);
+  const [loadingGenerar, setLoadingGenerar] = useState(false);
 
   const handleAddDocumento = () => {
     setEditingDocumento({
-      nombre: "",
-      tipo: "REQUERIDO",
-      obligatorio: true,
-      descripcion: "",
+      docRequeridaVentasId: null,
+      esObligatorio: true,
+      numeroDocumento: "",
+      fechaEmision: null,
+      fechaVencimiento: null,
+      urlDocumento: "",
+      verificado: false,
+      fechaVerificacion: null,
+      verificadoPorId: null,
+      observacionesVerificacion: "",
+      costoDocumento: 0,
+      monedaId: null,
+      index: undefined,
     });
     setShowAddDialog(true);
   };
@@ -46,25 +60,147 @@ const DocumentosRequeridosCard = ({
   };
 
   const handleSaveDocumento = () => {
-    if (editingDocumento.nombre) {
-      if (editingDocumento.index !== undefined) {
-        // Editar documento existente
-        const nuevosDocumentos = [...documentos];
-        nuevosDocumentos[editingDocumento.index] = editingDocumento;
-        setDocumentos(nuevosDocumentos);
-      } else {
-        // Agregar nuevo documento
-        setDocumentos([...documentos, editingDocumento]);
+    if (!editingDocumento.docRequeridaVentasId) {
+      toast?.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar un tipo de documento",
+        life: 3000,
+      });
+      return;
+    }
+
+    // Preparar el documento con la fecha de verificación si está verificado
+    const documentoToSave = {
+      ...editingDocumento,
+      fechaVerificacion: editingDocumento.verificado ? new Date() : null,
+    };
+    delete documentoToSave.index;
+
+    if (editingDocumento.index !== undefined) {
+      // Editar documento existente
+      const nuevosDocumentos = [...documentos];
+      nuevosDocumentos[editingDocumento.index] = documentoToSave;
+      setDocumentos(nuevosDocumentos);
+      
+      toast?.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Documento actualizado correctamente",
+        life: 3000,
+      });
+    } else {
+      // Agregar nuevo documento
+      setDocumentos([...documentos, documentoToSave]);
+      
+      toast?.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Documento agregado correctamente",
+        life: 3000,
+      });
+    }
+    
+    setShowAddDialog(false);
+    setEditingDocumento(null);
+  };
+
+  const handleChangeDocumento = (field, value) => {
+    setEditingDocumento(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleGenerarDocumentosAutomaticos = async () => {
+    if (!cotizacionId) {
+      toast?.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail:
+          "Debe guardar la cotización primero antes de generar documentos automáticamente",
+        life: 4000,
+      });
+      return;
+    }
+
+    if (!formData.esExportacion) {
+      toast?.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Esta función solo aplica para cotizaciones de exportación",
+        life: 4000,
+      });
+      return;
+    }
+
+    if (!formData.paisDestinoId || !formData.tipoProductoId) {
+      toast?.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail:
+          "Debe seleccionar País Destino y Tipo de Producto antes de generar documentos",
+        life: 4000,
+      });
+      return;
+    }
+
+    try {
+      setLoadingGenerar(true);
+      const resultado = await generarDocumentosRequeridos(cotizacionId);
+
+      toast?.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail:
+          resultado.mensaje ||
+          `Se generaron ${resultado.totalCreados} documentos automáticamente`,
+        life: 5000,
+      });
+
+      // Notificar al padre para que recargue los documentos
+      if (resultado.totalCreados > 0 && onDocumentosGenerados) {
+        onDocumentosGenerados();
       }
-      setShowAddDialog(false);
-      setEditingDocumento(null);
+    } catch (error) {
+      console.error("Error al generar documentos:", error);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.mensaje ||
+          "Error al generar documentos automáticamente",
+        life: 5000,
+      });
+    } finally {
+      setLoadingGenerar(false);
     }
   };
 
   const obligatorioBodyTemplate = (rowData) => {
-    return rowData.obligatorio ? 
-      <span className="p-tag p-tag-success">Sí</span> : 
-      <span className="p-tag p-tag-warning">No</span>;
+    return rowData.esObligatorio ? (
+      <span className="p-tag p-tag-success">Sí</span>
+    ) : (
+      <span className="p-tag p-tag-warning">No</span>
+    );
+  };
+
+  const verificadoBodyTemplate = (rowData) => {
+    return rowData.verificado ? (
+      <i className="pi pi-check-circle" style={{ color: "green", fontSize: "1.2rem" }} />
+    ) : (
+      <i className="pi pi-times-circle" style={{ color: "gray", fontSize: "1.2rem" }} />
+    );
+  };
+
+  const costoBodyTemplate = (rowData) => {
+    if (!rowData.costoDocumento) return "-";
+    const moneda = monedasOptions.find(m => m.value === rowData.monedaId);
+    return `${moneda?.simbolo || ""} ${formatearNumero(rowData.costoDocumento, 2)}`;
+  };
+
+  const nombreDocumentoBodyTemplate = (rowData) => {
+    return rowData.docRequeridaVentas?.nombre || rowData.nombre || "-";
   };
 
   const accionesBodyTemplate = (rowData, { rowIndex }) => {
@@ -72,7 +208,7 @@ const DocumentosRequeridosCard = ({
       <div className="flex gap-2">
         <Button
           icon="pi pi-pencil"
-          className="p-button-rounded p-button-warning p-button-text"
+          className="p-button-rounded p-button-info p-button-text"
           onClick={() => handleEditDocumento(rowData, rowIndex)}
           disabled={disabled}
         />
@@ -90,120 +226,94 @@ const DocumentosRequeridosCard = ({
     <div className="card">
       <div className="flex justify-content-between align-items-center mb-3">
         <h3>Documentos Requeridos</h3>
-        <Button
-          label="Agregar Documento"
-          icon="pi pi-plus"
-          onClick={handleAddDocumento}
-          disabled={disabled}
-        />
+        <div className="flex gap-2">
+          <Button
+            label="Generar Automáticamente"
+            icon="pi pi-bolt"
+            className="p-button-success"
+            onClick={handleGenerarDocumentosAutomaticos}
+            disabled={disabled || loadingGenerar || !cotizacionId}
+            loading={loadingGenerar}
+            tooltip="Genera documentos según país, tipo de producto e incoterm"
+            tooltipOptions={{ position: "top" }}
+          />
+          <Button
+            label="Agregar Manual"
+            icon="pi pi-plus"
+            onClick={handleAddDocumento}
+            disabled={disabled}
+          />
+        </div>
       </div>
 
       <DataTable
         value={documentos}
+        size="small"
+        showGridlines
+        stripedRows
+        selectionMode="single"
+        onRowClick={(e) => handleEditDocumento(e.data)}
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        paginator
+        rows={5}
+        rowsPerPageOptions={[5, 10, 15, 25]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} documentos"
         emptyMessage="No hay documentos agregados"
-        responsiveLayout="scroll"
       >
-        <Column field="nombre" header="Nombre Documento" style={{ minWidth: '200px' }} />
-        <Column field="tipo" header="Tipo" style={{ minWidth: '150px' }} />
-        <Column 
-          field="obligatorio" 
-          header="Obligatorio" 
+        <Column
+          header="Documento"
+          body={nombreDocumentoBodyTemplate}
+          style={{ minWidth: "200px" }}
+          sortable
+        />
+        <Column
+          field="numeroDocumento"
+          header="Número"
+          style={{ minWidth: "120px" }}
+          sortable
+        />
+        <Column
+          header="Obligatorio"
           body={obligatorioBodyTemplate}
-          style={{ minWidth: '120px' }} 
+          style={{ minWidth: "100px" }}
+          sortable
         />
-        <Column field="descripcion" header="Descripción" style={{ minWidth: '250px' }} />
-        <Column 
-          body={accionesBodyTemplate}
-          style={{ minWidth: '100px' }}
+        <Column
+          header="Verificado"
+          body={verificadoBodyTemplate}
+          style={{ minWidth: "100px", textAlign: "center" }}
+          sortable
         />
+        <Column
+          header="Costo"
+          body={costoBodyTemplate}
+          style={{ minWidth: "120px", textAlign: "right" }}
+          sortable
+        />
+        <Column
+          field="observacionesVerificacion"
+          header="Observaciones"
+          style={{ minWidth: "200px" }}
+          sortable
+        />
+        <Column body={accionesBodyTemplate} style={{ minWidth: "100px" }} />
       </DataTable>
 
-      {/* Dialog para agregar/editar documento */}
-      <Dialog
-        header={editingDocumento?.index !== undefined ? "Editar Documento" : "Agregar Documento"}
+      {/* Diálogo para agregar/editar documento */}
+      <DocumentoRequeridoDialog
         visible={showAddDialog}
-        style={{ width: '50vw' }}
+        documento={editingDocumento}
         onHide={() => {
           setShowAddDialog(false);
           setEditingDocumento(null);
         }}
-      >
-        {editingDocumento && (
-          <div className="grid">
-            <div className="col-12">
-              <label htmlFor="nombre" style={{ fontWeight: 'bold' }}>
-                Nombre Documento *
-              </label>
-              <InputText
-                id="nombre"
-                value={editingDocumento.nombre}
-                onChange={(e) => setEditingDocumento({ ...editingDocumento, nombre: e.target.value })}
-                style={{ width: '100%' }}
-              />
-            </div>
-
-            <div className="col-12 md:col-6">
-              <label htmlFor="tipo" style={{ fontWeight: 'bold' }}>
-                Tipo Documento *
-              </label>
-              <Dropdown
-                id="tipo"
-                value={editingDocumento.tipo}
-                options={[
-                  { label: "REQUERIDO", value: "REQUERIDO" },
-                  { label: "OPCIONAL", value: "OPCIONAL" },
-                  { label: "INFORMATIVO", value: "INFORMATIVO" },
-                ]}
-                onChange={(e) => setEditingDocumento({ ...editingDocumento, tipo: e.value })}
-                placeholder="Seleccionar tipo"
-                style={{ width: '100%' }}
-              />
-            </div>
-
-            <div className="col-12 md:col-6">
-              <div className="flex align-items-center mt-4">
-                <Checkbox
-                  inputId="obligatorio"
-                  checked={editingDocumento.obligatorio}
-                  onChange={(e) => setEditingDocumento({ ...editingDocumento, obligatorio: e.checked })}
-                />
-                <label htmlFor="obligatorio" className="ml-2" style={{ fontWeight: 'bold' }}>
-                  Es Obligatorio
-                </label>
-              </div>
-            </div>
-
-            <div className="col-12">
-              <label htmlFor="descripcion" style={{ fontWeight: 'bold' }}>
-                Descripción
-              </label>
-              <InputText
-                id="descripcion"
-                value={editingDocumento.descripcion}
-                onChange={(e) => setEditingDocumento({ ...editingDocumento, descripcion: e.target.value })}
-                style={{ width: '100%' }}
-              />
-            </div>
-          </div>
-        )}
-
-        <div className="flex justify-content-end gap-2 mt-4">
-          <Button
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-secondary"
-            onClick={() => {
-              setShowAddDialog(false);
-              setEditingDocumento(null);
-            }}
-          />
-          <Button
-            label="Guardar"
-            icon="pi pi-save"
-            onClick={handleSaveDocumento}
-          />
-        </div>
-      </Dialog>
+        onSave={handleSaveDocumento}
+        onChange={handleChangeDocumento}
+        monedasOptions={monedasOptions}
+        docRequeridaVentasOptions={docRequeridaVentasOptions}
+        saving={false}
+      />
     </div>
   );
 };

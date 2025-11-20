@@ -8,9 +8,12 @@ import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { InputText } from "primereact/inputtext";
+import { InputTextarea } from "primereact/inputtextarea";
+import { Dropdown } from "primereact/dropdown";
 import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import { classNames } from "primereact/utils";
+import { getSubfamiliasProducto } from "../../api/subfamiliaProducto";
 
 const esquemaValidacion = yup.object().shape({
   nombre: yup
@@ -23,6 +26,12 @@ const esquemaValidacion = yup.object().shape({
     .transform((value, originalValue) => {
       return originalValue === "" ? null : value;
     }),
+  subfamiliaId: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
   activo: yup.boolean().default(true),
   paraCompras: yup.boolean().default(false),
   paraVentas: yup.boolean().default(false),
@@ -30,6 +39,8 @@ const esquemaValidacion = yup.object().shape({
 
 const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
   const [loading, setLoading] = useState(false);
+  const [subfamilias, setSubfamilias] = useState([]);
+  const [loadingSubfamilias, setLoadingSubfamilias] = useState(false);
   const esEdicion = !!tipoProducto;
 
   const {
@@ -43,16 +54,35 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
     defaultValues: {
       nombre: "",
       descripcion: "",
+      subfamiliaId: null,
       activo: true,
       paraCompras: false,
       paraVentas: false,
     },
   });
 
+  // Cargar subfamilias al montar el componente
+  useEffect(() => {
+    cargarSubfamilias();
+  }, []);
+
+  const cargarSubfamilias = async () => {
+    try {
+      setLoadingSubfamilias(true);
+      const data = await getSubfamiliasProducto();
+      setSubfamilias(data);
+    } catch (error) {
+      console.error("Error al cargar subfamilias:", error);
+    } finally {
+      setLoadingSubfamilias(false);
+    }
+  };
+
   useEffect(() => {
     if (tipoProducto) {
       setValue("nombre", tipoProducto.nombre || "");
       setValue("descripcion", tipoProducto.descripcion || "");
+      setValue("subfamiliaId", tipoProducto.subfamiliaId ? Number(tipoProducto.subfamiliaId) : null);
       setValue("activo", tipoProducto.activo !== undefined ? tipoProducto.activo : true);
       setValue("paraCompras", tipoProducto.paraCompras || false);
       setValue("paraVentas", tipoProducto.paraVentas || false);
@@ -60,6 +90,7 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
       reset({
         nombre: "",
         descripcion: "",
+        subfamiliaId: null,
         activo: true,
         paraCompras: false,
         paraVentas: false,
@@ -72,7 +103,8 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
       setLoading(true);
       const datosNormalizados = {
         nombre: data.nombre.trim().toUpperCase(),
-        descripcion: data.descripcion?.trim().toUpperCase() || null,
+        descripcion: data.descripcion?.trim() || null,
+        subfamiliaId: data.subfamiliaId ? Number(data.subfamiliaId) : null,
         activo: data.activo,
         paraCompras: data.paraCompras,
         paraVentas: data.paraVentas,
@@ -119,6 +151,38 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
           )}
         </div>
 
+        {/* Campo Subfamilia */}
+        <div className="p-col-12 p-field">
+          <label htmlFor="subfamiliaId" className="p-d-block">
+            Subfamilia
+          </label>
+          <Controller
+            name="subfamiliaId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="subfamiliaId"
+                value={field.value}
+                options={subfamilias.map((s) => ({
+                  label: s.nombre,
+                  value: Number(s.id),
+                }))}
+                onChange={(e) => field.onChange(e.value)}
+                placeholder="Seleccione una subfamilia"
+                className={getFieldClass("subfamiliaId")}
+                filter
+                showClear
+                loading={loadingSubfamilias}
+                emptyMessage="No hay subfamilias disponibles"
+                style={{ fontWeight: "bold", textTransform: "uppercase" }}
+              />
+            )}
+          />
+          {errors.subfamiliaId && (
+            <small className="p-error p-d-block">{errors.subfamiliaId.message}</small>
+          )}
+        </div>
+
         {/* Campo Descripción */}
         <div className="p-col-12 p-field">
           <label htmlFor="descripcion" className="p-d-block">
@@ -128,12 +192,13 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
             name="descripcion"
             control={control}
             render={({ field }) => (
-              <InputText
+              <InputTextarea
                 id="descripcion"
                 {...field}
-                placeholder="Descripción del tipo de producto (opcional)"
+                placeholder="Descripción detallada del tipo de producto (opcional)"
                 className={getFieldClass("descripcion")}
-                style={{ textTransform: 'uppercase' }}
+                rows={4}
+                autoResize
               />
             )}
           />

@@ -97,6 +97,10 @@ export const abrirPdfEnNuevaPestana = async (urlPdf, toast, mensajeError = "No h
       // ✅ NUEVO: Soporte para PDFs de movimientos de almacén
       const rutaArchivo = urlPdf.replace('/uploads/movimientos-almacen/', '');
       urlCompleta = `${import.meta.env.VITE_API_URL}/movimiento-almacen/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/entregas-rendir/')) {
+      // ✅ NUEVO: Soporte para PDFs de liquidaciones de entregas a rendir
+      const rutaArchivo = urlPdf.replace('/uploads/entregas-rendir/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/entregas-a-rendir/archivo/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/")) {
       // Para otros tipos de uploads (archivos de confirmación, etc.)
       urlCompleta = `${import.meta.env.VITE_API_URL}${urlPdf}`;
@@ -226,6 +230,10 @@ export const descargarPdf = async (urlPdf, toast, nombreArchivo = "documento.pdf
       const rutaArchivo = urlPdf.replace('/uploads/requerimientos-compra/', '');
       urlCompleta = `${import.meta.env.VITE_API_URL}/requerimiento-compra/archivo/${rutaArchivo}`;
       
+    } else if (urlPdf.startsWith('/uploads/entregas-rendir/')) {
+      // ✅ NUEVO: Soporte para PDFs de liquidaciones de entregas a rendir
+      const rutaArchivo = urlPdf.replace('/uploads/entregas-rendir/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/entregas-a-rendir/archivo/${rutaArchivo}`;
     } else if (urlPdf.startsWith(`/uploads/${tipoUpload}/`)) {
       const rutaArchivo = urlPdf.replace(`/uploads/${tipoUpload}/`, "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/${tipoUpload}/archivo/${rutaArchivo}`;

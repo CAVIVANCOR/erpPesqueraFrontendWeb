@@ -57,7 +57,7 @@ export async function getCostoExportacionCotizacionPorId(id) {
  */
 export async function getCostosExportacionPorCotizacion(cotizacionVentasId) {
   try {
-    const response = await axios.get(`${API_URL}/por-cotizacion/${cotizacionVentasId}`, { headers: getAuthHeaders() });
+    const response = await axios.get(`${API_URL}/cotizacion/${cotizacionVentasId}`, { headers: getAuthHeaders() });
     return response.data;
   } catch (error) {
     console.error("Error al obtener costos por cotización:", error);

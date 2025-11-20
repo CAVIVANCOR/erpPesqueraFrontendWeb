@@ -98,6 +98,14 @@ const PDFViewer = ({ urlDocumento, altura = '600px' }) => {
           // ✅ NUEVO: Soporte para PDFs de movimientos de almacén
           const rutaArchivo = urlDocumento.replace('/uploads/movimientos-almacen/', '');
           urlCompleta = `${import.meta.env.VITE_API_URL}/movimiento-almacen/archivo/${rutaArchivo}`;
+        } else if (urlDocumento.startsWith('/uploads/cotizaciones-ventas/')) {
+          // ✅ NUEVO: Soporte para PDFs de cotizaciones de ventas
+          const rutaArchivo = urlDocumento.replace('/uploads/cotizaciones-ventas/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/cotizacion-ventas/archivo/${rutaArchivo}`;
+        } else if (urlDocumento.startsWith('/uploads/entregas-rendir/')) {
+          // ✅ NUEVO: Soporte para PDFs de liquidaciones de entregas a rendir
+          const rutaArchivo = urlDocumento.replace('/uploads/entregas-rendir/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/entregas-a-rendir/archivo/${rutaArchivo}`;
 
         } else if (urlDocumento.startsWith('/api/')) {
           // Remover /api/ del inicio porque VITE_API_URL ya lo incluye

@@ -114,6 +114,13 @@ export default function PrecioEntidad() {
     return moneda ? moneda.simbolo : '';
   };
 
+  const productoTemplate = (rowData) => {
+    if (rowData.producto) {
+      return rowData.producto.descripcionArmada || rowData.producto.descripcionBase || '';
+    }
+    return rowData.productoId || '';
+  };
+
   const precioTemplate = (rowData) => {
     return Number(rowData.precioUnitario).toFixed(2);
   };

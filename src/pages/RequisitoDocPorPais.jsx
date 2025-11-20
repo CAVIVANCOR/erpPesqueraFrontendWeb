@@ -1,313 +1,441 @@
 /**
- * Formulario para Requisitos de Documentos por País
- * 
- * Características:
- * - Validación con Yup
- * - Campos en mayúsculas automáticas
- * - Manejo de campos de auditoría
- * - Feedback visual con Toast
- * - Cumple estándares ERP Megui
- * 
+ * Pantalla CRUD para gestión de Requisitos de Documentos por País
+ * Define qué documentos son obligatorios para cada país/producto
+ *
  * @author ERP Megui
  * @version 1.0.0
  */
 
-import React, { useState, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
-import { Dropdown } from "primereact/dropdown";
-import { Checkbox } from "primereact/checkbox";
+import React, { useState, useEffect, useRef } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
 import { Button } from "primereact/button";
-import { InputTextarea } from "primereact/inputtextarea";
+import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { Tag } from "primereact/tag";
+import { Dropdown } from "primereact/dropdown";
 import {
-  crearRequisitoDocPorPais,
-  actualizarRequisitoDocPorPais,
+  getRequisitosDocPorPais,
+  eliminarRequisitoDocPorPais,
 } from "../api/requisitoDocPorPais";
 import { getPaises } from "../api/pais";
 import { getTiposProducto } from "../api/tipoProducto";
 import { getDocRequeridaVentas } from "../api/docRequeridaVentas";
-import { toUpperCaseSafe } from "../utils/utils";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
+import { Navigate } from "react-router-dom";
+import RequisitoDocPorPaisForm from "../components/requisitoDocPorPais/RequisitoDocPorPaisForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
-// Esquema de validación
-const schema = yup.object().shape({
-  docRequeridaVentasId: yup
-    .number()
-    .required("El documento es obligatorio")
-    .typeError("Debe seleccionar un documento"),
-  paisId: yup
-    .number()
-    .required("El país es obligatorio")
-    .typeError("Debe seleccionar un país"),
-  tipoProductoId: yup
-    .number()
-    .required("El tipo de producto es obligatorio")
-    .typeError("Debe seleccionar un tipo de producto"),
-  esObligatorio: yup.boolean().default(true),
-  observaciones: yup.string().nullable(),
-});
+const RequisitoDocPorPais = ({ ruta }) => {
+  const permisos = usePermissions(ruta);
 
-const RequisitoDocPorPaisForm = ({
-  requisitoInicial = null,
-  onSubmit,
-  onCancel,
-  toast,
-}) => {
-  const [loading, setLoading] = useState(false);
-  const [documentos, setDocumentos] = useState([]);
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
+  const [requisitos, setRequisitos] = useState([]);
+  const [requisitosFiltrados, setRequisitosFiltrados] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [requisitoSeleccionado, setRequisitoSeleccionado] = useState(null);
+  const [modoEdicion, setModoEdicion] = useState(false);
+
+  // Estados para filtros
   const [paises, setPaises] = useState([]);
   const [tiposProducto, setTiposProducto] = useState([]);
+  const [documentos, setDocumentos] = useState([]);
+  const [filtroPais, setFiltroPais] = useState(null);
+  const [filtroTipoProducto, setFiltroTipoProducto] = useState(null);
+  const [filtroDocumento, setFiltroDocumento] = useState(null);
+  const [filtroObligatorio, setFiltroObligatorio] = useState(null);
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      docRequeridaVentasId: requisitoInicial?.docRequeridaVentasId || null,
-      paisId: requisitoInicial?.paisId || null,
-      tipoProductoId: requisitoInicial?.tipoProductoId || null,
-      esObligatorio: requisitoInicial?.esObligatorio ?? true,
-      observaciones: requisitoInicial?.observaciones || "",
-    },
-  });
+  const toast = useRef(null);
+  const { usuario } = useAuthStore();
 
   useEffect(() => {
-    cargarDatos();
+    cargarDatosIniciales();
   }, []);
 
-  const cargarDatos = async () => {
-    try {
-      const [dataDocumentos, dataPaises, dataTiposProducto] = await Promise.all([
-        getDocRequeridaVentas(),
-        getPaises(),
-        getTiposProducto(),
-      ]);
-      setDocumentos(dataDocumentos);
-      setPaises(dataPaises);
-      setTiposProducto(dataTiposProducto);
-    } catch (error) {
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Error al cargar datos del formulario",
-        life: 3000,
-      });
-    }
-  };
+  useEffect(() => {
+    aplicarFiltros();
+  }, [
+    requisitos,
+    filtroPais,
+    filtroTipoProducto,
+    filtroDocumento,
+    filtroObligatorio,
+  ]);
 
-  const onSubmitForm = async (data) => {
+  const cargarDatosIniciales = async () => {
     try {
       setLoading(true);
+      const [dataRequisitos, dataPaises, dataTiposProducto, dataDocumentos] =
+        await Promise.all([
+          getRequisitosDocPorPais(),
+          getPaises(),
+          getTiposProducto(),
+          getDocRequeridaVentas(),
+        ]);
 
-      // Normalizar datos
-      const payload = {
-        docRequeridaVentasId: Number(data.docRequeridaVentasId),
-        paisId: Number(data.paisId),
-        tipoProductoId: Number(data.tipoProductoId),
-        esObligatorio: data.esObligatorio,
-        observaciones: data.observaciones ? toUpperCaseSafe(data.observaciones) : null,
-      };
-
-      if (requisitoInicial?.id) {
-        await actualizarRequisitoDocPorPais(requisitoInicial.id, payload);
-        toast.current?.show({
-          severity: "success",
-          summary: "Actualizado",
-          detail: "Requisito actualizado correctamente",
-          life: 3000,
-        });
-      } else {
-        await crearRequisitoDocPorPais(payload);
-        toast.current?.show({
-          severity: "success",
-          summary: "Creado",
-          detail: "Requisito creado correctamente",
-          life: 3000,
-        });
-      }
-
-      reset();
-      onSubmit();
+      setRequisitos(dataRequisitos);
+      setRequisitosFiltrados(dataRequisitos);
+      setPaises(dataPaises);
+      setTiposProducto(dataTiposProducto);
+      setDocumentos(dataDocumentos);
     } catch (error) {
-      let mensajeError = "Error al guardar el requisito";
-
-      if (error.response) {
-        const { status, data } = error.response;
-        switch (status) {
-          case 400:
-            mensajeError = data.message || "Error de validación";
-            break;
-          case 409:
-            mensajeError = data.message || "Ya existe este requisito para el país y tipo de producto seleccionados";
-            break;
-          case 404:
-            mensajeError = "Recurso no encontrado";
-            break;
-          case 500:
-            mensajeError = "Error interno del servidor";
-            break;
-          default:
-            mensajeError = data.message || mensajeError;
-        }
-      }
-
-      toast.current?.show({
+      toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: mensajeError,
-        life: 5000,
+        detail: "Error al cargar datos",
+        life: 3000,
       });
     } finally {
       setLoading(false);
     }
   };
 
+  const cargarRequisitos = async () => {
+    try {
+      setLoading(true);
+      const data = await getRequisitosDocPorPais();
+      setRequisitos(data);
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar requisitos",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const aplicarFiltros = () => {
+    let resultado = [...requisitos];
+
+    if (filtroPais !== null) {
+      resultado = resultado.filter(
+        (r) => Number(r.paisId) === Number(filtroPais)
+      );
+    }
+
+    if (filtroTipoProducto !== null) {
+      resultado = resultado.filter(
+        (r) => Number(r.tipoProductoId) === Number(filtroTipoProducto)
+      );
+    }
+
+    if (filtroDocumento !== null) {
+      resultado = resultado.filter(
+        (r) => Number(r.docRequeridaVentasId) === Number(filtroDocumento)
+      );
+    }
+
+    if (filtroObligatorio !== null) {
+      resultado = resultado.filter(
+        (r) => r.esObligatorio === filtroObligatorio
+      );
+    }
+
+    setRequisitosFiltrados(resultado);
+  };
+
+  const limpiarFiltros = () => {
+    setFiltroPais(null);
+    setFiltroTipoProducto(null);
+    setFiltroDocumento(null);
+    setFiltroObligatorio(null);
+  };
+
+  const handleNuevo = () => {
+    setRequisitoSeleccionado(null);
+    setModoEdicion(false);
+    setDialogVisible(true);
+  };
+
+  const handleEditar = (rowData) => {
+    setRequisitoSeleccionado(rowData);
+    setModoEdicion(true);
+    setDialogVisible(true);
+  };
+
+  const handleEliminar = (rowData) => {
+    confirmDialog({
+      message: `¿Está seguro de eliminar este requisito?`,
+      header: "Confirmar Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Sí, eliminar",
+      rejectLabel: "Cancelar",
+      acceptClassName: "p-button-danger",
+      accept: async () => {
+        try {
+          setLoading(true);
+          await eliminarRequisitoDocPorPais(rowData.id);
+          toast.current.show({
+            severity: "success",
+            summary: "Eliminado",
+            detail: "Requisito eliminado correctamente",
+            life: 3000,
+          });
+          cargarRequisitos();
+        } catch (error) {
+          toast.current.show({
+            severity: "error",
+            summary: "Error",
+            detail:
+              error.response?.data?.message || "Error al eliminar requisito",
+            life: 3000,
+          });
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleFormSubmit = () => {
+    setDialogVisible(false);
+    cargarRequisitos();
+  };
+
+  const handleFormCancel = () => {
+    setDialogVisible(false);
+  };
+
+  // Templates
+  const documentoTemplate = (rowData) => (
+    <span style={{ fontWeight: "bold" }}>
+      {rowData.docRequeridaVentas?.nombre || "-"}
+    </span>
+  );
+
+  const paisTemplate = (rowData) => <span>{rowData.pais?.nombre || "-"}</span>;
+
+  const tipoProductoTemplate = (rowData) => (
+    <span>{rowData.tipoProducto?.nombre || "TODOS"}</span>
+  );
+
+  const obligatorioTemplate = (rowData) => (
+    <Tag
+      value={rowData.esObligatorio ? "SÍ" : "NO"}
+      severity={rowData.esObligatorio ? "danger" : "secondary"}
+      style={{ fontSize: "12px" }}
+    />
+  );
+
+  const accionesTemplate = (rowData) => (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        gap: "0.25rem",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-rounded p-button-text p-button-info"
+        onClick={() => handleEditar(rowData)}
+        tooltip="Editar"
+        tooltipOptions={{ position: "top" }}
+        disabled={!permisos.puedeEditar}
+      />
+      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-text p-button-danger"
+          onClick={() => handleEliminar(rowData)}
+          tooltip="Eliminar"
+          tooltipOptions={{ position: "top" }}
+          disabled={!permisos.puedeEliminar}
+        />
+      )}
+    </div>
+  );
+
   return (
-    <form onSubmit={handleSubmit(onSubmitForm)} style={{ padding: "1rem" }}>
-      {/* Documento Requerido */}
-      <div style={{ marginBottom: "1rem" }}>
-        <label htmlFor="docRequeridaVentasId" style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
-          Documento Requerido *
-        </label>
-        <Controller
-          name="docRequeridaVentasId"
-          control={control}
-          render={({ field }) => (
-            <Dropdown
-              {...field}
-              id="docRequeridaVentasId"
-              options={documentos.map((d) => ({ label: d.nombre, value: d.id }))}
-              placeholder="Seleccionar documento"
-              filter
-              filterBy="label"
-              style={{ width: "100%" }}
-              className={errors.docRequeridaVentasId ? "p-invalid" : ""}
-              disabled={loading}
-            />
-          )}
-        />
-        {errors.docRequeridaVentasId && (
-          <small className="p-error">{errors.docRequeridaVentasId.message}</small>
-        )}
-      </div>
+    <div className="card">
+      <Toast ref={toast} />
+      <ConfirmDialog />
 
-      {/* País */}
-      <div style={{ marginBottom: "1rem" }}>
-        <label htmlFor="paisId" style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
-          País *
-        </label>
-        <Controller
-          name="paisId"
-          control={control}
-          render={({ field }) => (
-            <Dropdown
-              {...field}
-              id="paisId"
-              options={paises.map((p) => ({ label: p.nombre, value: p.id }))}
-              placeholder="Seleccionar país"
-              filter
-              filterBy="label"
-              style={{ width: "100%" }}
-              className={errors.paisId ? "p-invalid" : ""}
-              disabled={loading}
-            />
-          )}
-        />
-        {errors.paisId && (
-          <small className="p-error">{errors.paisId.message}</small>
-        )}
-      </div>
+      <DataTable
+        value={requisitosFiltrados}
+        loading={loading}
+        size="small"
+        showGridlines
+        stripedRows
+        selectionMode="single"
+        onRowClick={(e) => handleEditar(e.data)}
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        paginator
+        rows={10}
+        rowsPerPageOptions={[10, 20, 50, 100]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} requisitos"
+        header={
+          <div>
+            <div
+              style={{
+                alignItems: "end",
+                justifyContent: "space-around",
+                display: "flex",
+                gap: 10,
+                marginBottom: "1rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <h2>Requisitos de Documentos por País</h2>
+              </div>
+              <div style={{ flex: 1}}>
+                <Button
+                  label="Nuevo"
+                  icon="pi pi-plus"
+                  onClick={handleNuevo}
+                  disabled={!permisos.puedeCrear}
+                />
+              </div>
+              <div style={{ flex: 1}}>
+                <Button
+                  label="Limpiar"
+                  icon="pi pi-filter-slash"
+                  className="p-button-outlined"
+                  onClick={limpiarFiltros}
+                />
+              </div>
+            </div>
 
-      {/* Tipo de Producto */}
-      <div style={{ marginBottom: "1rem" }}>
-        <label htmlFor="tipoProductoId" style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
-          Tipo de Producto *
-        </label>
-        <Controller
-          name="tipoProductoId"
-          control={control}
-          render={({ field }) => (
-            <Dropdown
-              {...field}
-              id="tipoProductoId"
-              options={tiposProducto.map((t) => ({ label: t.nombre, value: t.id }))}
-              placeholder="Seleccionar tipo de producto"
-              filter
-              filterBy="label"
-              style={{ width: "100%" }}
-              className={errors.tipoProductoId ? "p-invalid" : ""}
-              disabled={loading}
-            />
-          )}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <Dropdown
+                  value={filtroDocumento}
+                  options={documentos.map((d) => ({
+                    label: d.nombre,
+                    value: d.id,
+                  }))}
+                  onChange={(e) => setFiltroDocumento(e.value)}
+                  placeholder="Filtrar por Documento"
+                  showClear
+                  filter
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <Dropdown
+                  value={filtroPais}
+                  options={paises.map((p) => ({
+                    label: p.nombre,
+                    value: p.id,
+                  }))}
+                  onChange={(e) => setFiltroPais(e.value)}
+                  placeholder="Filtrar por País"
+                  showClear
+                  filter
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <Dropdown
+                  value={filtroTipoProducto}
+                  options={tiposProducto.map((t) => ({
+                    label: t.nombre,
+                    value: t.id,
+                  }))}
+                  onChange={(e) => setFiltroTipoProducto(e.value)}
+                  placeholder="Filtrar por Tipo Producto"
+                  showClear
+                  filter
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Dropdown
+                  value={filtroObligatorio}
+                  options={[
+                    { label: "Obligatorios", value: true },
+                    { label: "No Obligatorios", value: false },
+                  ]}
+                  onChange={(e) => setFiltroObligatorio(e.value)}
+                  placeholder="Filtrar Obligatorio"
+                  showClear
+                />
+              </div>
+            </div>
+          </div>
+        }
+        dataKey="id"
+        emptyMessage="No se encontraron requisitos"
+      >
+        <Column field="id" header="ID" sortable style={{ minWidth: "60px" }} />
+        <Column
+          header="Documento"
+          body={documentoTemplate}
+          sortable
+          field="docRequeridaVentas.nombre"
+          style={{ minWidth: "250px" }}
         />
-        {errors.tipoProductoId && (
-          <small className="p-error">{errors.tipoProductoId.message}</small>
-        )}
-      </div>
+        <Column
+          header="País"
+          body={paisTemplate}
+          sortable
+          field="pais.nombre"
+          style={{ minWidth: "150px" }}
+        />
+        <Column
+          header="Tipo Producto"
+          body={tipoProductoTemplate}
+          sortable
+          field="tipoProducto.nombre"
+          style={{ minWidth: "150px" }}
+        />
+        <Column
+          header="Obligatorio"
+          body={obligatorioTemplate}
+          sortable
+          field="esObligatorio"
+          style={{ width: "100px", textAlign: "center" }}
+        />
+        <Column
+          field="observaciones"
+          header="Observaciones"
+          style={{ minWidth: "200px" }}
+        />
+        <Column
+          body={accionesTemplate}
+          header="Acciones"
+          style={{ width: "80px" }}
+        />
+      </DataTable>
 
-      {/* Es Obligatorio */}
-      <div style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <Controller
-          name="esObligatorio"
-          control={control}
-          render={({ field }) => (
-            <Checkbox
-              {...field}
-              inputId="esObligatorio"
-              checked={field.value}
-              onChange={(e) => field.onChange(e.checked)}
-              disabled={loading}
-            />
-          )}
+      <Dialog
+        visible={dialogVisible}
+        style={{ width: "800px" }}
+        header={
+          modoEdicion
+            ? "Editar Requisito de Documento"
+            : "Nuevo Requisito de Documento"
+        }
+        modal
+        maximizable
+        onHide={handleFormCancel}
+      >
+        <RequisitoDocPorPaisForm
+          requisitoInicial={requisitoSeleccionado}
+          onSubmit={handleFormSubmit}
+          onCancel={handleFormCancel}
+          toast={toast}
         />
-        <label htmlFor="esObligatorio" style={{ fontWeight: "bold" }}>
-          Es Obligatorio
-        </label>
-      </div>
-
-      {/* Observaciones */}
-      <div style={{ marginBottom: "1rem" }}>
-        <label htmlFor="observaciones" style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
-          Observaciones
-        </label>
-        <Controller
-          name="observaciones"
-          control={control}
-          render={({ field }) => (
-            <InputTextarea
-              {...field}
-              id="observaciones"
-              rows={3}
-              style={{ width: "100%", textTransform: "uppercase" }}
-              placeholder="INGRESE OBSERVACIONES"
-              disabled={loading}
-            />
-          )}
-        />
-      </div>
-
-      {/* Botones */}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "2rem" }}>
-        <Button
-          type="button"
-          label="Cancelar"
-          icon="pi pi-times"
-          className="p-button-secondary"
-          onClick={onCancel}
-          disabled={loading}
-        />
-        <Button
-          type="submit"
-          label={requisitoInicial?.id ? "Actualizar" : "Guardar"}
-          icon="pi pi-check"
-          loading={loading}
-        />
-      </div>
-    </form>
+      </Dialog>
+    </div>
   );
 };
 
-export default RequisitoDocPorPaisForm;
+export default RequisitoDocPorPais;

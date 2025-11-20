@@ -17,9 +17,10 @@ import { getEntidadesComerciales } from "../../api/entidadComercial";
 import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import { FileUpload } from "primereact/fileupload";
-import { subirLogoEmpresa } from "../../api/empresa";
+import { subirLogoEmpresa, propagarMargenes } from "../../api/empresa";
 import { Toast } from "primereact/toast";
 import { useRef } from "react";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 
 // Esquema de validación profesional con Yup alineado al modelo Empresa de Prisma
 const schema = Yup.object().shape({
@@ -41,6 +42,24 @@ const schema = Yup.object().shape({
   cuentaDetraccion: Yup.string(),
   soyAgenteRetencion: Yup.boolean(),
   soyAgentePercepcion: Yup.boolean(),
+  // Márgenes de utilidad
+  margenMinimoPermitido: Yup.number()
+    .nullable()
+    .min(0, "El margen mínimo no puede ser negativo")
+    .max(100, "El margen mínimo no puede ser mayor a 100%")
+    .test(
+      'margen-minimo-menor-objetivo',
+      'El margen mínimo debe ser menor o igual al margen objetivo',
+      function(value) {
+        const { margenUtilidadObjetivo } = this.parent;
+        if (value == null || margenUtilidadObjetivo == null) return true;
+        return value <= margenUtilidadObjetivo;
+      }
+    ),
+  margenUtilidadObjetivo: Yup.number()
+    .nullable()
+    .min(0, "El margen objetivo no puede ser negativo")
+    .max(100, "El margen objetivo no puede ser mayor a 100%"),
 });
 
 /**
@@ -89,6 +108,7 @@ export default function EmpresaForm({
       : null
   );
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [propagandoMargenes, setPropagandoMargenes] = useState(false);
   const toast = useRef(null);
 
   // Estado profesional para lista de personal
@@ -237,10 +257,60 @@ export default function EmpresaForm({
     }
   };
 
+  /**
+   * Maneja la propagación de márgenes de la empresa a todos sus productos.
+   * Muestra un diálogo de confirmación antes de ejecutar la acción.
+   */
+  const handlePropagarMargenes = () => {
+    const margenMinimo = control._formValues.margenMinimoPermitido;
+    const margenObjetivo = control._formValues.margenUtilidadObjetivo;
+
+    if (!margenMinimo && !margenObjetivo) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe configurar los márgenes antes de propagar",
+        life: 4000,
+      });
+      return;
+    }
+
+    confirmDialog({
+      message: `¿Está seguro de aplicar estos márgenes a todos los productos de la empresa?\n\nMargen Mínimo: ${margenMinimo || 0}%\nMargen Objetivo: ${margenObjetivo || 0}%\n\n⚠️ IMPORTANTE:\n• Se sobrescribirán los márgenes personalizados de cada producto\n• Esta acción NO se puede deshacer\n• Las cotizaciones existentes NO se afectarán`,
+      header: "Confirmar Propagación de Márgenes",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Sí, Aplicar",
+      rejectLabel: "Cancelar",
+      acceptClassName: "p-button-danger",
+      accept: async () => {
+        setPropagandoMargenes(true);
+        try {
+          const resultado = await propagarMargenes(defaultValues.id);
+          toast.current?.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: `${resultado.mensaje}. Productos actualizados: ${resultado.productosActualizados}`,
+            life: 5000,
+          });
+        } catch (err) {
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: err?.response?.data?.error || "Error al propagar márgenes",
+            life: 4000,
+          });
+        } finally {
+          setPropagandoMargenes(false);
+        }
+      },
+    });
+  };
+
   return (
     <>
       {/* Toast profesional para mensajes de usuario */}
       <Toast ref={toast} position="top-right" />
+      <ConfirmDialog />
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="p-fluid">
           {/* Gestión profesional de logo de empresa */}
@@ -625,6 +695,137 @@ export default function EmpresaForm({
                 style={{ fontWeight: "bold" }}
               />
             </div>
+          </div>
+
+          {/* Sección de Márgenes de Utilidad */}
+          <div
+            style={{
+              marginTop: 16,
+              padding: 16,
+              backgroundColor: "#f8f9fa",
+              borderRadius: 8,
+              border: "2px solid #dee2e6",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <i className="pi pi-percentage" style={{ fontSize: "1.5em", color: "#495057" }}></i>
+              <h3 style={{ margin: 0, color: "#495057" }}>Márgenes de Utilidad</h3>
+            </div>
+            <small style={{ display: "block", color: "#6c757d", marginBottom: 12 }}>
+              Estos márgenes se heredan automáticamente a nuevos productos creados en esta empresa.
+            </small>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "end",
+                gap: 24,
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="margenMinimoPermitido">
+                  Margen Mínimo Permitido (%)
+                </label>
+                <Controller
+                  name="margenMinimoPermitido"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="margenMinimoPermitido"
+                      value={
+                        field.value === undefined || field.value === null
+                          ? null
+                          : Number(field.value)
+                      }
+                      onValueChange={(e) =>
+                        field.onChange(e.value === undefined ? null : e.value)
+                      }
+                      min={0}
+                      max={100}
+                      mode="decimal"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
+                      suffix=" %"
+                      placeholder="0.00 %"
+                      className={errors.margenMinimoPermitido ? "p-invalid" : ""}
+                      disabled={readOnly}
+                      inputStyle={{ fontWeight: "bold" }}
+                    />
+                  )}
+                />
+                {errors.margenMinimoPermitido && (
+                  <small className="p-error">
+                    {errors.margenMinimoPermitido.message}
+                  </small>
+                )}
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label htmlFor="margenUtilidadObjetivo">
+                  Margen Utilidad Objetivo (%)
+                </label>
+                <Controller
+                  name="margenUtilidadObjetivo"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="margenUtilidadObjetivo"
+                      value={
+                        field.value === undefined || field.value === null
+                          ? null
+                          : Number(field.value)
+                      }
+                      onValueChange={(e) =>
+                        field.onChange(e.value === undefined ? null : e.value)
+                      }
+                      min={0}
+                      max={100}
+                      mode="decimal"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
+                      suffix=" %"
+                      placeholder="0.00 %"
+                      className={errors.margenUtilidadObjetivo ? "p-invalid" : ""}
+                      disabled={readOnly}
+                      inputStyle={{ fontWeight: "bold" }}
+                    />
+                  )}
+                />
+                {errors.margenUtilidadObjetivo && (
+                  <small className="p-error">
+                    {errors.margenUtilidadObjetivo.message}
+                  </small>
+                )}
+              </div>
+
+              {isEdit && defaultValues.id && (
+                <div style={{ flex: 1 }}>
+                  <label style={{ visibility: "hidden" }}>Acción</label>
+                  <Button
+                    type="button"
+                    label="Propagar a Productos"
+                    icon="pi pi-sync"
+                    onClick={handlePropagarMargenes}
+                    disabled={readOnly || propagandoMargenes}
+                    loading={propagandoMargenes}
+                    className="p-button-info"
+                    style={{ width: "100%" }}
+                    tooltip="Aplicar estos márgenes a todos los productos de la empresa"
+                    tooltipOptions={{ position: "top" }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "end",
+              gap: 24,
+              marginTop: 8,
+            }}
+          >
             <div style={{ flex: 1 }}>
               {/* Botón toggle para Agente de Retención */}
               <Controller

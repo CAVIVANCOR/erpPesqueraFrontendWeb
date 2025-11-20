@@ -118,6 +118,9 @@ export default function Empresas({ ruta }) {
         representantelegalId: data.representantelegalId,
         entidadComercialId: data.entidadComercialId,
         logo: data.logo,
+        // Márgenes de utilidad
+        margenMinimoPermitido: data.margenMinimoPermitido,
+        margenUtilidadObjetivo: data.margenUtilidadObjetivo,
       };
       if (modoEdicion && empresaEdit) {
         await actualizarEmpresa(empresaEdit.id, payload);

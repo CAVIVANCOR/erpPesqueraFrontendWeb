@@ -34,6 +34,7 @@ const DetMovsEntregaRendirComprasForm = ({
   entidadesComerciales = [],
   monedas = [],
   tiposDocumento = [],
+  productos = [], // Nueva prop para productos (gastos)
   onGuardadoExitoso,
   onCancelar,
 }) => {
@@ -44,6 +45,9 @@ const DetMovsEntregaRendirComprasForm = ({
   // Estados para navegación de cards
   const [cardActiva, setCardActiva] = useState("datos");
   const [modulosCompras, setModulosCompras] = useState(null);
+
+  // Estado para filtro de familia de productos
+  const [familiaFiltroId, setFamiliaFiltroId] = useState(null);
 
   // Configuración del formulario
   const {
@@ -76,6 +80,7 @@ const DetMovsEntregaRendirComprasForm = ({
       tipoDocumentoId: "",
       numeroSerieComprobante: "",
       numeroCorrelativoComprobante: "",
+      productoId: "", // Nuevo campo para producto (gasto)
     },
   });
 
@@ -128,6 +133,7 @@ const DetMovsEntregaRendirComprasForm = ({
         tipoDocumentoId: movimiento.tipoDocumentoId ? Number(movimiento.tipoDocumentoId) : null,
         numeroSerieComprobante: movimiento.numeroSerieComprobante || "",
         numeroCorrelativoComprobante: movimiento.numeroCorrelativoComprobante || "",
+        productoId: movimiento.productoId ? Number(movimiento.productoId) : null, // Nuevo campo
       });
     } else {
       setValue("entregaARendirPComprasId", Number(entregaARendirPComprasId));
@@ -181,6 +187,42 @@ const DetMovsEntregaRendirComprasForm = ({
       value: Number(td.id),
     }));
 
+  // IDs de familias permitidas para gastos
+  const familiasGastosIds = [2, 3, 4, 6, 7];
+
+  // Filtrar productos por familias de gastos
+  const productosGastos = (productos || []).filter((p) => 
+    familiasGastosIds.includes(Number(p.familiaId))
+  );
+
+  // Obtener familias únicas de los productos filtrados usando un Map para evitar duplicados
+  const familiasMap = new Map();
+  productosGastos.forEach(p => {
+    if (p.familia && p.familia.id && p.familia.nombre) {
+      const familiaId = Number(p.familia.id);
+      if (familiasGastosIds.includes(familiaId) && !familiasMap.has(familiaId)) {
+        familiasMap.set(familiaId, {
+          label: p.familia.nombre,
+          value: familiaId,
+        });
+      }
+    }
+  });
+  
+  const familiasUnicas = Array.from(familiasMap.values())
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  // Filtrar productos por familia seleccionada
+  const productosFiltrados = familiaFiltroId
+    ? productosGastos.filter(p => Number(p.familiaId) === Number(familiaFiltroId))
+    : productosGastos;
+
+  // Opciones de productos para el dropdown
+  const productoOptions = productosFiltrados.map((p) => ({
+    label: p.descripcionArmada || p.descripcionBase || p.codigo,
+    value: Number(p.id),
+  }));
+
   // Función para toggle operación sin factura
   const handleToggleOperacionSinFactura = () => {
     const valorActual = getValues("operacionSinFactura");
@@ -230,6 +272,7 @@ const DetMovsEntregaRendirComprasForm = ({
         tipoDocumentoId: data.tipoDocumentoId ? Number(data.tipoDocumentoId) : null,
         numeroSerieComprobante: data.numeroSerieComprobante?.trim() || null,
         numeroCorrelativoComprobante: data.numeroCorrelativoComprobante?.trim() || null,
+        productoId: data.productoId ? Number(data.productoId) : null, // Nuevo campo
         actualizadoEn: new Date(),
       };
 
@@ -354,7 +397,7 @@ const DetMovsEntregaRendirComprasForm = ({
 
             {/* Entidad Comercial */}
             <div style={{ display: "flex", gap: 10, marginBottom: "0.5rem", flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 2 }}>
                 <div className="p-field">
                   <label htmlFor="entidadComercialId">Entidad Comercial <span className="text-red-500">*</span></label>
                   <Controller
@@ -379,6 +422,56 @@ const DetMovsEntregaRendirComprasForm = ({
                   />
                   {errors.entidadComercialId && <Message severity="error" text={errors.entidadComercialId.message} />}
                 </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                {/* Filtro de Familia */}
+                <label htmlFor="familiaFiltro" className="block text-900 font-medium mb-2">
+                  Filtrar Gastos por Familia
+                </label>
+                <Dropdown
+                  id="familiaFiltro"
+                  value={familiaFiltroId}
+                  options={familiasUnicas}
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Todas las familias"
+                  onChange={(e) => setFamiliaFiltroId(e.value)}
+                  showClear
+                  filter
+                  style={{ fontWeight: "bold" }}
+                  disabled={formularioDeshabilitado}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                {/* Producto (Gasto) */}
+                <label htmlFor="productoId" className="block text-900 font-medium mb-2">
+                  Gasto
+                </label>
+                <Controller
+                  name="productoId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="productoId"
+                      {...field}
+                      value={field.value}
+                      options={productoOptions}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione producto/gasto"
+                      className={classNames({
+                        "p-invalid": errors.productoId,
+                      })}
+                      filter
+                      showClear
+                      style={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.productoId && (
+                  <Message severity="error" text={errors.productoId.message} />
+                )}
               </div>
             </div>
 

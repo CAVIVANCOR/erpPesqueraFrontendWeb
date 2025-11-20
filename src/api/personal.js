@@ -75,6 +75,22 @@ export const actualizarPersonal = async (id, data) => {
 
 
 /**
+ * Obtiene un personal por su ID.
+ * @param {number|string} id - ID del personal
+ * @returns {Promise<Object>} Datos del personal
+ *
+ * Esta función utiliza autenticación JWT obtenida desde useAuthStore (Zustand),
+ * cumpliendo la regla de seguridad y centralización de sesión del ERP Megui.
+ *
+ * Ejemplo de uso:
+ *   const personal = await getPersonalPorId(5);
+ */
+export const getPersonalPorId = async (id) => {
+  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeader() });
+  return res.data;
+};
+
+/**
  * Obtiene el personal filtrado por empresaId (si se provee).
  * @param {number} [empresaId] - ID de la empresa para filtrar
  * @returns {Promise<Array>} Lista de personal

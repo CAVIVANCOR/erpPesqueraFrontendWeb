@@ -23,11 +23,22 @@ import { Dropdown } from "primereact/dropdown";
 import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import { classNames } from "primereact/utils";
+import { Badge } from "primereact/badge";
 import {
   crearEstadoMultiFuncion,
   actualizarEstadoMultiFuncion,
 } from "../../api/estadoMultiFuncion";
 import { getTiposProvieneDe } from "../../api/tipoProvieneDe";
+
+// Opciones de colores para el Badge
+const opcionesSeverityColor = [
+  { label: "Éxito (Verde)", value: "success" },
+  { label: "Información (Azul)", value: "info" },
+  { label: "Advertencia (Anaranjado)", value: "warning" },
+  { label: "Peligro (Rojo)", value: "danger" },
+  { label: "Secundario (Gris Claro)", value: "secondary" },
+  { label: "Contraste (Azul Claro)", value: "contrast" },
+];
 
 // Esquema de validación con Yup
 const esquemaValidacion = yup.object().shape({
@@ -38,6 +49,12 @@ const esquemaValidacion = yup.object().shape({
       return originalValue === "" ? null : value;
     }),
   descripcion: yup
+    .string()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  severityColor: yup
     .string()
     .nullable()
     .transform((value, originalValue) => {
@@ -68,6 +85,7 @@ const EstadoMultiFuncionForm = ({
     defaultValues: {
       tipoProvieneDeId: null,
       descripcion: "",
+      severityColor: null,
       cesado: false,
     },
   });
@@ -87,11 +105,15 @@ const EstadoMultiFuncionForm = ({
           : null
       );
       setValue("descripcion", estadoMultiFuncion.descripcion || "");
+      // Asegurar que severityColor sea string o null, nunca objeto
+      const severityValue = estadoMultiFuncion.severityColor;
+      setValue("severityColor", typeof severityValue === 'string' ? severityValue : null);
       setValue("cesado", estadoMultiFuncion.cesado || false);
     } else {
       reset({
         tipoProvieneDeId: null,
         descripcion: "",
+        severityColor: null,
         cesado: false,
       });
     }
@@ -129,6 +151,7 @@ const EstadoMultiFuncionForm = ({
           ? Number(data.tipoProvieneDeId)
           : null,
         descripcion: data.descripcion?.trim().toUpperCase() || null,
+        severityColor: data.severityColor || null,
         cesado: data.cesado || false,
       };
 
@@ -216,6 +239,41 @@ const EstadoMultiFuncionForm = ({
           {errors.descripcion && (
             <small className="p-error p-d-block">
               {errors.descripcion.message}
+            </small>
+          )}
+        </div>
+
+        {/* Campo Severity Color */}
+        <div className="p-col-12 p-field">
+          <label htmlFor="severityColor" className="p-d-block">
+            Color del Badge
+          </label>
+          <Controller
+            name="severityColor"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="severityColor"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={opcionesSeverityColor}
+                placeholder="Seleccionar color..."
+                className={getFieldClass("severityColor")}
+                disabled={readOnly || loading}
+                showClear
+                itemTemplate={(option) => (
+                  <Badge value={option.label} severity={option.value} size="large" />
+                )}
+                valueTemplate={(option) => {
+                  if (!option) return "Seleccionar color...";
+                  return <Badge value={option.label} severity={option.value} size="large" />;
+                }}
+              />
+            )}
+          />
+          {errors.severityColor && (
+            <small className="p-error p-d-block">
+              {errors.severityColor.message}
             </small>
           )}
         </div>

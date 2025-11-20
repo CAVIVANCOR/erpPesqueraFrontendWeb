@@ -9,7 +9,7 @@ import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
 
-export default function PrecioEntidadForm({ isEdit, defaultValues, entidades, monedas, onSubmit, onCancel, loading }) {
+export default function PrecioEntidadForm({ isEdit, defaultValues, entidades, monedas, productos = [], onSubmit, onCancel, loading }) {
   const [entidadComercialId, setEntidadComercialId] = React.useState(defaultValues.entidadComercialId || null);
   const [productoId, setProductoId] = React.useState(defaultValues.productoId || '');
   const [monedaId, setMonedaId] = React.useState(defaultValues.monedaId || null);
@@ -59,6 +59,13 @@ export default function PrecioEntidadForm({ isEdit, defaultValues, entidades, mo
     value: Number(m.id)
   }));
 
+  const productosOptions = productos.map(p => ({
+    ...p,
+    id: Number(p.id),
+    label: p.descripcionArmada || p.descripcionBase || p.codigo || '',
+    value: Number(p.id)
+  }));
+
   return (
     <form onSubmit={handleSubmit} className="p-fluid">
       <div className="p-grid">
@@ -80,13 +87,19 @@ export default function PrecioEntidadForm({ isEdit, defaultValues, entidades, mo
         </div>
         <div className="p-col-12 p-md-6">
           <div className="p-field">
-            <label htmlFor="productoId">Producto ID*</label>
-            <InputText 
-              id="productoId" 
-              value={productoId} 
-              onChange={e => setProductoId(e.target.value)} 
-              required 
+            <label htmlFor="productoId">Producto*</label>
+            <Dropdown
+              id="productoId"
+              value={productoId ? Number(productoId) : null}
+              options={productosOptions}
+              onChange={e => setProductoId(e.value)}
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccionar producto"
+              filter
+              filterBy="label"
               disabled={loading}
+              required
             />
           </div>
         </div>

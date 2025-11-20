@@ -74,6 +74,16 @@ export const eliminarEmpresa = async (id) => {
 };
 
 /**
+ * Propaga los márgenes de utilidad de la empresa a todos sus productos.
+ * @param {number|string} id - ID de la empresa
+ * @returns {Promise<Object>} Resultado de la propagación con cantidad de productos actualizados
+ */
+export const propagarMargenes = async (id) => {
+  const res = await axios.post(`${API_URL}/${id}/propagar-margenes`, {}, { headers: getAuthHeader() });
+  return res.data;
+};
+
+/**
  * Sube el logo de una empresa al backend.
  * @param {number|string} empresaId - ID de la empresa
  * @param {File} file - Archivo de imagen a subir

@@ -306,7 +306,7 @@ export default function StockDetalladoDialog({
           loading={loading}
           emptyMessage="No hay stock detallado disponible"
           footerColumnGroup={footerGroup}
-          responsiveLayout="scroll"
+          showGridlines
           stripedRows
           size="small"
         >

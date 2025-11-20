@@ -24,12 +24,17 @@ export default function MovimientoCajaForm({
   tipoReferenciaMovimientoCaja = [],
   cuentasCorrientes = [],
   entidadesComerciales = [],
+  cuentasEntidadComercial = [],
   estadosMultiFuncion = [],
+  productos = [],
 }) {
   const toast = useRef(null);
   
   // Estado para navegación de cards
   const [cardActiva, setCardActiva] = React.useState("datos"); // "datos" | "comprobante" | "documento"
+  
+  // Estado para filtro de familia de productos
+  const [familiaFiltroId, setFamiliaFiltroId] = React.useState(null);
 
   // Estados del formulario
   const [empresaOrigenId, setEmpresaOrigenId] = React.useState(
@@ -126,6 +131,14 @@ export default function MovimientoCajaForm({
   const [operacionSinFactura, setOperacionSinFactura] = React.useState(
     defaultValues.operacionSinFactura || false
   );
+  const [cuentaDestinoEntidadComercialId, setCuentaDestinoEntidadComercialId] = React.useState(
+    defaultValues.cuentaDestinoEntidadComercialId
+      ? Number(defaultValues.cuentaDestinoEntidadComercialId)
+      : ""
+  );
+  const [productoId, setProductoId] = React.useState(
+    defaultValues.productoId ? Number(defaultValues.productoId) : ""
+  );
 
   // NUEVOS ESTADOS PARA PDFs
   const [urlComprobanteOperacionMovCaja, setUrlComprobanteOperacionMovCaja] =
@@ -216,6 +229,11 @@ export default function MovimientoCajaForm({
         : new Date()
     );
     setOperacionSinFactura(defaultValues.operacionSinFactura || false);
+    setCuentaDestinoEntidadComercialId(
+      defaultValues.cuentaDestinoEntidadComercialId
+        ? Number(defaultValues.cuentaDestinoEntidadComercialId)
+        : ""
+    );
     setUrlComprobanteOperacionMovCaja(
       defaultValues.urlComprobanteOperacionMovCaja || ""
     );
@@ -294,6 +312,10 @@ export default function MovimientoCajaForm({
       operacionSinFactura,
       urlComprobanteOperacionMovCaja: urlComprobanteOperacionMovCaja || null,
       urlDocumentoMovCaja: urlDocumentoMovCaja || null,
+      cuentaDestinoEntidadComercialId: cuentaDestinoEntidadComercialId
+        ? Number(cuentaDestinoEntidadComercialId)
+        : null,
+      productoId: productoId ? Number(productoId) : null,
     });
   };
 
@@ -367,6 +389,8 @@ export default function MovimientoCajaForm({
           setTipoMovimientoId={setTipoMovimientoId}
           entidadComercialId={entidadComercialId}
           setEntidadComercialId={setEntidadComercialId}
+          cuentaDestinoEntidadComercialId={cuentaDestinoEntidadComercialId}
+          setCuentaDestinoEntidadComercialId={setCuentaDestinoEntidadComercialId}
           monto={monto}
           setMonto={setMonto}
           monedaId={monedaId}
@@ -401,9 +425,15 @@ export default function MovimientoCajaForm({
           tipoReferenciaMovimientoCaja={tipoReferenciaMovimientoCaja}
           cuentasCorrientes={cuentasCorrientes}
           entidadesComerciales={entidadesComerciales}
+          cuentasEntidadComercial={cuentasEntidadComercial}
           estadosMultiFuncion={estadosMultiFuncion}
           cuentasOrigenFiltradas={cuentasOrigenFiltradas}
           cuentasDestinoFiltradas={cuentasDestinoFiltradas}
+          productos={productos}
+          productoId={productoId}
+          setProductoId={setProductoId}
+          familiaFiltroId={familiaFiltroId}
+          setFamiliaFiltroId={setFamiliaFiltroId}
         />
       </div>
 

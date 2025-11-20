@@ -43,6 +43,7 @@ const DetMovsEntregaRendirForm = ({
   entidadesComerciales = [], // Nueva prop
   monedas = [], // ← AGREGAR ESTA LÍNEA
   tiposDocumento = [],
+  productos = [], // Nueva prop para productos (gastos)
   onGuardadoExitoso,
   onCancelar,
 }) => {
@@ -55,6 +56,9 @@ const DetMovsEntregaRendirForm = ({
 
   // Estados para navegación de cards
   const [cardActiva, setCardActiva] = useState("datos"); // "datos" | "pdf" | "pdfOperacion"
+
+  // Estado para filtro de familia de productos
+  const [familiaFiltroId, setFamiliaFiltroId] = useState(null);
 
   // Configuración del formulario con react-hook-form
   const {
@@ -87,6 +91,7 @@ const DetMovsEntregaRendirForm = ({
       tipoDocumentoId: "",
       numeroSerieComprobante: "",
       numeroCorrelativoComprobante: "",
+      productoId: "", // Nuevo campo para producto (gasto)
     },
   });
 
@@ -140,6 +145,10 @@ const DetMovsEntregaRendirForm = ({
           ? Number(movimiento.moduloOrigenMovCajaId)
           : 2,
         urlComprobanteOperacionMovCaja: movimiento.urlComprobanteOperacionMovCaja || "",
+        tipoDocumentoId: movimiento.tipoDocumentoId ? Number(movimiento.tipoDocumentoId) : null,
+        numeroSerieComprobante: movimiento.numeroSerieComprobante || "",
+        numeroCorrelativoComprobante: movimiento.numeroCorrelativoComprobante || "",
+        productoId: movimiento.productoId ? Number(movimiento.productoId) : null, // Nuevo campo
       });
     } else {
       // Para nuevo registro, establecer entregaARendirId y asignar responsable automáticamente
@@ -223,6 +232,42 @@ const DetMovsEntregaRendirForm = ({
       label: td.activo === false ? `${td.descripcion} (INACTIVO)` : td.descripcion,
       value: Number(td.id),
     }));
+
+  // IDs de familias permitidas para gastos
+  const familiasGastosIds = [2, 3, 4, 6, 7];
+
+  // Filtrar productos por familias de gastos
+  const productosGastos = (productos || []).filter((p) => 
+    familiasGastosIds.includes(Number(p.familiaId))
+  );
+
+  // Obtener familias únicas de los productos filtrados usando un Map para evitar duplicados
+  const familiasMap = new Map();
+  productosGastos.forEach(p => {
+    if (p.familia && p.familia.id && p.familia.nombre) {
+      const familiaId = Number(p.familia.id);
+      if (familiasGastosIds.includes(familiaId) && !familiasMap.has(familiaId)) {
+        familiasMap.set(familiaId, {
+          label: p.familia.nombre,
+          value: familiaId,
+        });
+      }
+    }
+  });
+  
+  const familiasUnicas = Array.from(familiasMap.values())
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  // Filtrar productos por familia seleccionada
+  const productosFiltrados = familiaFiltroId
+    ? productosGastos.filter(p => Number(p.familiaId) === Number(familiaFiltroId))
+    : productosGastos;
+
+  // Opciones de productos para el dropdown
+  const productoOptions = productosFiltrados.map((p) => ({
+    label: p.descripcionArmada || p.descripcionBase || p.codigo,
+    value: Number(p.id),
+  }));
   
 
   // Función para manejar el toggle de operacionSinFactura
@@ -287,6 +332,7 @@ const DetMovsEntregaRendirForm = ({
         tipoDocumentoId: data.tipoDocumentoId ? Number(data.tipoDocumentoId) : null,
         numeroSerieComprobante: data.numeroSerieComprobante?.trim() || null,
         numeroCorrelativoComprobante: data.numeroCorrelativoComprobante?.trim() || null,
+        productoId: data.productoId ? Number(data.productoId) : null, // Nuevo campo
         actualizadoEn: new Date(),
       };
 
@@ -463,7 +509,7 @@ const DetMovsEntregaRendirForm = ({
               </div>
             </div>
 
-            {/* Entidad Comercial */}
+            {/* Entidad Comercial y Producto (Gasto) */}
             <div
               style={{
                 display: "flex",
@@ -472,7 +518,7 @@ const DetMovsEntregaRendirForm = ({
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 2 }}>
                 {/* Entidad Comercial */}
                 <div className="p-field">
                   <label htmlFor="entidadComercialId">
@@ -496,6 +542,7 @@ const DetMovsEntregaRendirForm = ({
                         showClear
                         filter
                         filterBy="label"
+                        disabled={formularioDeshabilitado}
                       />
                     )}
                   />
@@ -506,6 +553,56 @@ const DetMovsEntregaRendirForm = ({
                     />
                   )}
                 </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                {/* Filtro de Familia */}
+                <label htmlFor="familiaFiltro" className="block text-900 font-medium mb-2">
+                  Filtrar Gastos por Familia
+                </label>
+                <Dropdown
+                  id="familiaFiltro"
+                  value={familiaFiltroId}
+                  options={familiasUnicas}
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Todas las familias"
+                  onChange={(e) => setFamiliaFiltroId(e.value)}
+                  showClear
+                  filter
+                  style={{ fontWeight: "bold" }}
+                  disabled={formularioDeshabilitado}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                {/* Producto (Gasto) */}
+                <label htmlFor="productoId" className="block text-900 font-medium mb-2">
+                  Gasto
+                </label>
+                <Controller
+                  name="productoId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="productoId"
+                      {...field}
+                      value={field.value}
+                      options={productoOptions}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione producto/gasto"
+                      className={classNames({
+                        "p-invalid": errors.productoId,
+                      })}
+                      filter
+                      showClear
+                      style={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.productoId && (
+                  <Message severity="error" text={errors.productoId.message} />
+                )}
               </div>
             </div>
 

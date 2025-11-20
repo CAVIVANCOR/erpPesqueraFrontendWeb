@@ -12,6 +12,7 @@ import VerImpresionCotizacionVentasPDF from "./VerImpresionCotizacionVentasPDF";
 import VerImpresionDocumentacionPDF from "./VerImpresionDocumentacionPDF";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
 import { getSeriesDoc } from "../../api/cotizacionVentas";
+import { getDocumentosPorCotizacion } from "../../api/detDocsReqCotizaVentas";
 
 const CotizacionVentasForm = ({
   isEdit,
@@ -41,6 +42,7 @@ const CotizacionVentasForm = ({
   bancos = [],
   formasTransaccion = [],
   modosDespacho = [],
+  docRequeridaVentasOptions = [],
   empresaFija = null,
   permisos = {},
   loading: loadingProp = false,
@@ -49,12 +51,33 @@ const CotizacionVentasForm = ({
   const [activeCard, setActiveCard] = useState(0);
   const [loading, setLoading] = useState(false);
   const toast = useRef(toastProp || null);
+
   const [clientes, setClientes] = useState(clientesProp);
   const [seriesDoc, setSeriesDoc] = useState([]);
-  const [detalles, setDetalles] = useState(defaultValues?.detalles || []);
-  const [costos, setCostos] = useState(defaultValues?.costos || []);
-  const [documentos, setDocumentos] = useState(defaultValues?.documentos || []);
+  const [detalles, setDetalles] = useState(defaultValues?.detallesProductos || []);
+  const [costos, setCostos] = useState(defaultValues?.costosExportacion || []);
+  const [documentos, setDocumentos] = useState(
+    defaultValues?.documentosRequeridos?.map(doc => ({
+      id: doc.id,
+      docRequeridaVentasId: doc.docRequeridaVentasId,
+      nombre: doc.docRequeridaVentas?.nombre || 'Sin nombre',
+      esObligatorio: doc.esObligatorio,
+      numeroDocumento: doc.numeroDocumento,
+      fechaEmision: doc.fechaEmision,
+      fechaVencimiento: doc.fechaVencimiento,
+      urlDocumento: doc.urlDocumento,
+      verificado: doc.verificado,
+      fechaVerificacion: doc.fechaVerificacion,
+      verificadoPorId: doc.verificadoPorId,
+      observacionesVerificacion: doc.observacionesVerificacion || '',
+      costoDocumento: doc.costoDocumento,
+      monedaId: doc.monedaId,
+      docRequeridaVentas: doc.docRequeridaVentas
+    })) || []
+  );
   const [estadosCotizaciones, setEstadosCotizaciones] = useState([]);
+  const [detallesCount, setDetallesCount] = useState(defaultValues?.detallesProductos?.length || 0);
+  const [totales, setTotales] = useState({ subtotal: 0, igv: 0, total: 0 });
 
   const responsablesVentas = personalOptions;
   const responsablesAutorizaVenta = personalOptions;
@@ -64,6 +87,7 @@ const CotizacionVentasForm = ({
   const responsablesAlmacen = personalOptions;
 
   const [formData, setFormData] = useState({
+    id: defaultValues?.id || null,
     empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : (empresaFija ? Number(empresaFija) : 1),
     tipoDocumentoId: defaultValues?.tipoDocumentoId ? Number(defaultValues.tipoDocumentoId) : 18,
     serieDocId: defaultValues?.serieDocId ? Number(defaultValues.serieDocId) : null,
@@ -131,6 +155,51 @@ const CotizacionVentasForm = ({
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleDocumentosGenerados = async () => {
+    // Recargar documentos desde la API
+    if (defaultValues?.id) {
+      try {
+        const documentosActualizados = await getDocumentosPorCotizacion(defaultValues.id);
+        
+        // Transformar los documentos al formato esperado por el componente
+        const documentosFormateados = documentosActualizados.map(doc => ({
+          id: doc.id,
+          docRequeridaVentasId: doc.docRequeridaVentasId,
+          nombre: doc.docRequeridaVentas?.nombre || 'Sin nombre',
+          esObligatorio: doc.esObligatorio,
+          numeroDocumento: doc.numeroDocumento,
+          fechaEmision: doc.fechaEmision,
+          fechaVencimiento: doc.fechaVencimiento,
+          urlDocumento: doc.urlDocumento,
+          verificado: doc.verificado,
+          fechaVerificacion: doc.fechaVerificacion,
+          verificadoPorId: doc.verificadoPorId,
+          observacionesVerificacion: doc.observacionesVerificacion || '',
+          costoDocumento: doc.costoDocumento,
+          monedaId: doc.monedaId,
+          docRequeridaVentas: doc.docRequeridaVentas
+        }));
+        
+        setDocumentos(documentosFormateados);
+        
+        toast?.current?.show({
+          severity: 'info',
+          summary: 'Documentos Actualizados',
+          detail: `Se cargaron ${documentosFormateados.length} documentos`,
+          life: 3000
+        });
+      } catch (error) {
+        console.error('Error al recargar documentos:', error);
+        toast?.current?.show({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'No se pudieron recargar los documentos',
+          life: 3000
+        });
+      }
+    }
   };
 
   const { empresaId, tipoDocumentoId } = formData;
@@ -224,6 +293,56 @@ const CotizacionVentasForm = ({
     };
     cargarSeriesDoc();
   }, [empresaId, tipoDocumentoId]);
+
+  // Recalcular totales cuando cambien: detalles, moneda, tipo cambio, porcentaje IGV, estado IGV
+  useEffect(() => {
+    const calcularTotales = async () => {
+      if (!defaultValues?.id || !isEdit) {
+        setTotales({ subtotal: 0, igv: 0, total: 0 });
+        return;
+      }
+
+      try {
+        const { getDetallesCotizacionVentas } = await import(
+          "../../api/detalleCotizacionVentas"
+        );
+        const detallesData = await getDetallesCotizacionVentas(defaultValues.id);
+
+        // Calcular subtotal sumando cantidad * precioUnitarioFinal de cada detalle
+        const subtotalCalc = detallesData.reduce(
+          (sum, det) => {
+            const cantidad = Number(det.cantidad) || 0;
+            const precioFinal = Number(det.precioUnitarioFinal) || 0;
+            return sum + (cantidad * precioFinal);
+          },
+          0
+        );
+        
+        // Calcular IGV (usar valores actuales de formData)
+        const igvCalc = formData.esExoneradoAlIGV
+          ? 0
+          : subtotalCalc * (Number(formData.porcentajeIGV) / 100);
+        
+        // Calcular total
+        const totalCalc = subtotalCalc + igvCalc;
+
+        setTotales({ subtotal: subtotalCalc, igv: igvCalc, total: totalCalc });
+      } catch (err) {
+        console.error("Error al calcular totales:", err);
+        setTotales({ subtotal: 0, igv: 0, total: 0 });
+      }
+    };
+
+    calcularTotales();
+  }, [
+    detallesCount,
+    formData.monedaId,
+    formData.tipoCambio,
+    formData.porcentajeIGV,
+    formData.esExoneradoAlIGV,
+    isEdit,
+    defaultValues?.id,
+  ]);
 
   const validarFormulario = () => {
     const camposFaltantes = [];
@@ -320,7 +439,7 @@ const CotizacionVentasForm = ({
 
   return (
     <div className="cotizacion-ventas-form">
-      <Toast ref={toast} />
+      <Toast ref={toast} position="top-center" appendTo={document.body} style={{ zIndex: 99999 }} />
       <form onSubmit={handleSubmit}>
         <TabView activeIndex={activeCard} onTabChange={handleTabChange} className="p-mb-4">
           <TabPanel header="Generales" leftIcon="pi pi-building">
@@ -364,24 +483,24 @@ const CotizacionVentasForm = ({
               isEdit={isEdit}
               cotizacionId={defaultValues?.id}
               toast={toast}
-              onCountChange={() => {}}
-              subtotal={0}
-              totalIGV={0}
-              total={0}
+              onCountChange={setDetallesCount}
+              subtotal={totales.subtotal}
+              totalIGV={totales.igv}
+              total={totales.total}
               monedasOptions={monedas.map(m => ({ value: m.id, codigoSunat: m.codigoSunat || 'PEN' }))}
             />
           </TabPanel>
           <TabPanel header="Costos Exportación" leftIcon="pi pi-dollar">
             <CostosExportacionCard
-              formData={formData}
-              handleChange={handleChange}
-              costos={costos}
-              setCostos={setCostos}
-              incoterms={incoterms}
-              puertos={puertos}
-              navieras={navieras}
-              tiposContenedor={tiposContenedor}
-              disabled={loading || loadingProp}
+              cotizacionId={defaultValues?.id}
+              incotermId={formData.incotermsId}
+              productos={productos}
+              monedasOptions={monedas}
+              proveedores={clientes}
+              puedeEditar={permisos?.puedeEditar && !loading && !loadingProp}
+              toast={toast}
+              onFactorCalculado={(factor) => handleChange("factorExportacion", factor)}
+              detalles={detalles}
             />
           </TabPanel>
           <TabPanel header="Documentos Requeridos" leftIcon="pi pi-file">
@@ -391,20 +510,36 @@ const CotizacionVentasForm = ({
               documentos={documentos}
               setDocumentos={setDocumentos}
               disabled={loading || loadingProp}
+              cotizacionId={defaultValues?.id || null}
+              toast={toast}
+              onDocumentosGenerados={handleDocumentosGenerados}
+              monedasOptions={monedas.map(m => ({ 
+                value: m.id, 
+                label: `${m.simbolo}`,
+                simbolo: m.simbolo 
+              }))}
+              docRequeridaVentasOptions={docRequeridaVentasOptions}
             />
           </TabPanel>
-          <TabPanel header="Entrega a Rendir" leftIcon="pi pi-truck">
+          <TabPanel header="Entrega a Rendir" leftIcon="pi pi-money-bill" disabled={!isEdit}>
             <EntregaARendirCard
-              formData={formData}
-              handleChange={handleChange}
-              responsablesEmbarque={responsablesEmbarque}
-              responsablesProduccion={responsablesProduccion}
-              responsablesAlmacen={responsablesAlmacen}
-              disabled={loading || loadingProp}
+              cotizacionVentas={formData}
+              personal={personalOptions}
+              centrosCosto={centrosCosto}
+              tiposMovimiento={tiposMovimiento}
+              entidadesComerciales={clientes}
+              monedas={monedas}
+              tiposDocumento={tiposDocumento}
+              puedeEditar={permisos?.editar !== false}
             />
           </TabPanel>
           <TabPanel header="PDF Cotización" leftIcon="pi pi-file-pdf">
-            <VerImpresionCotizacionVentasPDF formData={formData} detalles={detalles} costos={costos} />
+            <VerImpresionCotizacionVentasPDF 
+              cotizacionId={formData.id} 
+              datosCotizacion={formData} 
+              detalles={detalles}
+              toast={toast}
+            />
           </TabPanel>
           <TabPanel header="PDF Documentación" leftIcon="pi pi-file-pdf">
             <VerImpresionDocumentacionPDF formData={formData} documentos={documentos} />

@@ -49,6 +49,7 @@ const SubfamiliaProductoForm = ({
   onSave,
   onCancel,
   toast,
+  readOnly = false,
 }) => {
   const modoEdicion = Boolean(subfamiliaProducto?.id);
 
@@ -167,7 +168,7 @@ const SubfamiliaProductoForm = ({
             onChange={(e) => setValue("familiaId", e.value)}
             placeholder="Seleccione una familia de producto"
             className={getFormErrorClass("familiaId")}
-            disabled={isSubmitting}
+            disabled={isSubmitting || readOnly}
             filter
             showClear
             emptyMessage="No hay familias de producto disponibles"
@@ -190,7 +191,7 @@ const SubfamiliaProductoForm = ({
             className={getFormErrorClass("nombre")}
             placeholder="Ingrese el nombre de la subfamilia de producto"
             maxLength={80}
-            disabled={isSubmitting}
+            disabled={isSubmitting || readOnly}
             style={{ textTransform: "uppercase" }}
           />
           {errors.nombre && (
@@ -210,36 +211,38 @@ const SubfamiliaProductoForm = ({
           <div style={{ flex: 1 }}>
             <Button
               type="button"
-              label="Cancelar"
+              label={readOnly ? "Cerrar" : "Cancelar"}
               icon="pi pi-times"
               className="p-button-secondary"
               onClick={onCancel}
               disabled={isSubmitting}
             />
           </div>
-          <div style={{ flex: 1 }}>
-            <Button
-              type="submit"
-              label={
-                isSubmitting ? (
-                  <div className="flex align-items-center gap-2">
-                    <ProgressSpinner
-                      style={{ width: "16px", height: "16px" }}
-                      strokeWidth="4"
-                    />
-                    <span>Guardando...</span>
-                  </div>
-                ) : modoEdicion ? (
-                  "Actualizar"
-                ) : (
-                  "Crear"
-                )
-              }
-              icon={!isSubmitting ? "pi pi-check" : ""}
-              className="p-button-primary"
-              disabled={isSubmitting}
-            />
-          </div>
+          {!readOnly && (
+            <div style={{ flex: 1 }}>
+              <Button
+                type="submit"
+                label={
+                  isSubmitting ? (
+                    <div className="flex align-items-center gap-2">
+                      <ProgressSpinner
+                        style={{ width: "16px", height: "16px" }}
+                        strokeWidth="4"
+                      />
+                      <span>Guardando...</span>
+                    </div>
+                  ) : modoEdicion ? (
+                    "Actualizar"
+                  ) : (
+                    "Crear"
+                  )
+                }
+                icon={!isSubmitting ? "pi pi-check" : ""}
+                className="p-button-primary"
+                disabled={isSubmitting}
+              />
+            </div>
+          )}
         </div>
       </form>
     </div>

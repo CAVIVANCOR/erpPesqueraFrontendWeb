@@ -10,7 +10,7 @@
 import axios from "axios";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
-const API_URL = `${import.meta.env.VITE_API_URL}/requisito-doc-por-pais`;
+const API_URL = `${import.meta.env.VITE_API_URL}/requisitos-doc-por-pais`;
 
 /**
  * Obtiene el token JWT desde el store de autenticación
@@ -57,7 +57,7 @@ export async function getRequisitoDocPorPaisPorId(id) {
  */
 export async function getRequisitosDocPorPaisPorPais(paisId) {
   try {
-    const response = await axios.get(`${API_URL}/por-pais/${paisId}`, { headers: getAuthHeaders() });
+    const response = await axios.get(`${API_URL}/pais/${paisId}`, { headers: getAuthHeaders() });
     return response.data;
   } catch (error) {
     console.error("Error al obtener requisitos por país:", error);
@@ -72,7 +72,7 @@ export async function getRequisitosDocPorPaisPorPais(paisId) {
  */
 export async function getRequisitosDocPorPaisPorDocumento(docRequeridaVentasId) {
   try {
-    const response = await axios.get(`${API_URL}/por-documento/${docRequeridaVentasId}`, { headers: getAuthHeaders() });
+    const response = await axios.get(`${API_URL}/documento/${docRequeridaVentasId}`, { headers: getAuthHeaders() });
     return response.data;
   } catch (error) {
     console.error("Error al obtener requisitos por documento:", error);

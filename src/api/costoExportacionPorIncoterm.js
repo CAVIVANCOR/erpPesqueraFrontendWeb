@@ -10,7 +10,7 @@
 import axios from "axios";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
-const API_URL = `${import.meta.env.VITE_API_URL}/costo-exportacion-por-incoterm`;
+const API_URL = `${import.meta.env.VITE_API_URL}/costos-exportacion-por-incoterm`;
 
 /**
  * Obtiene el token JWT desde el store de autenticación
@@ -57,7 +57,7 @@ export async function getCostoExportacionPorIncotermPorId(id) {
  */
 export async function getCostosExportacionPorIncotermPorIncoterm(incotermId) {
   try {
-    const response = await axios.get(`${API_URL}/por-incoterm/${incotermId}`, { headers: getAuthHeaders() });
+    const response = await axios.get(`${API_URL}/incoterm/${incotermId}`, { headers: getAuthHeaders() });
     return response.data;
   } catch (error) {
     console.error("Error al obtener costos por Incoterm:", error);
@@ -72,7 +72,7 @@ export async function getCostosExportacionPorIncotermPorIncoterm(incotermId) {
  */
 export async function getCostosVendedorPorIncoterm(incotermId) {
   try {
-    const response = await axios.get(`${API_URL}/vendedor/${incotermId}`, { headers: getAuthHeaders() });
+    const response = await axios.get(`${API_URL}/incoterm/${incotermId}/vendedor`, { headers: getAuthHeaders() });
     return response.data;
   } catch (error) {
     console.error("Error al obtener costos del vendedor por Incoterm:", error);

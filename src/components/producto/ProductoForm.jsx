@@ -2,15 +2,14 @@
 // Formulario profesional para Producto. Cumple la regla transversal ERP Megui.
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "primereact/button";
-import { Toolbar } from "primereact/toolbar";
-import { ButtonGroup } from "primereact/buttongroup";
+import { TabView, TabPanel } from "primereact/tabview";
 import { Toast } from "primereact/toast";
 import { ProgressSpinner } from "primereact/progressspinner";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { toUpperCaseSafe } from "../../utils/utils";
-import { Tag } from "primereact/tag"; // Importar Tag de PrimeReact
+import { Tag } from "primereact/tag";
 
 // Importar componentes de cards
 import DatosGeneralesProductoForm from "./DatosGeneralesProductoForm";
@@ -183,6 +182,26 @@ const schema = yup.object().shape({
   aplicaTipoMaterial: yup.boolean().default(false),
   aplicaColor: yup.boolean().default(false),
   cesado: yup.boolean().default(false),
+  // Márgenes de utilidad
+  margenMinimoPermitido: yup
+    .number()
+    .nullable()
+    .min(0, "El margen mínimo no puede ser negativo")
+    .max(100, "El margen mínimo no puede ser mayor a 100%")
+    .test(
+      'margen-minimo-menor-objetivo',
+      'El margen mínimo debe ser menor o igual al margen objetivo',
+      function(value) {
+        const { margenUtilidadObjetivo } = this.parent;
+        if (value == null || margenUtilidadObjetivo == null) return true;
+        return value <= margenUtilidadObjetivo;
+      }
+    ),
+  margenUtilidadObjetivo: yup
+    .number()
+    .nullable()
+    .min(0, "El margen objetivo no puede ser negativo")
+    .max(100, "El margen objetivo no puede ser mayor a 100%"),
 });
 
 export default function ProductoForm({
@@ -208,7 +227,7 @@ export default function ProductoForm({
   setLoading,
 }) {
   const toast = useRef(null);
-  const [activeCard, setActiveCard] = useState("datos-generales");
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const {
     control,
@@ -294,6 +313,9 @@ export default function ProductoForm({
       cesado: producto?.cesado || false,
       urlFichaTecnica: producto?.urlFichaTecnica || "",
       urlFotoProducto: producto?.urlFotoProducto || "",
+      // Márgenes de utilidad
+      margenMinimoPermitido: producto?.margenMinimoPermitido ? Number(producto.margenMinimoPermitido) : null,
+      margenUtilidadObjetivo: producto?.margenUtilidadObjetivo ? Number(producto.margenUtilidadObjetivo) : null,
     },
   });
 
@@ -353,10 +375,6 @@ export default function ProductoForm({
     onCancelar();
   };
 
-  // Función para navegar entre cards
-  const handleNavigateToCard = (cardName) => {
-    setActiveCard(cardName);
-  };
 
   const onSubmitForm = async (data) => {
     try {
@@ -451,8 +469,7 @@ export default function ProductoForm({
           value={watch("descripcionArmada") || "Nuevo Producto"}
           severity="info"
           style={{
-            fontSize: "1.1rem",
-            padding: "0.75rem 1.25rem",
+            fontSize: "large",
             textTransform: "uppercase",
             fontWeight: "bold",
             textAlign: "center",
@@ -461,121 +478,77 @@ export default function ProductoForm({
         />
       </div>
 
-      {/* Sistema de navegación con botones de iconos */}
-      <Toolbar
-        className="mb-4"
-        center={
-          <ButtonGroup>
-            <Button
-              icon="pi pi-info-circle"
-              tooltip="Datos Generales - Información básica del producto"
-              tooltipOptions={{ position: "bottom" }}
-              className={
-                activeCard === "datos-generales"
-                  ? "p-button-primary"
-                  : "p-button-outlined"
-              }
-              onClick={() => handleNavigateToCard("datos-generales")}
-              type="button"
-            />
-            <Button
-              icon="pi pi-arrows-alt"
-              tooltip="Dimensiones - Medidas y características físicas"
-              tooltipOptions={{ position: "bottom" }}
-              className={
-                activeCard === "dimensiones"
-                  ? "p-button-success"
-                  : "p-button-outlined"
-              }
-              onClick={() => handleNavigateToCard("dimensiones")}
-              type="button"
-            />
-            <Button
-              icon="pi pi-file-pdf"
-              tooltip="Ficha Técnica - Documentación y especificaciones"
-              tooltipOptions={{ position: "bottom" }}
-              className={
-                activeCard === "ficha-tecnica"
-                  ? "p-button-warning"
-                  : "p-button-outlined"
-              }
-              onClick={() => handleNavigateToCard("ficha-tecnica")}
-              type="button"
-            />
-          </ButtonGroup>
-        }
-      />
-
       <form onSubmit={handleSubmit(onSubmitForm)}>
-        {activeCard === "datos-generales" && (
-          <DatosGeneralesProductoForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={getValues()} // Agregar defaultValues para acceso al id del producto
-            familias={familias}
-            subfamilias={subfamilias}
-            unidadesMedida={unidadesMedida}
-            tiposAlmacenamiento={tiposAlmacenamiento}
-            paises={paises}
-            marcas={marcas}
-            estadosIniciales={estadosIniciales}
-            empresas={empresas}
-            clientes={clientes}
-            tiposMaterial={tiposMaterial}
-            colores={colores}
-            unidadMetricaDefault={unidadMetricaDefault}
-            especies={especies}
-          />
-        )}
+        <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
+          <TabPanel header="Datos Generales" leftIcon="pi pi-info-circle mr-2">
+            <DatosGeneralesProductoForm
+              control={control}
+              errors={errors}
+              setValue={setValue}
+              watch={watch}
+              getValues={getValues}
+              defaultValues={getValues()}
+              familias={familias}
+              subfamilias={subfamilias}
+              unidadesMedida={unidadesMedida}
+              tiposAlmacenamiento={tiposAlmacenamiento}
+              paises={paises}
+              marcas={marcas}
+              estadosIniciales={estadosIniciales}
+              empresas={empresas}
+              clientes={clientes}
+              tiposMaterial={tiposMaterial}
+              colores={colores}
+              unidadMetricaDefault={unidadMetricaDefault}
+              especies={especies}
+            />
+          </TabPanel>
 
-        {activeCard === "dimensiones" && (
-          <DimensionesProductoForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            unidadesMetricas={unidadesMetricas}
-            tiposMaterial={tiposMaterial}
-            colores={colores}
-            marcas={marcas}
-            tipoMaterialDefault={tiposMaterial[0]}
-            colorDefault={colores[0]}
-            marcaDefault={marcas[0]}
-            unidadMetricaDefault={unidadMetricaDefault}
-            modoEdicion={modoEdicion}
-          />
-        )}
+          <TabPanel header="Dimensiones" leftIcon="pi pi-arrows-alt mr-2">
+            <DimensionesProductoForm
+              control={control}
+              errors={errors}
+              setValue={setValue}
+              watch={watch}
+              getValues={getValues}
+              unidadesMetricas={unidadesMetricas}
+              tiposMaterial={tiposMaterial}
+              colores={colores}
+              marcas={marcas}
+              tipoMaterialDefault={tiposMaterial[0]}
+              colorDefault={colores[0]}
+              marcaDefault={marcas[0]}
+              unidadMetricaDefault={unidadMetricaDefault}
+              modoEdicion={modoEdicion}
+            />
+          </TabPanel>
 
-        {activeCard === "ficha-tecnica" && (
-          <FichaTecnicaProductoForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={getValues()} // Agregar defaultValues para acceso al id del producto
-          />
-        )}
+          <TabPanel header="Ficha Técnica" leftIcon="pi pi-file-pdf mr-2">
+            <FichaTecnicaProductoForm
+              control={control}
+              errors={errors}
+              setValue={setValue}
+              watch={watch}
+              getValues={getValues}
+              defaultValues={getValues()}
+            />
+          </TabPanel>
+        </TabView>
         {/* Botones de acción */}
         <div
           style={{
             display: "flex",
             justifyContent: "center",
-            gap: 10,
+            gap: "1rem",
             flexDirection: window.innerWidth < 768 ? "column" : "row",
-            marginBottom: 10,
-            marginTop: 10,
           }}
         >
           <Button
             type="button"
             label="Cancelar"
             icon="pi pi-times"
-            className="p-button-secondary"
+            className="p-button-warning"
+            severity="warning"
             onClick={handleCancelar}
             disabled={loading}
             raised

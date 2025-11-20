@@ -1,5 +1,5 @@
-// src/components/entregaARendirPCompras/DetEntregaRendirCompras.jsx
-// Componente autónomo para gestión de detalle de entregas a rendir en compras
+// src/components/cotizacionVentas/DetEntregaRendirVentas.jsx
+// Componente para gestión de detalle de entregas a rendir en ventas
 import React, { useState, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -9,17 +9,16 @@ import { Badge } from "primereact/badge";
 import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { confirmDialog } from "primereact/confirmdialog";
-import DetMovsEntregaRendirPComprasForm from "../detMovsEntregaRendirPCompras/DetMovsEntregaRendirPComprasForm";
+import DetMovsEntregaRendirVentasForm from "./DetMovsEntregaRendirVentasForm";
 import { getResponsiveFontSize } from "../../utils/utils";
 import {
-  crearDetMovsEntregaRendirPCompras,
-  actualizarDetMovsEntregaRendirPCompras,
-  eliminarDetMovsEntregaRendirPCompras,
-} from "../../api/detMovsEntregaRendirPCompras";
-import { actualizarEntregaARendirPCompras } from "../../api/entregaARendirPCompras";
+  crearDetMovsEntregaRendirPVentas,
+  actualizarDetMovsEntregaRendirPVentas,
+  eliminarDetMovsEntregaRendirPVentas,
+} from "../../api/detMovsEntregaRendirPVentas";
+import { actualizarEntregaARendirPVentas } from "../../api/entregaARendirPVentas";
 
-export default function DetEntregaRendirCompras({
-  // Props de datos
+export default function DetEntregaRendirVentas({
   entregaARendir,
   movimientos = [],
   personal = [],
@@ -28,29 +27,23 @@ export default function DetEntregaRendirCompras({
   entidadesComerciales = [],
   monedas = [],
   tiposDocumento = [],
-
-  // Props de estado
-  requerimientoCompraAprobado = false,
+  productos = [], // Nueva prop para productos (gastos)
+  cotizacionVentasAprobada = false,
   loading = false,
   selectedMovimientos = [],
-
-  // Props de callbacks
   onSelectionChange,
   onDataChange,
 }) {
-  // Estados locales para filtros
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
   const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);
   const [filtroIngresoEgreso, setFiltroIngresoEgreso] = useState(null);
-  const [filtroValidacionTesoreria, setFiltroValidacionTesoreria] = useState(null);
-
-  // Estados para el dialog
+  const [filtroValidacionTesoreria, setFiltroValidacionTesoreria] =
+    useState(null);
   const [showMovimientoForm, setShowMovimientoForm] = useState(false);
   const [editingMovimiento, setEditingMovimiento] = useState(null);
 
   const toast = useRef(null);
 
-  // Función para obtener movimientos filtrados
   const obtenerMovimientosFiltrados = () => {
     let movimientosFiltrados = [...movimientos];
 
@@ -84,7 +77,6 @@ export default function DetEntregaRendirCompras({
     return movimientosFiltrados;
   };
 
-  // Funciones para filtros
   const limpiarFiltros = () => {
     setFiltroTipoMovimiento(null);
     setFiltroCentroCosto(null);
@@ -132,7 +124,6 @@ export default function DetEntregaRendirCompras({
     }
   };
 
-  // Handlers internos
   const handleNuevoMovimiento = () => {
     setEditingMovimiento(null);
     setShowMovimientoForm(true);
@@ -146,7 +137,7 @@ export default function DetEntregaRendirCompras({
   const handleGuardarMovimiento = async (data) => {
     try {
       if (editingMovimiento) {
-        await actualizarDetMovsEntregaRendirPCompras(editingMovimiento.id, data);
+        await actualizarDetMovsEntregaRendirPVentas(editingMovimiento.id, data);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -154,7 +145,7 @@ export default function DetEntregaRendirCompras({
           life: 3000,
         });
       } else {
-        await crearDetMovsEntregaRendirPCompras(data);
+        await crearDetMovsEntregaRendirPVentas(data);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -187,7 +178,7 @@ export default function DetEntregaRendirCompras({
       acceptClassName: "p-button-danger",
       accept: async () => {
         try {
-          await eliminarDetMovsEntregaRendirPCompras(movimiento.id);
+          await eliminarDetMovsEntregaRendirPVentas(movimiento.id);
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
@@ -220,13 +211,17 @@ export default function DetEntregaRendirCompras({
           const fechaActual = new Date();
 
           const entregaActualizada = {
-            ...entregaARendir,
+            cotizacionVentasId: entregaARendir.cotizacionVentasId,
+            respEntregaRendirId: entregaARendir.respEntregaRendirId,
+            centroCostoId: entregaARendir.centroCostoId,
             entregaLiquidada: true,
             fechaLiquidacion: fechaActual,
-            fechaActualizacion: fechaActual,
           };
 
-          await actualizarEntregaARendirPCompras(entregaARendir.id, entregaActualizada);
+          await actualizarEntregaARendirPVentas(
+            entregaARendir.id,
+            entregaActualizada
+          );
 
           const promesasActualizacion = movimientos.map((movimiento) => {
             const movimientoActualizado = {
@@ -234,7 +229,7 @@ export default function DetEntregaRendirCompras({
               validadoTesoreria: true,
               fechaValidacionTesoreria: fechaActual,
             };
-            return actualizarDetMovsEntregaRendirPCompras(
+            return actualizarDetMovsEntregaRendirPVentas(
               movimiento.id,
               movimientoActualizado
             );
@@ -263,29 +258,31 @@ export default function DetEntregaRendirCompras({
     });
   };
 
-  // Templates para las columnas
+  // Templates
   const fechaMovimientoTemplate = (rowData) => {
     return new Date(rowData.fechaMovimiento).toLocaleDateString("es-PE");
   };
 
   const montoTemplate = (rowData) => {
-    const moneda = monedas.find((m) => Number(m.id) === Number(rowData.monedaId));
+    const moneda = monedas.find(
+      (m) => Number(m.id) === Number(rowData.monedaId)
+    );
     const codigoMoneda = moneda?.codigoSunat || "PEN";
-    
+
     let backgroundColor = "#fff9c4";
     if (codigoMoneda === "USD") {
       backgroundColor = "#c8e6c9";
     } else if (codigoMoneda !== "PEN") {
       backgroundColor = "#b3e5fc";
     }
-    
+
     const montoFormateado = new Intl.NumberFormat("es-PE", {
       style: "currency",
       currency: codigoMoneda,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(rowData.monto);
-    
+
     return (
       <div
         style={{
@@ -306,7 +303,8 @@ export default function DetEntregaRendirCompras({
       (p) => Number(p.id) === Number(rowData.responsableId)
     );
     return responsable
-      ? responsable.nombreCompleto || `${responsable.nombres} ${responsable.apellidos}`
+      ? responsable.nombreCompleto ||
+          `${responsable.nombres} ${responsable.apellidos}`
       : "N/A";
   };
 
@@ -392,9 +390,17 @@ export default function DetEntregaRendirCompras({
           rowClassName={() => "p-selectable-row"}
           header={
             <div>
-              <div style={{ display: "flex", gap: 8, alignItems: "end", marginTop: 18 }}>
-                <div style={{ flex: 1 }}>
-                  <h3>Detalle Entrega a Rendir - Compras</h3>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  padding: 8,
+                  alignItems: "end",
+                  marginTop: 18,
+                }}
+              >
+                <div style={{ flex: 2 }}>
+                  <h2>Detalle Entrega a Rendir</h2>
                 </div>
                 <div style={{ flex: 0.5 }}>
                   <Button
@@ -404,12 +410,11 @@ export default function DetEntregaRendirCompras({
                     severity="success"
                     onClick={handleNuevoMovimiento}
                     disabled={
-                      !requerimientoCompraAprobado ||
+                      !cotizacionVentasAprobada ||
                       !entregaARendir ||
                       entregaARendir?.entregaLiquidada
                     }
                     type="button"
-                    size="small"
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -417,11 +422,9 @@ export default function DetEntregaRendirCompras({
                   <Button
                     label={obtenerPropiedadesFiltroIngresoEgreso().label}
                     icon="pi pi-filter"
-                    className="p-button-sm"
                     onClick={alternarFiltroIngresoEgreso}
                     severity={obtenerPropiedadesFiltroIngresoEgreso().severity}
                     type="button"
-                    size="small"
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -429,37 +432,43 @@ export default function DetEntregaRendirCompras({
                   <Button
                     label={obtenerPropiedadesFiltroValidacionTesoreria().label}
                     icon="pi pi-filter"
-                    className="p-button-sm"
                     onClick={alternarFiltroValidacionTesoreria}
-                    severity={obtenerPropiedadesFiltroValidacionTesoreria().severity}
+                    severity={
+                      obtenerPropiedadesFiltroValidacionTesoreria().severity
+                    }
                     type="button"
-                    size="small"
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 0.5 }}>
                   <Button
                     label="Limpiar"
                     icon="pi pi-filter-slash"
-                    className="p-button-sm p-button-outlined"
+                    className="p-button-secondary"
                     onClick={limpiarFiltros}
                     type="button"
-                    size="small"
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 2 }}>
                   <Button
                     label="Procesar Liquidación"
                     icon="pi pi-check"
-                    className="p-button-sm p-button-outlined"
+                    className="p-button-danger"
                     onClick={handleProcesarLiquidacion}
                     type="button"
                     disabled={entregaARendir.entregaLiquidada}
-                    size="small"
                   />
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8, marginTop: 10, marginBottom: 10, flexWrap: "wrap" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  marginTop: 10,
+                  marginBottom: 10,
+                  flexWrap: "wrap",
+                }}
+              >
                 <div style={{ flex: 1 }}>
                   <Dropdown
                     value={filtroTipoMovimiento}
@@ -491,17 +500,61 @@ export default function DetEntregaRendirCompras({
             </div>
           }
         >
-          <Column selectionMode="single" headerStyle={{ width: "3rem" }}></Column>
-          <Column field="fechaMovimiento" header="Fecha" body={fechaMovimientoTemplate} sortable />
-          <Column field="responsableId" header="Responsable" body={responsableTemplate} sortable />
-          <Column field="tipoMovimientoId" header="Tipo" body={tipoMovimientoTemplate} sortable />
+          <Column
+            selectionMode="single"
+            headerStyle={{ width: "3rem" }}
+          ></Column>
+          <Column
+            field="fechaMovimiento"
+            header="Fecha"
+            body={fechaMovimientoTemplate}
+            sortable
+          />
+          <Column
+            field="responsableId"
+            header="Responsable"
+            body={responsableTemplate}
+            sortable
+          />
+          <Column
+            field="tipoMovimientoId"
+            header="Tipo"
+            body={tipoMovimientoTemplate}
+            sortable
+          />
           <Column field="monto" header="Monto" body={montoTemplate} sortable />
-          <Column field="centroCostoId" header="Centro de Costo" body={centroCostoTemplate} sortable />
-          <Column field="validadoTesoreria" header="Validación Tesorería" body={validacionTesoreriaTemplate} sortable />
-          <Column field="fechaValidacionTesoreria" header="Fecha Validación" body={fechaValidacionTesoreriaTemplate} sortable />
+          <Column
+            field="centroCostoId"
+            header="Centro de Costo"
+            body={centroCostoTemplate}
+            sortable
+          />
+          <Column
+            field="validadoTesoreria"
+            header="Validación Tesorería"
+            body={validacionTesoreriaTemplate}
+            sortable
+          />
+          <Column
+            field="fechaValidacionTesoreria"
+            header="Fecha Validación"
+            body={fechaValidacionTesoreriaTemplate}
+            sortable
+          />
           <Column field="descripcion" header="Descripción" sortable />
-          <Column field="entidadComercialId" header="Entidad Comercial" body={entidadComercialTemplate} sortable style={{ minWidth: "200px" }} />
-          <Column header="Acciones" body={accionesTemplate} headerStyle={{ width: "8rem", textAlign: "center" }} bodyStyle={{ textAlign: "center" }} />
+          <Column
+            field="entidadComercialId"
+            header="Entidad Comercial"
+            body={entidadComercialTemplate}
+            sortable
+            style={{ minWidth: "200px" }}
+          />
+          <Column
+            header="Acciones"
+            body={accionesTemplate}
+            headerStyle={{ width: "8rem", textAlign: "center" }}
+            bodyStyle={{ textAlign: "center" }}
+          />
         </DataTable>
       </div>
 
@@ -516,15 +569,16 @@ export default function DetEntregaRendirCompras({
           setEditingMovimiento(null);
         }}
       >
-        <DetMovsEntregaRendirPComprasForm
+        <DetMovsEntregaRendirVentasForm
           movimiento={editingMovimiento}
-          entregaARendirPComprasId={entregaARendir?.id}
+          entregaARendirPVentasId={entregaARendir?.id}
           personal={personal}
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           entidadesComerciales={entidadesComerciales}
           monedas={monedas}
           tiposDocumento={tiposDocumento}
+          productos={productos}
           onGuardadoExitoso={handleGuardarMovimiento}
           onCancelar={() => {
             setShowMovimientoForm(false);

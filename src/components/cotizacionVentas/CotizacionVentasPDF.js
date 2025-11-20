@@ -1,35 +1,34 @@
 // src/components/cotizacionVentas/CotizacionVentasPDF.js
-// Generador de PDF para cotizaciones de ventas usando pdf-lib
+// Generador de PDF para cotizaciones de ventas - Versión modularizada y refactorizada
+// Patrón profesional siguiendo RequerimientoCompra
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { formatearNumero } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { dibujaEncabezadoPDFCV } from "./dibujaEncabezadoPDFCV";
 import { dibujaTotalesYFirmaPDFCV } from "./dibujaTotalesYFirmaPDFCV";
+import { getTranslation } from "./translations";
 
 /**
  * Genera un PDF de la cotización de ventas y lo sube al servidor
  * @param {Object} cotizacion - Datos de la cotización
  * @param {Array} detalles - Detalles de productos
- * @param {Array} costos - Costos de exportación
  * @param {Object} empresa - Datos de la empresa
- * @param {Object} opciones - Opciones de generación
+ * @param {string} idioma - Idioma del PDF (por defecto "en")
  * @returns {Promise<Object>} - {success: boolean, urlPdf: string, error?: string}
  */
 export async function generarYSubirPDFCotizacionVentas(
   cotizacion,
   detalles,
-  costos,
   empresa,
-  opciones = {}
+  idioma = "en"
 ) {
   try {
     // 1. Generar el PDF
     const pdfBytes = await generarPDFCotizacionVentas(
       cotizacion,
       detalles,
-      costos,
       empresa,
-      opciones
+      idioma
     );
 
     // 2. Crear un blob del PDF
@@ -37,7 +36,7 @@ export async function generarYSubirPDFCotizacionVentas(
 
     // 3. Crear FormData para subir
     const formData = new FormData();
-    const nombreArchivo = `cotizacion-ventas-${cotizacion.id}.pdf`;
+    const nombreArchivo = `cotizacion-${cotizacion.id}.pdf`;
     formData.append("pdf", blob, nombreArchivo);
     formData.append("cotizacionId", cotizacion.id);
 
@@ -75,26 +74,12 @@ export async function generarYSubirPDFCotizacionVentas(
  * Genera el PDF de la cotización de ventas
  * @param {Object} cotizacion - Datos de la cotización
  * @param {Array} detalles - Detalles de productos
- * @param {Array} costos - Costos de exportación
  * @param {Object} empresa - Datos de la empresa
- * @param {Object} opciones - Opciones de generación
  * @returns {Promise<Uint8Array>} - Bytes del PDF generado
  */
-async function generarPDFCotizacionVentas(
-  cotizacion,
-  detalles,
-  costos,
-  empresa,
-  opciones = {}
-) {
-  const {
-    incluirDetalles = true,
-    incluirCostos = false,
-    incluirObservaciones = true,
-    incluirTerminos = true,
-    notasAdicionales = "",
-  } = opciones;
-
+async function generarPDFCotizacionVentas(cotizacion, detalles, empresa, idioma = "en") {
+  // Función helper para obtener traducciones
+  const t = (key) => getTranslation(idioma, key);
   // Funciones de formateo
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
@@ -105,470 +90,329 @@ async function generarPDFCotizacionVentas(
     return `${dia}/${mes}/${anio}`;
   };
 
-  // Crear nuevo documento PDF
+  // Crear nuevo documento PDF en orientación horizontal
   const pdfDoc = await PDFDocument.create();
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-  let page = pdfDoc.addPage([595.28, 841.89]); // A4 vertical
+  const pages = []; // Array para trackear todas las páginas
+  let page = pdfDoc.addPage([841.89, 595.28]); // A4 horizontal
+  pages.push(page);
   const { width, height } = page.getSize();
-  let yPosition = height - 50;
 
-  // Dibujar encabezado
-  yPosition = await dibujaEncabezadoPDFCV(
-    page,
-    cotizacion,
+  // Cargar fuentes
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fontNormal = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+  let yPosition = height - 50;
+  const margin = 50;
+  const lineHeight = 13;
+
+  // Preparar datos del encabezado para las columnas
+  const datosIzquierda = [
+    [t("documentDate"), formatearFecha(cotizacion.fechaDocumento)],
+    [t("expirationDate"), formatearFecha(cotizacion.fechaVencimiento)],
+    [t("customer"), cotizacion.cliente?.razonSocial || "-"],
+    [t("productType"), cotizacion.tipoProducto?.nombre || "-"],
+    [t("productState"), cotizacion.tipoEstadoProducto?.nombre || "-"],
+    [t("productDestination"), cotizacion.destinoProducto?.nombre || "-"],
+    [t("paymentMethod"), cotizacion.formaPago?.nombre || "-"],
+    [t("incoterm"), cotizacion.incoterms ? `${cotizacion.incoterms.codigo} - ${cotizacion.incoterms.nombre}` : "-"],
+  ];
+
+  const datosDerecha = [
+    [t("currency"), cotizacion.moneda?.descripcion || cotizacion.moneda?.nombre || "USD"],
+    [t("exchangeRate"), cotizacion.tipoCambio ? `S/ ${Number(cotizacion.tipoCambio).toFixed(2)}` : "-"],
+    [t("departureDate"), formatearFecha(cotizacion.fechaZarpeEstimada)],
+    [t("loadingPort"), cotizacion.puertoCarga?.nombre || "-"],
+    [t("arrivalDate"), formatearFecha(cotizacion.fechaArriboEstimada)],
+    [t("unloadingPort"), cotizacion.puertoDescarga?.nombre || "-"],
+    [t("destinationCountry"), cotizacion.paisDestino?.nombre || "-"],
+    [t("transitDays"), cotizacion.diasTransito || "-"],
+  ];
+
+  // DIBUJAR ENCABEZADO COMPLETO usando función modular
+  yPosition = await dibujaEncabezadoPDFCV({
+    pag: page,
+    pdfDoc,
     empresa,
-    yPosition,
+    cotizacion,
+    datosIzquierda,
+    datosDerecha,
     width,
     height,
-    font,
-    fontBold
-  );
-
-  yPosition -= 20;
-
-  // Información del cliente
-  page.drawText("DATOS DEL CLIENTE", {
-    x: 50,
-    y: yPosition,
-    size: 10,
-    font: fontBold,
-    color: rgb(0, 0, 0),
+    margin,
+    lineHeight,
+    fontBold,
+    fontNormal,
+    idioma,
   });
-  yPosition -= 15;
 
-  page.drawText(`Cliente: ${cotizacion.cliente?.razonSocial || "N/A"}`, {
-    x: 50,
-    y: yPosition,
-    size: 9,
-    font: font,
-  });
-  yPosition -= 12;
+  // TABLA DE DETALLES
+  yPosition -= 8;
 
-  page.drawText(`RUC: ${cotizacion.cliente?.ruc || "N/A"}`, {
-    x: 50,
-    y: yPosition,
-    size: 9,
-    font: font,
-  });
-  yPosition -= 12;
+  // Encabezados de tabla usando todo el ancho disponible (768px)
+  const colWidths = [25, 220, 50, 110, 60, 60, 48, 50, 35, 50, 60];
+  const headers = [
+    t("item"),
+    t("product"),
+    t("quantity"),
+    t("unit"),
+    t("netWeight"),
+    t("productionLot"),
+    t("productionDate"),
+    t("expiryDate"),
+    t("temperature"),
+    t("unitPrice"),
+    t("totalPrice"),
+  ];
+  const tableWidth = colWidths.reduce((sum, width) => sum + width, 0);
+  const tableStartX = margin;
 
-  page.drawText(`País Destino: ${cotizacion.paisDestino?.nombre || "N/A"}`, {
-    x: 50,
-    y: yPosition,
-    size: 9,
-    font: font,
-  });
-  yPosition -= 20;
-
-  // Información comercial
-  page.drawText("INFORMACIÓN COMERCIAL", {
-    x: 50,
-    y: yPosition,
-    size: 10,
-    font: fontBold,
-  });
-  yPosition -= 15;
-
-  page.drawText(`Incoterm: ${cotizacion.incoterm?.codigo || "N/A"}`, {
-    x: 50,
-    y: yPosition,
-    size: 9,
-    font: font,
-  });
-  page.drawText(
-    `Forma de Pago: ${cotizacion.formaPago?.nombre || "N/A"}`,
-    {
-      x: 300,
-      y: yPosition,
-      size: 9,
-      font: font,
-    }
-  );
-  yPosition -= 12;
-
-  page.drawText(`Moneda: ${cotizacion.moneda?.codigo || "N/A"}`, {
-    x: 50,
-    y: yPosition,
-    size: 9,
-    font: font,
-  });
-  page.drawText(`Validez: ${cotizacion.diasValidez || 0} días`, {
-    x: 300,
-    y: yPosition,
-    size: 9,
-    font: font,
-  });
-  yPosition -= 25;
-
-  // Detalle de productos
-  if (incluirDetalles && detalles.length > 0) {
-    // Verificar espacio
-    if (yPosition < 200) {
-      page = pdfDoc.addPage([595.28, 841.89]);
-      yPosition = height - 50;
+  // Función para dibujar encabezado de tabla (reutilizable en nuevas páginas)
+  const dibujarEncabezadoTabla = async (pag, yPos, incluirEncabezadoCompleto = false) => {
+    // Si es una página nueva (no la primera), dibujar encabezado completo del documento
+    if (incluirEncabezadoCompleto) {
+      yPos = await dibujaEncabezadoPDFCV({
+        pag,
+        pdfDoc,
+        empresa,
+        cotizacion,
+        datosIzquierda,
+        datosDerecha,
+        width,
+        height,
+        margin,
+        lineHeight,
+        fontBold,
+        fontNormal,
+        idioma,
+      });
+      yPos -= 8; // Espacio antes de la tabla
     }
 
-    page.drawText("DETALLE DE PRODUCTOS", {
-      x: 50,
-      y: yPosition,
-      size: 10,
+    // Título
+    pag.drawText(t("productDetails"), {
+      x: margin,
+      y: yPos,
+      size: 11,
       font: fontBold,
     });
-    yPosition -= 20;
 
-    // Encabezados de tabla
-    const tableHeaders = [
-      { text: "Item", x: 50, width: 40 },
-      { text: "Producto", x: 95, width: 200 },
-      { text: "Cantidad", x: 300, width: 60 },
-      { text: "Precio Unit.", x: 365, width: 80 },
-      { text: "Subtotal", x: 450, width: 80 },
-    ];
+    yPos -= 20;
 
-    // Dibujar encabezados
-    page.drawRectangle({
-      x: 45,
-      y: yPosition - 5,
-      width: width - 90,
-      height: 20,
-      color: rgb(0.16, 0.5, 0.73),
+    // Fondo de encabezados
+    pag.drawRectangle({
+      x: tableStartX,
+      y: yPos - 2,
+      width: tableWidth,
+      height: 18,
+      color: rgb(0.85, 0.85, 0.85),
     });
 
-    tableHeaders.forEach((header) => {
-      page.drawText(header.text, {
-        x: header.x,
-        y: yPosition,
+    // Línea superior de la tabla
+    pag.drawLine({
+      start: { x: tableStartX, y: yPos + 16 },
+      end: { x: tableStartX + tableWidth, y: yPos + 16 },
+      thickness: 1,
+      color: rgb(0, 0, 0),
+    });
+
+    // Dibujar encabezados con alineación
+    let xPos = margin;
+    headers.forEach((header, i) => {
+      const colX = xPos;
+      const colWidth = colWidths[i];
+
+      // Alinear números a la derecha, texto a la izquierda
+      let textX = colX + 3;
+      if (i === 0 || i === 2 || i === 4 || i === 9 || i === 10) {
+        const textWidth = fontBold.widthOfTextAtSize(header, 9);
+        textX = colX + colWidth - textWidth - 3;
+      }
+
+      pag.drawText(header, {
+        x: textX,
+        y: yPos,
         size: 9,
         font: fontBold,
-        color: rgb(1, 1, 1),
       });
-    });
-    yPosition -= 20;
-
-    // Dibujar filas
-    detalles.forEach((detalle, index) => {
-      if (yPosition < 100) {
-        page = pdfDoc.addPage([595.28, 841.89]);
-        yPosition = height - 50;
-      }
-
-      const rowColor = index % 2 === 0 ? rgb(0.95, 0.95, 0.95) : rgb(1, 1, 1);
-      page.drawRectangle({
-        x: 45,
-        y: yPosition - 5,
-        width: width - 90,
-        height: 15,
-        color: rowColor,
-      });
-
-      page.drawText(String(detalle.item || index + 1), {
-        x: 50,
-        y: yPosition,
-        size: 8,
-        font: font,
-      });
-
-      const productoNombre = detalle.producto?.nombre || "N/A";
-      const productoTruncado =
-        productoNombre.length > 30
-          ? productoNombre.substring(0, 27) + "..."
-          : productoNombre;
-      page.drawText(productoTruncado, {
-        x: 95,
-        y: yPosition,
-        size: 8,
-        font: font,
-      });
-
-      page.drawText(detalle.cantidad.toFixed(3), {
-        x: 310,
-        y: yPosition,
-        size: 8,
-        font: font,
-      });
-
-      page.drawText(`$ ${detalle.precioUnitarioFinal.toFixed(2)}`, {
-        x: 375,
-        y: yPosition,
-        size: 8,
-        font: font,
-      });
-
-      const subtotal = detalle.cantidad * detalle.precioUnitarioFinal;
-      page.drawText(`$ ${subtotal.toFixed(2)}`, {
-        x: 460,
-        y: yPosition,
-        size: 8,
-        font: font,
-      });
-
-      yPosition -= 15;
+      xPos += colWidth;
     });
 
-    yPosition -= 10;
-  }
-
-  // Costos de exportación (opcional)
-  if (incluirCostos && costos.length > 0) {
-    if (yPosition < 200) {
-      page = pdfDoc.addPage([595.28, 841.89]);
-      yPosition = height - 50;
+    // Líneas verticales de encabezado
+    let lineX = tableStartX;
+    for (let i = 0; i <= colWidths.length; i++) {
+      pag.drawLine({
+        start: { x: lineX, y: yPos - 2 },
+        end: { x: lineX, y: yPos + 16 },
+        thickness: 1,
+        color: rgb(0, 0, 0),
+      });
+      if (i < colWidths.length) lineX += colWidths[i];
     }
 
-    page.drawText("COSTOS DE EXPORTACIÓN", {
-      x: 50,
-      y: yPosition,
-      size: 10,
-      font: fontBold,
-    });
-    yPosition -= 20;
+    return yPos - 18;
+  };
 
-    // Encabezados
-    page.drawRectangle({
-      x: 45,
-      y: yPosition - 5,
-      width: width - 90,
-      height: 20,
-      color: rgb(0.9, 0.49, 0.13),
-    });
+  // Dibujar encabezado inicial (sin encabezado completo porque ya se dibujó arriba)
+  yPosition = await dibujarEncabezadoTabla(page, yPosition, false);
 
-    page.drawText("Concepto", {
-      x: 50,
-      y: yPosition,
-      size: 9,
-      font: fontBold,
-      color: rgb(1, 1, 1),
-    });
-    page.drawText("Monto Estimado", {
-      x: 300,
-      y: yPosition,
-      size: 9,
-      font: fontBold,
-      color: rgb(1, 1, 1),
-    });
-    page.drawText("Responsable", {
-      x: 420,
-      y: yPosition,
-      size: 9,
-      font: fontBold,
-      color: rgb(1, 1, 1),
-    });
-    yPosition -= 20;
+  // Calcular subtotal
+  let subtotalTotal = 0;
 
-    // Filas
-    costos.forEach((costo, index) => {
-      if (yPosition < 100) {
-        page = pdfDoc.addPage([595.28, 841.89]);
-        yPosition = height - 50;
-      }
-
-      const rowColor = index % 2 === 0 ? rgb(0.95, 0.95, 0.95) : rgb(1, 1, 1);
-      page.drawRectangle({
-        x: 45,
-        y: yPosition - 5,
-        width: width - 90,
-        height: 15,
-        color: rowColor,
-      });
-
-      page.drawText(costo.concepto || "N/A", {
-        x: 50,
-        y: yPosition,
-        size: 8,
-        font: font,
-      });
-
-      page.drawText(
-        `${costo.moneda?.codigo || ""} ${costo.montoEstimado.toFixed(2)}`,
-        {
-          x: 310,
-          y: yPosition,
-          size: 8,
-          font: font,
-        }
-      );
-
-      page.drawText(costo.responsableSegunIncoterm || "N/A", {
-        x: 430,
-        y: yPosition,
-        size: 8,
-        font: font,
-      });
-
-      yPosition -= 15;
-    });
-
-    yPosition -= 10;
-  }
-
-  // Totales
-  if (yPosition < 150) {
-    page = pdfDoc.addPage([595.28, 841.89]);
-    yPosition = height - 50;
-  }
-
-  const subtotal = detalles.reduce(
-    (sum, d) => sum + d.cantidad * d.precioUnitarioFinal,
-    0
-  );
-  const igv = subtotal * 0.18;
-  const total = subtotal + igv;
-
-  yPosition = await dibujaTotalesYFirmaPDFCV(
-    page,
-    { subtotal, igv, total, moneda: cotizacion.moneda?.codigo || "USD" },
-    yPosition,
-    width,
-    height,
-    font,
-    fontBold
-  );
-
-  // Observaciones
-  if (incluirObservaciones && cotizacion.observaciones) {
-    yPosition -= 20;
-    if (yPosition < 100) {
-      page = pdfDoc.addPage([595.28, 841.89]);
-      yPosition = height - 50;
+  // Dibujar filas de productos (usar for loop para permitir await)
+  let xPos;
+  for (let index = 0; index < detalles.length; index++) {
+    const detalle = detalles[index];
+    
+    // Verificar si hay espacio para la fila (umbral de 120px para dejar espacio a totales)
+    if (yPosition < 120) {
+      // Nueva página si no hay espacio
+      page = pdfDoc.addPage([width, height]);
+      pages.push(page);
+      yPosition = height - 50; // Posición inicial
+      // Redibujar encabezado completo + tabla en la nueva página
+      yPosition = await dibujarEncabezadoTabla(page, yPosition, true);
     }
 
-    page.drawText("OBSERVACIONES:", {
-      x: 50,
-      y: yPosition,
-      size: 9,
-      font: fontBold,
-    });
-    yPosition -= 15;
+    const rowY = yPosition;
+    xPos = tableStartX;
 
-    const observacionesLineas = splitTextToLines(
-      cotizacion.observaciones,
-      width - 100,
-      8,
-      font
-    );
-    observacionesLineas.forEach((linea) => {
-      if (yPosition < 50) {
-        page = pdfDoc.addPage([595.28, 841.89]);
-        yPosition = height - 50;
-      }
-      page.drawText(linea, {
-        x: 50,
-        y: yPosition,
-        size: 8,
-        font: font,
-      });
-      yPosition -= 12;
-    });
-  }
+    // Nombre completo del producto - usar descripcionArmada que incluye toda la info
+    const nombreProducto =
+      detalle.producto?.descripcionArmada ||
+      detalle.producto?.descripcionBase ||
+      detalle.producto?.descripcion ||
+      detalle.producto?.nombre ||
+      "PRODUCTO";
 
-  // Notas adicionales
-  if (notasAdicionales.trim()) {
-    yPosition -= 20;
-    if (yPosition < 100) {
-      page = pdfDoc.addPage([595.28, 841.89]);
-      yPosition = height - 50;
-    }
+    // Calcular altura necesaria para la fila
+    const rowHeight = 18;
 
-    page.drawText("NOTAS ADICIONALES:", {
-      x: 50,
-      y: yPosition,
-      size: 9,
-      font: fontBold,
-    });
-    yPosition -= 15;
+    const precioUnitario = Number(detalle.precioUnitarioFinal) || 0;
+    const cantidad = Number(detalle.cantidad) || 0;
+    const pesoNeto = Number(detalle.pesoNeto) || 0;
+    const subtotal = cantidad * precioUnitario;
 
-    const notasLineas = splitTextToLines(
-      notasAdicionales,
-      width - 100,
-      8,
-      font
-    );
-    notasLineas.forEach((linea) => {
-      if (yPosition < 50) {
-        page = pdfDoc.addPage([595.28, 841.89]);
-        yPosition = height - 50;
-      }
-      page.drawText(linea, {
-        x: 50,
-        y: yPosition,
-        size: 8,
-        font: font,
-      });
-      yPosition -= 12;
-    });
-  }
-
-  // Términos y condiciones
-  if (incluirTerminos) {
-    yPosition -= 20;
-    if (yPosition < 150) {
-      page = pdfDoc.addPage([595.28, 841.89]);
-      yPosition = height - 50;
-    }
-
-    page.drawText("TÉRMINOS Y CONDICIONES:", {
-      x: 50,
-      y: yPosition,
-      size: 9,
-      font: fontBold,
-    });
-    yPosition -= 15;
-
-    const terminos = [
-      "1. Los precios están expresados en la moneda indicada y son válidos por el período especificado.",
-      "2. Los términos de entrega se rigen según el Incoterm indicado.",
-      "3. La forma de pago es según lo acordado en la presente cotización.",
-      "4. Esta cotización no constituye un compromiso de venta hasta su aceptación formal.",
+    const rowData = [
+      String(detalle.item || index + 1),
+      nombreProducto.length > 50 ? nombreProducto.substring(0, 47) + "..." : nombreProducto,
+      String(Math.round(cantidad)),
+      detalle.producto?.unidadMedida?.nombre || "-",
+      String(pesoNeto.toFixed(2)),
+      detalle.loteProduccion || "-",
+      formatearFecha(detalle.fechaProduccion),
+      formatearFecha(detalle.fechaVencimiento),
+      detalle.temperaturaAlmacenamiento || "-",
+      formatearNumero(precioUnitario),
+      formatearNumero(subtotal),
     ];
 
-    terminos.forEach((termino) => {
-      if (yPosition < 50) {
-        page = pdfDoc.addPage([595.28, 841.89]);
-        yPosition = height - 50;
+    // Dibujar datos con alineación correcta
+    rowData.forEach((data, i) => {
+      const colX = xPos;
+      const colWidth = colWidths[i];
+
+      // Alinear números a la derecha, texto a la izquierda
+      let textX = colX + 3;
+      let textY = yPosition;
+      
+      // Columnas numéricas y fechas: alinear a la derecha
+      // i=0: #, i=2: Cant., i=4: Peso Neto, i=6: F.Prod., i=7: F.Venc., i=9: V.V.Unit., i=10: V.V.Total
+      if (i === 0 || i === 2 || i === 4 || i === 6 || i === 7 || i === 9 || i === 10) {
+        const textWidth = fontNormal.widthOfTextAtSize(data, 7);
+        textX = colX + colWidth - textWidth - 3;
       }
-      const terminoLineas = splitTextToLines(termino, width - 100, 7, font);
-      terminoLineas.forEach((linea) => {
-        page.drawText(linea, {
-          x: 50,
-          y: yPosition,
-          size: 7,
-          font: font,
-        });
-        yPosition -= 10;
+
+      page.drawText(data, {
+        x: textX,
+        y: textY,
+        size: 7,
+        font: fontNormal,
       });
+      xPos += colWidth;
     });
+
+    // Acumular subtotal
+    subtotalTotal += subtotal;
+
+    // Líneas verticales de la fila
+    let lineX = tableStartX;
+    const lineStartY = rowY + 13;
+    const lineEndY = rowY - rowHeight + 15;
+    
+    for (let i = 0; i <= colWidths.length; i++) {
+      page.drawLine({
+        start: { x: lineX, y: lineStartY },
+        end: { x: lineX, y: lineEndY },
+        thickness: 0.5,
+        color: rgb(0.7, 0.7, 0.7),
+      });
+      if (i < colWidths.length) lineX += colWidths[i];
+    }
+
+    // Línea horizontal inferior de la fila
+    page.drawLine({
+      start: { x: tableStartX, y: lineEndY },
+      end: { x: tableStartX + tableWidth, y: lineEndY },
+      thickness: 0.5,
+      color: rgb(0.7, 0.7, 0.7),
+    });
+
+    yPosition -= rowHeight;
   }
+
+  // NO verificar espacio para totales - siempre dibujar en la misma página
+  // Los totales y firmas están en posición fija (Y=180 y Y=90) y no dependen de yPosition
+
+  // DIBUJAR TOTALES Y FIRMAS usando función modular
+  dibujaTotalesYFirmaPDFCV({
+    page,
+    cotizacion,
+    subtotal: subtotalTotal,
+    formatearNumero,
+    width,
+    margin,
+    fontBold,
+    fontNormal,
+    idioma,
+  });
+
+  // AGREGAR NUMERACIÓN DE PÁGINAS Y PIE DE PÁGINA
+  const totalPages = pages.length;
+  pages.forEach((p, index) => {
+    const pageNumber = index + 1;
+    const pageText = `${t("page")} ${pageNumber} ${t("of")} ${totalPages}`;
+    const pageTextWidth = fontNormal.widthOfTextAtSize(pageText, 8);
+
+    // Número de página en esquina superior derecha
+    p.drawText(pageText, {
+      x: width - margin - pageTextWidth,
+      y: height - 30,
+      size: 8,
+      font: fontNormal,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+
+    // Pie de página en todas las páginas
+    p.drawLine({
+      start: { x: margin, y: 50 },
+      end: { x: width - margin, y: 50 },
+      thickness: 0.5,
+      color: rgb(0.7, 0.7, 0.7),
+    });
+
+    p.drawText(
+      `${t("generated")} ${new Date().toLocaleString("es-PE")} | ${t("system")}`,
+      {
+        x: margin,
+        y: 38,
+        size: 6,
+        font: fontNormal,
+        color: rgb(0.5, 0.5, 0.5),
+      }
+    );
+  });
 
   // Generar bytes del PDF
   const pdfBytes = await pdfDoc.save();
   return pdfBytes;
-}
-
-/**
- * Divide texto en líneas según ancho máximo
- */
-function splitTextToLines(text, maxWidth, fontSize, font) {
-  const words = text.split(" ");
-  const lines = [];
-  let currentLine = "";
-
-  words.forEach((word) => {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    const testWidth = font.widthOfTextAtSize(testLine, fontSize);
-
-    if (testWidth > maxWidth && currentLine) {
-      lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = testLine;
-    }
-  });
-
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-
-  return lines;
 }

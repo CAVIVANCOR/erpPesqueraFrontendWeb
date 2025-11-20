@@ -72,11 +72,9 @@ const DocRequeridaVentas = ({ ruta }) => {
   const cargarDatosIniciales = async () => {
     try {
       setLoading(true);
-      const [dataDocumentos, dataPaises, dataTiposProducto] = await Promise.all([
-        getDocRequeridaVentas(),
-        getPaises(),
-        getTiposProducto(),
-      ]);
+      const [dataDocumentos, dataPaises, dataTiposProducto] = await Promise.all(
+        [getDocRequeridaVentas(), getPaises(), getTiposProducto()]
+      );
 
       setDocumentos(dataDocumentos);
       setDocumentosFiltrados(dataDocumentos);
@@ -116,7 +114,9 @@ const DocRequeridaVentas = ({ ruta }) => {
 
     if (filtroPais !== null) {
       resultado = resultado.filter((d) =>
-        d.requisitosPorPais?.some((r) => Number(r.paisId) === Number(filtroPais))
+        d.requisitosPorPais?.some(
+          (r) => Number(r.paisId) === Number(filtroPais)
+        )
       );
     }
 
@@ -177,7 +177,8 @@ const DocRequeridaVentas = ({ ruta }) => {
           toast.current.show({
             severity: "error",
             summary: "Error",
-            detail: error.response?.data?.message || "Error al eliminar documento",
+            detail:
+              error.response?.data?.message || "Error al eliminar documento",
             life: 3000,
           });
         } finally {
@@ -205,8 +206,32 @@ const DocRequeridaVentas = ({ ruta }) => {
     />
   );
 
+  const booleanTemplate = (rowData, field) => (
+    <Tag
+      value={rowData[field] ? "SÍ" : "NO"}
+      severity={rowData[field] ? "success" : "secondary"}
+      style={{ fontSize: getResponsiveFontSize() }}
+    />
+  );
+
+  const monedaTemplate = (rowData) => (
+    <span>{rowData.moneda ? `${rowData.moneda.codigoSunat}` : "-"}</span>
+  );
+
+  const costoTemplate = (rowData) => (
+    <span>
+      {rowData.costoEstimado
+        ? `${Number(rowData.costoEstimado).toFixed(2)}`
+        : "-"}
+    </span>
+  );
+
+  const diasValidezTemplate = (rowData) => (
+    <span>{rowData.diasValidez ? `${rowData.diasValidez} días` : "-"}</span>
+  );
+
   const accionesTemplate = (rowData) => (
-    <div style={{ display: "flex", gap: "0.5rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", alignItems: "center" }}>
       <Button
         icon="pi pi-pencil"
         className="p-button-rounded p-button-text p-button-info"
@@ -228,55 +253,6 @@ const DocRequeridaVentas = ({ ruta }) => {
     </div>
   );
 
-  const header = (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
-      <h3 style={{ margin: 0 }}>Documentos Requeridos de Ventas</h3>
-      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-        <Dropdown
-          value={filtroPais}
-          options={paises.map((p) => ({ label: p.nombre, value: p.id }))}
-          onChange={(e) => setFiltroPais(e.value)}
-          placeholder="Filtrar por País"
-          showClear
-          style={{ width: "200px" }}
-        />
-        <Dropdown
-          value={filtroTipoProducto}
-          options={tiposProducto.map((t) => ({ label: t.nombre, value: t.id }))}
-          onChange={(e) => setFiltroTipoProducto(e.value)}
-          placeholder="Filtrar por Tipo Producto"
-          showClear
-          style={{ width: "200px" }}
-        />
-        <Dropdown
-          value={filtroActivo}
-          options={[
-            { label: "Activos", value: true },
-            { label: "Inactivos", value: false },
-          ]}
-          onChange={(e) => setFiltroActivo(e.value)}
-          placeholder="Filtrar por Estado"
-          showClear
-          style={{ width: "150px" }}
-        />
-        {(filtroPais || filtroTipoProducto || filtroActivo !== null) && (
-          <Button
-            label="Limpiar"
-            icon="pi pi-filter-slash"
-            className="p-button-outlined"
-            onClick={limpiarFiltros}
-          />
-        )}
-        <Button
-          label="Nuevo"
-          icon="pi pi-plus"
-          onClick={handleNuevo}
-          disabled={!permisos.puedeCrear}
-        />
-      </div>
-    </div>
-  );
-
   return (
     <div className="card">
       <Toast ref={toast} />
@@ -285,31 +261,170 @@ const DocRequeridaVentas = ({ ruta }) => {
       <DataTable
         value={documentosFiltrados}
         loading={loading}
-        header={header}
+        size="small"
+        showGridlines
+        stripedRows
+        selectionMode="single"
+        onRowClick={(e) => handleEditar(e.data)}
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
+        rows={5}
+        rowsPerPageOptions={[5, 15,25,50 ]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} documentos"
+        header={
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 3 }}>
+              <h2>Documentacion Requerida Ventas</h2>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                onClick={handleNuevo}
+                disabled={!permisos.puedeCrear}
+              />
+            </div>
+            <div style={{ flex: 2 }}>
+              <Dropdown
+                value={filtroPais}
+                options={paises.map((p) => ({ label: p.nombre, value: p.id }))}
+                onChange={(e) => setFiltroPais(e.value)}
+                placeholder="Filtrar por País"
+                showClear
+              />
+            </div>
+            <div style={{ flex: 2 }}>
+              <Dropdown
+                value={filtroTipoProducto}
+                options={tiposProducto.map((t) => ({
+                  label: t.nombre,
+                  value: t.id,
+                }))}
+                onChange={(e) => setFiltroTipoProducto(e.value)}
+                placeholder="Filtrar por Tipo Producto"
+                showClear
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Dropdown
+                value={filtroActivo}
+                options={[
+                  { label: "Activos", value: true },
+                  { label: "Inactivos", value: false },
+                ]}
+                onChange={(e) => setFiltroActivo(e.value)}
+                placeholder="Filtrar por Estado"
+                showClear
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                className="p-button-outlined"
+                onClick={limpiarFiltros}
+              />
+            </div>
+          </div>
+        }
         dataKey="id"
-        filterDisplay="row"
         globalFilter={globalFilter}
         emptyMessage="No se encontraron documentos"
-        onRowClick={(e) => handleEditar(e.data)}
-        rowHover
-        style={{ cursor: "pointer" }}
-        responsiveLayout="scroll"
       >
-        <Column field="nombre" header="Nombre" sortable filter filterPlaceholder="Buscar por nombre" />
-        <Column field="descripcion" header="Descripción" sortable />
-        <Column field="esObligatorio" header="Obligatorio" body={(row) => row.esObligatorio ? "Sí" : "No"} sortable />
-        <Column header="Estado" body={activoTemplate} sortable />
-        <Column body={accionesTemplate} header="Acciones" style={{ width: "120px" }} />
+        <Column field="id" header="ID" sortable style={{ minWidth: "60px" }} />
+        <Column
+          field="nombre"
+          header="Nombre"
+          sortable
+          style={{ minWidth: "180px", fontWeight: "bold" }}
+        />
+        <Column
+          field="descripcion"
+          header="Descripción"
+          sortable
+          style={{ minWidth: "150px" }}
+        />
+        <Column
+          header="Obligatorio"
+          body={(row) => booleanTemplate(row, "esObligatorioPorDefecto")}
+          sortable
+          field="esObligatorioPorDefecto"
+          style={{ width: "60px", textAlign: "center" }}
+        />
+        <Column
+          header="Aplica al País"
+          body={(row) => booleanTemplate(row, "aplicaPorPais")}
+          sortable
+          field="aplicaPorPais"
+          style={{ width: "60px", textAlign: "center" }}
+        />
+        <Column
+          header="Aplica al Producto"
+          body={(row) => booleanTemplate(row, "aplicaPorProducto")}
+          sortable
+          field="aplicaPorProducto"
+          style={{ width: "100px", textAlign: "center" }}
+        />
+        <Column
+          header="Aplica al Incoterm"
+          body={(row) => booleanTemplate(row, "aplicaPorIncoterm")}
+          sortable
+          field="aplicaPorIncoterm"
+          style={{ width: "120px", textAlign: "center" }}
+        />
+        <Column
+          header="Vence"
+          body={(row) => booleanTemplate(row, "tieneVencimiento")}
+          sortable
+          field="tieneVencimiento"
+          style={{ width: "60px", textAlign: "center" }}
+        />
+        <Column
+          header="Días Validez"
+          body={diasValidezTemplate}
+          sortable
+          field="diasValidez"
+          style={{ width: "80px", textAlign: "center" }}
+        />
+        <Column
+          header="Moneda"
+          body={monedaTemplate}
+          sortable
+          style={{ width: "60px", textAlign: "center" }}
+        />
+        <Column
+          header="Costo"
+          body={costoTemplate}
+          sortable
+          field="costoEstimado"
+          style={{ width: "80px", textAlign: "right" }}
+        />
+        <Column header="Estado" body={activoTemplate} sortable style={{ width: "80px" }} />
+        <Column
+          body={accionesTemplate}
+          header="Acciones"
+          style={{ width: "120px" }}
+        />
       </DataTable>
 
       <Dialog
         visible={dialogVisible}
-        style={{ width: "90vw", maxWidth: "800px" }}
-        header={modoEdicion ? "Editar Documento Requerido" : "Nuevo Documento Requerido"}
+        style={{ width: "1000px"}}
+        header={
+          modoEdicion
+            ? "Editar Documento Requerido"
+            : "Nuevo Documento Requerido"
+        }
         modal
+        maximizable
         onHide={handleFormCancel}
       >
         <DocRequeridaVentasForm

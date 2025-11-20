@@ -25,6 +25,17 @@ export async function obtenerPreciosPorEntidad(entidadComercialId) {
   return res.data;
 }
 
+/**
+ * Obtiene el precio especial activo vigente para un cliente-producto específico.
+ * @param {number} entidadComercialId - ID del cliente
+ * @param {number} productoId - ID del producto
+ * @returns {Promise<Object|null>} - Precio especial vigente o null
+ */
+export async function obtenerPrecioEspecialActivo(entidadComercialId, productoId) {
+  const res = await axios.get(`${API_URL}/especial/${entidadComercialId}/${productoId}`, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function getPrecioEntidadPorId(id) {
   const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;

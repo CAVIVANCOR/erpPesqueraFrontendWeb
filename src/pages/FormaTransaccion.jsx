@@ -3,20 +3,23 @@
 // Utiliza PrimeReact para tabla, diálogos y UX. Integración con API REST y JWT.
 // Documentado en español técnico.
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Navigate } from 'react-router-dom';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Toast } from 'primereact/toast';
-import { Dialog } from 'primereact/dialog';
-import { ConfirmDialog } from 'primereact/confirmdialog';
-import { InputText } from 'primereact/inputtext';
-import { useAuthStore } from '../shared/stores/useAuthStore';
-import { usePermissions } from '../hooks/usePermissions';
-import { getAllFormaTransaccion, deleteFormaTransaccion } from '../api/formaTransaccion';
-import FormaTransaccionForm from '../components/formaTransaccion/FormaTransaccionForm';
-import { getResponsiveFontSize } from '../utils/utils';
+import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Toast } from "primereact/toast";
+import { Dialog } from "primereact/dialog";
+import { ConfirmDialog } from "primereact/confirmdialog";
+import { InputText } from "primereact/inputtext";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
+import {
+  getAllFormaTransaccion,
+  deleteFormaTransaccion,
+} from "../api/formaTransaccion";
+import FormaTransaccionForm from "../components/formaTransaccion/FormaTransaccionForm";
+import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Página de gestión de formas de transacción.
@@ -53,7 +56,7 @@ export default function FormaTransaccion({ ruta }) {
   const [modoEdicion, setModoEdicion] = useState(false);
   const [formaEdit, setFormaEdit] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
-  const [globalFilter, setGlobalFilter] = useState('');
+  const [globalFilter, setGlobalFilter] = useState("");
 
   useEffect(() => {
     cargarFormas();
@@ -65,7 +68,11 @@ export default function FormaTransaccion({ ruta }) {
       const data = await getAllFormaTransaccion();
       setFormas(Array.isArray(data) ? data : []);
     } catch (err) {
-      mostrarToast('error', 'Error', 'No se pudieron cargar las formas de transacción');
+      mostrarToast(
+        "error",
+        "Error",
+        "No se pudieron cargar las formas de transacción"
+      );
     } finally {
       setLoading(false);
     }
@@ -96,10 +103,18 @@ export default function FormaTransaccion({ ruta }) {
     setLoading(true);
     try {
       await deleteFormaTransaccion(forma.id);
-      mostrarToast('success', 'Forma eliminada', 'La forma de transacción fue eliminada correctamente.');
+      mostrarToast(
+        "success",
+        "Forma eliminada",
+        "La forma de transacción fue eliminada correctamente."
+      );
       cargarFormas();
     } catch (err) {
-      mostrarToast('error', 'Error', 'No se pudo eliminar la forma de transacción.');
+      mostrarToast(
+        "error",
+        "Error",
+        "No se pudo eliminar la forma de transacción."
+      );
     } finally {
       setLoading(false);
     }
@@ -117,7 +132,7 @@ export default function FormaTransaccion({ ruta }) {
             handleEditar(rowData);
           }
         }}
-        tooltip={permisos.puedeEditar ? 'Editar' : 'Ver'}
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
       />
       <Button
         icon="pi pi-trash"
@@ -133,24 +148,24 @@ export default function FormaTransaccion({ ruta }) {
     </div>
   );
 
-
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '2rem 0' }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 0" }}>
       <Toast ref={toast} position="top-right" />
       <ConfirmDialog
         visible={confirmState.visible}
         onHide={() => setConfirmState({ visible: false, row: null })}
         message={
-          <span style={{ color: '#b71c1c', fontWeight: 600 }}>
-            ¿Está seguro que desea{' '}
-            <span style={{ color: '#b71c1c' }}>eliminar</span> la forma de transacción{' '}
-            <b>{confirmState.row ? confirmState.row.nombre : ''}</b>?<br />
-            <span style={{ fontWeight: 400, color: '#b71c1c' }}>
+          <span style={{ color: "#b71c1c", fontWeight: 600 }}>
+            ¿Está seguro que desea{" "}
+            <span style={{ color: "#b71c1c" }}>eliminar</span> la forma de
+            transacción <b>{confirmState.row ? confirmState.row.nombre : ""}</b>
+            ?<br />
+            <span style={{ fontWeight: 400, color: "#b71c1c" }}>
               Esta acción no se puede deshacer.
             </span>
           </span>
         }
-        header={<span style={{ color: '#b71c1c' }}>Confirmar eliminación</span>}
+        header={<span style={{ color: "#b71c1c" }}>Confirmar eliminación</span>}
         icon="pi pi-exclamation-triangle"
         acceptClassName="p-button-danger"
         acceptLabel="Eliminar"
@@ -173,11 +188,19 @@ export default function FormaTransaccion({ ruta }) {
         globalFilter={globalFilter}
         emptyMessage="No hay formas de transacción registradas."
         style={{
-          cursor: permisos.puedeVer || permisos.puedeEditar ? 'pointer' : 'default',
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
           fontSize: getResponsiveFontSize(),
         }}
         header={
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 18,
+            }}
+          >
             <div style={{ flex: 2 }}>
               <h2>Formas de Transacción</h2>
             </div>
@@ -208,28 +231,40 @@ export default function FormaTransaccion({ ruta }) {
             </div>
           </div>
         }
-        onRowClick={permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined}
-        globalFilterFields={['nombre', 'descripcion']}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
+        }
+        globalFilterFields={["nombre", "descripcion"]}
       >
-        <Column field="nombre" header="Nombre" sortable style={{ fontWeight: 'bold' }} />
+        <Column field="id" header="ID" sortable />
+        <Column
+          field="nombre"
+          header="Nombre"
+          sortable
+          style={{ fontWeight: "bold" }}
+        />
         <Column field="descripcion" header="Descripción" sortable />
-        <Column 
-          field="activo" 
-          header="Activo" 
-          sortable 
-          body={(rowData) => (rowData.activo ? 'Sí' : 'No')}
+        <Column
+          field="activo"
+          header="Activo"
+          sortable
+          body={(rowData) => (rowData.activo ? "Sí" : "No")}
           style={{ width: 100 }}
         />
         <Column
           header="Acciones"
           body={accionesTemplate}
-          style={{ width: 130, textAlign: 'center' }}
+          style={{ width: 130, textAlign: "center" }}
         />
       </DataTable>
       <Dialog
         visible={mostrarDialogo}
         style={{ width: 600 }}
-        header={modoEdicion ? 'Editar Forma de Transacción' : 'Nueva Forma de Transacción'}
+        header={
+          modoEdicion
+            ? "Editar Forma de Transacción"
+            : "Nueva Forma de Transacción"
+        }
         modal
         onHide={() => setMostrarDialogo(false)}
       >

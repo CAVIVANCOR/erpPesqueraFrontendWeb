@@ -56,8 +56,6 @@ import TipoEstadoProducto from "./TipoEstadoProducto";
 import DestinoProducto from "./DestinoProducto";
 import FormaTransaccion from "./FormaTransaccion";
 import ModoDespachoRecepcion from "./ModoDespachoRecepcion";
-import DocRequeridaComprasVentas from "./DocRequeridaComprasVentas";
-import EntregaARendirPVentas from "./EntregaARendirPVentas";
 import TipoPersona from "./TipoPersona";
 import MotivoAcceso from "./MotivoAcceso";
 import TipoAccesoInstalacion from "./TipoAccesoInstalacion";
@@ -134,7 +132,6 @@ import TipoAlmacenamiento from "./TipoAlmacenamiento";
 import Marca from "./Marca";
 import DocRequeridaVentas from "./DocRequeridaVentas";
 import RequisitoDocPorPais from "./RequisitoDocPorPais";
-import CostoExportacionPorIncoterm from "./CostoExportacionPorIncoterm";
 import TipoContenedor from "./TipoContenedor";
 /**
  * Componente MultiCrud
@@ -207,12 +204,6 @@ export default function MultiCrud() {
     requisitoDocPorPais: {
       label: "Requisitos Documentales por País",
       componente: <RequisitoDocPorPais ruta="requisitoDocPorPais" />,
-    },
-    costoExportacionPorIncoterm: {
-      label: "Costos de Exportación por Incoterm",
-      componente: (
-        <CostoExportacionPorIncoterm ruta="costoExportacionPorIncoterm" />
-      ),
     },
     ordenCompra: {
       label: "Orden Compra",
@@ -553,14 +544,6 @@ export default function MultiCrud() {
       label: "Formas Entrega(Venta)/Recepción(Compra) de Mercaderia",
       componente: <ModoDespachoRecepcion ruta="modoDespachoRecepcion" />,
     },
-    docRequeridaComprasVentas: {
-      label: "Documentación Requerida Compras y Ventas",
-      componente: <DocRequeridaComprasVentas ruta="docRequeridaComprasVentas" />,
-    },
-    entregaARendirPVentas: {
-      label: "Entregas a Rendir Cotización Ventas",
-      componente: <EntregaARendirPVentas ruta="entregaARendirPVentas" />,
-    },
     tipoPersona: { label: "Tipos de Persona", componente: <TipoPersona ruta="tipoPersona" /> },
     motivoAcceso: { label: "Motivos de Acceso", componente: <MotivoAcceso ruta="motivoAcceso" /> },
     tipoAccesoInstalacion: {
@@ -854,24 +837,6 @@ export default function MultiCrud() {
             label: "Configuración",
             items: [
               {
-                label: "Documentos Requeridos",
-                icon: "pi pi-file-check", // ✅ Correcto
-                command: () =>
-                  abrirModulo(
-                    "detDocsReqCotizaVentas",
-                    "Documentos Requeridos Cotización Ventas"
-                  ),
-              },
-              {
-                label: "Formas de Transacción",
-                icon: "pi pi-sync", // ✅ Transacciones
-                command: () =>
-                  abrirModulo(
-                    "formaTransaccion",
-                    "Formas de Transacción Venta"
-                  ),
-              },
-              {
                 label: "Incoterms",
                 icon: "pi pi-globe", // ✅ Internacional
                 command: () => abrirModulo("incoterm", "Incoterms"),
@@ -892,15 +857,6 @@ export default function MultiCrud() {
                   abrirModulo(
                     "requisitoDocPorPais",
                     "Requisitos Documentales por País"
-                  ),
-              },
-              {
-                label: "Costos Exportación Incoterm",
-                icon: "pi pi-money-bill",
-                command: () =>
-                  abrirModulo(
-                    "costoExportacionPorIncoterm",
-                    "Costos de Exportación por Incoterm"
                   ),
               },
               {

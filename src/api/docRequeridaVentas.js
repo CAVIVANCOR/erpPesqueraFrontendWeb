@@ -10,7 +10,7 @@
 import axios from "axios";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
-const API_URL = `${import.meta.env.VITE_API_URL}/doc-requerida-ventas`;
+const API_URL = `${import.meta.env.VITE_API_URL}/docs-requeridas-ventas`;
 
 /**
  * Obtiene el token JWT desde el store de autenticación

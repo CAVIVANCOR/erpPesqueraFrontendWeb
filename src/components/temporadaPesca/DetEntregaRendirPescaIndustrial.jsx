@@ -18,6 +18,7 @@ import {
 } from "../../api/detMovsEntregaRendir";
 import { actualizarEntregaARendir } from "../../api/entregaARendir";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 export default function DetEntregaRendirPescaIndustrial({
   // Props de datos
@@ -29,6 +30,7 @@ export default function DetEntregaRendirPescaIndustrial({
   entidadesComerciales = [], // Nueva prop
   monedas = [], // ← AGREGAR ESTA LÍNEA
   tiposDocumento = [],
+  productos = [], // Nueva prop para productos (gastos)
 
   // Props de estado
   temporadaPescaIniciada = false,
@@ -51,6 +53,7 @@ export default function DetEntregaRendirPescaIndustrial({
   const [editingMovimiento, setEditingMovimiento] = useState(null);
 
   const toast = useRef(null);
+  const usuario = useAuthStore((state) => state.usuario);
 
   // Función para obtener movimientos filtrados
   const obtenerMovimientosFiltrados = () => {
@@ -221,22 +224,47 @@ export default function DetEntregaRendirPescaIndustrial({
         try {
           const fechaActual = new Date();
 
-          // Actualizar EntregaARendir
+          // Actualizar EntregaARendir - SOLO enviar campos escalares, NO relaciones
           const entregaActualizada = {
-            ...entregaARendir,
+            temporadaPescaId: entregaARendir.temporadaPescaId,
+            respEntregaRendirId: entregaARendir.respEntregaRendirId,
+            centroCostoId: entregaARendir.centroCostoId,
+            respLiquidacionId: usuario?.personalId || null,
+            urlLiquidacionPdf: entregaARendir.urlLiquidacionPdf,
             entregaLiquidada: true,
             fechaLiquidacion: fechaActual,
+            fechaCreacion: entregaARendir.fechaCreacion,
             fechaActualizacion: fechaActual,
           };
 
           await actualizarEntregaARendir(entregaARendir.id, entregaActualizada);
 
-          // Actualizar todos los movimientos DetMovsEntregaRendir
+          // Actualizar todos los movimientos DetMovsEntregaRendir - SOLO campos escalares
           const promesasActualizacion = movimientos.map((movimiento) => {
             const movimientoActualizado = {
-              ...movimiento,
+              entregaARendirId: movimiento.entregaARendirId,
+              responsableId: movimiento.responsableId,
+              fechaMovimiento: movimiento.fechaMovimiento,
+              tipoMovimientoId: movimiento.tipoMovimientoId,
+              productoId: movimiento.productoId,
+              monto: movimiento.monto,
+              descripcion: movimiento.descripcion,
+              creadoEn: movimiento.creadoEn,
+              actualizadoEn: fechaActual,
+              centroCostoId: movimiento.centroCostoId,
+              urlComprobanteMovimiento: movimiento.urlComprobanteMovimiento,
               validadoTesoreria: true,
               fechaValidacionTesoreria: fechaActual,
+              operacionSinFactura: movimiento.operacionSinFactura,
+              fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja,
+              operacionMovCajaId: movimiento.operacionMovCajaId,
+              moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId,
+              entidadComercialId: movimiento.entidadComercialId,
+              monedaId: movimiento.monedaId,
+              urlComprobanteOperacionMovCaja: movimiento.urlComprobanteOperacionMovCaja,
+              tipoDocumentoId: movimiento.tipoDocumentoId,
+              numeroSerieComprobante: movimiento.numeroSerieComprobante,
+              numeroCorrelativoComprobante: movimiento.numeroCorrelativoComprobante,
             };
             return actualizarDetMovsEntregaRendir(
               movimiento.id,
@@ -429,54 +457,53 @@ export default function DetEntregaRendirPescaIndustrial({
                       entregaARendir?.entregaLiquidada
                     }
                     type="button"
-                    size="small"
+                    raised
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 0.5 }}>
                   <label htmlFor="">Ingreso/Egreso</label>
                   <Button
                     label={obtenerPropiedadesFiltroIngresoEgreso().label}
                     icon="pi pi-filter"
-                    className="p-button-sm"
                     onClick={alternarFiltroIngresoEgreso}
                     severity={obtenerPropiedadesFiltroIngresoEgreso().severity}
                     type="button"
-                    size="small"
+                    raised
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 0.5 }}>
                   <label htmlFor="">Validación Tesorería</label>
                   <Button
                     label={obtenerPropiedadesFiltroValidacionTesoreria().label}
                     icon="pi pi-filter"
-                    className="p-button-sm"
                     onClick={alternarFiltroValidacionTesoreria}
                     severity={
                       obtenerPropiedadesFiltroValidacionTesoreria().severity
                     }
                     type="button"
-                    size="small"
+                    raised
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 0.5 }}>
                   <Button
                     label="Limpiar"
                     icon="pi pi-filter-slash"
-                    className="p-button-sm p-button-outlined"
+                    className="p-button-outlined"
                     onClick={limpiarFiltros}
                     type="button"
-                    size="small"
+                    raised
                   />
                 </div>
                 <div style={{ flex: 1 }}>
                   <Button
                     label="Procesar Liquidación"
                     icon="pi pi-check"
-                    className="p-button-sm p-button-outlined"
+                    className="p-button-danger"
+                    severity="danger"
                     onClick={handleProcesarLiquidacion}
                     type="button"
                     disabled={entregaARendir.entregaLiquidada}
-                    size="small"
+                    raised
                   />
                 </div>
               </div>
@@ -601,6 +628,7 @@ export default function DetEntregaRendirPescaIndustrial({
           entidadesComerciales={entidadesComerciales} // Nueva prop
           monedas={monedas} // ← AGREGAR ESTA LÍNEA
           tiposDocumento={tiposDocumento}
+          productos={productos} // Nueva prop para productos (gastos)
           onGuardadoExitoso={handleGuardarMovimiento}
           onCancelar={() => {
             setShowMovimientoForm(false);

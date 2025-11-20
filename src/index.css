@@ -292,3 +292,13 @@ body {
 .cursor-pointer:hover {
   background-color: rgba(0, 159, 227, 0.05) !important;
 }
+
+/* Forzar Toast por encima de Dialogs y Overlays */
+/* Los Dialogs de PrimeReact tienen z-index ~1100-1200 */
+.p-toast {
+  z-index: 99999 !important;
+}
+
+.p-toast-message {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}

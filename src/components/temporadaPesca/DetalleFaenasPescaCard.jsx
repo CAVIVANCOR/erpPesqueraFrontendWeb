@@ -987,6 +987,7 @@ const DetalleFaenasPescaCard = forwardRef(
               paginator
               rows={10}
               showGridlines
+              stripedRows
               emptyMessage="No hay faenas registradas para esta temporada"
               className="p-datatable-sm"
               onRowClick={(e) => handleEditarFaena(e.data, e.originalEvent)}

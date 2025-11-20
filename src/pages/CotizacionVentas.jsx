@@ -11,6 +11,7 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { Badge } from "primereact/badge";
 import {
   getAllCotizacionVentas,
   deleteCotizacionVentas,
@@ -18,7 +19,7 @@ import {
   actualizarCotizacionVentas,
 } from "../api/cotizacionVentas";
 import CotizacionVentasForm from "../components/cotizacionVentas/CotizacionVentasForm";
-import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
+import { getResponsiveFontSize, formatearFecha, formatearNumero, getSeverityColors } from "../utils/utils";
 import { getEmpresas } from "../api/empresa";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getEntidadesComerciales } from "../api/entidadComercial";
@@ -39,9 +40,11 @@ import { getBancos } from "../api/banco";
 import { getAllFormaTransaccion } from "../api/formaTransaccion";
 import { getAllModoDespachoRecepcion } from "../api/modoDespachoRecepcion";
 import { getTiposContenedor } from "../api/tipoContenedor";
+import { getDocRequeridaVentasActivos } from "../api/docRequeridaVentas";
 import { usePermissions } from "../hooks/usePermissions";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
+import ColorTag from "../components/shared/ColorTag";
 
 /**
  * Componente CotizacionVentas
@@ -74,6 +77,7 @@ const CotizacionVentas = ({ ruta }) => {
   const [bancos, setBancos] = useState([]);
   const [formasTransaccion, setFormasTransaccion] = useState([]);
   const [modosDespacho, setModosDespacho] = useState([]);
+  const [docRequeridaVentas, setDocRequeridaVentas] = useState([]);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -86,12 +90,12 @@ const CotizacionVentas = ({ ruta }) => {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [clientesUnicos, setClientesUnicos] = useState([]);
-
   const [cotizaciones, setCotizaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [selectedCotizacion, setSelectedCotizacion] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const toast = useRef(null);
 
   useEffect(() => {
@@ -105,31 +109,33 @@ const CotizacionVentas = ({ ruta }) => {
       const data = await getAllCotizacionVentas();
       setCotizaciones(data);
     } catch (error) {
-      console.error('Error detallado al cargar cotizaciones:', error);
-      console.error('Response:', error.response);
-      console.error('Status:', error.response?.status);
-      console.error('Data:', error.response?.data);
+      console.error("Error detallado al cargar cotizaciones:", error);
+      console.error("Response:", error.response);
+      console.error("Status:", error.response?.status);
+      console.error("Data:", error.response?.data);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: `Error al cargar cotizaciones: ${error.response?.data?.message || error.message}`,
+        detail: `Error al cargar cotizaciones: ${
+          error.response?.data?.message || error.message
+        }`,
       });
     } finally {
       setLoading(false);
     }
   };
 
-  // Extraer proveedores únicos de los requerimientos
+  // Extraer clientes únicos de las cotizaciones
   useEffect(() => {
     const clientesMap = new Map();
-    items.forEach((item) => {
-      if (item.clienteId && item.cliente) {
-        clientesMap.set(item.clienteId, item.cliente);
+    cotizaciones.forEach((cotizacion) => {
+      if (cotizacion.clienteId && cotizacion.cliente) {
+        clientesMap.set(cotizacion.clienteId, cotizacion.cliente);
       }
     });
     const clientesArray = Array.from(clientesMap.values());
     setClientesUnicos(clientesArray);
-  }, [items]);
+  }, [cotizaciones]);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -155,6 +161,7 @@ const CotizacionVentas = ({ ruta }) => {
         bancosData,
         formasTransaccionData,
         modosDespachoData,
+        docRequeridaVentasData,
       ] = await Promise.all([
         getEmpresas(),
         getTiposDocumento(),
@@ -176,11 +183,12 @@ const CotizacionVentas = ({ ruta }) => {
         getBancos(),
         getAllFormaTransaccion(),
         getAllModoDespachoRecepcion(),
+        getDocRequeridaVentasActivos(),
       ]);
       setEmpresas(empresasData);
       setTiposDocumento(tiposDocData);
       setClientes(clientesData);
-      
+
       // Filtrar entidades comerciales por tipo
       const agenteAduanasData = clientesData.filter(
         (e) => Number(e.tipoEntidadId) === 12
@@ -194,7 +202,7 @@ const CotizacionVentas = ({ ruta }) => {
       setAgenteAduanas(agenteAduanasData);
       setOperadoresLogisticos(operadoresLogisticosData);
       setNavieras(navierasData);
-      
+
       setTiposProducto(tiposProductoData);
       setTiposEstadoProducto(tiposEstadoProductoData);
       setDestinosProducto(destinosProductoData);
@@ -232,8 +240,9 @@ const CotizacionVentas = ({ ruta }) => {
       setBancos(bancosData);
       setFormasTransaccion(formasTransaccionData);
       setModosDespacho(modosDespachoData);
+      setDocRequeridaVentas(docRequeridaVentasData);
     } catch (err) {
-      console.error('Error al cargar datos:', err);
+      console.error("Error al cargar datos:", err);
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -302,16 +311,22 @@ const CotizacionVentas = ({ ruta }) => {
       // Obtener autorizaVentaId desde ParametroAprobador
       let autorizaVentaId = null;
       if (empresaSeleccionada) {
-        const { getParametrosAprobadorPorModulo } = await import("../api/parametroAprobador");
-        const parametros = await getParametrosAprobadorPorModulo(empresaSeleccionada, 5); // 5 = VENTAS
-        
+        const { getParametrosAprobadorPorModulo } = await import(
+          "../api/parametroAprobador"
+        );
+        const parametros = await getParametrosAprobadorPorModulo(
+          empresaSeleccionada,
+          5
+        ); // 5 = VENTAS
+
         // Filtrar por cesado=false y tomar el primero
-        const parametroActivo = parametros.find(p => p.cesado === false);
+        const parametroActivo = parametros.find((p) => p.cesado === false);
         if (parametroActivo) {
           autorizaVentaId = parametroActivo.personalRespId;
-          console.log(`[CotizacionVentas] autorizaVentaId pre-cargado: ${autorizaVentaId}`);
         } else {
-          console.warn(`[CotizacionVentas] No se encontró ParametroAprobador activo para empresa ${empresaSeleccionada}, módulo VENTAS`);
+          console.warn(
+            `[CotizacionVentas] No se encontró ParametroAprobador activo para empresa ${empresaSeleccionada}, módulo VENTAS`
+          );
         }
       }
 
@@ -341,7 +356,10 @@ const CotizacionVentas = ({ ruta }) => {
   const handleGuardarCotizacion = async (datos) => {
     setLoading(true);
     try {
-      const esEdicion = selectedCotizacion && selectedCotizacion.id && selectedCotizacion.numeroDocumento;
+      const esEdicion =
+        selectedCotizacion &&
+        selectedCotizacion.id &&
+        selectedCotizacion.numeroDocumento;
 
       if (esEdicion) {
         await actualizarCotizacionVentas(selectedCotizacion.id, datos);
@@ -359,6 +377,7 @@ const CotizacionVentas = ({ ruta }) => {
           selectedCotizacion.id
         );
         setSelectedCotizacion(cotizacionActualizada);
+        setRefreshKey(prev => prev + 1); // Forzar re-mount del formulario
       } else {
         const resultado = await crearCotizacionVentas(datos);
         toast.current.show({
@@ -372,23 +391,27 @@ const CotizacionVentas = ({ ruta }) => {
         const { getCotizacionVentasPorId } = await import(
           "../api/cotizacionVentas"
         );
-        const cotizacionCompleta = await getCotizacionVentasPorId(
-          resultado.id
-        );
+        const cotizacionCompleta = await getCotizacionVentasPorId(resultado.id);
         setSelectedCotizacion(cotizacionCompleta);
+        setRefreshKey(prev => prev + 1); // Forzar re-mount del formulario
       }
 
       cargarCotizaciones();
     } catch (err) {
       // Si el backend devuelve campos faltantes, mostrar lista
-      if (err.response?.data?.camposFaltantes && Array.isArray(err.response.data.camposFaltantes)) {
+      if (
+        err.response?.data?.camposFaltantes &&
+        Array.isArray(err.response.data.camposFaltantes)
+      ) {
         toast.current.show({
           severity: "warn",
           summary: "Campos Obligatorios Faltantes",
           detail: (
             <div>
-              <p style={{ marginBottom: '8px', fontWeight: 'bold' }}>Los siguientes campos son obligatorios:</p>
-              <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              <p style={{ marginBottom: "8px", fontWeight: "bold" }}>
+                Los siguientes campos son obligatorios:
+              </p>
+              <ul style={{ margin: 0, paddingLeft: "20px" }}>
                 {err.response.data.camposFaltantes.map((campo, index) => (
                   <li key={index}>{campo}</li>
                 ))}
@@ -493,63 +516,29 @@ const CotizacionVentas = ({ ruta }) => {
     );
   };
 
-  const tipoProductoTemplate = (rowData) => {
-    if (!rowData.tipoProducto) return "N/A";
+const clienteTemplate = (rowData) => {
+  if (!rowData.cliente) return "N/A";
 
-    return (
-      <div>
-        <div className="font-medium">{rowData.tipoProducto.nombre || "N/A"}</div>
-        <div className="text-sm text-gray-600">
-          {rowData.tipoProducto.descripcion || ""}
-        </div>
-        {rowData.tipoProducto.paraVentas && (
-          <Tag
-            value="Para Ventas"
-            severity="success"
-            className="text-xs mt-1"
-          />
-        )}
-      </div>
-    );
-  };
+  const severity = rowData.estado?.severityColor || "success";
 
-  const clienteTemplate = (rowData) => {
-    if (!rowData.cliente) return "N/A";
-
-    return (
-      <div>
-        <div className="font-medium text-green-600">
-          {rowData.cliente.razonSocial || "Sin nombre"}
-        </div>
-        <div className="text-sm text-gray-600">
-          {rowData.cliente.ruc || rowData.cliente.numeroDocumento || ""}
-        </div>
-      </div>
-    );
-  };
+  return (
+    <ColorTag 
+      value={rowData.cliente.razonSocial || "Sin nombre"}
+      severity={severity}
+      size="normal"
+    />
+  );
+};
 
   const estadoTemplate = (rowData) => {
-    if (!rowData.estadoDoc) return "N/A";
-
-    // Mapeo de colores según el nombre del estado
-    const getSeverity = (nombre) => {
-      const nombreLower = nombre?.toLowerCase() || "";
-      if (nombreLower.includes("borrador") || nombreLower.includes("pendiente"))
-        return "secondary";
-      if (nombreLower.includes("enviada") || nombreLower.includes("proceso"))
-        return "info";
-      if (nombreLower.includes("aprobada") || nombreLower.includes("convertida"))
-        return "success";
-      if (nombreLower.includes("rechazada") || nombreLower.includes("anulada"))
-        return "danger";
-      if (nombreLower.includes("vencida")) return "warning";
-      return "secondary";
-    };
-
+    if (!rowData.estado) return "N/A";
+    // Usar el severityColor del estado o 'secondary' por defecto
+    const severity = rowData.estado.severityColor || "secondary";
     return (
-      <Tag
-        value={rowData.estadoDoc.nombre}
-        severity={getSeverity(rowData.estadoDoc.nombre)}
+      <Badge
+        value={rowData.estado.descripcion}
+        severity={severity}
+        size="small"
       />
     );
   };
@@ -559,111 +548,81 @@ const CotizacionVentas = ({ ruta }) => {
       <div className="text-sm">
         <div>
           <span className="font-medium">Entrega:</span>{" "}
-          {formatearFecha(rowData.fechaEntrega)}
+          {formatearFecha(rowData.fechaEntregaEstimada)}
         </div>
-        {rowData.fechaZarpe && (
+        {rowData.fechaZarpeEstimada && (
           <div>
             <span className="font-medium">Zarpe:</span>{" "}
-            {formatearFecha(rowData.fechaZarpe)}
+            {formatearFecha(rowData.fechaZarpeEstimada)}
           </div>
         )}
-        {rowData.fechaArribo && (
+        {rowData.fechaArriboEstimada && (
           <div>
             <span className="font-medium">Arribo:</span>{" "}
-            {formatearFecha(rowData.fechaArribo)}
+            {formatearFecha(rowData.fechaArriboEstimada)}
           </div>
         )}
       </div>
     );
   };
 
-  const responsablesTemplate = (rowData) => {
-    const respVentas = personalOptions.find(
-      (p) => Number(p.id) === Number(rowData.respVentasId)
-    );
-    const respEmbarque = personalOptions.find(
-      (p) => Number(p.id) === Number(rowData.respEmbarqueId)
-    );
-
+  const productoInfoTemplate = (rowData) => {
     return (
       <div className="text-sm">
-        <div>
-          <span className="font-medium">Ventas:</span>{" "}
-          {respVentas?.nombreCompleto || "N/A"}
+        <div className="font-medium text-blue-700">
+          {rowData.tipoProducto?.nombre || "N/A"}
         </div>
-        {rowData.respEmbarqueId && (
-          <div>
-            <span className="font-medium">Embarque:</span>{" "}
-            {respEmbarque?.nombreCompleto || "N/A"}
+        {rowData.tipoEstadoProducto && (
+          <div className="text-gray-600">
+            <span className="font-medium">Estado:</span>{" "}
+            {rowData.tipoEstadoProducto.nombre}
           </div>
         )}
-      </div>
-    );
-  };
-
-  const destinoTemplate = (rowData) => {
-    if (!rowData.destinoProducto) return "N/A";
-
-    return (
-      <div>
-        <div className="font-medium">{rowData.destinoProducto.nombre || "N/A"}</div>
-        <div className="text-sm text-gray-600">
-          {rowData.destinoProducto.descripcion || ""}
-        </div>
+        {rowData.destinoProducto && (
+          <div className="text-gray-600">
+            <span className="font-medium">Destino:</span>{" "}
+            {rowData.destinoProducto.nombre}
+          </div>
+        )}
       </div>
     );
   };
 
   const montosTemplate = (rowData) => {
+    // Calcular subtotal desde detalles
+    const subtotal = (rowData.detallesProductos || []).reduce((sum, det) => {
+      const cantidad = Number(det.cantidad) || 0;
+      const precio = Number(det.precioUnitarioFinal) || 0;
+      return sum + cantidad * precio;
+    }, 0);
+
+    // Calcular IGV
+    const porcentajeIGV = Number(rowData.porcentajeIGV) || 0;
+    const igv = rowData.esExoneradoAlIGV ? 0 : subtotal * (porcentajeIGV / 100);
+
+    // Total
+    const total = subtotal + igv;
+
+    // Símbolo de moneda
+    const simboloMoneda = rowData.moneda?.codigoSunat === "USD" ? "$" : "S/";
+
     return (
       <div className="text-right">
+        <Tag
+          value={`${simboloMoneda} ${formatearNumero(total)}`}
+          severity="info"
+          style={{
+            fontSize: "0.9rem",
+            fontWeight: "bold",
+            padding: "6px 10px",
+          }}
+        />
         {rowData.tipoCambio && (
-          <div className="font-medium">
-            T.C: {Number(rowData.tipoCambio).toFixed(2)}
-          </div>
-        )}
-        {rowData.montoAdelantadoCliente > 0 && (
-          <div className="text-green-600">
-            Adelanto: {formatearMoneda(rowData.montoAdelantadoCliente)}
+          <div style={{ fontSize: "0.75rem", color: "#666", marginTop: "4px" }}>
+            T/C: {formatearNumero(rowData.tipoCambio)}
           </div>
         )}
       </div>
-    );
-  };
-
-  const logisticaTemplate = (rowData) => {
-    return (
-      <div className="text-sm">
-        {rowData.incoterms && (
-          <div>
-            <span className="font-medium">Incoterm:</span>{" "}
-            {rowData.incoterms.codigo || rowData.incoterms.nombre || "N/A"}
-          </div>
-        )}
-        {rowData.cantidadContenedores && (
-          <div>
-            <span className="font-medium">Contenedores:</span>{" "}
-            {rowData.cantidadContenedores}
-          </div>
-        )}
-        {rowData.pesoMaximoContenedor && (
-          <div>
-            <span className="font-medium">Peso Max:</span>{" "}
-            {Number(rowData.pesoMaximoContenedor).toFixed(2)} TM
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const observacionesTemplate = (rowData) => {
-    if (!rowData.observaciones) return "";
-    return (
-      <span title={rowData.observaciones}>
-        {rowData.observaciones.length > 30
-          ? `${rowData.observaciones.substring(0, 30)}...`
-          : rowData.observaciones}
-      </span>
     );
   };
 
@@ -735,7 +694,7 @@ const CotizacionVentas = ({ ruta }) => {
                 }}
               >
                 <div style={{ flex: 2 }}>
-                  <h2>Requerimientos de Compra</h2>
+                  <h2>Cotizaciones Venta</h2>
                 </div>
                 <div style={{ flex: 2 }}>
                   <label htmlFor="empresaFiltro" style={{ fontWeight: "bold" }}>
@@ -860,7 +819,7 @@ const CotizacionVentas = ({ ruta }) => {
             field="id"
             header="ID"
             sortable
-            style={{ width: "80px" }}
+            style={{ width: "80px", verticalAlign: "top" }}
             frozen
           />
           <Column
@@ -868,71 +827,47 @@ const CotizacionVentas = ({ ruta }) => {
             header="N° Cotización"
             body={fechaRegistroTemplate}
             sortable
-            style={{ width: "150px" }}
+            style={{ width: "160px", verticalAlign: "top", fontWeight: "bold" }}
           />
           <Column
             field="empresaId"
             header="Empresa"
             body={empresaTemplate}
             sortable
-            style={{ width: "200px" }}
+            style={{ width: "100px", verticalAlign: "top" }}
           />
           <Column
             field="tipoProductoId"
-            header="Tipo Producto"
-            body={tipoProductoTemplate}
+            header="Producto"
+            body={productoInfoTemplate}
             sortable
-            style={{ width: "180px" }}
+            style={{ width: "200px", verticalAlign: "top", fontWeight: "bold" }}
           />
           <Column
             field="clienteId"
             header="Cliente"
             body={clienteTemplate}
             sortable
-            style={{ width: "200px" }}
-          />
-          <Column
-            field="destinoProductoId"
-            header="Destino"
-            body={destinoTemplate}
-            sortable
-            style={{ width: "150px" }}
+            style={{ width: "200px", verticalAlign: "top" }}
           />
           <Column
             field="estadoCotizacionId"
             header="Estado"
             body={estadoTemplate}
             sortable
-            style={{ width: "120px" }}
+            style={{ width: "120px", verticalAlign: "top" }}
             className="text-center"
           />
           <Column
             header="Fechas"
             body={fechasTemplate}
-            style={{ width: "150px" }}
-          />
-          <Column
-            header="Responsables"
-            body={responsablesTemplate}
-            style={{ width: "180px" }}
-          />
-          <Column
-            header="Logística"
-            body={logisticaTemplate}
-            style={{ width: "150px" }}
+            style={{ width: "150px", verticalAlign: "top" }}
           />
           <Column
             header="Montos"
             body={montosTemplate}
-            style={{ width: "120px" }}
+            style={{ width: "120px", verticalAlign: "top" }}
             className="text-right"
-          />
-          <Column
-            field="observaciones"
-            header="Observaciones"
-            body={observacionesTemplate}
-            sortable
-            style={{ minWidth: "150px" }}
           />
           <Column
             header="Acciones"
@@ -950,20 +885,20 @@ const CotizacionVentas = ({ ruta }) => {
         style={{ width: "1300px" }}
         header={
           isEditing
-            ? "Editar Cotización de Ventas"
+            ? `Editar Cotización de Ventas: ${selectedCotizacion?.codigo || ""}`
             : "Nueva Cotización de Ventas"
         }
         modal
         onHide={cerrarDialogo}
       >
         <CotizacionVentasForm
+          key={`${selectedCotizacion?.id || 'new'}-${refreshKey}`}
           isEdit={isEditing}
           defaultValues={selectedCotizacion}
           onSubmit={handleGuardarCotizacion}
           onCancel={cerrarDialogo}
           loading={loading}
           toast={toast}
-
           empresas={empresas}
           tiposDocumento={tiposDocumento}
           clientes={clientes}
@@ -987,6 +922,11 @@ const CotizacionVentas = ({ ruta }) => {
           bancos={bancos}
           formasTransaccion={formasTransaccion}
           modosDespacho={modosDespacho}
+          docRequeridaVentasOptions={docRequeridaVentas.map(d => ({
+            value: d.id,
+            label: d.nombre,
+            descripcion: d.descripcion
+          }))}
           empresaFija={empresaSeleccionada}
         />
       </Dialog>

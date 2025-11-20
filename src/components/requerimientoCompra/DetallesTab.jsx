@@ -252,6 +252,7 @@ export default function DetallesTab({
         emptyMessage="No hay detalles agregados"
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         showGridlines
+        stripedRows
         size="small"
         onRowClick={(e) => {
           if (puedeVerDetalles) {
