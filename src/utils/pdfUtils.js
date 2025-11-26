@@ -101,6 +101,22 @@ export const abrirPdfEnNuevaPestana = async (urlPdf, toast, mensajeError = "No h
       // ✅ NUEVO: Soporte para PDFs de liquidaciones de entregas a rendir
       const rutaArchivo = urlPdf.replace('/uploads/entregas-rendir/', '');
       urlCompleta = `${import.meta.env.VITE_API_URL}/entregas-a-rendir/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/ot-mantenimiento/fotos-antes/')) {
+      // ✅ NUEVO: Soporte para PDFs de fotos antes de OT Mantenimiento
+      const rutaArchivo = urlPdf.replace('/uploads/ot-mantenimiento/fotos-antes/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/ot-mantenimiento/archivo-fotos-antes/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/ot-mantenimiento/fotos-despues/')) {
+      // ✅ NUEVO: Soporte para PDFs de fotos después de OT Mantenimiento
+      const rutaArchivo = urlPdf.replace('/uploads/ot-mantenimiento/fotos-despues/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/ot-mantenimiento/archivo-fotos-despues/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/ot-mantenimiento/orden-trabajo/')) {
+      // ✅ NUEVO: Soporte para PDFs de orden de trabajo de OT Mantenimiento
+      const rutaArchivo = urlPdf.replace('/uploads/ot-mantenimiento/orden-trabajo/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/ot-mantenimiento/archivo-orden-trabajo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/contratos-servicio/')) {
+      // ✅ NUEVO: Soporte para PDFs de contratos de servicio
+      const rutaArchivo = urlPdf.replace('/uploads/contratos-servicio/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/contrato-servicio-pdf/archivo-contrato/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/")) {
       // Para otros tipos de uploads (archivos de confirmación, etc.)
       urlCompleta = `${import.meta.env.VITE_API_URL}${urlPdf}`;
@@ -234,6 +250,10 @@ export const descargarPdf = async (urlPdf, toast, nombreArchivo = "documento.pdf
       // ✅ NUEVO: Soporte para PDFs de liquidaciones de entregas a rendir
       const rutaArchivo = urlPdf.replace('/uploads/entregas-rendir/', '');
       urlCompleta = `${import.meta.env.VITE_API_URL}/entregas-a-rendir/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/contratos-servicio/')) {
+      // ✅ NUEVO: Soporte para PDFs de contratos de servicio
+      const rutaArchivo = urlPdf.replace('/uploads/contratos-servicio/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/contrato-servicio-pdf/archivo-contrato/${rutaArchivo}`;
     } else if (urlPdf.startsWith(`/uploads/${tipoUpload}/`)) {
       const rutaArchivo = urlPdf.replace(`/uploads/${tipoUpload}/`, "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/${tipoUpload}/archivo/${rutaArchivo}`;

@@ -1,103 +1,41 @@
-import axios from 'axios';
-import { useAuthStore } from '../shared/stores/useAuthStore';
+// src/api/tipoMantenimiento.js
+// Funciones de integración API REST para TipoMantenimiento. Usa JWT desde Zustand.
+// Documentado en español técnico.
 
-const API_URL = import.meta.env.VITE_API_URL;
+import axios from "axios";
+import { useAuthStore } from "../shared/stores/useAuthStore";
 
-/**
- * Obtiene el token de autenticación desde el store de Zustand
- * @returns {string} Token JWT para autenticación
- */
-const getAuthToken = () => {
-  const { token } = useAuthStore.getState();
-  return token;
-};
+const API_URL = `${import.meta.env.VITE_API_URL}/tipos-mantenimiento`;
 
 /**
- * Obtiene todos los tipos de mantenimiento del sistema
- * @returns {Promise<Array>} Lista de tipos de mantenimiento
+ * Obtiene el token JWT profesionalmente desde Zustand
  */
-export const getAllTipoMantenimiento = async () => {
-  try {
-    const token = getAuthToken();
-    const response = await axios.get(`${API_URL}/tipo-mantenimiento`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error al obtener tipos de mantenimiento:', error);
-    throw error;
-  }
-};
+function getAuthHeaders() {
+  const token = useAuthStore.getState().token;
+  return { Authorization: `Bearer ${token}` };
+}
 
-/**
- * Crea un nuevo tipo de mantenimiento
- * @param {Object} tipoMantenimientoData - Datos del tipo de mantenimiento
- * @returns {Promise<Object>} Tipo de mantenimiento creado
- */
-export const crearTipoMantenimiento = async (tipoMantenimientoData) => {
-  try {
-    const token = getAuthToken();
-    const response = await axios.post(`${API_URL}/tipo-mantenimiento`, tipoMantenimientoData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error al crear tipo de mantenimiento:', error);
-    throw error;
-  }
-};
+export async function getTiposMantenimiento() {
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  return res.data;
+}
 
-/**
- * Actualiza un tipo de mantenimiento existente
- * @param {number} id - ID del tipo de mantenimiento
- * @param {Object} tipoMantenimientoData - Datos actualizados del tipo de mantenimiento
- * @returns {Promise<Object>} Tipo de mantenimiento actualizado
- */
-export const actualizarTipoMantenimiento = async (id, tipoMantenimientoData) => {
-  try {
-    const token = getAuthToken();
-    const response = await axios.put(`${API_URL}/tipo-mantenimiento/${id}`, tipoMantenimientoData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error al actualizar tipo de mantenimiento:', error);
-    throw error;
-  }
-};
+export async function getTipoMantenimientoPorId(id) {
+  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}
 
-/**
- * Elimina un tipo de mantenimiento
- * @param {number} id - ID del tipo de mantenimiento a eliminar
- * @returns {Promise<Object>} Confirmación de eliminación
- */
-export const eliminarTipoMantenimiento = async (id) => {
-  try {
-    const token = getAuthToken();
-    const response = await axios.delete(`${API_URL}/tipo-mantenimiento/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error al eliminar tipo de mantenimiento:', error);
-    throw error;
-  }
-};
+export async function crearTipoMantenimiento(data) {
+  const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
+  return res.data;
+}
 
-// Aliases en inglés para compatibilidad
-export const getTipoMantenimiento = getAllTipoMantenimiento;
-export const createTipoMantenimiento = crearTipoMantenimiento;
-export const updateTipoMantenimiento = actualizarTipoMantenimiento;
-export const deleteTipoMantenimiento = eliminarTipoMantenimiento;
+export async function actualizarTipoMantenimiento(id, data) {
+  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+export async function eliminarTipoMantenimiento(id) {
+  const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  return res.data;
+}

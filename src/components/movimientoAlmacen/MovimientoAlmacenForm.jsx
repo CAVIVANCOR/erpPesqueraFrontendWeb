@@ -22,6 +22,7 @@ import DetalleMovimientoForm from "./DetalleMovimientoForm";
 import KardexProductoDialog from "./KardexProductoDialog";
 import VerImpresionMovimientoPDF from "./VerImpresionMovimientoPDF";
 import VerImpresionMovimientoConCostosPDF from "./VerImpresionMovimientoConCostosPDF";
+import EntregasARendirMovAlmacenCard from "./EntregasARendirMovAlmacenCard";
 import { getSeriesDoc, getMovimientoAlmacenPorId } from "../../api/movimientoAlmacen";
 import { getAlmacenById } from "../../api/almacen";
 import { getDireccionesEntidad } from "../../api/direccionEntidad";
@@ -52,6 +53,9 @@ export default function MovimientoAlmacenForm({
   estadosCalidad = [],
   detallesReqCompra = [],
   empresaFija = null, // Empresa pre-seleccionada desde el filtro
+  centrosCosto = [], // Para entregas a rendir
+  tiposMovimiento = [], // Para entregas a rendir
+  monedas = [], // Para entregas a rendir
   onSubmit,
   onCancel,
   onCerrar,
@@ -173,6 +177,9 @@ export default function MovimientoAlmacenForm({
   // Estados para el progreso de generación de kardex
   const [showProgressDialog, setShowProgressDialog] = useState(false);
   const [progressSteps, setProgressSteps] = useState([]);
+
+  // Estado para contador de entregas a rendir
+  const [entregasCount, setEntregasCount] = useState(0);
   const [currentProgressStep, setCurrentProgressStep] = useState(0);
   const [progressComplete, setProgressComplete] = useState(false);
   const [progressError, setProgressError] = useState(false);
@@ -1607,6 +1614,27 @@ export default function MovimientoAlmacenForm({
             />
           </TabPanel>
         )}
+
+        {/* TAB 4: ENTREGAS A RENDIR */}
+        <TabPanel
+          header={`Entregas a Rendir ${
+            entregasCount > 0 ? `(${entregasCount})` : ""
+          }`}
+          leftIcon="pi pi-money-bill"
+          disabled={!isEdit}
+        >
+          <EntregasARendirMovAlmacenCard
+            movimientoAlmacen={defaultValues}
+            personal={personalOptions}
+            centrosCosto={centrosCosto}
+            tiposMovimiento={tiposMovimiento}
+            entidadesComerciales={entidadesComerciales}
+            monedas={monedas}
+            tiposDocumento={tiposDocumento}
+            puedeEditar={!documentoCerrado}
+            onCountChange={setEntregasCount}
+          />
+        </TabPanel>
       </TabView>
 
       {/* BOTONES DE ACCIÓN */}

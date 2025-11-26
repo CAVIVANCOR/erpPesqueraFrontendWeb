@@ -19,6 +19,16 @@ import { InputText } from 'primereact/inputtext';
 import { Tag } from 'primereact/tag';
 import { FilterMatchMode } from 'primereact/api';
 import { getOrdenesTrabajoMantenimiento, eliminarOrdenTrabajo } from '../api/oTMantenimiento';
+import { getEmpresas } from '../api/empresa';
+import { getSedes } from '../api/sedes';
+import { getActivos } from '../api/activo';
+import { getTiposMantenimiento } from '../api/tipoMantenimiento';
+import { getMotivosOrigenOT } from '../api/motivoOriginoOT';
+import { getEstadosMultiFuncion } from '../api/estadoMultiFuncion';
+import { getPersonal } from '../api/personal';
+import { getContratistas } from '../api/contratista';
+import { getProductos } from '../api/producto';
+import { getAlmacenes } from '../api/almacen';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 import OTMantenimientoForm from '../components/oTMantenimiento/OTMantenimientoForm';
 
@@ -39,6 +49,20 @@ const OTMantenimiento = () => {
   const [filters, setFilters] = useState({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS }
   });
+
+  // Estados para catálogos
+  const [empresas, setEmpresas] = useState([]);
+  const [sedes, setSedes] = useState([]);
+  const [almacenes, setAlmacenes] = useState([]);
+  const [activos, setActivos] = useState([]);
+  const [tiposMantenimiento, setTiposMantenimiento] = useState([]);
+  const [motivosOrigen, setMotivosOrigen] = useState([]);
+  const [estadosDoc, setEstadosDoc] = useState([]);
+  const [estadosTarea, setEstadosTarea] = useState([]);
+  const [estadosInsumo, setEstadosInsumo] = useState([]);
+  const [personalOptions, setPersonalOptions] = useState([]);
+  const [contratistas, setContratistas] = useState([]);
+  const [productos, setProductos] = useState([]);
 
   /**
    * Carga las órdenes de trabajo desde la API
@@ -76,10 +100,67 @@ const OTMantenimiento = () => {
   };
 
   /**
+   * Carga los catálogos necesarios para el formulario
+   */
+  const cargarCatalogos = async () => {
+    try {
+      const [
+        empresasData,
+        sedesData,
+        almacenesData,
+        activosData,
+        tiposData,
+        motivosData,
+        estadosDocData,
+        estadosTareaData,
+        estadosInsumoData,
+        personalData,
+        contratistasData,
+        productosData
+      ] = await Promise.all([
+        getEmpresas(),
+        getSedes(),
+        getAlmacenes(),
+        getActivos(),
+        getTiposMantenimiento(),
+        getMotivosOrigenOT(),
+        getEstadosMultiFuncion(7), // Estados de OT (tipoProvieneDe = 7)
+        getEstadosMultiFuncion(8), // Estados de Tareas (tipoProvieneDe = 8)
+        getEstadosMultiFuncion(9), // Estados de Insumos (tipoProvieneDe = 9)
+        getPersonal(),
+        getContratistas(),
+        getProductos()
+      ]);
+
+      // Normalizar IDs
+      setEmpresas(empresasData.map(e => ({ ...e, id: Number(e.id) })));
+      setSedes(sedesData.map(s => ({ ...s, id: Number(s.id) })));
+      setAlmacenes(almacenesData.map(a => ({ ...a, id: Number(a.id) })));
+      setActivos(activosData.map(a => ({ ...a, id: Number(a.id) })));
+      setTiposMantenimiento(tiposData.map(t => ({ ...t, id: Number(t.id) })));
+      setMotivosOrigen(motivosData.map(m => ({ ...m, id: Number(m.id) })));
+      setEstadosDoc(estadosDocData.map(e => ({ ...e, id: Number(e.id) })));
+      setEstadosTarea(estadosTareaData.map(e => ({ ...e, id: Number(e.id) })));
+      setEstadosInsumo(estadosInsumoData.map(e => ({ ...e, id: Number(e.id) })));
+      setPersonalOptions(personalData.map(p => ({ ...p, id: Number(p.id) })));
+      setContratistas(contratistasData.map(c => ({ ...c, id: Number(c.id) })));
+      setProductos(productosData.map(p => ({ ...p, id: Number(p.id) })));
+    } catch (error) {
+      console.error('Error al cargar catálogos:', error);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Error al cargar los catálogos'
+      });
+    }
+  };
+
+  /**
    * Efecto para cargar datos al montar el componente
    */
   useEffect(() => {
     cargarOrdenesTrabajo();
+    cargarCatalogos();
   }, []);
 
   /**
@@ -413,9 +494,25 @@ const OTMantenimiento = () => {
         maximizable
       >
         <OTMantenimientoForm
-          ordenTrabajo={ordenSeleccionada}
-          onSave={onGuardar}
+          isEdit={!!ordenSeleccionada?.id}
+          defaultValues={ordenSeleccionada}
+          onSubmit={onGuardar}
           onCancel={cerrarDialogo}
+          empresas={empresas}
+          tiposMantenimiento={tiposMantenimiento}
+          motivosOrigen={motivosOrigen}
+          estadosDoc={estadosDoc}
+          estadosTarea={estadosTarea}
+          estadosInsumo={estadosInsumo}
+          activos={activos}
+          sedes={sedes}
+          almacenes={almacenes}
+          personalOptions={personalOptions}
+          contratistas={contratistas}
+          productos={productos}
+          permisos={{ eliminar: usuario?.rol === 'superusuario' || usuario?.rol === 'admin' }}
+          loading={loading}
+          toast={toast}
         />
       </Dialog>
     </div>

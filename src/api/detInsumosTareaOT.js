@@ -23,6 +23,21 @@ export const getAllDetInsumosTareaOT = async () => {
 };
 
 /**
+ * Obtiene insumos de una tarea específica
+ * @param {number} tareaId - ID de la tarea
+ * @returns {Promise} Lista de insumos de la tarea
+ */
+export const getInsumosPorTarea = async (tareaId) => {
+  const token = useAuthStore.getState().token;
+  const response = await axios.get(`${API_URL}/det-insumos-tarea-ot/tarea/${tareaId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return response.data;
+};
+
+/**
  * Crea un nuevo detalle de insumos de tarea OT
  * @param {Object} detInsumosTareaOTData - Datos del detalle de insumos de tarea OT
  * @returns {Promise} Detalle de insumos de tarea OT creado

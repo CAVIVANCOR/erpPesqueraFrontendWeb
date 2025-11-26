@@ -10,7 +10,7 @@
 import axios from "axios";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
-const API_URL = `${import.meta.env.VITE_API_URL}/pre-factura`;
+const API_URL = `${import.meta.env.VITE_API_URL}/pre-facturas`;
 
 /**
  * Obtiene el token JWT desde el store de autenticación
@@ -164,3 +164,26 @@ export async function convertirPreFacturaAFactura(id) {
 
 // Alias en inglés para compatibilidad
 export const convertPreFacturaToFactura = convertirPreFacturaAFactura;
+
+/**
+ * Obtiene series de documentos filtradas por empresaId y tipoDocumentoId
+ * @param {number} empresaId - ID de la empresa
+ * @param {number} tipoDocumentoId - ID del tipo de documento
+ * @returns {Promise<Array>} Lista de series de documentos
+ */
+export async function getSeriesDoc(empresaId, tipoDocumentoId) {
+  try {
+    const params = {
+      ...(empresaId && { empresaId }),
+      ...(tipoDocumentoId && { tipoDocumentoId })
+    };
+    const response = await axios.get(`${API_URL}/series-doc`, { 
+      params,
+      headers: getAuthHeaders() 
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error al obtener series de documentos:", error);
+    throw error;
+  }
+}

@@ -19,6 +19,7 @@ import {
 import { actualizarEntregaARendir } from "../../api/entregaARendir";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { generarYSubirPDFLiquidacionPI } from "./LiquidacionPescaIndustrialPDF";
 
 export default function DetEntregaRendirPescaIndustrial({
   // Props de datos
@@ -216,7 +217,7 @@ export default function DetEntregaRendirPescaIndustrial({
   const handleProcesarLiquidacion = () => {
     confirmDialog({
       message:
-        "¿Está seguro de procesar la liquidación? Esta acción no se puede deshacer y bloqueará todas las modificaciones futuras.",
+        "¿Está seguro de procesar la liquidación? Esta acción generará el PDF automáticamente, bloqueará todas las modificaciones futuras y no se puede deshacer.",
       header: "Confirmar Procesamiento de Liquidación",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-danger",
@@ -224,22 +225,7 @@ export default function DetEntregaRendirPescaIndustrial({
         try {
           const fechaActual = new Date();
 
-          // Actualizar EntregaARendir - SOLO enviar campos escalares, NO relaciones
-          const entregaActualizada = {
-            temporadaPescaId: entregaARendir.temporadaPescaId,
-            respEntregaRendirId: entregaARendir.respEntregaRendirId,
-            centroCostoId: entregaARendir.centroCostoId,
-            respLiquidacionId: usuario?.personalId || null,
-            urlLiquidacionPdf: entregaARendir.urlLiquidacionPdf,
-            entregaLiquidada: true,
-            fechaLiquidacion: fechaActual,
-            fechaCreacion: entregaARendir.fechaCreacion,
-            fechaActualizacion: fechaActual,
-          };
-
-          await actualizarEntregaARendir(entregaARendir.id, entregaActualizada);
-
-          // Actualizar todos los movimientos DetMovsEntregaRendir - SOLO campos escalares
+          // 1. Actualizar todos los movimientos DetMovsEntregaRendir - SOLO campos escalares
           const promesasActualizacion = movimientos.map((movimiento) => {
             const movimientoActualizado = {
               entregaARendirId: movimiento.entregaARendirId,
@@ -274,10 +260,55 @@ export default function DetEntregaRendirPescaIndustrial({
 
           await Promise.all(promesasActualizacion);
 
+          // 2. Cargar entrega completa con relaciones para el PDF
+          const token = useAuthStore.getState().token;
+          const headers = { Authorization: `Bearer ${token}` };
+          
+          const entregaResponse = await fetch(
+            `${import.meta.env.VITE_API_URL}/entregas-a-rendir/${entregaARendir.id}`,
+            { headers }
+          );
+          const entregaCompleta = await entregaResponse.json();
+
+          // 3. Cargar empresa
+          let empresa;
+          try {
+            const empresaResponse = await fetch(
+              `${import.meta.env.VITE_API_URL}/empresas/1`,
+              { headers }
+            );
+            if (empresaResponse.ok) {
+              empresa = await empresaResponse.json();
+            }
+          } catch (error) {
+            console.error("Error cargando empresa:", error);
+            empresa = {
+              razonSocial: "EMPRESA",
+              ruc: "N/A",
+              direccion: "N/A",
+            };
+          }
+
+          // 4. Generar PDF automáticamente
+          const resultadoPdf = await generarYSubirPDFLiquidacionPI(
+            {
+              ...entregaCompleta,
+              respLiquidacionId: usuario?.personalId || null,
+              entregaLiquidada: true,
+              fechaLiquidacion: fechaActual,
+            },
+            movimientos,
+            empresa
+          );
+
+          if (!resultadoPdf.success) {
+            throw new Error(resultadoPdf.error || "Error al generar el PDF");
+          }
+
           toast.current?.show({
             severity: "success",
             summary: "Liquidación Procesada",
-            detail: "La entrega a rendir ha sido liquidada exitosamente",
+            detail: "La entrega a rendir ha sido liquidada exitosamente y el PDF ha sido generado",
             life: 5000,
           });
 
@@ -287,7 +318,7 @@ export default function DetEntregaRendirPescaIndustrial({
           toast.current?.show({
             severity: "error",
             summary: "Error",
-            detail: "Error al procesar la liquidación",
+            detail: error.message || "Error al procesar la liquidación",
             life: 5000,
           });
         }

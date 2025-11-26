@@ -25,6 +25,9 @@ import { getEntregasARendirPCompras } from "../api/entregaARendirPCompras";
 // APIs para Ventas
 import { getAllDetMovsEntregaRendirPVentas } from "../api/detMovsEntregaRendirPVentas";
 import { getAllEntregaARendirPVentas } from "../api/entregaARendirPVentas";
+// APIs para Almacén
+import { getDetMovsEntregaRendirMovAlmacen } from "../api/detMovsEntregaRendirMovAlmacen";
+import { getAllEntregaARendirMovAlmacen } from "../api/entregaARendirMovAlmacen";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getProductos } from "../api/producto";
 
@@ -122,6 +125,19 @@ export default function MovimientoCaja() {
   const [selectedDetMovsIdsVentas, setSelectedDetMovsIdsVentas] = useState(
     []
   );
+  // Estados para DetEntregaRendirMovAlmacen (Almacén)
+  const [movimientosDetEntregaAlmacen, setMovimientosDetEntregaAlmacen] =
+    useState([]);
+  const [entregasARendirAlmacen, setEntregasARendirAlmacen] = useState([]);
+  const [
+    selectedMovimientosDetEntregaAlmacen,
+    setSelectedMovimientosDetEntregaAlmacen,
+  ] = useState(null);
+  const [loadingDetEntregaAlmacen, setLoadingDetEntregaAlmacen] =
+    useState(false);
+  const [selectedDetMovsIdsAlmacen, setSelectedDetMovsIdsAlmacen] = useState(
+    []
+  );
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [productos, setProductos] = useState([]);
 
@@ -163,6 +179,8 @@ export default function MovimientoCaja() {
     cargarEntregasARendirCompras();
     cargarMovimientosDetEntregaVentas();
     cargarEntregasARendirVentas();
+    cargarMovimientosDetEntregaAlmacen();
+    cargarEntregasARendirAlmacen();
     cargarTiposDocumento();
     cargarProductos();
   }, []);
@@ -441,6 +459,36 @@ export default function MovimientoCaja() {
     }
   };
 
+  // Cargar movimientos de entregas a rendir para Almacén
+  const cargarMovimientosDetEntregaAlmacen = async () => {
+    try {
+      setLoadingDetEntregaAlmacen(true);
+      const data = await getDetMovsEntregaRendirMovAlmacen();
+      setMovimientosDetEntregaAlmacen(data);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar los movimientos de entregas a rendir de almacén.",
+      });
+    } finally {
+      setLoadingDetEntregaAlmacen(false);
+    }
+  };
+
+  const cargarEntregasARendirAlmacen = async () => {
+    try {
+      const data = await getAllEntregaARendirMovAlmacen();
+      setEntregasARendirAlmacen(data);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar las entregas a rendir de almacén.",
+      });
+    }
+  };
+
   const cargarTiposDocumento = async () => {
     try {
       const data = await getTiposDocumento();
@@ -572,6 +620,7 @@ export default function MovimientoCaja() {
       cargarMovimientosDetEntregaConsumo();
       cargarMovimientosDetEntregaCompras();
       cargarMovimientosDetEntregaVentas();
+      cargarMovimientosDetEntregaAlmacen();
     } catch (err) {
       const mensajeError =
         err.response?.data?.mensaje ||
@@ -691,6 +740,20 @@ export default function MovimientoCaja() {
         ) {
           empresaDestinoId = entregaARendirVentas.cotizacionVentas.empresaId;
         }
+      } else if (tipoOrigen === "almacen") {
+        // Para Almacén: DetMovsEntregaRendirMovAlmacen -> EntregaARendirMovAlmacen -> MovimientoAlmacen -> empresaId
+        const entregaARendirAlmacen = entregasARendirAlmacen.find(
+          (e) =>
+            Number(e.id) ===
+            Number(movimientoSeleccionado.entregaARendirMovAlmacenId)
+        );
+
+        if (
+          entregaARendirAlmacen &&
+          entregaARendirAlmacen.movimientoAlmacen
+        ) {
+          empresaDestinoId = entregaARendirAlmacen.movimientoAlmacen.empresaId;
+        }
       }
 
       // Determinar el módulo origen según el tipo
@@ -707,6 +770,8 @@ export default function MovimientoCaja() {
           moduloOrigenId = 4; // COMPRAS
         } else if (tipoOrigen === "ventas") {
           moduloOrigenId = 5; // VENTAS
+        } else if (tipoOrigen === "almacen") {
+          moduloOrigenId = 6; // ALMACÉN
         }
       }
 
@@ -932,7 +997,34 @@ export default function MovimientoCaja() {
       </TabPanel>
 
       <TabPanel header="Almacén">
-        <TabPanelAlmacen />
+        <TabPanelAlmacen
+          entregaARendir={entregasARendirAlmacen[0] || null}
+          movimientos={movimientosDetEntregaAlmacen}
+          personal={personal}
+          centrosCosto={centrosCosto}
+          tiposMovimiento={tipoMovEntregaRendir}
+          entidadesComerciales={entidadesComerciales}
+          monedas={monedas}
+          tiposDocumento={tiposDocumento}
+          productos={productos}
+          loading={loadingDetEntregaAlmacen}
+          selectedMovimiento={selectedMovimientosDetEntregaAlmacen}
+          onSelectionChange={(e) => {
+            setSelectedMovimientosDetEntregaAlmacen(e.value);
+            setSelectedDetMovsIdsAlmacen(e.value ? [e.value.id] : []);
+          }}
+          onDataChange={() => {
+            cargarMovimientosDetEntregaAlmacen();
+            cargarEntregasARendirAlmacen();
+          }}
+          onAplicarValidacion={() =>
+            handleAplicarMovimientos(
+              selectedMovimientosDetEntregaAlmacen,
+              "almacen"
+            )
+          }
+          toast={toast}
+        />
       </TabPanel>
 
       <TabPanel header="Servicios">

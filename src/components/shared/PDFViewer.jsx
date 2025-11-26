@@ -106,6 +106,10 @@ const PDFViewer = ({ urlDocumento, altura = '600px' }) => {
           // ✅ NUEVO: Soporte para PDFs de liquidaciones de entregas a rendir
           const rutaArchivo = urlDocumento.replace('/uploads/entregas-rendir/', '');
           urlCompleta = `${import.meta.env.VITE_API_URL}/entregas-a-rendir/archivo/${rutaArchivo}`;
+        } else if (urlDocumento.startsWith('/uploads/contratos-servicio/')) {
+          // ✅ NUEVO: Soporte para PDFs de contratos de servicio
+          const rutaArchivo = urlDocumento.replace('/uploads/contratos-servicio/', '');
+          urlCompleta = `${import.meta.env.VITE_API_URL}/contrato-servicio-pdf/archivo-contrato/${rutaArchivo}`;
 
         } else if (urlDocumento.startsWith('/api/')) {
           // Remover /api/ del inicio porque VITE_API_URL ya lo incluye

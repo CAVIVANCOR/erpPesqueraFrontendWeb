@@ -29,6 +29,9 @@ import { getConceptosMovAlmacen } from "../api/conceptoMovAlmacen";
 import { getProductos } from "../api/producto";
 import { getPersonal } from "../api/personal";
 import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
+import { getCentrosCosto } from "../api/centroCosto";
+import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
+import { getMonedas } from "../api/moneda";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 
@@ -52,6 +55,9 @@ export default function MovimientoAlmacen() {
   const [personalOptions, setPersonalOptions] = useState([]);
   const [estadosMercaderia, setEstadosMercaderia] = useState([]);
   const [estadosCalidad, setEstadosCalidad] = useState([]);
+  const [centrosCosto, setCentrosCosto] = useState([]);
+  const [tiposMovimiento, setTiposMovimiento] = useState([]);
+  const [monedas, setMonedas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -216,6 +222,9 @@ export default function MovimientoAlmacen() {
         productosData,
         personalData,
         estadosData,
+        centrosCostoData,
+        tiposMovimientoData,
+        monedasData,
       ] = await Promise.all([
         getMovimientosAlmacen(),
         getEmpresas(),
@@ -225,6 +234,9 @@ export default function MovimientoAlmacen() {
         getProductos(),
         getPersonal(),
         getEstadosMultiFuncion(),
+        getCentrosCosto(),
+        getAllTipoMovEntregaRendir(),
+        getMonedas(),
       ]);
       setItems(movimientosData);
       setEmpresas(empresasData);
@@ -251,6 +263,11 @@ export default function MovimientoAlmacen() {
         (e) => Number(e.tipoProvieneDeId) === 10 && !e.cesado
       );
       setEstadosCalidad(estadosCalidadFiltrados);
+
+      // Establecer datos para entregas a rendir
+      setCentrosCosto(centrosCostoData);
+      setTiposMovimiento(tiposMovimientoData);
+      setMonedas(monedasData);
     } catch (err) {
       toast.current.show({
         severity: "error",
@@ -887,6 +904,9 @@ export default function MovimientoAlmacen() {
           estadosMercaderia={estadosMercaderia}
           estadosCalidad={estadosCalidad}
           empresaFija={empresaSeleccionada}
+          centrosCosto={centrosCosto}
+          tiposMovimiento={tiposMovimiento}
+          monedas={monedas}
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           onCerrar={handleCerrar}

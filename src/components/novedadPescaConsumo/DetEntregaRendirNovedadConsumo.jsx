@@ -17,6 +17,8 @@ import {
   eliminarDetMovsEntRendirPescaConsumo,
 } from "../../api/detMovsEntRendirPescaConsumo";
 import { actualizarEntregaARendirPescaConsumo } from "../../api/entregaARendirPescaConsumo";
+import { generarYSubirPDFLiquidacionPC } from "./LiquidacionPescaConsumoPDF";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 export default function DetEntregaRendirNovedadConsumo({
   // Props de datos
@@ -213,28 +215,16 @@ export default function DetEntregaRendirNovedadConsumo({
   const handleProcesarLiquidacion = () => {
     confirmDialog({
       message:
-        "¿Está seguro de procesar la liquidación? Esta acción no se puede deshacer y bloqueará todas las modificaciones futuras.",
+        "¿Está seguro de procesar la liquidación? Esta acción generará el PDF automáticamente, bloqueará todas las modificaciones futuras y no se puede deshacer.",
       header: "Confirmar Procesamiento de Liquidación",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-danger",
       accept: async () => {
         try {
           const fechaActual = new Date();
+          const usuario = useAuthStore.getState().usuario;
 
-          // Actualizar EntregaARendirPescaConsumo
-          const entregaActualizada = {
-            ...entregaARendirPescaConsumo,
-            entregaLiquidada: true,
-            fechaLiquidacion: fechaActual,
-            fechaActualizacion: fechaActual,
-          };
-
-          await actualizarEntregaARendirPescaConsumo(
-            entregaARendirPescaConsumo.id,
-            entregaActualizada
-          );
-
-          // Actualizar todos los movimientos DetMovsEntRendirPescaConsumo
+          // 1. Actualizar todos los movimientos DetMovsEntRendirPescaConsumo
           const promesasActualizacion = movimientos.map((movimiento) => {
             const movimientoActualizado = {
               ...movimiento,
@@ -249,10 +239,55 @@ export default function DetEntregaRendirNovedadConsumo({
 
           await Promise.all(promesasActualizacion);
 
+          // 2. Cargar entrega completa con relaciones para el PDF
+          const token = useAuthStore.getState().token;
+          const headers = { Authorization: `Bearer ${token}` };
+          
+          const entregaResponse = await fetch(
+            `${import.meta.env.VITE_API_URL}/entregas-rendir-consumo/${entregaARendirPescaConsumo.id}`,
+            { headers }
+          );
+          const entregaCompleta = await entregaResponse.json();
+
+          // 3. Cargar empresa
+          let empresa;
+          try {
+            const empresaResponse = await fetch(
+              `${import.meta.env.VITE_API_URL}/empresas/1`,
+              { headers }
+            );
+            if (empresaResponse.ok) {
+              empresa = await empresaResponse.json();
+            }
+          } catch (error) {
+            console.error("Error cargando empresa:", error);
+            empresa = {
+              razonSocial: "EMPRESA",
+              ruc: "N/A",
+              direccion: "N/A",
+            };
+          }
+
+          // 4. Generar PDF automáticamente
+          const resultadoPdf = await generarYSubirPDFLiquidacionPC(
+            {
+              ...entregaCompleta,
+              respLiquidacionId: usuario?.personalId || null,
+              entregaLiquidada: true,
+              fechaLiquidacion: fechaActual,
+            },
+            movimientos,
+            empresa
+          );
+
+          if (!resultadoPdf.success) {
+            throw new Error(resultadoPdf.error || "Error al generar el PDF");
+          }
+
           toast.current?.show({
             severity: "success",
             summary: "Liquidación Procesada",
-            detail: "La entrega a rendir ha sido liquidada exitosamente",
+            detail: "La entrega a rendir ha sido liquidada exitosamente y el PDF ha sido generado",
             life: 5000,
           });
 
@@ -262,7 +297,7 @@ export default function DetEntregaRendirNovedadConsumo({
           toast.current?.show({
             severity: "error",
             summary: "Error",
-            detail: "Error al procesar la liquidación",
+            detail: error.message || "Error al procesar la liquidación",
             life: 5000,
           });
         }

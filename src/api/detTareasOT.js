@@ -156,7 +156,7 @@ export const eliminarDetalleTareaOT = async (id) => {
  */
 export const getTareasPorOrdenTrabajo = async (otMantenimientoId) => {
   try {
-    const response = await axios.get(`${API_URL}/orden-trabajo/${otMantenimientoId}`, getAuthHeaders());
+    const response = await axios.get(`${API_URL}/ot/${otMantenimientoId}`, getAuthHeaders());
     return response.data;
   } catch (error) {
     console.error(`Error al obtener tareas por orden de trabajo ${otMantenimientoId}:`, error);

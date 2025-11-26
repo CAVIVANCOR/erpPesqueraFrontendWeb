@@ -122,8 +122,8 @@ const DatosGeneralesFaenaPesca = ({
     puertoFondeoId,
   ]);
 
-  // Mostrar botón "Fin de Faena" solo cuando estado es EN ZARPE (18) y todos los campos están completos
-  const showFinalizarButton =
+  // Habilitar botón "Fin de Faena" solo cuando estado es EN ZARPE (18) y todos los campos están completos
+  const canFinalizarFaena =
     Number(estadoFaenaId) === 18 && allRequiredFieldsComplete;
   return (
     <div className="card">
@@ -233,20 +233,20 @@ const DatosGeneralesFaenaPesca = ({
             )}
           />
         </div>
-        {/* Botón Fin de Faena */}
-        {showFinalizarButton && (
-          <div style={{ flex: 0.5 }}>
-            <Button
-              label="Fin de Faena"
-              icon="pi pi-check"
-              severity="danger"
-              size="small"
-              raised
-              onClick={handleFinalizarFaena}
-              disabled={loading}
-            />
-          </div>
-        )}
+        {/* Botón Fin de Faena - Siempre visible, habilitado solo cuando estado es EN ZARPE (18) y campos completos */}
+        <div style={{ flex: 0.5 }}>
+          <Button
+            label="Fin de Faena"
+            icon="pi pi-check"
+            severity="danger"
+            size="small"
+            raised
+            onClick={handleFinalizarFaena}
+            disabled={!canFinalizarFaena || loading}
+            tooltip={!canFinalizarFaena ? "Complete todos los campos requeridos y asegúrese que el estado sea EN ZARPE" : ""}
+            tooltipOptions={{ position: "top" }}
+          />
+        </div>
       </div>
       <div
         style={{

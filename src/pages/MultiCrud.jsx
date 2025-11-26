@@ -133,6 +133,7 @@ import Marca from "./Marca";
 import DocRequeridaVentas from "./DocRequeridaVentas";
 import RequisitoDocPorPais from "./RequisitoDocPorPais";
 import TipoContenedor from "./TipoContenedor";
+import ContratoServicio from "./ContratoServicio";
 /**
  * Componente MultiCrud
  *
@@ -204,6 +205,10 @@ export default function MultiCrud() {
     requisitoDocPorPais: {
       label: "Requisitos Documentales por País",
       componente: <RequisitoDocPorPais ruta="requisitoDocPorPais" />,
+    },
+    contratoServicio: {
+      label: "Contratos de Servicios",
+      componente: <ContratoServicio ruta="contratoServicio" />,
     },
     ordenCompra: {
       label: "Orden Compra",
@@ -830,6 +835,11 @@ export default function MultiCrud() {
                 label: "Pre-Factura",
                 icon: "pi pi-file-pdf", // ✅ Documento PDF
                 command: () => abrirModulo("preFactura", "Pre-Factura"),
+              },
+              {
+                label: "Contratos de Servicios",
+                icon: "pi pi-file-contract", // ✅ Contrato
+                command: () => abrirModulo("contratoServicio", "Contratos de Servicios"),
               },
             ],
           },

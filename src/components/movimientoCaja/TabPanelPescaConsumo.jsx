@@ -50,7 +50,7 @@ export default function TabPanelPescaConsumo({
   return (
     <>
       <DetEntregaRendirNovedadConsumo
-        entregaARendir={entregaARendir}
+        entregaARendirPescaConsumo={entregaARendir}
         movimientos={movimientos}
         personal={personal}
         centrosCosto={centrosCosto}

@@ -9,10 +9,10 @@
  */
 
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
-import { formatearNumero, formatearFecha, formatearFechaHoraAMPM } from "../../utils/utils";
-import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { formatearNumero, formatearFechaHora } from "../../utils/utils";
 import { dibujaEncabezadoPDFLiquidacionPI } from "./dibujaEncabezadoPDFLiquidacionPI";
 import { dibujaTotalesYFirmaPDFLiquidacionPI } from "./dibujaTotalesYFirmaPDFLiquidacionPI";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 /**
  * Genera un PDF de liquidación de entrega a rendir y lo sube al servidor
@@ -155,8 +155,8 @@ async function generarPDFLiquidacionPI(entregaARendir, movimientos, empresa) {
     width
   );
 
-  // Dibujar tabla de movimientos
-  yPosition -= 20;
+  // Dibujar tabla de movimientos (reducir espacio)
+  yPosition -= 10;
   yPosition = dibujarTablaMovimientos(
     page,
     movimientos,
@@ -183,6 +183,55 @@ async function generarPDFLiquidacionPI(entregaARendir, movimientos, empresa) {
 }
 
 /**
+ * Divide texto en máximo 2 líneas usando todo el ancho disponible
+ */
+function dividirTextoEnLineas(texto, font, fontSize, maxWidth, maxLineas = 2) {
+  if (!texto) return [""];
+  
+  const palabras = texto.split(" ");
+  const lineas = [];
+  let lineaActual = "";
+  
+  for (let i = 0; i < palabras.length; i++) {
+    const palabra = palabras[i];
+    const separador = lineaActual ? " " : "";
+    const pruebaLinea = lineaActual + separador + palabra;
+    const anchoLinea = font.widthOfTextAtSize(pruebaLinea, fontSize);
+    
+    if (anchoLinea <= maxWidth) {
+      // La palabra cabe en la línea actual
+      lineaActual = pruebaLinea;
+    } else {
+      // La palabra no cabe
+      if (lineaActual) {
+        // Guardar línea actual solo si no excedemos el máximo
+        if (lineas.length < maxLineas) {
+          lineas.push(lineaActual);
+          lineaActual = palabra;
+        } else {
+          break;
+        }
+      } else {
+        // La palabra sola es más ancha que maxWidth, agregarla de todos modos
+        if (lineas.length < maxLineas) {
+          lineas.push(palabra);
+          lineaActual = "";
+        } else {
+          break;
+        }
+      }
+    }
+  }
+  
+  // Agregar última línea si hay contenido y no excedemos el máximo
+  if (lineaActual && lineas.length < maxLineas) {
+    lineas.push(lineaActual);
+  }
+  
+  return lineas.length > 0 ? lineas : [""];
+}
+
+/**
  * Dibuja la tabla de movimientos en el PDF
  */
 function dibujarTablaMovimientos(
@@ -196,163 +245,203 @@ function dibujarTablaMovimientos(
   let yPosition = startY;
   const margin = 10;
   const tableWidth = pageWidth - 2 * margin;
+  const gridColor = rgb(0.7, 0.7, 0.7);
 
   // Ordenar movimientos cronológicamente
   const movimientosOrdenados = [...movimientos].sort((a, b) => 
     new Date(a.fechaMovimiento) - new Date(b.fechaMovimiento)
   );
 
+  // Definir columnas perfectamente alineadas
+  const colWidths = [75, 75, 105, 115, 115, 115, 60, 65, 65];
+  const cols = [];
+  let xPos = margin;
+  
+  colWidths.forEach((width) => {
+    cols.push({ x: xPos, width: width });
+    xPos += width;
+  });
+  
+  const [fechaHora, fechaOper, tipo, ccOrigen, ccDestino, entidad, referencia, ingreso, egreso] = cols;
+
   // Encabezado de tabla
   page.drawRectangle({
     x: margin,
-    y: yPosition - 20,
+    y: yPosition - 18,
     width: tableWidth,
-    height: 20,
+    height: 18,
     color: rgb(0.9, 0.9, 0.9),
   });
 
-  // Definir columnas con posiciones para orientación horizontal (ajustadas)
-  const cols = {
-    fechaHora: { x: margin + 5, width: 80 },       // Fecha y Hora juntas
-    fechaOper: { x: margin + 60, width: 80 },      // Fecha Operación MovCaja
-    tipo: { x: margin + 115, width: 110 },         // Tipo (+20px = 110)
-    ccOrigen: { x: margin + 230, width: 170 },     // C.C. Origen (+80px = 170)
-    ccDestino: { x: margin + 405, width: 170 },    // C.C. Destino (+80px = 170)
-    entidad: { x: margin + 580, width: 150 },      // Entidad Comercial (+60px = 150)
-    referencia: { x: margin + 735, width: 60 },    // Referencia
-    ingreso: { x: margin + 800, width: 65 },       // Ingreso
-    egreso: { x: margin + 870, width: 65 },        // Egreso
-  };
-
-  // Dibujar encabezados
-  const headers = [
-    { text: "Fecha/Hora", x: cols.fechaHora.x },
-    { text: "F.Operación", x: cols.fechaOper.x },
-    { text: "Tipo Movimiento", x: cols.tipo.x },
-    { text: "C.C. Origen", x: cols.ccOrigen.x },
-    { text: "C.C. Destino", x: cols.ccDestino.x },
-    { text: "Entidad Com.", x: cols.entidad.x },
-    { text: "Referencia", x: cols.referencia.x },
-    { text: "Ingreso", x: cols.ingreso.x },
-    { text: "Egreso", x: cols.egreso.x },
-  ];
-
-  headers.forEach((header) => {
-    page.drawText(header.text, {
-      x: header.x,
-      y: yPosition - 15,
+  // Dibujar encabezados y líneas verticales
+  const headerTexts = ["Fecha/Hora", "F.Operación", "Tipo Movimiento", "C.C. Origen", "C.C. Destino", "Entidad Com.", "Referencia", "Ingreso", "Egreso"];
+  
+  cols.forEach((col, i) => {
+    // Línea vertical izquierda de la columna
+    page.drawLine({
+      start: { x: col.x, y: yPosition },
+      end: { x: col.x, y: yPosition - 18 },
+      thickness: 0.5,
+      color: gridColor,
+    });
+    
+    // Texto del encabezado
+    let xText = col.x + 2;
+    if (i >= 7) { // Ingreso y Egreso alineados a la derecha
+      const textWidth = fontBold.widthOfTextAtSize(headerTexts[i], 7);
+      xText = col.x + col.width - textWidth - 2;
+    }
+    
+    page.drawText(headerTexts[i], {
+      x: xText,
+      y: yPosition - 13,
       size: 7,
       font: fontBold,
       color: rgb(0, 0, 0),
     });
   });
+  
+  // Línea vertical final
+  page.drawLine({
+    start: { x: margin + tableWidth, y: yPosition },
+    end: { x: margin + tableWidth, y: yPosition - 18 },
+    thickness: 0.5,
+    color: gridColor,
+  });
+  
+  // Línea horizontal superior
+  page.drawLine({
+    start: { x: margin, y: yPosition },
+    end: { x: margin + tableWidth, y: yPosition },
+    thickness: 0.5,
+    color: gridColor,
+  });
+  
+  // Línea horizontal inferior del encabezado
+  page.drawLine({
+    start: { x: margin, y: yPosition - 18 },
+    end: { x: margin + tableWidth, y: yPosition - 18 },
+    thickness: 0.5,
+    color: gridColor,
+  });
 
-  yPosition -= 25;
+  yPosition -= 18;
 
   // Filas de datos
   movimientosOrdenados.forEach((mov, index) => {
+    const movCaja = mov.movimientoCaja;
+    const fontSize = 6;
+    const lineHeight = 7;
+    
+    // Preparar todos los datos (usar nombres diferentes para no sobrescribir variables de columna)
+    const fechaHoraTexto = formatearFechaHora(mov.fechaMovimiento, "N/A");
+    const fechaOperTexto = mov.fechaOperacionMovCaja ? formatearFechaHora(mov.fechaOperacionMovCaja, "") : "";
+    const tipoTexto = mov.tipoMovimiento?.nombre || "N/A";
+    
+    let ccOrigenTexto = "S/C";
+    if (movCaja && movCaja.cuentaCorrienteOrigen) {
+      const empresa = movCaja.empresaOrigen?.razonSocial || "";
+      const banco = movCaja.cuentaCorrienteOrigen?.banco?.nombre || "";
+      const moneda = movCaja.cuentaCorrienteOrigen?.moneda?.codigoSunat || "";
+      const cuenta = movCaja.cuentaCorrienteOrigen?.numeroCuenta || "";
+      ccOrigenTexto = [empresa, banco, moneda, cuenta].filter(Boolean).join(" - ");
+    }
+    
+    let ccDestinoTexto = "S/C";
+    if (movCaja && movCaja.cuentaCorrienteDestino) {
+      const empresa = movCaja.empresaDestino?.razonSocial || "";
+      const banco = movCaja.cuentaCorrienteDestino?.banco?.nombre || "";
+      const moneda = movCaja.cuentaCorrienteDestino?.moneda?.codigoSunat || "";
+      const cuenta = movCaja.cuentaCorrienteDestino?.numeroCuenta || "";
+      ccDestinoTexto = [empresa, banco, moneda, cuenta].filter(Boolean).join(" - ");
+    }
+    
+    let entidadTexto = "S/C";
+    if (movCaja && movCaja.entidadComercial) {
+      const razonSocial = movCaja.entidadComercial?.razonSocial || "";
+      const banco = movCaja.ctaCteEntidad?.banco?.nombre || "";
+      const moneda = movCaja.ctaCteEntidad?.moneda?.codigoSunat || "";
+      const cuenta = movCaja.ctaCteEntidad?.numeroCuenta || "";
+      entidadTexto = [razonSocial, banco, moneda, cuenta].filter(Boolean).join(" - ");
+    }
+    
+    let referenciaTexto = "";
+    if (movCaja) {
+      const codigo = movCaja.tipoReferencia?.codigo || "";
+      const refId = movCaja.referenciaExtId || "";
+      referenciaTexto = `${codigo} ${refId}`.trim();
+    }
+    
+    // Dividir textos largos en líneas (usar ancho completo menos pequeño margen)
+    const lineasFechaHora = dividirTextoEnLineas(fechaHoraTexto, fontRegular, fontSize, fechaHora.width - 3);
+    const lineasFechaOper = dividirTextoEnLineas(fechaOperTexto, fontRegular, fontSize, fechaOper.width - 3);
+    const lineasTipo = dividirTextoEnLineas(tipoTexto, fontRegular, fontSize, tipo.width - 3);
+    const lineasCCOrigen = dividirTextoEnLineas(ccOrigenTexto, fontRegular, fontSize, ccOrigen.width - 3);
+    const lineasCCDestino = dividirTextoEnLineas(ccDestinoTexto, fontRegular, fontSize, ccDestino.width - 3);
+    const lineasEntidad = dividirTextoEnLineas(entidadTexto, fontRegular, fontSize, entidad.width - 3);
+    const lineasReferencia = dividirTextoEnLineas(referenciaTexto, fontRegular, fontSize, referencia.width - 3);
+    
+    // Calcular altura de fila (máximo 2 líneas)
+    const maxLineas = Math.max(
+      lineasFechaHora.length,
+      lineasFechaOper.length,
+      lineasTipo.length,
+      lineasCCOrigen.length,
+      lineasCCDestino.length,
+      lineasEntidad.length,
+      lineasReferencia.length,
+      1
+    );
+    const rowHeight = Math.min(maxLineas, 2) * lineHeight + 3;
+    
     // Alternar color de fondo
     if (index % 2 === 0) {
       page.drawRectangle({
         x: margin,
-        y: yPosition - 15,
+        y: yPosition - rowHeight,
         width: tableWidth,
-        height: 15,
+        height: rowHeight,
         color: rgb(0.98, 0.98, 0.98),
       });
     }
-
-    const movCaja = mov.movimientoCaja;
-
-    // Fecha/Hora (dd/mm/yyyy HH:MM AM/PM)
-    const fechaHoraCompleta = formatearFechaHoraAMPM(mov.fechaMovimiento, "N/A");
-    page.drawText(fechaHoraCompleta.substring(0, 17), {
-      x: cols.fechaHora.x,
-      y: yPosition - 10,
-      size: 6,
-      font: fontRegular,
+    
+    // Dibujar líneas horizontales (grilla)
+    page.drawLine({
+      start: { x: margin, y: yPosition },
+      end: { x: margin + tableWidth, y: yPosition },
+      thickness: 0.5,
+      color: gridColor,
     });
-
-    // Fecha Operación MovCaja
-    const fechaOper = mov.fechaOperacionMovCaja 
-      ? formatearFechaHoraAMPM(mov.fechaOperacionMovCaja, "").substring(0, 17)
-      : "";
-    page.drawText(fechaOper, {
-      x: cols.fechaOper.x,
-      y: yPosition - 10,
-      size: 6,
-      font: fontRegular,
+    
+    // Dibujar líneas verticales (grilla)
+    cols.forEach((col) => {
+      page.drawLine({
+        start: { x: col.x, y: yPosition },
+        end: { x: col.x, y: yPosition - rowHeight },
+        thickness: 0.5,
+        color: gridColor,
+      });
     });
-
-    // Tipo de movimiento
-    const tipo = mov.tipoMovimiento?.nombre || "N/A";
-    page.drawText(tipo.substring(0, 18), {
-      x: cols.tipo.x,
-      y: yPosition - 10,
-      size: 6,
-      font: fontRegular,
+    page.drawLine({
+      start: { x: margin + tableWidth, y: yPosition },
+      end: { x: margin + tableWidth, y: yPosition - rowHeight },
+      thickness: 0.5,
+      color: gridColor,
     });
-
-    // C.C. Origen (de MovimientoCaja)
-    let ccOrigen = "";
-    if (movCaja) {
-      const empresa = movCaja.empresaOrigen?.razonSocial?.substring(0, 10) || "";
-      const banco = movCaja.cuentaCorrienteOrigen?.banco?.nombre?.substring(0, 8) || "";
-      const moneda = movCaja.cuentaCorrienteOrigen?.moneda?.codigoSunat || "";
-      const cuenta = movCaja.cuentaCorrienteOrigen?.numeroCuenta?.substring(0, 8) || "";
-      ccOrigen = `${empresa} ${banco} ${moneda} ${cuenta}`.trim();
-    }
-    page.drawText(ccOrigen.substring(0, 18), {
-      x: cols.ccOrigen.x,
-      y: yPosition - 10,
-      size: 5,
-      font: fontRegular,
-    });
-
-    // C.C. Destino (de MovimientoCaja)
-    let ccDestino = "";
-    if (movCaja && movCaja.cuentaCorrienteDestino) {
-      const empresa = movCaja.empresaDestino?.razonSocial?.substring(0, 10) || "";
-      const banco = movCaja.cuentaCorrienteDestino?.banco?.nombre?.substring(0, 8) || "";
-      const moneda = movCaja.cuentaCorrienteDestino?.moneda?.codigoSunat || "";
-      const cuenta = movCaja.cuentaCorrienteDestino?.numeroCuenta?.substring(0, 8) || "";
-      ccDestino = `${empresa} ${banco} ${moneda} ${cuenta}`.trim();
-    }
-    page.drawText(ccDestino.substring(0, 18), {
-      x: cols.ccDestino.x,
-      y: yPosition - 10,
-      size: 5,
-      font: fontRegular,
-    });
-
-    // Entidad Comercial (de MovimientoCaja)
-    let entidadCom = "";
-    if (movCaja && movCaja.entidadComercial) {
-      const razonSocial = movCaja.entidadComercial?.razonSocial?.substring(0, 10) || "";
-      const banco = movCaja.ctaCteEntidad?.banco?.nombre?.substring(0, 8) || "";
-      const moneda = movCaja.ctaCteEntidad?.moneda?.codigoSunat || "";
-      const cuenta = movCaja.ctaCteEntidad?.numeroCuenta?.substring(0, 8) || "";
-      entidadCom = `${razonSocial} ${banco} ${moneda} ${cuenta}`.trim();
-    }
-    page.drawText(entidadCom.substring(0, 18), {
-      x: cols.entidad.x,
-      y: yPosition - 10,
-      size: 5,
-      font: fontRegular,
-    });
-
-    // Referencia (de MovimientoCaja)
-    let referencia = "";
-    if (movCaja) {
-      const codigo = movCaja.tipoReferencia?.codigo || "";
-      const refId = movCaja.referenciaExtId || "";
-      referencia = `${codigo} ${refId}`.trim();
-    }
-    page.drawText(referencia.substring(0, 12), {
-      x: cols.referencia.x,
-      y: yPosition - 10,
-      size: 6,
-      font: fontRegular,
+    
+    // Dibujar textos multilínea
+    let yOffset = yPosition - 6;
+    const lineasArray = [lineasFechaHora, lineasFechaOper, lineasTipo, lineasCCOrigen, lineasCCDestino, lineasEntidad, lineasReferencia];
+    
+    lineasArray.forEach((lineas, colIndex) => {
+      lineas.forEach((linea, i) => {
+        page.drawText(linea, {
+          x: cols[colIndex].x + 2,
+          y: yOffset - (i * lineHeight),
+          size: fontSize,
+          font: fontRegular,
+        });
+      });
     });
 
     // Ingreso/Egreso (alineados a la derecha)
@@ -362,28 +451,36 @@ function dibujarTablaMovimientos(
 
     if (esIngreso) {
       page.drawText(monto, {
-        x: cols.ingreso.x + cols.ingreso.width - montoWidth - 5,
-        y: yPosition - 10,
+        x: ingreso.x + ingreso.width - montoWidth - 2,
+        y: yOffset,
         size: 7,
         font: fontRegular,
         color: rgb(0, 0.5, 0),
       });
     } else {
       page.drawText(monto, {
-        x: cols.egreso.x + cols.egreso.width - montoWidth - 5,
-        y: yPosition - 10,
+        x: egreso.x + egreso.width - montoWidth - 2,
+        y: yOffset,
         size: 7,
         font: fontRegular,
         color: rgb(0.7, 0, 0),
       });
     }
 
-    yPosition -= 15;
+    yPosition -= rowHeight;
 
     // Verificar si necesitamos nueva página
     if (yPosition < 100) {
       return yPosition;
     }
+  });
+  
+  // Dibujar línea horizontal final de la tabla
+  page.drawLine({
+    start: { x: margin, y: yPosition },
+    end: { x: margin + tableWidth, y: yPosition },
+    thickness: 0.5,
+    color: gridColor,
   });
 
   return yPosition;

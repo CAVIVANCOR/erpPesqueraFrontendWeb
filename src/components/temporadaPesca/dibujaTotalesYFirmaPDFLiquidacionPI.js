@@ -32,7 +32,7 @@ export function dibujaTotalesYFirmaPDFLiquidacionPI(
   pageWidth
 ) {
   let yPosition = startY - 30;
-  const margin = 40;
+  const margin = 10;
 
   // Calcular totales
   let totalIngresos = 0;
@@ -40,7 +40,7 @@ export function dibujaTotalesYFirmaPDFLiquidacionPI(
 
   movimientos.forEach((mov) => {
     const monto = parseFloat(mov.monto) || 0;
-    if (mov.tipoMovimiento?.ingresoEgreso === "I") {
+    if (mov.tipoMovimiento?.esIngreso === true) {
       totalIngresos += monto;
     } else {
       totalEgresos += monto;
@@ -49,78 +49,106 @@ export function dibujaTotalesYFirmaPDFLiquidacionPI(
 
   const saldo = totalIngresos - totalEgresos;
 
-  // Cuadro de totales
-  const totalesX = pageWidth - margin - 200;
-  const totalesWidth = 200;
+  // Definir posiciones de columnas (igual que en la tabla)
+  const colWidths = [75, 75, 105, 115, 115, 115, 60, 65, 65];
+  const cols = [];
+  let xPos = margin;
+  colWidths.forEach((width) => {
+    cols.push({ x: xPos, width: width });
+    xPos += width;
+  });
+  const [fechaHora, fechaOper, tipo, ccOrigen, ccDestino, entidad, referencia, ingreso, egreso] = cols;
+  const gridColor = rgb(0.7, 0.7, 0.7);
 
-  // Fondo del cuadro de totales
+  // Línea de totales con recuadro (solo desde columna Entidad)
+  yPosition -= 10;
+  const rowHeight = 18;
+  const totalesStartX = entidad.x;
+  const totalesWidth = referencia.x + referencia.width + ingreso.width + egreso.width - entidad.x;
+
+  // Fondo del recuadro de totales
   page.drawRectangle({
-    x: totalesX,
-    y: yPosition - 70,
+    x: totalesStartX,
+    y: yPosition - rowHeight,
     width: totalesWidth,
-    height: 70,
-    color: rgb(0.95, 0.95, 1),
-    borderColor: rgb(0, 0, 0.5),
-    borderWidth: 1,
+    height: rowHeight,
+    color: rgb(0.95, 0.95, 0.95),
   });
 
-  // Total Ingresos
-  page.drawText("Total Ingresos:", {
-    x: totalesX + 10,
-    y: yPosition - 20,
-    size: 10,
-    font: fontBold,
-  });
-
-  page.drawText(formatearNumero(totalIngresos), {
-    x: totalesX + 120,
-    y: yPosition - 20,
-    size: 10,
-    font: fontRegular,
-    color: rgb(0, 0.5, 0),
-  });
-
-  // Total Egresos
-  page.drawText("Total Egresos:", {
-    x: totalesX + 10,
-    y: yPosition - 40,
-    size: 10,
-    font: fontBold,
-  });
-
-  page.drawText(formatearNumero(totalEgresos), {
-    x: totalesX + 120,
-    y: yPosition - 40,
-    size: 10,
-    font: fontRegular,
-    color: rgb(0.7, 0, 0),
-  });
-
-  // Línea separadora
+  // Líneas horizontales
   page.drawLine({
-    start: { x: totalesX + 10, y: yPosition - 48 },
-    end: { x: totalesX + totalesWidth - 10, y: yPosition - 48 },
-    thickness: 1,
-    color: rgb(0, 0, 0),
+    start: { x: totalesStartX, y: yPosition },
+    end: { x: totalesStartX + totalesWidth, y: yPosition },
+    thickness: 0.5,
+    color: gridColor,
+  });
+  page.drawLine({
+    start: { x: totalesStartX, y: yPosition - rowHeight },
+    end: { x: totalesStartX + totalesWidth, y: yPosition - rowHeight },
+    thickness: 0.5,
+    color: gridColor,
   });
 
-  // Saldo
-  page.drawText("SALDO:", {
-    x: totalesX + 10,
-    y: yPosition - 65,
-    size: 11,
+  // Líneas verticales (solo columnas de totales)
+  [entidad, referencia, ingreso, egreso].forEach((col) => {
+    page.drawLine({
+      start: { x: col.x, y: yPosition },
+      end: { x: col.x, y: yPosition - rowHeight },
+      thickness: 0.5,
+      color: gridColor,
+    });
+  });
+  page.drawLine({
+    start: { x: egreso.x + egreso.width, y: yPosition },
+    end: { x: egreso.x + egreso.width, y: yPosition - rowHeight },
+    thickness: 0.5,
+    color: gridColor,
+  });
+
+  // Título "SALDO:" (alineado a la derecha en columna Entidad)
+  const saldoTitulo = "SALDO:";
+  const saldoTituloWidth = fontBold.widthOfTextAtSize(saldoTitulo, 9);
+  page.drawText(saldoTitulo, {
+    x: entidad.x + entidad.width - saldoTituloWidth - 2,
+    y: yPosition - 12,
+    size: 9,
     font: fontBold,
   });
 
-  page.drawText(formatearNumero(saldo), {
-    x: totalesX + 120,
-    y: yPosition - 65,
-    size: 11,
+  // Valor del Saldo (en columna Referencia, alineado a la derecha)
+  const saldoTexto = formatearNumero(saldo);
+  const saldoWidth = fontBold.widthOfTextAtSize(saldoTexto, 9);
+  page.drawText(saldoTexto, {
+    x: referencia.x + referencia.width - saldoWidth - 2,
+    y: yPosition - 12,
+    size: 9,
     font: fontBold,
     color: saldo >= 0 ? rgb(0, 0.5, 0) : rgb(0.7, 0, 0),
   });
 
-  yPosition -= 100;
+  // Total Ingresos (en columna Ingreso, alineado a la derecha)
+  const totalIngresosTexto = formatearNumero(totalIngresos);
+  const ingresoWidth = fontBold.widthOfTextAtSize(totalIngresosTexto, 9);
+  page.drawText(totalIngresosTexto, {
+    x: ingreso.x + ingreso.width - ingresoWidth - 2,
+    y: yPosition - 12,
+    size: 9,
+    font: fontBold,
+    color: rgb(0, 0.5, 0),
+  });
+
+  // Total Egresos (en columna Egreso, alineado a la derecha)
+  const totalEgresosTexto = formatearNumero(totalEgresos);
+  const egresoWidth = fontBold.widthOfTextAtSize(totalEgresosTexto, 9);
+  page.drawText(totalEgresosTexto, {
+    x: egreso.x + egreso.width - egresoWidth - 2,
+    y: yPosition - 12,
+    size: 9,
+    font: fontBold,
+    color: rgb(0.7, 0, 0),
+  });
+
+  yPosition -= 28;
 
   // Sección de firmas
   const firmaWidth = 200;
@@ -139,15 +167,20 @@ export function dibujaTotalesYFirmaPDFLiquidacionPI(
     ? `${entregaARendir.respEntregaRendir.nombres} ${entregaARendir.respEntregaRendir.apellidos}`.trim()
     : "N/A";
 
+  // Centrar nombre
+  const responsableWidth = fontRegular.widthOfTextAtSize(responsable, 9);
   page.drawText(responsable, {
-    x: firma1X + (firmaWidth - responsable.length * 4) / 2,
+    x: firma1X + (firmaWidth - responsableWidth) / 2,
     y: yPosition - 15,
     size: 9,
     font: fontRegular,
   });
 
-  page.drawText("Responsable de Entrega", {
-    x: firma1X + 30,
+  // Centrar cargo
+  const cargo1 = "Responsable de Entrega";
+  const cargo1Width = fontBold.widthOfTextAtSize(cargo1, 8);
+  page.drawText(cargo1, {
+    x: firma1X + (firmaWidth - cargo1Width) / 2,
     y: yPosition - 30,
     size: 8,
     font: fontBold,
@@ -165,15 +198,20 @@ export function dibujaTotalesYFirmaPDFLiquidacionPI(
 
     const liquidador = `${entregaARendir.respLiquidacion.nombres} ${entregaARendir.respLiquidacion.apellidos}`.trim();
 
+    // Centrar nombre
+    const liquidadorWidth = fontRegular.widthOfTextAtSize(liquidador, 9);
     page.drawText(liquidador, {
-      x: firma2X + (firmaWidth - liquidador.length * 4) / 2,
+      x: firma2X + (firmaWidth - liquidadorWidth) / 2,
       y: yPosition - 15,
       size: 9,
       font: fontRegular,
     });
 
-    page.drawText("Liquidador", {
-      x: firma2X + 70,
+    // Centrar cargo
+    const cargo2 = "Liquidador";
+    const cargo2Width = fontBold.widthOfTextAtSize(cargo2, 8);
+    page.drawText(cargo2, {
+      x: firma2X + (firmaWidth - cargo2Width) / 2,
       y: yPosition - 30,
       size: 8,
       font: fontBold,

@@ -17,6 +17,8 @@ import {
   eliminarDetMovsEntregaRendirPCompras,
 } from "../../api/detMovsEntregaRendirPCompras";
 import { actualizarEntregaARendirPCompras } from "../../api/entregaARendirPCompras";
+import { generarYSubirPDFLiquidacionCompras } from "./LiquidacionComprasPDF";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 export default function DetEntregaRendirCompras({
   entregaARendir,
@@ -42,6 +44,7 @@ export default function DetEntregaRendirCompras({
   const [editingMovimiento, setEditingMovimiento] = useState(null);
 
   const toast = useRef(null);
+  const usuario = useAuthStore((state) => state.user);
 
   const obtenerMovimientosFiltrados = () => {
     let movimientosFiltrados = [...movimientos];
@@ -201,7 +204,7 @@ export default function DetEntregaRendirCompras({
   const handleProcesarLiquidacion = () => {
     confirmDialog({
       message:
-        "¿Está seguro de procesar la liquidación? Esta acción no se puede deshacer y bloqueará todas las modificaciones futuras.",
+        "¿Está seguro de procesar la liquidación? Esta acción generará el PDF automáticamente, bloqueará todas las modificaciones futuras y no se puede deshacer.",
       header: "Confirmar Procesamiento de Liquidación",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-danger",
@@ -209,21 +212,31 @@ export default function DetEntregaRendirCompras({
         try {
           const fechaActual = new Date();
 
-          const entregaActualizada = {
-            requerimientoCompraId: entregaARendir.requerimientoCompraId,
-            respEntregaRendirId: entregaARendir.respEntregaRendirId,
-            centroCostoId: entregaARendir.centroCostoId,
-            entregaLiquidada: true,
-            fechaLiquidacion: fechaActual,
-          };
-
-          await actualizarEntregaARendirPCompras(entregaARendir.id, entregaActualizada);
-
+          // 1. Actualizar todos los movimientos DetMovsEntregaRendirPCompras - SOLO campos escalares
           const promesasActualizacion = movimientos.map((movimiento) => {
             const movimientoActualizado = {
-              ...movimiento,
+              entregaARendirPComprasId: movimiento.entregaARendirPComprasId,
+              responsableId: movimiento.responsableId,
+              fechaMovimiento: movimiento.fechaMovimiento,
+              tipoMovimientoId: movimiento.tipoMovimientoId,
+              productoId: movimiento.productoId,
+              monto: movimiento.monto,
+              descripcion: movimiento.descripcion,
+              creadoEn: movimiento.creadoEn,
+              actualizadoEn: fechaActual,
+              centroCostoId: movimiento.centroCostoId,
+              urlComprobanteMovimiento: movimiento.urlComprobanteMovimiento,
               validadoTesoreria: true,
               fechaValidacionTesoreria: fechaActual,
+              operacionSinFactura: movimiento.operacionSinFactura,
+              fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja,
+              operacionMovCajaId: movimiento.operacionMovCajaId,
+              moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId,
+              entidadComercialId: movimiento.entidadComercialId,
+              monedaId: movimiento.monedaId,
+              urlComprobanteOperacionMovCaja: movimiento.urlComprobanteOperacionMovCaja,
+              tipoDocumentoId: movimiento.tipoDocumentoId,
+              numeroCorrelativoComprobante: movimiento.numeroCorrelativoComprobante,
             };
             return actualizarDetMovsEntregaRendirPCompras(
               movimiento.id,
@@ -233,20 +246,65 @@ export default function DetEntregaRendirCompras({
 
           await Promise.all(promesasActualizacion);
 
+          // 2. Cargar entrega completa con relaciones para el PDF
+          const token = useAuthStore.getState().token;
+          const headers = { Authorization: `Bearer ${token}` };
+          
+          const entregaResponse = await fetch(
+            `${import.meta.env.VITE_API_URL}/entregas-rendir-compras/${entregaARendir.id}`,
+            { headers }
+          );
+          const entregaCompleta = await entregaResponse.json();
+
+          // 3. Cargar empresa
+          let empresa;
+          try {
+            const empresaResponse = await fetch(
+              `${import.meta.env.VITE_API_URL}/empresas/1`,
+              { headers }
+            );
+            if (empresaResponse.ok) {
+              empresa = await empresaResponse.json();
+            }
+          } catch (error) {
+            console.error("Error cargando empresa:", error);
+            empresa = {
+              razonSocial: "EMPRESA",
+              ruc: "N/A",
+              direccion: "N/A",
+            };
+          }
+
+          // 4. Generar PDF automáticamente
+          const resultadoPdf = await generarYSubirPDFLiquidacionCompras(
+            {
+              ...entregaCompleta,
+              respLiquidacionId: usuario?.personalId || null,
+              entregaLiquidada: true,
+              fechaLiquidacion: fechaActual,
+            },
+            movimientos,
+            empresa
+          );
+
+          if (!resultadoPdf.success) {
+            throw new Error(resultadoPdf.error || "Error al generar el PDF");
+          }
+
           toast.current?.show({
             severity: "success",
             summary: "Liquidación Procesada",
-            detail: "La entrega a rendir ha sido liquidada exitosamente",
+            detail: "La entrega a rendir ha sido liquidada exitosamente y el PDF ha sido generado",
             life: 5000,
           });
 
-          onDataChange?.();
+          onDataChange?.(); // Notificar al padre que recargue datos
         } catch (error) {
           console.error("Error al procesar liquidación:", error);
           toast.current?.show({
             severity: "error",
             summary: "Error",
-            detail: "Error al procesar la liquidación",
+            detail: error.message || "Error al procesar la liquidación",
             life: 5000,
           });
         }

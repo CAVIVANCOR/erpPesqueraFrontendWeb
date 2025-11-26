@@ -2,8 +2,9 @@ import { rgb } from "pdf-lib";
 import { formatearNumero } from "../../utils/utils";
 
 export function dibujaTotalesYFirmaPDFLiquidacionVentas(page, entregaARendir, movimientos, fontBold, fontRegular, startY, pageWidth) {
-  let yPosition = startY - 30;
-  const margin = 40;
+  let yPosition = startY - 10;
+  const margin = 10;
+  const gridColor = rgb(0.7, 0.7, 0.7);
 
   let totalIngresos = 0, totalEgresos = 0;
   movimientos.forEach((mov) => {
@@ -13,37 +14,100 @@ export function dibujaTotalesYFirmaPDFLiquidacionVentas(page, entregaARendir, mo
   });
   const saldo = totalIngresos - totalEgresos;
 
-  const totalesX = pageWidth - margin - 200;
-  const totalesWidth = 200;
+  // Definir columnas alineadas con la tabla (9 columnas)
+  const colWidths = [75, 75, 105, 115, 115, 115, 60, 65, 65];
+  let xPos = margin;
+  const cols = [];
+  colWidths.forEach((width) => {
+    cols.push({ x: xPos, width: width });
+    xPos += width;
+  });
+  
+  const ingresoCol = cols[7];
+  const egresoCol = cols[8];
 
+  const boxHeight = 18;
+  const boxStartX = ingresoCol.x;
+  const boxWidth = ingresoCol.width + egresoCol.width;
+
+  // Dibujar recuadro de totales
   page.drawRectangle({
-    x: totalesX, y: yPosition - 70, width: totalesWidth, height: 70,
-    color: rgb(0.95, 0.95, 1), borderColor: rgb(0, 0, 0.5), borderWidth: 1,
+    x: boxStartX,
+    y: yPosition - boxHeight,
+    width: boxWidth,
+    height: boxHeight,
+    color: rgb(0.95, 0.95, 0.95),
   });
 
-  page.drawText("Total Ingresos:", { x: totalesX + 10, y: yPosition - 20, size: 10, font: fontBold });
-  page.drawText(formatearNumero(totalIngresos), {
-    x: totalesX + 120, y: yPosition - 20, size: 10, font: fontRegular, color: rgb(0, 0.5, 0),
-  });
-
-  page.drawText("Total Egresos:", { x: totalesX + 10, y: yPosition - 40, size: 10, font: fontBold });
-  page.drawText(formatearNumero(totalEgresos), {
-    x: totalesX + 120, y: yPosition - 40, size: 10, font: fontRegular, color: rgb(0.7, 0, 0),
+  // Líneas de grilla
+  page.drawLine({
+    start: { x: boxStartX, y: yPosition },
+    end: { x: boxStartX + boxWidth, y: yPosition },
+    thickness: 0.5,
+    color: gridColor,
   });
 
   page.drawLine({
-    start: { x: totalesX + 10, y: yPosition - 48 },
-    end: { x: totalesX + totalesWidth - 10, y: yPosition - 48 },
-    thickness: 1, color: rgb(0, 0, 0),
+    start: { x: boxStartX, y: yPosition - boxHeight },
+    end: { x: boxStartX + boxWidth, y: yPosition - boxHeight },
+    thickness: 0.5,
+    color: gridColor,
   });
 
-  page.drawText("SALDO:", { x: totalesX + 10, y: yPosition - 65, size: 11, font: fontBold });
-  page.drawText(formatearNumero(saldo), {
-    x: totalesX + 120, y: yPosition - 65, size: 11, font: fontBold,
-    color: saldo >= 0 ? rgb(0, 0.5, 0) : rgb(0.7, 0, 0),
+  page.drawLine({
+    start: { x: boxStartX, y: yPosition },
+    end: { x: boxStartX, y: yPosition - boxHeight },
+    thickness: 0.5,
+    color: gridColor,
   });
 
-  yPosition -= 100;
+  page.drawLine({
+    start: { x: egresoCol.x, y: yPosition },
+    end: { x: egresoCol.x, y: yPosition - boxHeight },
+    thickness: 0.5,
+    color: gridColor,
+  });
+
+  page.drawLine({
+    start: { x: boxStartX + boxWidth, y: yPosition },
+    end: { x: boxStartX + boxWidth, y: yPosition - boxHeight },
+    thickness: 0.5,
+    color: gridColor,
+  });
+
+  // Texto "SALDO:" alineado a la derecha
+  const saldoTexto = "SALDO:";
+  const saldoWidth = fontBold.widthOfTextAtSize(saldoTexto, 8);
+  page.drawText(saldoTexto, {
+    x: ingresoCol.x - saldoWidth - 5,
+    y: yPosition - 13,
+    size: 8,
+    font: fontBold,
+  });
+
+  // Total Ingresos
+  const ingresoTexto = formatearNumero(totalIngresos);
+  const ingresoWidth = fontRegular.widthOfTextAtSize(ingresoTexto, 7);
+  page.drawText(ingresoTexto, {
+    x: ingresoCol.x + ingresoCol.width - ingresoWidth - 2,
+    y: yPosition - 13,
+    size: 7,
+    font: fontRegular,
+    color: rgb(0, 0.5, 0),
+  });
+
+  // Total Egresos
+  const egresoTexto = formatearNumero(totalEgresos);
+  const egresoWidth = fontRegular.widthOfTextAtSize(egresoTexto, 7);
+  page.drawText(egresoTexto, {
+    x: egresoCol.x + egresoCol.width - egresoWidth - 2,
+    y: yPosition - 13,
+    size: 7,
+    font: fontRegular,
+    color: rgb(0.7, 0, 0),
+  });
+
+  yPosition -= 30;
 
   const firmaWidth = 200;
   const firmaSpacing = (pageWidth - 2 * margin - 2 * firmaWidth) / 3;

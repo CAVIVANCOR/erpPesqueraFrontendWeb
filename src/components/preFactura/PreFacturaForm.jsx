@@ -1,709 +1,308 @@
 // src/components/preFactura/PreFacturaForm.jsx
-// Formulario profesional para PreFactura. Cumple regla transversal ERP Megui:
-// - Campos controlados, validación, normalización de IDs en combos, envío con JWT desde Zustand
-import React, { useState, useEffect, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
-import { Calendar } from 'primereact/calendar';
-import { Dropdown } from 'primereact/dropdown';
-import { InputNumber } from 'primereact/inputnumber';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { TabView, TabPanel } from 'primereact/tabview';
-import { Toast } from 'primereact/toast';
-import { createPreFactura, updatePreFactura } from '../../api/preFactura';
+import React, { useState, useEffect, useRef } from "react";
+import { TabView, TabPanel } from "primereact/tabview";
+import { Button } from "primereact/button";
+import { Toast } from "primereact/toast";
+import DatosGeneralesPreFacturaCard from "./DatosGeneralesPreFacturaCard";
+import VerImpresionPreFacturaPDF from "./VerImpresionPreFacturaPDF";
+import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
+import { getSeriesDoc } from "../../api/preFactura";
 
-/**
- * Formulario para gestión de PreFactura
- * Maneja creación y edición con validaciones y combos normalizados
- * Organizado en pestañas para mejor UX debido a la cantidad de campos
- */
-const PreFacturaForm = ({ preFactura, onSave, onCancel }) => {
-  const { control, handleSubmit, reset, watch, formState: { errors } } = useForm();
+const PreFacturaForm = ({
+  isEdit,
+  defaultValues = null,
+  onSubmit,
+  onCancel,
+  empresas = [],
+  tiposDocumento = [],
+  clientes: clientesProp = [],
+  tiposProducto = [],
+  formasPago = [],
+  productos = [],
+  personalOptions = [],
+  estadosDoc = [],
+  centrosCosto = [],
+  monedas = [],
+  incoterms = [],
+  paises = [],
+  puertos = [],
+  tiposContenedor = [],
+  agenteAduanas = [],
+  operadoresLogisticos = [],
+  navieras = [],
+  bancos = [],
+  empresaFija = null,
+  permisos = {},
+  loading: loadingProp = false,
+  toast: toastProp,
+}) => {
+  const [activeCard, setActiveCard] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [clientes, setClientes] = useState([]);
-  const [vendedores, setVendedores] = useState([]);
-  const [monedas, setMonedas] = useState([]);
-  const [condicionesPago, setCondicionesPago] = useState([]);
-  const [almacenes, setAlmacenes] = useState([]);
-  const [incoterms, setIncoterms] = useState([]);
-  const toast = useRef(null);
+  const toast = useRef(toastProp || null);
 
-  // Observar montos para cálculos automáticos
-  const subtotal = watch('subtotal');
-  const impuestos = watch('impuestos');
-  const descuentos = watch('descuentos');
-  const total = (subtotal || 0) + (impuestos || 0) - (descuentos || 0);
+  const [clientes, setClientes] = useState(clientesProp);
+  const [seriesDoc, setSeriesDoc] = useState([]);
+  const [detalles, setDetalles] = useState(defaultValues?.detalles || []);
+  const [estadosPreFacturas, setEstadosPreFacturas] = useState([]);
+  const [detallesCount, setDetallesCount] = useState(defaultValues?.detalles?.length || 0);
+  const [totales, setTotales] = useState({ subtotal: 0, igv: 0, total: 0 });
 
-  // Opciones para dropdowns
-  const estadosOptions = [
-    { value: 'BORRADOR', label: 'Borrador' },
-    { value: 'PENDIENTE', label: 'Pendiente' },
-    { value: 'APROBADA', label: 'Aprobada' },
-    { value: 'FACTURADA', label: 'Facturada' },
-    { value: 'CANCELADA', label: 'Cancelada' }
-  ];
+  const responsablesVentas = personalOptions;
+  const responsablesAutorizaVenta = personalOptions;
+  const responsablesSupervisorCampo = personalOptions;
 
-  const tipoDocumentoOptions = [
-    { value: 'FACTURA', label: 'Factura' },
-    { value: 'BOLETA', label: 'Boleta de Venta' },
-    { value: 'NOTA_CREDITO', label: 'Nota de Crédito' },
-    { value: 'NOTA_DEBITO', label: 'Nota de Débito' }
-  ];
+  const [formData, setFormData] = useState({
+    id: defaultValues?.id || null,
+    empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : (empresaFija ? Number(empresaFija) : 1),
+    tipoDocumentoId: defaultValues?.tipoDocumentoId ? Number(defaultValues.tipoDocumentoId) : 19,
+    serieDocId: defaultValues?.serieDocId ? Number(defaultValues.serieDocId) : null,
+    numSerieDoc: defaultValues?.numSerieDoc || "",
+    numCorreDoc: defaultValues?.numCorreDoc || "",
+    numeroDocumento: defaultValues?.numeroDocumento || "",
+    fechaDocumento: defaultValues?.fechaDocumento ? new Date(defaultValues.fechaDocumento) : new Date(),
+    fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
+    cotizacionVentasOrigenId: defaultValues?.cotizacionVentasOrigenId ? Number(defaultValues.cotizacionVentasOrigenId) : null,
+    ordenCompraCliente: defaultValues?.ordenCompraCliente || "",
+    movSalidaAlmacenId: defaultValues?.movSalidaAlmacenId ? Number(defaultValues.movSalidaAlmacenId) : null,
+    clienteId: defaultValues?.clienteId ? Number(defaultValues.clienteId) : null,
+    estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 45,
+    formaPagoId: defaultValues?.formaPagoId ? Number(defaultValues.formaPagoId) : null,
+    bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
+    monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : 1,
+    tipoCambio: defaultValues?.tipoCambio || 3.75,
+    esExportacion: defaultValues?.esExportacion !== undefined ? defaultValues.esExportacion : false,
+    paisDestinoId: defaultValues?.paisDestinoId ? Number(defaultValues.paisDestinoId) : null,
+    incotermId: defaultValues?.incotermId ? Number(defaultValues.incotermId) : null,
+    puertoCargaId: defaultValues?.puertoCargaId ? Number(defaultValues.puertoCargaId) : null,
+    puertoDescargaId: defaultValues?.puertoDescargaId ? Number(defaultValues.puertoDescargaId) : null,
+    agenteAduanaId: defaultValues?.agenteAduanaId ? Number(defaultValues.agenteAduanaId) : null,
+    numeroBuque: defaultValues?.numeroBuque || "",
+    numeroBL: defaultValues?.numeroBL || "",
+    numContenedor: defaultValues?.numContenedor || "",
+    tipoContenedorId: defaultValues?.tipoContenedorId ? Number(defaultValues.tipoContenedorId) : null,
+    exoneradoIgv: defaultValues?.exoneradoIgv !== undefined ? defaultValues.exoneradoIgv : false,
+    porcentajeIgv: defaultValues?.porcentajeIgv || null,
+    factorExportacion: defaultValues?.factorExportacion || null,
+    factorExportacionReal: defaultValues?.factorExportacionReal || null,
+    observaciones: defaultValues?.observaciones || "",
+    urlPreFacturaPdf: defaultValues?.urlPreFacturaPdf || null,
+    fechaTransfErpContable: defaultValues?.fechaTransfErpContable ? new Date(defaultValues.fechaTransfErpContable) : null,
+    numIdTransfErpContable: defaultValues?.numIdTransfErpContable || "",
+    personaRespTransfErpContable: defaultValues?.personaRespTransfErpContable ? Number(defaultValues.personaRespTransfErpContable) : null,
+    centroCostoId: defaultValues?.centroCostoId ? Number(defaultValues.centroCostoId) : null,
+    dirEntregaId: defaultValues?.dirEntregaId ? Number(defaultValues.dirEntregaId) : null,
+    dirFiscalId: defaultValues?.dirFiscalId ? Number(defaultValues.dirFiscalId) : null,
+    contratoServicioId: defaultValues?.contratoServicioId ? Number(defaultValues.contratoServicioId) : null,
+    creadoPor: defaultValues?.creadoPor ? Number(defaultValues.creadoPor) : null,
+    actualizadoPor: defaultValues?.actualizadoPor ? Number(defaultValues.actualizadoPor) : null,
+  });
+
+  const handleChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const { empresaId, tipoDocumentoId } = formData;
 
   useEffect(() => {
-    cargarDatosIniciales();
-  }, []);
-
-  useEffect(() => {
-    if (preFactura) {
-      // Reset del formulario con datos de edición, normalizando IDs
-      reset({
-        numero: preFactura.numero || '',
-        fechaEmision: preFactura.fechaEmision ? new Date(preFactura.fechaEmision) : new Date(),
-        fechaVencimiento: preFactura.fechaVencimiento ? new Date(preFactura.fechaVencimiento) : null,
-        tipoDocumento: preFactura.tipoDocumento || 'FACTURA',
-        clienteId: preFactura.clienteId ? Number(preFactura.clienteId) : null,
-        estado: preFactura.estado || 'BORRADOR',
-        monedaId: preFactura.monedaId ? Number(preFactura.monedaId) : null,
-        tipoCambio: preFactura.tipoCambio || 1,
-        condicionPagoId: preFactura.condicionPagoId ? Number(preFactura.condicionPagoId) : null,
-        subtotal: preFactura.subtotal || 0,
-        impuestos: preFactura.impuestos || 0,
-        descuentos: preFactura.descuentos || 0,
-        total: preFactura.total || 0,
-        vendedorId: preFactura.vendedorId ? Number(preFactura.vendedorId) : null,
-        observaciones: preFactura.observaciones || '',
-        terminosCondiciones: preFactura.terminosCondiciones || '',
-        direccionEntrega: preFactura.direccionEntrega || '',
-        movSalidaAlmacenId: preFactura.movSalidaAlmacenId ? Number(preFactura.movSalidaAlmacenId) : null,
-        incotermId: preFactura.incotermId ? Number(preFactura.incotermId) : null
-      });
-    } else {
-      // Reset para nuevo registro
-      reset({
-        numero: '',
-        fechaEmision: new Date(),
-        fechaVencimiento: null,
-        tipoDocumento: 'FACTURA',
-        clienteId: null,
-        estado: 'BORRADOR',
-        monedaId: null,
-        tipoCambio: 1,
-        condicionPagoId: null,
-        subtotal: 0,
-        impuestos: 0,
-        descuentos: 0,
-        total: 0,
-        vendedorId: null,
-        observaciones: '',
-        terminosCondiciones: '',
-        direccionEntrega: '',
-        movSalidaAlmacenId: null,
-        incotermId: null
-      });
+    if (empresaId && empresas && empresas.length > 0 && !isEdit) {
+      const empresaSeleccionada = empresas.find((e) => Number(e.id) === Number(empresaId));
+      if (empresaSeleccionada && empresaSeleccionada.porcentajeIgv !== undefined) {
+        handleChange("porcentajeIgv", empresaSeleccionada.porcentajeIgv);
+      }
     }
-  }, [preFactura, reset]);
+  }, [formData.empresaId, empresas, isEdit]);
 
-  const cargarDatosIniciales = async () => {
-    try {
-      // TODO: Implementar APIs para cargar datos de combos
-      // Datos de ejemplo mientras se implementan las APIs
-      setClientes([
-        { id: 1, razonSocial: 'Cliente Corporativo SAC', ruc: '20123456789' },
-        { id: 2, razonSocial: 'Empresa Pesquera del Norte EIRL', ruc: '20987654321' },
-        { id: 3, razonSocial: 'Distribuidora Marina SA', ruc: '20456789123' }
-      ]);
-      
-      setVendedores([
-        { id: 1, nombres: 'Carlos', apellidos: 'Vendedor' },
-        { id: 2, nombres: 'Ana', apellidos: 'Comercial' },
-        { id: 3, nombres: 'Luis', apellidos: 'Ventas' }
-      ]);
+  useEffect(() => {
+    if (formData.empresaId && empresas && empresas.length > 0 && !isEdit) {
+      const empresaSeleccionada = empresas.find((e) => Number(e.id) === Number(formData.empresaId));
+      if (formData.exoneradoIgv) {
+        handleChange("porcentajeIgv", 0);
+      } else {
+        if (empresaSeleccionada && empresaSeleccionada.porcentajeIgv !== undefined) {
+          handleChange("porcentajeIgv", empresaSeleccionada.porcentajeIgv);
+        }
+      }
+    }
+  }, [formData.exoneradoIgv, formData.empresaId, empresas, isEdit]);
 
-      setMonedas([
-        { id: 1, nombre: 'Soles', codigo: 'PEN', simbolo: 'S/' },
-        { id: 2, nombre: 'Dólares', codigo: 'USD', simbolo: '$' }
-      ]);
-
-      setCondicionesPago([
-        { id: 1, descripcion: 'Contado', dias: 0 },
-        { id: 2, descripcion: '30 días', dias: 30 },
-        { id: 3, descripcion: '60 días', dias: 60 },
-        { id: 4, descripcion: '90 días', dias: 90 }
-      ]);
-
-      setAlmacenes([
-        { id: 1, nombre: 'Almacén Principal', codigo: 'ALM-01' },
-        { id: 2, nombre: 'Almacén Productos Terminados', codigo: 'ALM-02' },
-        { id: 3, nombre: 'Almacén Materias Primas', codigo: 'ALM-03' }
-      ]);
-
-      setIncoterms([
-        { id: 1, codigo: 'FOB', descripcion: 'Free On Board' },
-        { id: 2, codigo: 'CIF', descripcion: 'Cost, Insurance and Freight' },
-        { id: 3, codigo: 'EXW', descripcion: 'Ex Works' }
-      ]);
-      
-    } catch (error) {
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al cargar datos iniciales'
-      });
+  const handleSerieDocChange = (serieId) => {
+    setFormData((prev) => ({ ...prev, serieDocId: Number(serieId) }));
+    if (serieId) {
+      const serie = seriesDoc.find((s) => Number(s.id) === Number(serieId));
+      if (serie) {
+        const proximoCorrelativo = Number(serie.correlativo) + 1;
+        const numSerie = String(serie.serie).padStart(serie.numCerosIzqSerie, "0");
+        setFormData((prev) => ({
+          ...prev,
+          serieDocId: Number(serieId),
+          numSerieDoc: numSerie,
+          numCorreDoc: `Próximo: ${proximoCorrelativo}`,
+          numeroDocumento: "Se generará al guardar",
+        }));
+      }
+    } else {
+      setFormData((prev) => ({ ...prev, numSerieDoc: "", numCorreDoc: "", numeroDocumento: "" }));
     }
   };
 
-  const onSubmit = async (data) => {
-    try {
-      setLoading(true);
-      
-      // Preparar payload con tipos correctos
-      const payload = {
-        numero: data.numero,
-        fechaEmision: data.fechaEmision,
-        fechaVencimiento: data.fechaVencimiento || null,
-        tipoDocumento: data.tipoDocumento,
-        clienteId: Number(data.clienteId),
-        estado: data.estado,
-        monedaId: data.monedaId ? Number(data.monedaId) : null,
-        tipoCambio: Number(data.tipoCambio) || 1,
-        condicionPagoId: data.condicionPagoId ? Number(data.condicionPagoId) : null,
-        subtotal: Number(data.subtotal) || 0,
-        impuestos: Number(data.impuestos) || 0,
-        descuentos: Number(data.descuentos) || 0,
-        total: total,
-        vendedorId: data.vendedorId ? Number(data.vendedorId) : null,
-        observaciones: data.observaciones || null,
-        terminosCondiciones: data.terminosCondiciones || null,
-        direccionEntrega: data.direccionEntrega || null,
-        movSalidaAlmacenId: data.movSalidaAlmacenId ? Number(data.movSalidaAlmacenId) : null,
-        incotermId: data.incotermId ? Number(data.incotermId) : null
-      };
-      if (preFactura?.id) {
-        await updatePreFactura(preFactura.id, payload);
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Pre-factura actualizada correctamente'
-        });
-      } else {
-        await createPreFactura(payload);
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Pre-factura creada correctamente'
-        });
+  useEffect(() => {
+    const cargarEstados = async () => {
+      try {
+        const estados = await getEstadosMultiFuncionPorTipoProviene(14);
+        setEstadosPreFacturas(estados);
+      } catch (err) {
+        console.error("Error al cargar estados de pre-facturas:", err);
+        setEstadosPreFacturas([]);
       }
-      
-      onSave();
+    };
+    cargarEstados();
+  }, []);
+
+  useEffect(() => {
+    setClientes(clientesProp);
+  }, [clientesProp]);
+
+  useEffect(() => {
+    const cargarSeriesDoc = async () => {
+      if (empresaId && tipoDocumentoId) {
+        try {
+          const series = await getSeriesDoc(empresaId, tipoDocumentoId);
+          setSeriesDoc(series);
+        } catch (err) {
+          console.error("Error al cargar series de documentos:", err);
+          setSeriesDoc([]);
+        }
+      } else {
+        setSeriesDoc([]);
+      }
+    };
+    cargarSeriesDoc();
+  }, [empresaId, tipoDocumentoId]);
+
+  useEffect(() => {
+    const calcularTotales = async () => {
+      if (!detalles || detalles.length === 0) {
+        setTotales({ subtotal: 0, igv: 0, total: 0 });
+        return;
+      }
+
+      const subtotal = detalles.reduce((sum, det) => {
+        const cantidad = Number(det.cantidad) || 0;
+        const precio = Number(det.precioUnitario) || 0;
+        return sum + cantidad * precio;
+      }, 0);
+
+      const porcentajeIGV = Number(formData.porcentajeIgv) || 0;
+      const igv = formData.exoneradoIgv ? 0 : subtotal * (porcentajeIGV / 100);
+      const total = subtotal + igv;
+
+      setTotales({ subtotal, igv, total });
+    };
+
+    calcularTotales();
+  }, [detalles, formData.monedaId, formData.tipoCambio, formData.porcentajeIgv, formData.exoneradoIgv]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const dataToSubmit = {
+        ...formData,
+        detalles,
+        fechaDocumento: formData.fechaDocumento?.toISOString(),
+        fechaVencimiento: formData.fechaVencimiento?.toISOString(),
+        fechaTransfErpContable: formData.fechaTransfErpContable?.toISOString(),
+      };
+      await onSubmit(dataToSubmit);
     } catch (error) {
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al guardar la pre-factura'
-      });
+      console.error("Error al guardar pre-factura:", error);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleCancel = () => {
+    if (onCancel) onCancel();
+  };
+
+  const handleTabChange = (e) => {
+    setActiveCard(e.index);
+  };
+
+  const estadosPreFacturasOptions = estadosPreFacturas.map((e) => ({
+    ...e,
+    id: Number(e.id),
+    label: e.descripcion,
+    value: Number(e.id),
+  }));
+
+  const seriesDocOptions = seriesDoc.map((s) => ({
+    ...s,
+    id: Number(s.id),
+    label: `${s.serie} (Correlativo: ${Number(s.correlativo)})`,
+    value: Number(s.id),
+  }));
+
   return (
     <div className="pre-factura-form">
-      <Toast ref={toast} />
-      
-      <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
-        <TabView>
-          {/* Pestaña 1: Información General */}
-          <TabPanel header="Información General">
-            <div className="grid">
-              {/* Número */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="numero" className="block text-900 font-medium mb-2">
-                  Número de Pre-Factura *
-                </label>
-                <Controller
-                  name="numero"
-                  control={control}
-                  rules={{ required: 'El número es obligatorio' }}
-                  render={({ field }) => (
-                    <InputText
-                      id="numero"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      placeholder="PF-2024-001"
-                      className={errors.numero ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.numero && (
-                  <small className="p-error">{errors.numero.message}</small>
-                )}
-              </div>
-
-              {/* Tipo de Documento */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="tipoDocumento" className="block text-900 font-medium mb-2">
-                  Tipo de Documento *
-                </label>
-                <Controller
-                  name="tipoDocumento"
-                  control={control}
-                  rules={{ required: 'El tipo de documento es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="tipoDocumento"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={tipoDocumentoOptions}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccione tipo de documento"
-                      className={errors.tipoDocumento ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.tipoDocumento && (
-                  <small className="p-error">{errors.tipoDocumento.message}</small>
-                )}
-              </div>
-
-              {/* Fecha Emisión */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="fechaEmision" className="block text-900 font-medium mb-2">
-                  Fecha de Emisión *
-                </label>
-                <Controller
-                  name="fechaEmision"
-                  control={control}
-                  rules={{ required: 'La fecha de emisión es obligatoria' }}
-                  render={({ field }) => (
-                    <Calendar
-                      id="fechaEmision"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      dateFormat="dd/mm/yy"
-                      placeholder="dd/mm/aaaa"
-                      className={errors.fechaEmision ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.fechaEmision && (
-                  <small className="p-error">{errors.fechaEmision.message}</small>
-                )}
-              </div>
-
-              {/* Fecha Vencimiento */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="fechaVencimiento" className="block text-900 font-medium mb-2">
-                  Fecha de Vencimiento
-                </label>
-                <Controller
-                  name="fechaVencimiento"
-                  control={control}
-                  render={({ field }) => (
-                    <Calendar
-                      id="fechaVencimiento"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      dateFormat="dd/mm/yy"
-                      placeholder="dd/mm/aaaa"
-                      showClear
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Cliente */}
-              <div className="col-12">
-                <label htmlFor="clienteId" className="block text-900 font-medium mb-2">
-                  Cliente *
-                </label>
-                <Controller
-                  name="clienteId"
-                  control={control}
-                  rules={{ required: 'El cliente es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="clienteId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={clientes.map(c => ({ 
-                        ...c, 
-                        id: Number(c.id),
-                        nombreCompleto: `${c.ruc} - ${c.razonSocial}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione un cliente"
-                      className={errors.clienteId ? 'p-invalid' : ''}
-                      filter
-                    />
-                  )}
-                />
-                {errors.clienteId && (
-                  <small className="p-error">{errors.clienteId.message}</small>
-                )}
-              </div>
-
-              {/* Estado */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="estado" className="block text-900 font-medium mb-2">
-                  Estado *
-                </label>
-                <Controller
-                  name="estado"
-                  control={control}
-                  rules={{ required: 'El estado es obligatorio' }}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="estado"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={estadosOptions}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccione un estado"
-                      className={errors.estado ? 'p-invalid' : ''}
-                    />
-                  )}
-                />
-                {errors.estado && (
-                  <small className="p-error">{errors.estado.message}</small>
-                )}
-              </div>
-
-              {/* Vendedor */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="vendedorId" className="block text-900 font-medium mb-2">
-                  Vendedor
-                </label>
-                <Controller
-                  name="vendedorId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="vendedorId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={vendedores.map(v => ({ 
-                        ...v, 
-                        id: Number(v.id),
-                        nombreCompleto: `${v.nombres} ${v.apellidos}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione un vendedor"
-                      showClear
-                    />
-                  )}
-                />
-              </div>
-            </div>
+      <Toast ref={toast} position="top-center" appendTo={document.body} style={{ zIndex: 99999 }} />
+      <form onSubmit={handleSubmit}>
+        <TabView activeIndex={activeCard} onTabChange={handleTabChange} className="p-mb-4">
+          <TabPanel header="Datos Generales" leftIcon="pi pi-building">
+            <DatosGeneralesPreFacturaCard
+              formData={formData}
+              handleChange={handleChange}
+              handleSerieDocChange={handleSerieDocChange}
+              empresaFija={empresaFija}
+              disabled={loading || loadingProp}
+              permisos={permisos}
+              empresas={empresas}
+              clientes={clientes}
+              tiposDocumento={tiposDocumento}
+              tiposProducto={tiposProducto}
+              formasPago={formasPago}
+              monedas={monedas}
+              centrosCosto={centrosCosto}
+              responsablesVentas={responsablesVentas}
+              responsablesAutorizaVenta={responsablesAutorizaVenta}
+              responsablesSupervisorCampo={responsablesSupervisorCampo}
+              agenteAduanas={agenteAduanas}
+              operadoresLogisticos={operadoresLogisticos}
+              navieras={navieras}
+              seriesDoc={seriesDoc}
+              seriesDocOptions={seriesDocOptions}
+              incoterms={incoterms}
+              paises={paises}
+              puertos={puertos}
+              tiposContenedor={tiposContenedor}
+              setSeriesDoc={setSeriesDoc}
+              setClientes={setClientes}
+              estadosPreFacturasOptions={estadosPreFacturasOptions}
+              detalles={detalles}
+              setDetalles={setDetalles}
+              productos={productos}
+              isEdit={isEdit}
+              preFacturaId={defaultValues?.id}
+              toast={toast}
+              onCountChange={setDetallesCount}
+              subtotal={totales.subtotal}
+              totalIGV={totales.igv}
+              total={totales.total}
+              monedasOptions={monedas.map(m => ({ value: m.id, codigoSunat: m.codigoSunat || 'PEN' }))}
+            />
           </TabPanel>
-
-          {/* Pestaña 2: Montos y Condiciones */}
-          <TabPanel header="Montos y Condiciones">
-            <div className="grid">
-              {/* Moneda */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="monedaId" className="block text-900 font-medium mb-2">
-                  Moneda
-                </label>
-                <Controller
-                  name="monedaId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="monedaId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={monedas.map(m => ({ 
-                        ...m, 
-                        id: Number(m.id),
-                        nombreCompleto: `${m.simbolo} - ${m.nombre}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione moneda"
-                      showClear
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Tipo de Cambio */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="tipoCambio" className="block text-900 font-medium mb-2">
-                  Tipo de Cambio
-                </label>
-                <Controller
-                  name="tipoCambio"
-                  control={control}
-                  render={({ field }) => (
-                    <InputNumber
-                      id="tipoCambio"
-                      value={field.value}
-                      onValueChange={(e) => field.onChange(e.value)}
-                      mode="decimal"
-                      minFractionDigits={4}
-                      maxFractionDigits={4}
-                      min={0}
-                      placeholder="1.0000"
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Condición de Pago */}
-              <div className="col-12">
-                <label htmlFor="condicionPagoId" className="block text-900 font-medium mb-2">
-                  Condición de Pago
-                </label>
-                <Controller
-                  name="condicionPagoId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="condicionPagoId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={condicionesPago.map(cp => ({ 
-                        ...cp, 
-                        id: Number(cp.id),
-                        nombreCompleto: `${cp.descripcion} (${cp.dias} días)`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione condición de pago"
-                      showClear
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Subtotal */}
-              <div className="col-12 md:col-3">
-                <label htmlFor="subtotal" className="block text-900 font-medium mb-2">
-                  Subtotal
-                </label>
-                <Controller
-                  name="subtotal"
-                  control={control}
-                  render={({ field }) => (
-                    <InputNumber
-                      id="subtotal"
-                      value={field.value}
-                      onValueChange={(e) => field.onChange(e.value)}
-                      mode="currency"
-                      currency="PEN"
-                      locale="es-PE"
-                      minFractionDigits={2}
-                      maxFractionDigits={2}
-                      min={0}
-                      placeholder="S/ 0.00"
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Impuestos */}
-              <div className="col-12 md:col-3">
-                <label htmlFor="impuestos" className="block text-900 font-medium mb-2">
-                  Impuestos
-                </label>
-                <Controller
-                  name="impuestos"
-                  control={control}
-                  render={({ field }) => (
-                    <InputNumber
-                      id="impuestos"
-                      value={field.value}
-                      onValueChange={(e) => field.onChange(e.value)}
-                      mode="currency"
-                      currency="PEN"
-                      locale="es-PE"
-                      minFractionDigits={2}
-                      maxFractionDigits={2}
-                      min={0}
-                      placeholder="S/ 0.00"
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Descuentos */}
-              <div className="col-12 md:col-3">
-                <label htmlFor="descuentos" className="block text-900 font-medium mb-2">
-                  Descuentos
-                </label>
-                <Controller
-                  name="descuentos"
-                  control={control}
-                  render={({ field }) => (
-                    <InputNumber
-                      id="descuentos"
-                      value={field.value}
-                      onValueChange={(e) => field.onChange(e.value)}
-                      mode="currency"
-                      currency="PEN"
-                      locale="es-PE"
-                      minFractionDigits={2}
-                      maxFractionDigits={2}
-                      min={0}
-                      placeholder="S/ 0.00"
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Total (Calculado) */}
-              <div className="col-12 md:col-3">
-                <label className="block text-900 font-medium mb-2">
-                  Total
-                </label>
-                <div className="p-inputtext p-component p-disabled">
-                  S/ {total.toFixed(2)}
-                </div>
-              </div>
-            </div>
-          </TabPanel>
-
-          {/* Pestaña 3: Detalles Adicionales */}
-          <TabPanel header="Detalles Adicionales">
-            <div className="grid">
-              {/* Movimiento Salida Almacén */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="movSalidaAlmacenId" className="block text-900 font-medium mb-2">
-                  Movimiento de Salida de Almacén
-                </label>
-                <Controller
-                  name="movSalidaAlmacenId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="movSalidaAlmacenId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={almacenes.map(a => ({ 
-                        ...a, 
-                        id: Number(a.id),
-                        nombreCompleto: `${a.codigo} - ${a.nombre}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione almacén"
-                      showClear
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Incoterm */}
-              <div className="col-12 md:col-6">
-                <label htmlFor="incotermId" className="block text-900 font-medium mb-2">
-                  Incoterm
-                </label>
-                <Controller
-                  name="incotermId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="incotermId"
-                      value={field.value ? Number(field.value) : null}
-                      onChange={(e) => field.onChange(e.value)}
-                      options={incoterms.map(i => ({ 
-                        ...i, 
-                        id: Number(i.id),
-                        nombreCompleto: `${i.codigo} - ${i.descripcion}`
-                      }))}
-                      optionLabel="nombreCompleto"
-                      optionValue="id"
-                      placeholder="Seleccione incoterm"
-                      showClear
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Dirección de Entrega */}
-              <div className="col-12">
-                <label htmlFor="direccionEntrega" className="block text-900 font-medium mb-2">
-                  Dirección de Entrega
-                </label>
-                <Controller
-                  name="direccionEntrega"
-                  control={control}
-                  render={({ field }) => (
-                    <InputTextarea
-                      id="direccionEntrega"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      rows={2}
-                      placeholder="Dirección completa de entrega..."
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Términos y Condiciones */}
-              <div className="col-12">
-                <label htmlFor="terminosCondiciones" className="block text-900 font-medium mb-2">
-                  Términos y Condiciones
-                </label>
-                <Controller
-                  name="terminosCondiciones"
-                  control={control}
-                  render={({ field }) => (
-                    <InputTextarea
-                      id="terminosCondiciones"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      rows={4}
-                      placeholder="Términos y condiciones de la pre-factura..."
-                    />
-                  )}
-                />
-              </div>
-
-              {/* Observaciones */}
-              <div className="col-12">
-                <label htmlFor="observaciones" className="block text-900 font-medium mb-2">
-                  Observaciones
-                </label>
-                <Controller
-                  name="observaciones"
-                  control={control}
-                  render={({ field }) => (
-                    <InputTextarea
-                      id="observaciones"
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      rows={3}
-                      placeholder="Observaciones adicionales..."
-                    />
-                  )}
-                />
-              </div>
-            </div>
+          <TabPanel header="PDF Pre-Factura" leftIcon="pi pi-file-pdf">
+            <VerImpresionPreFacturaPDF 
+              preFacturaId={formData.id} 
+              datosPreFactura={formData} 
+              detalles={detalles}
+              toast={toast}
+            />
           </TabPanel>
         </TabView>
-
         <div className="flex justify-content-end gap-2 mt-4">
-          <Button
-            type="button"
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-secondary"
-            onClick={onCancel}
-          />
-          <Button
-            type="submit"
-            label={preFactura?.id ? 'Actualizar' : 'Crear'}
-            icon="pi pi-check"
-            loading={loading}
-            className="p-button-primary"
-          />
+          <Button type="button" label="Cancelar" icon="pi pi-times" className="p-button-secondary" onClick={handleCancel} disabled={loading || loadingProp} />
+          <Button type="submit" label={defaultValues ? "Actualizar" : "Guardar"} icon="pi pi-save" className="p-button-primary" loading={loading || loadingProp} />
         </div>
       </form>
     </div>
