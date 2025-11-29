@@ -22,7 +22,7 @@ import DetalleMovimientoForm from "./DetalleMovimientoForm";
 import KardexProductoDialog from "./KardexProductoDialog";
 import VerImpresionMovimientoPDF from "./VerImpresionMovimientoPDF";
 import VerImpresionMovimientoConCostosPDF from "./VerImpresionMovimientoConCostosPDF";
-import EntregasARendirMovAlmacenCard from "./EntregasARendirMovAlmacenCard";
+import EntregaARendirMovAlmacenCard from "./EntregaARendirMovAlmacenCard";
 import { getSeriesDoc, getMovimientoAlmacenPorId } from "../../api/movimientoAlmacen";
 import { getAlmacenById } from "../../api/almacen";
 import { getDireccionesEntidad } from "../../api/direccionEntidad";
@@ -1623,7 +1623,7 @@ export default function MovimientoAlmacenForm({
           leftIcon="pi pi-money-bill"
           disabled={!isEdit}
         >
-          <EntregasARendirMovAlmacenCard
+          <EntregaARendirMovAlmacenCard
             movimientoAlmacen={defaultValues}
             personal={personalOptions}
             centrosCosto={centrosCosto}

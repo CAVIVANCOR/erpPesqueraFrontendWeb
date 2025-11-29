@@ -845,39 +845,45 @@ export default function MovimientoAlmacen() {
           </div>
         }
       >
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="numeroDocumento" header="Nº Documento" />
-        <Column field="empresaId" header="Empresa" body={empresaNombre} />
+        <Column field="id" header="ID" style={{ width: 80 }} sortable/>
+        <Column field="numeroDocumento" header="Nº Documento" sortable />
+        <Column field="empresaId" header="Empresa" body={empresaNombre} sortable/>
         <Column
           field="tipoDocumentoId"
           header="Tipo Doc."
           body={tipoDocumentoNombre}
+          sortable
         />
         <Column
           field="conceptoMovAlmacenId"
           header="Concepto"
           body={conceptoNombre}
+          sortable
         />
         <Column
           field="fechaDocumento"
           header="Fecha"
           body={(rowData) => fechaTemplate(rowData, "fechaDocumento")}
+          sortable
         />
         <Column
           field="entidadComercialId"
           header="Entidad"
           body={entidadNombre}
+          sortable
         />
         <Column
           field="esCustodia"
           header="Tipo Mercadería"
           body={mercaderiaTemplate}
           style={{ width: 80, textAlign: "center" }}
+          sortable
         />
         <Column
           body={actionBody}
           header="Acciones"
           style={{ width: 130, textAlign: "center" }}
+          sortable
         />
       </DataTable>
       <Dialog

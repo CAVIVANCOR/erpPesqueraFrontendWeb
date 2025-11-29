@@ -26,11 +26,16 @@ import { getEntregasARendirPCompras } from "../api/entregaARendirPCompras";
 import { getAllDetMovsEntregaRendirPVentas } from "../api/detMovsEntregaRendirPVentas";
 import { getAllEntregaARendirPVentas } from "../api/entregaARendirPVentas";
 // APIs para Almacén
-import { getDetMovsEntregaRendirMovAlmacen } from "../api/detMovsEntregaRendirMovAlmacen";
+import { getAllDetMovsEntregaRendirMovAlmacen } from "../api/detMovsEntregaRendirMovAlmacen";
 import { getAllEntregaARendirMovAlmacen } from "../api/entregaARendirMovAlmacen";
+// APIs para Contratos de Servicios
+import { getAllDetMovsEntregaRendirContratoServicios } from "../api/detMovsEntregaRendirContratoServicios";
+import { getAllEntregaARendirContratoServicios } from "../api/entregaARendirContratoServicios";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getProductos } from "../api/producto";
-
+import { obtenerEntregasRendirOTMantenimiento } from '../api/entregaARendirOTMantenimiento.api';
+import { obtenerDetMovsEntregaRendirOTMantenimiento } from '../api/detMovsEntregaRendirOTMantenimiento.api';
+import TabPanelOTMantenimiento from '../components/movimientoCaja/TabPanelOTMantenimiento';
 import {
   getAllMovimientoCaja,
   crearMovimientoCaja,
@@ -138,6 +143,25 @@ export default function MovimientoCaja() {
   const [selectedDetMovsIdsAlmacen, setSelectedDetMovsIdsAlmacen] = useState(
     []
   );
+  // Estados para DetEntregaRendirContratoServicios (Servicios)
+  const [movimientosDetEntregaServicios, setMovimientosDetEntregaServicios] =
+    useState([]);
+  const [entregasARendirServicios, setEntregasARendirServicios] = useState([]);
+  const [
+    selectedMovimientosDetEntregaServicios,
+    setSelectedMovimientosDetEntregaServicios,
+  ] = useState(null);
+  const [loadingDetEntregaServicios, setLoadingDetEntregaServicios] =
+    useState(false);
+  const [selectedDetMovsIdsServicios, setSelectedDetMovsIdsServicios] = useState(
+    []
+  );
+  // Estados para OT Mantenimiento
+  const [entregasOTMantenimiento, setEntregasOTMantenimiento] = useState([]);
+  const [movimientosOTMantenimiento, setMovimientosOTMantenimiento] = useState([]);
+    // Estados para OT Mantenimiento
+  const [selectedMovimientosOTMantenimiento, setSelectedMovimientosOTMantenimiento] = useState(null);
+  const [selectedDetMovsIdsOTMantenimiento, setSelectedDetMovsIdsOTMantenimiento] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [productos, setProductos] = useState([]);
 
@@ -181,8 +205,11 @@ export default function MovimientoCaja() {
     cargarEntregasARendirVentas();
     cargarMovimientosDetEntregaAlmacen();
     cargarEntregasARendirAlmacen();
+    cargarMovimientosDetEntregaServicios();
+    cargarEntregasARendirServicios();
     cargarTiposDocumento();
     cargarProductos();
+    cargarMovimientosOTMantenimiento();
   }, []);
 
   const cargarItems = async () => {
@@ -361,6 +388,8 @@ export default function MovimientoCaja() {
     }
   };
 
+
+
   // Funciones para cargar datos de DetEntregaRendirNovedadConsumo (Pesca Consumo)
   const cargarMovimientosDetEntregaConsumo = async () => {
     setLoadingDetEntregaConsumo(true);
@@ -463,7 +492,7 @@ export default function MovimientoCaja() {
   const cargarMovimientosDetEntregaAlmacen = async () => {
     try {
       setLoadingDetEntregaAlmacen(true);
-      const data = await getDetMovsEntregaRendirMovAlmacen();
+      const data = await getAllDetMovsEntregaRendirMovAlmacen();
       setMovimientosDetEntregaAlmacen(data);
     } catch (err) {
       toast.current.show({
@@ -486,6 +515,56 @@ export default function MovimientoCaja() {
         summary: "Error",
         detail: "No se pudo cargar las entregas a rendir de almacén.",
       });
+    }
+  };
+
+  // Cargar movimientos de entregas a rendir para Contratos de Servicios
+  const cargarMovimientosDetEntregaServicios = async () => {
+    try {
+      setLoadingDetEntregaServicios(true);
+      const data = await getAllDetMovsEntregaRendirContratoServicios();
+      setMovimientosDetEntregaServicios(data);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar los movimientos de entregas a rendir de servicios.",
+      });
+    } finally {
+      setLoadingDetEntregaServicios(false);
+    }
+  };
+
+  const cargarEntregasARendirServicios = async () => {
+    try {
+      const data = await getAllEntregaARendirContratoServicios();
+      setEntregasARendirServicios(data);
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar las entregas a rendir de servicios.",
+      });
+    }
+  };
+
+  // Cargar movimientos de entregas a rendir para OT Mantenimiento
+  const cargarMovimientosOTMantenimiento = async () => {
+    try {
+      const [entregasData, movimientosData] = await Promise.all([
+        obtenerEntregasRendirOTMantenimiento(),
+        obtenerDetMovsEntregaRendirOTMantenimiento()
+      ]);
+      
+      setEntregasOTMantenimiento(entregasData || []);
+      
+      // Filtrar solo movimientos no validados por tesorería
+      const movimientosPendientes = (movimientosData || []).filter(
+        mov => !mov.validadoTesoreria && !mov.operacionMovCajaId
+      );
+      setMovimientosOTMantenimiento(movimientosPendientes);
+    } catch (error) {
+      console.error('Error cargando movimientos de OT Mantenimiento:', error);
     }
   };
 
@@ -621,6 +700,8 @@ export default function MovimientoCaja() {
       cargarMovimientosDetEntregaCompras();
       cargarMovimientosDetEntregaVentas();
       cargarMovimientosDetEntregaAlmacen();
+      cargarMovimientosDetEntregaServicios();
+      cargarMovimientosOTMantenimiento();
     } catch (err) {
       const mensajeError =
         err.response?.data?.mensaje ||
@@ -646,14 +727,12 @@ export default function MovimientoCaja() {
       life: 3000,
     });
   };
-  /**
-   * Maneja la aplicación de movimientos seleccionados para crear un MovimientoCaja
-   */
+
   /**
    * Maneja la aplicación de movimientos seleccionados para crear un MovimientoCaja
    * REGLA: Solo se permite seleccionar UN item a la vez
    */
-    const handleAplicarMovimientos = async (
+  const handleAplicarMovimientos = async (
     movimientoSeleccionado,
     tipoOrigen
   ) => {
@@ -754,6 +833,34 @@ export default function MovimientoCaja() {
         ) {
           empresaDestinoId = entregaARendirAlmacen.movimientoAlmacen.empresaId;
         }
+      } else if (tipoOrigen === "servicios") {
+        // Para Servicios: DetMovsEntregaRendirContratoServicios -> EntregaARendirContratoServicios -> ContratoServicio -> empresaId
+        const entregaARendirServicios = entregasARendirServicios.find(
+          (e) =>
+            Number(e.id) ===
+            Number(movimientoSeleccionado.entregaARendirContratoServiciosId)
+        );
+
+        if (
+          entregaARendirServicios &&
+          entregaARendirServicios.contratoServicio
+        ) {
+          empresaDestinoId = entregaARendirServicios.contratoServicio.empresaId;
+        }
+      } else if (tipoOrigen === "otMantenimiento") {
+        // Para OT Mantenimiento: DetMovsEntregaRendirOTMantenimiento -> EntregaARendirOTMantenimiento -> OTMantenimiento -> empresaId
+        const entregaARendirOTMantenimiento = entregasOTMantenimiento.find(
+          (e) =>
+            Number(e.id) ===
+            Number(movimientoSeleccionado.entregaARendirOTMantenimientoId)
+        );
+
+        if (
+          entregaARendirOTMantenimiento &&
+          entregaARendirOTMantenimiento.otMantenimiento
+        ) {
+          empresaDestinoId = entregaARendirOTMantenimiento.otMantenimiento.empresaId;
+        }
       }
 
       // Determinar el módulo origen según el tipo
@@ -772,10 +879,16 @@ export default function MovimientoCaja() {
           moduloOrigenId = 5; // VENTAS
         } else if (tipoOrigen === "almacen") {
           moduloOrigenId = 6; // ALMACÉN
+        } else if (tipoOrigen === "servicios") {
+          moduloOrigenId = 7; // SERVICIOS (Contratos de Servicios)
+        } else if (tipoOrigen === "otMantenimiento") {
+          moduloOrigenId = 8; // OT MANTENIMIENTO
         }
       }
 
-      // Preparar datos iniciales para el formulario de MovimientoCaja según el mapeo
+
+
+            // Preparar datos iniciales para el formulario de MovimientoCaja según el mapeo
       const datosIniciales = {
         // Campos automáticos del mapeo
         empresaDestinoId: empresaDestinoId ? Number(empresaDestinoId) : null,
@@ -1028,11 +1141,64 @@ export default function MovimientoCaja() {
       </TabPanel>
 
       <TabPanel header="Servicios">
-        <TabPanelServicios />
+        <TabPanelServicios
+          entregaARendir={entregasARendirServicios[0] || null}
+          movimientos={movimientosDetEntregaServicios}
+          personal={personal}
+          centrosCosto={centrosCosto}
+          tiposMovimiento={tipoMovEntregaRendir}
+          entidadesComerciales={entidadesComerciales}
+          monedas={monedas}
+          tiposDocumento={tiposDocumento}
+          productos={productos}
+          loading={loadingDetEntregaServicios}
+          selectedMovimiento={selectedMovimientosDetEntregaServicios}
+          onSelectionChange={(e) => {
+            setSelectedMovimientosDetEntregaServicios(e.value);
+            setSelectedDetMovsIdsServicios(e.value ? [e.value.id] : []);
+          }}
+          onDataChange={() => {
+            cargarMovimientosDetEntregaServicios();
+            cargarEntregasARendirServicios();
+          }}
+          onAplicarValidacion={() =>
+            handleAplicarMovimientos(
+              selectedMovimientosDetEntregaServicios,
+              "servicios"
+            )
+          }
+          toast={toast}
+        />
       </TabPanel>
 
-      <TabPanel header="Mantenimiento">
-        <TabPanelMantenimiento />
+      <TabPanel header="OT Mantenimiento">
+        <TabPanelOTMantenimiento
+          entregaARendir={entregasOTMantenimiento[0] || null}
+          movimientos={movimientosOTMantenimiento}
+          personal={personal}
+          centrosCosto={centrosCosto}
+          tiposMovimiento={tipoMovEntregaRendir}
+          entidadesComerciales={entidadesComerciales}
+          monedas={monedas}
+          tiposDocumento={tiposDocumento}
+          productos={productos}
+          loading={false}
+          selectedMovimiento={selectedMovimientosOTMantenimiento}
+          onSelectionChange={(e) => {
+            setSelectedMovimientosOTMantenimiento(e.value);
+            setSelectedDetMovsIdsOTMantenimiento(e.value ? [e.value.id] : []);
+          }}
+          onDataChange={() => {
+            cargarMovimientosOTMantenimiento();
+          }}
+          onAplicarValidacion={() =>
+            handleAplicarMovimientos(
+              selectedMovimientosOTMantenimiento,
+              "otMantenimiento"
+            )
+          }
+          toast={toast}
+        />
       </TabPanel>
     </TabView>
 
@@ -1193,6 +1359,7 @@ export default function MovimientoCaja() {
       </DataTable>
     </Card>
 
+
     {/* Dialog para formulario */}
     <Dialog
       visible={showDialog}
@@ -1237,3 +1404,4 @@ export default function MovimientoCaja() {
     </div>
   );
 }
+

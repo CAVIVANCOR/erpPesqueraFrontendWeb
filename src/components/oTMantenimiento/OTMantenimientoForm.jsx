@@ -10,10 +10,12 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { Toast } from "primereact/toast";
 import { Panel } from "primereact/panel";
+import { getSeriesDoc } from "../../api/otMantenimiento";
 import DetTareasOTCard from "./DetTareasOTCard";
 import PdfFotosAntesCard from "./PdfFotosAntesCard";
 import PdfFotosDespuesCard from "./PdfFotosDespuesCard";
 import VerImpresionOTMantenimientoPDF from "./VerImpresionOTMantenimientoPDF";
+import EntregaARendirOTMantenimientoCard from "./EntregaARendirOTMantenimientoCard";
 
 const OTMantenimientoForm = ({
   isEdit,
@@ -31,7 +33,12 @@ const OTMantenimientoForm = ({
   personalOptions = [],
   contratistas = [],
   productos = [],
+  tiposDocumento = [],
+  seriesDocs = [],
   monedas = [],
+  centrosCosto = [],
+  tiposMovimiento = [],
+  entidadesComerciales = [],
   empresaFija = null,
   permisos = {},
   loading: loadingProp = false,
@@ -40,10 +47,11 @@ const OTMantenimientoForm = ({
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
   const toast = useRef(toastProp || null);
+  const [seriesDoc, setSeriesDoc] = useState([]);
+  const [countEntregasRendir, setCountEntregasRendir] = useState(0);
 
   const [formData, setFormData] = useState({
     id: defaultValues?.id || null,
-    codigo: defaultValues?.codigo || "",
     empresaId: defaultValues?.empresaId
       ? Number(defaultValues.empresaId)
       : empresaFija
@@ -51,11 +59,13 @@ const OTMantenimientoForm = ({
       : null,
     tipoDocumentoId: defaultValues?.tipoDocumentoId
       ? Number(defaultValues.tipoDocumentoId)
-      : 1,
+      : tiposDocumento.find(t => Number(t.id) === 21)?.id || null,
     serieDocId: defaultValues?.serieDocId
       ? Number(defaultValues.serieDocId)
       : null,
-    numeroDocumento: defaultValues?.numeroDocumento || "",
+    numeroSerie: defaultValues?.numeroSerie || "",
+    numeroCorrelativo: defaultValues?.numeroCorrelativo || 0,
+    numeroCompleto: defaultValues?.numeroCompleto || "",
     fechaDocumento: defaultValues?.fechaDocumento
       ? new Date(defaultValues.fechaDocumento)
       : new Date(),
@@ -70,7 +80,9 @@ const OTMantenimientoForm = ({
     prioridadAlta: defaultValues?.prioridadAlta !== undefined
       ? defaultValues.prioridadAlta
       : false,
-    estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 51, // PENDIENTE por defecto
+    estadoId: defaultValues?.estadoId 
+      ? Number(defaultValues.estadoId) 
+      : estadosDoc.find(e => e.descripcion === 'PENDIENTE')?.id || estadosDoc[0]?.id || null,
     fechaProgramada: defaultValues?.fechaProgramada
       ? new Date(defaultValues.fechaProgramada)
       : null,
@@ -78,7 +90,9 @@ const OTMantenimientoForm = ({
       ? new Date(defaultValues.fechaInicio)
       : null,
     fechaFin: defaultValues?.fechaFin ? new Date(defaultValues.fechaFin) : null,
-    monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : 1,
+    monedaId: defaultValues?.monedaId 
+      ? Number(defaultValues.monedaId) 
+      : monedas.find(m => m.codigoSunat === 'PEN')?.id || monedas[0]?.id || null,
     solicitanteId: defaultValues?.solicitanteId
       ? Number(defaultValues.solicitanteId)
       : null,
@@ -102,20 +116,79 @@ const OTMantenimientoForm = ({
       : null,
   });
 
+  // Filtrar sedes y activos según empresa seleccionada
+  const sedesFiltradas = sedes.filter(
+    (s) => !formData.empresaId || Number(s.empresaId) === Number(formData.empresaId)
+  );
+
+  const activosFiltrados = activos.filter(
+    (a) => !formData.empresaId || Number(a.empresaId) === Number(formData.empresaId)
+  );
+
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Si cambia la empresa, limpiar sede y activo
+    if (field === 'empresaId') {
+      setFormData((prev) => ({ 
+        ...prev, 
+        [field]: value,
+        sedeId: null,
+        activoId: null
+      }));
+    } 
+    else {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    }
+  };
+
+  // Cargar series de documentos cuando cambie empresa (tipoDocumentoId siempre es 21)
+  useEffect(() => {
+    if (formData.empresaId && !isEdit) {
+      cargarSeriesDoc();
+    }
+  }, [formData.empresaId, isEdit]);
+
+  const cargarSeriesDoc = async () => {
+    try {
+      // Siempre usar tipoDocumentoId = 21 (Orden de Trabajo)
+      const series = await getSeriesDoc(formData.empresaId, 21);
+      setSeriesDoc(series);
+    } catch (error) {
+      console.error("Error al cargar series:", error);
+    }
+  };
+
+  const handleSerieDocChange = (serieId) => {
+    setFormData((prev) => ({ ...prev, serieDocId: Number(serieId) }));
+    if (serieId) {
+      const serie = seriesDoc.find((s) => Number(s.id) === Number(serieId));
+      if (serie) {
+        const proximoCorrelativo = Number(serie.correlativo) + 1;
+        const numSerie = String(serie.serie).padStart(serie.numCerosIzqSerie, "0");
+        const numCorre = String(proximoCorrelativo).padStart(serie.numCerosIzqCorre, "0");
+        const numeroCompleto = `${numSerie}-${numCorre}`;
+        
+        setFormData((prev) => ({
+          ...prev,
+          numeroSerie: numSerie,
+          numeroCorrelativo: proximoCorrelativo,
+          numeroCompleto: numeroCompleto,
+        }));
+      }
+    }
   };
 
   const validarFormulario = () => {
     const camposFaltantes = [];
 
-    if (!formData.codigo) camposFaltantes.push("Código");
     if (!formData.empresaId) camposFaltantes.push("Empresa");
+    if (!formData.tipoDocumentoId) camposFaltantes.push("Tipo de Documento");
+    if (!formData.serieDocId) camposFaltantes.push("Serie de Documento");
     if (!formData.activoId) camposFaltantes.push("Activo");
     if (!formData.tipoMantenimientoId)
       camposFaltantes.push("Tipo de Mantenimiento");
     if (!formData.motivoOriginoId) camposFaltantes.push("Motivo de Origen");
     if (!formData.estadoId) camposFaltantes.push("Estado");
+    if (!formData.monedaId) camposFaltantes.push("Moneda");
 
     if (camposFaltantes.length > 0) {
       toast?.current?.show({
@@ -167,7 +240,7 @@ const OTMantenimientoForm = ({
         {/* TAB 1: DATOS GENERALES */}
         <TabPanel header="Datos Generales">
           <Panel header="Información Principal" className="mb-3">
-            {/* FILA: Código, Empresa, Sede */}
+            {/* FILA: Empresa, Sede */}
             <div
               style={{
                 marginTop: "0.5rem",
@@ -177,21 +250,6 @@ const OTMantenimientoForm = ({
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <div style={{ flex: 1 }}>
-                <label htmlFor="codigo" style={{ fontWeight: "bold" }}>
-                  Código *
-                </label>
-                <InputText
-                  id="codigo"
-                  value={formData.codigo}
-                  onChange={(e) =>
-                    handleChange("codigo", e.target.value.toUpperCase())
-                  }
-                  placeholder="Código de OT"
-                  disabled={disabled}
-                  style={{ width: "100%" }}
-                />
-              </div>
               <div style={{ flex: 2 }}>
                 <label htmlFor="empresaId" style={{ fontWeight: "bold" }}>
                   Empresa *
@@ -217,7 +275,7 @@ const OTMantenimientoForm = ({
                 <Dropdown
                   id="sedeId"
                   value={formData.sedeId}
-                  options={sedes.map((s) => ({
+                  options={sedesFiltradas.map((s) => ({
                     label: s.nombre,
                     value: Number(s.id),
                   }))}
@@ -225,6 +283,86 @@ const OTMantenimientoForm = ({
                   placeholder="Seleccionar sede"
                   filter
                   showClear
+                  disabled={disabled || !formData.empresaId}
+                  style={{ width: "100%" }}
+                />
+              </div>
+            </div>
+
+            {/* FILA: Tipo Documento, Serie, Número Documento, Moneda */}
+            <div
+              style={{
+                marginTop: "0.5rem",
+                alignItems: "end",
+                display: "flex",
+                gap: 3,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="tipoDocumentoId" style={{ fontWeight: "bold" }}>
+                  Tipo Documento *
+                </label>
+                <Dropdown
+                  id="tipoDocumentoId"
+                  value={formData.tipoDocumentoId}
+                  options={tiposDocumento
+                    .filter(t => Number(t.id) === 21)
+                    .map((t) => ({
+                      label: t.descripcion,
+                      value: Number(t.id),
+                    }))}
+                  onChange={(e) => handleChange("tipoDocumentoId", e.value)}
+                  placeholder="Orden de Trabajo"
+                  disabled={true}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="serieDocId" style={{ fontWeight: "bold" }}>
+                  Serie de Dcmto <span style={{ color: "red" }}>*</span>
+                </label>
+                <Dropdown
+                  id="serieDocId"
+                  value={formData.serieDocId}
+                  options={seriesDoc.map((s) => ({
+                    label: `${s.serie} (Correlativo: ${Number(s.correlativo)})`,
+                    value: Number(s.id),
+                  }))}
+                  onChange={(e) => handleSerieDocChange(e.value)}
+                  placeholder="Seleccionar serie"
+                  disabled={!formData.empresaId || !!formData.serieDocId}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="numeroCompleto" style={{ fontWeight: "bold" }}>
+                  Número Completo
+                </label>
+                <InputText
+                  id="numeroCompleto"
+                  value={formData.numeroCompleto}
+                  readOnly
+                  style={{
+                    width: "100%",
+                    fontWeight: "bold",
+                    textTransform: "uppercase"
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="monedaId" style={{ fontWeight: "bold" }}>
+                  Moneda *
+                </label>
+                <Dropdown
+                  id="monedaId"
+                  value={formData.monedaId}
+                  options={monedas.map((m) => ({
+                    label: `${m.codigoSunat}`,
+                    value: Number(m.id),
+                  }))}
+                  onChange={(e) => handleChange("monedaId", e.value)}
+                  placeholder="Seleccionar moneda"
                   disabled={disabled}
                   style={{ width: "100%" }}
                 />
@@ -248,14 +386,14 @@ const OTMantenimientoForm = ({
                 <Dropdown
                   id="activoId"
                   value={formData.activoId}
-                  options={activos.map((a) => ({
-                    label: `${a.codigo} - ${a.descripcion}`,
+                  options={activosFiltrados.map((a) => ({
+                    label: `${a.descripcion}`,
                     value: Number(a.id),
                   }))}
                   onChange={(e) => handleChange("activoId", e.value)}
                   placeholder="Seleccionar activo"
                   filter
-                  disabled={disabled}
+                  disabled={disabled || !formData.empresaId}
                   style={{ width: "100%" }}
                 />
               </div>
@@ -316,10 +454,13 @@ const OTMantenimientoForm = ({
                 <Dropdown
                   id="estadoId"
                   value={formData.estadoId}
-                  options={estadosDoc.map((e) => ({
-                    label: e.descripcion,
-                    value: Number(e.id),
-                  }))}
+                  options={(() => {
+                    console.log('Estados disponibles en formulario:', estadosDoc);
+                    return estadosDoc.map((e) => ({
+                      label: e.descripcion,
+                      value: Number(e.id),
+                    }));
+                  })()}
                   onChange={(e) => handleChange("estadoId", e.value)}
                   placeholder="Seleccionar estado"
                   disabled={disabled}
@@ -581,30 +722,30 @@ const OTMantenimientoForm = ({
               />
             </div>
           </Panel>
-        </TabPanel>
 
-        {/* TAB 2: TAREAS */}
-        <TabPanel header="Tareas">
-          <DetTareasOTCard
-            otMantenimientoId={formData.id}
-            estadosTarea={estadosTarea}
-            estadosInsumo={estadosInsumo}
-            personalOptions={personalOptions}
-            contratistas={contratistas}
-            productos={productos}
-            empresaId={formData.empresaId}
-            almacenId={formData.almacenId}
-            permisos={permisos}
-            disabled={!formData.id || loading || loadingProp}
-          />
-          {!formData.id && (
-            <div style={{ padding: "1rem", textAlign: "center", color: "#666" }}>
-              <i className="pi pi-info-circle" style={{ fontSize: "1.5rem" }}></i>
-              <p style={{ marginTop: "0.5rem" }}>
-                Guarde primero la orden de trabajo para poder agregar tareas.
-              </p>
-            </div>
-          )}
+          {/* TAREAS OT */}
+          <Panel header="Tareas de la Orden de Trabajo" className="mb-3" style={{ marginTop: "1rem" }}>
+            <DetTareasOTCard
+              otMantenimientoId={formData.id}
+              estadosTarea={estadosTarea}
+              estadosInsumo={estadosInsumo}
+              personalOptions={personalOptions}
+              contratistas={contratistas}
+              productos={productos}
+              empresaId={formData.empresaId}
+              almacenId={formData.almacenId}
+              permisos={permisos}
+              disabled={!formData.id || loading || loadingProp}
+            />
+            {!formData.id && (
+              <div style={{ padding: "1rem", textAlign: "center", color: "#666" }}>
+                <i className="pi pi-info-circle" style={{ fontSize: "1.5rem" }}></i>
+                <p style={{ marginTop: "0.5rem" }}>
+                  Guarde primero la orden de trabajo para poder agregar tareas.
+                </p>
+              </div>
+            )}
+          </Panel>
         </TabPanel>
 
         {/* TAB 3: DOCUMENTOS PDF */}
@@ -638,6 +779,33 @@ const OTMantenimientoForm = ({
               <i className="pi pi-info-circle" style={{ fontSize: "1.5rem" }}></i>
               <p style={{ marginTop: "0.5rem" }}>
                 Guarde primero la orden de trabajo para poder gestionar documentos.
+              </p>
+            </div>
+          )}
+        </TabPanel>
+
+        {/* TAB 4: ENTREGAS A RENDIR */}
+        <TabPanel 
+          header={`Entrega a Rendir ${countEntregasRendir > 0 ? `(${countEntregasRendir})` : ""}`}
+          leftIcon="pi pi-money-bill"
+        >
+          <EntregaARendirOTMantenimientoCard
+            otMantenimiento={formData}
+            personal={personalOptions}
+            centrosCosto={centrosCosto}
+            tiposMovimiento={tiposMovimiento}
+            entidadesComerciales={entidadesComerciales}
+            monedas={monedas}
+            tiposDocumento={tiposDocumento}
+            puedeEditar={isEdit}
+            onCountChange={setCountEntregasRendir}
+          />
+          
+          {!formData.id && (
+            <div style={{ padding: "1rem", textAlign: "center", color: "#666" }}>
+              <i className="pi pi-info-circle" style={{ fontSize: "1.5rem" }}></i>
+              <p style={{ marginTop: "0.5rem" }}>
+                Guarde primero la orden de trabajo para poder gestionar entregas a rendir.
               </p>
             </div>
           )}

@@ -14,23 +14,30 @@ import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
-import { Toolbar } from 'primereact/toolbar';
-import { InputText } from 'primereact/inputtext';
 import { Tag } from 'primereact/tag';
-import { FilterMatchMode } from 'primereact/api';
-import { getOrdenesTrabajoMantenimiento, eliminarOrdenTrabajo } from '../api/oTMantenimiento';
+import { Dropdown } from 'primereact/dropdown';
+import { Calendar } from 'primereact/calendar';
+import { getOrdenesTrabajoMantenimiento, crearOrdenTrabajo, actualizarOrdenTrabajo, eliminarOrdenTrabajo, getOrdenTrabajoPorId } from '../api/otMantenimiento';
 import { getEmpresas } from '../api/empresa';
 import { getSedes } from '../api/sedes';
 import { getActivos } from '../api/activo';
 import { getTiposMantenimiento } from '../api/tipoMantenimiento';
 import { getMotivosOrigenOT } from '../api/motivoOriginoOT';
-import { getEstadosMultiFuncion } from '../api/estadoMultiFuncion';
+import { getEstadosMultiFuncionPorTipoProviene } from '../api/estadoMultiFuncion';
 import { getPersonal } from '../api/personal';
 import { getContratistas } from '../api/contratista';
 import { getProductos } from '../api/producto';
 import { getAlmacenes } from '../api/almacen';
+import { getTiposDocumento } from '../api/tipoDocumento';
+import { getSeriesDoc } from '../api/serieDoc';
+import { getMonedas } from '../api/moneda';
+import { getCentrosCosto } from '../api/centroCosto';
+import { getAllTipoMovEntregaRendir } from '../api/tipoMovEntregaRendir';
+import { getEntidadesComerciales } from '../api/entidadComercial';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 import OTMantenimientoForm from '../components/oTMantenimiento/OTMantenimientoForm';
+import { formatearFecha } from '../utils/utils';
+import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Componente OTMantenimiento
@@ -45,10 +52,16 @@ const OTMantenimiento = () => {
   const [loading, setLoading] = useState(false);
   const [dialogoVisible, setDialogoVisible] = useState(false);
   const [ordenSeleccionada, setOrdenSeleccionada] = useState(null);
-  const [globalFilter, setGlobalFilter] = useState('');
-  const [filters, setFilters] = useState({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS }
-  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Filtros específicos
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [tipoMantenimientoFiltro, setTipoMantenimientoFiltro] = useState(null);
+  const [motivoFiltro, setMotivoFiltro] = useState(null);
+  const [estadoFiltro, setEstadoFiltro] = useState(null);
+  const [fechaInicio, setFechaInicio] = useState(null);
+  const [fechaFin, setFechaFin] = useState(null);
 
   // Estados para catálogos
   const [empresas, setEmpresas] = useState([]);
@@ -63,14 +76,27 @@ const OTMantenimiento = () => {
   const [personalOptions, setPersonalOptions] = useState([]);
   const [contratistas, setContratistas] = useState([]);
   const [productos, setProductos] = useState([]);
+  const [tiposDocumento, setTiposDocumento] = useState([]);
+  const [seriesDocs, setSeriesDocs] = useState([]);
+  const [monedas, setMonedas] = useState([]);
+  const [centrosCosto, setCentrosCosto] = useState([]);
+  const [tiposMovimiento, setTiposMovimiento] = useState([]);
+  const [entidadesComerciales, setEntidadesComerciales] = useState([]);
 
   /**
    * Carga las órdenes de trabajo desde la API
    */
-  const cargarOrdenesTrabajo = async () => {
+  const cargarOrdenes = async () => {
     try {
       setLoading(true);
-      const data = await getOrdenesTrabajoMantenimiento();
+      const filtros = {};
+      if (empresaSeleccionada) filtros.empresaId = empresaSeleccionada;
+      if (tipoMantenimientoFiltro) filtros.tipoMantenimientoId = tipoMantenimientoFiltro;
+      if (motivoFiltro) filtros.motivoOriginoId = motivoFiltro;
+      if (estadoFiltro) filtros.estadoId = estadoFiltro;
+      
+      const data = await getOrdenesTrabajoMantenimiento(filtros);
+      console.log('[OT Frontend] Datos recibidos:', data);
       
       // Normalizar IDs según regla ERP Megui
       const ordenesNormalizadas = data.map(orden => ({
@@ -85,8 +111,29 @@ const OTMantenimiento = () => {
         responsableId: orden.responsableId ? Number(orden.responsableId) : null,
         autorizadoPorId: orden.autorizadoPorId ? Number(orden.autorizadoPorId) : null
       }));
+
+      // Aplicar filtros de fecha en frontend
+      let ordenesFiltradas = ordenesNormalizadas;
+
+      if (fechaInicio) {
+        ordenesFiltradas = ordenesFiltradas.filter((item) => {
+          const fechaDoc = new Date(item.fechaProgramada || item.fechaCreacion);
+          const fechaIni = new Date(fechaInicio);
+          fechaIni.setHours(0, 0, 0, 0);
+          return fechaDoc >= fechaIni;
+        });
+      }
+
+      if (fechaFin) {
+        ordenesFiltradas = ordenesFiltradas.filter((item) => {
+          const fechaDoc = new Date(item.fechaProgramada || item.fechaCreacion);
+          const fechaFinDia = new Date(fechaFin);
+          fechaFinDia.setHours(23, 59, 59, 999);
+          return fechaDoc <= fechaFinDia;
+        });
+      }
       
-      setOrdenesTrabajo(ordenesNormalizadas);
+      setOrdenesTrabajo(ordenesFiltradas);
     } catch (error) {
       console.error('Error al cargar órdenes de trabajo:', error);
       toast.current?.show({
@@ -116,7 +163,13 @@ const OTMantenimiento = () => {
         estadosInsumoData,
         personalData,
         contratistasData,
-        productosData
+        productosData,
+        tiposDocumentoData,
+        seriesDocsData,
+        monedasData,
+        centrosCostoData,
+        tiposMovimientoData,
+        entidadesComercialesData
       ] = await Promise.all([
         getEmpresas(),
         getSedes(),
@@ -124,12 +177,18 @@ const OTMantenimiento = () => {
         getActivos(),
         getTiposMantenimiento(),
         getMotivosOrigenOT(),
-        getEstadosMultiFuncion(7), // Estados de OT (tipoProvieneDe = 7)
-        getEstadosMultiFuncion(8), // Estados de Tareas (tipoProvieneDe = 8)
-        getEstadosMultiFuncion(9), // Estados de Insumos (tipoProvieneDe = 9)
+        getEstadosMultiFuncionPorTipoProviene(15), // Orden Trabajo Mantenimiento
+        getEstadosMultiFuncionPorTipoProviene(16), // Tarea OT Mantenimiento
+        getEstadosMultiFuncionPorTipoProviene(17), // Insumo Tarea OT Mantenimiento
         getPersonal(),
         getContratistas(),
-        getProductos()
+        getProductos(),
+        getTiposDocumento(),
+        getSeriesDoc(),
+        getMonedas(),
+        getCentrosCosto(),
+        getAllTipoMovEntregaRendir(),
+        getEntidadesComerciales()
       ]);
 
       // Normalizar IDs
@@ -139,12 +198,20 @@ const OTMantenimiento = () => {
       setActivos(activosData.map(a => ({ ...a, id: Number(a.id) })));
       setTiposMantenimiento(tiposData.map(t => ({ ...t, id: Number(t.id) })));
       setMotivosOrigen(motivosData.map(m => ({ ...m, id: Number(m.id) })));
-      setEstadosDoc(estadosDocData.map(e => ({ ...e, id: Number(e.id) })));
+      const estadosDocNormalizados = estadosDocData.map(e => ({ ...e, id: Number(e.id) }));
+      console.log('Estados OT Mantenimiento cargados:', estadosDocNormalizados);
+      setEstadosDoc(estadosDocNormalizados);
       setEstadosTarea(estadosTareaData.map(e => ({ ...e, id: Number(e.id) })));
       setEstadosInsumo(estadosInsumoData.map(e => ({ ...e, id: Number(e.id) })));
       setPersonalOptions(personalData.map(p => ({ ...p, id: Number(p.id) })));
       setContratistas(contratistasData.map(c => ({ ...c, id: Number(c.id) })));
       setProductos(productosData.map(p => ({ ...p, id: Number(p.id) })));
+      setTiposDocumento(tiposDocumentoData.map(t => ({ ...t, id: Number(t.id) })));
+      setSeriesDocs(seriesDocsData.map(s => ({ ...s, id: Number(s.id) })));
+      setMonedas(monedasData.map(m => ({ ...m, id: Number(m.id) })));
+      setCentrosCosto(centrosCostoData.map(c => ({ ...c, id: Number(c.id) })));
+      setTiposMovimiento(tiposMovimientoData.map(t => ({ ...t, id: Number(t.id) })));
+      setEntidadesComerciales(entidadesComercialesData.map(e => ({ ...e, id: Number(e.id) })));
     } catch (error) {
       console.error('Error al cargar catálogos:', error);
       toast.current?.show({
@@ -156,26 +223,42 @@ const OTMantenimiento = () => {
   };
 
   /**
-   * Efecto para cargar datos al montar el componente
+   * Efecto para cargar catálogos al montar el componente
    */
   useEffect(() => {
-    cargarOrdenesTrabajo();
     cargarCatalogos();
   }, []);
+
+  /**
+   * Efecto para recargar órdenes cuando cambian los filtros
+   */
+  useEffect(() => {
+    cargarOrdenes();
+  }, [empresaSeleccionada, tipoMantenimientoFiltro, motivoFiltro, estadoFiltro, fechaInicio, fechaFin]);
 
   /**
    * Abre el diálogo para crear nueva orden de trabajo
    */
   const abrirDialogoNuevo = () => {
+    if (!empresaSeleccionada) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Advertencia',
+        detail: 'Debe seleccionar una empresa primero'
+      });
+      return;
+    }
     setOrdenSeleccionada(null);
+    setIsEditing(false);
     setDialogoVisible(true);
   };
 
   /**
    * Abre el diálogo para editar orden de trabajo (clic en fila)
    */
-  const editarOrden = (orden) => {
+  const abrirDialogoEdicion = (orden) => {
     setOrdenSeleccionada(orden);
+    setIsEditing(true);
     setDialogoVisible(true);
   };
 
@@ -185,22 +268,85 @@ const OTMantenimiento = () => {
   const cerrarDialogo = () => {
     setDialogoVisible(false);
     setOrdenSeleccionada(null);
+    setIsEditing(false);
   };
 
   /**
-   * Maneja el guardado exitoso
+   * Maneja el guardado de la orden de trabajo
    */
-  const onGuardar = async () => {
-    cerrarDialogo();
-    await cargarOrdenesTrabajo();
+  const handleGuardarOrden = async (datos) => {
+    setLoading(true);
+    try {
+      const esEdicion = ordenSeleccionada && ordenSeleccionada.id && ordenSeleccionada.codigo;
+
+      if (esEdicion) {
+        await actualizarOrdenTrabajo(ordenSeleccionada.id, datos);
+        toast.current.show({
+          severity: 'success',
+          summary: 'Actualizado',
+          detail: 'Orden de trabajo actualizada. Puedes seguir agregando detalles.',
+        });
+
+        // Recargar la orden actualizada
+        const ordenActualizada = await getOrdenTrabajoPorId(ordenSeleccionada.id);
+        setOrdenSeleccionada(ordenActualizada);
+        setRefreshKey(prev => prev + 1);
+      } else {
+        const resultado = await crearOrdenTrabajo(datos);
+        toast.current.show({
+          severity: 'success',
+          summary: 'Creado',
+          detail: `Orden de trabajo creada con código: ${resultado.codigo}. Ahora puedes agregar detalles.`,
+          life: 5000,
+        });
+
+        // Cargar la orden recién creada
+        const ordenCompleta = await getOrdenTrabajoPorId(resultado.id);
+        setOrdenSeleccionada(ordenCompleta);
+        setIsEditing(true);
+        setRefreshKey(prev => prev + 1);
+      }
+
+      cargarOrdenes();
+    } catch (err) {
+      console.error('Error al guardar orden de trabajo:', err);
+      
+      // Si el backend devuelve campos faltantes, mostrar lista
+      if (err.response?.data?.camposFaltantes && Array.isArray(err.response.data.camposFaltantes)) {
+        toast.current.show({
+          severity: 'warn',
+          summary: 'Campos Obligatorios Faltantes',
+          detail: (
+            <div>
+              <p style={{ marginBottom: '8px', fontWeight: 'bold' }}>
+                Los siguientes campos son obligatorios:
+              </p>
+              <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                {err.response.data.camposFaltantes.map((campo, index) => (
+                  <li key={index}>{campo}</li>
+                ))}
+              </ul>
+            </div>
+          ),
+          life: 8000,
+        });
+      } else {
+        toast.current.show({
+          severity: 'error',
+          summary: 'Error',
+          detail: err.response?.data?.message || 'Error al guardar la orden de trabajo',
+          life: 5000,
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   /**
    * Confirma la eliminación de una orden de trabajo
-   * Solo visible para superusuario o admin (regla transversal ERP Megui)
    */
   const confirmarEliminacion = (orden) => {
-    // Control de roles según regla transversal ERP Megui
     if (!usuario?.esSuperUsuario && !usuario?.esAdmin) {
       toast.current?.show({
         severity: 'warn',
@@ -210,14 +356,6 @@ const OTMantenimiento = () => {
       return;
     }
 
-    const confirmar = () => {
-      eliminarOrdenTrabajo(orden.id);
-    };
-
-    const rechazar = () => {
-      // No hacer nada
-    };
-
     confirmDialog({
       message: `¿Está seguro de eliminar la orden de trabajo "${orden.codigo}"?`,
       header: 'Confirmar Eliminación',
@@ -225,15 +363,14 @@ const OTMantenimiento = () => {
       acceptClassName: 'p-button-danger',
       acceptLabel: 'Sí, Eliminar',
       rejectLabel: 'Cancelar',
-      accept: confirmar,
-      reject: rechazar
+      accept: () => eliminarOrden(orden.id)
     });
   };
 
   /**
    * Elimina una orden de trabajo
    */
-  const eliminarOrdenTrabajo = async (id) => {
+  const eliminarOrden = async (id) => {
     try {
       await eliminarOrdenTrabajo(id);
       toast.current?.show({
@@ -241,7 +378,7 @@ const OTMantenimiento = () => {
         summary: 'Éxito',
         detail: 'Orden de trabajo eliminada correctamente'
       });
-      await cargarOrdenesTrabajo();
+      await cargarOrdenes();
     } catch (error) {
       console.error('Error al eliminar orden de trabajo:', error);
       toast.current?.show({
@@ -253,14 +390,21 @@ const OTMantenimiento = () => {
   };
 
   /**
-   * Maneja el filtro global
+   * Maneja el clic en fila
    */
-  const onGlobalFilterChange = (e) => {
-    const value = e.target.value;
-    let _filters = { ...filters };
-    _filters['global'].value = value;
-    setFilters(_filters);
-    setGlobalFilter(value);
+  const onRowClick = (event) => {
+    abrirDialogoEdicion(event.data);
+  };
+
+  /**
+   * Limpia todos los filtros
+   */
+  const limpiarFiltros = () => {
+    setTipoMantenimientoFiltro(null);
+    setMotivoFiltro(null);
+    setEstadoFiltro(null);
+    setFechaInicio(null);
+    setFechaFin(null);
   };
 
   /**
@@ -268,9 +412,13 @@ const OTMantenimiento = () => {
    */
   const codigoTemplate = (rowData) => {
     return (
-      <div className="flex align-items-center">
-        <i className="pi pi-wrench mr-2 text-blue-500"></i>
-        <span className="font-bold">{rowData.codigo}</span>
+      <div>
+        <div className="font-bold text-primary">
+          {rowData.codigo || `ID: ${rowData.id}`}
+        </div>
+        <div className="text-sm text-gray-600">
+          {formatearFecha(rowData.fechaCreacion)}
+        </div>
       </div>
     );
   };
@@ -284,14 +432,6 @@ const OTMantenimiento = () => {
     ) : (
       <Tag value="NORMAL" severity="info" />
     );
-  };
-
-  /**
-   * Template para fechas
-   */
-  const fechaTemplate = (rowData, field) => {
-    const fecha = rowData[field];
-    return fecha ? new Date(fecha).toLocaleDateString('es-PE') : '-';
   };
 
   /**
@@ -316,57 +456,36 @@ const OTMantenimiento = () => {
   };
 
   /**
+   * Template para estado
+   */
+  const estadoTemplate = (rowData) => {
+    if (!rowData.estadoDoc) return 'N/A';
+    const severity = rowData.estadoDoc.severityColor || 'secondary';
+    return (
+      <Tag value={rowData.estadoDoc.descripcion} severity={severity} />
+    );
+  };
+
+  /**
    * Template para acciones
-   * Solo muestra eliminar para superusuario o admin
    */
   const accionesTemplate = (rowData) => {
+    const puedeEliminar = usuario?.esSuperUsuario || usuario?.esAdmin;
+
     return (
       <div className="flex gap-2">
-        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+        {puedeEliminar && (
           <Button
             icon="pi pi-trash"
             className="p-button-rounded p-button-danger p-button-sm"
-            onClick={() => confirmarEliminacion(rowData)}
+            onClick={(e) => {
+              e.stopPropagation();
+              confirmarEliminacion(rowData);
+            }}
             tooltip="Eliminar"
             tooltipOptions={{ position: 'top' }}
           />
         )}
-      </div>
-    );
-  };
-
-  /**
-   * Header del toolbar
-   */
-  const leftToolbarTemplate = () => {
-    return (
-      <div className="flex flex-wrap gap-2">
-        <Button
-          label="Nueva Orden"
-          icon="pi pi-plus"
-          className="p-button-success"
-          onClick={abrirDialogoNuevo}
-        />
-      </div>
-    );
-  };
-
-  /**
-   * Filtro global del toolbar
-   */
-  const rightToolbarTemplate = () => {
-    return (
-      <div className="flex align-items-center gap-2">
-        <span className="p-input-icon-left">
-          <i className="pi pi-search" />
-          <InputText
-            type="search"
-            value={globalFilter}
-            onChange={onGlobalFilterChange}
-            placeholder="Buscar..."
-            className="w-full sm:w-auto"
-          />
-        </span>
       </div>
     );
   };
@@ -377,37 +496,169 @@ const OTMantenimiento = () => {
       <ConfirmDialog />
       
       <div className="card">
-        <Toolbar 
-          className="mb-4" 
-          left={leftToolbarTemplate} 
-          right={rightToolbarTemplate}
-        />
+        <div className="flex justify-content-between align-items-center mb-4">
+          <h2>Órdenes de Trabajo de Mantenimiento</h2>
+        </div>
 
         <DataTable
           value={ordenesTrabajo}
           loading={loading}
           dataKey="id"
           paginator
-          rows={10}
-          rowsPerPageOptions={[5, 10, 25, 50]}
+          size="small"
+          showGridlines
+          stripedRows
+          rows={5}
+          rowsPerPageOptions={[5, 10, 15, 20]}
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} órdenes"
-          filters={filters}
-          filterDisplay="menu"
-          globalFilterFields={['codigo', 'descripcion', 'tipoMantenimiento.nombre', 'motivoOrigino.nombre']}
           emptyMessage="No se encontraron órdenes de trabajo"
-          onRowClick={(e) => editarOrden(e.data)}
-          className="datatable-responsive"
+          onRowClick={onRowClick}
+          selectionMode="single"
           scrollable
           scrollHeight="600px"
+        style={{
+          cursor:"pointer",
+          fontSize: getResponsiveFontSize(),
+        }}
+                  header={
+            <div>
+              <div style={{ alignItems: "end", display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+                <div style={{ flex: 2 }}>
+                  <h2>Órdenes de Trabajo</h2>
+                </div>
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="empresaFiltro" style={{ fontWeight: "bold" }}>
+                    Empresa*
+                  </label>
+                  <Dropdown
+                    id="empresaFiltro"
+                    value={empresaSeleccionada}
+                    options={empresas.map((e) => ({ label: e.razonSocial, value: Number(e.id) }))}
+                    onChange={(e) => setEmpresaSeleccionada(e.value)}
+                    placeholder="Seleccionar empresa para filtrar"
+                    optionLabel="label"
+                    optionValue="value"
+                    showClear
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Nuevo"
+                    icon="pi pi-plus"
+                    onClick={abrirDialogoNuevo}
+                    className="p-button-primary"
+                    disabled={loading || !empresaSeleccionada}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Limpiar Filtros"
+                    icon="pi pi-filter-slash"
+                    className="p-button-secondary"
+                    outlined
+                    onClick={limpiarFiltros}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+              <div style={{ alignItems: "end", display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="tipoMantenimientoFiltro" style={{ fontWeight: "bold" }}>
+                    Tipo Mantenimiento
+                  </label>
+                  <Dropdown
+                    id="tipoMantenimientoFiltro"
+                    value={tipoMantenimientoFiltro}
+                    options={tiposMantenimiento.map((t) => ({ label: t.nombre, value: Number(t.id) }))}
+                    onChange={(e) => setTipoMantenimientoFiltro(e.value)}
+                    placeholder="Todos"
+                    optionLabel="label"
+                    optionValue="value"
+                    showClear
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="motivoFiltro" style={{ fontWeight: "bold" }}>
+                    Motivo
+                  </label>
+                  <Dropdown
+                    id="motivoFiltro"
+                    value={motivoFiltro}
+                    options={motivosOrigen.map((m) => ({ label: m.nombre, value: Number(m.id) }))}
+                    onChange={(e) => setMotivoFiltro(e.value)}
+                    placeholder="Todos"
+                    optionLabel="label"
+                    optionValue="value"
+                    showClear
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="fechaInicio" style={{ fontWeight: "bold" }}>
+                    Desde
+                  </label>
+                  <Calendar
+                    id="fechaInicio"
+                    value={fechaInicio}
+                    onChange={(e) => setFechaInicio(e.value)}
+                    placeholder="Fecha inicio"
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    showButtonBar
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="fechaFin" style={{ fontWeight: "bold" }}>
+                    Hasta
+                  </label>
+                  <Calendar
+                    id="fechaFin"
+                    value={fechaFin}
+                    onChange={(e) => setFechaFin(e.value)}
+                    placeholder="Fecha fin"
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    showButtonBar
+                    disabled={loading}
+                  />
+                </div>
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="estadoFiltro" style={{ fontWeight: "bold" }}>
+                    Estado
+                  </label>
+                  <Dropdown
+                    id="estadoFiltro"
+                    value={estadoFiltro}
+                    options={estadosDoc.map((e) => ({ label: e.descripcion, value: Number(e.id) }))}
+                    onChange={(e) => setEstadoFiltro(e.value)}
+                    placeholder="Todos"
+                    optionLabel="label"
+                    optionValue="value"
+                    showClear
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            </div>
+          }
         >
           <Column 
-            field="codigo" 
-            header="Código" 
-            body={codigoTemplate}
+            field="id" 
+            header="ID" 
             sortable 
             frozen
-            style={{ minWidth: '150px' }}
+            style={{ width: '80px', verticalAlign: 'top' }}
+          />
+          
+          <Column 
+            field="numeroCompleto" 
+            header="Número OT" 
+            sortable 
+            style={{ width: '160px', verticalAlign: 'top', fontWeight: 'bold' }}
           />
           
           <Column 
@@ -415,7 +666,7 @@ const OTMantenimiento = () => {
             header="Tipo Mantenimiento" 
             body={tipoMantenimientoTemplate}
             sortable 
-            style={{ minWidth: '180px' }}
+            style={{ width: '180px', verticalAlign: 'top' }}
           />
           
           <Column 
@@ -423,7 +674,7 @@ const OTMantenimiento = () => {
             header="Motivo Origen" 
             body={motivoOrigenTemplate}
             sortable 
-            style={{ minWidth: '150px' }}
+            style={{ width: '150px', verticalAlign: 'top' }}
           />
           
           <Column 
@@ -431,31 +682,8 @@ const OTMantenimiento = () => {
             header="Prioridad" 
             body={prioridadTemplate}
             sortable 
-            style={{ minWidth: '100px' }}
-          />
-          
-          <Column 
-            field="fechaProgramada" 
-            header="Fecha Programada" 
-            body={(rowData) => fechaTemplate(rowData, 'fechaProgramada')}
-            sortable 
-            style={{ minWidth: '130px' }}
-          />
-          
-          <Column 
-            field="fechaInicio" 
-            header="Fecha Inicio" 
-            body={(rowData) => fechaTemplate(rowData, 'fechaInicio')}
-            sortable 
-            style={{ minWidth: '120px' }}
-          />
-          
-          <Column 
-            field="fechaFin" 
-            header="Fecha Fin" 
-            body={(rowData) => fechaTemplate(rowData, 'fechaFin')}
-            sortable 
-            style={{ minWidth: '120px' }}
+            style={{ width: '100px', verticalAlign: 'top' }}
+            className="text-center"
           />
           
           <Column 
@@ -463,14 +691,23 @@ const OTMantenimiento = () => {
             header="Responsable" 
             body={responsableTemplate}
             sortable 
-            style={{ minWidth: '150px' }}
+            style={{ width: '150px', verticalAlign: 'top' }}
+          />
+
+          <Column 
+            field="estadoDoc.descripcion" 
+            header="Estado" 
+            body={estadoTemplate}
+            sortable 
+            style={{ width: '120px', verticalAlign: 'top' }}
+            className="text-center"
           />
           
           <Column 
             field="descripcion" 
             header="Descripción" 
             sortable 
-            style={{ minWidth: '200px' }}
+            style={{ width: '200px', verticalAlign: 'top' }}
           />
           
           <Column 
@@ -478,25 +715,26 @@ const OTMantenimiento = () => {
             header="Acciones" 
             frozen 
             alignFrozen="right"
-            style={{ minWidth: '100px' }}
+            style={{ width: '100px' }}
+            className="text-center"
           />
         </DataTable>
       </div>
 
-      {/* Diálogo del formulario */}
       <Dialog
         visible={dialogoVisible}
         style={{ width: '90vw', maxWidth: '1200px' }}
-        header={ordenSeleccionada?.id ? 'Editar Orden de Trabajo' : 'Nueva Orden de Trabajo'}
+        header={isEditing ? `Editar Orden de Trabajo: ${ordenSeleccionada?.codigo || ''}` : 'Nueva Orden de Trabajo'}
         modal
         className="p-fluid"
         onHide={cerrarDialogo}
         maximizable
       >
         <OTMantenimientoForm
-          isEdit={!!ordenSeleccionada?.id}
+          key={refreshKey}
+          isEdit={isEditing}
           defaultValues={ordenSeleccionada}
-          onSubmit={onGuardar}
+          onSubmit={handleGuardarOrden}
           onCancel={cerrarDialogo}
           empresas={empresas}
           tiposMantenimiento={tiposMantenimiento}
@@ -510,9 +748,16 @@ const OTMantenimiento = () => {
           personalOptions={personalOptions}
           contratistas={contratistas}
           productos={productos}
+          tiposDocumento={tiposDocumento}
+          seriesDocs={seriesDocs}
+          monedas={monedas}
+          centrosCosto={centrosCosto}
+          tiposMovimiento={tiposMovimiento}
+          entidadesComerciales={entidadesComerciales}
           permisos={{ eliminar: usuario?.rol === 'superusuario' || usuario?.rol === 'admin' }}
           loading={loading}
           toast={toast}
+          empresaFija={empresaSeleccionada}
         />
       </Dialog>
     </div>

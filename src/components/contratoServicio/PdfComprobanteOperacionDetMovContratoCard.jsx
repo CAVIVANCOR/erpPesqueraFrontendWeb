@@ -2,19 +2,20 @@
  * PdfComprobanteOperacionDetMovContratoCard.jsx
  *
  * Card para gestión de PDF de comprobante de operación de movimiento de caja en contratos de servicios.
- * Permite subir, visualizar y eliminar el PDF del comprobante de la operación MovCaja.
+ * Permite subir, visualizar y descargar el PDF del comprobante de la operación MovCaja.
+ * Patrón replicado EXACTAMENTE de ContratoServicioPdfCard.jsx
  *
  * @author ERP Megui
  * @version 1.0.0
  */
 
-import React from "react";
-import { Controller } from "react-hook-form";
+import React, { useState } from "react";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Card } from "primereact/card";
-import { classNames } from "primereact/utils";
-import { Message } from "primereact/message";
+import DocumentoCapture from "../shared/DocumentoCapture";
+import PDFViewer from "../shared/PDFViewer";
+import { abrirPdfEnNuevaPestana, descargarPdf } from "../../utils/pdfUtils";
 
 const PdfComprobanteOperacionDetMovContratoCard = ({
   control,
@@ -24,106 +25,60 @@ const PdfComprobanteOperacionDetMovContratoCard = ({
   setValue,
   movimiento,
 }) => {
-  /**
-   * Maneja la subida del archivo PDF
-   */
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+  const [mostrarCaptura, setMostrarCaptura] = useState(false);
 
-    // Validar que sea un PDF
-    if (file.type !== "application/pdf") {
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Solo se permiten archivos PDF",
-        life: 3000,
-      });
-      return;
-    }
+  // Convertir movimientoId a number
+  const movimientoIdNumber = movimiento?.id ? Number(movimiento.id) : null;
 
-    // Validar tamaño (máximo 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "El archivo no debe superar los 5MB",
-        life: 3000,
-      });
-      return;
-    }
-
-    try {
-      // Crear FormData
-      const formData = new FormData();
-      formData.append("pdf", file);
-      formData.append("tipo", "comprobante-operacion-movcaja-contratos");
-      
-      if (movimiento?.id) {
-        formData.append("movimientoId", movimiento.id);
-      }
-
-      // Subir al servidor
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/upload/pdf-comprobante-operacion-movcaja`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Error al subir el archivo");
-      }
-
-      const data = await response.json();
-
-      // Actualizar el campo en el formulario
-      setValue("urlComprobanteOperacionMovCaja", data.url);
-
-      toast.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "PDF subido correctamente",
-        life: 3000,
-      });
-    } catch (error) {
-      console.error("Error al subir PDF:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Error al subir el archivo PDF",
-        life: 3000,
-      });
-    }
-  };
-
-  /**
-   * Abre el PDF en una nueva pestaña
-   */
-  const handleVerPdf = () => {
+  // Función para ver PDF en nueva pestaña
+  const handleVerPDF = () => {
     if (urlComprobanteOperacionMovCaja) {
-      window.open(urlComprobanteOperacionMovCaja, "_blank");
+      abrirPdfEnNuevaPestana(
+        urlComprobanteOperacionMovCaja,
+        toast,
+        "No hay comprobante de operación disponible"
+      );
     }
   };
 
-  /**
-   * Elimina el PDF
-   */
-  const handleEliminarPdf = () => {
-    setValue("urlComprobanteOperacionMovCaja", "");
+  // Función para descargar PDF usando función genérica
+  const handleDescargarPDF = () => {
+    descargarPdf(
+      urlComprobanteOperacionMovCaja,
+      toast?.current,
+      `comprobante-operacion-contrato-${movimientoIdNumber || 'documento'}.pdf`
+    );
+  };
+
+  // Función para abrir captura con validación
+  const handleAbrirCaptura = () => {
+    if (!movimientoIdNumber) {
+      toast?.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe guardar el movimiento antes de subir el PDF",
+        life: 3000,
+      });
+      return;
+    }
+    setMostrarCaptura(true);
+  };
+
+  // Función para manejar comprobante subido
+  const handleComprobanteSubido = (urlDocumento) => {
+    setValue("urlComprobanteOperacionMovCaja", urlDocumento);
+    setMostrarCaptura(false);
     toast.current?.show({
-      severity: "info",
-      summary: "PDF Eliminado",
-      detail: "El PDF del comprobante de operación MovCaja ha sido eliminado",
+      severity: "success",
+      summary: "Comprobante Subido",
+      detail: "El comprobante de operación se ha subido correctamente",
       life: 3000,
     });
   };
 
   return (
     <Card
-      title="Comprobante PDF de Operación MovCaja"
+      title="Comprobante de Operación (Voucher, Recibo, etc.)"
       className="mb-4"
       pt={{
         header: { className: "pb-0" },
@@ -131,100 +86,90 @@ const PdfComprobanteOperacionDetMovContratoCard = ({
       }}
     >
       <div className="p-fluid">
-        <div style={{ marginBottom: "1rem" }}>
-          <Message
-            severity="info"
-            text="Suba el PDF del comprobante de la operación de movimiento de caja (voucher, transferencia, etc.)"
-          />
-        </div>
-
-        <div style={{ display: "flex", gap: 10, marginBottom: "0.5rem", flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+        {/* URL del comprobante */}
+        <div
+          style={{
+            display: "flex",
+            gap: "0.5rem",
+            alignItems: "flex-end",
+          }}
+        >
           <div style={{ flex: 2 }}>
-            <label htmlFor="urlComprobanteOperacionMovCaja" className="block text-900 font-medium mb-2">
-              URL del Comprobante Operación MovCaja
+            <label htmlFor="urlComprobanteOperacionMovCaja">
+              Comprobante de Operación PDF
             </label>
-            <Controller
-              name="urlComprobanteOperacionMovCaja"
-              control={control}
-              render={({ field }) => (
-                <InputText
-                  id="urlComprobanteOperacionMovCaja"
-                  {...field}
-                  value={field.value || ""}
-                  placeholder="URL del PDF se generará automáticamente al subir el archivo"
-                  className={classNames({ "p-invalid": errors.urlComprobanteOperacionMovCaja })}
-                  readOnly
-                  style={{ fontWeight: "bold", color: "#2196F3" }}
-                />
-              )}
+            <InputText
+              id="urlComprobanteOperacionMovCaja"
+              value={urlComprobanteOperacionMovCaja || ""}
+              placeholder="URL del comprobante PDF"
+              style={{ fontWeight: "bold" }}
+              readOnly
             />
-            {errors.urlComprobanteOperacionMovCaja && (
-              <Message severity="error" text={errors.urlComprobanteOperacionMovCaja.message} />
-            )}
           </div>
 
-          <div style={{ flex: 1, display: "flex", gap: "0.5rem", alignItems: "end" }}>
-            <div style={{ flex: 1 }}>
-              <label className="block text-900 font-medium mb-2">Subir PDF</label>
-              <input
-                type="file"
-                accept="application/pdf"
-                onChange={handleFileUpload}
-                style={{ display: "none" }}
-                id="upload-pdf-operacion-movcaja"
-              />
+          {/* Botones de acción */}
+          <div style={{ flex: 0.5 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: "0.25rem",
+                justifyContent: "flex-end",
+              }}
+            >
               <Button
                 type="button"
-                label="Seleccionar"
-                icon="pi pi-upload"
-                className="p-button-primary"
-                onClick={() => document.getElementById("upload-pdf-operacion-movcaja").click()}
+                label="Capturar/Subir"
+                icon="pi pi-camera"
+                className="p-button-info"
                 size="small"
+                onClick={handleAbrirCaptura}
               />
             </div>
-
+          </div>
+          <div style={{ flex: 0.5 }}>
             {urlComprobanteOperacionMovCaja && (
-              <>
-                <div style={{ flex: 1 }}>
-                  <label className="block text-900 font-medium mb-2">Ver PDF</label>
-                  <Button
-                    type="button"
-                    label="Ver"
-                    icon="pi pi-eye"
-                    className="p-button-info"
-                    onClick={handleVerPdf}
-                    size="small"
-                  />
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <label className="block text-900 font-medium mb-2">Eliminar</label>
-                  <Button
-                    type="button"
-                    label="Eliminar"
-                    icon="pi pi-trash"
-                    className="p-button-danger"
-                    onClick={handleEliminarPdf}
-                    size="small"
-                  />
-                </div>
-              </>
+              <div style={{ display: "flex", gap: "0.25rem" }}>
+                <Button
+                  type="button"
+                  label="Ver"
+                  icon="pi pi-eye"
+                  className="p-button-success"
+                  size="small"
+                  onClick={handleVerPDF}
+                />
+                <Button
+                  type="button"
+                  label="Descargar"
+                  icon="pi pi-download"
+                  className="p-button-help"
+                  size="small"
+                  onClick={handleDescargarPDF}
+                />
+              </div>
             )}
           </div>
         </div>
 
+        {/* Visor de PDF */}
         {urlComprobanteOperacionMovCaja && (
-          <div style={{ marginTop: "1rem", padding: "1rem", backgroundColor: "#e8f5e9", borderRadius: "8px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <i className="pi pi-check-circle" style={{ color: "#4caf50", fontSize: "1.5rem" }}></i>
-              <div>
-                <strong>PDF Cargado</strong>
-                <p style={{ margin: 0, fontSize: "0.9rem", color: "#666" }}>
-                  El comprobante de operación MovCaja está disponible para visualización
-                </p>
-              </div>
-            </div>
+          <div style={{ marginTop: "1rem" }}>
+            <PDFViewer urlDocumento={urlComprobanteOperacionMovCaja} />
           </div>
+        )}
+
+        {/* Modal de captura de documento */}
+        {mostrarCaptura && movimientoIdNumber && (
+          <DocumentoCapture
+            visible={mostrarCaptura}
+            onHide={() => setMostrarCaptura(false)}
+            onDocumentoSubido={handleComprobanteSubido}
+            endpoint={`${
+              import.meta.env.VITE_API_URL
+            }/det-movs-entrega-rendir-contrato-pdf/upload-pdf-operacion`}
+            titulo="Capturar/Subir Comprobante de Operación"
+            toast={toast}
+            extraData={{ movimientoId: movimientoIdNumber }}
+          />
         )}
       </div>
     </Card>

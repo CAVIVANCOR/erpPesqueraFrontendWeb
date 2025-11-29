@@ -117,6 +117,30 @@ export const abrirPdfEnNuevaPestana = async (urlPdf, toast, mensajeError = "No h
       // ✅ NUEVO: Soporte para PDFs de contratos de servicio
       const rutaArchivo = urlPdf.replace('/uploads/contratos-servicio/', '');
       urlCompleta = `${import.meta.env.VITE_API_URL}/contrato-servicio-pdf/archivo-contrato/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/det-movs-entrega-rendir-contrato/comprobantes-movimiento/')) {
+      // ✅ NUEVO: Soporte para comprobantes de movimiento de entrega a rendir de contratos
+      const rutaArchivo = urlPdf.replace('/uploads/det-movs-entrega-rendir-contrato/comprobantes-movimiento/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir-contrato-pdf/archivo-comprobante/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/det-movs-entrega-rendir-contrato/comprobantes-operacion/')) {
+      // ✅ NUEVO: Soporte para comprobantes de operación MovCaja de entrega a rendir de contratos
+      const rutaArchivo = urlPdf.replace('/uploads/det-movs-entrega-rendir-contrato/comprobantes-operacion/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir-contrato-pdf/archivo-operacion/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/det-movs-entrega-rendir-mov-almacen/comprobantes-movimiento/')) {
+      // ✅ NUEVO: Soporte para comprobantes de movimiento de entrega a rendir de movimientos de almacén
+      const rutaArchivo = urlPdf.replace('/uploads/det-movs-entrega-rendir-mov-almacen/comprobantes-movimiento/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir-mov-almacen-pdf/archivo-comprobante/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/det-movs-entrega-rendir-mov-almacen/comprobantes-operacion/')) {
+      // ✅ NUEVO: Soporte para comprobantes de operación MovCaja de entrega a rendir de movimientos de almacén
+      const rutaArchivo = urlPdf.replace('/uploads/det-movs-entrega-rendir-mov-almacen/comprobantes-operacion/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir-mov-almacen-pdf/archivo-operacion/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/det-movs-entrega-rendir-ot-mantenimiento/comprobantes-movimiento/')) {
+      // ✅ NUEVO: Soporte para comprobantes de movimiento de entrega a rendir de OT Mantenimiento
+      const rutaArchivo = urlPdf.replace('/uploads/det-movs-entrega-rendir-ot-mantenimiento/comprobantes-movimiento/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir-ot-mantenimiento-pdf/archivo-comprobante/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/det-movs-entrega-rendir-ot-mantenimiento/comprobantes-operacion/')) {
+      // ✅ NUEVO: Soporte para comprobantes de operación MovCaja de entrega a rendir de OT Mantenimiento
+      const rutaArchivo = urlPdf.replace('/uploads/det-movs-entrega-rendir-ot-mantenimiento/comprobantes-operacion/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir-ot-mantenimiento-pdf/archivo-operacion/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/")) {
       // Para otros tipos de uploads (archivos de confirmación, etc.)
       urlCompleta = `${import.meta.env.VITE_API_URL}${urlPdf}`;
@@ -254,6 +278,39 @@ export const descargarPdf = async (urlPdf, toast, nombreArchivo = "documento.pdf
       // ✅ NUEVO: Soporte para PDFs de contratos de servicio
       const rutaArchivo = urlPdf.replace('/uploads/contratos-servicio/', '');
       urlCompleta = `${import.meta.env.VITE_API_URL}/contrato-servicio-pdf/archivo-contrato/${rutaArchivo}`;
+
+    } else if (urlPdf.startsWith('/uploads/det-movs-entrega-rendir-contrato/comprobantes-movimiento/')) {
+      // ✅ NUEVO: Soporte para comprobantes de movimiento de entrega a rendir de contratos
+      const rutaArchivo = urlPdf.replace('/uploads/det-movs-entrega-rendir-contrato/comprobantes-movimiento/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir-contrato-pdf/archivo-comprobante/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/det-movs-entrega-rendir-contrato/comprobantes-operacion/')) {
+      // ✅ NUEVO: Soporte para comprobantes de operación MovCaja de entrega a rendir de contratos
+      const rutaArchivo = urlPdf.replace('/uploads/det-movs-entrega-rendir-contrato/comprobantes-operacion/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir-contrato-pdf/archivo-operacion/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/det-movs-entrega-rendir-mov-almacen/comprobantes-movimiento/')) {
+      // ✅ NUEVO: Soporte para comprobantes de movimiento de entrega a rendir de movimientos de almacén
+      const rutaArchivo = urlPdf.replace('/uploads/det-movs-entrega-rendir-mov-almacen/comprobantes-movimiento/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir-mov-almacen-pdf/archivo-comprobante/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/det-movs-entrega-rendir-mov-almacen/comprobantes-operacion/')) {
+      // ✅ NUEVO: Soporte para comprobantes de operación MovCaja de entrega a rendir de movimientos de almacén
+      const rutaArchivo = urlPdf.replace('/uploads/det-movs-entrega-rendir-mov-almacen/comprobantes-operacion/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir-mov-almacen-pdf/archivo-operacion/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/det-movs-entrega-rendir-ot-mantenimiento/comprobantes-movimiento/')) {
+      // ✅ NUEVO: Soporte para comprobantes de movimiento de entrega a rendir de OT Mantenimiento
+      const rutaArchivo = urlPdf.replace('/uploads/det-movs-entrega-rendir-ot-mantenimiento/comprobantes-movimiento/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir-ot-mantenimiento-pdf/archivo-comprobante/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/det-movs-entrega-rendir-ot-mantenimiento/comprobantes-operacion/')) {
+      // ✅ NUEVO: Soporte para comprobantes de operación MovCaja de entrega a rendir de OT Mantenimiento
+      const rutaArchivo = urlPdf.replace('/uploads/det-movs-entrega-rendir-ot-mantenimiento/comprobantes-operacion/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/det-movs-entrega-rendir-ot-mantenimiento-pdf/archivo-operacion/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/movimientos-almacen/')) {
+      // ✅ NUEVO: Soporte para PDFs de movimientos de almacén
+      const rutaArchivo = urlPdf.replace('/uploads/movimientos-almacen/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/movimiento-almacen/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith('/uploads/ot-mantenimiento/')) {
+      // ✅ NUEVO: Soporte para PDFs de OT Mantenimiento
+      const rutaArchivo = urlPdf.replace('/uploads/ot-mantenimiento/', '');
+      urlCompleta = `${import.meta.env.VITE_API_URL}/ot-mantenimiento/archivo/${rutaArchivo}`;
     } else if (urlPdf.startsWith(`/uploads/${tipoUpload}/`)) {
       const rutaArchivo = urlPdf.replace(`/uploads/${tipoUpload}/`, "");
       urlCompleta = `${import.meta.env.VITE_API_URL}/${tipoUpload}/archivo/${rutaArchivo}`;

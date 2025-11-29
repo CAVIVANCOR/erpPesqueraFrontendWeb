@@ -218,3 +218,21 @@ export async function cambiarEstadoOrden(id, estadoId) {
 
 // Alias en inglés para compatibilidad
 export const changeOTEstado = cambiarEstadoOrden;
+
+/**
+ * Obtiene series de documentos filtradas por empresaId y tipoDocumentoId
+ * @param {number} empresaId - ID de la empresa
+ * @param {number} tipoDocumentoId - ID del tipo de documento (21 para OT)
+ * @returns {Promise<Array>} Lista de series filtradas
+ */
+export async function getSeriesDoc(empresaId, tipoDocumentoId) {
+  const params = {
+    ...(empresaId && { empresaId }),
+    ...(tipoDocumentoId && { tipoDocumentoId })
+  };
+  const response = await axios.get(`${API_URL}/series-doc`, { 
+    params,
+    headers: getAuthHeaders() 
+  });
+  return response.data;
+}

@@ -18,7 +18,7 @@ import axios from 'axios';
 import { useAuthStore } from '../shared/stores/useAuthStore';
 
 // URL base de la API desde variables de entorno
-const API_URL = `${import.meta.env.VITE_API_URL}/det-tareas-ot`;
+const API_URL = `${import.meta.env.VITE_API_URL}/tareas-ot`;
 
 /**
  * Configuración de headers con autenticación JWT

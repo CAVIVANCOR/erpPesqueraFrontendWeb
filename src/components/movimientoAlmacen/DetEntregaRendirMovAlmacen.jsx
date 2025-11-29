@@ -1,5 +1,6 @@
-// src/components/movimientoAlmacen/DetEntregaRendirMovAlmacen.jsx
-// Componente autónomo para gestión de detalle de entregas a rendir en movimiento de almacén
+// src/components/Almacen/DetEntregaRendirMovAlmacen.jsx
+// Componente para gestión de detalle de entregas a rendir en movimientos de almacén
+// Patrón replicado EXACTAMENTE de DetEntregaRendirContrato.jsx
 import React, { useState, useRef } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -17,11 +18,8 @@ import {
   eliminarDetMovsEntregaRendirMovAlmacen,
 } from "../../api/detMovsEntregaRendirMovAlmacen";
 import { actualizarEntregaARendirMovAlmacen } from "../../api/entregaARendirMovAlmacen";
-import { useAuthStore } from "../../shared/stores/useAuthStore";
-import { generarYSubirPDFLiquidacionMovAlmacen } from "./LiquidacionMovAlmacenPDF";
 
 export default function DetEntregaRendirMovAlmacen({
-  // Props de datos
   entregaARendir,
   movimientos = [],
   personal = [],
@@ -31,30 +29,21 @@ export default function DetEntregaRendirMovAlmacen({
   monedas = [],
   tiposDocumento = [],
   productos = [],
-
-  // Props de estado
   movimientoAlmacenAprobado = false,
   loading = false,
   selectedMovimientos = [],
-
-  // Props de callbacks
   onSelectionChange,
   onDataChange,
 }) {
-  // Estados locales para filtros
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
   const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);
   const [filtroIngresoEgreso, setFiltroIngresoEgreso] = useState(null);
   const [filtroValidacionTesoreria, setFiltroValidacionTesoreria] = useState(null);
-
-  // Estados para el dialog
   const [showMovimientoForm, setShowMovimientoForm] = useState(false);
   const [editingMovimiento, setEditingMovimiento] = useState(null);
 
   const toast = useRef(null);
-  const usuario = useAuthStore((state) => state.usuario);
 
-  // Función para obtener movimientos filtrados
   const obtenerMovimientosFiltrados = () => {
     let movimientosFiltrados = [...movimientos];
 
@@ -88,7 +77,6 @@ export default function DetEntregaRendirMovAlmacen({
     return movimientosFiltrados;
   };
 
-  // Funciones para filtros
   const limpiarFiltros = () => {
     setFiltroTipoMovimiento(null);
     setFiltroCentroCosto(null);
@@ -98,21 +86,21 @@ export default function DetEntregaRendirMovAlmacen({
 
   const alternarFiltroIngresoEgreso = () => {
     if (filtroIngresoEgreso === null) {
-      setFiltroIngresoEgreso(true); // Ingresos
+      setFiltroIngresoEgreso(true);
     } else if (filtroIngresoEgreso === true) {
-      setFiltroIngresoEgreso(false); // Egresos
+      setFiltroIngresoEgreso(false);
     } else {
-      setFiltroIngresoEgreso(null); // Todos
+      setFiltroIngresoEgreso(null);
     }
   };
 
   const alternarFiltroValidacionTesoreria = () => {
     if (filtroValidacionTesoreria === null) {
-      setFiltroValidacionTesoreria(true); // Validados
+      setFiltroValidacionTesoreria(true);
     } else if (filtroValidacionTesoreria === true) {
-      setFiltroValidacionTesoreria(false); // No validados
+      setFiltroValidacionTesoreria(false);
     } else {
-      setFiltroValidacionTesoreria(null); // Todos
+      setFiltroValidacionTesoreria(null);
     }
   };
 
@@ -136,7 +124,6 @@ export default function DetEntregaRendirMovAlmacen({
     }
   };
 
-  // Handlers internos
   const handleNuevoMovimiento = () => {
     setEditingMovimiento(null);
     setShowMovimientoForm(true);
@@ -147,10 +134,10 @@ export default function DetEntregaRendirMovAlmacen({
     setShowMovimientoForm(true);
   };
 
-  const handleGuardarMovimiento = async (datosMovimiento) => {
+  const handleGuardarMovimiento = async (data) => {
     try {
       if (editingMovimiento) {
-        await actualizarDetMovsEntregaRendirMovAlmacen(editingMovimiento.id, datosMovimiento);
+        await actualizarDetMovsEntregaRendirMovAlmacen(editingMovimiento.id, data);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -158,7 +145,7 @@ export default function DetEntregaRendirMovAlmacen({
           life: 3000,
         });
       } else {
-        await crearDetMovsEntregaRendirMovAlmacen(datosMovimiento);
+        await crearDetMovsEntregaRendirMovAlmacen(data);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -175,7 +162,7 @@ export default function DetEntregaRendirMovAlmacen({
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.message || "Error al guardar el movimiento",
+        detail: "Error al guardar movimiento",
         life: 3000,
       });
     }
@@ -183,7 +170,9 @@ export default function DetEntregaRendirMovAlmacen({
 
   const handleEliminarMovimiento = (movimiento) => {
     confirmDialog({
-      message: "¿Está seguro de eliminar este movimiento?",
+      message: `¿Está seguro de eliminar el movimiento del ${new Date(
+        movimiento.fechaMovimiento
+      ).toLocaleDateString("es-PE")}?`,
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-danger",
@@ -202,7 +191,7 @@ export default function DetEntregaRendirMovAlmacen({
           toast.current?.show({
             severity: "error",
             summary: "Error",
-            detail: error.message || "Error al eliminar el movimiento",
+            detail: "Error al eliminar movimiento",
             life: 3000,
           });
         }
@@ -211,29 +200,29 @@ export default function DetEntregaRendirMovAlmacen({
   };
 
   const handleProcesarLiquidacion = () => {
-    // Validar que todos los movimientos estén validados
-    const movimientosNoValidados = movimientos.filter((m) => !m.validadoTesoreria);
-
-    if (movimientosNoValidados.length > 0) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: `Hay ${movimientosNoValidados.length} movimiento(s) sin validar por tesorería`,
-        life: 5000,
-      });
-      return;
-    }
-
     confirmDialog({
-      message: "¿Está seguro de procesar la liquidación? Esta acción no se puede deshacer.",
-      header: "Confirmar Liquidación",
+      message:
+        "¿Está seguro de procesar la liquidación? Esta acción no se puede deshacer y bloqueará todas las modificaciones futuras.",
+      header: "Confirmar Procesamiento de Liquidación",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-danger",
       accept: async () => {
         try {
           const fechaActual = new Date();
 
-          // 1. Validar todos los movimientos
+          const entregaActualizada = {
+            movimientoAlmacenId: entregaARendir.movimientoAlmacenId,
+            respEntregaRendirId: entregaARendir.respEntregaRendirId,
+            centroCostoId: entregaARendir.centroCostoId,
+            entregaLiquidada: true,
+            fechaLiquidacion: fechaActual,
+          };
+
+          await actualizarEntregaARendirMovAlmacen(
+            entregaARendir.id,
+            entregaActualizada
+          );
+
           const promesasActualizacion = movimientos.map((movimiento) => {
             const movimientoActualizado = {
               ...movimiento,
@@ -248,55 +237,10 @@ export default function DetEntregaRendirMovAlmacen({
 
           await Promise.all(promesasActualizacion);
 
-          // 2. Cargar entrega completa con relaciones para el PDF
-          const token = useAuthStore.getState().token;
-          const headers = { Authorization: `Bearer ${token}` };
-          
-          const entregaResponse = await fetch(
-            `${import.meta.env.VITE_API_URL}/entregas-rendir-mov-almacen/${entregaARendir.id}`,
-            { headers }
-          );
-          const entregaCompleta = await entregaResponse.json();
-
-          // 3. Cargar empresa
-          let empresa;
-          try {
-            const empresaResponse = await fetch(
-              `${import.meta.env.VITE_API_URL}/empresas/1`,
-              { headers }
-            );
-            if (empresaResponse.ok) {
-              empresa = await empresaResponse.json();
-            }
-          } catch (error) {
-            console.error("Error cargando empresa:", error);
-            empresa = {
-              razonSocial: "EMPRESA",
-              ruc: "N/A",
-              direccion: "N/A",
-            };
-          }
-
-          // 4. Generar PDF automáticamente
-          const resultadoPdf = await generarYSubirPDFLiquidacionMovAlmacen(
-            {
-              ...entregaCompleta,
-              respLiquidacionId: usuario?.personalId || null,
-              entregaLiquidada: true,
-              fechaLiquidacion: fechaActual,
-            },
-            movimientos,
-            empresa
-          );
-
-          if (!resultadoPdf.success) {
-            throw new Error(resultadoPdf.error || "Error al generar el PDF");
-          }
-
           toast.current?.show({
             severity: "success",
             summary: "Liquidación Procesada",
-            detail: "La entrega a rendir ha sido liquidada exitosamente y el PDF ha sido generado",
+            detail: "La entrega a rendir ha sido liquidada exitosamente",
             life: 5000,
           });
 
@@ -306,7 +250,7 @@ export default function DetEntregaRendirMovAlmacen({
           toast.current?.show({
             severity: "error",
             summary: "Error",
-            detail: error.message || "Error al procesar la liquidación",
+            detail: "Error al procesar la liquidación",
             life: 5000,
           });
         }
@@ -314,43 +258,63 @@ export default function DetEntregaRendirMovAlmacen({
     });
   };
 
-  // Templates de columnas
+  // Templates
   const fechaMovimientoTemplate = (rowData) => {
     return new Date(rowData.fechaMovimiento).toLocaleDateString("es-PE");
   };
 
+  const montoTemplate = (rowData) => {
+    const moneda = monedas.find((m) => Number(m.id) === Number(rowData.monedaId));
+    const codigoMoneda = moneda?.codigoSunat || "PEN";
+
+    let backgroundColor = "#fff9c4";
+    if (codigoMoneda === "USD") {
+      backgroundColor = "#c8e6c9";
+    } else if (codigoMoneda !== "PEN") {
+      backgroundColor = "#b3e5fc";
+    }
+
+    const montoFormateado = new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: codigoMoneda,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(rowData.monto);
+
+    return (
+      <div
+        style={{
+          backgroundColor: backgroundColor,
+          padding: "4px 8px",
+          borderRadius: "4px",
+          fontWeight: "bold",
+          textAlign: "right",
+        }}
+      >
+        {montoFormateado}
+      </div>
+    );
+  };
+
   const responsableTemplate = (rowData) => {
-    const resp = personal.find((p) => Number(p.id) === Number(rowData.responsableId));
-    return resp?.nombreCompleto || `${resp?.nombres || ""} ${resp?.apellidos || ""}`;
+    const responsable = personal.find((p) => Number(p.id) === Number(rowData.responsableId));
+    return responsable
+      ? responsable.nombreCompleto || `${responsable.nombres} ${responsable.apellidos}`
+      : "N/A";
   };
 
   const tipoMovimientoTemplate = (rowData) => {
-    const tipo = tiposMovimiento.find(
-      (t) => Number(t.id) === Number(rowData.tipoMovimientoId)
-    );
-    return tipo?.nombre || "N/A";
-  };
-
-  const montoTemplate = (rowData) => {
-    const tipoMov = tiposMovimiento.find(
-      (t) => Number(t.id) === Number(rowData.tipoMovimientoId)
-    );
-    const monto = Number(rowData.monto) || 0;
-    const color = tipoMov?.esIngreso ? "green" : "red";
-
-    return (
-      <span style={{ color, fontWeight: "bold" }}>
-        S/ {monto.toFixed(2)}
-      </span>
-    );
+    const tipo = tiposMovimiento.find((t) => Number(t.id) === Number(rowData.tipoMovimientoId));
+    return tipo ? tipo.nombre : "N/A";
   };
 
   const centroCostoTemplate = (rowData) => {
-    const cc = centrosCosto.find((c) => Number(c.id) === Number(rowData.centroCostoId));
-    return cc ? `${cc.Codigo} - ${cc.Nombre}` : "N/A";
+    const centro = centrosCosto.find((c) => Number(c.id) === Number(rowData.centroCostoId));
+    return centro ? centro.Codigo + " - " + centro.Nombre : "N/A";
   };
 
   const entidadComercialTemplate = (rowData) => {
+    if (!rowData.entidadComercialId) return "N/A";
     const entidad = entidadesComerciales.find(
       (e) => Number(e.id) === Number(rowData.entidadComercialId)
     );
@@ -421,12 +385,13 @@ export default function DetEntregaRendirMovAlmacen({
                 style={{
                   display: "flex",
                   gap: 8,
+                  padding: 8,
                   alignItems: "end",
                   marginTop: 18,
                 }}
               >
-                <div style={{ flex: 1 }}>
-                  <h3>Detalle Entrega a Rendir</h3>
+                <div style={{ flex: 2 }}>
+                  <h2>Detalle Entrega a Rendir</h2>
                 </div>
                 <div style={{ flex: 0.5 }}>
                   <Button
@@ -441,58 +406,49 @@ export default function DetEntregaRendirMovAlmacen({
                       entregaARendir?.entregaLiquidada
                     }
                     type="button"
-                    raised
                   />
                 </div>
-                <div style={{ flex: 0.5 }}>
-                  <label htmlFor="">Ingreso/Egreso</label>
+                <div style={{ flex: 1 }}>
+                  <label>Ingreso/Egreso</label>
                   <Button
                     label={obtenerPropiedadesFiltroIngresoEgreso().label}
                     icon="pi pi-filter"
                     onClick={alternarFiltroIngresoEgreso}
                     severity={obtenerPropiedadesFiltroIngresoEgreso().severity}
                     type="button"
-                    raised
                   />
                 </div>
-                <div style={{ flex: 0.5 }}>
-                  <label htmlFor="">Validación Tesorería</label>
+                <div style={{ flex: 1 }}>
+                  <label>Validación Tesorería</label>
                   <Button
                     label={obtenerPropiedadesFiltroValidacionTesoreria().label}
                     icon="pi pi-filter"
                     onClick={alternarFiltroValidacionTesoreria}
-                    severity={
-                      obtenerPropiedadesFiltroValidacionTesoreria().severity
-                    }
+                    severity={obtenerPropiedadesFiltroValidacionTesoreria().severity}
                     type="button"
-                    raised
                   />
                 </div>
                 <div style={{ flex: 0.5 }}>
                   <Button
                     label="Limpiar"
                     icon="pi pi-filter-slash"
-                    className="p-button-outlined"
+                    className="p-button-secondary"
                     onClick={limpiarFiltros}
                     type="button"
-                    raised
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 2 }}>
                   <Button
                     label="Procesar Liquidación"
                     icon="pi pi-check"
                     className="p-button-danger"
-                    severity="danger"
                     onClick={handleProcesarLiquidacion}
                     type="button"
                     disabled={entregaARendir.entregaLiquidada}
-                    raised
                   />
                 </div>
               </div>
 
-              {/* Sección de Filtros */}
               <div
                 style={{
                   display: "flex",
@@ -533,10 +489,7 @@ export default function DetEntregaRendirMovAlmacen({
             </div>
           }
         >
-          <Column
-            selectionMode="single"
-            headerStyle={{ width: "3rem" }}
-          ></Column>
+          <Column selectionMode="single" headerStyle={{ width: "3rem" }}></Column>
           <Column
             field="fechaMovimiento"
             header="Fecha"
@@ -591,7 +544,6 @@ export default function DetEntregaRendirMovAlmacen({
         </DataTable>
       </div>
 
-      {/* Dialog para DetMovsEntregaRendirMovAlmacen */}
       <Dialog
         visible={showMovimientoForm}
         style={{ width: "1300px" }}
