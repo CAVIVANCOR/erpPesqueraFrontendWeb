@@ -17,7 +17,7 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Tag } from 'primereact/tag';
 import { Dropdown } from 'primereact/dropdown';
 import { Calendar } from 'primereact/calendar';
-import { getOrdenesTrabajoMantenimiento, crearOrdenTrabajo, actualizarOrdenTrabajo, eliminarOrdenTrabajo, getOrdenTrabajoPorId } from '../api/otMantenimiento';
+import { getOrdenesTrabajoMantenimiento, crearOrdenTrabajo, actualizarOrdenTrabajo, eliminarOrdenTrabajo, getOrdenTrabajoPorId } from '../api/oTMantenimiento';
 import { getEmpresas } from '../api/empresa';
 import { getSedes } from '../api/sedes';
 import { getActivos } from '../api/activo';
