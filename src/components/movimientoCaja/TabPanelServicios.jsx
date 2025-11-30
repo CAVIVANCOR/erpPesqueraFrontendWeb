@@ -9,7 +9,7 @@
 import React from "react";
 import { Badge } from "primereact/badge";
 import { Button } from "primereact/button";
-import DetEntregaRendirContrato from "../ContratoServicio/DetEntregaRendirContrato";
+import DetEntregaRendirContrato from "../contratoServicio/DetEntregaRendirContrato";
 
 export default function TabPanelServicios({
   entregaARendir,
