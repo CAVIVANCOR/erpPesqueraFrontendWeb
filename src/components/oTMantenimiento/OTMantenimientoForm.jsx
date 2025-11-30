@@ -10,7 +10,7 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { Toast } from "primereact/toast";
 import { Panel } from "primereact/panel";
-import { getSeriesDoc } from "../../api/otMantenimiento";
+import { getSeriesDoc } from "../../api/oTMantenimiento";
 import DetTareasOTCard from "./DetTareasOTCard";
 import PdfFotosAntesCard from "./PdfFotosAntesCard";
 import PdfFotosDespuesCard from "./PdfFotosDespuesCard";
