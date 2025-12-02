@@ -455,7 +455,6 @@ const OTMantenimientoForm = ({
                   id="estadoId"
                   value={formData.estadoId}
                   options={(() => {
-                    console.log('Estados disponibles en formulario:', estadosDoc);
                     return estadosDoc.map((e) => ({
                       label: e.descripcion,
                       value: Number(e.id),

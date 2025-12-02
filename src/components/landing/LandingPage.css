@@ -1,0 +1,108 @@
+/* src/components/landing/LandingPage.css */
+
+.landing-container {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+  background: #000;
+}
+
+/* Contenido principal */
+.landing-content {
+  position: relative;
+  z-index: 1;
+  padding: 100px 20px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Hero Section */
+.hero-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  margin-bottom: 60px;
+}
+
+.icon-cloud-wrapper {
+  width: 100%;
+  max-width: 500px;
+  height: 400px;
+  margin-bottom: 40px;
+  position: relative;
+}
+
+.hero-text {
+  text-align: center;
+  color: white;
+}
+
+.hero-title {
+  font-size: 4rem;
+  font-weight: 800;
+  margin: 0 0 20px 0;
+  letter-spacing: -2px;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 3s ease infinite;
+  background-size: 200% 200%;
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.hero-subtitle {
+  font-size: 1.5rem;
+  color: #a0aec0;
+  margin: 0 0 10px 0;
+  font-weight: 300;
+}
+
+.hero-description {
+  font-size: 1.1rem;
+  color: #718096;
+  margin: 0;
+  max-width: 600px;
+}
+
+/* Dashboard Section */
+.dashboard-section {
+  margin-top: 80px;
+}
+
+.section-title {
+  text-align: center;
+  font-size: 2rem;
+  color: white;
+  margin-bottom: 40px;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2.5rem;
+  }
+  
+  .icon-cloud-wrapper {
+    height: 300px;
+  }
+  
+  .landing-content {
+    padding: 80px 15px 30px;
+  }
+  
+  .section-title {
+    font-size: 1.5rem;
+  }
+}

@@ -453,14 +453,9 @@ export default function DetalleDialogCV({
   };
 
   const handleSave = async () => {
-    console.log("🔍 handleSave ejecutándose...");
-    console.log("📦 formData:", formData);
-    console.log("🆔 cotizacionId:", cotizacionId);
-    console.log("📢 toast:", toast);
 
     // Validación de cotizacionId
     if (!cotizacionId) {
-      console.log("❌ BLOQUEADO: cotizacionId es undefined");
       toast?.current?.show({
         severity: "error",
         summary: "Error",
@@ -471,7 +466,6 @@ export default function DetalleDialogCV({
 
     // Validaciones
     if (!formData.productoId) {
-      console.log("❌ BLOQUEADO: productoId vacío");
       toast?.current?.show({
         severity: "warn",
         summary: "Validación",

@@ -52,11 +52,6 @@ const VerImpresionCotizacionVentasPDF = ({
    * Genera el PDF de la cotización
    */
   const handleGenerarPDF = async () => {
-    console.log("=== DEBUG GENERAR PDF ===");
-    console.log("cotizacionId:", cotizacionId);
-    console.log("datosCotizacion:", datosCotizacion);
-    console.log("detalles:", detalles);
-
     if (!datosCotizacion?.id) {
       toast.current.show({
         severity: "warn",
@@ -99,8 +94,6 @@ const VerImpresionCotizacionVentasPDF = ({
         console.error("Error cargando cotización completa:", error);
         throw new Error("No se pudo cargar la cotización completa desde el servidor");
       }
-
-      console.log("cotizacionCompleta desde backend:", cotizacionCompleta);
 
       // Obtener empresa de la cotización o buscarla por empresaId
       let empresa = cotizacionCompleta.empresa;
@@ -176,12 +169,8 @@ const VerImpresionCotizacionVentasPDF = ({
       // Esperar a que todas las promesas se resuelvan
       await Promise.all(promesas);
 
-      console.log("empresa:", empresa);
-      console.log("cotizacionCompleta final:", cotizacionCompleta);
-
       // Usar detallesProductos de la cotización completa del backend (tiene todos los datos)
       const detallesCompletos = cotizacionCompleta.detallesProductos || detalles;
-      console.log("detallesCompletos:", detallesCompletos);
 
       // Generar y subir el PDF con la cotización completa del backend
       const resultado = await generarYSubirPDFCotizacionVentas(

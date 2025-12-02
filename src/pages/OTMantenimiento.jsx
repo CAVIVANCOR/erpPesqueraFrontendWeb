@@ -95,9 +95,7 @@ const OTMantenimiento = () => {
       if (motivoFiltro) filtros.motivoOriginoId = motivoFiltro;
       if (estadoFiltro) filtros.estadoId = estadoFiltro;
       
-      const data = await getOrdenesTrabajoMantenimiento(filtros);
-      console.log('[OT Frontend] Datos recibidos:', data);
-      
+      const data = await getOrdenesTrabajoMantenimiento(filtros);      
       // Normalizar IDs según regla ERP Megui
       const ordenesNormalizadas = data.map(orden => ({
         ...orden,
@@ -199,7 +197,6 @@ const OTMantenimiento = () => {
       setTiposMantenimiento(tiposData.map(t => ({ ...t, id: Number(t.id) })));
       setMotivosOrigen(motivosData.map(m => ({ ...m, id: Number(m.id) })));
       const estadosDocNormalizados = estadosDocData.map(e => ({ ...e, id: Number(e.id) }));
-      console.log('Estados OT Mantenimiento cargados:', estadosDocNormalizados);
       setEstadosDoc(estadosDocNormalizados);
       setEstadosTarea(estadosTareaData.map(e => ({ ...e, id: Number(e.id) })));
       setEstadosInsumo(estadosInsumoData.map(e => ({ ...e, id: Number(e.id) })));

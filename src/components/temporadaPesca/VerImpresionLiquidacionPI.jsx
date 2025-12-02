@@ -49,11 +49,6 @@ const VerImpresionLiquidacionPI = ({
    * Genera el PDF de liquidación
    */
   const handleGenerarPDF = async () => {
-    console.log("=== DEBUG GENERAR PDF LIQUIDACIÓN ===");
-    console.log("entregaARendirId:", entregaARendirId);
-    console.log("datosEntrega:", datosEntrega);
-    console.log("movimientos:", movimientos);
-
     if (!datosEntrega?.id) {
       toast.current.show({
         severity: "warn",

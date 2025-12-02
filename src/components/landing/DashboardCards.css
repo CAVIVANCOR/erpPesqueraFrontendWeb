@@ -1,0 +1,190 @@
+/* src/components/landing/DashboardCards.css */
+
+.dashboard-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  padding: 20px 0;
+}
+
+.dashboard-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 159, 227, 0.2);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(0, 159, 227, 0.1) 0%, rgba(0, 212, 255, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-12px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0, 159, 227, 0.4),
+              0 0 0 1px rgba(0, 159, 227, 0.5);
+  border-color: rgba(0, 159, 227, 0.5);
+}
+
+.dashboard-card:hover::before {
+  opacity: 1;
+}
+
+.card-content {
+  padding: 30px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.card-icon-container {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.4s ease;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+/* Animación de pulso en el icono */
+.card-icon-container::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: inherit;
+  transform: translate(-50%, -50%);
+  animation: iconPulse 2s ease-out infinite;
+  opacity: 0;
+}
+
+@keyframes iconPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+.card-icon-container i {
+  font-size: 48px;
+  color: white;
+  transition: transform 0.4s ease;
+  animation: iconFloat 3s ease-in-out infinite;
+}
+
+@keyframes iconFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.dashboard-card:hover .card-icon-container {
+  transform: rotate(360deg) scale(1.1);
+  box-shadow: 0 12px 24px rgba(0, 159, 227, 0.5);
+}
+
+.dashboard-card:hover .card-icon-container i {
+  transform: scale(1.2) translateY(-10px);
+  animation: none;
+}
+
+.card-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: white;
+  margin: 0 0 12px 0;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 10px rgba(0, 159, 227, 0.5);
+}
+
+.card-description {
+  font-size: 0.95rem;
+  color: #a0aec0;
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+}
+
+.card-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.stats-label {
+  font-size: 0.85rem;
+  color: #718096;
+}
+
+.card-hover-indicator {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 159, 227, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.3s ease;
+}
+
+.card-hover-indicator i {
+  color: #009fe3;
+  font-size: 18px;
+}
+
+.dashboard-card:hover .card-hover-indicator {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dashboard-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .card-icon-container {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .card-icon-container i {
+    font-size: 36px;
+  }
+  
+  .card-title {
+    font-size: 1.1rem;
+  }
+}
