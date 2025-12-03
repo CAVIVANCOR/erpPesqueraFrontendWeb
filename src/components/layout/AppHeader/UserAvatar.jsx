@@ -7,6 +7,15 @@ export default function UserAvatar({ usuario }) {
   let fotoUrl = usuario?.personal?.urlFotoPersona || usuario?.urlFotoPersona || null;
   let iniciales = "";
   
+  // DEBUG: Ver qué datos llegan
+  console.log('🔍 UserAvatar DEBUG:', {
+    usuario,
+    'usuario.personal': usuario?.personal,
+    'usuario.personal.urlFotoPersona': usuario?.personal?.urlFotoPersona,
+    'usuario.urlFotoPersona': usuario?.urlFotoPersona,
+    fotoUrl
+  });
+  
   if (nombre || apellidos) {
     iniciales = (nombre[0] || "").toUpperCase() + (apellidos[0] || "").toUpperCase();
   } else if (usuario?.username) {
@@ -19,6 +28,8 @@ export default function UserAvatar({ usuario }) {
   const foto = fotoUrl 
     ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${fotoUrl}` 
     : undefined;
+  
+  console.log('📸 Foto URL construida:', foto);
   
   return (
     <Avatar
