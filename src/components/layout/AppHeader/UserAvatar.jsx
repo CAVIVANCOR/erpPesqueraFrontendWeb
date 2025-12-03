@@ -4,17 +4,8 @@ import { Avatar } from 'primereact/avatar';
 export default function UserAvatar({ usuario }) {
   let nombre = usuario?.personal?.nombres || usuario?.nombres || "";
   let apellidos = usuario?.personal?.apellidos || usuario?.apellidos || "";
-  let fotoUrl = usuario?.personal?.urlFotoPersona || usuario?.urlFotoPersona || null;
+  let fotoUrl = usuario?.personal?.fotoUrl || usuario?.fotoUrl || null;
   let iniciales = "";
-  
-  // DEBUG: Ver qué datos llegan
-  console.log('🔍 UserAvatar DEBUG:', {
-    usuario,
-    'usuario.personal': usuario?.personal,
-    'usuario.personal.urlFotoPersona': usuario?.personal?.urlFotoPersona,
-    'usuario.urlFotoPersona': usuario?.urlFotoPersona,
-    fotoUrl
-  });
   
   if (nombre || apellidos) {
     iniciales = (nombre[0] || "").toUpperCase() + (apellidos[0] || "").toUpperCase();
@@ -24,12 +15,8 @@ export default function UserAvatar({ usuario }) {
     iniciales = "US";
   }
   
-  // Construir URL completa para la foto (igual que en Personal.jsx)
-  const foto = fotoUrl 
-    ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${fotoUrl}` 
-    : undefined;
-  
-  console.log('📸 Foto URL construida:', foto);
+  // El backend ya envía la URL completa en fotoUrl
+  const foto = fotoUrl;
   
   return (
     <Avatar
