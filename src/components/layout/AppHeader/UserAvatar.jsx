@@ -4,7 +4,7 @@ import { Avatar } from 'primereact/avatar';
 export default function UserAvatar({ usuario }) {
   let nombre = usuario?.personal?.nombres || usuario?.nombres || "";
   let apellidos = usuario?.personal?.apellidos || usuario?.apellidos || "";
-  let foto = usuario?.personal?.fotoUrl || usuario?.fotoUrl || null;
+  let fotoUrl = usuario?.personal?.fotoUrl || usuario?.fotoUrl || null;
   let iniciales = "";
   
   if (nombre || apellidos) {
@@ -14,6 +14,10 @@ export default function UserAvatar({ usuario }) {
   } else {
     iniciales = "US";
   }
+  
+  // Construir URL completa para la foto
+  const UPLOADS_URL = import.meta.env.VITE_UPLOADS_URL || '';
+  const foto = fotoUrl ? `${UPLOADS_URL}/${fotoUrl}` : null;
   
   return (
     <Avatar
