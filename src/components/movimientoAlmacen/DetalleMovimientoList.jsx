@@ -11,6 +11,7 @@ export default function DetalleMovimientoList({
   onDelete,
   onVerKardex,
   readOnly = false,
+  permisos = {},
 }) {
   const productoTemplate = (rowData) => {
     return rowData.producto?.descripcionArmada || `ID: ${rowData.productoId}`;
@@ -219,38 +220,40 @@ export default function DetalleMovimientoList({
     return (
       <div style={{ display: "flex", gap: "4px", justifyContent: "center" }}>
         <Button
+          type="button"
           icon="pi pi-chart-line"
           className="p-button-text p-button-sm p-button-success"
           onClick={(e) => {
             e.stopPropagation();
+            e.preventDefault();
             onVerKardex && onVerKardex(rowData);
           }}
           tooltip="Ver Kardex"
           tooltipOptions={{ position: "top" }}
         />
-        {!readOnly && (
-          <>
-            <Button
-              icon="pi pi-pencil"
-              className="p-button-text p-button-sm p-button-info"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit(rowData);
-              }}
-              tooltip="Editar"
-              tooltipOptions={{ position: "top" }}
-            />
-            <Button
-              icon="pi pi-trash"
-              className="p-button-text p-button-danger p-button-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(rowData);
-              }}
-              tooltip="Eliminar"
-              tooltipOptions={{ position: "top" }}
-            />
-          </>
+        {!readOnly && permisos.puedeEditar && (
+          <Button
+            icon="pi pi-pencil"
+            className="p-button-text p-button-sm p-button-info"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(rowData);
+            }}
+            tooltip="Editar"
+            tooltipOptions={{ position: "top" }}
+          />
+        )}
+        {!readOnly && permisos.puedeEliminar && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-text p-button-danger p-button-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(rowData);
+            }}
+            tooltip="Eliminar"
+            tooltipOptions={{ position: "top" }}
+          />
         )}
       </div>
     );

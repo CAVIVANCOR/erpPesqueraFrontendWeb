@@ -42,6 +42,7 @@ export default function EntregaARendirMovAlmacenCard({
   tiposDocumento = [],
   puedeEditar = true,
   onCountChange,
+  permisos = {},
 }) {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
@@ -475,6 +476,8 @@ export default function EntregaARendirMovAlmacenCard({
             className="p-button-success"
             onClick={crearEntregaAutomatica}
             loading={loadingEntrega}
+            disabled={!permisos.puedeCrear}
+            tooltip={!permisos.puedeCrear ? "No tiene permisos para crear" : ""}
           />
         </div>
       </Panel>
@@ -664,7 +667,8 @@ export default function EntregaARendirMovAlmacenCard({
               className="p-button-success"
               onClick={handleGuardarCambios}
               loading={loadingEntrega}
-              disabled={entregaARendir.entregaLiquidada}
+              disabled={entregaARendir.entregaLiquidada || !permisos.puedeEditar}
+              tooltip={!permisos.puedeEditar ? "No tiene permisos para editar" : ""}
             />
           </div>
         </div>
@@ -686,6 +690,7 @@ export default function EntregaARendirMovAlmacenCard({
               productos={productos}
               movimientoAlmacenAprobado={true}
               onDataChange={cargarMovimientos}
+              permisos={permisos}
             />
           </TabPanel>
         </TabView>

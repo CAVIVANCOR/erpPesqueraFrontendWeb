@@ -52,6 +52,7 @@ export default function KardexProductoDialog({
   const [filtroFechaDesde, setFiltroFechaDesde] = useState(null);
   const [filtroFechaHasta, setFiltroFechaHasta] = useState(null);
   const [filtroVencimiento, setFiltroVencimiento] = useState(null); // 'vencidos', 'porVencer', 'todos'
+  const [filtroAlmacenes, setFiltroAlmacenes] = useState(null);
   const [filtroEstadosMercaderia, setFiltroEstadosMercaderia] = useState([]);
   const [filtroEstadosCalidad, setFiltroEstadosCalidad] = useState([]);
 
@@ -74,6 +75,7 @@ export default function KardexProductoDialog({
         esCustodia,
       };
 
+      // Solo agregar clienteId cuando es custodia
       if (esCustodia && clienteId) {
         params.clienteId = clienteId;
       }
@@ -81,13 +83,24 @@ export default function KardexProductoDialog({
       if (fechaDesde) params.fechaDesde = fechaDesde;
       if (fechaHasta) params.fechaHasta = fechaHasta;
 
+      console.log("=== CARGANDO KARDEX ===");
+      console.log("URL:", API_URL);
+      console.log("Params:", params);
+      console.log("esCustodia:", esCustodia);
+      console.log("clienteId:", clienteId);
+
       const res = await axios.get(API_URL, {
         params,
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      console.log("Respuesta kardex:", res.data);
+      console.log("Total registros:", res.data?.length || 0);
+
       setKardex(res.data || []);
     } catch (error) {
       console.error("Error al cargar kardex:", error);
+      console.error("Error response:", error.response?.data);
       setKardex([]);
     } finally {
       setLoading(false);
@@ -118,6 +131,19 @@ export default function KardexProductoDialog({
     return Array.from(estados)
       .sort()
       .map((estado) => ({ label: estado, value: estado }));
+  }, [kardex]);
+
+  // Obtener opciones dinámicas de almacenes
+  const opcionesAlmacenes = useMemo(() => {
+    const almacenes = new Map();
+    kardex.forEach((item) => {
+      if (item.almacen?.id && item.almacen?.descripcion) {
+        almacenes.set(item.almacen.id.toString(), item.almacen.descripcion);
+      }
+    });
+    return Array.from(almacenes.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([id, descripcion]) => ({ label: descripcion, value: descripcion }));
   }, [kardex]);
 
   // Opciones para filtro de vencimiento
@@ -171,6 +197,13 @@ export default function KardexProductoDialog({
       });
     }
 
+    // Filtro por almacén
+    if (filtroAlmacenes) {
+      resultado = resultado.filter((item) =>
+        item.almacen?.descripcion === filtroAlmacenes
+      );
+    }
+
     // Filtro por estados de mercadería
     if (filtroEstadosMercaderia.length > 0) {
       resultado = resultado.filter((item) =>
@@ -188,56 +221,71 @@ export default function KardexProductoDialog({
     return resultado;
   };
 
-  // KARDEX VALORIZADO: Ordenamiento simple (fecha, tipo, ID)
+  // KARDEX VALORIZADO: Ordenamiento simple (almacén, fecha, tipo, ID)
   const kardexValorizado = useMemo(() => {
     let resultado = aplicarFiltros(kardex);
 
-    // Ordenamiento simple para kardex valorizado
+    // Ordenamiento simple para kardex valorizado (WMS estándar)
     resultado.sort((a, b) => {
-      // 1. Ordenar por fecha
+      // 1. Ordenar por almacén (WMS estándar)
+      const almacenA = Number(a.almacenId || 0);
+      const almacenB = Number(b.almacenId || 0);
+      if (almacenA !== almacenB) {
+        return almacenA - almacenB;
+      }
+
+      // 2. Ordenar por fecha
       const fechaA = new Date(a.fechaMovimientoAlmacen);
       const fechaB = new Date(b.fechaMovimientoAlmacen);
       if (fechaA.getTime() !== fechaB.getTime()) {
         return fechaA - fechaB;
       }
-      
-      // 2. Ingresos primero (true antes que false)
+
+      // 3. Ingresos primero (true antes que false)
       if (a.esIngresoEgreso !== b.esIngresoEgreso) {
         return b.esIngresoEgreso - a.esIngresoEgreso;
       }
-      
-      // 3. Por ID ascendente
+
+      // 4. Por ID ascendente
       return Number(a.id) - Number(b.id);
     });
-    
+
     return resultado;
   }, [
     kardex,
     filtroFechaDesde,
     filtroFechaHasta,
     filtroVencimiento,
+    filtroAlmacenes, // ← AGREGAR ESTA LÍNEA
     filtroEstadosMercaderia,
     filtroEstadosCalidad,
   ]);
 
-  // KARDEX POR VARIABLES: Ordenamiento completo (fecha, tipo, variables, ID)
+  // KARDEX POR VARIABLES: Ordenamiento completo (almacén, fecha, tipo, variables, ID)
   const kardexPorVariables = useMemo(() => {
     let resultado = aplicarFiltros(kardex);
 
-    // Ordenamiento completo con variables de trazabilidad
+    // Ordenamiento completo con variables de trazabilidad (WMS estándar)
     resultado.sort((a, b) => {
-      // 1. Ordenar por fecha
+      // 1. Ordenar por almacén (WMS estándar)
+      const almacenA = Number(a.almacenId || 0);
+      const almacenB = Number(b.almacenId || 0);
+      if (almacenA !== almacenB) {
+        return almacenA - almacenB;
+      }
+
+      // 2. Ordenar por fecha
       const fechaA = new Date(a.fechaMovimientoAlmacen);
       const fechaB = new Date(b.fechaMovimientoAlmacen);
       if (fechaA.getTime() !== fechaB.getTime()) {
         return fechaA - fechaB;
       }
-      
-      // 2. Ingresos primero
+
+      // 3. Ingresos primero
       if (a.esIngresoEgreso !== b.esIngresoEgreso) {
         return b.esIngresoEgreso - a.esIngresoEgreso;
       }
-      
+
       // 3. Variables de trazabilidad
       // 3.1 Lote
       const loteA = (a.lote || "").toLowerCase();
@@ -245,66 +293,75 @@ export default function KardexProductoDialog({
       if (loteA !== loteB) {
         return loteA.localeCompare(loteB);
       }
-      
+
       // 3.2 Fecha Ingreso
       const fechaIngA = a.fechaIngreso ? new Date(a.fechaIngreso).getTime() : 0;
       const fechaIngB = b.fechaIngreso ? new Date(b.fechaIngreso).getTime() : 0;
       if (fechaIngA !== fechaIngB) {
         return fechaIngA - fechaIngB;
       }
-      
+
       // 3.3 Fecha Producción
-      const fechaProdA = a.fechaProduccion ? new Date(a.fechaProduccion).getTime() : 0;
-      const fechaProdB = b.fechaProduccion ? new Date(b.fechaProduccion).getTime() : 0;
+      const fechaProdA = a.fechaProduccion
+        ? new Date(a.fechaProduccion).getTime()
+        : 0;
+      const fechaProdB = b.fechaProduccion
+        ? new Date(b.fechaProduccion).getTime()
+        : 0;
       if (fechaProdA !== fechaProdB) {
         return fechaProdA - fechaProdB;
       }
-      
+
       // 3.4 Fecha Vencimiento
-      const fechaVencA = a.fechaVencimiento ? new Date(a.fechaVencimiento).getTime() : 0;
-      const fechaVencB = b.fechaVencimiento ? new Date(b.fechaVencimiento).getTime() : 0;
+      const fechaVencA = a.fechaVencimiento
+        ? new Date(a.fechaVencimiento).getTime()
+        : 0;
+      const fechaVencB = b.fechaVencimiento
+        ? new Date(b.fechaVencimiento).getTime()
+        : 0;
       if (fechaVencA !== fechaVencB) {
         return fechaVencA - fechaVencB;
       }
-      
+
       // 3.5 Estado Mercadería
       const estadoA = Number(a.estadoId || 0);
       const estadoB = Number(b.estadoId || 0);
       if (estadoA !== estadoB) {
         return estadoA - estadoB;
       }
-      
+
       // 3.6 Estado Calidad
       const calidadA = Number(a.estadoCalidadId || 0);
       const calidadB = Number(b.estadoCalidadId || 0);
       if (calidadA !== calidadB) {
         return calidadA - calidadB;
       }
-      
+
       // 3.7 Contenedor
       const contA = (a.numContenedor || "").toLowerCase();
       const contB = (b.numContenedor || "").toLowerCase();
       if (contA !== contB) {
         return contA.localeCompare(contB);
       }
-      
+
       // 3.8 Serie
       const serieA = (a.nroSerie || "").toLowerCase();
       const serieB = (b.nroSerie || "").toLowerCase();
       if (serieA !== serieB) {
         return serieA.localeCompare(serieB);
       }
-      
+
       // 4. Por ID ascendente
       return Number(a.id) - Number(b.id);
     });
-    
+
     return resultado;
   }, [
     kardex,
     filtroFechaDesde,
     filtroFechaHasta,
     filtroVencimiento,
+    filtroAlmacenes,
     filtroEstadosMercaderia,
     filtroEstadosCalidad,
   ]);
@@ -314,6 +371,7 @@ export default function KardexProductoDialog({
     setFiltroFechaDesde(null);
     setFiltroFechaHasta(null);
     setFiltroVencimiento(null);
+    setFiltroAlmacenes(null);
     setFiltroEstadosMercaderia([]);
     setFiltroEstadosCalidad([]);
   };
@@ -375,10 +433,7 @@ export default function KardexProductoDialog({
     >
       {loading ? (
         <div style={{ textAlign: "center", padding: "40px" }}>
-          <i
-            className="pi pi-spin pi-spinner"
-            style={{ fontSize: "2rem" }}
-          ></i>
+          <i className="pi pi-spin pi-spinner" style={{ fontSize: "2rem" }}></i>
         </div>
       ) : (
         <>
@@ -402,7 +457,11 @@ export default function KardexProductoDialog({
               <div style={{ flex: "1 1 150px", minWidth: "150px" }}>
                 <label
                   htmlFor="fechaDesde"
-                  style={{ display: "block", marginBottom: "5px", fontSize: "12px" }}
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontSize: "12px",
+                  }}
                 >
                   Fecha Desde
                 </label>
@@ -420,7 +479,11 @@ export default function KardexProductoDialog({
               <div style={{ flex: "1 1 150px", minWidth: "150px" }}>
                 <label
                   htmlFor="fechaHasta"
-                  style={{ display: "block", marginBottom: "5px", fontSize: "12px" }}
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontSize: "12px",
+                  }}
                 >
                   Fecha Hasta
                 </label>
@@ -438,7 +501,11 @@ export default function KardexProductoDialog({
               <div style={{ flex: "1 1 180px", minWidth: "180px" }}>
                 <label
                   htmlFor="vencimiento"
-                  style={{ display: "block", marginBottom: "5px", fontSize: "12px" }}
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontSize: "12px",
+                  }}
                 >
                   Vencimiento
                 </label>
@@ -451,11 +518,36 @@ export default function KardexProductoDialog({
                   style={{ width: "100%" }}
                 />
               </div>
-
+              <div style={{ flex: "1 1 200px", minWidth: "200px" }}>
+                <label
+                  htmlFor="almacen"
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontSize: "12px",
+                  }}
+                >
+                  Almacén
+                </label>
+                <Dropdown
+                  id="almacen"
+                  value={filtroAlmacenes}
+                  options={opcionesAlmacenes}
+                  onChange={(e) => setFiltroAlmacenes(e.value)}
+                  placeholder="Todos"
+                  style={{ width: "100%" }}
+                  disabled={opcionesAlmacenes.length === 0}
+                  showClear
+                />
+              </div>
               <div style={{ flex: "1 1 200px", minWidth: "200px" }}>
                 <label
                   htmlFor="estadoMercaderia"
-                  style={{ display: "block", marginBottom: "5px", fontSize: "12px" }}
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontSize: "12px",
+                  }}
                 >
                   Estado Mercadería
                 </label>
@@ -474,7 +566,11 @@ export default function KardexProductoDialog({
               <div style={{ flex: "1 1 200px", minWidth: "200px" }}>
                 <label
                   htmlFor="estadoCalidad"
-                  style={{ display: "block", marginBottom: "5px", fontSize: "12px" }}
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontSize: "12px",
+                  }}
                 >
                   Estado Calidad
                 </label>
@@ -532,6 +628,13 @@ export default function KardexProductoDialog({
                   header="Fecha"
                   body={(row) => dateTemplate(row.fechaMovimientoAlmacen)}
                   style={{ width: "80px", fontWeight: "bold" }}
+                  frozen
+                />
+                <Column
+                  field="almacen.descripcion"
+                  header="Almacén"
+                  body={(row) => row.almacen?.descripcion || "-"}
+                  style={{ width: "120px", fontWeight: "bold" }}
                   frozen
                 />
                 <Column
@@ -717,6 +820,16 @@ export default function KardexProductoDialog({
                   header="Fecha"
                   body={(row) => dateTemplate(row.fechaMovimientoAlmacen)}
                   style={{ minWidth: "80px", width: "80px", maxWidth: "80px" }}
+                />
+                <Column
+                  field="almacen.descripcion"
+                  header="Almacén"
+                  body={(row) => row.almacen?.descripcion || "-"}
+                  style={{
+                    minWidth: "120px",
+                    width: "120px",
+                    maxWidth: "120px",
+                  }}
                 />
                 <Column
                   field="numDocCompleto"

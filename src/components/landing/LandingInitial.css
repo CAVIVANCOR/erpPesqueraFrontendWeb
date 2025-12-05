@@ -109,22 +109,41 @@
 
 .message-background-image {
   position: absolute;
-  top: -5%;
-  left: -5%;
-  right: -5%;
-  bottom: -5%;
-  background-size: cover;
-  background-position: center;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: contain;
+  background-position: top;
   background-repeat: no-repeat;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) 60%,
+    rgba(0, 0, 0, 0.5) 80%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) 60%,
+    rgba(0, 0, 0, 0.5) 80%,
+    rgba(0, 0, 0, 0) 100%
+  );
 }
-
 .message-image-overlay {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(15, 31, 58, 0.7);
+  background: linear-gradient(
+    to bottom,
+    rgba(15, 31, 58, 0.7) 0%,
+    rgba(15, 31, 58, 0.75) 50%,
+    rgba(15, 31, 58, 0.85) 70%,
+    rgba(0, 0, 0, 0.95) 100%
+  );
   z-index: 1;
 }
 

@@ -61,11 +61,15 @@ const VerImpresionMovimientoConCostosPDF = ({
     setGenerando(true);
 
     try {
+      // Recargar el movimiento completo desde el backend para obtener estados actualizados
+      const { getMovimientoAlmacenPorId } = await import("../../api/movimientoAlmacen");
+      const movimientoCompleto = await getMovimientoAlmacenPorId(datosMovimiento.id);
+      
       // Obtener empresa del movimiento
-      const empresa = datosMovimiento.empresa;
+      const empresa = movimientoCompleto.empresa || datosMovimiento.empresa;
 
-      // Obtener detalles del movimiento
-      const detalles = datosMovimiento.detalles || [];
+      // Obtener detalles del movimiento (ahora con estados incluidos)
+      const detalles = movimientoCompleto.detalles || [];
 
       // Enriquecer datosMovimiento con almacenes completos si existen
       const movimientoEnriquecido = { ...datosMovimiento };

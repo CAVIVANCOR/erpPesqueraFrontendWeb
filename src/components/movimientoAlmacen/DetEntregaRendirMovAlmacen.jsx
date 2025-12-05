@@ -34,6 +34,7 @@ export default function DetEntregaRendirMovAlmacen({
   selectedMovimientos = [],
   onSelectionChange,
   onDataChange,
+  permisos = {},
 }) {
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
   const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);
@@ -341,18 +342,24 @@ export default function DetEntregaRendirMovAlmacen({
   const accionesTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-text p-button-sm"
-          onClick={() => handleEditarMovimiento(rowData)}
-          aria-label="Editar"
-        />
-        <Button
-          icon="pi pi-trash"
-          className="p-button-text p-button-danger p-button-sm"
-          onClick={() => handleEliminarMovimiento(rowData)}
-          aria-label="Eliminar"
-        />
+        {permisos.puedeEditar && (
+          <Button
+            icon="pi pi-pencil"
+            className="p-button-text p-button-sm"
+            onClick={() => handleEditarMovimiento(rowData)}
+            aria-label="Editar"
+            tooltip="Editar"
+          />
+        )}
+        {permisos.puedeEliminar && (
+          <Button
+            icon="pi pi-trash"
+            className="p-button-text p-button-danger p-button-sm"
+            onClick={() => handleEliminarMovimiento(rowData)}
+            aria-label="Eliminar"
+            tooltip="Eliminar"
+          />
+        )}
       </div>
     );
   };
@@ -403,8 +410,10 @@ export default function DetEntregaRendirMovAlmacen({
                     disabled={
                       !movimientoAlmacenAprobado ||
                       !entregaARendir ||
-                      entregaARendir?.entregaLiquidada
+                      entregaARendir?.entregaLiquidada ||
+                      !permisos.puedeCrear
                     }
+                    tooltip={!permisos.puedeCrear ? "No tiene permisos para crear" : ""}
                     type="button"
                   />
                 </div>

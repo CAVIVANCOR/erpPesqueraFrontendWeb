@@ -71,6 +71,7 @@ export default function ProductoSelectorDialog({
     setTipoMaterialId,
     setUnidadMedidaId,
     setEspecieId,
+    setAlmacenId,
     setBusqueda,
     filteredItems,
     opcionesDinamicas,
@@ -156,6 +157,7 @@ export default function ProductoSelectorDialog({
       tipoMaterialId: setTipoMaterialId,
       unidadMedidaId: setUnidadMedidaId,
       especieId: setEspecieId,
+      almacenId: setAlmacenId,
       busqueda: setBusqueda,
     };
     setters[filtro]?.(valor);

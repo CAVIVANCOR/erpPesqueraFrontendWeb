@@ -16,7 +16,6 @@ import { confirmDialog } from "primereact/confirmdialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Message } from "primereact/message";
 import { TabView, TabPanel } from "primereact/tabview";
-import ProcessProgressDialog from "../../shared/ProcessProgressDialog";
 import DetalleMovimientoList from "./DetalleMovimientoList";
 import DetalleMovimientoForm from "./DetalleMovimientoForm";
 import KardexProductoDialog from "./KardexProductoDialog";
@@ -60,8 +59,10 @@ export default function MovimientoAlmacenForm({
   onCancel,
   onCerrar,
   onAnular,
+  onGenerarKardex,
   loading,
   toast, // Toast ref pasado desde el componente padre
+  permisos = {}, // Permisos del usuario
 }) {
     // Estados de la cabecera - Conforme al modelo MovimientoAlmacen
   const [empresaId, setEmpresaId] = useState(defaultValues.empresaId || null);
@@ -174,17 +175,8 @@ export default function MovimientoAlmacenForm({
   const [showKardexDialog, setShowKardexDialog] = useState(false);
   const [detalleKardex, setDetalleKardex] = useState(null);
 
-  // Estados para el progreso de generación de kardex
-  const [showProgressDialog, setShowProgressDialog] = useState(false);
-  const [progressSteps, setProgressSteps] = useState([]);
-
   // Estado para contador de entregas a rendir
   const [entregasCount, setEntregasCount] = useState(0);
-  const [currentProgressStep, setCurrentProgressStep] = useState(0);
-  const [progressComplete, setProgressComplete] = useState(false);
-  const [progressError, setProgressError] = useState(false);
-  const [progressErrorMessage, setProgressErrorMessage] = useState("");
-  const [progressSummary, setProgressSummary] = useState(null);
 
   // Función para recargar detalles desde la BD
   const recargarDetalles = async () => {
@@ -852,6 +844,7 @@ export default function MovimientoAlmacenForm({
             <div style={{ flex: 0.5 }}>
               <label htmlFor="esCustodia">Mercaderia</label>
               <Button
+                type="button"
                 id="esCustodia"
                 label={esCustodia ? "CUSTODIA" : "PROPIA"}
                 className={esCustodia ? "p-button-danger" : "p-button-success"}
@@ -902,6 +895,7 @@ export default function MovimientoAlmacenForm({
                   <div style={{ flex: 0.5 }}>
                     <label>Kardex</label>
                     <Button
+                      type="button"
                       label={llevaKardexOrigen ? "SI" : "NO"}
                       className={
                         llevaKardexOrigen
@@ -937,6 +931,7 @@ export default function MovimientoAlmacenForm({
                   <div style={{ flex: 0.5 }}>
                     <label>Kardex</label>
                     <Button
+                      type="button"
                       label={llevaKardexDestino ? "SI" : "NO"}
                       className={
                         llevaKardexDestino
@@ -1108,16 +1103,22 @@ export default function MovimientoAlmacenForm({
                   setEditingDetalle(null);
                   setShowDetalleDialog(true);
                 }}
-                disabled={loading || !isEdit}
+                disabled={loading || !isEdit || (!permisos.puedeCrear && !permisos.puedeEditar)}
                 type="button"
-                tooltip={!isEdit ? "Primero debes guardar el movimiento" : ""}
+                tooltip={
+                  !isEdit 
+                    ? "Primero debes guardar el movimiento" 
+                    : (!permisos.puedeCrear && !permisos.puedeEditar)
+                    ? "No tiene permisos para agregar detalles"
+                    : ""
+                }
                 tooltipOptions={{ position: "top" }}
               />
             </div>
             <DetalleMovimientoList
               detalles={detalles}
               productos={productos}
-              readOnly={documentoCerrado}
+              readOnly={documentoCerrado || !permisos.puedeEditar}
               onEdit={(detalle) => {
                 setEditingDetalle(detalle);
                 setShowDetalleDialog(true);
@@ -1126,6 +1127,7 @@ export default function MovimientoAlmacenForm({
                 setDetalleKardex(detalle);
                 setShowKardexDialog(true);
               }}
+              permisos={permisos}
               onSave={(detalleData) => {
                 if (editingDetalle) {
                   setDetalles(
@@ -1631,8 +1633,9 @@ export default function MovimientoAlmacenForm({
             entidadesComerciales={entidadesComerciales}
             monedas={monedas}
             tiposDocumento={tiposDocumento}
-            puedeEditar={!documentoCerrado}
+            puedeEditar={!documentoCerrado && permisos.puedeEditar}
             onCountChange={setEntregasCount}
+            permisos={permisos}
           />
         </TabPanel>
       </TabView>
@@ -1657,44 +1660,107 @@ export default function MovimientoAlmacenForm({
           size="small"
           outlined
         />
+        
+        {/* Botón Cerrar Documento - Solo en edición y si está pendiente */}
+        {isEdit && defaultValues?.id && !documentoCerrado && (
+          <Button
+            type="button"
+            label="Cerrar Documento"
+            icon="pi pi-lock"
+            onClick={() => onCerrar && onCerrar(defaultValues.id)}
+            disabled={loading || !permisos.puedeEditar}
+            className="p-button-success"
+            severity="success"
+            raised
+            size="small"
+            outlined
+            tooltip={!permisos.puedeEditar ? "No tiene permisos para cerrar documentos (requiere permiso de Editar)" : "Cerrar el documento (no se podrá editar)"}
+            tooltipOptions={{ position: "top" }}
+          />
+        )}
+        
+        {/* Botón Anular Documento - Solo en edición y si está cerrado */}
+        {isEdit && defaultValues?.id && documentoCerrado && (
+          <Button
+            type="button"
+            label="Anular Documento"
+            icon="pi pi-times-circle"
+            onClick={() => onAnular && onAnular(defaultValues.id, defaultValues.empresaId)}
+            disabled={loading || !permisos.puedeEliminar}
+            className="p-button-danger"
+            severity="danger"
+            raised
+            size="small"
+            outlined
+            tooltip={!permisos.puedeEliminar ? "No tiene permisos para anular documentos (requiere permiso de Eliminar)" : "Anular el documento y revertir kardex"}
+            tooltipOptions={{ position: "top" }}
+          />
+        )}
+        
+        {/* Botón Generar Kardex - Solo en edición y si está cerrado */}
+        {isEdit && defaultValues?.id && documentoCerrado && (
+          <Button
+            type="button"
+            label="Generar Kardex"
+            icon="pi pi-chart-line"
+            onClick={() => onGenerarKardex && onGenerarKardex(defaultValues.id)}
+            disabled={loading || !permisos.puedeCrear}
+            className="p-button-info"
+            severity="info"
+            raised
+            size="small"
+            outlined
+            tooltip={!permisos.puedeCrear ? "No tiene permisos para generar kardex (requiere permiso de Crear)" : "Generar registros de kardex"}
+            tooltipOptions={{ position: "top" }}
+          />
+        )}
+        
         <Button
           type="submit"
           label={isEdit ? "Actualizar" : "Crear"}
           icon="pi pi-save"
           loading={loading}
+          disabled={isEdit ? !permisos.puedeEditar : !permisos.puedeCrear}
           className="p-button-success"
           severity="success"
           raised
           size="small"
           outlined
+          tooltip={
+            isEdit 
+              ? (!permisos.puedeEditar ? "No tiene permisos para editar" : "")
+              : (!permisos.puedeCrear ? "No tiene permisos para crear" : "")
+          }
         />
       </div>
-      
-      {/* Diálogo de Progreso de Generación de Kardex */}
-      <ProcessProgressDialog
-        visible={showProgressDialog}
-        onHide={() => setShowProgressDialog(false)}
-        title="Generando Kardex"
-        steps={progressSteps}
-        currentStep={currentProgressStep}
-        isComplete={progressComplete}
-        hasError={progressError}
-        errorMessage={progressErrorMessage}
-        summary={progressSummary}
-      />
 
       {/* Diálogo de Kardex de Producto */}
       <KardexProductoDialog
         visible={showKardexDialog}
         onHide={() => setShowKardexDialog(false)}
         empresaId={defaultValues.empresaId}
-        almacenId={
-          defaultValues.conceptoMovAlmacen?.almacenDestinoId ||
-          defaultValues.conceptoMovAlmacen?.almacenOrigenId
-        }
+        almacenId={(() => {
+          // Construir lista de almacenes según flags llevaKardex del concepto (WMS estándar)
+          const almacenes = [];
+          const concepto = defaultValues.conceptoMovAlmacen;
+          
+          if (concepto?.llevaKardexOrigen && concepto?.almacenOrigenId) {
+            almacenes.push(concepto.almacenOrigenId);
+          }
+          if (concepto?.llevaKardexDestino && concepto?.almacenDestinoId) {
+            almacenes.push(concepto.almacenDestinoId);
+          }
+          
+          // Retornar como string separado por comas para el backend
+          return almacenes.length > 0 ? almacenes.join(',') : null;
+        })()}
         productoId={detalleKardex?.productoId}
         esCustodia={defaultValues.esCustodia}
-        clienteId={detalleKardex?.clienteId}
+        clienteId={
+          defaultValues.esCustodia 
+            ? defaultValues.entidadComercialId  // Custodia: cliente del movimiento
+            : null  // Propia: NO filtrar por cliente
+        }
         productoNombre={
           detalleKardex?.producto?.descripcionArmada || "Producto"
         }

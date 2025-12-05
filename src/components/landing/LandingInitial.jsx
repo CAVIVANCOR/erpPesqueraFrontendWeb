@@ -4,9 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import VenomBeamBackground from './VenomBeamBackground';
 import logotipoMegui from '../../assets/Logotipo/Logotipo_Megui_Negativo.png';
 import logoCerebro13 from '../../assets/LogoCerebro13.png';
-import embarcacionMegui from '../../assets/imgWeb/personal/EmbarcacionMegui.jpeg';
-import personalMegui from '../../assets/imgWeb/personal/PersonalMegui.jpeg';
-import donRolo from '../../assets/imgWeb/embarcaciones/DonRolo.jpeg';
+import fotoGrupal001 from '../../assets/imgWeb/personal/fotoGrupal001.jpg';
+import fotoGrupal002 from '../../assets/imgWeb/personal/fotoGrupal002.jpg';
+import fotoGrupal003 from '../../assets/imgWeb/personal/fotoGrupal003.jpg';
+import fotoGrupal004 from '../../assets/imgWeb/personal/fotoGrupal004.jpg';
 import './LandingInitial.css';
 
 const LandingInitial = ({ onClickAnimation }) => {
@@ -21,61 +22,67 @@ const LandingInitial = ({ onClickAnimation }) => {
       title: "ERP MEGUI INVESTMENT",
       subtitle: "Sistema Multiempresa con Información en Línea",
       description: "Trazabilidad completa y control total de todos los procesos empresariales en tiempo real",
-      image: embarcacionMegui
+      image: fotoGrupal001
     },
     {
       title: "TRAZABILIDAD TOTAL",
       subtitle: "Seguimiento Completo de Operaciones",
       description: "Control y registro detallado desde el origen hasta el destino final de cada proceso",
-      image: personalMegui
+      image: fotoGrupal002
     },
     {
       title: "INFORMACIÓN EN LÍNEA",
       subtitle: "Datos en Tiempo Real 24/7",
       description: "Acceso instantáneo a toda la información operativa y financiera desde cualquier ubicación",
-      image: donRolo
+      image: fotoGrupal003
     },
     {
       title: "DOCUMENTACIÓN DIGITAL",
       subtitle: "File Virtual con Registro PDF",
       description: "Almacenamiento automático de todos los documentos en PDF para consulta en línea permanente",
-      image: embarcacionMegui
+      image: fotoGrupal004
     },
     {
       title: "CONTROL DE PROCESOS",
       subtitle: "Gestión Integral Pesquera y Agroindustrial",
       description: "Supervisión completa de pesca industrial, consumo humano, compras, ventas y producción",
-      image: personalMegui
+      image: fotoGrupal001
     },
     {
       title: "VENTAS Y EXPORTACIÓN",
       subtitle: "Mercado Local e Internacional",
       description: "Control de congelados, conservas, harina de pescado, frutas y hortalizas con trazabilidad",
-      image: donRolo
+      image: fotoGrupal002
     },
     {
       title: "INVENTARIOS INTELIGENTES",
       subtitle: "Almacenes Internos y Externos",
       description: "Trazabilidad en línea de materia prima y producto terminado con información actualizada",
-      image: embarcacionMegui
+      image: fotoGrupal003
     },
     {
       title: "MANTENIMIENTO Y CONTROL",
       subtitle: "Órdenes de Trabajo Documentadas",
       description: "Registro digital de mantenimiento de maquinarias, equipos y locales con historial completo",
-      image: personalMegui
+      image: fotoGrupal004
     },
     {
       title: "FLUJO DE CAJA INTEGRADO",
       subtitle: "Control Financiero en Tiempo Real",
       description: "Gestión de entregas a rendir con trazabilidad y documentación digital de todos los procesos",
-      image: donRolo
+      image: fotoGrupal001
+    },
+    {
+      title: "EQUIPO MEGUI",
+      subtitle: "Profesionales Comprometidos",
+      description: "Personal altamente capacitado y dedicado al éxito de tu empresa con atención personalizada",
+      image: fotoGrupal002
     },
     {
       title: "INTEGRACIÓN CONTABLE",
       subtitle: "Conexión API con Sistemas Administrativos",
       description: "Interfaces en línea con módulos contables y financieros para gestión empresarial completa",
-      image: embarcacionMegui
+      image: fotoGrupal003
     }
   ];
 

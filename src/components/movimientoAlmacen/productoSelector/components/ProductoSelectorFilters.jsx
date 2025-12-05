@@ -190,6 +190,25 @@ export const ProductoSelectorFilters = ({
             style={{ width: "100%" }}
           />
         </div>
+
+        {/* Almacén */}
+        <div>
+          <label htmlFor="almacenId" style={{ fontWeight: "bold", fontSize: "0.9em" }}>
+            Almacén
+          </label>
+          <Dropdown
+            id="almacenId"
+            value={filtros.almacenId}
+            options={opcionesDinamicas.almacenes.map((a) => ({
+              label: a.descripcion,
+              value: Number(a.id),
+            }))}
+            onChange={(e) => onFiltroChange("almacenId", e.value)}
+            placeholder="Todos"
+            showClear
+            style={{ width: "100%" }}
+          />
+        </div>
       </div>
 
       {/* Botones */}

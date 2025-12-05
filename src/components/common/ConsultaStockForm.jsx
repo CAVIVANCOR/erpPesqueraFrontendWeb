@@ -40,6 +40,7 @@ export default function ConsultaStockForm({
     empresaIdInicial || null
   );
   const [filtroCliente1, setFiltroCliente1] = useState(null);
+  const [filtroAlmacen1, setFiltroAlmacen1] = useState(null);
   const [filtroCustodia1, setFiltroCustodia1] = useState(false);
 
   // Filtros Tab 2 - Saldos Detallados
@@ -47,11 +48,20 @@ export default function ConsultaStockForm({
     empresaIdInicial || null
   );
   const [filtroCliente2, setFiltroCliente2] = useState(null);
+  const [filtroAlmacen2, setFiltroAlmacen2] = useState(null);
   const [filtroCustodia2, setFiltroCustodia2] = useState(false);
 
   // Datos de las tablas
   const [saldosGenerales, setSaldosGenerales] = useState([]);
   const [saldosDetallados, setSaldosDetallados] = useState([]);
+
+  // Datos filtrados
+  const [saldosGeneralesFiltrados, setSaldosGeneralesFiltrados] = useState([]);
+  const [saldosDetalladosFiltrados, setSaldosDetalladosFiltrados] = useState([]);
+
+  // Almacenes dinámicos
+  const [almacenesDisponibles1, setAlmacenesDisponibles1] = useState([]);
+  const [almacenesDisponibles2, setAlmacenesDisponibles2] = useState([]);
 
   // Estados para Kardex
   const [showKardex, setShowKardex] = useState(false);
@@ -124,9 +134,29 @@ export default function ConsultaStockForm({
       if (filtroCliente1) {
         params.clienteId = filtroCliente1;
       }
-
       const data = await getSaldosProductoCliente(params);
       setSaldosGenerales(data);
+
+      // Extraer almacenes únicos
+      const almacenesUnicos = [];
+      const idsVistos = new Set();
+      data.forEach((item) => {
+        if (item.almacenId && !idsVistos.has(Number(item.almacenId))) {
+          idsVistos.add(Number(item.almacenId));
+          almacenesUnicos.push({
+            id: item.almacenId,
+            descripcion:
+              item.almacen?.nombre ||
+              `Almacén ${item.almacenId}`,
+          });
+        }
+      });
+      setAlmacenesDisponibles1(
+        almacenesUnicos.sort((a, b) => a.descripcion.localeCompare(b.descripcion))
+      );
+
+      // Aplicar filtro inicial
+      aplicarFiltroLocal1(data, filtroAlmacen1);
     } catch (error) {
       console.error("Error al cargar saldos generales:", error);
       toast.current?.show({
@@ -150,9 +180,29 @@ export default function ConsultaStockForm({
       if (filtroCliente2) {
         params.clienteId = filtroCliente2;
       }
-
       const data = await getSaldosDetProductoCliente(params);
       setSaldosDetallados(data);
+
+      // Extraer almacenes únicos
+      const almacenesUnicos = [];
+      const idsVistos = new Set();
+      data.forEach((item) => {
+        if (item.almacenId && !idsVistos.has(Number(item.almacenId))) {
+          idsVistos.add(Number(item.almacenId));
+          almacenesUnicos.push({
+            id: item.almacenId,
+            descripcion:
+              item.almacen?.nombre ||
+              `Almacén ${item.almacenId}`,
+          });
+        }
+      });
+      setAlmacenesDisponibles2(
+        almacenesUnicos.sort((a, b) => a.descripcion.localeCompare(b.descripcion))
+      );
+
+      // Aplicar filtro inicial
+      aplicarFiltroLocal2(data, filtroAlmacen2);
     } catch (error) {
       console.error("Error al cargar saldos detallados:", error);
       toast.current?.show({
@@ -164,14 +214,40 @@ export default function ConsultaStockForm({
     setLoading(false);
   };
 
+  const aplicarFiltroLocal1 = (datos, almacenId) => {
+    if (!almacenId) {
+      setSaldosGeneralesFiltrados(datos);
+    } else {
+      const filtrados = datos.filter(
+        (item) => Number(item.almacenId) === Number(almacenId)
+      );
+      setSaldosGeneralesFiltrados(filtrados);
+    }
+  };
+
+  const aplicarFiltroLocal2 = (datos, almacenId) => {
+    if (!almacenId) {
+      setSaldosDetalladosFiltrados(datos);
+    } else {
+      const filtrados = datos.filter(
+        (item) => Number(item.almacenId) === Number(almacenId)
+      );
+      setSaldosDetalladosFiltrados(filtrados);
+    }
+  };
+
   const limpiarFiltros1 = () => {
     setFiltroCliente1(null);
+    setFiltroAlmacen1(null);
     setFiltroCustodia1(false);
+    setSaldosGeneralesFiltrados(saldosGenerales);
   };
 
   const limpiarFiltros2 = () => {
     setFiltroCliente2(null);
+    setFiltroAlmacen2(null);
     setFiltroCustodia2(false);
+    setSaldosDetalladosFiltrados(saldosDetallados);
   };
 
   // Función para abrir el Kardex desde Saldos Generales
@@ -340,6 +416,26 @@ export default function ConsultaStockForm({
                     disabled={loading}
                   />
                 </div>
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="almacen1">Almacén</label>
+                  <Dropdown
+                    id="almacen1"
+                    value={filtroAlmacen1}
+                    options={almacenesDisponibles1.map((a) => ({
+                      label: a.descripcion,
+                      value: Number(a.id),
+                    }))}
+                    onChange={(e) => {
+                      setFiltroAlmacen1(e.value);
+                      aplicarFiltroLocal1(saldosGenerales, e.value);
+                    }}
+                    placeholder="Todos los almacenes"
+                    optionLabel="label"
+                    optionValue="value"
+                    showClear
+                    disabled={loading}
+                  />
+                </div>
                 <div style={{ flex: 1 }}>
                   <label htmlFor="custodia1">Mercadería</label>
                   <Button
@@ -374,7 +470,7 @@ export default function ConsultaStockForm({
 
               {/* Tabla de Saldos Generales */}
               <DataTable
-                value={saldosGenerales}
+                value={saldosGeneralesFiltrados}
                 loading={loading}
                 paginator
                 rows={20}
@@ -502,6 +598,26 @@ export default function ConsultaStockForm({
                     disabled={loading}
                   />
                 </div>
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="almacen2">Almacén</label>
+                  <Dropdown
+                    id="almacen2"
+                    value={filtroAlmacen2}
+                    options={almacenesDisponibles2.map((a) => ({
+                      label: a.descripcion,
+                      value: Number(a.id),
+                    }))}
+                    onChange={(e) => {
+                      setFiltroAlmacen2(e.value);
+                      aplicarFiltroLocal2(saldosDetallados, e.value);
+                    }}
+                    placeholder="Todos los almacenes"
+                    optionLabel="label"
+                    optionValue="value"
+                    showClear
+                    disabled={loading}
+                  />
+                </div>
                 <div style={{ flex: 1 }}>
                   <label htmlFor="custodia2">Mercadería</label>
                   <Button
@@ -536,7 +652,7 @@ export default function ConsultaStockForm({
 
               {/* Tabla de Saldos Detallados */}
               <DataTable
-                value={saldosDetallados}
+                value={saldosDetalladosFiltrados}
                 loading={loading}
                 paginator
                 rows={20}

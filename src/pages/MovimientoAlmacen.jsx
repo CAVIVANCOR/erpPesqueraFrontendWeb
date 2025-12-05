@@ -34,6 +34,8 @@ import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { getMonedas } from "../api/moneda";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
+import { usePermissions } from "../hooks/usePermissions";
+import { Navigate } from "react-router-dom";
 
 /**
  * Pantalla profesional para gestión de Movimientos de Almacén.
@@ -44,7 +46,13 @@ import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
  * - Feedback visual con Toast.
  * - Documentación de la regla en el encabezado.
  */
-export default function MovimientoAlmacen() {
+export default function MovimientoAlmacen({ ruta }) {
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const toast = useRef(null);
   const [items, setItems] = useState([]);
   const [empresas, setEmpresas] = useState([]);
@@ -78,6 +86,8 @@ export default function MovimientoAlmacen() {
   const [almacenesOrigen, setAlmacenesOrigen] = useState([]);
   const [almacenesDestino, setAlmacenesDestino] = useState([]);
   const [showConsultaStock, setShowConsultaStock] = useState(false);
+  const [showKardexResult, setShowKardexResult] = useState(false);
+  const [kardexResultData, setKardexResultData] = useState(null);
   const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
@@ -394,7 +404,11 @@ export default function MovimientoAlmacen() {
         life: 3000
       });
       
-      setShowDialog(false);
+      // Recargar el documento actual para actualizar el estado en el formulario
+      const movimientoActualizado = await getMovimientoAlmacenPorId(id);
+      setEditing(movimientoActualizado);
+      
+      // Recargar la lista
       cargarDatos();
     } catch (err) {
       const errorMsg =
@@ -415,43 +429,20 @@ export default function MovimientoAlmacen() {
   const handleGenerarKardex = async (id) => {
     setLoading(true);
     try {
-      // 1. Generar Kardex (crea registros, calcula saldos, actualiza tablas)
       const resultado = await generarKardex(id);
+      // Guardar resultado y mostrar diálogo
+      setKardexResultData(resultado);
+      setShowKardexResult(true);
       
-      // Mostrar resumen de la generación
-      const mensajeDetalle = `
-        Kardex generado exitosamente:
-        - Registros creados: ${resultado.kardexCreados}
-        - Registros actualizados: ${resultado.kardexActualizados}
-        - Saldos detallados: ${resultado.saldosDetActualizados}
-        - Saldos generales: ${resultado.saldosGenActualizados}
-      `;
-      
-      // Mostrar errores si los hay
-      if (resultado.errores && resultado.errores.length > 0) {
-        toast.current.show({
-          severity: "warn",
-          summary: "Kardex generado con advertencias",
-          detail: `Se encontraron ${resultado.errores.length} advertencias. Revise el kardex.`,
-          life: 5000
-        });
-      }
-      
-      toast.current.show({
-        severity: "success",
-        summary: "Kardex Generado",
-        detail: mensajeDetalle,
-        life: 5000
-      });
-      
-      setShowDialog(false);
       cargarDatos();
+
     } catch (err) {
       const errorMsg =
         err.response?.data?.error ||
         err.response?.data?.message ||
         err.message ||
         "No se pudo generar el kardex.";
+      
       toast.current.show({
         severity: "error",
         summary: "Error al Generar Kardex",
@@ -484,7 +475,7 @@ export default function MovimientoAlmacen() {
         detail: mensajeDetalle,
         life: 5000
       });
-      setShowDialog(false);
+      // No cerrar el diálogo para permitir seguir trabajando
       cargarDatos();
     } catch (err) {
       const errorMsg =
@@ -549,14 +540,17 @@ export default function MovimientoAlmacen() {
         icon="pi pi-pencil"
         className="p-button-text p-button-sm"
         onClick={() => handleEdit(rowData)}
-        aria-label="Editar"
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+        aria-label={permisos.puedeEditar ? "Editar" : "Ver"}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+      {permisos.puedeEliminar && (
         <Button
           icon="pi pi-trash"
           className="p-button-text p-button-danger p-button-sm"
           onClick={() => handleDelete(rowData)}
           aria-label="Eliminar"
+          tooltip="Eliminar"
         />
       )}
     </>
@@ -630,7 +624,8 @@ export default function MovimientoAlmacen() {
                   severity="success"
                   raised
                   onClick={handleAdd}
-                  disabled={loading || !empresaSeleccionada}
+                  disabled={loading || !empresaSeleccionada || !permisos.puedeCrear}
+                  tooltip={!permisos.puedeCrear ? "No tiene permisos para crear" : "Nuevo Movimiento"}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -920,6 +915,7 @@ export default function MovimientoAlmacen() {
           onGenerarKardex={handleGenerarKardex}
           loading={loading}
           toast={toast}
+          permisos={permisos}
         />
       </Dialog>
 
@@ -929,6 +925,252 @@ export default function MovimientoAlmacen() {
         onHide={() => setShowConsultaStock(false)}
         empresaIdInicial={empresaSeleccionada}
       />
+
+      {/* Diálogo de Resultado de Kardex */}
+      <Dialog
+        visible={showKardexResult}
+        modal
+        closable={false}
+        showHeader={false}
+        onHide={() => setShowKardexResult(false)}
+        style={{ width: '600px' }}
+      >
+        {kardexResultData && (
+          <div style={{ padding: '0', fontFamily: 'var(--font-family)' }}>
+            {/* Header con gradiente verde */}
+            <div 
+              style={{ 
+                background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                padding: '2.5rem 2rem',
+                textAlign: 'center',
+                borderRadius: '6px 6px 0 0'
+              }}
+            >
+              <div style={{
+                width: '80px',
+                height: '80px',
+                margin: '0 auto 1.5rem',
+                background: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <i 
+                  className="pi pi-check" 
+                  style={{ 
+                    fontSize: '3rem', 
+                    color: 'white',
+                    fontWeight: 'bold'
+                  }}
+                />
+              </div>
+              <h2 style={{ 
+                color: 'white', 
+                margin: 0, 
+                fontSize: '1.75rem',
+                fontWeight: '600',
+                letterSpacing: '0.5px'
+              }}>
+                Kardex Generado Exitosamente
+              </h2>
+              <p style={{ 
+                color: 'rgba(255, 255, 255, 0.95)', 
+                margin: '0.75rem 0 0 0',
+                fontSize: '1rem',
+                fontWeight: '400'
+              }}>
+                Operación completada correctamente
+              </p>
+            </div>
+
+            {/* Contenido con estadísticas */}
+            <div style={{ padding: '2.5rem 2rem' }}>
+              <div style={{ 
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+                marginBottom: '1.5rem'
+              }}>
+                {/* KardexAlmacen */}
+                <div style={{
+                  background: '#dcfce7',
+                  border: '3px solid #86efac',
+                  borderRadius: '12px',
+                  padding: '1.25rem 1.5rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <i className="pi pi-database" style={{ 
+                      fontSize: '2.5rem', 
+                      color: '#16a34a'
+                    }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        fontSize: '1.1rem',
+                        color: '#15803d',
+                        fontWeight: '600',
+                        marginBottom: '0.5rem'
+                      }}>
+                        KardexAlmacen
+                      </div>
+                      <div style={{ display: 'flex', gap: '2rem' }}>
+                        <div>
+                          <span style={{ fontSize: '2rem', fontWeight: 'bold', color: '#16a34a' }}>
+                            {kardexResultData.kardexCreados || 0}
+                          </span>
+                          <span style={{ fontSize: '0.9rem', color: '#15803d', marginLeft: '0.5rem' }}>
+                            Creados
+                          </span>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '2rem', fontWeight: 'bold', color: '#16a34a' }}>
+                            {kardexResultData.kardexActualizados || 0}
+                          </span>
+                          <span style={{ fontSize: '0.9rem', color: '#15803d', marginLeft: '0.5rem' }}>
+                            Actualizados
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SaldosDetProductoCliente */}
+                <div style={{
+                  background: '#fef3c7',
+                  border: '3px solid #fcd34d',
+                  borderRadius: '12px',
+                  padding: '1.25rem 1.5rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <i className="pi pi-list" style={{ 
+                      fontSize: '2.5rem', 
+                      color: '#d97706'
+                    }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        fontSize: '1.1rem',
+                        color: '#b45309',
+                        fontWeight: '600',
+                        marginBottom: '0.5rem'
+                      }}>
+                        SaldosDetProductoCliente
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '2rem', fontWeight: 'bold', color: '#d97706' }}>
+                          {kardexResultData.saldosDetActualizados || 0}
+                        </span>
+                        <span style={{ fontSize: '0.9rem', color: '#b45309', marginLeft: '0.5rem' }}>
+                          Actualizados
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SaldosProductoCliente */}
+                <div style={{
+                  background: '#f3e8ff',
+                  border: '3px solid #c4b5fd',
+                  borderRadius: '12px',
+                  padding: '1.25rem 1.5rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <i className="pi pi-chart-bar" style={{ 
+                      fontSize: '2.5rem', 
+                      color: '#7c3aed'
+                    }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        fontSize: '1.1rem',
+                        color: '#6d28d9',
+                        fontWeight: '600',
+                        marginBottom: '0.5rem'
+                      }}>
+                        SaldosProductoCliente
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '2rem', fontWeight: 'bold', color: '#7c3aed' }}>
+                          {kardexResultData.saldosGenActualizados || 0}
+                        </span>
+                        <span style={{ fontSize: '0.9rem', color: '#6d28d9', marginLeft: '0.5rem' }}>
+                          Actualizados
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Advertencias si existen */}
+              {kardexResultData.errores && kardexResultData.errores.length > 0 && (
+                <div style={{
+                  background: '#fef3c7',
+                  border: '2px solid #fbbf24',
+                  borderRadius: '8px',
+                  padding: '1rem',
+                  marginBottom: '1.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem'
+                }}>
+                  <i className="pi pi-exclamation-triangle" style={{ 
+                    fontSize: '1.5rem', 
+                    color: '#f59e0b'
+                  }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ 
+                      fontWeight: 'bold',
+                      color: '#92400e',
+                      marginBottom: '0.25rem'
+                    }}>
+                      Advertencias Encontradas
+                    </div>
+                    <div style={{ 
+                      fontSize: '0.9rem',
+                      color: '#b45309'
+                    }}>
+                      {kardexResultData.errores.length} advertencia(s) durante el proceso
+                    </div>
+                  </div>
+                  <div style={{
+                    background: '#f59e0b',
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: '2.5rem',
+                    height: '2.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.25rem',
+                    fontWeight: 'bold'
+                  }}>
+                    {kardexResultData.errores.length}
+                  </div>
+                </div>
+              )}
+
+              {/* Botón de cerrar */}
+              <Button 
+                label="Cerrar" 
+                icon="pi pi-check"
+                onClick={() => setShowKardexResult(false)}
+                style={{ 
+                  width: '100%',
+                  padding: '0.875rem',
+                  fontSize: '1.05rem',
+                  fontWeight: '600',
+                  background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  cursor: 'pointer'
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </Dialog>
     </div>
   );
 }

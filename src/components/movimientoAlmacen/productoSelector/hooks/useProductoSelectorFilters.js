@@ -21,6 +21,7 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
   const [tipoMaterialId, setTipoMaterialId] = useState(null);
   const [unidadMedidaId, setUnidadMedidaId] = useState(null);
   const [especieId, setEspecieId] = useState(null);
+  const [almacenId, setAlmacenId] = useState(null);
   const [busqueda, setBusqueda] = useState("");
 
   // Items filtrados
@@ -36,6 +37,7 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
     tiposMaterial: [],
     unidadesMedida: [],
     especies: [],
+    almacenes: [],
   });
 
   // Memoizar catálogos para evitar recreación en cada render
@@ -61,6 +63,7 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
         tiposMaterial: [],
         unidadesMedida: [],
         especies: [],
+        almacenes: [],
       });
       return;
     }
@@ -74,6 +77,7 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
       tiposMaterial: new Set(),
       unidadesMedida: new Set(),
       especies: new Set(),
+      almacenes: new Set(),
     };
 
     items.forEach((item) => {
@@ -88,6 +92,24 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
         if (prod.unidadMedidaId) idsUnicos.unidadesMedida.add(Number(prod.unidadMedidaId));
         if (prod.especieId) idsUnicos.especies.add(Number(prod.especieId));
       }
+      // Capturar almacenId del saldo (tanto para ingresos como egresos)
+      if (item.almacenId) {
+        idsUnicos.almacenes.add(Number(item.almacenId));
+      }
+    });
+
+    // Construir opciones de almacenes desde los items
+    const almacenesUnicos = [];
+    items.forEach((item) => {
+      if (item.almacenId && item.almacen?.descripcion) {
+        const existe = almacenesUnicos.find(a => Number(a.id) === Number(item.almacenId));
+        if (!existe) {
+          almacenesUnicos.push({
+            id: item.almacenId,
+            descripcion: item.almacen.descripcion
+          });
+        }
+      }
     });
 
     setOpcionesDinamicas({
@@ -99,6 +121,7 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
       tiposMaterial: catalogosEstables.tiposMaterial.filter((t) => idsUnicos.tiposMaterial.has(Number(t.id))),
       unidadesMedida: catalogosEstables.unidadesMedida.filter((u) => idsUnicos.unidadesMedida.has(Number(u.id))),
       especies: catalogosEstables.especies.filter((e) => idsUnicos.especies.has(Number(e.id))),
+      almacenes: almacenesUnicos.sort((a, b) => a.descripcion.localeCompare(b.descripcion)),
     });
   }, [items, esIngreso, catalogosEstables]);
 
@@ -162,6 +185,13 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
       });
     }
 
+    // Filtro por almacén
+    if (almacenId) {
+      filtered = filtered.filter((item) => {
+        return Number(item.almacenId) === Number(almacenId);
+      });
+    }
+
     // Búsqueda por texto
     if (busqueda && busqueda.trim() !== "") {
       const searchTerm = busqueda.toLowerCase();
@@ -186,6 +216,7 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
     tipoMaterialId,
     unidadMedidaId,
     especieId,
+    almacenId,
     busqueda,
     esIngreso,
   ]);
@@ -209,6 +240,7 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
     setTipoMaterialId(null);
     setUnidadMedidaId(null);
     setEspecieId(null);
+    setAlmacenId(null);
     setBusqueda("");
   };
 
@@ -223,6 +255,7 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
       tipoMaterialId,
       unidadMedidaId,
       especieId,
+      almacenId,
       busqueda,
     },
     // Setters
@@ -234,6 +267,7 @@ export const useProductoSelectorFilters = (items, catalogos, modo) => {
     setTipoMaterialId,
     setUnidadMedidaId,
     setEspecieId,
+    setAlmacenId,
     setBusqueda,
     // Datos
     filteredItems,

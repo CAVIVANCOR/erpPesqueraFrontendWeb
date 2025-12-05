@@ -20,5 +20,5 @@ function getAuthHeaders() {
  */
 export async function generarKardex(movimientoAlmacenId) {
   const res = await axios.post(`${API_URL}/${movimientoAlmacenId}`, {}, { headers: getAuthHeaders() });
-  return res.data;
+  return res.data.data; // Retornar solo la data, no el wrapper
 }

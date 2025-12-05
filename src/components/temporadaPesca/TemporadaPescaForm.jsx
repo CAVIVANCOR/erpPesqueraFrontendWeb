@@ -582,7 +582,7 @@ const TemporadaPescaForm = ({
 
       {/* Botones de acción - lado derecho */}
       <div className="flex gap-2">
-        {editingItem && Number(watch("estadoSeleccionado")) === 13 && (
+        {editingItem && Number(watch("estadoTemporadaId")) === 13 && (
           <Button
             label="Iniciar Temporada"
             icon="pi pi-play"
