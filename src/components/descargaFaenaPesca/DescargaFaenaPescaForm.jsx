@@ -24,6 +24,8 @@ import {
   formatearCoordenadas,
   convertirDecimalADMS,
   crearInputCoordenadas,
+  descomponerDMS,
+  convertirDMSADecimal,
 } from "../../utils/gpsUtils";
 
 /**
@@ -111,6 +113,28 @@ export default function DescargaFaenaPescaForm({
   const longitud = watch("longitud");
   const latitudFondeo = watch("latitudFondeo");
   const longitudFondeo = watch("longitudFondeo");
+
+  // Estados para formato DMS de descarga
+  const [latGrados, setLatGrados] = useState(0);
+  const [latMinutos, setLatMinutos] = useState(0);
+  const [latSegundos, setLatSegundos] = useState(0);
+  const [latDireccion, setLatDireccion] = useState("S");
+
+  const [lonGrados, setLonGrados] = useState(0);
+  const [lonMinutos, setLonMinutos] = useState(0);
+  const [lonSegundos, setLonSegundos] = useState(0);
+  const [lonDireccion, setLonDireccion] = useState("W");
+
+  // Estados para formato DMS de fondeo
+  const [latFondeoGrados, setLatFondeoGrados] = useState(0);
+  const [latFondeoMinutos, setLatFondeoMinutos] = useState(0);
+  const [latFondeoSegundos, setLatFondeoSegundos] = useState(0);
+  const [latFondeoDireccion, setLatFondeoDireccion] = useState("S");
+
+  const [lonFondeoGrados, setLonFondeoGrados] = useState(0);
+  const [lonFondeoMinutos, setLonFondeoMinutos] = useState(0);
+  const [lonFondeoSegundos, setLonFondeoSegundos] = useState(0);
+  const [lonFondeoDireccion, setLonFondeoDireccion] = useState("W");
 
   // Cargar datos del registro a editar cuando cambie detalle
   useEffect(() => {
@@ -213,6 +237,70 @@ export default function DescargaFaenaPescaForm({
     faenaPescaId,
     temporadaPescaId,
   ]);
+
+  // Sincronizar cambios de decimal a DMS para DESCARGA
+  useEffect(() => {
+    if (latitud !== "" && latitud !== null && latitud !== undefined && latitud !== 0) {
+      const dms = descomponerDMS(Number(latitud), true);
+      setLatGrados(dms.grados);
+      setLatMinutos(dms.minutos);
+      setLatSegundos(parseFloat(dms.segundos.toFixed(2)));
+      setLatDireccion(dms.direccion);
+    }
+  }, [latitud]);
+
+  useEffect(() => {
+    if (longitud !== "" && longitud !== null && longitud !== undefined && longitud !== 0) {
+      const dms = descomponerDMS(Number(longitud), false);
+      setLonGrados(dms.grados);
+      setLonMinutos(dms.minutos);
+      setLonSegundos(parseFloat(dms.segundos.toFixed(2)));
+      setLonDireccion(dms.direccion);
+    }
+  }, [longitud]);
+
+  // Sincronizar cambios de decimal a DMS para FONDEO
+  useEffect(() => {
+    if (latitudFondeo !== "" && latitudFondeo !== null && latitudFondeo !== undefined && latitudFondeo !== 0) {
+      const dms = descomponerDMS(Number(latitudFondeo), true);
+      setLatFondeoGrados(dms.grados);
+      setLatFondeoMinutos(dms.minutos);
+      setLatFondeoSegundos(parseFloat(dms.segundos.toFixed(2)));
+      setLatFondeoDireccion(dms.direccion);
+    }
+  }, [latitudFondeo]);
+
+  useEffect(() => {
+    if (longitudFondeo !== "" && longitudFondeo !== null && longitudFondeo !== undefined && longitudFondeo !== 0) {
+      const dms = descomponerDMS(Number(longitudFondeo), false);
+      setLonFondeoGrados(dms.grados);
+      setLonFondeoMinutos(dms.minutos);
+      setLonFondeoSegundos(parseFloat(dms.segundos.toFixed(2)));
+      setLonFondeoDireccion(dms.direccion);
+    }
+  }, [longitudFondeo]);
+
+  // Funciones para actualizar decimal cuando cambia DMS - DESCARGA
+  const actualizarLatitudDesdeDMS = () => {
+    const decimal = convertirDMSADecimal(latGrados, latMinutos, latSegundos, latDireccion);
+    setValue("latitud", decimal);
+  };
+
+  const actualizarLongitudDesdeDMS = () => {
+    const decimal = convertirDMSADecimal(lonGrados, lonMinutos, lonSegundos, lonDireccion);
+    setValue("longitud", decimal);
+  };
+
+  // Funciones para actualizar decimal cuando cambia DMS - FONDEO
+  const actualizarLatitudFondeoDesdeDMS = () => {
+    const decimal = convertirDMSADecimal(latFondeoGrados, latFondeoMinutos, latFondeoSegundos, latFondeoDireccion);
+    setValue("latitudFondeo", decimal);
+  };
+
+  const actualizarLongitudFondeoDesdeDMS = () => {
+    const decimal = convertirDMSADecimal(lonFondeoGrados, lonFondeoMinutos, lonFondeoSegundos, lonFondeoDireccion);
+    setValue("longitudFondeo", decimal);
+  };
 
   /**
    * Maneja el guardado del formulario
@@ -556,7 +644,7 @@ export default function DescargaFaenaPescaForm({
         <div style={{ flex: 1 }}>
           <Button
             type="button"
-            label="Capturar GPS"
+            label="Capturar GPS Arribo"
             icon="pi pi-map-marker"
             className="p-button-info"
             onClick={handleCapturarGPS}
@@ -565,52 +653,239 @@ export default function DescargaFaenaPescaForm({
           />
         </div>
 
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              marginTop: "15px",
-              padding: "10px",
-              backgroundColor: "#e1f1f7",
-              borderRadius: "4px",
-            }}
-          >
-            <strong>📐 Formato decimal (+ Norte, - Sur):</strong>
-            <div style={{ marginTop: "5px", fontSize: "14px" }}>
-              <div>
-                <strong>Lat:</strong> {coordenadasConfig.inputLatitud.value}
-              </div>
-              <div>
-                <strong>Lon:</strong> {coordenadasConfig.inputLongitud.value}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ flex: 1 }}>
-          {/* Conversión a formato DMS para referencia */}
-          {(latitud !== 0 || longitud !== 0) &&
-            coordenadasConfig.formatoDMS && (
-              <div
-                style={{
-                  marginTop: "15px",
-                  padding: "10px",
-                  backgroundColor: "#e1f1f7",
-                  borderRadius: "4px",
-                }}
-              >
-                <strong>📐 Formato DMS (Marítimo):</strong>
-                <div style={{ marginTop: "5px", fontSize: "14px" }}>
-                  <div>
-                    <strong>Lat:</strong>{" "}
-                    {coordenadasConfig.formatoDMS.latitudDMS}
+        {/* Tabla compacta de coordenadas GPS */}
+        <div style={{ flex: 3 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", border: "2px solid #0EA5E9" }}>
+            <thead>
+              <tr style={{ backgroundColor: "#0EA5E9", color: "white" }}>
+                <th style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Formato</th>
+                <th colSpan="4" style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", textAlign: "center" }}>Latitud</th>
+                <th colSpan="4" style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", textAlign: "center" }}>Longitud</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Fila Decimal */}
+              <tr>
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9", fontWeight: "bold", fontSize: "11px", backgroundColor: "#e1f1f7", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Decimal</td>
+                <td colSpan="4" style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                  <input
+                    type="number"
+                    value={latitud || ""}
+                    onChange={(e) => setValue("latitud", parseFloat(e.target.value) || 0)}
+                    disabled={loading}
+                    step="0.000001"
+                    placeholder="-12.345678"
+                    style={{
+                      width: "100%",
+                      padding: "4px",
+                      border: "none",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    }}
+                  />
+                </td>
+                <td colSpan="4" style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                  <input
+                    type="number"
+                    value={longitud || ""}
+                    onChange={(e) => setValue("longitud", parseFloat(e.target.value) || 0)}
+                    disabled={loading}
+                    step="0.000001"
+                    placeholder="-77.123456"
+                    style={{
+                      width: "100%",
+                      padding: "4px",
+                      border: "none",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    }}
+                  />
+                </td>
+              </tr>
+              {/* Fila GMS */}
+              <tr>
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9", fontWeight: "bold", fontSize: "11px", backgroundColor: "#e1f1f7", width: "75px", minWidth: "75px", maxWidth: "75px" }}>GMS</td>
+                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                    <input
+                      type="number"
+                      value={latGrados}
+                      onChange={(e) => setLatGrados(Number(e.target.value) || 0)}
+                      onBlur={actualizarLatitudDesdeDMS}
+                      disabled={loading}
+                      min="0"
+                      max="90"
+                      style={{
+                        width: "60px",
+                        padding: "4px",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    />
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
                   </div>
-                  <div>
-                    <strong>Lon:</strong>{" "}
-                    {coordenadasConfig.formatoDMS.longitudDMS}
+                </td>
+                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                    <input
+                      type="number"
+                      value={latMinutos}
+                      onChange={(e) => setLatMinutos(Number(e.target.value) || 0)}
+                      onBlur={actualizarLatitudDesdeDMS}
+                      disabled={loading}
+                      min="0"
+                      max="59"
+                      style={{
+                        width: "50px",
+                        padding: "4px",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    />
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
                   </div>
-                </div>
-              </div>
-            )}
+                </td>
+                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                    <input
+                      type="number"
+                      value={latSegundos}
+                      onChange={(e) => setLatSegundos(Number(e.target.value) || 0)}
+                      onBlur={actualizarLatitudDesdeDMS}
+                      disabled={loading}
+                      min="0"
+                      max="59.99"
+                      step="0.01"
+                      style={{
+                        width: "60px",
+                        padding: "4px",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    />
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                  </div>
+                </td>
+                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                  <select
+                    value={latDireccion}
+                    onChange={(e) => {
+                      setLatDireccion(e.target.value);
+                      setTimeout(actualizarLatitudDesdeDMS, 0);
+                    }}
+                    disabled={loading}
+                    style={{
+                      width: "100%",
+                      padding: "4px",
+                      border: "none",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    }}
+                  >
+                    <option value="N">N</option>
+                    <option value="S">S</option>
+                  </select>
+                </td>
+                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                    <input
+                      type="number"
+                      value={lonGrados}
+                      onChange={(e) => setLonGrados(Number(e.target.value) || 0)}
+                      onBlur={actualizarLongitudDesdeDMS}
+                      disabled={loading}
+                      min="0"
+                      max="180"
+                      style={{
+                        width: "60px",
+                        padding: "4px",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    />
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
+                  </div>
+                </td>
+                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                    <input
+                      type="number"
+                      value={lonMinutos}
+                      onChange={(e) => setLonMinutos(Number(e.target.value) || 0)}
+                      onBlur={actualizarLongitudDesdeDMS}
+                      disabled={loading}
+                      min="0"
+                      max="59"
+                      style={{
+                        width: "50px",
+                        padding: "4px",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    />
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
+                  </div>
+                </td>
+                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                    <input
+                      type="number"
+                      value={lonSegundos}
+                      onChange={(e) => setLonSegundos(Number(e.target.value) || 0)}
+                      onBlur={actualizarLongitudDesdeDMS}
+                      disabled={loading}
+                      min="0"
+                      max="59.99"
+                      step="0.01"
+                      style={{
+                        width: "60px",
+                        padding: "4px",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    />
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                  </div>
+                </td>
+                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                  <select
+                    value={lonDireccion}
+                    onChange={(e) => {
+                      setLonDireccion(e.target.value);
+                      setTimeout(actualizarLongitudDesdeDMS, 0);
+                    }}
+                    disabled={loading}
+                    style={{
+                      width: "100%",
+                      padding: "4px",
+                      border: "none",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    }}
+                  >
+                    <option value="E">E</option>
+                    <option value="W">W</option>
+                  </select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -970,20 +1245,17 @@ export default function DescargaFaenaPescaForm({
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
-        <div style={{ flex: 0.5 }}>
+        <div style={{ flex: 1 }}>
           <Button
             type="button"
-            label="Fondeo"
+            label="Fecha Hora Fondeo"
             icon="pi pi-clock"
             className="p-button-warning"
             onClick={() => setValue("fechaHoraFondeo", new Date())}
             disabled={loading}
             size="small"
-            style={{ marginTop: "5px" }}
+            style={{ width: "100%", marginBottom: "4px" }}
           />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaHoraFondeo">Fecha/Hora Fondeo</label>
           <Controller
             name="fechaHoraFondeo"
             control={control}
@@ -998,6 +1270,7 @@ export default function DescargaFaenaPescaForm({
                 inputStyle={{ fontWeight: "bold" }}
                 disabled={loading}
                 className={classNames({ "p-invalid": errors.fechaHoraFondeo })}
+                style={{ width: "100%" }}
               />
             )}
           />
@@ -1006,7 +1279,16 @@ export default function DescargaFaenaPescaForm({
           )}
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="puertoFondeoId">Puerto Fondeo</label>
+          <Button
+            type="button"
+            label="Capturar GPS"
+            icon="pi pi-map-marker"
+            className="p-button-warning"
+            onClick={handleCapturarGPSFondeo}
+            disabled={loading}
+            size="small"
+            style={{ width: "100%", marginBottom: "4px" }}
+          />
           <Controller
             name="puertoFondeoId"
             control={control}
@@ -1021,10 +1303,11 @@ export default function DescargaFaenaPescaForm({
                 }))}
                 optionLabel="nombre"
                 optionValue="id"
-                placeholder="Seleccionar puerto"
+                placeholder="Puerto Fondeo"
                 filter
                 disabled={loading}
                 className={classNames({ "p-invalid": errors.puertoFondeoId })}
+                style={{ width: "100%" }}
               />
             )}
           />
@@ -1032,64 +1315,240 @@ export default function DescargaFaenaPescaForm({
             <Message severity="error" text={errors.puertoFondeoId.message} />
           )}
         </div>
-        <div style={{ flex: 1 }}>
-          <Button
-            type="button"
-            label="Capturar GPS Fondeo"
-            icon="pi pi-map-marker"
-            className="p-button-warning"
-            onClick={handleCapturarGPSFondeo}
-            disabled={loading}
-            size="small"
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              marginTop: "15px",
-              padding: "10px",
-              backgroundColor: "#fff8e1",
-              borderRadius: "4px",
-            }}
-          >
-            <strong>📐 Formato DMS Fondeo:</strong>
-            <div style={{ marginTop: "5px", fontSize: "14px" }}>
-              <div>
-                <strong>Lat:</strong>{" "}
-                {coordenadasFondeoConfig.inputLatitud.value}
-              </div>
-              <div>
-                <strong>Lon:</strong>{" "}
-                {coordenadasFondeoConfig.inputLongitud.value}
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style={{ flex: 1 }}>
-          {/* Conversión a formato DMS para referencia */}
-          {(latitudFondeo !== 0 || longitudFondeo !== 0) &&
-            coordenadasFondeoConfig.formatoDMS && (
-              <div
-                style={{
-                  marginTop: "15px",
-                  padding: "10px",
-                  backgroundColor: "#fff8e1",
-                  borderRadius: "4px",
-                }}
-              >
-                <strong>📐 Formato DMS Fondeo:</strong>
-                <div style={{ marginTop: "5px", fontSize: "14px" }}>
-                  <div>
-                    <strong>Lat:</strong>{" "}
-                    {coordenadasFondeoConfig.formatoDMS.latitudDMS}
+
+        {/* Tabla compacta de coordenadas GPS FONDEO */}
+        <div style={{ flex: 3 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", border: "2px solid #F97316" }}>
+            <thead>
+              <tr style={{ backgroundColor: "#F97316", color: "white" }}>
+                <th style={{ padding: "4px", border: "1px solid #F97316", fontSize: "12px", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Formato</th>
+                <th colSpan="4" style={{ padding: "4px", border: "1px solid #F97316", fontSize: "12px", textAlign: "center" }}>Latitud</th>
+                <th colSpan="4" style={{ padding: "4px", border: "1px solid #F97316", fontSize: "12px", textAlign: "center" }}>Longitud</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Fila Decimal */}
+              <tr>
+                <td style={{ padding: "4px", border: "1px solid #F97316", fontWeight: "bold", fontSize: "11px", backgroundColor: "#fff8e1", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Decimal</td>
+                <td colSpan="4" style={{ padding: "2px", border: "1px solid #F97316" }}>
+                  <input
+                    type="number"
+                    value={latitudFondeo || ""}
+                    onChange={(e) => setValue("latitudFondeo", parseFloat(e.target.value) || 0)}
+                    disabled={loading}
+                    step="0.000001"
+                    placeholder="-12.345678"
+                    style={{
+                      width: "100%",
+                      padding: "4px",
+                      border: "none",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    }}
+                  />
+                </td>
+                <td colSpan="4" style={{ padding: "2px", border: "1px solid #F97316" }}>
+                  <input
+                    type="number"
+                    value={longitudFondeo || ""}
+                    onChange={(e) => setValue("longitudFondeo", parseFloat(e.target.value) || 0)}
+                    disabled={loading}
+                    step="0.000001"
+                    placeholder="-77.123456"
+                    style={{
+                      width: "100%",
+                      padding: "4px",
+                      border: "none",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    }}
+                  />
+                </td>
+              </tr>
+              {/* Fila GMS */}
+              <tr>
+                <td style={{ padding: "4px", border: "1px solid #F97316", fontWeight: "bold", fontSize: "11px", backgroundColor: "#fff8e1", width: "75px", minWidth: "75px", maxWidth: "75px" }}>GMS</td>
+                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                    <input
+                      type="number"
+                      value={latFondeoGrados}
+                      onChange={(e) => setLatFondeoGrados(Number(e.target.value) || 0)}
+                      onBlur={actualizarLatitudFondeoDesdeDMS}
+                      disabled={loading}
+                      min="0"
+                      max="90"
+                      style={{
+                        width: "60px",
+                        padding: "4px",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    />
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
                   </div>
-                  <div>
-                    <strong>Lon:</strong>{" "}
-                    {coordenadasFondeoConfig.formatoDMS.longitudDMS}
+                </td>
+                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                    <input
+                      type="number"
+                      value={latFondeoMinutos}
+                      onChange={(e) => setLatFondeoMinutos(Number(e.target.value) || 0)}
+                      onBlur={actualizarLatitudFondeoDesdeDMS}
+                      disabled={loading}
+                      min="0"
+                      max="59"
+                      style={{
+                        width: "50px",
+                        padding: "4px",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    />
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
                   </div>
-                </div>
-              </div>
-            )}
+                </td>
+                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                    <input
+                      type="number"
+                      value={latFondeoSegundos}
+                      onChange={(e) => setLatFondeoSegundos(Number(e.target.value) || 0)}
+                      onBlur={actualizarLatitudFondeoDesdeDMS}
+                      disabled={loading}
+                      min="0"
+                      max="59.99"
+                      step="0.01"
+                      style={{
+                        width: "60px",
+                        padding: "4px",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    />
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                  </div>
+                </td>
+                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                  <select
+                    value={latFondeoDireccion}
+                    onChange={(e) => {
+                      setLatFondeoDireccion(e.target.value);
+                      setTimeout(actualizarLatitudFondeoDesdeDMS, 0);
+                    }}
+                    disabled={loading}
+                    style={{
+                      width: "100%",
+                      padding: "4px",
+                      border: "none",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    }}
+                  >
+                    <option value="N">N</option>
+                    <option value="S">S</option>
+                  </select>
+                </td>
+                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                    <input
+                      type="number"
+                      value={lonFondeoGrados}
+                      onChange={(e) => setLonFondeoGrados(Number(e.target.value) || 0)}
+                      onBlur={actualizarLongitudFondeoDesdeDMS}
+                      disabled={loading}
+                      min="0"
+                      max="180"
+                      style={{
+                        width: "60px",
+                        padding: "4px",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    />
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
+                  </div>
+                </td>
+                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                    <input
+                      type="number"
+                      value={lonFondeoMinutos}
+                      onChange={(e) => setLonFondeoMinutos(Number(e.target.value) || 0)}
+                      onBlur={actualizarLongitudFondeoDesdeDMS}
+                      disabled={loading}
+                      min="0"
+                      max="59"
+                      style={{
+                        width: "50px",
+                        padding: "4px",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    />
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
+                  </div>
+                </td>
+                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                    <input
+                      type="number"
+                      value={lonFondeoSegundos}
+                      onChange={(e) => setLonFondeoSegundos(Number(e.target.value) || 0)}
+                      onBlur={actualizarLongitudFondeoDesdeDMS}
+                      disabled={loading}
+                      min="0"
+                      max="59.99"
+                      step="0.01"
+                      style={{
+                        width: "60px",
+                        padding: "4px",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    />
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                  </div>
+                </td>
+                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                  <select
+                    value={lonFondeoDireccion}
+                    onChange={(e) => {
+                      setLonFondeoDireccion(e.target.value);
+                      setTimeout(actualizarLongitudFondeoDesdeDMS, 0);
+                    }}
+                    disabled={loading}
+                    style={{
+                      width: "100%",
+                      padding: "4px",
+                      border: "none",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    }}
+                  >
+                    <option value="E">E</option>
+                    <option value="W">W</option>
+                  </select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
       {/* Botones de acción */}

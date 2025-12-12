@@ -23,6 +23,8 @@ import { Tag } from "primereact/tag";
 import { Message } from "primereact/message";
 import { Toast } from "primereact/toast";
 import { confirmDialog } from "primereact/confirmdialog";
+import { BlockUI } from "primereact/blockui";
+import { ProgressSpinner } from "primereact/progressspinner";
 import {
   getBahiasComerciales,
   getMotoristas,
@@ -76,6 +78,8 @@ const TemporadaPescaForm = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [archivoSubido, setArchivoSubido] = useState(null);
   const [iniciandoTemporada, setIniciandoTemporada] = useState(false);
+  const [finalizandoTemporada, setFinalizandoTemporada] = useState(false);
+  const [cancelandoTemporada, setCancelandoTemporada] = useState(false);
   const [tieneFaenas, setTieneFaenas] = useState(false);
   const [camposRequeridosCompletos, setCamposRequeridosCompletos] =
     useState(false);
@@ -108,6 +112,7 @@ const TemporadaPescaForm = ({
       fechaFin: null,
       numeroResolucion: "",
       urlResolucionPdf: "",
+      limiteMaximoCapturaTn: null,
       cuotaPropiaTon: null,
       cuotaAlquiladaTon: null,
       toneladasCapturadasTemporada: null,
@@ -323,6 +328,7 @@ const TemporadaPescaForm = ({
       numeroResolucion: data.numeroResolucion?.trim().toUpperCase() || null,
       urlResolucionPdf:
         data.urlResolucionPdf?.trim() || archivoSubido?.url || null,
+      limiteMaximoCapturaTn: data.limiteMaximoCapturaTn ? Number(data.limiteMaximoCapturaTn) : null,
       cuotaPropiaTon: data.cuotaPropiaTon ? Number(data.cuotaPropiaTon) : null,
       cuotaAlquiladaTon: data.cuotaAlquiladaTon
         ? Number(data.cuotaAlquiladaTon)
@@ -381,8 +387,14 @@ const TemporadaPescaForm = ({
 
   /**
    * Manejar inicio de temporada
+   * Sistema profesional con loading state para evitar doble clic
    */
   const handleIniciarTemporada = () => {
+    // Prevenir si ya está procesando
+    if (iniciandoTemporada) {
+      return;
+    }
+
     confirmDialog({
       message:
         "¿Está seguro de iniciar esta temporada de pesca? Esta acción creará los registros necesarios.",
@@ -393,12 +405,22 @@ const TemporadaPescaForm = ({
       acceptLabel: "Sí, Iniciar",
       rejectLabel: "Cancelar",
       accept: async () => {
+        setIniciandoTemporada(true);
         try {
+          toast.current?.show({
+            severity: "info",
+            summary: "Procesando",
+            detail: "Iniciando temporada, por favor espere...",
+            life: 3000,
+          });
+
           await iniciarTemporada(editingItem.id);
+          
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
             detail: "Temporada iniciada correctamente",
+            life: 3000,
           });
 
           // Re-verificar registros para deshabilitar el botón
@@ -428,8 +450,11 @@ const TemporadaPescaForm = ({
           toast.current?.show({
             severity: "error",
             summary: "Error",
-            detail: "Error al iniciar la temporada",
+            detail: error?.response?.data?.mensaje || "Error al iniciar la temporada",
+            life: 5000,
           });
+        } finally {
+          setIniciandoTemporada(false);
         }
       },
     });
@@ -437,8 +462,14 @@ const TemporadaPescaForm = ({
 
   /**
    * Manejar finalización de temporada
+   * Sistema profesional con loading state para evitar doble clic
    */
   const handleFinalizarTemporada = () => {
+    // Prevenir si ya está procesando
+    if (finalizandoTemporada) {
+      return;
+    }
+
     confirmDialog({
       message:
         "¿Está seguro de finalizar esta temporada de pesca? Esta acción cambiará el estado a FINALIZADA.",
@@ -449,8 +480,15 @@ const TemporadaPescaForm = ({
       acceptLabel: "Sí, Finalizar",
       rejectLabel: "Cancelar",
       accept: async () => {
+        setFinalizandoTemporada(true);
         try {
-          // ✅ Llamar al backend para finalizar
+          toast.current?.show({
+            severity: "info",
+            summary: "Procesando",
+            detail: "Finalizando temporada, por favor espere...",
+            life: 3000,
+          });
+
           await finalizarTemporada(editingItem.id);
 
           toast.current?.show({
@@ -472,9 +510,11 @@ const TemporadaPescaForm = ({
           toast.current?.show({
             severity: "error",
             summary: "Error",
-            detail: "Error al finalizar la temporada",
-            life: 3000,
+            detail: error?.response?.data?.mensaje || "Error al finalizar la temporada",
+            life: 5000,
           });
+        } finally {
+          setFinalizandoTemporada(false);
         }
       },
     });
@@ -482,8 +522,14 @@ const TemporadaPescaForm = ({
 
   /**
    * Manejar cancelación de temporada
+   * Sistema profesional con loading state para evitar doble clic
    */
   const handleCancelarTemporada = () => {
+    // Prevenir si ya está procesando
+    if (cancelandoTemporada) {
+      return;
+    }
+
     confirmDialog({
       message:
         "¿Está seguro de cancelar esta temporada de pesca? Esta acción cambiará el estado a CANCELADA.",
@@ -494,13 +540,20 @@ const TemporadaPescaForm = ({
       acceptLabel: "Sí, Cancelar",
       rejectLabel: "No",
       accept: async () => {
+        setCancelandoTemporada(true);
         try {
-          // ✅ Llamar al backend para cancelar
+          toast.current?.show({
+            severity: "info",
+            summary: "Procesando",
+            detail: "Cancelando temporada, por favor espere...",
+            life: 3000,
+          });
+
           await cancelarTemporada(editingItem.id);
 
           toast.current?.show({
-            severity: "warn",
-            summary: "Temporada Cancelada",
+            severity: "success",
+            summary: "Éxito",
             detail: "Temporada cancelada correctamente",
             life: 3000,
           });
@@ -517,15 +570,18 @@ const TemporadaPescaForm = ({
           toast.current?.show({
             severity: "error",
             summary: "Error",
-            detail: "Error al cancelar la temporada",
-            life: 3000,
+            detail: error?.response?.data?.mensaje || "Error al cancelar la temporada",
+            life: 5000,
           });
+        } finally {
+          setCancelandoTemporada(false);
         }
       },
     });
   };
+
   /**
-   * Footer del diálogo con botones de acción
+   * Renderizar footer del diálogo con botones de acción
    */
   const dialogFooter = (
     <div
@@ -534,39 +590,39 @@ const TemporadaPescaForm = ({
         justifyContent: "space-between",
         alignItems: "center",
         gap: 8,
-        marginTop: 2,
+        marginTop: 18,
       }}
     >
       {/* Botones de navegación de Cards - lado izquierdo */}
       <div className="flex gap-1">
         <Button
           icon="pi pi-info-circle"
-          tooltip="Temporada de Pesca y Detalle de Faenas"
+          tooltip="Datos Generales"
           tooltipOptions={{ position: "top" }}
           className={
             activeCard === "datos-generales"
               ? "p-button-primary"
               : "p-button-outlined"
           }
-          onClick={() => handleNavigateToCard("datos-generales")}
+          onClick={() => setActiveCard("datos-generales")}
           type="button"
           size="small"
         />
         <Button
           icon="pi pi-file-pdf"
-          tooltip="Resolución Ministerial en PDF"
+          tooltip="Resolución PDF"
           tooltipOptions={{ position: "top" }}
           className={
             activeCard === "resolucion-pdf"
               ? "p-button-warning"
               : "p-button-outlined"
           }
-          onClick={() => handleNavigateToCard("resolucion-pdf")}
+          onClick={() => setActiveCard("resolucion-pdf")}
           type="button"
           size="small"
         />
         <Button
-          icon="pi pi-file-excel"
+          icon="pi pi-money-bill"
           tooltip="Entregas a Rendir"
           tooltipOptions={{ position: "top" }}
           className={
@@ -574,29 +630,29 @@ const TemporadaPescaForm = ({
               ? "p-button-success"
               : "p-button-outlined"
           }
-          onClick={() => handleNavigateToCard("entregas-a-rendir")}
+          onClick={() => setActiveCard("entregas-a-rendir")}
           type="button"
           size="small"
+          disabled={!editingItem?.id}
         />
       </div>
 
       {/* Botones de acción - lado derecho */}
       <div className="flex gap-2">
-        {editingItem && Number(watch("estadoTemporadaId")) === 13 && (
+        {/* Botón Iniciar Temporada - Solo visible en estado EN ESPERA (13) */}
+        {editingItem && Number(estadoSeleccionado) === 13 && (
           <Button
-            label="Iniciar Temporada"
-            icon="pi pi-play"
+            label={iniciandoTemporada ? "Iniciando..." : "Iniciar Temporada"}
+            icon={iniciandoTemporada ? "pi pi-spin pi-spinner" : "pi pi-play"}
             className="p-button-success"
-            disabled={(() => {
-              const resultado = !puedeIniciarTemporada();
-              return resultado;
-            })()}
             onClick={handleIniciarTemporada}
+            disabled={!puedeIniciarTemporada() || iniciandoTemporada}
+            loading={iniciandoTemporada}
             tooltip={
-              !editingItem?.id
-                ? "Debe guardar la temporada primero"
+              iniciandoTemporada
+                ? "Procesando inicio de temporada..."
                 : !camposRequeridosCompletos
-                ? "Complete todos los campos requeridos (Número de resolución, fechas y cuotas)"
+                ? "Complete todos los campos requeridos primero"
                 : tieneFaenas
                 ? "La temporada ya fue iniciada"
                 : "Iniciar temporada de pesca"
@@ -607,11 +663,17 @@ const TemporadaPescaForm = ({
         {/* Botón Finalizar Temporada - Solo visible en estado EN PROCESO (14) */}
         {editingItem && Number(estadoSeleccionado) === 14 && (
           <Button
-            label="Finalizar Temporada"
-            icon="pi pi-check-circle"
+            label={finalizandoTemporada ? "Finalizando..." : "Finalizar Temporada"}
+            icon={finalizandoTemporada ? "pi pi-spin pi-spinner" : "pi pi-check-circle"}
             className="p-button-warning"
             onClick={handleFinalizarTemporada}
-            tooltip="Finalizar temporada de pesca"
+            disabled={finalizandoTemporada}
+            loading={finalizandoTemporada}
+            tooltip={
+              finalizandoTemporada
+                ? "Procesando finalización de temporada..."
+                : "Finalizar temporada de pesca"
+            }
           />
         )}
 
@@ -620,11 +682,17 @@ const TemporadaPescaForm = ({
           (Number(estadoSeleccionado) === 13 ||
             Number(estadoSeleccionado) === 14) && (
             <Button
-              label="Cancelar Temporada"
-              icon="pi pi-ban"
+              label={cancelandoTemporada ? "Cancelando..." : "Cancelar Temporada"}
+              icon={cancelandoTemporada ? "pi pi-spin pi-spinner" : "pi pi-ban"}
               className="p-button-danger"
               onClick={handleCancelarTemporada}
-              tooltip="Cancelar temporada de pesca"
+              disabled={cancelandoTemporada}
+              loading={cancelandoTemporada}
+              tooltip={
+                cancelandoTemporada
+                  ? "Procesando cancelación de temporada..."
+                  : "Cancelar temporada de pesca"
+              }
             />
           )}
 
@@ -633,12 +701,14 @@ const TemporadaPescaForm = ({
           icon="pi pi-times"
           outlined
           onClick={handleHide}
+          disabled={iniciandoTemporada || finalizandoTemporada || cancelandoTemporada}
         />
         <Button
           label={editingItem ? "Actualizar" : "Crear"}
           icon="pi pi-check"
           onClick={handleSubmit(handleFormSubmit)}
           loading={validandoSuperposicion}
+          disabled={iniciandoTemporada || finalizandoTemporada || cancelandoTemporada}
         />
       </div>
     </div>
@@ -658,6 +728,7 @@ const TemporadaPescaForm = ({
         fechaFin: editingItem.fechaFin ? new Date(editingItem.fechaFin) : null,
         numeroResolucion: editingItem.numeroResolucion || "",
         urlResolucionPdf: editingItem.urlResolucionPdf || "",
+        limiteMaximoCapturaTn: editingItem.limiteMaximoCapturaTn || null,
         cuotaPropiaTon: editingItem.cuotaPropiaTon || null,
         cuotaAlquiladaTon: editingItem.cuotaAlquiladaTon || null,
         toneladasCapturadasTemporada:
@@ -674,6 +745,7 @@ const TemporadaPescaForm = ({
         fechaFin: null,
         numeroResolucion: "",
         urlResolucionPdf: "",
+        limiteMaximoCapturaTn: null,
         cuotaPropiaTon: null,
         cuotaAlquiladaTon: null,
         toneladasCapturadasTemporada: null,
@@ -690,6 +762,9 @@ const TemporadaPescaForm = ({
     }
   }, [editingItem?.id]);
 
+  // Determinar si hay alguna operación en proceso
+  const operacionEnProceso = iniciandoTemporada || finalizandoTemporada || cancelandoTemporada;
+
   return (
     <Dialog
       visible={visible}
@@ -699,7 +774,9 @@ const TemporadaPescaForm = ({
       footer={dialogFooter}
       onHide={handleHide}
       className="p-fluid"
+      closable={!operacionEnProceso}
     >
+      <BlockUI blocked={operacionEnProceso} template={operacionEnProceso ? <ProgressSpinner /> : null}>
       {/* Mostrar nombre de temporada con Tag */}
       <div className="flex justify-content-center mb-4">
         <Tag
@@ -776,7 +853,26 @@ const TemporadaPescaForm = ({
           </div>
         )}
       </form>
+      
+      {/* Mensaje de operación en proceso */}
+      {operacionEnProceso && (
+        <div className="col-12 mt-3">
+          <Message
+            severity="info"
+            text={
+              iniciandoTemporada
+                ? "Iniciando temporada, por favor espere. No cierre esta ventana."
+                : finalizandoTemporada
+                ? "Finalizando temporada, por favor espere. No cierre esta ventana."
+                : "Cancelando temporada, por favor espere. No cierre esta ventana."
+            }
+            className="w-full"
+          />
+        </div>
+      )}
+      
       <Toast ref={toast} />
+      </BlockUI>
     </Dialog>
   );
 };

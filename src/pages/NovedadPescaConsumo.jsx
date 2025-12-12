@@ -15,6 +15,7 @@ import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import { Badge } from "primereact/badge";
 import { Dropdown } from "primereact/dropdown";
+import { Calendar } from "primereact/calendar";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import {
   getAllNovedadPescaConsumo,
@@ -48,29 +49,57 @@ const NovedadPescaConsumo = () => {
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [filtroEmpresa, setFiltroEmpresa] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState(null);
+  const [fechaDesde, setFechaDesde] = useState(null);
+  const [fechaHasta, setFechaHasta] = useState(null);
 
   const toast = useRef(null);
+  const isMounted = useRef(false);
   const { usuario } = useAuthStore();
 
+  /**
+   * Cargar datos iniciales
+   */
   useEffect(() => {
     cargarCombos();
     cargarNovedades();
   }, []);
 
+  /**
+   * Aplicar filtros cuando cambien
+   * Previene race conditions con la carga inicial
+   */
   useEffect(() => {
+    // Prevenir ejecución en montaje inicial (evita race condition con cargarNovedades)
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
+
+    // Si todos los filtros son null, no aplicar (se limpiaron los filtros)
+    if (
+      filtroEmpresa === null &&
+      filtroEstado === null &&
+      fechaDesde === null &&
+      fechaHasta === null
+    ) {
+      return;
+    }
+
     cargarNovedades();
-  }, [filtroEmpresa, filtroEstado]);
+  }, [filtroEmpresa, filtroEstado, fechaDesde, fechaHasta]);
 
   /**
    * Cargar combos de filtro
    */
   const cargarCombos = async () => {
     try {
-      const [empresasData, estadosData, tiposDocumentoData] = await Promise.all([
-        getEmpresas(),
-        getEstadosMultiFuncionParaNovedadPescaConsumo(),
-        getTiposDocumento(),
-      ]);
+      const [empresasData, estadosData, tiposDocumentoData] = await Promise.all(
+        [
+          getEmpresas(),
+          getEstadosMultiFuncionParaNovedadPescaConsumo(),
+          getTiposDocumento(),
+        ]
+      );
 
       if (empresasData && Array.isArray(empresasData)) {
         setEmpresas(empresasData.map((e) => ({ ...e, id: Number(e.id) })));
@@ -97,6 +126,7 @@ const NovedadPescaConsumo = () => {
 
   /**
    * Cargar novedades con filtros aplicados
+   * Construye el objeto de filtros y llama a la API
    */
   const cargarNovedades = async () => {
     try {
@@ -106,6 +136,10 @@ const NovedadPescaConsumo = () => {
       if (filtroEmpresa) filtros.empresaId = filtroEmpresa;
       if (filtroEstado !== null)
         filtros.estadoNovedadPescaConsumoId = filtroEstado;
+      if (fechaDesde)
+        filtros.fechaDesde = fechaDesde.toISOString().split("T")[0];
+      if (fechaHasta)
+        filtros.fechaHasta = fechaHasta.toISOString().split("T")[0];
 
       const data = await getAllNovedadPescaConsumo(filtros);
 
@@ -126,11 +160,25 @@ const NovedadPescaConsumo = () => {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar novedades de pesca consumo",
+        detail:
+          "Error al cargar novedades de pesca consumo. Verifique su conexión e intente nuevamente.",
+        life: 4000,
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  /**
+   * Limpiar todos los filtros y recargar datos completos
+   */
+  const limpiarFiltros = () => {
+    setFiltroEmpresa(null);
+    setFiltroEstado(null);
+    setFechaDesde(null);
+    setFechaHasta(null);
+    setGlobalFilter("");
+    cargarNovedades();
   };
 
   /**
@@ -315,21 +363,7 @@ const NovedadPescaConsumo = () => {
     }
   };
 
-  /**
-   * Obtener razón social de empresa por ID
-   */
-  const getEmpresaRazonSocial = (id) => {
-    const empresa = empresas.find((e) => Number(e.id) === Number(id));
-    return empresa ? empresa.razonSocial : "Sin empresa";
-  };
-
-  /**
-   * Obtener descripción de estado por ID
-   */
-  const getEstadoDescripcion = (id) => {
-    const estado = estadosNovedad.find((e) => Number(e.id) === Number(id));
-    return estado ? estado.descripcion : "Sin estado";
-  };
+  // Funciones helper eliminadas - ahora usamos relaciones directas del backend
 
   /**
    * Formatear fecha corta
@@ -382,16 +416,14 @@ const NovedadPescaConsumo = () => {
    * Template para empresa
    */
   const empresaTemplate = (rowData) => {
-    return getEmpresaRazonSocial(rowData.empresaId);
+    return rowData.empresa?.razonSocial || "Sin empresa";
   };
 
   /**
    * Template para estado de la novedad (del campo estadoNovedadPescaConsumoId)
    */
   const estadoNovedadTemplate = (rowData) => {
-    const descripcion = getEstadoDescripcion(
-      rowData.estadoNovedadPescaConsumoId
-    );
+    const descripcion = rowData.estadoNovedad?.descripcion || "Sin estado";
 
     // Definir severidad según el estado
     let severity = "info";
@@ -593,6 +625,8 @@ const NovedadPescaConsumo = () => {
           loading={loading}
           paginator
           rows={10}
+          showGridlines
+          stripedRows
           rowsPerPageOptions={[5, 10, 25]}
           className="datatable-responsive"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
@@ -605,58 +639,109 @@ const NovedadPescaConsumo = () => {
           globalFilter={globalFilter}
           style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
           header={
-            <div
-              style={{
-                alignItems: "center",
-                display: "flex",
-                gap: 10,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <h2>Novedad Pesca Consumo</h2>
+            <div>
+              {/* Primera fila: Título y botones principales */}
+              <div
+                style={{
+                  alignItems: "center",
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  marginBottom: 10,
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <h2>Novedad Pesca Consumo</h2>
+                </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <Dropdown
-                  value={filtroEmpresa}
-                  options={empresas}
-                  onChange={(e) => {
-                    setFiltroEmpresa(e.value);
-                  }}
-                  optionLabel="razonSocial"
-                  optionValue="id"
-                  placeholder="Filtrar por empresa"
-                  className="w-12rem"
-                  showClear
-                  filter
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <Button
-                  label="Nueva Novedad"
-                  icon="pi pi-plus"
-                  className="p-button-success"
-                  onClick={openNew}
-                  disabled={!filtroEmpresa}
-                  tooltip={
-                    !filtroEmpresa
-                      ? "Seleccione una empresa para crear una nueva novedad"
-                      : "Crear nueva novedad"
-                  }
-                  tooltipOptions={{ position: "bottom" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <Dropdown
-                  value={filtroEstado}
-                  options={estadosNovedad}
-                  onChange={(e) => setFiltroEstado(e.value)}
-                  optionLabel="descripcion"
-                  optionValue="id"
-                  placeholder="Filtrar por estado"
-                  className="w-12rem"
-                  showClear
-                />
+
+              {/* Segunda fila: Filtros de fecha y botón limpiar */}
+              <div
+                style={{
+                  alignItems: "center",
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <Dropdown
+                    value={filtroEmpresa}
+                    options={empresas}
+                    onChange={(e) => {
+                      setFiltroEmpresa(e.value);
+                    }}
+                    optionLabel="razonSocial"
+                    optionValue="id"
+                    placeholder="Filtrar por empresa"
+                    className="w-12rem"
+                    showClear
+                    filter
+                  />
+                </div>
+                <div style={{ flex: 0.5 }}>
+                  <Button
+                    label="Nuevo"
+                    icon="pi pi-plus"
+                    className="p-button-success"
+                    onClick={openNew}
+                    disabled={!filtroEmpresa}
+                    tooltip={
+                      !filtroEmpresa
+                        ? "Seleccione una empresa para crear una nueva novedad"
+                        : "Crear nueva novedad"
+                    }
+                    tooltipOptions={{ position: "bottom" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Calendar
+                    value={fechaDesde}
+                    onChange={(e) => setFechaDesde(e.value)}
+                    placeholder="Fecha desde"
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    showButtonBar
+                    className="w-12rem"
+                    tooltip="Filtrar por fecha de inicio desde"
+                    tooltipOptions={{ position: "bottom" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Calendar
+                    value={fechaHasta}
+                    onChange={(e) => setFechaHasta(e.value)}
+                    placeholder="Fecha hasta"
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    showButtonBar
+                    className="w-12rem"
+                    tooltip="Filtrar por fecha de inicio hasta"
+                    tooltipOptions={{ position: "bottom" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Dropdown
+                    value={filtroEstado}
+                    options={estadosNovedad}
+                    onChange={(e) => setFiltroEstado(e.value)}
+                    optionLabel="descripcion"
+                    optionValue="id"
+                    placeholder="Filtrar por estado"
+                    className="w-12rem"
+                    showClear
+                  />
+                </div>
+                <div style={{ flex: 0.5 }}>
+                  <Button
+                    label="Limpiar"
+                    icon="pi pi-filter-slash"
+                    className="p-button-outlined p-button-secondary"
+                    onClick={limpiarFiltros}
+                    tooltip="Limpiar todos los filtros y mostrar todas las novedades"
+                    tooltipOptions={{ position: "bottom" }}
+                  />
+                </div>
               </div>
             </div>
           }

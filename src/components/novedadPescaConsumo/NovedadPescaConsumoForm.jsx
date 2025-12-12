@@ -272,8 +272,16 @@ const handleFormSubmit = async (data) => {
   }
 };
 
-  // Manejar inicio de novedad
+  /**
+   * Manejar inicio de novedad
+   * Sistema profesional con loading state para evitar doble clic
+   */
   const handleIniciarNovedad = () => {
+    // Prevenir si ya está procesando
+    if (iniciandoNovedadPesca) {
+      return;
+    }
+
     confirmDialog({
       message:
         "¿Está seguro de iniciar esta novedad de pesca? Esta acción creará los registros necesarios para faenas y entregas a rendir.",
@@ -284,8 +292,15 @@ const handleFormSubmit = async (data) => {
       acceptLabel: "Sí, Iniciar",
       rejectLabel: "Cancelar",
       accept: async () => {
+        setIniciandoNovedadPesca(true);
         try {
-          setIniciandoNovedadPesca(true);
+          toast.current?.show({
+            severity: "info",
+            summary: "Procesando",
+            detail: "Iniciando novedad de pesca, por favor espere...",
+            life: 3000,
+          });
+
           await iniciarNovedadPescaConsumo(editingItem.id);
 
           toast.current?.show({
@@ -496,8 +511,8 @@ const handleFormSubmit = async (data) => {
         {/* Botón Iniciar Novedad - Solo visible en estado EN ESPERA (23) */}
         {editingItem && Number(watch("estadoNovedadPescaConsumoId")) === 23 && (
           <Button
-            label="Iniciar Novedad"
-            icon="pi pi-play"
+            label={iniciandoNovedadPesca ? "Iniciando..." : "Iniciar Novedad"}
+            icon={iniciandoNovedadPesca ? "pi pi-spin pi-spinner" : "pi pi-play"}
             className="p-button-success"
             onClick={handleIniciarNovedad}
             disabled={
@@ -507,7 +522,9 @@ const handleFormSubmit = async (data) => {
             type="button"
             size="small"
             tooltip={
-              editingItem?.novedadPescaConsumoIniciada
+              iniciandoNovedadPesca
+                ? "Procesando inicio de novedad..."
+                : editingItem?.novedadPescaConsumoIniciada
                 ? "La novedad ya fue iniciada"
                 : "Iniciar novedad de pesca"
             }

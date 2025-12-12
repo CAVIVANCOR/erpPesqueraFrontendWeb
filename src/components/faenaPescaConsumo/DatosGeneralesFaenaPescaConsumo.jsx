@@ -28,8 +28,9 @@ export default function DatosGeneralesFaenaPescaConsumo({
   patrones,
   puertos,
   especies,
-  loading = false, // ← AGREGAR
-  handleFinalizarFaena, // ← AGREGAR
+  loading = false,
+  finalizandoFaena = false,
+  handleFinalizarFaena,
   onDataChange, // Mantener para callbacks
   onNovedadDataChange, // Mantener para callbacks
 }) {
@@ -501,13 +502,20 @@ export default function DatosGeneralesFaenaPescaConsumo({
         {showFinalizarButton && (
           <div style={{ flex: 0.5 }}>
             <Button
-              label="Fin de Faena"
-              icon="pi pi-check"
+              label={finalizandoFaena ? "Finalizando..." : "Fin de Faena"}
+              icon={finalizandoFaena ? "pi pi-spin pi-spinner" : "pi pi-check"}
               severity="danger"
               size="small"
               raised
               onClick={handleFinalizarFaena}
-              disabled={loading}
+              disabled={loading || finalizandoFaena}
+              loading={finalizandoFaena}
+              tooltip={
+                finalizandoFaena
+                  ? "Procesando finalización de faena..."
+                  : "Finalizar faena de pesca consumo"
+              }
+              tooltipOptions={{ position: "top" }}
             />
           </div>
         )}

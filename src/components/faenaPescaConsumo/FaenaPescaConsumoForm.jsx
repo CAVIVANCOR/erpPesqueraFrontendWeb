@@ -66,6 +66,9 @@ export default function FaenaPescaConsumoForm({
   const [puertosDescarga, setPuertosDescarga] = useState([]);
   const [documentosPesca, setDocumentosPesca] = useState([]);
 
+  // Estado de loading para prevenir doble clic
+  const [finalizandoFaena, setFinalizandoFaena] = useState(false);
+
   // Estados para novedad
   const [novedad, setNovedad] = useState(null);
 
@@ -391,11 +394,48 @@ export default function FaenaPescaConsumoForm({
     }
   };
 
+  /**
+   * Manejar finalización de faena
+   * Sistema profesional con loading state para evitar doble clic
+   */
   const handleFinalizarFaena = () => {
-    // Cambiar estado a FINALIZADA (29)
-    setValue("estadoFaenaId", 29);
-    // Forzar actualización inmediata
-    handleSubmit(handleFormSubmit)();
+    // Prevenir si ya está procesando
+    if (finalizandoFaena) {
+      return;
+    }
+
+    setFinalizandoFaena(true);
+    try {
+      toast.current?.show({
+        severity: "info",
+        summary: "Procesando",
+        detail: "Finalizando faena, por favor espere...",
+        life: 2000,
+      });
+
+      // Cambiar estado a FINALIZADA (29)
+      setValue("estadoFaenaId", 29);
+      
+      // Forzar actualización inmediata
+      handleSubmit(handleFormSubmit)();
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Faena finalizada correctamente",
+        life: 3000,
+      });
+    } catch (error) {
+      console.error("Error finalizando faena:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al finalizar la faena",
+        life: 3000,
+      });
+    } finally {
+      setFinalizandoFaena(false);
+    }
   };
 
   const commonProps = {
@@ -421,8 +461,9 @@ export default function FaenaPescaConsumoForm({
     documentacionEmbarcacion,
     clientes,
     especies,
-    loading, // ← AGREGAR ESTA LÍNEA
-    handleFinalizarFaena, // ← AGREGAR ESTA LÍNEA
+    loading,
+    finalizandoFaena,
+    handleFinalizarFaena,
   };
 
   const dialogFooter = (

@@ -26,7 +26,9 @@ import { getResponsiveFontSize } from "../../utils/utils";
 import { 
   capturarGPS, 
   formatearCoordenadas, 
-  crearInputCoordenadas 
+  crearInputCoordenadas,
+  descomponerDMS,
+  convertirDMSADecimal
 } from "../../utils/gpsUtils";
 import DetalleCalasEspecieForm from "./DetalleCalasEspecieForm";
 import {
@@ -68,6 +70,18 @@ const DetalleCalasForm = ({
   const [observaciones, setObservaciones] = useState("");
   const [calaSeleccionadaId, setCalaSeleccionadaId] = useState(null);
 
+  // Estados para formato DMS de latitud
+  const [latGrados, setLatGrados] = useState(0);
+  const [latMinutos, setLatMinutos] = useState(0);
+  const [latSegundos, setLatSegundos] = useState(0);
+  const [latDireccion, setLatDireccion] = useState("S");
+
+  // Estados para formato DMS de longitud
+  const [lonGrados, setLonGrados] = useState(0);
+  const [lonMinutos, setLonMinutos] = useState(0);
+  const [lonSegundos, setLonSegundos] = useState(0);
+  const [lonDireccion, setLonDireccion] = useState("W");
+
   // Estados para dropdowns deshabilitados
   const [bahias, setBahias] = useState(bahiasProps);
   const [motoristas, setMotoristas] = useState(motoristasProps);
@@ -89,6 +103,28 @@ const DetalleCalasForm = ({
       cargarCalas();
     }
   }, [faenaPescaId]);
+
+  // Sincronizar cambios de decimal a DMS (cuando cambia latitud decimal)
+  useEffect(() => {
+    if (latitud !== "" && latitud !== null && latitud !== undefined) {
+      const dms = descomponerDMS(Number(latitud), true);
+      setLatGrados(dms.grados);
+      setLatMinutos(dms.minutos);
+      setLatSegundos(parseFloat(dms.segundos.toFixed(2)));
+      setLatDireccion(dms.direccion);
+    }
+  }, [latitud]);
+
+  // Sincronizar cambios de decimal a DMS (cuando cambia longitud decimal)
+  useEffect(() => {
+    if (longitud !== "" && longitud !== null && longitud !== undefined) {
+      const dms = descomponerDMS(Number(longitud), false);
+      setLonGrados(dms.grados);
+      setLonMinutos(dms.minutos);
+      setLonSegundos(parseFloat(dms.segundos.toFixed(2)));
+      setLonDireccion(dms.direccion);
+    }
+  }, [longitud]);
 
   useEffect(() => {
     if (
@@ -209,6 +245,17 @@ const DetalleCalasForm = ({
     setCalaDialog(true);
   };
 
+  // Funciones para actualizar decimal cuando cambia DMS
+  const actualizarLatitudDesdeDMS = () => {
+    const decimal = convertirDMSADecimal(latGrados, latMinutos, latSegundos, latDireccion);
+    setLatitud(decimal);
+  };
+
+  const actualizarLongitudDesdeDMS = () => {
+    const decimal = convertirDMSADecimal(lonGrados, lonMinutos, lonSegundos, lonDireccion);
+    setLongitud(decimal);
+  };
+
   const finalizarCala = async (cala) => {
     try {
       const calaData = {
@@ -281,7 +328,7 @@ const DetalleCalasForm = ({
     setUpdatedAt(null);
   };
 
-  const guardarCala = async () => {
+  const guardarCala = async (cerrarDialogo = true) => {
     try {
       const calaData = {
         bahiaId: Number(selectedBahiaId || faenaData?.bahiaId),
@@ -315,7 +362,9 @@ const DetalleCalasForm = ({
           detail: "Cala actualizada correctamente",
           life: 3000,
         });
-        setCalaDialog(false);
+        if (cerrarDialogo) {
+          setCalaDialog(false);
+        }
       } else {
         // Crear nueva cala
         nuevaCalaCreada = await crearCala(calaData);
@@ -770,7 +819,7 @@ const DetalleCalasForm = ({
                 showTime
                 dateFormat="dd/mm/yy"
                 showIcon
-                disabled
+                disabled={loading || calaFinalizada}
               />
             </div>
           </div>
@@ -792,6 +841,7 @@ const DetalleCalasForm = ({
           >
             <div style={{ flex: 1 }}>
               <Button
+                type="button"
                 onClick={async () => {
                   try {
                     await capturarGPS(
@@ -808,8 +858,9 @@ const DetalleCalasForm = ({
                         });
 
                         // Guardar automáticamente la cala después de capturar GPS
+                        // NO cerrar el diálogo para permitir seguir editando
                         try {
-                          await guardarCala();
+                          await guardarCala(false);
                         } catch (error) {
                           console.error("Error al guardar cala automáticamente:", error);
                           toast.current?.show({
@@ -857,7 +908,7 @@ const DetalleCalasForm = ({
                 type="number"
                 value={latitud || ""}
                 onChange={(e) => setLatitud(parseFloat(e.target.value) || 0)}
-                disabled
+                disabled={calaFinalizada}
                 step="0.000001"
                 placeholder="Ej: -12.345678"
                 style={{
@@ -866,6 +917,7 @@ const DetalleCalasForm = ({
                   border: "1px solid #ccc",
                   borderRadius: "4px",
                   fontSize: "14px",
+                  fontWeight: "bold",
                 }}
               />
               <small style={{ color: "#666" }}>
@@ -887,7 +939,7 @@ const DetalleCalasForm = ({
                 type="number"
                 value={longitud || ""}
                 onChange={(e) => setLongitud(parseFloat(e.target.value) || 0)}
-                disabled
+                disabled={calaFinalizada}
                 step="0.000001"
                 placeholder="Ej: -77.123456"
                 style={{
@@ -896,6 +948,7 @@ const DetalleCalasForm = ({
                   border: "1px solid #ccc",
                   borderRadius: "4px",
                   fontSize: "14px",
+                  fontWeight: "bold",
                 }}
               />
               <small style={{ color: "#666" }}>
@@ -903,28 +956,182 @@ const DetalleCalasForm = ({
               </small>
             </div>
 
-            <div style={{ flex: 1 }}>
-              {/* Conversión a formato DMS para referencia usando funciones genéricas */}
-              {(latitud !== 0 || longitud !== 0) && (
-                <div
-                  style={{
-                    marginTop: "15px",
-                    padding: "10px",
-                    backgroundColor: "#f3fce8",
-                    borderRadius: "4px",
-                  }}
-                >
-                  <strong>📐 Formato DMS (Marítimo):</strong>
-                  <div style={{ marginTop: "5px", fontSize: "14px" }}>
-                    <div>
-                      <strong>Lat:</strong> {formatearCoordenadas(latitud, longitud).latitudDMS}
-                    </div>
-                    <div>
-                      <strong>Lon:</strong> {formatearCoordenadas(latitud, longitud).longitudDMS}
-                    </div>
+            {/* Campos editables para formato DMS */}
+            <div style={{ flex: 2 }}>
+              <div
+                style={{
+                  padding: "10px",
+                  backgroundColor: "#f3fce8",
+                  borderRadius: "4px",
+                  border: "2px solid #9ccc65",
+                }}
+              >
+                <strong style={{ display: "block", marginBottom: "10px" }}>
+                  📐 Formato DMS (Marítimo) - Editable:
+                </strong>
+                
+                {/* Latitud DMS */}
+                <div style={{ marginBottom: "10px" }}>
+                  <label style={{ fontWeight: "bold", display: "block", marginBottom: "5px" }}>
+                    Latitud:
+                  </label>
+                  <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+                    <input
+                      type="number"
+                      value={latGrados}
+                      onChange={(e) => setLatGrados(Number(e.target.value) || 0)}
+                      onBlur={actualizarLatitudDesdeDMS}
+                      disabled={calaFinalizada}
+                      placeholder="°"
+                      min="0"
+                      max="90"
+                      style={{
+                        width: "60px",
+                        padding: "5px",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        fontWeight: "bold",
+                      }}
+                    />
+                    <span>°</span>
+                    <input
+                      type="number"
+                      value={latMinutos}
+                      onChange={(e) => setLatMinutos(Number(e.target.value) || 0)}
+                      onBlur={actualizarLatitudDesdeDMS}
+                      disabled={calaFinalizada}
+                      placeholder="'"
+                      min="0"
+                      max="59"
+                      style={{
+                        width: "60px",
+                        padding: "5px",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        fontWeight: "bold",
+                      }}
+                    />
+                    <span>'</span>
+                    <input
+                      type="number"
+                      value={latSegundos}
+                      onChange={(e) => setLatSegundos(Number(e.target.value) || 0)}
+                      onBlur={actualizarLatitudDesdeDMS}
+                      disabled={calaFinalizada}
+                      placeholder='"'
+                      min="0"
+                      max="59.99"
+                      step="0.01"
+                      style={{
+                        width: "70px",
+                        padding: "5px",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        fontWeight: "bold",
+                      }}
+                    />
+                    <span>"</span>
+                    <select
+                      value={latDireccion}
+                      onChange={(e) => {
+                        setLatDireccion(e.target.value);
+                        setTimeout(actualizarLatitudDesdeDMS, 0);
+                      }}
+                      disabled={calaFinalizada}
+                      style={{
+                        padding: "5px",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      <option value="N">N</option>
+                      <option value="S">S</option>
+                    </select>
                   </div>
                 </div>
-              )}
+
+                {/* Longitud DMS */}
+                <div>
+                  <label style={{ fontWeight: "bold", display: "block", marginBottom: "5px" }}>
+                    Longitud:
+                  </label>
+                  <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+                    <input
+                      type="number"
+                      value={lonGrados}
+                      onChange={(e) => setLonGrados(Number(e.target.value) || 0)}
+                      onBlur={actualizarLongitudDesdeDMS}
+                      disabled={calaFinalizada}
+                      placeholder="°"
+                      min="0"
+                      max="180"
+                      style={{
+                        width: "60px",
+                        padding: "5px",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        fontWeight: "bold",
+                      }}
+                    />
+                    <span>°</span>
+                    <input
+                      type="number"
+                      value={lonMinutos}
+                      onChange={(e) => setLonMinutos(Number(e.target.value) || 0)}
+                      onBlur={actualizarLongitudDesdeDMS}
+                      disabled={calaFinalizada}
+                      placeholder="'"
+                      min="0"
+                      max="59"
+                      style={{
+                        width: "60px",
+                        padding: "5px",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        fontWeight: "bold",
+                      }}
+                    />
+                    <span>'</span>
+                    <input
+                      type="number"
+                      value={lonSegundos}
+                      onChange={(e) => setLonSegundos(Number(e.target.value) || 0)}
+                      onBlur={actualizarLongitudDesdeDMS}
+                      disabled={calaFinalizada}
+                      placeholder='"'
+                      min="0"
+                      max="59.99"
+                      step="0.01"
+                      style={{
+                        width: "70px",
+                        padding: "5px",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        fontWeight: "bold",
+                      }}
+                    />
+                    <span>"</span>
+                    <select
+                      value={lonDireccion}
+                      onChange={(e) => {
+                        setLonDireccion(e.target.value);
+                        setTimeout(actualizarLongitudDesdeDMS, 0);
+                      }}
+                      disabled={calaFinalizada}
+                      style={{
+                        padding: "5px",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      <option value="E">E</option>
+                      <option value="W">W</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

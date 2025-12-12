@@ -64,6 +64,9 @@ export default function FaenaPescaForm({
   const [documentacionEmbarcacion, setDocumentacionEmbarcacion] = useState([]);
   const [clientes, setClientes] = useState([]); // Estado para clientes
   const [especies, setEspecies] = useState([]); // Estado para especies
+  
+  // Estado de loading para prevenir doble clic
+  const [finalizandoFaena, setFinalizandoFaena] = useState(false);
 
   // Estados para dropdowns
   const [temporada, setTemporada] = useState(null);
@@ -316,7 +319,15 @@ export default function FaenaPescaForm({
     }
   };
 
+  /**
+   * Manejar finalización de faena
+   * Sistema profesional con loading state para evitar doble clic
+   */
   const handleFinalizarFaena = () => {
+    // Prevenir si ya está procesando
+    if (finalizandoFaena) {
+      return;
+    }
     
     if (!temporadaData?.id) {
       toast.current?.show({
@@ -338,13 +349,21 @@ export default function FaenaPescaForm({
       acceptLabel: "Sí, Finalizar y Generar Ingreso",
       rejectLabel: "Cancelar",
       accept: async () => {
+        setFinalizandoFaena(true);
         try {
+          toast.current?.show({
+            severity: "info",
+            summary: "Procesando",
+            detail: "Finalizando faena y generando ingreso a almacén, por favor espere...",
+            life: 3000,
+          });
           
           // Llamar al backend para finalizar y generar movimiento de almacén
           const resultado = await finalizarFaenaConMovimientoAlmacen(
             defaultValues.id,
             temporadaData.id
           );
+          
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
@@ -373,6 +392,8 @@ export default function FaenaPescaForm({
             detail: errorMsg,
             life: 5000,
           });
+        } finally {
+          setFinalizandoFaena(false);
         }
       },
     });
@@ -609,6 +630,7 @@ export default function FaenaPescaForm({
             estadosFaena={estadosFaena}
             faenaPescaId={currentFaenaData.id || defaultValues.id}
             loading={loading}
+            finalizandoFaena={finalizandoFaena}
             handleFinalizarFaena={handleFinalizarFaena}
             onDataChange={onDataChange} // Callback para notificar cambios en los datos
             onTemporadaDataChange={onTemporadaDataChange} // Callback para notificar cambios en datos de temporada

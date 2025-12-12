@@ -20,6 +20,7 @@ import { Controller } from "react-hook-form";
 import { Message } from "primereact/message";
 import { getEmbarcaciones } from "../../api/embarcacion";
 import { getTemporadaPescaPorId } from "../../api/temporadaPesca";
+import { getDetallesCuotaPesca } from "../../api/detCuotaPesca";
 import DetalleFaenasPescaCard from "./DetalleFaenasPescaCard";
 
 export default function DatosGeneralesTemporadaForm({
@@ -50,6 +51,7 @@ export default function DatosGeneralesTemporadaForm({
   const [faenasUpdateTrigger, setFaenasUpdateTrigger] = useState(0);
 
   const empresaWatched = watch("empresaId");
+  const limiteMaximoCapturaTnWatched = watch("limiteMaximoCapturaTn");
 
   // Watch para generar nombre automáticamente
   const idWatched = watch("id");
@@ -87,6 +89,49 @@ export default function DatosGeneralesTemporadaForm({
     } else {
     }
   }, [idWatched, numeroResolucionWatched, setValue]);
+
+  // Calcular cuotas automáticamente cuando cambien empresa o límite máximo
+  useEffect(() => {
+    const calcularCuotas = async () => {
+      if (!empresaWatched || !limiteMaximoCapturaTnWatched) {
+        // Si no hay empresa o límite, limpiar cuotas
+        setValue("cuotaPropiaTon", null);
+        setValue("cuotaAlquiladaTon", null);
+        return;
+      }
+
+      try {
+        // Obtener detalles de cuota activos de la empresa
+        const detalles = await getDetallesCuotaPesca({ empresaId: empresaWatched });
+        const detallesActivos = detalles.filter(d => d.activo);
+
+        // Sumar porcentajes de cuotas propias
+        const totalPropiaPorcentaje = detallesActivos
+          .filter(d => d.cuotaPropia)
+          .reduce((sum, d) => sum + Number(d.porcentajeCuota), 0);
+
+        // Sumar porcentajes de cuotas alquiladas
+        const totalAlquiladaPorcentaje = detallesActivos
+          .filter(d => !d.cuotaPropia)
+          .reduce((sum, d) => sum + Number(d.porcentajeCuota), 0);
+
+        // Calcular toneladas
+        const limite = Number(limiteMaximoCapturaTnWatched);
+        const cuotaPropia = limite * (totalPropiaPorcentaje / 100);
+        const cuotaAlquilada = limite * (totalAlquiladaPorcentaje / 100);
+
+        // Actualizar campos
+        setValue("cuotaPropiaTon", cuotaPropia);
+        setValue("cuotaAlquiladaTon", cuotaAlquilada);
+      } catch (error) {
+        console.error("Error al calcular cuotas:", error);
+        setValue("cuotaPropiaTon", null);
+        setValue("cuotaAlquiladaTon", null);
+      }
+    };
+
+    calcularCuotas();
+  }, [empresaWatched, limiteMaximoCapturaTnWatched, setValue]);
 
   const cargarDatos = async () => {
     try {
@@ -266,9 +311,6 @@ export default function DatosGeneralesTemporadaForm({
                 text={errors.numeroResolucion.message}
               />
             )}
-            <small className="text-muted">
-              Número de la resolución ministerial
-            </small>
           </div>
           {/* Estado de Temporada */}
           <div style={{ flex: 1 }}>
@@ -382,6 +424,40 @@ export default function DatosGeneralesTemporadaForm({
               <Message severity="error" text={errors.fechaFin.message} />
             )}
           </div>
+          {/* Límite Máximo de Captura */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="limiteMaximoCapturaTn" className="font-semibold">
+              Máximo Captura*
+            </label>
+            <Controller
+              name="limiteMaximoCapturaTn"
+              control={control}
+              rules={{
+                required: "El límite máximo de captura es obligatorio",
+                min: { value: 0, message: "El límite no puede ser negativo" },
+              }}
+              render={({ field }) => (
+                <InputNumber
+                  id="limiteMaximoCapturaTn"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  placeholder="0.000"
+                  mode="decimal"
+                  minFractionDigits={3}
+                  maxFractionDigits={3}
+                  inputStyle={{ fontWeight: "bold" }}
+                  min={0}
+                  suffix=" Ton"
+                  className={classNames({
+                    "p-invalid": errors.limiteMaximoCapturaTn,
+                  })}
+                />
+              )}
+            />
+            {errors.limiteMaximoCapturaTn && (
+              <Message severity="error" text={errors.limiteMaximoCapturaTn.message} />
+            )}
+          </div>
           {/* Cuota Propia */}
           <div style={{ flex: 1 }}>
             <label htmlFor="cuotaPropiaTon" className="font-semibold">
@@ -390,30 +466,25 @@ export default function DatosGeneralesTemporadaForm({
             <Controller
               name="cuotaPropiaTon"
               control={control}
-              rules={{
-                min: { value: 0, message: "La cuota no puede ser negativa" },
-              }}
               render={({ field }) => (
                 <InputNumber
                   id="cuotaPropiaTon"
                   value={field.value}
                   onValueChange={(e) => field.onChange(e.value)}
-                  placeholder="0.00"
+                  placeholder="0.000"
                   mode="decimal"
-                  minFractionDigits={0}
-                  maxFractionDigits={2}
+                  minFractionDigits={3}
+                  maxFractionDigits={3}
                   inputStyle={{ fontWeight: "bold" }}
                   min={0}
                   suffix=" Ton"
+                  disabled
                   className={classNames({
                     "p-invalid": errors.cuotaPropiaTon,
                   })}
                 />
               )}
             />
-            {errors.cuotaPropiaTon && (
-              <Message severity="error" text={errors.cuotaPropiaTon.message} />
-            )}
           </div>
 
           {/* Cuota Alquilada */}
@@ -424,33 +495,25 @@ export default function DatosGeneralesTemporadaForm({
             <Controller
               name="cuotaAlquiladaTon"
               control={control}
-              rules={{
-                min: { value: 0, message: "La cuota no puede ser negativa" },
-              }}
               render={({ field }) => (
                 <InputNumber
                   id="cuotaAlquiladaTon"
                   value={field.value}
                   onValueChange={(e) => field.onChange(e.value)}
-                  placeholder="0.00"
+                  placeholder="0.000"
                   mode="decimal"
-                  minFractionDigits={0}
-                  maxFractionDigits={2}
+                  minFractionDigits={3}
+                  maxFractionDigits={3}
                   inputStyle={{ fontWeight: "bold" }}
                   min={0}
                   suffix=" Ton"
+                  disabled
                   className={classNames({
                     "p-invalid": errors.cuotaAlquiladaTon,
                   })}
                 />
               )}
             />
-            {errors.cuotaAlquiladaTon && (
-              <Message
-                severity="error"
-                text={errors.cuotaAlquiladaTon.message}
-              />
-            )}
           </div>
           {/* Toneladas Capturadas */}
           <div style={{ flex: 1 }}>

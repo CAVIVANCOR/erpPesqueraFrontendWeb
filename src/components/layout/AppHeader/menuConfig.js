@@ -82,6 +82,11 @@ export const getMenuConfig = (abrirModulo) => ({
                 action: () => abrirModulo("especie", "Especies")
               },
               {
+                label: "Detalle Cuotas Pesca",
+                icon: "pi pi-percentage",
+                action: () => abrirModulo("detCuotaPesca", "Detalle Cuotas Pesca")
+              },
+              {
                 label: "Acciones Previas",
                 icon: "pi pi-list-check",
                 action: () => abrirModulo("accionesPreviasFaena", "Acciones previas Faena")

@@ -14,12 +14,17 @@ function getAuthHeader() {
  */
 
 /**
- * Obtiene todas las novedades de pesca de consumo
+ * Obtiene todas las novedades de pesca de consumo con filtros opcionales
+ * @param {Object} filtros - Filtros opcionales para la consulta
+ * @param {number} [filtros.empresaId] - Filtrar por empresa
+ * @param {number} [filtros.estadoNovedadPescaConsumoId] - Filtrar por estado
+ * @param {number} [filtros.bahiaId] - Filtrar por bahía
  * @returns {Promise} Lista de novedades de pesca de consumo
  */
-export const getAllNovedadPescaConsumo = async () => {
+export const getAllNovedadPescaConsumo = async (filtros = {}) => {
   const response = await axios.get(API_URL, {
     headers: getAuthHeader(),
+    params: filtros
   });
   return response.data;
 };

@@ -24,6 +24,7 @@ import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Toolbar } from "primereact/toolbar";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
+import { Calendar } from "primereact/calendar";
 import { Tag } from "primereact/tag";
 import { Badge } from "primereact/badge";
 import { Tooltip } from "primereact/tooltip";
@@ -67,10 +68,13 @@ const TemporadaPesca = () => {
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [filtroEmpresa, setFiltroEmpresa] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState(null);
+  const [fechaDesde, setFechaDesde] = useState(null);
+  const [fechaHasta, setFechaHasta] = useState(null);
 
   // Referencias
   const toast = useRef(null);
   const dt = useRef(null);
+  const isMounted = useRef(false);
 
   // Store de autenticación
   const { usuario } = useAuthStore();
@@ -85,13 +89,25 @@ const TemporadaPesca = () => {
 
   /**
    * Aplicar filtros cuando cambien
+   * Previene race conditions con la carga inicial
    */
   useEffect(() => {
+    // Prevenir ejecución en montaje inicial (evita race condition con cargarDatos)
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
+    
+    // Si todos los filtros son null, no aplicar (se limpiaron los filtros)
+    if (filtroEmpresa === null && filtroEstado === null && fechaDesde === null && fechaHasta === null) {
+      return;
+    }
+    
     aplicarFiltros();
-  }, [filtroEmpresa, filtroEstado]);
+  }, [filtroEmpresa, filtroEstado, fechaDesde, fechaHasta]);
 
   /**
-   * Cargar temporadas de pesca
+   * Cargar todas las temporadas de pesca sin filtros
    */
   const cargarDatos = async () => {
     try {
@@ -150,6 +166,7 @@ const TemporadaPesca = () => {
 
   /**
    * Aplicar filtros a los datos
+   * Construye el objeto de filtros y llama a la API
    */
   const aplicarFiltros = async () => {
     try {
@@ -157,6 +174,8 @@ const TemporadaPesca = () => {
 
       if (filtroEmpresa) filtros.empresaId = filtroEmpresa;
       if (filtroEstado !== null) filtros.estadoTemporadaId = filtroEstado;
+      if (fechaDesde) filtros.fechaDesde = fechaDesde.toISOString().split('T')[0];
+      if (fechaHasta) filtros.fechaHasta = fechaHasta.toISOString().split('T')[0];
 
       const data = await getTemporadasPesca(filtros);
       setTemporadas(data);
@@ -172,11 +191,13 @@ const TemporadaPesca = () => {
   };
 
   /**
-   * Limpiar filtros
+   * Limpiar todos los filtros y recargar datos completos
    */
   const limpiarFiltros = () => {
     setFiltroEmpresa(null);
     setFiltroEstado(null);
+    setFechaDesde(null);
+    setFechaHasta(null);
     setGlobalFilterValue("");
     setFilters({
       global: { value: null, matchMode: FilterMatchMode.CONTAINS },
@@ -383,27 +404,13 @@ const TemporadaPesca = () => {
     }
   };
 
-  /**
-   * Obtener descripción del estado por ID
-   */
-  const getEstadoDescripcion = (id) => {
-    const estado = estadosTemporada.find((e) => Number(e.id) === Number(id));
-    return estado ? estado.descripcion : "Sin estado";
-  };
-
-  /**
-   * Obtener razón social de empresa por ID
-   */
-  const getEmpresaRazonSocial = (id) => {
-    const empresa = empresas.find((e) => Number(e.id) === Number(id));
-    return empresa ? empresa.razonSocial : "Sin empresa";
-  };
+  // Funciones helper eliminadas - ahora usamos relaciones directas del backend
 
   /**
    * Template para estado de temporada desde EstadoMultiFuncion
    */
   const estadoTemplate = (rowData) => {
-    const estadoDescripcion = getEstadoDescripcion(rowData.estadoTemporadaId);
+    const estadoDescripcion = rowData.estadoTemporada?.descripcion || "Sin estado";
 
     // Determinar el color según el estado
     let severity = "secondary";
@@ -502,7 +509,7 @@ const TemporadaPesca = () => {
    * Template para empresa
    */
   const empresaTemplate = (rowData) => {
-    return getEmpresaRazonSocial(rowData.empresaId);
+    return rowData.empresa?.razonSocial || "Sin empresa";
   };
 
   /**
@@ -643,6 +650,8 @@ const TemporadaPesca = () => {
           filterDisplay="menu"
           globalFilterFields={["nombre", "numeroResolucion"]}
           emptyMessage="No se encontraron temporadas de pesca"
+          showGridlines
+          stripedRows
           scrollable
           scrollHeight="600px"
           onRowClick={(e) => editItem(e.data)}
@@ -651,78 +660,119 @@ const TemporadaPesca = () => {
           sortField="id"
           sortOrder={-1}
           header={
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginTop: 10,
-                gap: 5,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 2 }}>
-                <h2>Pesca Industrial</h2>
-              </div>
-              <div style={{ flex: 1 }}>
-                <Dropdown
-                  value={filtroEmpresa}
-                  options={empresas}
-                  onChange={(e) => setFiltroEmpresa(e.value)}
-                  optionLabel="razonSocial"
-                  optionValue="id"
-                  placeholder="Filtrar por empresa"
-                  className="w-12rem"
-                  showClear
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <Button
-                  label="Nueva Temporada"
-                  icon="pi pi-plus"
-                  className="p-button-success"
-                  raised
-                  outlined
-                  size="small"
-                  onClick={openNew}
-                  disabled={!filtroEmpresa}
-                  tooltip={
-                    !filtroEmpresa
-                      ? "Seleccione una empresa para crear una nueva temporada"
-                      : "Crear nueva temporada"
-                  }
-                  tooltipOptions={{ position: "bottom" }}
-                />
+            <div>
+              {/* Primera fila: Título, empresa, botón nuevo y búsqueda */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  marginBottom: 10,
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <h2>Pesca Industrial</h2>
+                </div>
+                
               </div>
 
-              <div style={{ flex: 1 }}>
-                <Dropdown
-                  value={filtroEstado}
-                  options={estadosTemporada}
-                  onChange={(e) => setFiltroEstado(e.value)}
-                  optionLabel="descripcion"
-                  optionValue="id"
-                  placeholder="Filtrar por estado"
-                  className="w-10rem"
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <Button
-                  icon="pi pi-filter-slash"
-                  className="p-button-outlined"
-                  tooltip="Limpiar filtros"
-                  onClick={limpiarFiltros}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <span className="p-input-icon-left">
-                  <InputText
-                    value={globalFilterValue}
-                    onChange={onGlobalFilterChange}
-                    placeholder="Búsqueda global..."
-                    className="w-15rem"
+              {/* Segunda fila: Filtros de fecha, estado y botón limpiar */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <Dropdown
+                    value={filtroEmpresa}
+                    options={empresas}
+                    onChange={(e) => setFiltroEmpresa(e.value)}
+                    optionLabel="razonSocial"
+                    optionValue="id"
+                    placeholder="Filtrar por empresa"
+                    className="w-12rem"
+                    showClear
+                    filter
                   />
-                </span>
+                </div>
+                <div style={{ flex: 0.5 }}>
+                  <Button
+                    label="Nuevo"
+                    icon="pi pi-plus"
+                    className="p-button-success"
+                    onClick={openNew}
+                    disabled={!filtroEmpresa}
+                    tooltip={
+                      !filtroEmpresa
+                        ? "Seleccione una empresa para crear una nueva temporada"
+                        : "Crear nueva temporada"
+                    }
+                    tooltipOptions={{ position: "bottom" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span className="p-input-icon-left">
+                    <i className="pi pi-search" />
+                    <InputText
+                      value={globalFilterValue}
+                      onChange={onGlobalFilterChange}
+                      placeholder="Búsqueda global..."
+                      className="w-full"
+                    />
+                  </span>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Calendar
+                    value={fechaDesde}
+                    onChange={(e) => setFechaDesde(e.value)}
+                    placeholder="Fecha desde"
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    showButtonBar
+                    className="w-12rem"
+                    tooltip="Filtrar por fecha de inicio desde"
+                    tooltipOptions={{ position: "bottom" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Calendar
+                    value={fechaHasta}
+                    onChange={(e) => setFechaHasta(e.value)}
+                    placeholder="Fecha hasta"
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    showButtonBar
+                    className="w-12rem"
+                    tooltip="Filtrar por fecha de inicio hasta"
+                    tooltipOptions={{ position: "bottom" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Dropdown
+                    value={filtroEstado}
+                    options={estadosTemporada}
+                    onChange={(e) => setFiltroEstado(e.value)}
+                    optionLabel="descripcion"
+                    optionValue="id"
+                    placeholder="Filtrar por estado"
+                    className="w-12rem"
+                    showClear
+                  />
+                </div>
+                <div style={{ flex: 0.5 }}>
+                  <Button
+                    label="Limpiar"
+                    icon="pi pi-filter-slash"
+                    className="p-button-outlined p-button-secondary"
+                    onClick={limpiarFiltros}
+                    tooltip="Limpiar todos los filtros y mostrar todas las temporadas"
+                    tooltipOptions={{ position: "bottom" }}
+                  />
+                </div>
               </div>
             </div>
           }

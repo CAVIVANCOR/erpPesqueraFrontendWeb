@@ -15,8 +15,11 @@ function getAuthHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
-export async function getTemporadasPesca() {
-  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+export async function getTemporadasPesca(filtros = {}) {
+  const res = await axios.get(API_URL, { 
+    headers: getAuthHeaders(),
+    params: filtros
+  });
   return res.data;
 }
 

@@ -31,10 +31,60 @@ export const convertirDecimalADMS = (decimal, isLatitude = true) => {
   if (isLatitude) {
     dir = decimal >= 0 ? "N" : "S";
   } else {
-    dir = decimal >= 0 ? "E" : "O";
+    dir = decimal >= 0 ? "E" : "W";
   }
   
   return `${deg}° ${min}' ${sec.toFixed(2)}" ${dir}`;
+};
+
+/**
+ * Convierte coordenadas decimales a componentes DMS separados
+ * @param {number} decimal - Coordenada en formato decimal
+ * @param {boolean} isLatitude - true para latitud, false para longitud
+ * @returns {Object} Objeto con grados, minutos, segundos y dirección
+ */
+export const descomponerDMS = (decimal, isLatitude = true) => {
+  if (!decimal && decimal !== 0) {
+    return { grados: 0, minutos: 0, segundos: 0, direccion: isLatitude ? 'N' : 'E' };
+  }
+  
+  const abs = Math.abs(decimal);
+  const grados = Math.floor(abs);
+  const minFloat = (abs - grados) * 60;
+  const minutos = Math.floor(minFloat);
+  const segundos = (minFloat - minutos) * 60;
+  
+  let direccion;
+  if (isLatitude) {
+    direccion = decimal >= 0 ? "N" : "S";
+  } else {
+    direccion = decimal >= 0 ? "E" : "W";
+  }
+  
+  return { grados, minutos, segundos, direccion };
+};
+
+/**
+ * Convierte componentes DMS a formato decimal
+ * @param {number} grados - Grados
+ * @param {number} minutos - Minutos
+ * @param {number} segundos - Segundos
+ * @param {string} direccion - Dirección (N, S, E, O)
+ * @returns {number} Coordenada en formato decimal
+ */
+export const convertirDMSADecimal = (grados, minutos, segundos, direccion) => {
+  const deg = Number(grados) || 0;
+  const min = Number(minutos) || 0;
+  const sec = Number(segundos) || 0;
+  
+  let decimal = deg + (min / 60) + (sec / 3600);
+  
+  // Aplicar signo según dirección
+  if (direccion === 'S' || direccion === 'W') {
+    decimal = -decimal;
+  }
+  
+  return decimal;
 };
 
 /**

@@ -25,6 +25,7 @@ import CuentaCorriente from '../../pages/CuentaCorriente';
 import Activo from '../../pages/Activo';
 import DetallePermisoActivo from '../../pages/DetallePermisoActivo';
 import Especie from '../../pages/Especie';
+import DetCuotaPesca from '../../pages/DetCuotaPesca';
 import EstadoMultiFuncion from '../../pages/EstadoMultiFuncion';
 import PermisoAutorizacion from '../../pages/PermisoAutorizacion';
 import TipoActivo from '../../pages/TipoActivo';
@@ -130,6 +131,7 @@ export default function BaseLayout({ children, onLogout }) {
     temporadaPesca: { label: "Pesca Industrial", componente: <TemporadaPesca ruta="temporadaPesca" /> },
     novedadPescaConsumo: { label: "Pesca de Consumo", componente: <NovedadPescaConsumo ruta="novedadPescaConsumo" /> },
     especie: { label: "Especies", componente: <Especie ruta="especie" /> },
+    detCuotaPesca: { label: "Detalle Cuotas Pesca", componente: <DetCuotaPesca ruta="detCuotaPesca" /> },
     accionesPreviasFaena: { label: "Acciones previas Faena", componente: <AccionesPreviasFaena ruta="accionesPreviasFaena" /> },
     embarcacion: { label: "Embarcaciones", componente: <Embarcacion ruta="embarcacion" /> },
     tipoEmbarcacion: { label: "Tipo Embarcación", componente: <TipoEmbarcacion ruta="tipoEmbarcacion" /> },
