@@ -126,6 +126,16 @@ const PuertoPesca = () => {
     );
   };
 
+  const paisTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.esPuertoOtroPais ? "Extranjero" : "Nacional"}
+        severity={rowData.esPuertoOtroPais ? "info" : "warning"}
+        icon={rowData.esPuertoOtroPais ? "pi pi-globe" : "pi pi-flag"}
+      />
+    );
+  };
+
   const accionesTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
@@ -201,6 +211,7 @@ const PuertoPesca = () => {
         <Column field="latitud" header="Latitud" sortable />
         <Column field="longitud" header="Longitud" sortable />
         <Column field="activo" header="Estado" body={estadoTemplate} sortable />
+        <Column field="esPuertoOtroPais" header="Tipo" body={paisTemplate} sortable />
         <Column
           body={accionesTemplate}
           header="Acciones"

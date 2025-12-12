@@ -16,7 +16,7 @@ import { Tag } from "primereact/tag";
 import { confirmDialog } from "primereact/confirmdialog";
 import { Controller, useForm } from "react-hook-form";
 import { getResponsiveFontSize } from "../../utils/utils";
-import { capturarGPS, formatearCoordenadas } from "../../utils/gpsUtils";
+import { capturarGPS, formatearCoordenadas, descomponerDMS, convertirDMSADecimal } from "../../utils/gpsUtils";
 import {
   getCalasFaenaConsumoPorFaena,
   crearCalaFaenaConsumo,
@@ -45,6 +45,18 @@ export default function CalasConsumoCard({
   // Estados para GPS (string vacío como en DetalleCalasForm)
   const [latitud, setLatitud] = useState("");
   const [longitud, setLongitud] = useState("");
+
+  // Estados para formato DMS de latitud
+  const [latGrados, setLatGrados] = useState(0);
+  const [latMinutos, setLatMinutos] = useState(0);
+  const [latSegundos, setLatSegundos] = useState(0);
+  const [latDireccion, setLatDireccion] = useState("S");
+
+  // Estados para formato DMS de longitud
+  const [lonGrados, setLonGrados] = useState(0);
+  const [lonMinutos, setLonMinutos] = useState(0);
+  const [lonSegundos, setLonSegundos] = useState(0);
+  const [lonDireccion, setLonDireccion] = useState("W");
 
   // Estados para campos de fecha
   const [createdAt, setCreatedAt] = useState(null);
@@ -122,6 +134,40 @@ export default function CalasConsumoCard({
     embarcacionesProps,
     faenaData,
   ]);
+
+  // Sincronizar cambios de decimal a DMS
+  useEffect(() => {
+    if (latitud !== "" && latitud !== null && latitud !== undefined && latitud !== 0) {
+      const dms = descomponerDMS(Number(latitud), true);
+      setLatGrados(dms.grados);
+      setLatMinutos(dms.minutos);
+      setLatSegundos(parseFloat(dms.segundos.toFixed(2)));
+      setLatDireccion(dms.direccion);
+    }
+  }, [latitud]);
+
+  useEffect(() => {
+    if (longitud !== "" && longitud !== null && longitud !== undefined && longitud !== 0) {
+      const dms = descomponerDMS(Number(longitud), false);
+      setLonGrados(dms.grados);
+      setLonMinutos(dms.minutos);
+      setLonSegundos(parseFloat(dms.segundos.toFixed(2)));
+      setLonDireccion(dms.direccion);
+    }
+  }, [longitud]);
+
+  // Funciones para actualizar decimal cuando cambia DMS
+  const actualizarLatitudDesdeDMS = () => {
+    const decimal = convertirDMSADecimal(latGrados, latMinutos, latSegundos, latDireccion);
+    setLatitud(decimal);
+    setValueCala("latitud", decimal);
+  };
+
+  const actualizarLongitudDesdeDMS = () => {
+    const decimal = convertirDMSADecimal(lonGrados, lonMinutos, lonSegundos, lonDireccion);
+    setLongitud(decimal);
+    setValueCala("longitud", decimal);
+  };
 
   const cargarCalas = async () => {
     try {
@@ -398,20 +444,18 @@ export default function CalasConsumoCard({
 
   const accionesCalaTemplate = (rowData) => {
     return (
-      <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: "5px", flexWrap: "nowrap" }}>
         <Button
           icon="pi pi-pencil"
-          className="p-button-rounded p-button-success"
+          className="p-button-rounded p-button-success p-button-text"
           onClick={() => handleEditarCala(rowData)}
           tooltip="Editar"
-          size="small"
         />
         <Button
           icon="pi pi-trash"
-          className="p-button-rounded p-button-danger"
+          className="p-button-rounded p-button-danger p-button-text"
           onClick={() => handleEliminarCala(rowData)}
           tooltip="Eliminar"
-          size="small"
         />
       </div>
     );
@@ -527,6 +571,8 @@ export default function CalasConsumoCard({
           emptyMessage="No hay calas registradas"
           paginator
           rows={10}
+          showGridlines
+          stripedRows
           rowsPerPageOptions={[5, 10, 25]}
           className="datatable-responsive"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
@@ -718,31 +764,32 @@ export default function CalasConsumoCard({
             </div>
           </div>
 
-          {/* Componente de coordenadas GPS completo */}
+          {/* Coordenadas GPS - Formato compacto */}
           <div
             style={{
-              border: "6px solid #1fad2f",
-              backgroundColor: "#edf9f2",
+              border: "6px solid #0EA5E9",
               padding: "0.5rem",
               borderRadius: "8px",
               marginTop: "1rem",
               marginBottom: "1rem",
               display: "flex",
-              alignItems: "center",
+              alignItems: "self-end",
               gap: 10,
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
             <div style={{ flex: 1 }}>
-            <Button
+              <Button
                 type="button"
+                label="Capturar GPS"
+                icon="pi pi-map-marker"
+                className="p-button-info"
                 onClick={async (e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   try {
                     await capturarGPS(
                       async (latitude, longitude, accuracy) => {
-                        // Callback de éxito usando funciones genéricas
                         setLatitud(latitude);
                         setLongitud(longitude);
                         setValueCala("latitud", latitude);
@@ -751,14 +798,11 @@ export default function CalasConsumoCard({
                         toast.current?.show({
                           severity: "success",
                           summary: "GPS capturado",
-                          detail: `GPS capturado con precisión de ${accuracy.toFixed(
-                            1
-                          )}m. Presione Guardar para confirmar.`,
+                          detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m. Presione Guardar para confirmar.`,
                           life: 3000,
                         });
                       },
                       (errorMessage) => {
-                        // Callback de error usando funciones genéricas
                         toast.current?.show({
                           severity: "error",
                           summary: "Error",
@@ -772,98 +816,251 @@ export default function CalasConsumoCard({
                   }
                 }}
                 disabled={loading}
-                label="Capturar GPS"
-                icon="pi pi-map-marker"
-                className="p-button-success"
-                raised
-                severity="success"
-                size="large"
+                size="small"
               />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                Latitud
-              </label>
-              <input
-                type="number"
-                value={latitud || ""}
-                onChange={(e) => setLatitud(parseFloat(e.target.value) || "")}
-                disabled
-                step="0.000001"
-                placeholder="Ej: -12.345678"
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  fontSize: "14px",
-                }}
-              />
-              <small style={{ color: "#666" }}>
-                Formato decimal (+ Norte, - Sur)
-              </small>
             </div>
 
-            <div style={{ flex: 1 }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "bold",
-                }}
-              >
-                Longitud
-              </label>
-              <input
-                type="number"
-                value={longitud || ""}
-                onChange={(e) => setLongitud(parseFloat(e.target.value) || "")}
-                disabled
-                step="0.000001"
-                placeholder="Ej: -77.123456"
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  fontSize: "14px",
-                }}
-              />
-              <small style={{ color: "#666" }}>
-                Formato decimal (+ Este, - Oeste)
-              </small>
-            </div>
-
-            <div style={{ flex: 1 }}>
-              {/* Conversión a formato DMS para referencia usando funciones genéricas */}
-              {(latitud !== 0 || longitud !== 0) && (
-                <div
-                  style={{
-                    marginTop: "15px",
-                    padding: "10px",
-                    backgroundColor: "#f3fce8",
-                    borderRadius: "4px",
-                  }}
-                >
-                  <strong>📐 Formato DMS (Marítimo):</strong>
-                  <div style={{ marginTop: "5px", fontSize: "14px" }}>
-                    <div>
-                      <strong>Lat:</strong>{" "}
-                      {formatearCoordenadas(latitud, longitud).latitudDMS}
-                    </div>
-                    <div>
-                      <strong>Lon:</strong>{" "}
-                      {formatearCoordenadas(latitud, longitud).longitudDMS}
-                    </div>
-                  </div>
-                </div>
-              )}
+            {/* Tabla compacta de coordenadas GPS */}
+            <div style={{ flex: 3 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", border: "2px solid #0EA5E9" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#0EA5E9", color: "white" }}>
+                    <th style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Formato</th>
+                    <th colSpan="4" style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", textAlign: "center" }}>Latitud</th>
+                    <th colSpan="4" style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", textAlign: "center" }}>Longitud</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Fila Decimal */}
+                  <tr>
+                    <td style={{ padding: "4px", border: "1px solid #0EA5E9", fontWeight: "bold", fontSize: "11px", backgroundColor: "#e1f1f7", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Decimal</td>
+                    <td colSpan="4" style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <input
+                        type="number"
+                        value={latitud || ""}
+                        onChange={(e) => {
+                          const valor = parseFloat(e.target.value);
+                          setLatitud(isNaN(valor) ? "" : valor);
+                          setValueCala("latitud", isNaN(valor) ? null : valor);
+                        }}
+                        disabled={loading}
+                        step="0.000001"
+                        placeholder="-12.345678"
+                        style={{
+                          width: "100%",
+                          padding: "4px",
+                          border: "none",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                          textAlign: "center",
+                        }}
+                      />
+                    </td>
+                    <td colSpan="4" style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <input
+                        type="number"
+                        value={longitud || ""}
+                        onChange={(e) => {
+                          const valor = parseFloat(e.target.value);
+                          setLongitud(isNaN(valor) ? "" : valor);
+                          setValueCala("longitud", isNaN(valor) ? null : valor);
+                        }}
+                        disabled={loading}
+                        step="0.000001"
+                        placeholder="-77.123456"
+                        style={{
+                          width: "100%",
+                          padding: "4px",
+                          border: "none",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                          textAlign: "center",
+                        }}
+                      />
+                    </td>
+                  </tr>
+                  {/* Fila GMS */}
+                  <tr>
+                    <td style={{ padding: "4px", border: "1px solid #0EA5E9", fontWeight: "bold", fontSize: "11px", backgroundColor: "#e1f1f7", width: "75px", minWidth: "75px", maxWidth: "75px" }}>GMS</td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                        <input
+                          type="number"
+                          value={latGrados}
+                          onChange={(e) => setLatGrados(Number(e.target.value) || 0)}
+                          onBlur={actualizarLatitudDesdeDMS}
+                          disabled={loading}
+                          min="0"
+                          max="90"
+                          style={{
+                            width: "60px",
+                            padding: "4px",
+                            border: "none",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        />
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                        <input
+                          type="number"
+                          value={latMinutos}
+                          onChange={(e) => setLatMinutos(Number(e.target.value) || 0)}
+                          onBlur={actualizarLatitudDesdeDMS}
+                          disabled={loading}
+                          min="0"
+                          max="59"
+                          style={{
+                            width: "50px",
+                            padding: "4px",
+                            border: "none",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        />
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                        <input
+                          type="number"
+                          value={latSegundos}
+                          onChange={(e) => setLatSegundos(Number(e.target.value) || 0)}
+                          onBlur={actualizarLatitudDesdeDMS}
+                          disabled={loading}
+                          min="0"
+                          max="59.99"
+                          step="0.01"
+                          style={{
+                            width: "60px",
+                            padding: "4px",
+                            border: "none",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        />
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <select
+                        value={latDireccion}
+                        onChange={(e) => {
+                          setLatDireccion(e.target.value);
+                          setTimeout(actualizarLatitudDesdeDMS, 0);
+                        }}
+                        disabled={loading}
+                        style={{
+                          width: "100%",
+                          padding: "4px",
+                          border: "none",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                          textAlign: "center",
+                        }}
+                      >
+                        <option value="N">N</option>
+                        <option value="S">S</option>
+                      </select>
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                        <input
+                          type="number"
+                          value={lonGrados}
+                          onChange={(e) => setLonGrados(Number(e.target.value) || 0)}
+                          onBlur={actualizarLongitudDesdeDMS}
+                          disabled={loading}
+                          min="0"
+                          max="180"
+                          style={{
+                            width: "60px",
+                            padding: "4px",
+                            border: "none",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        />
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                        <input
+                          type="number"
+                          value={lonMinutos}
+                          onChange={(e) => setLonMinutos(Number(e.target.value) || 0)}
+                          onBlur={actualizarLongitudDesdeDMS}
+                          disabled={loading}
+                          min="0"
+                          max="59"
+                          style={{
+                            width: "50px",
+                            padding: "4px",
+                            border: "none",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        />
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                        <input
+                          type="number"
+                          value={lonSegundos}
+                          onChange={(e) => setLonSegundos(Number(e.target.value) || 0)}
+                          onBlur={actualizarLongitudDesdeDMS}
+                          disabled={loading}
+                          min="0"
+                          max="59.99"
+                          step="0.01"
+                          style={{
+                            width: "60px",
+                            padding: "4px",
+                            border: "none",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        />
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <select
+                        value={lonDireccion}
+                        onChange={(e) => {
+                          setLonDireccion(e.target.value);
+                          setTimeout(actualizarLongitudDesdeDMS, 0);
+                        }}
+                        disabled={loading}
+                        style={{
+                          width: "100%",
+                          padding: "4px",
+                          border: "none",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                          textAlign: "center",
+                        }}
+                      >
+                        <option value="E">E</option>
+                        <option value="W">W</option>
+                      </select>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 

@@ -22,6 +22,7 @@ import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
 import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
+import { ToggleButton } from "primereact/togglebutton";
 import { classNames } from "primereact/utils";
 import { crearPuertoPesca, actualizarPuertoPesca } from "../../api/puertoPesca";
 
@@ -62,6 +63,7 @@ const esquemaValidacion = yup.object().shape({
       return originalValue === "" ? null : value;
     }),
   activo: yup.boolean().default(true),
+  esPuertoOtroPais: yup.boolean().default(false),
 });
 
 const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
@@ -85,6 +87,7 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
       latitud: null,
       longitud: null,
       activo: true,
+      esPuertoOtroPais: false,
     },
   });
 
@@ -101,6 +104,12 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
         "activo",
         puertoPesca.activo !== undefined ? puertoPesca.activo : true
       );
+      setValue(
+        "esPuertoOtroPais",
+        puertoPesca.esPuertoOtroPais !== undefined
+          ? puertoPesca.esPuertoOtroPais
+          : false
+      );
     } else {
       reset({
         zona: "",
@@ -110,6 +119,7 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
         latitud: null,
         longitud: null,
         activo: true,
+        esPuertoOtroPais: false,
       });
     }
   }, [puertoPesca, setValue, reset]);
@@ -131,6 +141,7 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
         latitud: data.latitud,
         longitud: data.longitud,
         activo: Boolean(data.activo),
+        esPuertoOtroPais: Boolean(data.esPuertoOtroPais),
       };
 
       if (esEdicion) {
@@ -161,187 +172,259 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
-      <div className="p-grid p-formgrid">
-        {/* Campo Zona */}
-        <div className="p-col-12 p-md-6 p-field">
-          <label htmlFor="zona" className="p-d-block">
-            Zona <span className="p-error">*</span>
-          </label>
-          <Controller
-            name="zona"
-            control={control}
-            render={({ field }) => (
-              <InputText
-                id="zona"
-                {...field}
-                placeholder="Ingrese la zona del puerto"
-                className={getFieldClass("zona")}
-                maxLength={20}
-                style={{ textTransform: 'uppercase' }}
-              />
+      <div className="p-fluid">
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {/* Campo Zona */}
+          <div style={{ flex: 2 }}>
+            <label htmlFor="zona" className="p-d-block">
+              Zona <span className="p-error">*</span>
+            </label>
+            <Controller
+              name="zona"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  id="zona"
+                  {...field}
+                  placeholder="Ingrese la zona del puerto"
+                  className={getFieldClass("zona")}
+                  maxLength={20}
+                  style={{ textTransform: "uppercase" }}
+                />
+              )}
+            />
+            {errors.zona && (
+              <small className="p-error p-d-block">{errors.zona.message}</small>
             )}
-          />
-          {errors.zona && (
-            <small className="p-error p-d-block">{errors.zona.message}</small>
-          )}
+          </div>
+          {/* Campo Nombre */}
+          <div style={{ flex: 2 }}>
+            <label htmlFor="nombre" className="p-d-block">
+              Nombre <span className="p-error">*</span>
+            </label>
+            <Controller
+              name="nombre"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  id="nombre"
+                  {...field}
+                  placeholder="Ingrese el nombre del puerto"
+                  className={getFieldClass("nombre")}
+                  maxLength={100}
+                  style={{ textTransform: "uppercase" }}
+                />
+              )}
+            />
+            {errors.nombre && (
+              <small className="p-error p-d-block">
+                {errors.nombre.message}
+              </small>
+            )}
+          </div>
         </div>
 
-        {/* Campo Nombre */}
-        <div className="p-col-12 p-md-6 p-field">
-          <label htmlFor="nombre" className="p-d-block">
-            Nombre <span className="p-error">*</span>
-          </label>
-          <Controller
-            name="nombre"
-            control={control}
-            render={({ field }) => (
-              <InputText
-                id="nombre"
-                {...field}
-                placeholder="Ingrese el nombre del puerto"
-                className={getFieldClass("nombre")}
-                maxLength={100}
-                style={{ textTransform: 'uppercase' }}
-              />
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+{/* Campo Provincia */}
+          <div style={{ flex: 2 }}>
+            <label htmlFor="provincia" className="p-d-block">
+              Provincia
+            </label>
+            <Controller
+              name="provincia"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  id="provincia"
+                  {...field}
+                  placeholder="Ingrese la provincia"
+                  className={getFieldClass("provincia")}
+                  style={{ textTransform: "uppercase" }}
+                />
+              )}
+            />
+            {errors.provincia && (
+              <small className="p-error p-d-block">
+                {errors.provincia.message}
+              </small>
             )}
-          />
-          {errors.nombre && (
-            <small className="p-error p-d-block">{errors.nombre.message}</small>
-          )}
+          </div>
+
+          {/* Campo Departamento */}
+          <div style={{ flex: 2 }}>
+            <label htmlFor="departamento" className="p-d-block">
+              Departamento
+            </label>
+            <Controller
+              name="departamento"
+              control={control}
+              render={({ field }) => (
+                <InputText
+                  id="departamento"
+                  {...field}
+                  placeholder="Ingrese el departamento"
+                  className={getFieldClass("departamento")}
+                  style={{ textTransform: "uppercase" }}
+                />
+              )}
+            />
+            {errors.departamento && (
+              <small className="p-error p-d-block">
+                {errors.departamento.message}
+              </small>
+            )}
+          </div>
+
         </div>
 
-        {/* Campo Provincia */}
-        <div className="p-col-12 p-md-6 p-field">
-          <label htmlFor="provincia" className="p-d-block">
-            Provincia
-          </label>
-          <Controller
-            name="provincia"
-            control={control}
-            render={({ field }) => (
-              <InputText
-                id="provincia"
-                {...field}
-                placeholder="Ingrese la provincia"
-                className={getFieldClass("provincia")}
-                style={{ textTransform: 'uppercase' }}
-              />
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {/* Campo Latitud */}
+          <div style={{ flex: 2 }}>
+            <label htmlFor="latitud" className="p-d-block">
+              Latitud
+            </label>
+            <Controller
+              name="latitud"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  id="latitud"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  placeholder="Ingrese la latitud"
+                  className={getFieldClass("latitud")}
+                  mode="decimal"
+                  minFractionDigits={0}
+                  maxFractionDigits={8}
+                  min={-90}
+                  max={90}
+                />
+              )}
+            />
+            {errors.latitud && (
+              <small className="p-error p-d-block">
+                {errors.latitud.message}
+              </small>
             )}
-          />
-          {errors.provincia && (
-            <small className="p-error p-d-block">
-              {errors.provincia.message}
-            </small>
-          )}
+          </div>
+
+          {/* Campo Longitud */}
+          <div style={{ flex: 2 }}>
+            <label htmlFor="longitud" className="p-d-block">
+              Longitud
+            </label>
+            <Controller
+              name="longitud"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  id="longitud"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  placeholder="Ingrese la longitud"
+                  className={getFieldClass("longitud")}
+                  mode="decimal"
+                  minFractionDigits={0}
+                  maxFractionDigits={8}
+                  min={-180}
+                  max={180}
+                />
+              )}
+            />
+            {errors.longitud && (
+              <small className="p-error p-d-block">
+                {errors.longitud.message}
+              </small>
+            )}
+          </div>
         </div>
 
-        {/* Campo Departamento */}
-        <div className="p-col-12 p-md-6 p-field">
-          <label htmlFor="departamento" className="p-d-block">
-            Departamento
-          </label>
-          <Controller
-            name="departamento"
-            control={control}
-            render={({ field }) => (
-              <InputText
-                id="departamento"
-                {...field}
-                placeholder="Ingrese el departamento"
-                className={getFieldClass("departamento")}
-                style={{ textTransform: 'uppercase' }}
-              />
-            )}
-          />
-          {errors.departamento && (
-            <small className="p-error p-d-block">
-              {errors.departamento.message}
-            </small>
-          )}
-        </div>
 
-        {/* Campo Latitud */}
-        <div className="p-col-12 p-md-6 p-field">
-          <label htmlFor="latitud" className="p-d-block">
-            Latitud
-          </label>
-          <Controller
-            name="latitud"
-            control={control}
-            render={({ field }) => (
-              <InputNumber
-                id="latitud"
-                value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
-                placeholder="Ingrese la latitud"
-                className={getFieldClass("latitud")}
-                mode="decimal"
-                minFractionDigits={0}
-                maxFractionDigits={8}
-                min={-90}
-                max={90}
-              />
-            )}
-          />
-          {errors.latitud && (
-            <small className="p-error p-d-block">
-              {errors.latitud.message}
-            </small>
-          )}
-        </div>
 
-        {/* Campo Longitud */}
-        <div className="p-col-12 p-md-6 p-field">
-          <label htmlFor="longitud" className="p-d-block">
-            Longitud
-          </label>
-          <Controller
-            name="longitud"
-            control={control}
-            render={({ field }) => (
-              <InputNumber
-                id="longitud"
-                value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
-                placeholder="Ingrese la longitud"
-                className={getFieldClass("longitud")}
-                mode="decimal"
-                minFractionDigits={0}
-                maxFractionDigits={8}
-                min={-180}
-                max={180}
-              />
-            )}
-          />
-          {errors.longitud && (
-            <small className="p-error p-d-block">
-              {errors.longitud.message}
-            </small>
-          )}
-        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginTop:"1rem",
+            marginBottom: "1rem",
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
 
-        {/* Campo Activo */}
-        <div className="p-col-12 p-field">
-          <div className="p-field-checkbox">
+          {/* Campo Es Puerto de Otro País */}
+          <div style={{ flex: 2 }}>
+            <Controller
+              name="esPuertoOtroPais"
+              control={control}
+              render={({ field }) => (
+                <ToggleButton
+                  id="esPuertoOtroPais"
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.value)}
+                  onLabel="Puerto Internacional"
+                  offLabel="Puerto Nacional"
+                  onIcon="pi pi-globe"
+                  offIcon="pi pi-flag"
+                  className={`w-full ${
+                    field.value ? "p-button-info" : "p-button-warning"
+                  }`}
+                  style={{ fontWeight: "bold" }}
+                />
+              )}
+            />
+            {errors.esPuertoOtroPais && (
+              <small className="p-error p-d-block">
+                {errors.esPuertoOtroPais.message}
+              </small>
+            )}
+          </div>
+
+          {/* Campo Activo */}
+          <div style={{ flex: 2 }}>
             <Controller
               name="activo"
               control={control}
               render={({ field }) => (
-                <Checkbox
+                <ToggleButton
                   id="activo"
                   checked={field.value}
-                  onChange={(e) => field.onChange(e.checked)}
-                  className={getFieldClass("activo")}
+                  onChange={(e) => field.onChange(e.value)}
+                  onLabel="Activo"
+                  offLabel="Inactivo"
+                  onIcon="pi pi-check"
+                  offIcon="pi pi-times"
+                  className={`w-full ${
+                    field.value ? "p-button-success" : "p-button-danger"
+                  }`}
+                  style={{ fontWeight: "bold" }}
                 />
               )}
             />
-            <label htmlFor="activo" className="p-checkbox-label">
-              Activo
-            </label>
+            {errors.activo && (
+              <small className="p-error p-d-block">
+                {errors.activo.message}
+              </small>
+            )}
           </div>
-          {errors.activo && (
-            <small className="p-error p-d-block">{errors.activo.message}</small>
-          )}
         </div>
       </div>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>

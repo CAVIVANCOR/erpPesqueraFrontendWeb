@@ -88,6 +88,40 @@ const DescargaFaenaConsumoCard = ({
     setDescargaDialog(true);
   };
 
+  const eliminarDescarga = async (rowData) => {
+    try {
+      const confirmado = window.confirm(
+        "¿Está seguro de eliminar esta descarga? Esta acción no se puede deshacer."
+      );
+      if (!confirmado) return;
+
+      setLoadingData(true);
+      await eliminarDescargaFaenaConsumo(rowData.id);
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Descarga eliminada correctamente",
+        life: 3000,
+      });
+
+      await cargarDescargas();
+
+      if (onDescargaChange) {
+        onDescargaChange();
+      }
+    } catch (error) {
+      console.error("Error al eliminar descarga:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo eliminar la descarga",
+        life: 4000,
+      });
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
   const hideDialog = () => {
     setDescargaDialog(false);
     setEditingDescarga(null);
@@ -153,28 +187,25 @@ const DescargaFaenaConsumoCard = ({
 
   // Templates para las columnas
   const puertoTemplate = (rowData) => {
-    const puerto = puertos.find(p => Number(p.id) === Number(rowData.puertoDescargaId));
     return (
       <span style={{ fontWeight: "bold" }}>
-        {puerto?.nombre || "N/A"}
+        {rowData.puertoDescarga?.nombre || "N/A"}
       </span>
     );
   };
 
   const clienteTemplate = (rowData) => {
-    const cliente = clientes.find(c => Number(c.id) === Number(rowData.clienteId));
     return (
       <span style={{ fontWeight: "bold" }}>
-        {cliente?.razonSocial || "N/A"}
+        {rowData.cliente?.razonSocial || "N/A"}
       </span>
     );
   };
 
   const especieTemplate = (rowData) => {
-    const especie = especies.find(e => Number(e.id) === Number(rowData.especieId));
     return (
       <span style={{ fontWeight: "bold" }}>
-        {especie?.nombre || "N/A"}
+        {rowData.especie?.nombre || "N/A"}
       </span>
     );
   };
@@ -226,8 +257,7 @@ const DescargaFaenaConsumoCard = ({
   };
 
   const puertoFondeoTemplate = (rowData) => {
-    const puerto = puertos.find(p => p.id === rowData.puertoFondeoId);
-    return puerto ? puerto.nombre : "-";
+    return rowData.puertoFondeo?.nombre || "-";
   };
 
   const combustibleTemplate = (rowData) => {
@@ -238,12 +268,19 @@ const DescargaFaenaConsumoCard = ({
 
   const actionBodyTemplate = (rowData) => {
     return (
-      <div className="flex gap-2">
+      <div style={{ display: "flex", gap: "5px", flexWrap: "nowrap" }}>
         <Button
           icon="pi pi-pencil"
-          className="p-button-rounded p-button-success p-button-sm"
+          className="p-button-rounded p-button-success p-button-text"
           onClick={() => editDescarga(rowData)}
           tooltip="Editar"
+          tooltipOptions={{ position: "top" }}
+        />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-danger p-button-text"
+          onClick={() => eliminarDescarga(rowData)}
+          tooltip="Eliminar"
           tooltipOptions={{ position: "top" }}
         />
       </div>
@@ -331,13 +368,6 @@ const DescargaFaenaConsumoCard = ({
           style={{ minWidth: "60px", textAlign: "center", verticalAlign: "top" }}
         />
         <Column
-          field="fechaHoraFondeo"
-          header="Fecha/Hora Fondeo"
-          body={fechaHoraFondeoTemplate}
-          sortable
-          style={{ minWidth: "120px", verticalAlign: "top" }}
-        />
-        <Column
           field="puertoFondeo"
           header="Puerto Fondeo"
           body={puertoFondeoTemplate}
@@ -364,13 +394,6 @@ const DescargaFaenaConsumoCard = ({
           body={toneladasTemplate}
           sortable
           style={{ minWidth: "80px", verticalAlign: "top", fontWeight: "bold" }}
-        />
-        <Column
-          field="porcentajeJuveniles"
-          header="% Juveniles"
-          body={porcentajeJuvenilesTemplate}
-          sortable
-          style={{ minWidth: "60px", textAlign: "center", verticalAlign: "top" }}
         />
         <Column
           field="combustibleAbastecidoGalones"
@@ -411,7 +434,6 @@ const DescargaFaenaConsumoCard = ({
             especies={especies}
             onGuardadoExitoso={() => {
               cargarDescargas();
-              hideDialog();
               if (onDescargaChange) {
                 onDescargaChange();
               }

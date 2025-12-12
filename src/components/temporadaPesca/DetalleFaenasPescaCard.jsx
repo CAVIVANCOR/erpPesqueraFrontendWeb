@@ -34,6 +34,7 @@ import {
 import { getCalasPorFaena } from "../../api/cala";
 import { getDetalleCalaEspeciePorCala } from "../../api/detalleCalaEspecie";
 import { getPuertosPesca } from "../../api/puertoPesca";
+import { getDescargasPorFaena } from "../../api/descargaFaenaPesca";
 import {
   getResponsiveFontSize,
   createPorcentajeTemplate,
@@ -102,6 +103,7 @@ const DetalleFaenasPescaCard = forwardRef(
     const [calasData, setCalasData] = useState({}); // Nuevo estado para calas por faena
     const [expandedCalasRows, setExpandedCalasRows] = useState({}); // Estado para expansión de calas
     const [detallesEspecieData, setDetallesEspecieData] = useState({}); // Estado para detalles de especie por cala
+    const [descargasData, setDescargasData] = useState({}); // Estado para descargas por faena
 
     // Refs
     const toast = useRef(null);
@@ -486,6 +488,98 @@ const DetalleFaenasPescaCard = forwardRef(
       },
     ];
 
+    // Template para mostrar descargas de una faena
+    const descargasTemplate = (faenaData) => {
+      const descargas = descargasData[faenaData.id] || [];
+      const formatearFecha = (fecha) => {
+        if (!fecha) return "-";
+        return new Date(fecha).toLocaleString("es-ES", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      };
+
+      return (
+        <div className="p-3" style={{ marginBottom: "2rem" }}>
+          <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+            <Tag
+              value={`Descargas de Faena ${faenaData.id}`}
+              severity="success"
+              style={{
+                width: "100%",
+                color: "white",
+                fontSize: "1rem",
+                padding: "0.5rem",
+              }}
+            />
+          </div>
+          {descargas.length === 0 ? (
+            <p>No hay descargas registradas para esta faena</p>
+          ) : (
+            <DataTable
+              value={descargas}
+              dataKey="id"
+              className="datatable-responsive"
+              style={{ cursor: "no-drop", fontSize: getResponsiveFontSize() }}
+            >
+              <Column
+                field="id"
+                header="ID"
+                sortable
+                style={{ minWidth: "4rem" }}
+              />
+              <Column
+                field="puertoDescarga.nombre"
+                header="Puerto Descarga"
+                sortable
+                style={{ minWidth: "10rem" }}
+                body={(rowData) => {
+                  const puerto = puertosData.find(p => p.id === rowData.puertoDescargaId);
+                  return puerto ? puerto.nombre : "N/A";
+                }}
+              />
+              <Column
+                field="fechaHoraInicioDescarga"
+                header="Inicio Descarga"
+                sortable
+                style={{ minWidth: "10rem" }}
+                body={(rowData) => formatearFecha(rowData.fechaHoraInicioDescarga)}
+              />
+              <Column
+                field="fechaHoraFinDescarga"
+                header="Fin Descarga"
+                sortable
+                style={{ minWidth: "10rem" }}
+                body={(rowData) => formatearFecha(rowData.fechaHoraFinDescarga)}
+              />
+              <Column
+                field="toneladas"
+                header="Toneladas"
+                sortable
+                style={{ minWidth: "8rem" }}
+                body={(rowData) => {
+                  const tons = rowData.toneladas
+                    ? parseFloat(rowData.toneladas).toFixed(3)
+                    : "0.000";
+                  return `${tons} t`;
+                }}
+              />
+              <Column
+                field="cliente.razonSocial"
+                header="Cliente"
+                sortable
+                style={{ minWidth: "10rem" }}
+                body={(rowData) => rowData.cliente?.razonSocial || "N/A"}
+              />
+            </DataTable>
+          )}
+        </div>
+      );
+    };
+
     // Template de expansión para calas (tercer nivel)
     const calaExpansionTemplate = (calaData) => {
       const detallesEspecie = detallesEspecieData[calaData.id] || [];
@@ -497,7 +591,8 @@ const DetalleFaenasPescaCard = forwardRef(
               severity="info"
               style={{
                 width: "100%",
-                color: "white",
+                color: "black",
+                backgroundColor: "#fcd4ab",  // Naranja personalizado
               }}
             />
           </div>
@@ -601,6 +696,19 @@ const DetalleFaenasPescaCard = forwardRef(
 
       return (
         <div className="p-3">
+          {/* Sección de Calas */}
+          <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+            <Tag
+              value={`Calas de Faena ${data.id}`}
+              severity="warning"
+              style={{
+                width: "100%",
+                color: "black",
+                fontSize: "1rem",
+                padding: "0.5rem",
+              }}
+            />
+          </div>
           {calas.length === 0 ? (
             <p>No hay calas registradas para esta faena</p>
           ) : (
@@ -616,6 +724,7 @@ const DetalleFaenasPescaCard = forwardRef(
                       color: "black",
                       fontSize: "1rem",
                       padding: "0.5rem",
+                      backgroundColor: "#ff9800",  // Naranja personalizado
                     }}
                   />
                 </div>
@@ -685,6 +794,9 @@ const DetalleFaenasPescaCard = forwardRef(
               </div>
             ))
           )}
+
+          {/* Sección de Descargas */}
+          {descargasTemplate(data)}
         </div>
       );
     };
@@ -692,6 +804,8 @@ const DetalleFaenasPescaCard = forwardRef(
     // Funciones para expandir y contraer filas
     const onRowExpand = async (event) => {
       const faenaId = event.data.id;
+      
+      // Cargar calas si no existen
       if (!calasData[faenaId]) {
         try {
           const calas = await getCalasPorFaena(faenaId);
@@ -715,6 +829,32 @@ const DetalleFaenasPescaCard = forwardRef(
           });
         }
       }
+
+      // Cargar descargas si no existen
+      if (!descargasData[faenaId]) {
+        try {
+          const descargas = await getDescargasPorFaena(faenaId);
+          setDescargasData((prevDescargasData) => ({
+            ...prevDescargasData,
+            [faenaId]: descargas,
+          }));
+          toast.current?.show({
+            severity: "success",
+            summary: "Descargas Cargadas",
+            detail: `Descargas para faena ${faenaId}`,
+            life: 3000,
+          });
+        } catch (error) {
+          console.error("❌ Error cargando descargas:", error);
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "Error al cargar las descargas de la faena",
+            life: 3000,
+          });
+        }
+      }
+
       toast.current?.show({
         severity: "info",
         summary: "Faena Expandida",
@@ -760,7 +900,25 @@ const DetalleFaenasPescaCard = forwardRef(
           return { faenaId: faena.id, calas: calasData[faena.id] };
         });
 
+        // Cargar descargas para todas las faenas
+        const descargasPromises = faenas.map(async (faena) => {
+          if (!descargasData[faena.id]) {
+            try {
+              const descargas = await getDescargasPorFaena(faena.id);
+              return { faenaId: faena.id, descargas };
+            } catch (error) {
+              console.error(
+                `Error cargando descargas para faena ${faena.id}:`,
+                error
+              );
+              return { faenaId: faena.id, descargas: [] };
+            }
+          }
+          return { faenaId: faena.id, descargas: descargasData[faena.id] };
+        });
+
         const calasResults = await Promise.all(calasPromises);
+        const descargasResults = await Promise.all(descargasPromises);
 
         // Actualizar estado de calas
         const newCalasData = { ...calasData };
@@ -768,6 +926,13 @@ const DetalleFaenasPescaCard = forwardRef(
           newCalasData[faenaId] = calas;
         });
         setCalasData(newCalasData);
+
+        // Actualizar estado de descargas
+        const newDescargasData = { ...descargasData };
+        descargasResults.forEach(({ faenaId, descargas }) => {
+          newDescargasData[faenaId] = descargas;
+        });
+        setDescargasData(newDescargasData);
 
         // Expandir todas las calas y cargar especies
         let _expandedCalasRows = {};

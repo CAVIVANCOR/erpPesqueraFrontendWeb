@@ -75,8 +75,8 @@ export default function DescargaFaenaPescaForm({
     watch,
   } = useForm({
     defaultValues: {
-      faenaPescaId: faenaPescaId,
-      temporadaPescaId: temporadaPescaId,
+      faenaPescaId: null,
+      temporadaPescaId: null,
       puertoDescargaId: null,
       fechaHoraArriboPuerto: null,
       fechaHoraLlegadaPuerto: null,
@@ -182,7 +182,7 @@ export default function DescargaFaenaPescaForm({
         observaciones: detalle.observaciones || "",
         especieId: detalle.especieId ? Number(detalle.especieId) : null,
         toneladas: detalle.toneladas ? detalle.toneladas * 1000 : 0, // Convertir toneladas a kilogramos para mostrar
-        porcentajeJuveniles: detalle.porcentajeJuveniles || 0,
+        porcentajeJuveniles: detalle.porcentajeJuveniles ?? 0,
         numReporteRecepcion: detalle.numReporteRecepcion || "",
         fechaHoraFondeo: detalle.fechaHoraFondeo
           ? new Date(detalle.fechaHoraFondeo)
@@ -352,7 +352,7 @@ export default function DescargaFaenaPescaForm({
         observaciones: data.observaciones?.trim() || null,
         especieId: data.especieId ? Number(data.especieId) : null,
         toneladas: data.toneladas ? Number(data.toneladas) / 1000 : 0, // Convertir kilogramos a toneladas para guardar
-        porcentajeJuveniles: data.porcentajeJuveniles || 0,
+        porcentajeJuveniles: 0,
         numReporteRecepcion: data.numReporteRecepcion?.trim() || null,
         fechaHoraFondeo: data.fechaHoraFondeo
           ? data.fechaHoraFondeo.toISOString()
@@ -1160,36 +1160,6 @@ export default function DescargaFaenaPescaForm({
           />
           {errors.toneladas && (
             <Message severity="error" text={errors.toneladas.message} />
-          )}
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="porcentajeJuveniles">% Juveniles*</label>
-          <Controller
-            name="porcentajeJuveniles"
-            control={control}
-            rules={{ required: "El porcentaje de juveniles es obligatorio" }}
-            render={({ field }) => (
-              <InputNumber
-                id="porcentajeJuveniles"
-                value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                suffix=" %"
-                inputStyle={{ fontWeight: "bold" }}
-                disabled={loading}
-                className={classNames({
-                  "p-invalid": errors.porcentajeJuveniles,
-                })}
-              />
-            )}
-          />
-          {errors.porcentajeJuveniles && (
-            <Message
-              severity="error"
-              text={errors.porcentajeJuveniles.message}
-            />
           )}
         </div>
         <div style={{ flex: 1 }}>
