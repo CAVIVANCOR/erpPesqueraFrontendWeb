@@ -180,12 +180,22 @@ export default function PersonalForm({
     try {
       // Sube la foto usando el endpoint profesional
       const res = await subirFotoPersonal(defaultValues.id, file);
-      setValue("urlFotoPersona", res.foto, { shouldValidate: true });
+      
+      // Actualizar el campo del formulario
+      setValue("urlFotoPersona", res.foto, { shouldValidate: true, shouldDirty: true });
+      
       // Construye la URL profesional de la foto subida usando la variable general de uploads.
       const urlBackend = `${import.meta.env.VITE_UPLOADS_URL}/personal/${
         res.foto
       }`;
-      setFotoPreview(urlBackend);
+      
+      // Actualizar el preview con la URL del backend y agregar timestamp para forzar recarga
+      const urlConTimestamp = `${urlBackend}?t=${new Date().getTime()}`;
+      setFotoPreview(urlConTimestamp);
+      
+      // Liberar la URL local para evitar memory leaks
+      URL.revokeObjectURL(localUrl);
+      
       toastFoto.current?.show({
         severity: "success",
         summary: "Foto actualizada",
@@ -193,6 +203,12 @@ export default function PersonalForm({
         life: 3000,
       });
     } catch (err) {
+      // Restaurar el preview anterior en caso de error
+      const urlAnterior = defaultValues.urlFotoPersona
+        ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${defaultValues.urlFotoPersona}`
+        : null;
+      setFotoPreview(urlAnterior);
+      
       toastFoto.current?.show({
         severity: "error",
         summary: "Error",
@@ -833,39 +849,40 @@ export default function PersonalForm({
             }}
           >
             <ButtonGroup>
-              <div style={{ flex: 1 }}>
-                <Controller
-                  name="cesado"
-                  control={control}
-                  render={({ field }) => (
-                    <ToggleButton
-                      id="cesado"
-                      onLabel="CESADO"
-                      offLabel="ACTIVO"
-                      onIcon="pi pi-check"
-                      offIcon="pi pi-times"
-                      checked={field.value || false}
-                      onChange={(e) => field.onChange(e.value)}
-                      disabled={readOnly || loading}
-                    />
-                  )}
-                />
-                <Controller
-                  name="sexo"
-                  control={control}
-                  render={({ field }) => (
-                    <ToggleButton
-                      id="sexo"
-                      onLabel="Masculino"
-                      offLabel="Femenino"
-                      onIcon="pi pi-check"
-                      offIcon="pi pi-times"
-                      checked={field.value || false}
-                      onChange={(e) => field.onChange(e.value)}
-                      disabled={readOnly || loading}
-                    />
-                  )}
-                />
+              <Controller
+                name="cesado"
+                control={control}
+                render={({ field }) => (
+                  <Button
+                    type="button"
+                    id="cesado"
+                    label={field.value ? "CESADO" : "ACTIVO"}
+                    icon={field.value ? "pi pi-times" : "pi pi-check"}
+                    severity={field.value ? "danger" : "primary"}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      field.onChange(!field.value);
+                    }}
+                    disabled={readOnly || loading}
+                  />
+                )}
+              />
+              <Controller
+                name="sexo"
+                control={control}
+                render={({ field }) => (
+                  <ToggleButton
+                    id="sexo"
+                    onLabel="Masculino"
+                    offLabel="Femenino"
+                    onIcon="pi pi-check"
+                    offIcon="pi pi-times"
+                    checked={field.value || false}
+                    onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly || loading}
+                  />
+                )}
+              />
                 <Controller
                   name="esVendedor"
                   control={control}
@@ -914,7 +931,6 @@ export default function PersonalForm({
                     />
                   )}
                 />
-              </div>
             </ButtonGroup>
           </div>
           {/* Botones de acción */}

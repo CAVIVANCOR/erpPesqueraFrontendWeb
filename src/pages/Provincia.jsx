@@ -23,6 +23,7 @@ import { ConfirmDialog } from "primereact/confirmdialog";
 import { InputText } from "primereact/inputtext";
 import { getProvincias, eliminarProvincia } from "../api/provincia";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import ProvinciaForm from "../components/provincia/ProvinciaForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -35,7 +36,10 @@ const Provincia = () => {
   const [provinciaAEliminar, setProvinciaAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const permisos = usePermissions("Provincia");
   const [globalFilter, setGlobalFilter] = useState("");
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   useEffect(() => {
     cargarProvincias();
@@ -171,6 +175,7 @@ const Provincia = () => {
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              disabled={!permisos.puedeCrear}
             />
             <span className="p-input-icon-left">
               <InputText
@@ -212,6 +217,7 @@ const Provincia = () => {
           provincia={provinciaSeleccionada}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
+          readOnly={readOnly}
         />
       </Dialog>
 

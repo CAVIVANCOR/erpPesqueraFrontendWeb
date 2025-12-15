@@ -58,6 +58,8 @@ const NovedadPescaConsumoForm = ({
   empresas = [],
   tiposDocumento = [],
   onNovedadDataChange, // Callback para notificar cambios en datos de novedad
+  readOnly = false,
+  isEdit = false,
 }) => {
   // Estados principales
   const [activeCard, setActiveCard] = useState("datos-generales");
@@ -277,159 +279,200 @@ const handleFormSubmit = async (data) => {
    * Sistema profesional con loading state para evitar doble clic
    */
   const handleIniciarNovedad = () => {
-    // Prevenir si ya está procesando
-    if (iniciandoNovedadPesca) {
-      return;
-    }
+    const handleIniciarNovedadPesca = () => {
+      // Validar permisos
+      if (readOnly) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Acceso Denegado",
+          detail: "No tiene permisos para iniciar novedades.",
+          life: 3000,
+        });
+        return;
+      }
 
-    confirmDialog({
-      message:
-        "¿Está seguro de iniciar esta novedad de pesca? Esta acción creará los registros necesarios para faenas y entregas a rendir.",
-      header: "Confirmar Inicio de Novedad",
-      icon: "pi pi-exclamation-triangle",
-      acceptClassName: "p-button-success",
-      rejectClassName: "p-button-secondary",
-      acceptLabel: "Sí, Iniciar",
-      rejectLabel: "Cancelar",
-      accept: async () => {
-        setIniciandoNovedadPesca(true);
-        try {
-          toast.current?.show({
-            severity: "info",
-            summary: "Procesando",
-            detail: "Iniciando novedad de pesca, por favor espere...",
-            life: 3000,
-          });
+      if (iniciandoNovedadPesca) {
+        return;
+      }
 
-          await iniciarNovedadPescaConsumo(editingItem.id);
+      confirmDialog({
+        message:
+          "¿Está seguro de iniciar esta novedad de pesca? Esta acción creará los registros necesarios para faenas y entregas a rendir.",
+        header: "Confirmar Inicio de Novedad",
+        icon: "pi pi-exclamation-triangle",
+        acceptClassName: "p-button-success",
+        rejectClassName: "p-button-secondary",
+        acceptLabel: "Sí, Iniciar",
+        rejectLabel: "Cancelar",
+        accept: async () => {
+          setIniciandoNovedadPesca(true);
+          try {
+            toast.current?.show({
+              severity: "info",
+              summary: "Procesando",
+              detail: "Iniciando novedad de pesca, por favor espere...",
+              life: 3000,
+            });
 
-          toast.current?.show({
-            severity: "success",
-            summary: "Éxito",
-            detail: "Novedad de pesca iniciada correctamente",
-            life: 3000,
-          });
+            await iniciarNovedadPescaConsumo(editingItem.id);
 
-          // Notificar cambios al componente padre
-          if (onNovedadDataChange) {
-            const novedadActualizada = {
-              ...editingItem,
-              novedadPescaConsumoIniciada: true,
-            };
-            onNovedadDataChange(novedadActualizada);
+            toast.current?.show({
+              severity: "success",
+              summary: "Éxito",
+              detail: "Novedad de pesca iniciada correctamente",
+              life: 3000,
+            });
+
+            // Notificar cambios al componente padre
+            if (onNovedadDataChange) {
+              const novedadActualizada = {
+                ...editingItem,
+                novedadPescaConsumoIniciada: true,
+              };
+              onNovedadDataChange(novedadActualizada);
+            }
+
+            // Disparar eventos para actualizar otros componentes
+            window.dispatchEvent(
+              new CustomEvent("refreshFaenasConsumo", {
+                detail: { novedadId: editingItem.id },
+              })
+            );
+          } catch (error) {
+            console.error("Error iniciando novedad:", error);
+
+            // Extraer el mensaje de error del backend
+            let mensajeError = "Error al iniciar la novedad de pesca";
+
+            if (error.response?.data?.message) {
+              mensajeError = error.response.data.message;
+            } else if (error.message) {
+              mensajeError = error.message;
+            }
+
+            toast.current?.show({
+              severity: "error",
+              summary: "Error al Iniciar Novedad",
+              detail: mensajeError,
+              life: 5000,
+            });
+          } finally {
+            setIniciandoNovedadPesca(false);
           }
-
-          // Disparar eventos para actualizar otros componentes
-          window.dispatchEvent(
-            new CustomEvent("refreshFaenasConsumo", {
-              detail: { novedadId: editingItem.id },
-            })
-          );
-        } catch (error) {
-          console.error("Error iniciando novedad:", error);
-
-          // Extraer el mensaje de error del backend
-          let mensajeError = "Error al iniciar la novedad de pesca";
-
-          if (error.response?.data?.message) {
-            mensajeError = error.response.data.message;
-          } else if (error.message) {
-            mensajeError = error.message;
-          }
-
-          toast.current?.show({
-            severity: "error",
-            summary: "Error al Iniciar Novedad",
-            detail: mensajeError,
-            life: 5000,
-          });
-        } finally {
-          setIniciandoNovedadPesca(false);
-        }
-      },
-    });
+        },
+      });
+    };
+    handleIniciarNovedadPesca();
   };
 
     /**
    * Manejar finalización de novedad
    */
     const handleFinalizarNovedad = () => {
-      confirmDialog({
-        message: "¿Está seguro de finalizar esta novedad de pesca? Esta acción cambiará el estado a FINALIZADA.",
-        header: "Confirmar Finalización de Novedad",
-        icon: "pi pi-exclamation-triangle",
-        acceptClassName: "p-button-warning",
-        rejectClassName: "p-button-secondary",
-        acceptLabel: "Sí, Finalizar",
-        rejectLabel: "Cancelar",
-        accept: async () => {
-          try {
-            await finalizarNovedadPescaConsumo(editingItem.id);
-  
-            toast.current?.show({
-              severity: "success",
-              summary: "Éxito",
-              detail: "Novedad finalizada correctamente",
-              life: 3000,
-            });
-  
-            // Recargar datos actualizados
-            const novedadActualizada = await getNovedadPescaConsumoPorId(editingItem.id);
-            if (onNovedadDataChange && novedadActualizada) {
-              onNovedadDataChange(novedadActualizada);
+      const handleFinalizarNovedadPesca = () => {
+        // Validar permisos
+        if (readOnly) {
+          toast.current?.show({
+            severity: "warn",
+            summary: "Acceso Denegado",
+            detail: "No tiene permisos para finalizar novedades.",
+            life: 3000,
+          });
+          return;
+        }
+
+        confirmDialog({
+          message: "¿Está seguro de finalizar esta novedad de pesca? Esta acción cambiará el estado a FINALIZADA.",
+          header: "Confirmar Finalización de Novedad",
+          icon: "pi pi-exclamation-triangle",
+          acceptClassName: "p-button-warning",
+          rejectClassName: "p-button-secondary",
+          acceptLabel: "Sí, Finalizar",
+          rejectLabel: "Cancelar",
+          accept: async () => {
+            try {
+              await finalizarNovedadPescaConsumo(editingItem.id);
+
+              toast.current?.show({
+                severity: "success",
+                summary: "Éxito",
+                detail: "Novedad finalizada correctamente",
+                life: 3000,
+              });
+
+              // Recargar datos actualizados
+              const novedadActualizada = await getNovedadPescaConsumoPorId(editingItem.id);
+              if (onNovedadDataChange && novedadActualizada) {
+                onNovedadDataChange(novedadActualizada);
+              }
+            } catch (error) {
+              console.error("Error finalizando novedad:", error);
+              toast.current?.show({
+                severity: "error",
+                summary: "Error",
+                detail: "Error al finalizar la novedad",
+                life: 3000,
+              });
             }
-          } catch (error) {
-            console.error("Error finalizando novedad:", error);
-            toast.current?.show({
-              severity: "error",
-              summary: "Error",
-              detail: "Error al finalizar la novedad",
-              life: 3000,
-            });
-          }
-        },
-      });
+          },
+        });
+      };
+      handleFinalizarNovedadPesca();
     };
   
     /**
      * Manejar cancelación de novedad
      */
     const handleCancelarNovedad = () => {
-      confirmDialog({
-        message: "¿Está seguro de cancelar esta novedad de pesca? Esta acción cambiará el estado a CANCELADA.",
-        header: "Confirmar Cancelación de Novedad",
-        icon: "pi pi-exclamation-triangle",
-        acceptClassName: "p-button-danger",
-        rejectClassName: "p-button-secondary",
-        acceptLabel: "Sí, Cancelar",
-        rejectLabel: "No",
-        accept: async () => {
-          try {
-            await cancelarNovedadPescaConsumo(editingItem.id);
-  
-            toast.current?.show({
-              severity: "warn",
-              summary: "Novedad Cancelada",
-              detail: "Novedad cancelada correctamente",
-              life: 3000,
-            });
-  
-            // Recargar datos actualizados
-            const novedadActualizada = await getNovedadPescaConsumoPorId(editingItem.id);
-            if (onNovedadDataChange && novedadActualizada) {
-              onNovedadDataChange(novedadActualizada);
+      const handleCancelarNovedadPesca = () => {
+        // Validar permisos
+        if (readOnly) {
+          toast.current?.show({
+            severity: "warn",
+            summary: "Acceso Denegado",
+            detail: "No tiene permisos para cancelar novedades.",
+            life: 3000,
+          });
+          return;
+        }
+
+        confirmDialog({
+          message: "¿Está seguro de cancelar esta novedad de pesca? Esta acción cambiará el estado a CANCELADA.",
+          header: "Confirmar Cancelación de Novedad",
+          icon: "pi pi-exclamation-triangle",
+          acceptClassName: "p-button-danger",
+          rejectClassName: "p-button-secondary",
+          acceptLabel: "Sí, Cancelar",
+          rejectLabel: "No",
+          accept: async () => {
+            try {
+              await cancelarNovedadPescaConsumo(editingItem.id);
+
+              toast.current?.show({
+                severity: "warn",
+                summary: "Novedad Cancelada",
+                detail: "Novedad cancelada correctamente",
+                life: 3000,
+              });
+
+              // Recargar datos actualizados
+              const novedadActualizada = await getNovedadPescaConsumoPorId(editingItem.id);
+              if (onNovedadDataChange && novedadActualizada) {
+                onNovedadDataChange(novedadActualizada);
+              }
+            } catch (error) {
+              console.error("Error cancelando novedad:", error);
+              toast.current?.show({
+                severity: "error",
+                summary: "Error",
+                detail: "Error al cancelar la novedad",
+                life: 3000,
+              });
             }
-          } catch (error) {
-            console.error("Error cancelando novedad:", error);
-            toast.current?.show({
-              severity: "error",
-              summary: "Error",
-              detail: "Error al cancelar la novedad",
-              life: 3000,
-            });
-          }
-        },
-      });
+          },
+        });
+      };
+      handleCancelarNovedadPesca();
     };
 
   // Verificar si la novedad ya fue iniciada
@@ -516,7 +559,9 @@ const handleFormSubmit = async (data) => {
             className="p-button-success"
             onClick={handleIniciarNovedad}
             disabled={
-              editingItem?.novedadPescaConsumoIniciada || iniciandoNovedadPesca
+              readOnly ||
+              editingItem?.novedadPescaConsumoIniciada ||
+              iniciandoNovedadPesca
             }
             loading={iniciandoNovedadPesca}
             type="button"
@@ -541,6 +586,7 @@ const handleFormSubmit = async (data) => {
             tooltip="Finalizar novedad de pesca"
             type="button"
             size="small"
+            disabled={readOnly}
           />
         )}
 
@@ -556,6 +602,7 @@ const handleFormSubmit = async (data) => {
               tooltip="Cancelar novedad de pesca"
               type="button"
               size="small"
+              disabled={readOnly}
             />
           )}
 
@@ -566,10 +613,11 @@ const handleFormSubmit = async (data) => {
           onClick={handleHide}
         />
         <Button
-          label={editingItem ? "Actualizar" : "Crear"}
+          label={isEdit ? "Actualizar" : "Crear"}
           icon="pi pi-check"
           onClick={handleSubmit(handleFormSubmit)}
           loading={validandoSuperposicion}
+          disabled={readOnly}
         />
       </div>
     </div>
@@ -673,6 +721,7 @@ const handleFormSubmit = async (data) => {
             puertos={puertosPesca}
             novedadData={editingItem}
             onNovedadDataChange={onNovedadDataChange}
+            readOnly={readOnly}
           />
         )}
         {activeCard === "resolucion-pdf" && (
@@ -683,6 +732,7 @@ const handleFormSubmit = async (data) => {
             watch={watch}
             getValues={getValues}
             defaultValues={getValues()}
+            readOnly={readOnly}
           />
         )}
         {activeCard === "entregas-a-rendir" && (
@@ -697,6 +747,7 @@ const handleFormSubmit = async (data) => {
             tiposMovimiento={tiposMovimiento}
             tiposDocumento={tiposDocumento}
             onDataChange={onNovedadDataChange}
+            readOnly={readOnly}
           />
         )}
 

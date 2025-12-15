@@ -12,6 +12,7 @@ const PdfFotosAntesCard = ({
   setUrlFotosAntesPdf,
   toast,
   otMantenimientoId,
+  readOnly = false,
 }) => {
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
 
@@ -85,7 +86,7 @@ const PdfFotosAntesCard = ({
                 className="p-button-info"
                 size="small"
                 onClick={() => setMostrarCaptura(true)}
-                disabled={!otMantenimientoId}
+                disabled={readOnly || !otMantenimientoId}
               />
             </div>
           </div>

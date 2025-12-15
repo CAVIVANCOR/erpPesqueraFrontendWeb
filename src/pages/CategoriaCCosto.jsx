@@ -9,6 +9,7 @@ import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { FilterMatchMode } from "primereact/api";
+import { usePermissions } from "../hooks/usePermissions";
 import CategoriaCCostoForm from "../components/categoriaCCosto/CategoriaCCostoForm";
 import {
   getAllCategoriaCCosto,
@@ -37,6 +38,8 @@ export default function CategoriaCCosto() {
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const { usuario } = useAuthStore();
+  const permisos = usePermissions("CategoriaCCosto");
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   // Configuración de filtros para DataTable
   const [filters] = useState({
@@ -275,6 +278,7 @@ export default function CategoriaCCosto() {
           onSubmit={guardarCategoria}
           onCancel={cerrarDialog}
           loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

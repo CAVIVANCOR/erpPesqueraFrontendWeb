@@ -294,6 +294,16 @@ export default function MovimientoAlmacen({ ruta }) {
   };
 
   const handleDelete = (rowData) => {
+    // Validar permisos de eliminación
+    if (!permisos.puedeEliminar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar registros.",
+        life: 3000,
+      });
+      return;
+    }
     setToDelete(rowData);
     setShowConfirm(true);
   };
@@ -322,13 +332,32 @@ export default function MovimientoAlmacen({ ruta }) {
   };
 
   const handleFormSubmit = async (data) => {
+    // Verificar si es edición: editing tiene numeroDocumento (viene del backend)
+    // Si editing solo tiene { empresaId }, entonces es creación
+    const esEdicion = editing && editing.id && editing.numeroDocumento;
+
+    // Validar permisos antes de guardar
+    if (esEdicion && !permisos.puedeEditar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para editar registros.",
+        life: 3000,
+      });
+      return;
+    }
+    if (!esEdicion && !permisos.puedeCrear) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear registros.",
+        life: 3000,
+      });
+      return;
+    }
 
     setLoading(true);
     try {
-      // Verificar si es edición: editing tiene numeroDocumento (viene del backend)
-      // Si editing solo tiene { empresaId }, entonces es creación
-      const esEdicion = editing && editing.id && editing.numeroDocumento;
-      
       if (esEdicion) {
         const resultado = await actualizarMovimientoAlmacen(editing.id, data);
         toast.current.show({
@@ -581,8 +610,16 @@ export default function MovimientoAlmacen({ ruta }) {
         size="small"
         showGridlines
         stripedRows
-        onRowClick={(e) => handleEdit(e.data)}
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => handleEdit(e.data)
+            : undefined
+        }
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
         header={
           <div>
             {/* Primera fila */}
@@ -916,6 +953,7 @@ export default function MovimientoAlmacen({ ruta }) {
           loading={loading}
           toast={toast}
           permisos={permisos}
+          readOnly={!!editing && !!editing.numeroDocumento && !permisos.puedeEditar}
         />
       </Dialog>
 

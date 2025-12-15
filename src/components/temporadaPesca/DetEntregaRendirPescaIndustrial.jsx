@@ -41,6 +41,7 @@ export default function DetEntregaRendirPescaIndustrial({
   // Props de callbacks
   onSelectionChange,
   onDataChange,
+  readOnly = false,
 }) {
   // Estados locales para filtros
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
@@ -429,12 +430,14 @@ export default function DetEntregaRendirPescaIndustrial({
           className="p-button-text p-button-sm"
           onClick={() => handleEditarMovimiento(rowData)}
           aria-label="Editar"
+          disabled={readOnly || entregaARendir?.entregaLiquidada}
         />
         <Button
           icon="pi pi-trash"
           className="p-button-text p-button-danger p-button-sm"
           onClick={() => handleEliminarMovimiento(rowData)}
           aria-label="Eliminar"
+          disabled={readOnly || entregaARendir?.entregaLiquidada}
         />
       </div>
     );
@@ -452,7 +455,7 @@ export default function DetEntregaRendirPescaIndustrial({
           selection={selectedMovimientos}
           onSelectionChange={onSelectionChange}
           selectionMode="single"
-          onRowClick={(e) => handleEditarMovimiento(e.data)}
+          onRowClick={readOnly ? undefined : (e) => handleEditarMovimiento(e.data)}
           dataKey="id"
           loading={loading}
           paginator
@@ -483,6 +486,7 @@ export default function DetEntregaRendirPescaIndustrial({
                     severity="success"
                     onClick={handleNuevoMovimiento}
                     disabled={
+                      readOnly ||
                       !temporadaPescaIniciada ||
                       !entregaARendir ||
                       entregaARendir?.entregaLiquidada
@@ -533,7 +537,7 @@ export default function DetEntregaRendirPescaIndustrial({
                     severity="danger"
                     onClick={handleProcesarLiquidacion}
                     type="button"
-                    disabled={entregaARendir.entregaLiquidada}
+                    disabled={readOnly || entregaARendir.entregaLiquidada}
                     raised
                   />
                 </div>

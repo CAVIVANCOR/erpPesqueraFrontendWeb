@@ -23,6 +23,7 @@ export default function CategoriaCCostoForm({
   onSubmit,
   onCancel,
   loading,
+  readOnly = false,
 }) {
   const {
     control,
@@ -92,7 +93,7 @@ export default function CategoriaCCostoForm({
               id={field.name}
               {...field}
               autoFocus
-              disabled={loading}
+              disabled={loading || readOnly}
               className={classNames({ "p-invalid": fieldState.invalid })}
               placeholder="Ingrese el nombre de la categoría"
             />
@@ -112,7 +113,7 @@ export default function CategoriaCCostoForm({
               id={field.name}
               {...field}
               rows={3}
-              disabled={loading}
+              disabled={loading || readOnly}
               placeholder="Ingrese una descripción opcional"
             />
           )}
@@ -129,7 +130,7 @@ export default function CategoriaCCostoForm({
               inputId={field.name}
               checked={field.value}
               onChange={(e) => field.onChange(e.checked)}
-              disabled={loading}
+              disabled={loading || readOnly}
             />
           )}
         />

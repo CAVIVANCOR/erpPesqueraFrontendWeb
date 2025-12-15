@@ -28,7 +28,7 @@ const esquemaValidacion = yup.object().shape({
   paraVentas: yup.boolean().default(false),
 });
 
-const DestinoProductoForm = ({ destinoProducto, onGuardar, onCancelar }) => {
+const DestinoProductoForm = ({ destinoProducto, onGuardar, onCancelar, readOnly = false }) => {
   const [loading, setLoading] = useState(false);
   const esEdicion = !!destinoProducto;
 
@@ -107,9 +107,10 @@ const DestinoProductoForm = ({ destinoProducto, onGuardar, onCancelar }) => {
               <InputText
                 id="nombre"
                 {...field}
-                placeholder="Ingrese el nombre"
+                placeholder="Ingrese el nombre del destino"
                 className={getFieldClass("nombre")}
                 style={{ textTransform: 'uppercase' }}
+                disabled={readOnly}
                 autoFocus
               />
             )}
@@ -131,9 +132,10 @@ const DestinoProductoForm = ({ destinoProducto, onGuardar, onCancelar }) => {
               <InputText
                 id="descripcion"
                 {...field}
-                placeholder="Descripción del destino de producto (opcional)"
+                placeholder="Descripción del destino (opcional)"
                 className={getFieldClass("descripcion")}
                 style={{ textTransform: 'uppercase' }}
+                disabled={readOnly}
               />
             )}
           />
@@ -154,6 +156,7 @@ const DestinoProductoForm = ({ destinoProducto, onGuardar, onCancelar }) => {
                   checked={field.value}
                   onChange={(e) => field.onChange(e.checked)}
                   className={getFieldClass("activo")}
+                  disabled={readOnly}
                 />
                 <label htmlFor="activo" className="p-checkbox-label">
                   Destino de producto activo
@@ -175,6 +178,7 @@ const DestinoProductoForm = ({ destinoProducto, onGuardar, onCancelar }) => {
                   checked={field.value}
                   onChange={(e) => field.onChange(e.checked)}
                   className={getFieldClass("paraCompras")}
+                  disabled={readOnly}
                 />
                 <label htmlFor="paraCompras" className="p-checkbox-label">
                   Disponible para compras
@@ -196,6 +200,7 @@ const DestinoProductoForm = ({ destinoProducto, onGuardar, onCancelar }) => {
                   checked={field.value}
                   onChange={(e) => field.onChange(e.checked)}
                   className={getFieldClass("paraVentas")}
+                  disabled={readOnly}
                 />
                 <label htmlFor="paraVentas" className="p-checkbox-label">
                   Disponible para ventas
@@ -219,6 +224,7 @@ const DestinoProductoForm = ({ destinoProducto, onGuardar, onCancelar }) => {
           label={esEdicion ? "Actualizar" : "Crear"}
           icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
           loading={loading}
+          disabled={readOnly}
         />
       </div>
     </form>

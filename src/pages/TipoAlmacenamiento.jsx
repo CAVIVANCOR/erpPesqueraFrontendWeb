@@ -22,6 +22,7 @@ import {
   eliminarTipoAlmacenamiento,
 } from "../api/tipoAlmacenamiento";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import TipoAlmacenamientoForm from "../components/tipoAlmacenamiento/TipoAlmacenamientoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -33,6 +34,8 @@ import { getResponsiveFontSize } from "../utils/utils";
 const TipoAlmacenamiento = () => {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions("TipoAlmacenamiento");
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   // Estados del componente
   const [tiposAlmacenamiento, setTiposAlmacenamiento] = useState([]);
@@ -275,6 +278,7 @@ const TipoAlmacenamiento = () => {
               outlined
               raised
               onClick={abrirDialogoNuevo}
+              disabled={!permisos.puedeCrear}
             />
             <InputText
               type="search"
@@ -324,6 +328,8 @@ const TipoAlmacenamiento = () => {
           onSave={onGuardar}
           onCancel={cerrarDialogo}
           toast={toast}
+          loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

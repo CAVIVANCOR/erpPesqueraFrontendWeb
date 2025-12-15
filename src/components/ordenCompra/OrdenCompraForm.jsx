@@ -29,6 +29,8 @@ export default function OrdenCompraForm({
   onGenerarDesdeRequerimiento,
   loading,
   toast,
+  permisos = {},
+  readOnly = false,
 }) {
   const { usuario } = useAuthStore();
   
@@ -378,6 +380,7 @@ export default function OrdenCompraForm({
             totalIGV={totales.igv}
             total={totales.total}
             monedaOrden={defaultValues?.moneda}
+            readOnly={readOnly}
           />
         </TabPanel>
 
@@ -410,7 +413,8 @@ export default function OrdenCompraForm({
               icon="pi pi-save"
               className="p-button-primary"
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={readOnly || loading || !permisos.puedeEditar}
+              tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""}
             />
 
             {isEdit && (
@@ -420,14 +424,16 @@ export default function OrdenCompraForm({
                   icon="pi pi-check"
                   className="p-button-success"
                   onClick={handleAprobarClick}
-                  disabled={loading}
+                  disabled={readOnly || loading || !permisos.puedeEditar}
+                  tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para aprobar" : ""}
                 />
                 <Button
                   label="Anular"
                   icon="pi pi-ban"
                   className="p-button-danger"
                   onClick={handleAnularClick}
-                  disabled={loading}
+                  disabled={readOnly || loading || !permisos.puedeEliminar}
+                  tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEliminar ? "No tiene permisos para anular" : ""}
                 />
               </>
             )}

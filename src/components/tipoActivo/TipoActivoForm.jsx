@@ -45,7 +45,7 @@ const esquemaValidacion = yup.object().shape({
     .default(false),
 });
 
-const TipoActivoForm = ({ tipoActivo, onGuardar, onCancelar }) => {
+const TipoActivoForm = ({ tipoActivo, onGuardar, onCancelar, readOnly = false }) => {
   const [loading, setLoading] = React.useState(false);
   const esEdicion = !!tipoActivo;
 
@@ -144,6 +144,7 @@ const TipoActivoForm = ({ tipoActivo, onGuardar, onCancelar }) => {
                 className={getFieldClass("codigo")}
                 style={{ textTransform: 'uppercase' }}
                 autoFocus
+                disabled={readOnly}
               />
             )}
           />
@@ -167,6 +168,7 @@ const TipoActivoForm = ({ tipoActivo, onGuardar, onCancelar }) => {
                 placeholder="Ingrese el nombre"
                 className={getFieldClass("nombre")}
                 style={{ textTransform: 'uppercase' }}
+                disabled={readOnly}
               />
             )}
           />
@@ -190,6 +192,7 @@ const TipoActivoForm = ({ tipoActivo, onGuardar, onCancelar }) => {
                 placeholder="Descripción del tipo de activo (opcional)"
                 className={getFieldClass("descripcion")}
                 style={{ textTransform: 'uppercase' }}
+                disabled={readOnly}
               />
             )}
           />
@@ -210,6 +213,7 @@ const TipoActivoForm = ({ tipoActivo, onGuardar, onCancelar }) => {
                   checked={field.value}
                   onChange={(e) => field.onChange(e.checked)}
                   className={getFieldClass("cesado")}
+                  disabled={readOnly}
                 />
                 <label htmlFor="cesado" className="p-checkbox-label">
                   Tipo de activo cesado
@@ -236,6 +240,7 @@ const TipoActivoForm = ({ tipoActivo, onGuardar, onCancelar }) => {
           label={esEdicion ? "Actualizar" : "Crear"}
           icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
           loading={loading}
+          disabled={readOnly}
         />
       </div>
     </form>

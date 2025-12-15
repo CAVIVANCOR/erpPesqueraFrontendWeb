@@ -12,6 +12,7 @@ const PdfDocumentoAfectoOperacionCard = ({
   setUrlDocumentoMovCaja,
   toast,
   movimientoId,
+  readOnly = false,
 }) => {
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
 
@@ -85,6 +86,7 @@ const PdfDocumentoAfectoOperacionCard = ({
                 className="p-button-info"
                 size="small"
                 onClick={() => setMostrarCaptura(true)}
+                disabled={readOnly}
               />
             </div>
           </div>

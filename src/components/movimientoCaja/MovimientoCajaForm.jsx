@@ -27,6 +27,8 @@ export default function MovimientoCajaForm({
   cuentasEntidadComercial = [],
   estadosMultiFuncion = [],
   productos = [],
+  permisos = {},
+  readOnly = false,
 }) {
   const toast = useRef(null);
   
@@ -434,6 +436,7 @@ export default function MovimientoCajaForm({
           setProductoId={setProductoId}
           familiaFiltroId={familiaFiltroId}
           setFamiliaFiltroId={setFamiliaFiltroId}
+          readOnly={readOnly}
         />
       </div>
 
@@ -444,6 +447,7 @@ export default function MovimientoCajaForm({
           setUrlComprobanteOperacionMovCaja={setUrlComprobanteOperacionMovCaja}
           toast={toast}
           movimientoId={defaultValues.id}
+          readOnly={readOnly}
         />
       </div>
 
@@ -454,6 +458,7 @@ export default function MovimientoCajaForm({
           setUrlDocumentoMovCaja={setUrlDocumentoMovCaja}
           toast={toast}
           movimientoId={defaultValues.id}
+          readOnly={readOnly}
         />
       </div>
 
@@ -555,6 +560,8 @@ export default function MovimientoCajaForm({
             icon="pi pi-save"
             loading={loading}
             onClick={handleSubmit}
+            disabled={readOnly || !permisos.puedeEditar}
+            tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""}
             className="p-button-success"
             severity="success"
             raised

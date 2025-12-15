@@ -11,7 +11,9 @@ import { Dialog } from "primereact/dialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { InputText } from "primereact/inputtext";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import TipoDocumentoForm from "../components/tipoDocumento/TipoDocumentoForm";
+import { Navigate } from "react-router-dom";
 import {
   getTiposDocumento,
   crearTipoDocumento,
@@ -31,8 +33,15 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
  * - El usuario autenticado se obtiene siempre desde useAuthStore.
  */
-export default function TipoDocumento() {
+export default function TipoDocumento({ ruta }) {
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [confirmState, setConfirmState] = useState({
     visible: false,
     row: null,
@@ -307,7 +316,7 @@ export default function TipoDocumento() {
                   size="small"
                   outlined
                   onClick={onNew}
-                  disabled={loading}
+                  disabled={loading || !permisos.puedeCrear}
                 />
               </div>
             </div>
@@ -423,6 +432,7 @@ export default function TipoDocumento() {
           onSubmit={onSubmit}
           onCancel={onCancel}
           loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

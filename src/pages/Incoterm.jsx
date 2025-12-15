@@ -294,6 +294,7 @@ export default function Incoterm({ ruta }) {
           onSubmit={onSubmitForm}
           onCancel={() => setMostrarDialogo(false)}
           loading={formLoading}
+          readOnly={modoEdicion && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

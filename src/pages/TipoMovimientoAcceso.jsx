@@ -16,6 +16,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -31,6 +32,7 @@ import {
   cambiarEstadoTipoMovimiento,
 } from "../api/tipoMovimientoAcceso";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import TipoMovimientoAccesoForm from "../components/tipoMovimientoAcceso/TipoMovimientoAccesoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -38,9 +40,14 @@ import { getResponsiveFontSize } from "../utils/utils";
  * Componente TipoMovimientoAcceso
  * Pantalla principal para gestión de tipos de movimientos de acceso
  */
-const TipoMovimientoAcceso = () => {
+const TipoMovimientoAcceso = ({ ruta }) => {
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
 
   // Estados del componente
   const [tipos, setTipos] = useState([]);
@@ -128,12 +135,12 @@ const TipoMovimientoAcceso = () => {
    * Solo visible para superusuario o admin (regla transversal ERP Megui)
    */
   const confirmarEliminacion = (tipo) => {
-    // Control de roles según regla transversal ERP Megui
-    if (!usuario?.esSuperUsuario && !usuario?.esAdmin) {
+    if (!permisos.puedeEliminar) {
       toast.current?.show({
         severity: "warn",
         summary: "Acceso Denegado",
-        detail: "No tiene permisos para eliminar tipos de movimientos",
+        detail: "No tiene permisos para eliminar registros.",
+        life: 3000,
       });
       return;
     }
@@ -252,18 +259,18 @@ const TipoMovimientoAcceso = () => {
             ev.stopPropagation();
             editarTipo(rowData);
           }}
-          tooltip="Editar"
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          tooltip={permisos.puedeEditar ? 'Editar' : 'Ver'}
           tooltipOptions={{ position: "top" }}
         />
-        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-text p-button-danger"
-            onClick={() => confirmarEliminacion(rowData)}
-            tooltip="Eliminar"
-            tooltipOptions={{ position: "top" }}
-          />
-        )}
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger"
+          onClick={() => confirmarEliminacion(rowData)}
+          disabled={!permisos.puedeEliminar}
+          tooltip="Eliminar"
+          tooltipOptions={{ position: "top" }}
+        />
       </>
     );
   };
@@ -285,7 +292,7 @@ const TipoMovimientoAcceso = () => {
           filterDisplay="menu"
           globalFilterFields={["nombre", "descripcion"]}
           emptyMessage="No se encontraron tipos de movimientos de acceso"
-          onRowClick={(e) => editarTipo(e.data)}
+          onRowClick={(permisos.puedeVer || permisos.puedeEditar) ? (e) => editarTipo(e.data) : undefined}
           className="datatable-responsive"
           header={
             <div className="flex align-items-center gap-2">
@@ -295,7 +302,8 @@ const TipoMovimientoAcceso = () => {
                 icon="pi pi-plus"
                 className="p-button-success"
                 onClick={abrirDialogoNuevo}
-                tooltip="Nuevo Tipo de Movimiento de Acceso"
+                disabled={!permisos.puedeCrear}
+                tooltip={!permisos.puedeCrear ? 'No tiene permisos para crear' : 'Nuevo Tipo de Movimiento de Acceso'}
                 size="small"
                 outlined
                 raised
@@ -313,7 +321,7 @@ const TipoMovimientoAcceso = () => {
           }
           scrollable
           scrollHeight="600px"
-          style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+          style={{ cursor: (permisos.puedeVer || permisos.puedeEditar) ? "pointer" : "default", fontSize: getResponsiveFontSize() }}
         >
           <Column
             field="id"
@@ -370,6 +378,8 @@ const TipoMovimientoAcceso = () => {
           tipo={tipoSeleccionado}
           onSave={onGuardar}
           onCancel={cerrarDialogo}
+          permisos={permisos}
+          readOnly={!!tipoSeleccionado && !!tipoSeleccionado.id && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

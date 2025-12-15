@@ -50,7 +50,7 @@ const esquemaValidacion = yup.object().shape({
  * Formulario profesional para crear/editar unidades de medida
  * Patrón aplicado: React Hook Form + Yup, normalización, validaciones, feedback visual
  */
-const UnidadMedidaForm = ({ unidadMedida, onSave, onCancel, toast }) => {
+const UnidadMedidaForm = ({ unidadMedida, onSave, onCancel, toast, readOnly = false }) => {
   const modoEdicion = !!unidadMedida?.id;
 
   // Configuración de React Hook Form con Yup
@@ -184,7 +184,7 @@ const UnidadMedidaForm = ({ unidadMedida, onSave, onCancel, toast }) => {
                   id="nombre"
                   placeholder="Ingrese el nombre de la unidad"
                   className={errors.nombre ? "p-invalid" : ""}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || readOnly}
                   maxLength={60}
                   style={{ textTransform: "uppercase" }}
                   onChange={(e) => field.onChange(e.target.value.toUpperCase())}
@@ -210,7 +210,7 @@ const UnidadMedidaForm = ({ unidadMedida, onSave, onCancel, toast }) => {
                   id="simbolo"
                   placeholder="Ej: KG, M, L"
                   className={errors.simbolo ? "p-invalid" : ""}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || readOnly}
                   maxLength={20}
                   style={{ textTransform: "uppercase" }}
                   onChange={(e) => field.onChange(e.target.value.toUpperCase())}
@@ -237,7 +237,7 @@ const UnidadMedidaForm = ({ unidadMedida, onSave, onCancel, toast }) => {
                   value={value}
                   onValueChange={(e) => onChange(e.value)}
                   className={errors.factorConversion ? "p-invalid" : ""}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || readOnly}
                   mode="decimal"
                   minFractionDigits={0}
                   maxFractionDigits={6}
@@ -266,7 +266,7 @@ const UnidadMedidaForm = ({ unidadMedida, onSave, onCancel, toast }) => {
                     {...field}
                     inputId="esMedidaMetrica"
                     checked={field.value}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || readOnly}
                     className="mr-2"
                   />
                 )}
@@ -296,6 +296,7 @@ const UnidadMedidaForm = ({ unidadMedida, onSave, onCancel, toast }) => {
             raised
             size='small'
             loading={isSubmitting}
+            disabled={readOnly}
           />
       </div>
     </form>

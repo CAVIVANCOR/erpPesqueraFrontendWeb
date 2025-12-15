@@ -56,7 +56,7 @@ const esquemaValidacion = yup.object().shape({
     .default(false),
 });
 
-const ActivoForm = ({ activo, onGuardar, onCancelar }) => {
+const ActivoForm = ({ activo, onGuardar, onCancelar, readOnly = false }) => {
   const [loading, setLoading] = useState(false);
   const [tiposActivo, setTiposActivo] = useState([]);
   const [empresas, setEmpresas] = useState([]);
@@ -196,6 +196,7 @@ const ActivoForm = ({ activo, onGuardar, onCancelar }) => {
                 className={getFieldClass("empresaId")}
                 filter
                 showClear
+                disabled={readOnly}
               />
             )}
           />
@@ -222,6 +223,7 @@ const ActivoForm = ({ activo, onGuardar, onCancelar }) => {
                 className={getFieldClass("tipoId")}
                 filter
                 showClear
+                disabled={readOnly}
               />
             )}
           />
@@ -245,6 +247,7 @@ const ActivoForm = ({ activo, onGuardar, onCancelar }) => {
                 placeholder="Ingrese el nombre del activo"
                 className={getFieldClass("nombre")}
                 style={{ textTransform: 'uppercase' }}
+                disabled={readOnly}
               />
             )}
           />
@@ -268,6 +271,7 @@ const ActivoForm = ({ activo, onGuardar, onCancelar }) => {
                 placeholder="Descripción del activo (opcional)"
                 className={getFieldClass("descripcion")}
                 style={{ textTransform: 'uppercase' }}
+                disabled={readOnly}
               />
             )}
           />
@@ -288,6 +292,7 @@ const ActivoForm = ({ activo, onGuardar, onCancelar }) => {
                   checked={field.value}
                   onChange={(e) => field.onChange(e.checked)}
                   className={getFieldClass("cesado")}
+                  disabled={readOnly}
                 />
                 <label htmlFor="cesado" className="p-checkbox-label">
                   Activo cesado
@@ -314,6 +319,7 @@ const ActivoForm = ({ activo, onGuardar, onCancelar }) => {
           label={esEdicion ? "Actualizar" : "Crear"}
           icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
           loading={loading}
+          disabled={readOnly}
         />
       </div>
     </form>

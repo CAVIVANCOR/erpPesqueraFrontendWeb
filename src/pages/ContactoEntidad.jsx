@@ -11,6 +11,7 @@ import ContactoEntidadForm from "../components/contactoEntidad/ContactoEntidadFo
 import { getContactosEntidad, crearContactoEntidad, actualizarContactoEntidad, eliminarContactoEntidad } from "../api/contactoEntidad";
 import { getEntidadesComerciales } from "../api/entidadComercial";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 
 /**
  * Pantalla profesional para gestión de Contactos de Entidad.
@@ -22,7 +23,10 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
  * - Documentación de la regla en el encabezado.
  */
 export default function ContactoEntidad() {
+  const { user } = useAuthStore();
+  const permisos = usePermissions("ContactoEntidad");
   const toast = useRef(null);
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [items, setItems] = useState([]);
   const [entidades, setEntidades] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -126,7 +130,7 @@ export default function ContactoEntidad() {
       <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar este contacto?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
       <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
         <h2>Gestión de Contactos de Entidad</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
+        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading || !permisos.puedeCrear} />
       </div>
       <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
         <Column field="id" header="ID" style={{ width: 80 }} />
@@ -148,6 +152,7 @@ export default function ContactoEntidad() {
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

@@ -36,6 +36,8 @@ export default function RequerimientoCompraForm({
   onAutorizarCompra,
   loading,
   toast,
+  permisos = {},
+  readOnly = false,
 }) {
   const { usuario } = useAuthStore();
 
@@ -749,6 +751,7 @@ export default function RequerimientoCompraForm({
             totalIGV={totales.igv}
             total={totales.total}
             monedaRequerimiento={defaultValues?.moneda}
+            readOnly={readOnly}
           />
         </TabPanel>
 
@@ -768,6 +771,7 @@ export default function RequerimientoCompraForm({
             puedeEditar={puedeEditar}
             toast={toast}
             onCountChange={setCotizacionesCount}
+            readOnly={readOnly}
           />
         </TabPanel>
         
@@ -800,6 +804,8 @@ export default function RequerimientoCompraForm({
             tiposDocumento={tiposDocumento}
             puedeEditar={puedeEditar}
             onCountChange={setEntregasCount}
+            readOnly={readOnly}
+            permisos={permisos}
           />
         </TabPanel>
       </TabView>
@@ -823,14 +829,16 @@ export default function RequerimientoCompraForm({
                 icon="pi pi-check"
                 className="p-button-success"
                 onClick={handleAprobarClick}
-                disabled={loading}
+                disabled={readOnly || loading || !permisos.puedeEditar}
+                tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para aprobar" : ""}
               />
               <Button
                 label="Anular"
                 icon="pi pi-ban"
                 className="p-button-danger"
                 onClick={handleAnularClick}
-                disabled={loading}
+                disabled={readOnly || loading || !permisos.puedeEliminar}
+                tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEliminar ? "No tiene permisos para anular" : ""}
               />
             </>
           )}
@@ -842,7 +850,8 @@ export default function RequerimientoCompraForm({
               icon="pi pi-lock"
               className="p-button-warning"
               onClick={handleAutorizarCompraClick}
-              disabled={loading}
+              disabled={readOnly || loading || !permisos.puedeEditar}
+              tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para autorizar" : ""}
             />
           )}
         </div>
@@ -860,7 +869,8 @@ export default function RequerimientoCompraForm({
             label="Guardar"
             icon="pi pi-save"
             onClick={handleSubmit}
-            disabled={loading || !puedeEditar}
+            disabled={readOnly || loading || !puedeEditar}
+            tooltip={readOnly ? "Modo solo lectura" : !puedeEditar ? "No se puede editar" : ""}
           />
         </div>
       </div>

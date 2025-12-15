@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -22,19 +23,26 @@ import { ConfirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import { getTiposEquipo, eliminarTipoEquipo } from "../api/tipoEquipo";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import TipoEquipoForm from "../components/tipoEquipo/TipoEquipoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 import { InputText } from "primereact/inputtext";
 
-const TipoEquipo = () => {
+const TipoEquipo = ({ ruta }) => {
+  const toast = useRef(null);
+  const { usuario } = useAuthStore();
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const [tiposEquipo, setTiposEquipo] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [tipoEquipoSeleccionado, setTipoEquipoSeleccionado] = useState(null);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [tipoEquipoAEliminar, setTipoEquipoAEliminar] = useState(null);
-  const toast = useRef(null);
-  const { usuario } = useAuthStore();
   const [globalFilter, setGlobalFilter] = useState("");
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 // src/pages/AccesoInstalacion.jsx
 // Pantalla CRUD profesional para AccesoInstalacion. Cumple la regla transversal ERP Megui.
 import React, { useRef, useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -22,6 +23,7 @@ import { getEmpresas } from "../api/empresa";
 import { getSedes } from "../api/sedes";
 import { getPersonal } from "../api/personal";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 import { FcDocument, FcDisclaimer } from "react-icons/fc";
 /**
@@ -33,15 +35,22 @@ import { FcDocument, FcDisclaimer } from "react-icons/fc";
  * - Feedback visual con Toast.
  * - Documentación de la regla en el encabezado.
  */
-export default function AccesoInstalacion() {
+export default function AccesoInstalacion({ ruta }) {
   const toast = useRef(null);
+  const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore((state) => state.usuario);
   const [globalFilter, setGlobalFilter] = useState("");
   const [fechaDesde, setFechaDesde] = useState(null);
   const [fechaHasta, setFechaHasta] = useState(null);
@@ -278,6 +287,16 @@ export default function AccesoInstalacion() {
   };
 
   const handleDelete = (rowData) => {
+    // Validar permisos de eliminación
+    if (!permisos.puedeEliminar) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para eliminar registros.',
+        life: 3000,
+      });
+      return;
+    }
     setToDelete(rowData);
     setShowConfirm(true);
   };
@@ -352,9 +371,31 @@ export default function AccesoInstalacion() {
   };
 
   const handleSave = async (data) => {
+    const esEdicion = editing && editing.id;
+
+    // Validar permisos antes de guardar
+    if (esEdicion && !permisos.puedeEditar) {
+      toast.current.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para editar registros.',
+        life: 3000,
+      });
+      return;
+    }
+    if (!esEdicion && !permisos.puedeCrear) {
+      toast.current.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para crear registros.',
+        life: 3000,
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      if (editing && editing.id) {
+      if (esEdicion) {
         await actualizarAccesoInstalacion(editing.id, data);
         toast.current.show({
           severity: "success",
@@ -392,19 +433,19 @@ export default function AccesoInstalacion() {
             ev.stopPropagation();
             handleEdit(rowData);
           }}
-          tooltip="Editar"
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          tooltip={permisos.puedeEditar ? 'Editar' : 'Ver'}
         />
-        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-text p-button-danger p-button-rounded"
-            onClick={(ev) => {
-              ev.stopPropagation();
-              handleDelete(rowData);
-            }}
-            tooltip="Eliminar Registro"
-          />
-        )}
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger p-button-rounded"
+          onClick={(ev) => {
+            ev.stopPropagation();
+            handleDelete(rowData);
+          }}
+          disabled={!permisos.puedeEliminar}
+          tooltip="Eliminar Registro"
+        />
       </div>
     );
   };
@@ -676,24 +717,31 @@ export default function AccesoInstalacion() {
                       : "p-button-success p-button-outlined"
                   }
                   size="small"
-                  disabled={!empresaSeleccionada || !sedeSeleccionada}
+                  disabled={!permisos.puedeCrear || !empresaSeleccionada || !sedeSeleccionada}
+                  tooltip={
+                    !permisos.puedeCrear
+                      ? 'No tiene permisos para crear'
+                      : !empresaSeleccionada || !sedeSeleccionada
+                      ? 'Seleccione empresa y sede primero'
+                      : 'Nuevo Acceso'
+                  }
                   style={{
                     opacity:
-                      !empresaSeleccionada || !sedeSeleccionada ? 0.5 : 1,
+                      !permisos.puedeCrear || !empresaSeleccionada || !sedeSeleccionada ? 0.5 : 1,
                     cursor:
-                      !empresaSeleccionada || !sedeSeleccionada
+                      !permisos.puedeCrear || !empresaSeleccionada || !sedeSeleccionada
                         ? "not-allowed"
                         : "pointer",
                     backgroundColor:
-                      !empresaSeleccionada || !sedeSeleccionada
+                      !permisos.puedeCrear || !empresaSeleccionada || !sedeSeleccionada
                         ? "#f8f9fa"
                         : "",
                     borderColor:
-                      !empresaSeleccionada || !sedeSeleccionada
+                      !permisos.puedeCrear || !empresaSeleccionada || !sedeSeleccionada
                         ? "#dee2e6"
                         : "",
                     color:
-                      !empresaSeleccionada || !sedeSeleccionada
+                      !permisos.puedeCrear || !empresaSeleccionada || !sedeSeleccionada
                         ? "#6c757d"
                         : "",
                   }}
@@ -701,11 +749,6 @@ export default function AccesoInstalacion() {
                     setEditing(null);
                     setShowDialog(true);
                   }}
-                  tooltip={
-                    !empresaSeleccionada || !sedeSeleccionada
-                      ? "Seleccione empresa y sede para crear un nuevo acceso"
-                      : "Crear nuevo acceso"
-                  }
                 />
               </div>
               <div
@@ -931,6 +974,8 @@ export default function AccesoInstalacion() {
           }}
           empresaId={empresaSeleccionada}
           sedeId={sedeSeleccionada}
+          permisos={permisos}
+          readOnly={!!editing && !!editing.id && !permisos.puedeEditar}
         />
       </Dialog>
 

@@ -18,16 +18,25 @@ import { getTiposAlmacenamiento } from "../api/tipoAlmacenamiento";
 import { getTiposAlmacen } from "../api/tipoAlmacen";
 import { getEmpresas } from "../api/empresa";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
+import { Navigate } from "react-router-dom";
 
 /**
  * Página CRUD para Almacen
  * Cumple la regla transversal ERP Megui.
  * Documentado en español.
  */
-export default function Almacen() {
+export default function Almacen({ ruta }) {
   const { user } = useAuthStore();
+  const permisos = usePermissions(ruta);
   const toast = useRef(null);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [items, setItems] = useState([]);
   const [centrosAlmacen, setCentrosAlmacen] = useState([]);
   const [tiposAlmacenamiento, setTiposAlmacenamiento] = useState([]);
@@ -362,7 +371,7 @@ export default function Almacen() {
                   label="Nuevo"
                   icon="pi pi-plus"
                   onClick={handleNew}
-                  disabled={!empresaSeleccionada}
+                  disabled={!empresaSeleccionada || !permisos.puedeCrear}
                   style={{ marginTop: "1.8rem" }}
                 />
               </div>
@@ -591,6 +600,7 @@ export default function Almacen() {
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

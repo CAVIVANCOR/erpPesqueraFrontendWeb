@@ -23,17 +23,26 @@ import {
   eliminarUnidadMedida,
 } from "../api/unidadMedida";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import UnidadMedidaForm from "../components/unidadMedida/UnidadMedidaForm";
 import { getResponsiveFontSize } from "../utils/utils";
+import { Navigate } from "react-router-dom";
 
 /**
  * Componente UnidadMedida
  * Pantalla principal para gestión de unidades de medida
  * Patrón aplicado: Edición por clic en fila, eliminación profesional con confirmación, búsqueda global.
  */
-const UnidadMedida = () => {
+const UnidadMedida = ({ ruta }) => {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   // Estados del componente
   const [unidadesMedida, setUnidadesMedida] = useState([]);
@@ -286,6 +295,7 @@ const UnidadMedida = () => {
               outlined
               raised
               onClick={abrirDialogoNuevo}
+              disabled={!permisos.puedeCrear}
             />
             <InputText
               type="search"
@@ -356,6 +366,7 @@ const UnidadMedida = () => {
           onSave={onGuardar}
           onCancel={cerrarDialogo}
           toast={toast}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

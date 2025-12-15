@@ -11,6 +11,7 @@ import DireccionEntidadForm from "../components/direccionEntidad/DireccionEntida
 import { getDireccionesEntidad, crearDireccionEntidad, actualizarDireccionEntidad, eliminarDireccionEntidad } from "../api/direccionEntidad";
 import { getEntidadesComerciales } from "../api/entidadComercial";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 
 /**
  * Pantalla profesional para gestión de Direcciones de Entidad.
@@ -23,7 +24,9 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
  */
 export default function DireccionEntidad() {
   const toast = useRef(null);
+  const permisos = usePermissions("DireccionEntidad");
   const [items, setItems] = useState([]);
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [entidades, setEntidades] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
@@ -126,7 +129,7 @@ export default function DireccionEntidad() {
       <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar esta dirección?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
       <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
         <h2>Gestión de Direcciones de Entidad</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
+        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading || !permisos.puedeCrear} />
       </div>
       <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
         <Column field="id" header="ID" style={{ width: 80 }} />
@@ -148,6 +151,7 @@ export default function DireccionEntidad() {
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

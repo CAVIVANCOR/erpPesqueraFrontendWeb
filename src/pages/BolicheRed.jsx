@@ -25,6 +25,7 @@ import { InputText } from "primereact/inputtext";
 import { getAllBolicheRed, eliminarBolicheRed } from "../api/bolicheRed";
 import { getActivos } from "../api/activo";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import BolicheRedForm from "../components/bolicheRed/BolicheRedForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -38,7 +39,10 @@ const BolicheRed = () => {
   const [bolicheRedAEliminar, setBolicheRedAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const permisos = usePermissions("BolicheRed");
   const [globalFilter, setGlobalFilter] = useState("");
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   useEffect(() => {
     cargarDatos();
@@ -233,6 +237,7 @@ const BolicheRed = () => {
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              disabled={!permisos.puedeCrear}
             />
             <span className="p-input-icon-left">
               <InputText
@@ -274,6 +279,7 @@ const BolicheRed = () => {
           bolicheRed={bolicheRedSeleccionado}
           onGuardar={onGuardar}
           onCancelar={cerrarDialogo}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

@@ -3,6 +3,7 @@
 // - Edición por clic en fila, borrado seguro con roles, ConfirmDialog, Toast
 // - Autenticación JWT desde Zustand, normalización de IDs, documentación en español
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -40,8 +41,13 @@ import ColorTag from "../components/shared/ColorTag";
  * Gestión CRUD de pre-facturas con patrón profesional ERP Megui
  */
 const PreFactura = ({ ruta }) => {
-  const usuario = useAuthStore((state) => state.usuario);
+  const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
   const [items, setItems] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
@@ -249,13 +255,33 @@ const PreFactura = ({ ruta }) => {
   };
 
   const handleGuardarPreFactura = async (datos) => {
+    const esEdicion =
+      selectedPreFactura &&
+      selectedPreFactura.id &&
+      selectedPreFactura.numeroDocumento;
+
+    // Validar permisos antes de guardar
+    if (esEdicion && !permisos.puedeEditar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para editar registros.",
+        life: 3000,
+      });
+      return;
+    }
+    if (!esEdicion && !permisos.puedeCrear) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear registros.",
+        life: 3000,
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const esEdicion =
-        selectedPreFactura &&
-        selectedPreFactura.id &&
-        selectedPreFactura.numeroDocumento;
-
       if (esEdicion) {
         await actualizarPreFactura(selectedPreFactura.id, datos);
         toast.current.show({
@@ -340,6 +366,16 @@ const PreFactura = ({ ruta }) => {
   };
 
   const confirmarEliminacion = (preFactura) => {
+    // Validar permisos de eliminación
+    if (!permisos.puedeEliminar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar registros.",
+        life: 3000,
+      });
+      return;
+    }
     confirmDialog({
       message: `¿Está seguro de eliminar la pre-factura ${preFactura.id}?`,
       header: "Confirmar Eliminación",
@@ -370,7 +406,9 @@ const PreFactura = ({ ruta }) => {
   };
 
   const onRowClick = (event) => {
-    abrirDialogoEdicion(event.data);
+    if (permisos.puedeVer || permisos.puedeEditar) {
+      abrirDialogoEdicion(event.data);
+    }
   };
 
   const formatearMoneda = (valor) => {
@@ -477,22 +515,28 @@ const PreFactura = ({ ruta }) => {
   };
 
   const accionesTemplate = (rowData) => {
-    // Solo mostrar botón eliminar para superusuario o admin
-    const puedeEliminar = usuario?.esSuperUsuario || usuario?.esAdmin;
-
     return (
       <div className="flex gap-2">
-        {puedeEliminar && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-rounded p-button-danger p-button-sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              confirmarEliminacion(rowData);
-            }}
-            tooltip="Eliminar"
-          />
-        )}
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-rounded p-button-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            abrirDialogoEdicion(rowData);
+          }}
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+        />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-danger p-button-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            confirmarEliminacion(rowData);
+          }}
+          disabled={!permisos.puedeEliminar}
+          tooltip="Eliminar"
+        />
       </div>
     );
   };
@@ -526,8 +570,14 @@ const PreFactura = ({ ruta }) => {
           rowsPerPageOptions={[5, 10, 15, 20]}
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} pre-facturas"
-          style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
-          onRowClick={onRowClick}
+          style={{
+            cursor:
+              permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+            fontSize: getResponsiveFontSize(),
+          }}
+          onRowClick={
+            permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
+          }
           selectionMode="single"
           className="datatable-responsive"
           emptyMessage="No se encontraron pre-facturas"
@@ -571,7 +621,14 @@ const PreFactura = ({ ruta }) => {
                     icon="pi pi-plus"
                     onClick={abrirDialogoNuevo}
                     className="p-button-primary"
-                    disabled={loading || !empresaSeleccionada}
+                    disabled={!permisos.puedeCrear || loading || !empresaSeleccionada}
+                    tooltip={
+                      !permisos.puedeCrear
+                        ? "No tiene permisos para crear"
+                        : !empresaSeleccionada
+                        ? "Seleccione una empresa primero"
+                        : "Nueva Pre-Factura"
+                    }
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -737,6 +794,8 @@ const PreFactura = ({ ruta }) => {
           onCancel={cerrarDialogo}
           loading={loading}
           toast={toast}
+          permisos={permisos}
+          readOnly={!!selectedPreFactura && !!selectedPreFactura.numeroDocumento && !permisos.puedeEditar}
           empresas={empresas}
           tiposDocumento={tiposDocumento}
           clientes={clientes}

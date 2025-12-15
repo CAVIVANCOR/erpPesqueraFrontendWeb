@@ -63,6 +63,7 @@ export default function MovimientoAlmacenForm({
   loading,
   toast, // Toast ref pasado desde el componente padre
   permisos = {}, // Permisos del usuario
+  readOnly = false, // Modo solo lectura
 }) {
     // Estados de la cabecera - Conforme al modelo MovimientoAlmacen
   const [empresaId, setEmpresaId] = useState(defaultValues.empresaId || null);
@@ -758,7 +759,7 @@ export default function MovimientoAlmacenForm({
                 optionLabel="label"
                 optionValue="value"
                 placeholder="Seleccionar empresa"
-                disabled={loading || !!empresaFija || isEdit || detalles.length > 0}
+                disabled={readOnly || loading || !!empresaFija || isEdit || detalles.length > 0}
                 required
                 style={{
                   fontWeight: "bold",
@@ -775,7 +776,7 @@ export default function MovimientoAlmacenForm({
                 dateFormat="dd/mm/yy"
                 showIcon
                 required
-                disabled={loading}
+                disabled={readOnly || loading}
                 inputStyle={{
                   fontWeight: "bold",
                   textTransform: "uppercase",
@@ -792,7 +793,7 @@ export default function MovimientoAlmacenForm({
                 optionLabel="label"
                 optionValue="value"
                 placeholder="Seleccionar tipo"
-                disabled={loading || detalles.length > 0}
+                disabled={readOnly || loading || detalles.length > 0}
                 required
                 style={{
                   fontWeight: "bold",
@@ -833,7 +834,7 @@ export default function MovimientoAlmacenForm({
                 optionLabel="label"
                 optionValue="value"
                 placeholder="Seleccionar concepto"
-                disabled={loading || detalles.length > 0}
+                disabled={readOnly || loading || detalles.length > 0}
                 required
                 style={{
                   fontWeight: "bold",
@@ -848,7 +849,6 @@ export default function MovimientoAlmacenForm({
                 id="esCustodia"
                 label={esCustodia ? "CUSTODIA" : "PROPIA"}
                 className={esCustodia ? "p-button-danger" : "p-button-success"}
-                disabled
                 style={{
                   fontWeight: "bold",
                   width: "100%",
@@ -1554,7 +1554,7 @@ export default function MovimientoAlmacenForm({
             }}
             estadosMercaderia={estadosMercaderia}
             estadosCalidad={estadosCalidad}
-            readOnly={documentoCerrado}
+            readOnly={documentoCerrado || readOnly || !permisos.puedeEditar}
             onSave={async (detalleData) => {
               if (defaultValues?.id) {
                 await recargarDetalles();
@@ -1636,6 +1636,7 @@ export default function MovimientoAlmacenForm({
             puedeEditar={!documentoCerrado && permisos.puedeEditar}
             onCountChange={setEntregasCount}
             permisos={permisos}
+            readOnly={readOnly}
           />
         </TabPanel>
       </TabView>
@@ -1668,13 +1669,13 @@ export default function MovimientoAlmacenForm({
             label="Cerrar Documento"
             icon="pi pi-lock"
             onClick={() => onCerrar && onCerrar(defaultValues.id)}
-            disabled={loading || !permisos.puedeEditar}
+            disabled={loading || readOnly || !permisos.puedeEditar}
             className="p-button-success"
             severity="success"
             raised
             size="small"
             outlined
-            tooltip={!permisos.puedeEditar ? "No tiene permisos para cerrar documentos (requiere permiso de Editar)" : "Cerrar el documento (no se podrá editar)"}
+            tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para cerrar documentos (requiere permiso de Editar)" : "Cerrar el documento (no se podrá editar)"}
             tooltipOptions={{ position: "top" }}
           />
         )}
@@ -1686,13 +1687,13 @@ export default function MovimientoAlmacenForm({
             label="Anular Documento"
             icon="pi pi-times-circle"
             onClick={() => onAnular && onAnular(defaultValues.id, defaultValues.empresaId)}
-            disabled={loading || !permisos.puedeEliminar}
+            disabled={loading || readOnly || !permisos.puedeEliminar}
             className="p-button-danger"
             severity="danger"
             raised
             size="small"
             outlined
-            tooltip={!permisos.puedeEliminar ? "No tiene permisos para anular documentos (requiere permiso de Eliminar)" : "Anular el documento y revertir kardex"}
+            tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEliminar ? "No tiene permisos para anular documentos (requiere permiso de Eliminar)" : "Anular el documento y revertir kardex"}
             tooltipOptions={{ position: "top" }}
           />
         )}
@@ -1720,14 +1721,16 @@ export default function MovimientoAlmacenForm({
           label={isEdit ? "Actualizar" : "Crear"}
           icon="pi pi-save"
           loading={loading}
-          disabled={isEdit ? !permisos.puedeEditar : !permisos.puedeCrear}
+          disabled={readOnly || (isEdit ? !permisos.puedeEditar : !permisos.puedeCrear)}
           className="p-button-success"
           severity="success"
           raised
           size="small"
           outlined
           tooltip={
-            isEdit 
+            readOnly
+              ? "Modo solo lectura"
+              : isEdit 
               ? (!permisos.puedeEditar ? "No tiene permisos para editar" : "")
               : (!permisos.puedeCrear ? "No tiene permisos para crear" : "")
           }

@@ -13,6 +13,7 @@ export default function CentroCostoForm({
   onSubmit,
   onCancel,
   loading,
+  readOnly = false,
 }) {
   const [codigo, setCodigo] = React.useState(defaultValues.Codigo || "");
   const [nombre, setNombre] = React.useState(defaultValues.Nombre || "");
@@ -71,7 +72,7 @@ export default function CentroCostoForm({
           optionLabel="nombre"
           optionValue="id"
           placeholder="Seleccionar categoría"
-          disabled={loading}
+          disabled={loading || readOnly}
           style={{ fontWeight: "bold" }}
           required
         />
@@ -82,7 +83,7 @@ export default function CentroCostoForm({
           id="parentCentroID"
           value={parentCentroID}
           onChange={(e) => setParentCentroID(e.target.value.toUpperCase())}
-          disabled={loading}
+          disabled={loading || readOnly}
           maxLength={20}
           style={{ fontWeight: "bold" }}
         />
@@ -95,7 +96,7 @@ export default function CentroCostoForm({
           value={codigo}
           onChange={(e) => setCodigo(e.target.value.toUpperCase())}
           required
-          disabled={loading}
+          disabled={loading || readOnly}
           maxLength={20}
           style={{ fontWeight: "bold" }}
         />
@@ -107,7 +108,7 @@ export default function CentroCostoForm({
           value={nombre}
           onChange={(e) => setNombre(e.target.value.toUpperCase())}
           required
-          disabled={loading}
+          disabled={loading || readOnly}
           maxLength={255}
           style={{ fontWeight: "bold" }}
         />
@@ -119,7 +120,7 @@ export default function CentroCostoForm({
           value={descripcion}
           onChange={(e) => setDescripcion(e.target.value.toUpperCase())}
           rows={3}
-          disabled={loading}
+          disabled={loading || readOnly}
           style={{ fontWeight: "bold" }}
         />
       </div>
@@ -146,10 +147,10 @@ export default function CentroCostoForm({
         />
         <Button
           type="submit"
-          label={isEdit ? "Actualizar" : "Crear"}
-          icon="pi pi-save"
-          className="p-button-success"
+          label="Guardar"
+          icon="pi pi-check"
           loading={loading}
+          disabled={readOnly}
           severity="success"
           raised
           outlined

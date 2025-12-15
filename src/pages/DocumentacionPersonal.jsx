@@ -3,6 +3,7 @@
 // Sigue el patrón estándar de DocumentacionEmbarcacion.jsx con templates profesionales y control de roles.
 
 import React, { useEffect, useState, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -24,6 +25,7 @@ import { getDocumentosPesca } from "../api/documentoPesca";
 import { getEmpresas } from "../api/empresa";
 import { getCargosPersonal } from "../api/cargosPersonal";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 import { recalcularDocPersonalVencidos } from "../utils/documentacionPersonalUtils";
 import { abrirPdfEnNuevaPestana } from "../utils/pdfUtils";
@@ -32,14 +34,20 @@ import { abrirPdfEnNuevaPestana } from "../utils/pdfUtils";
  * Página de gestión de documentación de personal.
  * Cumple la regla transversal ERP Megui:
  * - Edición profesional por clic en fila (abre modal).
- * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin), usando useAuthStore.
+ * - Control de permisos mediante usePermissions.
  * - Confirmación de borrado con ConfirmDialog visual rojo.
  * - Feedback visual con Toast.
  * - Documentación de la regla en el encabezado.
  */
-export default function DocumentacionPersonal() {
+export default function DocumentacionPersonal({ ruta }) {
   // Obtener usuario autenticado para control de permisos
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
 
   const [documentaciones, setDocumentaciones] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -54,6 +62,8 @@ export default function DocumentacionPersonal() {
   const [filtroDocumentoPesca, setFiltroDocumentoPesca] = useState(null);
   const [filtroCargo, setFiltroCargo] = useState(null);
   const [filtroEstadoDoc, setFiltroEstadoDoc] = useState("todos");
+  const [filtroEmpresa, setFiltroEmpresa] = useState(null);
+  const [filtroTipoPesca, setFiltroTipoPesca] = useState("todos");
 
   // Estados para combos de referencia
   const [personal, setPersonal] = useState([]);
@@ -316,6 +326,14 @@ export default function DocumentacionPersonal() {
   };
 
   const onSubmit = async (data) => {
+    // Validar permisos antes de guardar
+    if (isEdit && !permisos.puedeEditar) {
+      return;
+    }
+    if (!isEdit && !permisos.puedeCrear) {
+      return;
+    }
+
     setLoading(true);
     try {
       if (isEdit && selected?.id) {
@@ -390,6 +408,11 @@ export default function DocumentacionPersonal() {
       };
     })
     .filter((doc) => {
+      // Buscar la persona para aplicar todos los filtros
+      const persona = personal.find(
+        (p) => Number(p.id) === Number(doc.personalId)
+      );
+
       // Aplicar filtros
       const filtroPersonalMatch = filtroPersonal
         ? Number(doc.personalId) === Number(filtroPersonal)
@@ -397,14 +420,23 @@ export default function DocumentacionPersonal() {
       const filtroDocumentoMatch = filtroDocumentoPesca
         ? Number(doc.documentoPescaId) === Number(filtroDocumentoPesca)
         : true;
-
-      // Buscar la persona para obtener su cargoId
-      const persona = personal.find(
-        (p) => Number(p.id) === Number(doc.personalId)
-      );
       const filtroCargoMatch = filtroCargo
         ? Number(persona?.cargoId) === Number(filtroCargo)
         : true;
+
+      // Filtro por empresa (usando la relación personal.empresaId)
+      const filtroEmpresaMatch = filtroEmpresa
+        ? Number(persona?.empresaId) === Number(filtroEmpresa)
+        : true;
+
+      // Filtro por tipo de pesca
+      let filtroTipoPescaMatch = true;
+      if (filtroTipoPesca === "temporada") {
+        filtroTipoPescaMatch = persona?.paraTemporadaPesca === true;
+      } else if (filtroTipoPesca === "consumo") {
+        filtroTipoPescaMatch = persona?.paraPescaConsumo === true;
+      }
+      // Si filtroTipoPesca === "todos", no filtramos
 
       // Aplicar filtro de estado de documento
       const filtroEstadoMatch =
@@ -416,9 +448,79 @@ export default function DocumentacionPersonal() {
         filtroPersonalMatch &&
         filtroDocumentoMatch &&
         filtroCargoMatch &&
+        filtroEmpresaMatch &&
+        filtroTipoPescaMatch &&
         filtroEstadoMatch
       );
     });
+
+  // Listas dinámicas filtradas para los dropdowns
+  const personalFiltrado = personal.filter((p) => {
+    // Filtrar por empresa si está seleccionada
+    const empresaMatch = filtroEmpresa
+      ? Number(p.empresaId) === Number(filtroEmpresa)
+      : true;
+    
+    // Filtrar por tipo de pesca si está seleccionado
+    let tipoPescaMatch = true;
+    if (filtroTipoPesca === "temporada") {
+      tipoPescaMatch = p.paraTemporadaPesca === true;
+    } else if (filtroTipoPesca === "consumo") {
+      tipoPescaMatch = p.paraPescaConsumo === true;
+    }
+    
+    return empresaMatch && tipoPescaMatch;
+  });
+
+  // Obtener IDs únicos de documentos que existen en la lista actual
+  const documentosEnLista = [...new Set(
+    documentaciones
+      .filter((doc) => {
+        const persona = personal.find(
+          (p) => Number(p.id) === Number(doc.personalId)
+        );
+        
+        // Aplicar filtros de empresa y tipo de pesca
+        const empresaMatch = filtroEmpresa
+          ? Number(persona?.empresaId) === Number(filtroEmpresa)
+          : true;
+        
+        let tipoPescaMatch = true;
+        if (filtroTipoPesca === "temporada") {
+          tipoPescaMatch = persona?.paraTemporadaPesca === true;
+        } else if (filtroTipoPesca === "consumo") {
+          tipoPescaMatch = persona?.paraPescaConsumo === true;
+        }
+        
+        // Aplicar filtro de personal si está seleccionado
+        const personalMatch = filtroPersonal
+          ? Number(doc.personalId) === Number(filtroPersonal)
+          : true;
+        
+        // Aplicar filtro de cargo si está seleccionado
+        const cargoMatch = filtroCargo
+          ? Number(persona?.cargoId) === Number(filtroCargo)
+          : true;
+        
+        return empresaMatch && tipoPescaMatch && personalMatch && cargoMatch;
+      })
+      .map((doc) => Number(doc.documentoPescaId))
+  )];
+
+  const documentosPescaFiltrados = documentosPesca.filter((doc) =>
+    documentosEnLista.includes(Number(doc.id))
+  );
+
+  // Obtener IDs únicos de cargos que existen en el personal filtrado
+  const cargosEnLista = [...new Set(
+    personalFiltrado
+      .filter((p) => p.cargoId)
+      .map((p) => Number(p.cargoId))
+  )];
+
+  const cargosFiltrados = cargosPersonal.filter((cargo) =>
+    cargosEnLista.includes(Number(cargo.id))
+  );
 
   // Función para limpiar filtros
   const limpiarFiltros = () => {
@@ -426,6 +528,8 @@ export default function DocumentacionPersonal() {
     setFiltroDocumentoPesca(null);
     setFiltroCargo(null);
     setFiltroEstadoDoc("todos");
+    setFiltroEmpresa(null);
+    setFiltroTipoPesca("todos");
     setGlobalFilter("");
   };
 
@@ -447,6 +551,38 @@ export default function DocumentacionPersonal() {
     const indiceActual = estados.indexOf(filtroEstadoDoc);
     const siguienteIndice = (indiceActual + 1) % estados.length;
     setFiltroEstadoDoc(estados[siguienteIndice]);
+  };
+
+  // Función para cambiar filtro de tipo de pesca
+  const cambiarFiltroTipoPesca = () => {
+    const siguienteEstado = {
+      todos: "temporada",
+      temporada: "consumo",
+      consumo: "todos",
+    };
+    setFiltroTipoPesca(siguienteEstado[filtroTipoPesca]);
+  };
+
+  // Función para obtener configuración del filtro de tipo de pesca
+  const obtenerConfigFiltroTipoPesca = () => {
+    const config = {
+      todos: {
+        label: "Todos",
+        icon: "pi pi-check-circle",
+        severity: "info",
+      },
+      temporada: {
+        label: "Temporada",
+        icon: "pi pi-cog",
+        severity: "warning",
+      },
+      consumo: {
+        label: "Consumo",
+        icon: "pi pi-users",
+        severity: "success",
+      },
+    };
+    return config[filtroTipoPesca] || config["todos"];
   };
 
   // Función para obtener configuración del filtro de estado
@@ -506,24 +642,28 @@ export default function DocumentacionPersonal() {
         />
         <Button
           icon="pi pi-pencil"
-          className="p-button-text p-button-rounded"
+          className="p-button-text p-mr-2"
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
           onClick={(ev) => {
             ev.stopPropagation();
-            onEdit(rowData);
+            if (permisos.puedeVer || permisos.puedeEditar) {
+              onEdit(rowData);
+            }
           }}
-          tooltip="Editar"
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
         />
-        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-text p-button-danger p-button-rounded"
-            onClick={(ev) => {
-              ev.stopPropagation();
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger"
+          disabled={!permisos.puedeEliminar}
+          onClick={(ev) => {
+            ev.stopPropagation();
+            if (permisos.puedeEliminar) {
               onDelete(rowData);
-            }}
-            tooltip="Eliminar Registro"
-          />
-        )}
+            }
+          }}
+          tooltip="Eliminar"
+        />
       </div>
     );
   };
@@ -557,8 +697,13 @@ export default function DocumentacionPersonal() {
       <DataTable
         value={documentacionesFiltradas}
         loading={loading}
+        stripedRows
+        showGridlines
         paginator
-        rows={10}
+        rows={20}
+        rowsPerPageOptions={[20, 40, 80, 160]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} documentaciones"
         selectionMode="single"
         selection={selected}
         onSelectionChange={(e) => setSelected(e.value)}
@@ -576,6 +721,9 @@ export default function DocumentacionPersonal() {
             >
               <div style={{ flex: 2 }}>
                 <h2>Documentación Requerida Tripulantes</h2>
+                <small style={{ color: "#666", fontWeight: "normal" }}>
+                  Total de registros: {documentacionesFiltradas.length}
+                </small>
               </div>
               <div style={{ flex: 1 }}>
                 <Button
@@ -587,6 +735,7 @@ export default function DocumentacionPersonal() {
                   tooltip="Nueva Documentación"
                   outlined
                   onClick={onNew}
+                  disabled={!permisos.puedeCrear}
                 />
               </div>
               <div style={{ flex: 2 }}>
@@ -630,9 +779,23 @@ export default function DocumentacionPersonal() {
             >
               <div style={{ flex: 1 }}>
                 <Dropdown
+                  value={filtroEmpresa}
+                  onChange={(e) => setFiltroEmpresa(e.value ? Number(e.value) : null)}
+                  options={empresas}
+                  optionLabel="label"
+                  optionValue="id"
+                  placeholder="Filtrar Empresa"
+                  showClear
+                  style={{ width: "250px", fontWeight: "bold" }}
+                  filter
+                  filterBy="label"
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Dropdown
                   value={filtroPersonal}
                   onChange={(e) => setFiltroPersonal(Number(e.value))}
-                  options={personal}
+                  options={personalFiltrado}
                   optionLabel="label"
                   optionValue="id"
                   placeholder="Filtrar Personal"
@@ -640,13 +803,14 @@ export default function DocumentacionPersonal() {
                   style={{ width: "250px", fontWeight: "bold" }}
                   filter
                   filterBy="label"
+                  disabled={personalFiltrado.length === 0}
                 />
               </div>
               <div style={{ flex: 1 }}>
                 <Dropdown
                   value={filtroDocumentoPesca}
                   onChange={(e) => setFiltroDocumentoPesca(Number(e.value))}
-                  options={documentosPesca}
+                  options={documentosPescaFiltrados}
                   optionLabel="label"
                   optionValue="id"
                   placeholder="Filtrar Documento"
@@ -654,13 +818,14 @@ export default function DocumentacionPersonal() {
                   style={{ width: "250px", fontWeight: "bold" }}
                   filter
                   filterBy="label"
+                  disabled={documentosPescaFiltrados.length === 0}
                 />
               </div>
               <div style={{ flex: 1 }}>
                 <Dropdown
                   value={filtroCargo}
                   onChange={(e) => setFiltroCargo(Number(e.value))}
-                  options={cargosPersonal}
+                  options={cargosFiltrados}
                   optionLabel="label"
                   optionValue="id"
                   placeholder="Filtrar Cargo"
@@ -668,17 +833,37 @@ export default function DocumentacionPersonal() {
                   style={{ width: "250px", fontWeight: "bold" }}
                   filter
                   filterBy="label"
+                  disabled={cargosFiltrados.length === 0}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  label={obtenerConfigFiltroTipoPesca().label}
+                  icon={obtenerConfigFiltroTipoPesca().icon}
+                  severity={obtenerConfigFiltroTipoPesca().severity}
+                  outlined
+                  onClick={cambiarFiltroTipoPesca}
+                  style={{ width: "100%" }}
+                  tooltip="Filtrar por Tipo de Pesca"
                 />
               </div>
 
             </div>
           </div>
         }
-        onRowClick={(e) => onEdit(e.data)}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => onEdit(e.data)
+            : undefined
+        }
         globalFilter={globalFilter}
         globalFilterFields={["observaciones"]}
         emptyMessage="No se encontraron registros que coincidan con la búsqueda."
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
       >
         <Column
           field="id"
@@ -734,7 +919,13 @@ export default function DocumentacionPersonal() {
       </DataTable>
 
       <Dialog
-        header={isEdit ? "Editar Documentación" : "Nueva Documentación"}
+        header={
+          isEdit
+            ? permisos.puedeEditar
+              ? "Editar Documentación"
+              : "Ver Documentación"
+            : "Nueva Documentación"
+        }
         visible={showForm}
         style={{ width: 1300 }}
         onHide={onCancel}
@@ -747,6 +938,7 @@ export default function DocumentacionPersonal() {
           onSubmit={onSubmit}
           onCancel={onCancel}
           loading={loading}
+          readOnly={isEdit && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

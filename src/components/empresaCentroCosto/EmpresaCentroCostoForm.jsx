@@ -33,6 +33,7 @@ export default function EmpresaCentroCostoForm({
   onSubmit,
   onCancel,
   loading,
+  readOnly = false,
 }) {
   const {
     control,
@@ -143,7 +144,7 @@ export default function EmpresaCentroCostoForm({
               optionLabel="label"
               optionValue="value"
               placeholder="Seleccionar empresa"
-              disabled={loading}
+              disabled={loading || readOnly}
               className={classNames({ "p-invalid": fieldState.invalid })}
               filter
               showClear
@@ -177,7 +178,7 @@ export default function EmpresaCentroCostoForm({
               optionLabel="label"
               optionValue="value"
               placeholder="Seleccionar centro de costo"
-              disabled={loading}
+              disabled={loading || readOnly}
               className={classNames({ "p-invalid": fieldState.invalid })}
               filter
               showClear
@@ -211,7 +212,7 @@ export default function EmpresaCentroCostoForm({
               optionLabel="label"
               optionValue="value"
               placeholder={empresaSeleccionada ? "Seleccionar responsable" : "Primero seleccione una empresa"}
-              disabled={loading || !empresaSeleccionada}
+              disabled={loading || !empresaSeleccionada || readOnly}
               className={classNames({ "p-invalid": fieldState.invalid })}
               filter
               showClear
@@ -238,7 +239,7 @@ export default function EmpresaCentroCostoForm({
               optionLabel="label"
               optionValue="value"
               placeholder={empresaSeleccionada ? "Seleccionar proveedor (opcional)" : "Primero seleccione una empresa"}
-              disabled={loading || !empresaSeleccionada}
+              disabled={loading || !empresaSeleccionada || readOnly}
               className={classNames({ "p-invalid": fieldState.invalid })}
               filter
               showClear
@@ -260,7 +261,7 @@ export default function EmpresaCentroCostoForm({
               inputId={field.name}
               checked={field.value}
               onChange={(e) => field.onChange(e.checked)}
-              disabled={loading}
+              disabled={loading || readOnly}
             />
           )}
         />
@@ -295,6 +296,7 @@ export default function EmpresaCentroCostoForm({
           label={isEdit ? "Actualizar" : "Crear"}
           icon="pi pi-save"
           loading={loading}
+          disabled={readOnly}
           className="p-button-success"
           outlined
           severity="success"

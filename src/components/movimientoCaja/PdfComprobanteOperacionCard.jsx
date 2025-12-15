@@ -12,6 +12,7 @@ const PdfComprobanteOperacionCard = ({
   setUrlComprobanteOperacionMovCaja,
   toast,
   movimientoId,
+  readOnly = false,
 }) => {
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
 
@@ -85,6 +86,7 @@ const PdfComprobanteOperacionCard = ({
                 className="p-button-info"
                 size="small"
                 onClick={() => setMostrarCaptura(true)}
+                disabled={readOnly}
               />
             </div>
           </div>

@@ -29,6 +29,7 @@ const DatosGeneralesCotizacionCard = ({
   empresaFija,
   disabled = false,
   permisos = {},
+  readOnly = false,
   // Catálogos
   empresas = [],
   clientes = [],
@@ -170,7 +171,7 @@ const DatosGeneralesCotizacionCard = ({
             placeholder="Seleccionar empresa"
             filter
             showClear
-            disabled={disabled || empresaFija !== null}
+            disabled={disabled || readOnly || empresaFija !== null}
             style={{
               fontWeight: "bold",
               textTransform: "uppercase",
@@ -190,7 +191,7 @@ const DatosGeneralesCotizacionCard = ({
               fontWeight: "bold",
               textTransform: "uppercase",
             }}
-            disabled={disabled}
+            disabled={disabled || readOnly}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -205,7 +206,7 @@ const DatosGeneralesCotizacionCard = ({
               fontWeight: "bold",
               textTransform: "uppercase",
             }}
-            disabled={disabled}
+            disabled={disabled || readOnly}
           />
         </div>
         <div style={{ flex: 0.5 }}>
@@ -284,7 +285,7 @@ const DatosGeneralesCotizacionCard = ({
             optionValue="value"
             placeholder="Seleccionar serie"
             disabled={
-              disabled || !formData.tipoDocumentoId || !!formData.serieDocId
+              disabled || readOnly || !formData.tipoDocumentoId || !!formData.serieDocId
             }
             required
             style={{
@@ -336,7 +337,7 @@ const DatosGeneralesCotizacionCard = ({
             filter
             showClear
             style={{ width: "100%", fontWeight: "bold" }}
-            disabled={disabled}
+            disabled={disabled || readOnly}
           />
         </div>
       </div>
@@ -364,7 +365,7 @@ const DatosGeneralesCotizacionCard = ({
             style={{ width: "100%", fontWeight: "bold" }}
             filter
             showClear
-            disabled={disabled || !formData.empresaId}
+            disabled={disabled || readOnly || !formData.empresaId}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -375,7 +376,7 @@ const DatosGeneralesCotizacionCard = ({
             onChange={(e) => handleChange("fechaEntregaEstimada", e.value)}
             dateFormat="dd/mm/yy"
             showIcon
-            disabled={disabled}
+            disabled={disabled || readOnly}
             inputStyle={{
               fontWeight: "bold",
               textTransform: "uppercase",
@@ -408,7 +409,7 @@ const DatosGeneralesCotizacionCard = ({
             placeholder="Seleccionar tipo de producto"
             filter
             showClear
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{ width: "100%", fontWeight: "bold" }}
           />
         </div>
@@ -423,7 +424,7 @@ const DatosGeneralesCotizacionCard = ({
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccionar estado"
-            disabled={disabled}
+            disabled={disabled || readOnly}
             showClear
             style={{
               fontWeight: "bold",
@@ -457,7 +458,7 @@ const DatosGeneralesCotizacionCard = ({
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccionar destino"
-            disabled={disabled}
+            disabled={disabled || readOnly}
             showClear
             style={{
               fontWeight: "bold",
@@ -478,7 +479,7 @@ const DatosGeneralesCotizacionCard = ({
             min={0}
             max={100}
             suffix=" %"
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{ width: "100%" }}
             inputStyle={{ fontWeight: "bold" }}
           />
@@ -501,7 +502,7 @@ const DatosGeneralesCotizacionCard = ({
                 handleChange("porcentajeIGV", obtenerPorcentajeIgvEmpresa());
               }
             }}
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{
               width: "100%",
               fontWeight: "bold",
@@ -533,7 +534,7 @@ const DatosGeneralesCotizacionCard = ({
             placeholder="Seleccionar forma de pago"
             filter
             showClear
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{ width: "100%", fontWeight: "bold" }}
           />
         </div>
@@ -550,7 +551,7 @@ const DatosGeneralesCotizacionCard = ({
             placeholder="Seleccionar moneda"
             filter
             showClear
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{ width: "100%", fontWeight: "bold" }}
           />
         </div>
@@ -564,7 +565,7 @@ const DatosGeneralesCotizacionCard = ({
             mode="decimal"
             minFractionDigits={3}
             maxFractionDigits={3}
-            disabled={disabled}
+            disabled={disabled || readOnly}
             inputStyle={{ width: "100%", fontWeight: "bold" }}
           />
         </div>
@@ -591,7 +592,7 @@ const DatosGeneralesCotizacionCard = ({
             filter
             showClear
             style={{ width: "100%", fontWeight: "bold" }}
-            disabled={disabled}
+            disabled={disabled || readOnly}
           />
         </div>
         <div style={{ flex: 0.5 }}>
@@ -637,6 +638,7 @@ const DatosGeneralesCotizacionCard = ({
             subtotal={subtotal}
             totalIGV={totalIGV}
             total={total}
+            readOnly={readOnly}
             monedasOptions={monedas.map((m) => ({
               value: m.id,
               codigoSunat: m.codigoSunat,
@@ -682,7 +684,7 @@ const DatosGeneralesCotizacionCard = ({
                   placeholder="Seleccionar incoterms"
                   filter
                   showClear
-                  disabled={disabled}
+                  disabled={disabled || readOnly}
                   style={{ width: "100%", fontWeight: "bold" }}
                 />
               </div>
@@ -703,7 +705,7 @@ const DatosGeneralesCotizacionCard = ({
                   placeholder="Seleccionar tipo de contenedor"
                   filter
                   showClear
-                  disabled={disabled}
+                  disabled={disabled || readOnly}
                   style={{ width: "100%", fontWeight: "bold" }}
                 />
               </div>
@@ -717,7 +719,7 @@ const DatosGeneralesCotizacionCard = ({
                     handleChange("cantidadContenedores", e.value)
                   }
                   min={1}
-                  disabled={disabled}
+                  disabled={disabled || readOnly}
                   style={{ width: "100%" }}
                   inputStyle={{ fontWeight: "bold" }}
                 />
@@ -734,7 +736,7 @@ const DatosGeneralesCotizacionCard = ({
                   mode="decimal"
                   minFractionDigits={2}
                   maxFractionDigits={2}
-                  disabled={disabled}
+                  disabled={disabled || readOnly}
                   style={{ width: "100%" }}
                   inputStyle={{ fontWeight: "bold" }}
                 />
@@ -756,7 +758,7 @@ const DatosGeneralesCotizacionCard = ({
                   placeholder="Seleccionar responsable"
                   filter
                   showClear
-                  disabled={disabled}
+                  disabled={disabled || readOnly}
                   style={{ width: "100%", fontWeight: "bold" }}
                 />
               </div>
@@ -787,7 +789,7 @@ const DatosGeneralesCotizacionCard = ({
                   placeholder="Seleccionar puerto de carga"
                   filter
                   showClear
-                  disabled={disabled}
+                  disabled={disabled || readOnly}
                   style={{ width: "100%", fontWeight: "bold" }}
                 />
               </div>
@@ -799,7 +801,7 @@ const DatosGeneralesCotizacionCard = ({
                   onChange={(e) => handleChange("fechaZarpeEstimada", e.value)}
                   dateFormat="dd/mm/yy"
                   showIcon
-                  disabled={disabled}
+                  disabled={disabled || readOnly}
                   inputStyle={{
                     fontWeight: "bold",
                     textTransform: "uppercase",
@@ -823,7 +825,7 @@ const DatosGeneralesCotizacionCard = ({
                   placeholder="Seleccionar puerto de descarga"
                   filter
                   showClear
-                  disabled={disabled}
+                  disabled={disabled || readOnly}
                   style={{ width: "100%", fontWeight: "bold" }}
                 />
               </div>
@@ -837,7 +839,7 @@ const DatosGeneralesCotizacionCard = ({
                   onChange={(e) => handleChange("fechaArriboEstimada", e.value)}
                   dateFormat="dd/mm/yy"
                   showIcon
-                  disabled={disabled}
+                  disabled={disabled || readOnly}
                   inputStyle={{
                     fontWeight: "bold",
                     textTransform: "uppercase",
@@ -889,7 +891,7 @@ const DatosGeneralesCotizacionCard = ({
                   placeholder="Seleccionar agente de aduanas"
                   filter
                   showClear
-                  disabled={disabled}
+                  disabled={disabled || readOnly}
                   style={{ width: "100%", fontWeight: "bold" }}
                 />
               </div>
@@ -910,7 +912,7 @@ const DatosGeneralesCotizacionCard = ({
                   placeholder="Seleccionar operador logístico"
                   filter
                   showClear
-                  disabled={disabled}
+                  disabled={disabled || readOnly}
                   style={{ width: "100%", fontWeight: "bold" }}
                 />
               </div>
@@ -927,7 +929,7 @@ const DatosGeneralesCotizacionCard = ({
                   placeholder="Seleccionar naviera"
                   filter
                   showClear
-                  disabled={disabled}
+                  disabled={disabled || readOnly}
                   style={{ width: "100%", fontWeight: "bold" }}
                 />
               </div>
@@ -969,7 +971,7 @@ const DatosGeneralesCotizacionCard = ({
               placeholder="Seleccionar responsable"
               filter
               showClear
-              disabled={disabled}
+              disabled={disabled || readOnly}
               style={{ width: "100%", fontWeight: "bold" }}
             />
           </div>
@@ -989,7 +991,7 @@ const DatosGeneralesCotizacionCard = ({
               placeholder="Seleccionar responsable"
               filter
               showClear
-              disabled={disabled}
+              disabled={disabled || readOnly}
               style={{ width: "100%", fontWeight: "bold" }}
             />
           </div>
@@ -1010,7 +1012,7 @@ const DatosGeneralesCotizacionCard = ({
               placeholder="Auto-asignado desde Parámetro Aprobador"
               filter
               showClear
-              disabled={disabled}
+              disabled={disabled || readOnly}
               style={{
                 fontWeight: "bold",
                 width: "100%",
@@ -1062,7 +1064,7 @@ const DatosGeneralesCotizacionCard = ({
               value={formData.observaciones || ""}
               onChange={(e) => handleChange("observaciones", e.target.value)}
               rows={2}
-              disabled={disabled}
+              disabled={disabled || readOnly}
               style={{ fontWeight: "bold" }}
             />
           </div>
@@ -1078,7 +1080,7 @@ const DatosGeneralesCotizacionCard = ({
                 handleChange("observacionesInternas", e.target.value)
               }
               rows={2}
-              disabled={disabled}
+              disabled={disabled || readOnly}
               style={{ fontWeight: "bold" }}
             />
           </div>

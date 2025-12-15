@@ -31,6 +31,7 @@ const DetTareasOTCard = ({
   permisos = {},
   onTareasChange,
   disabled = false,
+  readOnly = false,
 }) => {
   const [tareas, setTareas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -79,13 +80,13 @@ const DetTareasOTCard = ({
   };
 
   const abrirDialogoNuevo = () => {
-    if (disabled) return;
+    if (disabled || readOnly) return;
     setTareaSeleccionada(null);
     setDialogVisible(true);
   };
 
   const abrirDialogoEditar = (tarea) => {
-    if (disabled) return;
+    if (disabled || readOnly) return;
     setTareaSeleccionada(tarea);
     setDialogVisible(true);
   };
@@ -264,7 +265,7 @@ const DetTareasOTCard = ({
           text
           severity="info"
           onClick={() => abrirDialogoEditar(rowData)}
-          disabled={disabled}
+          disabled={disabled || readOnly}
           tooltip="Editar"
           tooltipOptions={{ position: "top" }}
         />
@@ -275,7 +276,7 @@ const DetTareasOTCard = ({
             text
             severity="danger"
             onClick={() => confirmarEliminar(rowData)}
-            disabled={disabled}
+            disabled={disabled || readOnly}
             tooltip="Eliminar"
             tooltipOptions={{ position: "top" }}
           />
@@ -320,9 +321,9 @@ const DetTareasOTCard = ({
         size="small"
         scrollable
         scrollHeight="400px"
-        onRowClick={(e) => !disabled && abrirDialogoEditar(e.data)}
+        onRowClick={(e) => !(disabled || readOnly) && abrirDialogoEditar(e.data)}
         rowHover
-        style={{ cursor: disabled ? "default" : "pointer" }}
+        style={{ cursor: (disabled || readOnly) ? "default" : "pointer" }}
       >
         <Column
           field="numeroTarea"
@@ -406,7 +407,7 @@ const DetTareasOTCard = ({
               empresaId={empresaId}
               almacenId={almacenId}
               permisos={permisos}
-              disabled={disabled}
+              disabled={disabled || readOnly}
             />
           </div>
         )}

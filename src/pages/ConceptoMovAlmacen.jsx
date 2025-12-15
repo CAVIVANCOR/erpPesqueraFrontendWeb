@@ -22,6 +22,7 @@ import { getAlmacenes } from "../api/almacen";
 import { getEmpresas } from "../api/empresa";
 import { getEntidadesComerciales } from "../api/entidadComercial";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 
 /**
@@ -35,7 +36,9 @@ import { getResponsiveFontSize } from "../utils/utils";
  */
 export default function ConceptoMovAlmacen() {
   const { user } = useAuthStore();
+  const permisos = usePermissions("ConceptoMovAlmacen");
   const toast = useRef(null);
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [items, setItems] = useState([]);
   const [tiposConcepto, setTiposConcepto] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
@@ -432,7 +435,7 @@ export default function ConceptoMovAlmacen() {
                   label="Nuevo"
                   icon="pi pi-plus"
                   onClick={handleAdd}
-                  disabled={!empresaSeleccionada}
+                  disabled={!empresaSeleccionada || !permisos.puedeCrear}
                   style={{ marginTop: "1.8rem" }}
                 />
               </div>
@@ -723,6 +726,7 @@ export default function ConceptoMovAlmacen() {
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

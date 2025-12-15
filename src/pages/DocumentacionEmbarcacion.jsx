@@ -3,6 +3,7 @@
 // Sigue el patrón estándar de Personal.jsx con templates profesionales y control de roles.
 
 import React, { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -23,6 +24,7 @@ import { getEmbarcaciones } from "../api/embarcacion";
 import { getDocumentosPesca } from "../api/documentoPesca";
 import { getActivos } from "../api/activo";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 import { recalcularDocEmbarcacionVencidos } from "../utils/documentacionEmbarcacionUtils";
 
@@ -30,14 +32,20 @@ import { recalcularDocEmbarcacionVencidos } from "../utils/documentacionEmbarcac
  * Página de gestión de documentación de embarcaciones.
  * Cumple la regla transversal ERP Megui:
  * - Edición profesional por clic en fila (abre modal).
- * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin), usando useAuthStore.
+ * - Control de permisos mediante usePermissions.
  * - Confirmación de borrado con ConfirmDialog visual rojo.
  * - Feedback visual con Toast.
  * - Documentación de la regla en el encabezado.
  */
-export default function DocumentacionEmbarcacion() {
+export default function DocumentacionEmbarcacion({ ruta }) {
   // Obtener usuario autenticado para control de permisos
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
 
   const [documentaciones, setDocumentaciones] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -212,7 +220,7 @@ export default function DocumentacionEmbarcacion() {
   const cesadoBodyTemplate = (rowData) => {
     return (
       <Tag
-        severity={rowData.cesado ? "danger" : "success"}
+        severity={rowData.cesado ? "danger" : "primary"}
         value={rowData.cesado ? "CESADO" : "ACTIVO"}
         style={{
           fontSize: getResponsiveFontSize(),
@@ -223,25 +231,30 @@ export default function DocumentacionEmbarcacion() {
   };
 
   const actionBodyTemplate = (rowData) => {
-    const puedeEliminar = usuario?.esSuperUsuario || usuario?.esAdmin;
     return (
       <div className="flex gap-2">
         <Button
           icon="pi pi-pencil"
-          className="p-button-rounded p-button-text"
-          onClick={() => handleEdit(rowData)}
-          tooltip="Editar"
-          tooltipOptions={{ position: "top" }}
+          className="p-button-text p-mr-2"
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          onClick={(ev) => {
+            if (permisos.puedeVer || permisos.puedeEditar) {
+              handleEdit(rowData);
+            }
+          }}
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
         />
-        {puedeEliminar && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-rounded p-button-text p-button-danger"
-            onClick={() => handleDelete(rowData)}
-            tooltip="Eliminar"
-            tooltipOptions={{ position: "top" }}
-          />
-        )}
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger"
+          disabled={!permisos.puedeEliminar}
+          onClick={(ev) => {
+            if (permisos.puedeEliminar) {
+              handleDelete(rowData);
+            }
+          }}
+          tooltip="Eliminar"
+        />
       </div>
     );
   };
@@ -252,9 +265,39 @@ export default function DocumentacionEmbarcacion() {
     setShowForm(true);
   };
 
+  const [confirmState, setConfirmState] = useState({
+    visible: false,
+    row: null,
+  });
+
   const handleDelete = (rowData) => {
-    setSelected(rowData);
-    // Implementar confirmación de eliminación
+    setConfirmState({ visible: true, row: rowData });
+  };
+
+  const handleConfirmDelete = async () => {
+    const row = confirmState.row;
+    if (!row) return;
+    setConfirmState({ visible: false, row: null });
+    setLoading(true);
+    try {
+      await eliminarDocumentacionEmbarcacion(row.id);
+      toast?.show({
+        severity: "success",
+        summary: "Documentación eliminada",
+        detail: "La documentación fue eliminada correctamente.",
+      });
+      await cargarDocumentaciones();
+    } catch (err) {
+      toast?.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          err.response?.data?.message ||
+          "No se pudo eliminar la documentación.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleNew = () => {
@@ -264,30 +307,45 @@ export default function DocumentacionEmbarcacion() {
   };
 
   const handleSave = async (data) => {
+    // Validar permisos antes de guardar
+    if (isEdit && !permisos.puedeEditar) {
+      return;
+    }
+    if (!isEdit && !permisos.puedeCrear) {
+      return;
+    }
+
+    setLoading(true);
     try {
       if (isEdit) {
         await actualizarDocumentacionEmbarcacion(selected.id, data);
         toast?.show({
           severity: "success",
-          summary: "Éxito",
-          detail: "Documentación actualizada correctamente",
+          summary: "Documentación actualizada",
+          detail: "La documentación fue actualizada correctamente.",
         });
       } else {
         await crearDocumentacionEmbarcacion(data);
         toast?.show({
           severity: "success",
-          summary: "Éxito",
-          detail: "Documentación creada correctamente",
+          summary: "Documentación creada",
+          detail: "La documentación fue creada correctamente.",
         });
       }
       setShowForm(false);
-      cargarDocumentaciones();
+      setSelected(null);
+      setIsEdit(false);
+      await cargarDocumentaciones();
     } catch (err) {
       toast?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo guardar la documentación",
+        detail:
+          err.response?.data?.message ||
+          "No se pudo guardar la documentación.",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -391,6 +449,7 @@ export default function DocumentacionEmbarcacion() {
             icon="pi pi-plus"
             onClick={handleNew}
             className="p-button-success"
+            disabled={!permisos.puedeCrear}
             style={{ fontSize: "0.875rem" }}
           />
         </div>
@@ -487,7 +546,18 @@ export default function DocumentacionEmbarcacion() {
   return (
     <div>
       <Toast ref={setToast} />
-      <ConfirmDialog />
+      <ConfirmDialog
+        visible={confirmState.visible}
+        onHide={() => setConfirmState({ visible: false, row: null })}
+        message="¿Está seguro de eliminar esta documentación?"
+        header="Confirmar Eliminación"
+        icon="pi pi-exclamation-triangle"
+        accept={handleConfirmDelete}
+        reject={() => setConfirmState({ visible: false, row: null })}
+        acceptLabel="Sí, eliminar"
+        rejectLabel="Cancelar"
+        acceptClassName="p-button-danger"
+      />
       <DataTable
         value={documentacionesFiltradas}
         loading={loading}
@@ -502,7 +572,16 @@ export default function DocumentacionEmbarcacion() {
         stripedRows
         showGridlines
         size="small"
-        style={{ fontSize: getResponsiveFontSize() }}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => handleEdit(e.data)
+            : undefined
+        }
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
       >
         <Column field="id" header="ID" sortable style={{ minWidth: "80px" }} />
         <Column
@@ -527,25 +606,25 @@ export default function DocumentacionEmbarcacion() {
           header="F. Emisión"
           body={fechaEmisionBodyTemplate}
           sortable
-          style={{ minWidth: "150px" }}
+          style={{ minWidth: "90px" }}
         />
         <Column
           header="F. Vencimiento"
           body={fechaVencimientoBodyTemplate}
           sortable
-          style={{ minWidth: "150px" }}
+          style={{ minWidth: "90px" }}
         />
         <Column
           header="Estado"
           body={docVencidoBodyTemplate}
           sortable
-          style={{ minWidth: "100px" }}
+          style={{ minWidth: "80px" }}
         />
         <Column
           header="Cesado"
           body={cesadoBodyTemplate}
           sortable
-          style={{ minWidth: "100px" }}
+          style={{ minWidth: "8px" }}
         />
         <Column
           header="Acciones"
@@ -557,7 +636,13 @@ export default function DocumentacionEmbarcacion() {
       <Dialog
         visible={showForm}
         onHide={() => setShowForm(false)}
-        header={isEdit ? "Editar Documentación" : "Nueva Documentación"}
+        header={
+          isEdit
+            ? permisos.puedeEditar
+              ? "Editar Documentación"
+              : "Ver Documentación"
+            : "Nueva Documentación"
+        }
         style={{ width: "90vw", maxWidth: "1200px" }}
         modal
       >
@@ -567,6 +652,8 @@ export default function DocumentacionEmbarcacion() {
           documentosPesca={documentosPesca}
           onSave={handleSave}
           onCancel={() => setShowForm(false)}
+          loading={loading}
+          readOnly={isEdit && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

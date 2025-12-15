@@ -41,6 +41,7 @@ const OTMantenimientoForm = ({
   entidadesComerciales = [],
   empresaFija = null,
   permisos = {},
+  readOnly = false,
   loading: loadingProp = false,
   toast: toastProp,
 }) => {
@@ -735,6 +736,7 @@ const OTMantenimientoForm = ({
               almacenId={formData.almacenId}
               permisos={permisos}
               disabled={!formData.id || loading || loadingProp}
+              readOnly={readOnly}
             />
             {!formData.id && (
               <div style={{ padding: "1rem", textAlign: "center", color: "#666" }}>
@@ -755,6 +757,7 @@ const OTMantenimientoForm = ({
               urlFotosAntesPdf={formData.urlFotosAntesPdf}
               setUrlFotosAntesPdf={(url) => handleChange("urlFotosAntesPdf", url)}
               toast={toast}
+              readOnly={readOnly}
             />
             
             <PdfFotosDespuesCard
@@ -762,6 +765,7 @@ const OTMantenimientoForm = ({
               urlFotosDespuesPdf={formData.urlFotosDespuesPdf}
               setUrlFotosDespuesPdf={(url) => handleChange("urlFotosDespuesPdf", url)}
               toast={toast}
+              readOnly={readOnly}
             />
             
             <VerImpresionOTMantenimientoPDF
@@ -798,6 +802,8 @@ const OTMantenimientoForm = ({
             tiposDocumento={tiposDocumento}
             puedeEditar={isEdit}
             onCountChange={setCountEntregasRendir}
+            readOnly={readOnly}
+            permisos={permisos}
           />
           
           {!formData.id && (
@@ -833,6 +839,8 @@ const OTMantenimientoForm = ({
           className="p-button-primary"
           onClick={handleSubmit}
           loading={loading}
+          disabled={readOnly || !permisos.puedeEditar}
+          tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""}
         />
       </div>
     </div>

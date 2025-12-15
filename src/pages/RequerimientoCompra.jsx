@@ -1,6 +1,7 @@
 // src/pages/RequerimientoCompra.jsx
 // Pantalla CRUD profesional para RequerimientoCompra. Cumple la regla transversal ERP Megui.
 import React, { useRef, useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -33,13 +34,22 @@ import { getCentrosCosto } from "../api/centroCosto";
 import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { getMonedas } from "../api/moneda";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 import { Calendar } from "primereact/calendar";
 
 /**
  * Pantalla profesional para gestión de Requerimientos de Compra.
  */
-export default function RequerimientoCompra() {
+export default function RequerimientoCompra({ ruta }) {
+  const { usuario } = useAuthStore();
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const toast = useRef(null);
   const [items, setItems] = useState([]);
   const [empresas, setEmpresas] = useState([]);
@@ -68,7 +78,6 @@ export default function RequerimientoCompra() {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [proveedoresUnicos, setProveedoresUnicos] = useState([]);
-  const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
     cargarDatos();
@@ -250,6 +259,16 @@ export default function RequerimientoCompra() {
   };
 
   const handleDelete = (rowData) => {
+    // Validar permisos de eliminación
+    if (!permisos.puedeEliminar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar registros.",
+        life: 3000,
+      });
+      return;
+    }
     setToDelete(rowData);
     setShowConfirm(true);
   };
@@ -278,9 +297,30 @@ export default function RequerimientoCompra() {
   };
 
   const handleFormSubmit = async (data) => {
+    const esEdicion = editing && editing.id && editing.numeroDocumento;
+
+    // Validar permisos antes de guardar
+    if (esEdicion && !permisos.puedeEditar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para editar registros.",
+        life: 3000,
+      });
+      return;
+    }
+    if (!esEdicion && !permisos.puedeCrear) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear registros.",
+        life: 3000,
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const esEdicion = editing && editing.id && editing.numeroDocumento;
 
       if (esEdicion) {
         await actualizarRequerimientoCompra(editing.id, data);
@@ -488,16 +528,18 @@ export default function RequerimientoCompra() {
         icon="pi pi-pencil"
         className="p-button-text p-button-sm"
         onClick={() => handleEdit(rowData)}
-        aria-label="Editar"
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+        aria-label={permisos.puedeEditar ? "Editar" : "Ver"}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button
-          icon="pi pi-trash"
-          className="p-button-text p-button-danger p-button-sm"
-          onClick={() => handleDelete(rowData)}
-          aria-label="Eliminar"
-        />
-      )}
+      <Button
+        icon="pi pi-trash"
+        className="p-button-text p-button-danger p-button-sm"
+        onClick={() => handleDelete(rowData)}
+        aria-label="Eliminar"
+        tooltip="Eliminar"
+        disabled={!permisos.puedeEliminar}
+      />
     </>
   );
 
@@ -528,8 +570,16 @@ export default function RequerimientoCompra() {
         rowsPerPageOptions={[5, 10, 15, 20]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} requerimientos"
-        onRowClick={(e) => handleEdit(e.data)}
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => handleEdit(e.data)
+            : undefined
+        }
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
         header={
           <div>
             <div
@@ -570,7 +620,14 @@ export default function RequerimientoCompra() {
                   severity="success"
                   raised
                   onClick={handleAdd}
-                  disabled={loading || !empresaSeleccionada}
+                  disabled={!permisos.puedeCrear || loading || !empresaSeleccionada}
+                  tooltip={
+                    !permisos.puedeCrear
+                      ? "No tiene permisos para crear"
+                      : !empresaSeleccionada
+                      ? "Seleccione una empresa primero"
+                      : "Nuevo Requerimiento"
+                  }
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -736,6 +793,8 @@ export default function RequerimientoCompra() {
           onAutorizarCompra={handleAutorizarCompra}
           loading={loading}
           toast={toast}
+          permisos={permisos}
+          readOnly={!!editing && !!editing.numeroDocumento && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

@@ -43,6 +43,7 @@ const DatosAccesoCard = ({
   buscandoPersona,
   onDocumentBlur,
   accesoSellado = false,
+  readOnly = false,
 }) => {
   return (
     <Card
@@ -92,7 +93,7 @@ const DatosAccesoCard = ({
                   className="w-full"
                   style={{ fontWeight: "bold" }}
                   showClear
-                  disabled={accesoSellado}
+                  disabled={readOnly || accesoSellado}
                 />
               )}
             />
@@ -116,7 +117,7 @@ const DatosAccesoCard = ({
                   className="w-full"
                   style={{ fontWeight: "bold" }}
                   showClear
-                  disabled={accesoSellado}
+                  disabled={readOnly || accesoSellado}
                 />
               )}
             />
@@ -144,14 +145,14 @@ const DatosAccesoCard = ({
                     placeholder="Número de documento"
                     className="w-full"
                     style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                    disabled={accesoSellado || modoEdicion}
+                    disabled={readOnly || accesoSellado || modoEdicion}
                   />
                 )}
               />
               <Button
                 icon="pi pi-search"
                 className="p-button-secondary"
-                disabled={accesoSellado || modoEdicion}
+                disabled={readOnly || accesoSellado || modoEdicion}
               />
               {buscandoPersona && (
                 <span className="p-inputgroup-addon">
@@ -179,7 +180,7 @@ const DatosAccesoCard = ({
                 placeholder="Nombres completos"
                 className="w-full"
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                disabled={accesoSellado || buscandoPersona}
+                disabled={readOnly || accesoSellado || buscandoPersona}
               />
             )}
           />
@@ -225,7 +226,7 @@ const DatosAccesoCard = ({
                 className="w-full"
                 style={{ fontWeight: "bold" }}
                 showClear
-                disabled={accesoSellado}
+                disabled={readOnly || accesoSellado}
               />
             )}
           />
@@ -250,7 +251,7 @@ const DatosAccesoCard = ({
                 className="w-full"
                 style={{ fontWeight: "bold" }}
                 showClear
-                disabled={accesoSellado}
+                disabled={readOnly || accesoSellado}
               />
             )}
           />
@@ -280,7 +281,7 @@ const DatosAccesoCard = ({
                 showClear
                 filter
                 filterBy="label"
-                disabled={accesoSellado}
+                disabled={readOnly || accesoSellado}
               />
             )}
           />
@@ -305,7 +306,7 @@ const DatosAccesoCard = ({
                 className="w-full"
                 style={{ fontWeight: "bold" }}
                 showClear
-                disabled={accesoSellado}
+                disabled={readOnly || accesoSellado}
               />
             )}
           />
@@ -324,7 +325,7 @@ const DatosAccesoCard = ({
                   checked={field.value}
                   onChange={(e) => field.onChange(e.checked)}
                   className="mr-2"
-                  disabled={accesoSellado}
+                  disabled={readOnly || accesoSellado}
                 />
               )}
             />

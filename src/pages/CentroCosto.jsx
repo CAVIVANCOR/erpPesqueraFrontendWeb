@@ -18,7 +18,9 @@ import {
 } from "../api/centroCosto";
 import { getAllCategoriaCCosto } from "../api/categoriaCCosto";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
+import { Navigate } from "react-router-dom";
 
 /**
  * Pantalla profesional para gestión de Centros de Costo.
@@ -29,8 +31,16 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - Feedback visual con Toast.
  * - Documentación de la regla en el encabezado.
  */
-export default function CentroCosto() {
+export default function CentroCosto({ ruta }) {
   const toast = useRef(null);
+  const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [items, setItems] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -41,7 +51,6 @@ export default function CentroCosto() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState(null);
   const [centroPadreFilter, setCentroPadreFilter] = useState(null);
-  const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
     cargarDatos();
@@ -227,7 +236,7 @@ export default function CentroCosto() {
               outlined
               raised
               onClick={handleAdd}
-              disabled={loading}
+              disabled={loading || !permisos.puedeCrear}
             />
             <div className="flex gap-2">
               <InputText
@@ -288,6 +297,7 @@ export default function CentroCosto() {
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

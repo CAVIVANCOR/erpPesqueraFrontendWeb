@@ -38,6 +38,7 @@ export default function FichaTecnicaProductoForm({
   watch,
   getValues,
   defaultValues = {},
+  readOnly = false,
 }) {
   const [subiendoPDF, setSubiendoPDF] = useState(false);
   const [pdfRefreshKey, setPdfRefreshKey] = useState(0);
@@ -162,7 +163,7 @@ export default function FichaTecnicaProductoForm({
                 cancelLabel="Cancelar"
                 customUpload
                 uploadHandler={handlePDFUpload}
-                disabled={!defaultValues.id || subiendoPDF}
+                disabled={readOnly || !defaultValues.id || subiendoPDF}
                 auto
                 mode="basic"
                 className="p-button-outlined"

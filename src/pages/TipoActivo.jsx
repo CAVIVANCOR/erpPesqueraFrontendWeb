@@ -24,6 +24,7 @@ import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
 import { getTiposActivo, eliminarTipoActivo } from "../api/tipoActivo";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import TipoActivoForm from "../components/tipoActivo/TipoActivoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -36,7 +37,10 @@ const TipoActivo = () => {
   const [tipoActivoAEliminar, setTipoActivoAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const permisos = usePermissions("TipoActivo");
   const [globalFilter, setGlobalFilter] = useState("");
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   useEffect(() => {
     cargarTiposActivo();
@@ -195,6 +199,7 @@ const TipoActivo = () => {
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              disabled={!permisos.puedeCrear}
             />
             <span className="p-input-icon-left">
               <InputText
@@ -259,6 +264,7 @@ const TipoActivo = () => {
           tipoActivo={tipoActivoSeleccionado}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
+          readOnly={readOnly}
         />
       </Dialog>
 

@@ -59,6 +59,8 @@ export default function DocumentacionEmbarcacionForm({
   documentosPesca = [],
   onSave,
   onCancel,
+  loading = false,
+  readOnly = false,
 }) {
   const isEdit = !!documentacion;
 
@@ -115,7 +117,7 @@ export default function DocumentacionEmbarcacionForm({
 
   // Estados para captura de documento
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loadingInterno, setLoadingInterno] = useState(false);
   const toast = useRef(null);
 
   // Observar cambios en urlDocPdf
@@ -128,7 +130,7 @@ export default function DocumentacionEmbarcacionForm({
 
   // Función de envío con normalización
   const onSubmitForm = async (data) => {
-    setLoading(true);
+    setLoadingInterno(true);
     try {
       // Recalcular docVencido antes de enviar (por seguridad)
       const fechaActual = new Date();
@@ -156,7 +158,7 @@ export default function DocumentacionEmbarcacionForm({
 
       await onSave(normalizedData);
     } finally {
-      setLoading(false);
+      setLoadingInterno(false);
     }
   };
 
@@ -226,7 +228,7 @@ export default function DocumentacionEmbarcacionForm({
                     optionValue="id"
                     placeholder="Seleccione una embarcación"
                     className={getFieldClass("embarcacionId")}
-                    disabled={loading}
+                    disabled={readOnly || loading || loadingInterno}
                     showClear
                     filter
                     filterBy="label"
@@ -262,7 +264,7 @@ export default function DocumentacionEmbarcacionForm({
                     optionValue="id"
                     placeholder="Seleccione un documento"
                     className={getFieldClass("documentoPescaId")}
-                    disabled={loading}
+                    disabled={readOnly || loading || loadingInterno}
                     showClear
                     filter
                     filterBy="label"
@@ -295,7 +297,7 @@ export default function DocumentacionEmbarcacionForm({
                     value={field.value || ""}
                     placeholder="Ingrese el número del documento"
                     className={getFieldClass("numeroDocumento")}
-                    disabled={loading}
+                    disabled={readOnly || loading || loadingInterno}
                     style={{ textTransform: "uppercase", fontWeight: "bold" }}
                     maxLength={50}
                   />
@@ -334,7 +336,7 @@ export default function DocumentacionEmbarcacionForm({
                     onChange={(e) => field.onChange(e.value)}
                     placeholder="Seleccione fecha de emisión"
                     className={getFieldClass("fechaEmision")}
-                    disabled={loading}
+                    disabled={readOnly || loading || loadingInterno}
                     dateFormat="dd/mm/yy"
                     showIcon
                     showButtonBar
@@ -362,7 +364,7 @@ export default function DocumentacionEmbarcacionForm({
                     onChange={(e) => field.onChange(e.value)}
                     placeholder="Seleccione fecha de vencimiento"
                     className={getFieldClass("fechaVencimiento")}
-                    disabled={loading}
+                    disabled={readOnly || loading || loadingInterno}
                     dateFormat="dd/mm/yy"
                     showIcon
                     showButtonBar
@@ -396,7 +398,7 @@ export default function DocumentacionEmbarcacionForm({
                     }
                     onClick={() => field.onChange(!field.value)}
                     size="small"
-                    disabled
+                    disabled={readOnly || loading || loadingInterno}
                   />
                 )}
               />
@@ -425,6 +427,7 @@ export default function DocumentacionEmbarcacionForm({
                     }
                     onClick={() => field.onChange(!field.value)}
                     size="small"
+                    disabled={readOnly || loading || loadingInterno}
                   />
                 )}
               />
@@ -451,7 +454,7 @@ export default function DocumentacionEmbarcacionForm({
                     rows={3}
                     placeholder="Ingrese observaciones (opcional)"
                     className={getFieldClass("observaciones")}
-                    disabled={loading}
+                    disabled={readOnly || loading || loadingInterno}
                     style={{
                       textTransform: "uppercase",
                       fontStyle: "italic",
@@ -522,7 +525,7 @@ export default function DocumentacionEmbarcacionForm({
                     icon="pi pi-camera"
                     className="p-button-info"
                     onClick={() => setMostrarCaptura(true)}
-                    disabled={loading}
+                    disabled={readOnly || loading || loadingInterno}
                     size="small"
                   />
                 </div>
@@ -535,7 +538,7 @@ export default function DocumentacionEmbarcacionForm({
                     icon="pi pi-eye"
                     className="p-button-secondary"
                     onClick={handleVerPDF}
-                    disabled={loading}
+                    disabled={loading || loadingInterno}
                     size="small"
                   />
                 )}
@@ -596,7 +599,7 @@ export default function DocumentacionEmbarcacionForm({
               className="p-button-text"
               type="button"
               onClick={onCancel}
-              disabled={loading}
+              disabled={loading || loadingInterno}
               raised
               outlined
               size="small"
@@ -606,7 +609,8 @@ export default function DocumentacionEmbarcacionForm({
               icon="pi pi-check"
               className="p-button-success"
               type="submit"
-              loading={loading}
+              loading={loading || loadingInterno}
+              disabled={readOnly || loading || loadingInterno}
               raised
               outlined
               size="small"

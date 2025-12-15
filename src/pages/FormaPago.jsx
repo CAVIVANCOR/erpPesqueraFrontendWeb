@@ -24,6 +24,7 @@ import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
 import { getFormasPago, eliminarFormaPago } from "../api/formaPago";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import FormaPagoForm from "../components/formaPago/FormaPagoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -36,7 +37,10 @@ const FormaPago = () => {
   const [formaPagoAEliminar, setFormaPagoAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const permisos = usePermissions("FormaPago");
   const [globalFilter, setGlobalFilter] = useState("");
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   useEffect(() => {
     cargarFormasPago();
@@ -203,6 +207,7 @@ const FormaPago = () => {
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              disabled={!permisos.puedeCrear}
             />
             <span className="p-input-icon-left">
               <InputText
@@ -244,6 +249,7 @@ const FormaPago = () => {
           formaPago={formaPagoSeleccionada}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
+          readOnly={readOnly}
         />
       </Dialog>
 

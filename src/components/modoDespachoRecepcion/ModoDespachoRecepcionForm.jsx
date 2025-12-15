@@ -29,7 +29,7 @@ const esquemaValidacion = yup.object().shape({
     .default(true),
 });
 
-const ModoDespachoRecepcionForm = ({ modoDespachoRecepcion, onGuardar, onCancelar }) => {
+const ModoDespachoRecepcionForm = ({ modoDespachoRecepcion, onGuardar, onCancelar, readOnly = false }) => {
   const [loading, setLoading] = useState(false);
   const esEdicion = !!modoDespachoRecepcion;
 
@@ -104,6 +104,7 @@ const ModoDespachoRecepcionForm = ({ modoDespachoRecepcion, onGuardar, onCancela
                 className={getFieldClass("nombre")}
                 style={{ textTransform: 'uppercase' }}
                 autoFocus
+                disabled={readOnly}
               />
             )}
           />
@@ -127,6 +128,7 @@ const ModoDespachoRecepcionForm = ({ modoDespachoRecepcion, onGuardar, onCancela
                 placeholder="Descripción del modo de despacho/recepción (opcional)"
                 className={getFieldClass("descripcion")}
                 style={{ textTransform: 'uppercase' }}
+                disabled={readOnly}
               />
             )}
           />
@@ -147,6 +149,7 @@ const ModoDespachoRecepcionForm = ({ modoDespachoRecepcion, onGuardar, onCancela
                   checked={field.value}
                   onChange={(e) => field.onChange(e.checked)}
                   className={getFieldClass("activo")}
+                  disabled={readOnly}
                 />
                 <label htmlFor="activo" className="p-checkbox-label">
                   Modo de despacho/recepción activo
@@ -173,6 +176,7 @@ const ModoDespachoRecepcionForm = ({ modoDespachoRecepcion, onGuardar, onCancela
           label={esEdicion ? "Actualizar" : "Crear"}
           icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
           loading={loading}
+          disabled={readOnly}
         />
       </div>
     </form>

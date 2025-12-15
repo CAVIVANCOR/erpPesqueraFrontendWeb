@@ -56,6 +56,7 @@ const schema = Yup.object().shape({
  * @param {function} onSubmit - Callback de envío
  * @param {function} onCancel - Callback de cancelación
  * @param {boolean} loading - Estado de carga
+ * @param {boolean} readOnly - Modo solo lectura
  */
 export default function DocumentacionPersonalForm({
   isEdit = false,
@@ -63,6 +64,7 @@ export default function DocumentacionPersonalForm({
   onSubmit,
   onCancel,
   loading = false,
+  readOnly = false,
 }) {
   // Normalización profesional de valores por defecto
   const normalizedDefaults = {
@@ -101,9 +103,11 @@ export default function DocumentacionPersonalForm({
 
   // Estados para combos
   const [personal, setPersonal] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
   const [documentosPesca, setDocumentosPesca] = useState([]);
   const [loadingCombos, setLoadingCombos] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [filtroEmpresa, setFiltroEmpresa] = useState(null);
 
   // Estados para captura de documento
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
@@ -120,15 +124,15 @@ export default function DocumentacionPersonalForm({
     if (fechaVencimiento !== undefined) {
       const fechaActual = new Date();
       fechaActual.setHours(0, 0, 0, 0);
-      
+
       let docVencidoCalculado = true; // Por defecto vencido si no hay fecha
-      
+
       if (fechaVencimiento) {
         const fechaVenc = new Date(fechaVencimiento);
         fechaVenc.setHours(0, 0, 0, 0);
         docVencidoCalculado = fechaVenc < fechaActual;
       }
-      
+
       setValue("docVencido", docVencidoCalculado);
     }
   }, [fechaVencimiento, setValue]);
@@ -136,7 +140,17 @@ export default function DocumentacionPersonalForm({
   // Reset cuando cambian los valores por defecto
   useEffect(() => {
     reset(normalizedDefaults);
-  }, [defaultValues, reset]);
+
+    // Si estamos en modo edición, establecer automáticamente el filtro de empresa
+    if (isEdit && defaultValues.personalId && personal.length > 0) {
+      const personaSeleccionada = personal.find(
+        (p) => Number(p.id) === Number(defaultValues.personalId)
+      );
+      if (personaSeleccionada && personaSeleccionada.empresaId) {
+        setFiltroEmpresa(Number(personaSeleccionada.empresaId));
+      }
+    }
+  }, [defaultValues, reset, isEdit, personal]);
 
   // Carga de combos al montar el componente
   useEffect(() => {
@@ -154,6 +168,18 @@ export default function DocumentacionPersonalForm({
           getEmpresas(),
         ]);
 
+      // Normalización de empresas
+      if (empresasRes.status === "fulfilled") {
+        const empresasData = empresasRes.value.map((e) => ({
+          ...e,
+          id: Number(e.id),
+          label: e.nombreComercial,
+        }));
+        setEmpresas(empresasData);
+      } else {
+        console.error("Error al cargar empresas:", empresasRes.reason);
+      }
+
       // Normalización de personal
       if (personalRes.status === "fulfilled") {
         const empresasData =
@@ -165,6 +191,7 @@ export default function DocumentacionPersonalForm({
           return {
             ...p,
             id: Number(p.id),
+            empresaId: Number(p.empresaId),
             label: `${p.nombres} ${p.apellidos} - ${
               empresa?.nombreComercial || "Sin empresa"
             }`,
@@ -201,14 +228,19 @@ export default function DocumentacionPersonalForm({
     }
   };
 
+  // Personal filtrado por empresa
+  const personalFiltrado = filtroEmpresa
+    ? personal.filter((p) => Number(p.empresaId) === Number(filtroEmpresa))
+    : personal;
+
   // Función de envío con normalización
   const onSubmitForm = (data) => {
     // Recalcular docVencido antes de enviar (por seguridad)
     const fechaActual = new Date();
     fechaActual.setHours(0, 0, 0, 0);
-    
+
     let docVencidoCalculado = true; // Por defecto vencido si no hay fecha
-    
+
     if (data.fechaVencimiento) {
       const fechaVenc = new Date(data.fechaVencimiento);
       fechaVenc.setHours(0, 0, 0, 0);
@@ -275,6 +307,30 @@ export default function DocumentacionPersonalForm({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
+          {/* Empresa */}
+          <div style={{ flex: 1 }}>
+            <label
+              htmlFor="empresaId"
+              className="block text-900 font-medium mb-2"
+            >
+              Empresa (Filtro)
+            </label>
+            <Dropdown
+              id="empresaId"
+              value={filtroEmpresa}
+              onChange={(e) => setFiltroEmpresa(e.value)}
+              options={empresas}
+              optionLabel="label"
+              optionValue="id"
+              placeholder="Seleccione una empresa"
+              disabled={readOnly || loading || loadingCombos}
+              showClear
+              filter
+              filterBy="label"
+              emptyMessage="No hay empresas disponibles"
+              style={{ fontWeight: "bold" }}
+            />
+          </div>
           {/* Personal */}
           <div style={{ flex: 1 }}>
             <label
@@ -290,16 +346,22 @@ export default function DocumentacionPersonalForm({
                 <Dropdown
                   id="personalId"
                   {...field}
-                  options={personal}
+                  options={personalFiltrado}
                   optionLabel="label"
                   optionValue="id"
                   placeholder="Seleccione una persona"
                   className={getFieldClass("personalId")}
-                  disabled={loading || loadingCombos}
+                  disabled={
+                    readOnly || loading || loadingCombos || personalFiltrado.length === 0
+                  }
                   showClear
                   filter
                   filterBy="label"
-                  emptyMessage="No hay personal disponible"
+                  emptyMessage={
+                    filtroEmpresa
+                      ? "No hay personal disponible para esta empresa"
+                      : "No hay personal disponible"
+                  }
                   style={{ fontWeight: "bold" }}
                 />
               )}
@@ -328,7 +390,7 @@ export default function DocumentacionPersonalForm({
                   optionValue="id"
                   placeholder="Seleccione un documento"
                   className={getFieldClass("documentoPescaId")}
-                  disabled={loading || loadingCombos}
+                  disabled={readOnly || loading || loadingCombos}
                   showClear
                   filter
                   filterBy="label"
@@ -343,6 +405,14 @@ export default function DocumentacionPersonalForm({
               </small>
             )}
           </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
           {/* Número de Documento */}
           <div style={{ flex: 1 }}>
             <label
@@ -360,7 +430,7 @@ export default function DocumentacionPersonalForm({
                   {...field}
                   placeholder="Ingrese el número del documento"
                   className={getFieldClass("numeroDocumento")}
-                  disabled={loading}
+                  disabled={readOnly || loading}
                   style={{ textTransform: "uppercase", fontWeight: "bold" }}
                   maxLength={50}
                 />
@@ -372,14 +442,6 @@ export default function DocumentacionPersonalForm({
               </small>
             )}
           </div>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
           {/* Fecha de Emisión */}
           <div style={{ flex: 1 }}>
             <label
@@ -397,7 +459,7 @@ export default function DocumentacionPersonalForm({
                   {...field}
                   placeholder="Seleccione fecha de emisión"
                   className={getFieldClass("fechaEmision")}
-                  disabled={loading}
+                  disabled={readOnly || loading}
                   dateFormat="dd/mm/yy"
                   showIcon
                   showButtonBar
@@ -425,7 +487,7 @@ export default function DocumentacionPersonalForm({
                   {...field}
                   placeholder="Seleccione fecha de vencimiento"
                   className={getFieldClass("fechaVencimiento")}
-                  disabled={loading}
+                  disabled={readOnly || loading}
                   dateFormat="dd/mm/yy"
                   showIcon
                   showButtonBar
@@ -454,7 +516,9 @@ export default function DocumentacionPersonalForm({
                   type="button"
                   label={field.value ? "VENCIDO" : "VIGENTE"}
                   icon={field.value ? "pi pi-times" : "pi pi-check"}
-                  className={field.value ? "p-button-danger" : "p-button-success"}
+                  className={
+                    field.value ? "p-button-danger" : "p-button-success"
+                  }
                   onClick={() => field.onChange(!field.value)}
                   size="small"
                 />
@@ -466,10 +530,7 @@ export default function DocumentacionPersonalForm({
           </div>
           {/* Cesado */}
           <div style={{ flex: 1 }}>
-            <label
-              htmlFor="cesado"
-              className="block text-900 font-medium mb-2"
-            >
+            <label htmlFor="cesado" className="block text-900 font-medium mb-2">
               Cesado
             </label>
             <Controller
@@ -480,7 +541,9 @@ export default function DocumentacionPersonalForm({
                   type="button"
                   label={field.value ? "SI" : "NO"}
                   icon={field.value ? "pi pi-check" : "pi pi-times"}
-                  className={!field.value ? "p-button-success" : "p-button-danger"}
+                  className={
+                    !field.value ? "p-button-success" : "p-button-danger"
+                  }
                   onClick={() => field.onChange(!field.value)}
                   size="small"
                 />
@@ -490,6 +553,14 @@ export default function DocumentacionPersonalForm({
               <small className="p-error">{errors.cesado.message}</small>
             )}
           </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
           {/* Observaciones */}
           <div style={{ flex: 2 }}>
             <label
@@ -508,7 +579,7 @@ export default function DocumentacionPersonalForm({
                   rows={1}
                   placeholder="Ingrese observaciones (opcional)"
                   className={getFieldClass("observaciones")}
-                  disabled={loading}
+                  disabled={readOnly || loading}
                   style={{ textTransform: "uppercase", fontWeight: "bold" }}
                   maxLength={500}
                 />
@@ -519,7 +590,6 @@ export default function DocumentacionPersonalForm({
             )}
           </div>
         </div>
-
         {/* Botones solo disponibles cuando hay ID (modo edición) */}
         {(isEdit || defaultValues.id) && (
           <div
@@ -549,7 +619,7 @@ export default function DocumentacionPersonalForm({
                         {...field}
                         placeholder="URL del documento PDF"
                         className={getFieldClass("urlDocPdf")}
-                        disabled={loading}
+                        disabled={readOnly || loading}
                         style={{ fontWeight: "bold" }}
                         maxLength={500}
                         readOnly
@@ -572,7 +642,7 @@ export default function DocumentacionPersonalForm({
                   icon="pi pi-camera"
                   className="p-button-info"
                   onClick={() => setMostrarCaptura(true)}
-                  disabled={loading}
+                  disabled={readOnly || loading}
                   size="small"
                 />
               </div>
@@ -656,7 +726,7 @@ export default function DocumentacionPersonalForm({
             className="p-button-success"
             type="submit"
             loading={loading}
-            disabled={loadingCombos}
+            disabled={readOnly || loadingCombos}
             raised
             outlined
             size="small"

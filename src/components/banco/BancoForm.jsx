@@ -6,7 +6,7 @@ import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
 
-export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, loading, paises = [] }) {
+export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, loading, paises = [], readOnly = false }) {
   const [nombre, setNombre] = React.useState(defaultValues.nombre || '');
   const [codigoSwift, setCodigoSwift] = React.useState(defaultValues.codigoSwift || '');
   const [codigoBcrp, setCodigoBcrp] = React.useState(defaultValues.codigoBcrp || '');
@@ -47,15 +47,15 @@ export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, l
     <form onSubmit={handleSubmit} className="p-fluid">
       <div className="p-field">
         <label htmlFor="nombre">Nombre*</label>
-        <InputText id="nombre" value={nombre} onChange={e => setNombre(e.target.value)} required disabled={loading} maxLength={100} />
+        <InputText id="nombre" value={nombre} onChange={e => setNombre(e.target.value)} required disabled={loading || readOnly} maxLength={100} />
       </div>
       <div className="p-field">
         <label htmlFor="codigoSwift">Código SWIFT</label>
-        <InputText id="codigoSwift" value={codigoSwift} onChange={e => setCodigoSwift(e.target.value)} disabled={loading} maxLength={20} />
+        <InputText id="codigoSwift" value={codigoSwift} onChange={e => setCodigoSwift(e.target.value)} disabled={loading || readOnly} maxLength={20} />
       </div>
       <div className="p-field">
         <label htmlFor="codigoBcrp">Código BCRP</label>
-        <InputText id="codigoBcrp" value={codigoBcrp} onChange={e => setCodigoBcrp(e.target.value)} disabled={loading} maxLength={20} />
+        <InputText id="codigoBcrp" value={codigoBcrp} onChange={e => setCodigoBcrp(e.target.value)} disabled={loading || readOnly} maxLength={20} />
       </div>
       <div className="p-field">
         <label htmlFor="paisId">País</label>
@@ -68,19 +68,19 @@ export default function BancoForm({ isEdit, defaultValues, onSubmit, onCancel, l
           }))}
           onChange={(e) => setPaisId(e.value)}
           placeholder="Seleccione país"
-          disabled={loading}
+          disabled={loading || readOnly}
           filter
           showClear
           style={{ fontWeight: "bold" }}
         />
       </div>
       <div className="p-field-checkbox">
-        <Checkbox id="activo" checked={activo} onChange={e => setActivo(e.checked)} disabled={loading} />
+        <Checkbox id="activo" checked={activo} onChange={e => setActivo(e.checked)} disabled={loading || readOnly} />
         <label htmlFor="activo">Activo</label>
       </div>
       <div className="p-d-flex p-jc-end" style={{ gap: 8 }}>
         <Button type="button" label="Cancelar" className="p-button-text" onClick={onCancel} disabled={loading} />
-        <Button type="submit" label={isEdit ? "Actualizar" : "Crear"} icon="pi pi-save" loading={loading} />
+        <Button type="submit" label={isEdit ? "Actualizar" : "Crear"} icon="pi pi-save" loading={loading} disabled={readOnly} />
       </div>
     </form>
   );

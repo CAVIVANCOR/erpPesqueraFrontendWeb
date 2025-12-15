@@ -62,6 +62,8 @@ const TemporadaPescaForm = ({
   empresas = [],
   tiposDocumento = [],
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
+  readOnly = false,
+  isEdit = false,
 }) => {
   // Estados principales
   const [activeCard, setActiveCard] = useState("datos-generales");
@@ -390,6 +392,17 @@ const TemporadaPescaForm = ({
    * Sistema profesional con loading state para evitar doble clic
    */
   const handleIniciarTemporada = () => {
+    // Validar permisos
+    if (readOnly) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para iniciar temporadas.",
+        life: 3000,
+      });
+      return;
+    }
+
     // Prevenir si ya está procesando
     if (iniciandoTemporada) {
       return;
@@ -465,6 +478,17 @@ const TemporadaPescaForm = ({
    * Sistema profesional con loading state para evitar doble clic
    */
   const handleFinalizarTemporada = () => {
+    // Validar permisos
+    if (readOnly) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para finalizar temporadas.",
+        life: 3000,
+      });
+      return;
+    }
+
     // Prevenir si ya está procesando
     if (finalizandoTemporada) {
       return;
@@ -525,6 +549,17 @@ const TemporadaPescaForm = ({
    * Sistema profesional con loading state para evitar doble clic
    */
   const handleCancelarTemporada = () => {
+    // Validar permisos
+    if (readOnly) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para cancelar temporadas.",
+        life: 3000,
+      });
+      return;
+    }
+
     // Prevenir si ya está procesando
     if (cancelandoTemporada) {
       return;
@@ -646,10 +681,12 @@ const TemporadaPescaForm = ({
             icon={iniciandoTemporada ? "pi pi-spin pi-spinner" : "pi pi-play"}
             className="p-button-success"
             onClick={handleIniciarTemporada}
-            disabled={!puedeIniciarTemporada() || iniciandoTemporada}
+            disabled={readOnly || !puedeIniciarTemporada() || iniciandoTemporada}
             loading={iniciandoTemporada}
             tooltip={
-              iniciandoTemporada
+              readOnly
+                ? "No tiene permisos para iniciar temporadas"
+                : iniciandoTemporada
                 ? "Procesando inicio de temporada..."
                 : !camposRequeridosCompletos
                 ? "Complete todos los campos requeridos primero"
@@ -704,11 +741,11 @@ const TemporadaPescaForm = ({
           disabled={iniciandoTemporada || finalizandoTemporada || cancelandoTemporada}
         />
         <Button
-          label={editingItem ? "Actualizar" : "Crear"}
+          label={isEdit ? "Actualizar" : "Crear"}
           icon="pi pi-check"
           onClick={handleSubmit(handleFormSubmit)}
           loading={validandoSuperposicion}
-          disabled={iniciandoTemporada || finalizandoTemporada || cancelandoTemporada}
+          disabled={readOnly || iniciandoTemporada || finalizandoTemporada || cancelandoTemporada}
         />
       </div>
     </div>
@@ -814,6 +851,7 @@ const TemporadaPescaForm = ({
             puertos={puertosPesca}
             temporadaData={editingItem}
             onTemporadaDataChange={onTemporadaDataChange}
+            readOnly={readOnly}
           />
         )}
 
@@ -825,6 +863,7 @@ const TemporadaPescaForm = ({
             watch={watch}
             getValues={getValues}
             defaultValues={getValues()}
+            readOnly={readOnly}
           />
         )}
         {activeCard === "entregas-a-rendir" && (
@@ -839,6 +878,7 @@ const TemporadaPescaForm = ({
             tiposMovimiento={tiposMovimiento}
             tiposDocumento={tiposDocumento}
             onDataChange={onTemporadaDataChange}
+            readOnly={readOnly}
           />
         )}
 

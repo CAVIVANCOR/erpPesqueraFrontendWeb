@@ -29,6 +29,7 @@ export default function DetallesTab({
   monedasOptions = [],
   monedaId = 1,
   porcentajeIGV = 0,
+  readOnly = false,
 }) {
   const [detalles, setDetalles] = useState([]);
   const [loading, setLoading] = useState(false);

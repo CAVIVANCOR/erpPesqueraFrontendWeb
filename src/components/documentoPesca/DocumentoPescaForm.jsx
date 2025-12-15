@@ -11,6 +11,7 @@ export default function DocumentoPescaForm({
   onSubmit,
   onCancel,
   loading,
+  readOnly = false,
 }) {
   const [nombre, setNombre] = React.useState(defaultValues.nombre || "");
   const [descripcion, setDescripcion] = React.useState(
@@ -78,7 +79,8 @@ export default function DocumentoPescaForm({
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           required
-          disabled={loading}
+          disabled={loading || readOnly}
+          style={{ textTransform: 'uppercase' }}
         />
       </div>
       <div className="p-field">
@@ -87,7 +89,8 @@ export default function DocumentoPescaForm({
           id="descripcion"
           value={descripcion}
           onChange={(e) => setDescripcion(e.target.value)}
-          disabled={loading}
+          disabled={loading || readOnly}
+          style={{ textTransform: 'uppercase' }}
         />
       </div>
       <div className="p-field-checkbox">
@@ -95,7 +98,7 @@ export default function DocumentoPescaForm({
           id="obligatorio"
           checked={obligatorio}
           onChange={(e) => setObligatorio(e.checked)}
-          disabled={loading}
+          disabled={loading || readOnly}
         />
         <label htmlFor="obligatorio">Obligatorio</label>
       </div>
@@ -104,7 +107,7 @@ export default function DocumentoPescaForm({
           id="cesado"
           checked={cesado}
           onChange={(e) => setCesado(e.checked)}
-          disabled={loading}
+          disabled={loading || readOnly}
         />
         <label htmlFor="cesado">Cesado</label>
       </div>
@@ -113,7 +116,7 @@ export default function DocumentoPescaForm({
           id="paraEmbarcacion"
           checked={paraEmbarcacion}
           onChange={(e) => setParaEmbarcacion(e.checked)}
-          disabled={loading}
+          disabled={loading || readOnly}
         />
         <label htmlFor="paraEmbarcacion">Para Embarcación</label>
       </div>
@@ -122,7 +125,7 @@ export default function DocumentoPescaForm({
           id="paraTripulantes"
           checked={paraTripulantes}
           onChange={(e) => setParaTripulantes(e.checked)}
-          disabled={loading}
+          disabled={loading || readOnly}
         />
         <label htmlFor="paraTripulantes">Para Tripulantes</label>
       </div>
@@ -131,7 +134,7 @@ export default function DocumentoPescaForm({
           id="paraOperacionFaena"
           checked={paraOperacionFaena}
           onChange={(e) => setParaOperacionFaena(e.checked)}
-          disabled={loading}
+          disabled={loading || readOnly}
         />
         <label htmlFor="paraOperacionFaena">Para Operación Faena</label>
       </div>
@@ -163,6 +166,7 @@ export default function DocumentoPescaForm({
           size="small"
           icon="pi pi-save"
           loading={loading}
+          disabled={readOnly}
         />
       </div>
     </form>

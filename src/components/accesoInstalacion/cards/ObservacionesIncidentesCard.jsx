@@ -23,6 +23,7 @@ const ObservacionesIncidentesCard = ({
   setValue,
   getFormErrorMessage,
   accesoSellado = false,
+  readOnly = false,
 }) => {
   const descripcionIncidente = watch("descripcionIncidente");
   const tieneIncidente = watch("incidenteResaltante");
@@ -61,7 +62,7 @@ const ObservacionesIncidentesCard = ({
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
                 rows={3}
                 maxLength={500}
-                disabled={accesoSellado}
+                disabled={readOnly || accesoSellado}
               />
             )}
           />
@@ -89,7 +90,7 @@ const ObservacionesIncidentesCard = ({
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
                 rows={3}
                 maxLength={500}
-                disabled={accesoSellado}
+                disabled={readOnly || accesoSellado}
               />
             )}
           />

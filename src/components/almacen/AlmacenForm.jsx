@@ -17,6 +17,7 @@ export default function AlmacenForm({
   onSubmit,
   onCancel,
   loading,
+  readOnly = false,
 }) {
   const [nombre, setNombre] = React.useState(defaultValues.nombre || "");
   const [descripcion, setDescripcion] = React.useState(defaultValues.descripcion || "");
@@ -82,7 +83,7 @@ export default function AlmacenForm({
               optionValue="id"
               onChange={(e) => setCentroAlmacenId(e.value)}
               placeholder={empresaId ? "Seleccione centro de almacén" : "Primero seleccione una empresa"}
-              disabled={loading || !empresaId}
+              disabled={loading || readOnly || !empresaId}
               required
               filter
             />
@@ -99,7 +100,7 @@ export default function AlmacenForm({
               optionValue="id"
               onChange={(e) => setTipoAlmacenamientoId(e.value)}
               placeholder="Seleccione tipo de almacenamiento"
-              disabled={loading}
+              disabled={loading || readOnly}
               required
               filter
             />
@@ -116,7 +117,7 @@ export default function AlmacenForm({
               optionValue="id"
               onChange={(e) => setTipoAlmacenId(e.value)}
               placeholder="Seleccione tipo de almacén"
-              disabled={loading}
+              disabled={loading || readOnly}
               required
               filter
             />
@@ -130,7 +131,7 @@ export default function AlmacenForm({
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               required
-              disabled={loading}
+              disabled={loading || readOnly}
               maxLength={100}
             />
           </div>
@@ -142,7 +143,7 @@ export default function AlmacenForm({
               id="descripcion"
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
-              disabled={loading}
+              disabled={loading || readOnly}
               rows={3}
             />
           </div>
@@ -153,7 +154,7 @@ export default function AlmacenForm({
               id="seLlevaKardex"
               checked={seLlevaKardex}
               onChange={(e) => setSeLlevaKardex(e.checked)}
-              disabled={loading}
+              disabled={loading || readOnly}
             />
             <label htmlFor="seLlevaKardex">Se Lleva Kardex</label>
           </div>
@@ -164,7 +165,7 @@ export default function AlmacenForm({
               id="esAlmacenExterno"
               checked={esAlmacenExterno}
               onChange={(e) => setEsAlmacenExterno(e.checked)}
-              disabled={loading}
+              disabled={loading || readOnly}
             />
             <label htmlFor="esAlmacenExterno">Es Almacén Externo</label>
           </div>
@@ -175,7 +176,7 @@ export default function AlmacenForm({
               id="esAlmacenPropioSede"
               checked={esAlmacenPropioSede}
               onChange={(e) => setEsAlmacenPropioSede(e.checked)}
-              disabled={loading}
+              disabled={loading || readOnly}
             />
             <label htmlFor="esAlmacenPropioSede">Es Almacén Propio Sede</label>
           </div>
@@ -186,7 +187,7 @@ export default function AlmacenForm({
               id="esAlmacenProduccion"
               checked={esAlmacenProduccion}
               onChange={(e) => setEsAlmacenProduccion(e.checked)}
-              disabled={loading}
+              disabled={loading || readOnly}
             />
             <label htmlFor="esAlmacenProduccion">Es Almacén Producción</label>
           </div>
@@ -197,7 +198,7 @@ export default function AlmacenForm({
               id="activo"
               checked={activo}
               onChange={(e) => setActivo(e.checked)}
-              disabled={loading}
+              disabled={loading || readOnly}
             />
             <label htmlFor="activo">Activo</label>
           </div>
@@ -212,7 +213,7 @@ export default function AlmacenForm({
           type="button"
           disabled={loading}
         />
-        <Button label="Guardar" icon="pi pi-check" type="submit" disabled={loading} />
+        <Button label="Guardar" icon="pi pi-check" type="submit" disabled={loading || readOnly} />
       </div>
     </form>
   );

@@ -28,6 +28,7 @@ const VehiculoEquiposCard = ({
   buscandoVehiculo,
   onPlacaBlur,
   accesoSellado = false,
+  readOnly = false,
 }) => {
   return (
     <Card
@@ -65,7 +66,7 @@ const VehiculoEquiposCard = ({
                     placeholder="Número de placa"
                     className="w-full"
                     style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                    disabled={accesoSellado || buscandoVehiculo}
+                    disabled={readOnly || accesoSellado || buscandoVehiculo}
                   />
                 )}
               />
@@ -95,7 +96,7 @@ const VehiculoEquiposCard = ({
                   placeholder="Marca del vehículo"
                   className="w-full"
                   style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                  disabled={accesoSellado || buscandoVehiculo}
+                  disabled={readOnly || accesoSellado || buscandoVehiculo}
                 />
               )}
             />
@@ -117,7 +118,7 @@ const VehiculoEquiposCard = ({
                   placeholder="Modelo del vehículo"
                   className="w-full"
                   style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                  disabled={accesoSellado || buscandoVehiculo}
+                  disabled={readOnly || accesoSellado || buscandoVehiculo}
                 />
               )}
             />
@@ -139,7 +140,7 @@ const VehiculoEquiposCard = ({
                   placeholder="Color del vehículo"
                   className="w-full"
                   style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                  disabled={accesoSellado || buscandoVehiculo}
+                  disabled={readOnly || accesoSellado || buscandoVehiculo}
                 />
               )}
             />
@@ -175,7 +176,7 @@ const VehiculoEquiposCard = ({
                 className="w-full"
                 style={{ fontWeight: "bold" }}
                 showClear
-                disabled={accesoSellado}
+                disabled={readOnly || accesoSellado}
               />
             )}
           />
@@ -197,7 +198,7 @@ const VehiculoEquiposCard = ({
                 placeholder="Marca del equipo"
                 className="w-full"
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                disabled={accesoSellado}
+                disabled={readOnly || accesoSellado}
               />
             )}
           />
@@ -219,7 +220,7 @@ const VehiculoEquiposCard = ({
                 placeholder="Serie del equipo"
                 className="w-full"
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                disabled={accesoSellado}
+                disabled={readOnly || accesoSellado}
               />
             )}
           />

@@ -7,6 +7,7 @@
 // - Indicadores visuales de novedades activas
 // - Upload de archivos PDF para resoluciones
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -17,6 +18,7 @@ import { Badge } from "primereact/badge";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import {
   getAllNovedadPescaConsumo,
   deleteNovedadPescaConsumo,
@@ -33,7 +35,16 @@ import { getResponsiveFontSize } from "../utils/utils";
  * Componente principal para gestión de Novedades de Pesca para Consumo
  * Implementa patrón CRUD profesional con filtros dinámicos y validaciones ERP Megui
  */
-const NovedadPescaConsumo = () => {
+const NovedadPescaConsumo = ({ ruta }) => {
+  // Store de autenticación y permisos
+  const { usuario } = useAuthStore();
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   // Estados principales de la tabla
   const [novedades, setNovedades] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +53,7 @@ const NovedadPescaConsumo = () => {
   // Estados del formulario
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [isEdit, setIsEdit] = useState(false);
 
   // Estados para combos de filtro
   const [empresas, setEmpresas] = useState([]);
@@ -54,7 +66,6 @@ const NovedadPescaConsumo = () => {
 
   const toast = useRef(null);
   const isMounted = useRef(false);
-  const { usuario } = useAuthStore();
 
   /**
    * Cargar datos iniciales
@@ -206,6 +217,7 @@ const NovedadPescaConsumo = () => {
         empresaId: filtroEmpresa,
         BahiaId: Number(bahiaComercial.id),
       });
+      setIsEdit(false);
       setShowForm(true);
     } catch (error) {
       console.error("Error cargando Bahía Comercial:", error);
@@ -221,6 +233,7 @@ const NovedadPescaConsumo = () => {
    */
   const openEdit = (novedad) => {
     setEditingItem(novedad);
+    setIsEdit(true);
     setShowForm(true);
   };
 
@@ -230,6 +243,7 @@ const NovedadPescaConsumo = () => {
   const closeForm = () => {
     setShowForm(false);
     setEditingItem(null);
+    setIsEdit(false);
   };
 
   /**
@@ -243,6 +257,26 @@ const NovedadPescaConsumo = () => {
    * Guardar novedad (crear o actualizar)
    */
   const saveItem = async (data) => {
+    // Validar permisos antes de guardar
+    if (isEdit && !permisos.puedeEditar) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para editar registros.",
+        life: 3000,
+      });
+      return;
+    }
+    if (!isEdit && !permisos.puedeCrear) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear registros.",
+        life: 3000,
+      });
+      return;
+    }
+
     try {
       let resultado;
       if (editingItem?.id) {
@@ -330,6 +364,17 @@ const NovedadPescaConsumo = () => {
    * Confirmar eliminación de novedad
    */
   const confirmarEliminacion = (novedad) => {
+    // Validar permisos de eliminación
+    if (!permisos.puedeEliminar) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar registros.",
+        life: 3000,
+      });
+      return;
+    }
+
     confirmDialog({
       message: `¿Está seguro de eliminar la novedad "${novedad.nombre}"?`,
       header: "Confirmar Eliminación",
@@ -596,21 +641,18 @@ const NovedadPescaConsumo = () => {
    * Template para acciones
    */
   const accionesTemplate = (rowData) => {
-    const puedeEliminar = usuario?.esSuperUsuario || usuario?.esAdmin;
-
     return (
       <div className="flex gap-2">
-        {puedeEliminar && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-rounded p-button-danger p-button-text"
-            onClick={(e) => {
-              e.stopPropagation();
-              confirmarEliminacion(rowData);
-            }}
-            tooltip="Eliminar"
-          />
-        )}
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-danger p-button-text"
+          onClick={(e) => {
+            e.stopPropagation();
+            confirmarEliminacion(rowData);
+          }}
+          tooltip="Eliminar"
+          disabled={!permisos.puedeEliminar}
+        />
       </div>
     );
   };
@@ -632,12 +674,20 @@ const NovedadPescaConsumo = () => {
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} novedades"
           emptyMessage="No se encontraron novedades."
-          onRowClick={(e) => openEdit(e.data)}
+          onRowClick={
+            permisos.puedeVer || permisos.puedeEditar
+              ? (e) => openEdit(e.data)
+              : undefined
+          }
           selectionMode="single"
           scrollable
           scrollHeight="600px"
           globalFilter={globalFilter}
-          style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+          style={{
+            cursor:
+              permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+            fontSize: getResponsiveFontSize(),
+          }}
           header={
             <div>
               {/* Primera fila: Título y botones principales */}
@@ -685,9 +735,11 @@ const NovedadPescaConsumo = () => {
                     icon="pi pi-plus"
                     className="p-button-success"
                     onClick={openNew}
-                    disabled={!filtroEmpresa}
+                    disabled={!permisos.puedeCrear || !filtroEmpresa}
                     tooltip={
-                      !filtroEmpresa
+                      !permisos.puedeCrear
+                        ? "No tiene permisos para crear novedades"
+                        : !filtroEmpresa
                         ? "Seleccione una empresa para crear una nueva novedad"
                         : "Crear nueva novedad"
                     }
@@ -863,6 +915,8 @@ const NovedadPescaConsumo = () => {
         empresas={empresas}
         tiposDocumento={tiposDocumento}
         onNovedadDataChange={actualizarEditingItem}
+        readOnly={isEdit && !permisos.puedeEditar}
+        isEdit={isEdit}
       />
     </div>
   );

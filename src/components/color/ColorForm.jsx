@@ -35,7 +35,7 @@ const esquemaValidacion = yup.object().shape({
  * Formulario para crear/editar colores
  * Patrón aplicado: React Hook Form + YUP, normalización, feedback profesional
  */
-const ColorForm = ({ color, onSave, onCancel, toast, loading }) => {
+const ColorForm = ({ color, onSave, onCancel, toast, loading, readOnly = false }) => {
   const modoEdicion = Boolean(color?.id);
 
   // Configuración de React Hook Form con YUP
@@ -133,7 +133,7 @@ const ColorForm = ({ color, onSave, onCancel, toast, loading }) => {
             className={getFormErrorClass("nombre")}
             placeholder="Ingrese el nombre del color"
             maxLength={80}
-            disabled={isSubmitting || loading}
+            disabled={isSubmitting || loading || readOnly}
             style={{ textTransform: "uppercase" }}
           />
           {errors.nombre && (
@@ -158,6 +158,18 @@ const ColorForm = ({ color, onSave, onCancel, toast, loading }) => {
             onClick={onCancel}
             disabled={isSubmitting || loading}
             raised
+            size="small"
+          />
+          <Button
+            type="submit"
+            label={modoEdicion ? "Actualizar" : "Crear"}
+            icon="pi pi-save"
+            loading={isSubmitting || loading}
+            disabled={readOnly}
+            className="p-button-success"
+            severity="success"
+            raised
+            outlined
             size="small"
           />
           <Button

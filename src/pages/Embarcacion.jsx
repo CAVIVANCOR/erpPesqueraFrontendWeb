@@ -27,6 +27,7 @@ import { getActivos } from "../api/activo";
 import { getTiposEmbarcacion } from "../api/tipoEmbarcacion";
 import { getEstadosMultiFuncionParaEmbarcaciones } from "../api/estadoMultiFuncion";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import EmbarcacionForm from "../components/embarcacion/EmbarcacionForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -42,7 +43,10 @@ const Embarcacion = () => {
   const [embarcacionAEliminar, setEmbarcacionAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const permisos = usePermissions("Embarcacion");
   const [globalFilter, setGlobalFilter] = useState("");
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   useEffect(() => {
     cargarDatos();
@@ -221,6 +225,7 @@ const Embarcacion = () => {
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              disabled={!permisos.puedeCrear}
             />
             <span className="p-input-icon-left">
               <InputText
@@ -304,6 +309,7 @@ const Embarcacion = () => {
           embarcacion={embarcacionSeleccionada}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
+          readOnly={readOnly}
         />
       </Dialog>
 

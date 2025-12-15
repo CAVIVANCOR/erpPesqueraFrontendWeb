@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { Navigate } from 'react-router-dom';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -35,6 +36,7 @@ import { getCentrosCosto } from '../api/centroCosto';
 import { getAllTipoMovEntregaRendir } from '../api/tipoMovEntregaRendir';
 import { getEntidadesComerciales } from '../api/entidadComercial';
 import { useAuthStore } from '../shared/stores/useAuthStore';
+import { usePermissions } from '../hooks/usePermissions';
 import OTMantenimientoForm from '../components/oTMantenimiento/OTMantenimientoForm';
 import { formatearFecha } from '../utils/utils';
 import { getResponsiveFontSize } from "../utils/utils";
@@ -43,9 +45,15 @@ import { getResponsiveFontSize } from "../utils/utils";
  * Componente OTMantenimiento
  * Pantalla principal para gestión de órdenes de trabajo de mantenimiento
  */
-const OTMantenimiento = () => {
+const OTMantenimiento = ({ ruta }) => {
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
   
   // Estados del componente
   const [ordenesTrabajo, setOrdenesTrabajo] = useState([]);
@@ -272,9 +280,30 @@ const OTMantenimiento = () => {
    * Maneja el guardado de la orden de trabajo
    */
   const handleGuardarOrden = async (datos) => {
+    const esEdicion = ordenSeleccionada && ordenSeleccionada.id && ordenSeleccionada.codigo;
+
+    // Validar permisos antes de guardar
+    if (esEdicion && !permisos.puedeEditar) {
+      toast.current.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para editar registros.',
+        life: 3000,
+      });
+      return;
+    }
+    if (!esEdicion && !permisos.puedeCrear) {
+      toast.current.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para crear registros.',
+        life: 3000,
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const esEdicion = ordenSeleccionada && ordenSeleccionada.id && ordenSeleccionada.codigo;
 
       if (esEdicion) {
         await actualizarOrdenTrabajo(ordenSeleccionada.id, datos);
@@ -344,11 +373,12 @@ const OTMantenimiento = () => {
    * Confirma la eliminación de una orden de trabajo
    */
   const confirmarEliminacion = (orden) => {
-    if (!usuario?.esSuperUsuario && !usuario?.esAdmin) {
+    // Validar permisos de eliminación
+    if (!permisos.puedeEliminar) {
       toast.current?.show({
         severity: 'warn',
         summary: 'Acceso Denegado',
-        detail: 'No tiene permisos para eliminar órdenes de trabajo'
+        detail: 'No tiene permisos para eliminar registros.'
       });
       return;
     }
@@ -390,7 +420,9 @@ const OTMantenimiento = () => {
    * Maneja el clic en fila
    */
   const onRowClick = (event) => {
-    abrirDialogoEdicion(event.data);
+    if (permisos.puedeVer || permisos.puedeEditar) {
+      abrirDialogoEdicion(event.data);
+    }
   };
 
   /**
@@ -467,22 +499,30 @@ const OTMantenimiento = () => {
    * Template para acciones
    */
   const accionesTemplate = (rowData) => {
-    const puedeEliminar = usuario?.esSuperUsuario || usuario?.esAdmin;
-
     return (
       <div className="flex gap-2">
-        {puedeEliminar && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-rounded p-button-danger p-button-sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              confirmarEliminacion(rowData);
-            }}
-            tooltip="Eliminar"
-            tooltipOptions={{ position: 'top' }}
-          />
-        )}
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-rounded p-button-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            abrirDialogoEdicion(rowData);
+          }}
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          tooltip={permisos.puedeEditar ? 'Editar' : 'Ver'}
+          tooltipOptions={{ position: 'top' }}
+        />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-danger p-button-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            confirmarEliminacion(rowData);
+          }}
+          disabled={!permisos.puedeEliminar}
+          tooltip="Eliminar"
+          tooltipOptions={{ position: 'top' }}
+        />
       </div>
     );
   };
@@ -510,14 +550,14 @@ const OTMantenimiento = () => {
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} órdenes"
           emptyMessage="No se encontraron órdenes de trabajo"
-          onRowClick={onRowClick}
+          onRowClick={permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined}
           selectionMode="single"
           scrollable
           scrollHeight="600px"
-        style={{
-          cursor:"pointer",
-          fontSize: getResponsiveFontSize(),
-        }}
+          style={{
+            fontSize: getResponsiveFontSize(),
+            cursor: permisos.puedeVer || permisos.puedeEditar ? 'pointer' : 'default',
+          }}
                   header={
             <div>
               <div style={{ alignItems: "end", display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
@@ -546,7 +586,14 @@ const OTMantenimiento = () => {
                     icon="pi pi-plus"
                     onClick={abrirDialogoNuevo}
                     className="p-button-primary"
-                    disabled={loading || !empresaSeleccionada}
+                    disabled={!permisos.puedeCrear || loading || !empresaSeleccionada}
+                    tooltip={
+                      !permisos.puedeCrear
+                        ? 'No tiene permisos para crear'
+                        : !empresaSeleccionada
+                        ? 'Seleccione una empresa primero'
+                        : 'Nueva Orden de Trabajo'
+                    }
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -751,7 +798,8 @@ const OTMantenimiento = () => {
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           entidadesComerciales={entidadesComerciales}
-          permisos={{ eliminar: usuario?.rol === 'superusuario' || usuario?.rol === 'admin' }}
+          permisos={permisos}
+          readOnly={!!ordenSeleccionada && !!ordenSeleccionada.codigo && !permisos.puedeEditar}
           loading={loading}
           toast={toast}
           empresaFija={empresaSeleccionada}

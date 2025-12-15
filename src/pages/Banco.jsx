@@ -16,7 +16,9 @@ import {
 } from "../api/banco";
 import { getPaises } from "../api/pais";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
+import { Navigate } from "react-router-dom";
 
 /**
  * Pantalla profesional para gestión de Bancos.
@@ -27,8 +29,16 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - Feedback visual con Toast.
  * - Documentación de la regla en el encabezado.
  */
-export default function Banco() {
+export default function Banco({ ruta }) {
   const toast = useRef(null);
+  const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
@@ -36,7 +46,6 @@ export default function Banco() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [paises, setPaises] = useState([]);
-  const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
     cargarItems();
@@ -200,7 +209,7 @@ export default function Banco() {
                 size="small"
                 outlined
                 onClick={handleAdd}
-                disabled={loading}
+                disabled={loading || !permisos.puedeCrear}
               />
             </div>
           </div>
@@ -245,6 +254,7 @@ export default function Banco() {
           onCancel={() => setShowDialog(false)}
           loading={loading}
           paises={paises}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

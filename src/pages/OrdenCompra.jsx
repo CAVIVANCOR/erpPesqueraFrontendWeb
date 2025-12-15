@@ -1,5 +1,6 @@
 // src/pages/OrdenCompra.jsx
 import React, { useRef, useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -31,9 +32,18 @@ import { getCentrosCosto } from "../api/centroCosto";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getSeriesDoc } from "../api/serieDoc";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 
-export default function OrdenCompra() {
+export default function OrdenCompra({ ruta }) {
+  const { usuario } = useAuthStore();
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const toast = useRef(null);
   const [items, setItems] = useState([]);
   const [empresas, setEmpresas] = useState([]);
@@ -59,7 +69,6 @@ export default function OrdenCompra() {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [proveedoresUnicos, setProveedoresUnicos] = useState([]);
-  const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
     cargarDatos();
@@ -213,6 +222,16 @@ export default function OrdenCompra() {
   };
 
   const handleDelete = (rowData) => {
+    // Validar permisos de eliminación
+    if (!permisos.puedeEliminar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar registros.",
+        life: 3000,
+      });
+      return;
+    }
     setToDelete(rowData);
     setShowConfirm(true);
   };
@@ -241,9 +260,30 @@ export default function OrdenCompra() {
   };
 
   const handleFormSubmit = async (data) => {
+    const esEdicion = editing && editing.id;
+
+    // Validar permisos antes de guardar
+    if (esEdicion && !permisos.puedeEditar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para editar registros.",
+        life: 3000,
+      });
+      return;
+    }
+    if (!esEdicion && !permisos.puedeCrear) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear registros.",
+        life: 3000,
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const esEdicion = editing && editing.id;
 
       if (esEdicion) {
         await actualizarOrdenCompra(editing.id, data);
@@ -422,16 +462,18 @@ export default function OrdenCompra() {
         icon="pi pi-pencil"
         className="p-button-text p-button-sm"
         onClick={() => handleEdit(rowData)}
-        aria-label="Editar"
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+        aria-label={permisos.puedeEditar ? "Editar" : "Ver"}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button
-          icon="pi pi-trash"
-          className="p-button-text p-button-danger p-button-sm"
-          onClick={() => handleDelete(rowData)}
-          aria-label="Eliminar"
-        />
-      )}
+      <Button
+        icon="pi pi-trash"
+        className="p-button-text p-button-danger p-button-sm"
+        onClick={() => handleDelete(rowData)}
+        aria-label="Eliminar"
+        tooltip="Eliminar"
+        disabled={!permisos.puedeEliminar}
+      />
     </>
   );
 
@@ -460,8 +502,16 @@ export default function OrdenCompra() {
         size="small"
         showGridlines
         stripedRows
-        onRowClick={(e) => handleEdit(e.data)}
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => handleEdit(e.data)
+            : undefined
+        }
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
         header={
           <div>
             <div
@@ -643,6 +693,8 @@ export default function OrdenCompra() {
           onGenerarDesdeRequerimiento={handleGenerarDesdeRequerimiento}
           loading={loading}
           toast={toast}
+          permisos={permisos}
+          readOnly={!!editing && !!editing.id && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

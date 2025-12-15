@@ -92,7 +92,7 @@ const esquemaValidacion = yup.object().shape({
   paraPescaIndustrial: yup.boolean().default(false),
 });
 
-export default function BolicheRedForm({ bolicheRed, onGuardar, onCancelar }) {
+export default function BolicheRedForm({ bolicheRed, onGuardar, onCancelar, readOnly = false }) {
   const toast = useRef(null);
   const [activeCard, setActiveCard] = useState("datos-generales");
   const [loading, setLoading] = useState(false);
@@ -300,6 +300,7 @@ export default function BolicheRedForm({ bolicheRed, onGuardar, onCancelar }) {
             activos={activos}
             estadosActivo={estadosActivo}
             defaultValues={bolicheRed || {}}
+            readOnly={readOnly}
           />
         )}
 
@@ -311,6 +312,7 @@ export default function BolicheRedForm({ bolicheRed, onGuardar, onCancelar }) {
             watch={watch}
             getValues={getValues}
             defaultValues={bolicheRed || {}}
+            readOnly={readOnly}
           />
         )}
         {/* Botones de acción */}
@@ -340,6 +342,7 @@ export default function BolicheRedForm({ bolicheRed, onGuardar, onCancelar }) {
             label={esEdicion ? "Actualizar" : "Crear"}
             icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
             loading={loading}
+            disabled={readOnly}
             className="p-button-success"
             raised
             outlined

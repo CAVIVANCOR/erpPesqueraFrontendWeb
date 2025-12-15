@@ -225,6 +225,8 @@ export default function ProductoForm({
   modoEdicion = false,
   loading = false,
   setLoading,
+  permisos = {},
+  readOnly = false,
 }) {
   const toast = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -501,6 +503,7 @@ export default function ProductoForm({
               colores={colores}
               unidadMetricaDefault={unidadMetricaDefault}
               especies={especies}
+              readOnly={readOnly}
             />
           </TabPanel>
 
@@ -520,6 +523,7 @@ export default function ProductoForm({
               marcaDefault={marcas[0]}
               unidadMetricaDefault={unidadMetricaDefault}
               modoEdicion={modoEdicion}
+              readOnly={readOnly}
             />
           </TabPanel>
 
@@ -531,6 +535,7 @@ export default function ProductoForm({
               watch={watch}
               getValues={getValues}
               defaultValues={getValues()}
+              readOnly={readOnly}
             />
           </TabPanel>
         </TabView>
@@ -562,6 +567,8 @@ export default function ProductoForm({
             className="p-button-success"
             onClick={handleSubmit(onSubmitForm)}
             loading={loading}
+            disabled={readOnly || !permisos.puedeEditar}
+            tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""}
             raised
             size="small"
             outlined

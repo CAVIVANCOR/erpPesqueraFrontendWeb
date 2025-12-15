@@ -24,6 +24,7 @@ import { InputText } from "primereact/inputtext";
 import { getDepartamentos, eliminarDepartamento, crearDepartamento, actualizarDepartamento } from "../api/departamento";
 import { getPaises } from "../api/pais";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import DepartamentoForm from "../components/departamento/DepartamentoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -37,7 +38,10 @@ const Departamento = () => {
   const [departamentoAEliminar, setDepartamentoAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const permisos = usePermissions("Departamento");
   const [globalFilter, setGlobalFilter] = useState("");
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   useEffect(() => {
     cargarDatos();
@@ -181,6 +185,7 @@ const Departamento = () => {
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              disabled={!permisos.puedeCrear}
             />
             <span className="p-input-icon-left">
               <InputText
@@ -223,6 +228,7 @@ const Departamento = () => {
           paises={paises}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
+          readOnly={readOnly}
         />
       </Dialog>
 

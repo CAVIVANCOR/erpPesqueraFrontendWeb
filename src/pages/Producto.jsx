@@ -15,6 +15,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -32,6 +33,7 @@ import {
   actualizarProducto,
 } from "../api/producto";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import ProductoForm from "../components/producto/ProductoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 import { getFamiliasProducto } from "../api/familiaProducto";
@@ -51,7 +53,16 @@ import { getPaises } from "../api/pais";
 import { getMarcas } from "../api/marca";
 import { getEspecies } from "../api/especie";
 
-const Producto = () => {
+const Producto = ({ ruta }) => {
+  const toast = useRef(null);
+  const { usuario } = useAuthStore();
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const [productos, setProductos] = useState([]);
   const [productosFiltrados, setProductosFiltrados] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,8 +76,6 @@ const Producto = () => {
     "empresa.id": { value: null, matchMode: FilterMatchMode.EQUALS },
     "cliente.id": { value: null, matchMode: FilterMatchMode.EQUALS },
   });
-  const toast = useRef(null);
-  const { usuario } = useAuthStore();
 
   // Estados para catálogos
   const [familias, setFamilias] = useState([]);
@@ -359,7 +368,29 @@ const Producto = () => {
   };
 
   const onGuardarExitoso = async (data) => {
-    if (productoSeleccionado && productoSeleccionado.id) {
+    const esEdicion = productoSeleccionado && productoSeleccionado.id;
+
+    // Validar permisos antes de guardar
+    if (esEdicion && !permisos.puedeEditar) {
+      toast.current.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para editar registros.',
+        life: 3000,
+      });
+      return;
+    }
+    if (!esEdicion && !permisos.puedeCrear) {
+      toast.current.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para crear registros.',
+        life: 3000,
+      });
+      return;
+    }
+
+    if (esEdicion) {
       await actualizarProducto(productoSeleccionado.id, data);
     } else {
       await crearProducto(data);
@@ -370,7 +401,7 @@ const Producto = () => {
       severity: "success",
       summary: "Éxito",
       detail:
-        productoSeleccionado && productoSeleccionado.id
+        esEdicion
           ? "Producto actualizado correctamente"
           : "Producto creado correctamente",
       life: 3000,
@@ -378,6 +409,16 @@ const Producto = () => {
   };
 
   const confirmarEliminacion = (producto) => {
+    // Validar permisos de eliminación
+    if (!permisos.puedeEliminar) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para eliminar registros.',
+        life: 3000,
+      });
+      return;
+    }
     setProductoAEliminar(producto);
     setConfirmVisible(true);
   };
@@ -565,24 +606,24 @@ const Producto = () => {
             ev.stopPropagation();
             abrirDialogoEdicion(rowData);
           }}
-          tooltip="Editar"
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          tooltip={permisos.puedeEditar ? 'Editar' : 'Ver'}
           tooltipOptions={{ position: "top" }}
         />
-        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-text p-button-danger"
-            onClick={() => confirmarEliminacion(rowData)}
-            tooltip="Eliminar"
-          />
-        )}
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger"
+          onClick={() => confirmarEliminacion(rowData)}
+          disabled={!permisos.puedeEliminar}
+          tooltip="Eliminar"
+        />
       </div>
     );
   };
 
   const renderHeader = () => {
-    // Deshabilitar el botón Nuevo hasta que se seleccione empresa y cliente
-    const isNuevoDisabled = !selectedEmpresa || !selectedCliente;
+    // Deshabilitar el botón Nuevo hasta que se seleccione empresa y cliente, o sin permisos
+    const isNuevoDisabled = !permisos.puedeCrear || !selectedEmpresa || !selectedCliente;
 
     return (
       <div className="flex align-items-center gap-2">
@@ -658,8 +699,10 @@ const Producto = () => {
               onClick={abrirDialogoNuevo}
               disabled={isNuevoDisabled}
               tooltip={
-                isNuevoDisabled
-                  ? "Seleccione empresa y cliente para crear un nuevo producto"
+                !permisos.puedeCrear
+                  ? "No tiene permisos para crear"
+                  : !selectedEmpresa || !selectedCliente
+                  ? "Seleccione empresa y cliente para crear un producto"
                   : "Crear nuevo producto"
               }
               tooltipOptions={{ position: "top" }}
@@ -788,15 +831,21 @@ const Producto = () => {
         header={renderHeader()}
         emptyMessage="No se encontraron productos"
         className="p-datatable-sm p-datatable-hover"
-        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => abrirDialogoEdicion(e.data)
+            : undefined
+        }
         selectionMode="single"
         scrollable
         scrollHeight="flex"
-        resizableColumns
-        showGridlines
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
         stripedRows
         size="small"
-        style={{ fontSize: getResponsiveFontSize() }}
       >
         <Column field="id" header="ID" sortable style={{ width: "80px" }} />
         <Column
@@ -897,6 +946,8 @@ const Producto = () => {
           estadosIniciales={estadosIniciales}
           unidadMetricaDefault={unidadMetricaDefault}
           especies={especies}
+          permisos={permisos}
+          readOnly={!!productoSeleccionado && !!productoSeleccionado.id && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

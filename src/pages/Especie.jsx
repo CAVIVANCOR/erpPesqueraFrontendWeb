@@ -9,6 +9,7 @@ import { Toast } from "primereact/toast";
 import { InputText } from "primereact/inputtext";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import EspecieForm from "../components/especie/EspecieForm";
 import {
   getEspecies,
@@ -28,7 +29,9 @@ import { getResponsiveFontSize } from "../utils/utils";
  */
 export default function EspeciePage() {
   const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions("Especie");
   const [especies, setEspecies] = useState([]);
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState(null);
   const [isEdit, setIsEdit] = useState(false);
@@ -257,6 +260,7 @@ export default function EspeciePage() {
           onSubmit={onSubmit}
           onCancel={onCancel}
           loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

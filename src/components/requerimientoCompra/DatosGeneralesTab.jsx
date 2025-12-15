@@ -44,6 +44,7 @@ export default function DatosGeneralesTab({
   total = null,
   // Objeto moneda del requerimiento (viene de la relación)
   monedaRequerimiento = null,
+  readOnly = false,
 }) {
   // Helper para obtener nombre completo del personal por ID
   const getNombrePersonal = (personalId) => {
@@ -76,7 +77,7 @@ export default function DatosGeneralesTab({
             optionValue="value"
             placeholder="Seleccionar empresa"
             style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            disabled={isEdit || !puedeEditar}
+            disabled={isEdit || !puedeEditar || readOnly}
           />
         </div>
         <div style={{ flex: 0.7 }}>
@@ -87,7 +88,7 @@ export default function DatosGeneralesTab({
             onChange={(e) => onChange("fechaDocumento", e.value)}
             dateFormat="dd/mm/yy"
             showIcon
-            disabled={!puedeEditar}
+            disabled={!puedeEditar || readOnly}
             inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
@@ -164,7 +165,10 @@ export default function DatosGeneralesTab({
             optionValue="value"
             placeholder="Seleccionar serie"
             disabled={
-              !puedeEditar || !formData.tipoDocumentoId || !!formData.serieDocId
+              !puedeEditar || readOnly || !formData.tipoDocumentoId || !!formData.serieDocId
+            }
+            readOnly={
+              !puedeEditar || readOnly || !formData.tipoDocumentoId || !!formData.serieDocId
             }
             required
             style={{
@@ -217,7 +221,7 @@ export default function DatosGeneralesTab({
               fontWeight: "bold",
               textTransform: "uppercase",
             }}
-            disabled={!puedeEditar}
+            disabled={!puedeEditar || readOnly}
             showClear
           />
         </div>
@@ -246,7 +250,7 @@ export default function DatosGeneralesTab({
             onClick={() =>
               onChange("esConCotizacion", !formData.esConCotizacion)
             }
-            disabled={!puedeEditar}
+            disabled={!puedeEditar || readOnly}
             outlined
             style={{
               width: "100%",
@@ -273,7 +277,7 @@ export default function DatosGeneralesTab({
                 fontWeight: "bold",
                 textTransform: "uppercase",
               }}
-              disabled={!puedeEditar}
+              disabled={!puedeEditar || readOnly}
             />
           </div>
         )}
@@ -287,7 +291,7 @@ export default function DatosGeneralesTab({
             onChange={(e) => onChange("fechaRequerida", e.value)}
             dateFormat="dd/mm/yy"
             showIcon
-            disabled={!puedeEditar}
+            disabled={!puedeEditar || readOnly}
             inputStyle={{
               fontWeight: "bold",
               textTransform: "uppercase",
@@ -315,7 +319,7 @@ export default function DatosGeneralesTab({
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccionar tipo"
-            disabled={!puedeEditar}
+            disabled={!puedeEditar || readOnly}
             showClear
             style={{
               fontWeight: "bold",
@@ -335,7 +339,7 @@ export default function DatosGeneralesTab({
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccionar destino"
-            disabled={!puedeEditar}
+            disabled={!puedeEditar || readOnly}
             showClear
             style={{
               fontWeight: "bold",
@@ -354,7 +358,7 @@ export default function DatosGeneralesTab({
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccionar estado"
-            disabled={!puedeEditar}
+            disabled={!puedeEditar || readOnly}
             showClear
             style={{
               fontWeight: "bold",
@@ -386,7 +390,7 @@ export default function DatosGeneralesTab({
               fontWeight: "bold",
               textTransform: "uppercase",
             }}
-            disabled={!puedeEditar}
+            disabled={!puedeEditar || readOnly}
             showClear
           />
         </div>
@@ -428,7 +432,7 @@ export default function DatosGeneralesTab({
             onClick={() =>
               onChange("esExoneradoAlIGV", !formData.esExoneradoAlIGV)
             }
-            disabled={!puedeEditar}
+            disabled={!puedeEditar || readOnly}
             outlined
             style={{
               width: "100%",
@@ -453,7 +457,7 @@ export default function DatosGeneralesTab({
               fontWeight: "bold",
               textTransform: "uppercase",
             }}
-            disabled={!puedeEditar}
+            disabled={!puedeEditar || readOnly}
             showClear
           />
         </div>
@@ -469,7 +473,7 @@ export default function DatosGeneralesTab({
             maxFractionDigits={3}
             min={0}
             placeholder="0.000"
-            disabled={!puedeEditar}
+            disabled={!puedeEditar || readOnly}
             inputStyle={{
               fontWeight: "bold",
               textTransform: "uppercase",
@@ -498,6 +502,7 @@ export default function DatosGeneralesTab({
             monedasOptions={monedasOptions}
             monedaId={formData.monedaId}
             porcentajeIGV={formData.porcentajeIGV}
+            readOnly={readOnly}
           />
         </div>
       )}
@@ -530,7 +535,7 @@ export default function DatosGeneralesTab({
               optionLabel="label"
               optionValue="value"
               placeholder="Seleccionar responsable"
-              disabled={!puedeEditar}
+              disabled={!puedeEditar || readOnly}
               showClear
               style={{
                 fontWeight: "bold",
@@ -549,7 +554,7 @@ export default function DatosGeneralesTab({
               optionLabel="label"
               optionValue="value"
               placeholder="Seleccionar responsable"
-              disabled={!puedeEditar}
+              disabled={!puedeEditar || readOnly}
               showClear
               style={{
                 fontWeight: "bold",
@@ -568,7 +573,7 @@ export default function DatosGeneralesTab({
               optionLabel="label"
               optionValue="value"
               placeholder="Seleccionar responsable"
-              disabled={!puedeEditar}
+              disabled={!puedeEditar || readOnly}
               showClear
               style={{
                 fontWeight: "bold",
@@ -597,7 +602,7 @@ export default function DatosGeneralesTab({
               optionLabel="label"
               optionValue="value"
               placeholder="Seleccionar centro de costo"
-              disabled={!puedeEditar}
+              disabled={!puedeEditar || readOnly}
               style={{
                 fontWeight: "bold",
                 textTransform: "uppercase",
@@ -616,7 +621,7 @@ export default function DatosGeneralesTab({
               optionValue="value"
               placeholder="Seleccionar supervisor"
               filter
-              disabled={!puedeEditar}
+              disabled={!puedeEditar || readOnly}
               showClear
               style={{
                 fontWeight: "bold",

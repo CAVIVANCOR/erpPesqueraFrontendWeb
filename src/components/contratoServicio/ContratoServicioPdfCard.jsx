@@ -12,6 +12,7 @@ const ContratoServicioPdfCard = ({
   setUrlContratoPdf,
   toast,
   contratoId,
+  readOnly = false,
 }) => {
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
 
@@ -40,6 +41,7 @@ const ContratoServicioPdfCard = ({
 
   // Función para abrir captura con validación
   const handleAbrirCaptura = () => {
+    if (readOnly) return;
     if (!contratoIdNumber) {
       toast?.current?.show({
         severity: "warn",
@@ -111,6 +113,7 @@ const ContratoServicioPdfCard = ({
                 className="p-button-info"
                 size="small"
                 onClick={handleAbrirCaptura}
+                disabled={readOnly}
               />
             </div>
           </div>

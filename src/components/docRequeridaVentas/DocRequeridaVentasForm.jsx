@@ -65,6 +65,7 @@ const DocRequeridaVentasForm = ({
   onSubmit,
   onCancel,
   toast,
+  readOnly = false,
 }) => {
   const [loading, setLoading] = useState(false);
   const [monedas, setMonedas] = useState([]);
@@ -217,7 +218,7 @@ const DocRequeridaVentasForm = ({
               style={{ width: "100%", textTransform: "uppercase", fontWeight: "bold" }}
               placeholder="INGRESE EL NOMBRE DEL DOCUMENTO"
               className={errors.nombre ? "p-invalid" : ""}
-              disabled={loading}
+              disabled={loading || readOnly}
             />
           )}
         />
@@ -248,7 +249,7 @@ const DocRequeridaVentasForm = ({
               rows={3}
               style={{ width: "100%", textTransform: "uppercase", fontWeight: "bold" }}
               placeholder="INGRESE LA DESCRIPCIÓN"
-              disabled={loading}
+              disabled={loading || readOnly}
             />
           )}
         />
@@ -281,7 +282,7 @@ const DocRequeridaVentasForm = ({
                 inputStyle={{ width: "100%", fontWeight: "bold" }}
                 placeholder="Días de validez"
                 className={errors.diasValidez ? "p-invalid" : ""}
-                disabled={loading || !tieneVencimiento}
+                disabled={loading || !tieneVencimiento || readOnly}
               />
             )}
           />
@@ -318,7 +319,7 @@ const DocRequeridaVentasForm = ({
                 filter
                 style={{ width: "100%", fontWeight: "bold" }}
                 className={errors.monedaId ? "p-invalid" : ""}
-                disabled={loading}
+                disabled={loading || readOnly}
               />
             )}
           />
@@ -351,7 +352,7 @@ const DocRequeridaVentasForm = ({
                 maxFractionDigits={2}
                 inputStyle={{ width: "100%", fontWeight: "bold" }}
                 placeholder="0.00"
-                disabled={loading}
+                disabled={loading || readOnly}
               />
             )}
           />
@@ -380,7 +381,7 @@ const DocRequeridaVentasForm = ({
                 icon={field.value ? "pi pi-check" : "pi pi-times"}
                 className={field.value ? "p-button-success" : "p-button-secondary"}
                 onClick={() => field.onChange(!field.value)}
-                disabled={loading}
+                disabled={loading || readOnly}
               />
             )}
           />
@@ -395,7 +396,7 @@ const DocRequeridaVentasForm = ({
                 icon={field.value ? "pi pi-check" : "pi pi-times"}
                 className={field.value ? "p-button-success" : "p-button-secondary"}
                 onClick={() => field.onChange(!field.value)}
-                disabled={loading}
+                disabled={loading || readOnly}
               />
             )}
           />
@@ -410,7 +411,7 @@ const DocRequeridaVentasForm = ({
                 icon={field.value ? "pi pi-check" : "pi pi-times"}
                 className={field.value ? "p-button-success" : "p-button-secondary"}
                 onClick={() => field.onChange(!field.value)}
-                disabled={loading}
+                disabled={loading || readOnly}
               />
             )}
           />
@@ -439,7 +440,7 @@ const DocRequeridaVentasForm = ({
                 icon={field.value ? "pi pi-check" : "pi pi-times"}
                 className={field.value ? "p-button-success" : "p-button-secondary"}
                 onClick={() => field.onChange(!field.value)}
-                disabled={loading}
+                disabled={loading || readOnly}
               />
             )}
           />
@@ -454,7 +455,7 @@ const DocRequeridaVentasForm = ({
                 icon={field.value ? "pi pi-check" : "pi pi-times"}
                 className={field.value ? "p-button-success" : "p-button-secondary"}
                 onClick={() => field.onChange(!field.value)}
-                disabled={loading}
+                disabled={loading || readOnly}
               />
             )}
           />
@@ -469,7 +470,7 @@ const DocRequeridaVentasForm = ({
                 icon={field.value ? "pi pi-check" : "pi pi-times"}
                 className={field.value ? "p-button-success" : "p-button-secondary"}
                 onClick={() => field.onChange(!field.value)}
-                disabled={loading}
+                disabled={loading || readOnly}
               />
             )}
           />
@@ -491,13 +492,14 @@ const DocRequeridaVentasForm = ({
           icon="pi pi-times"
           className="p-button-secondary"
           onClick={onCancel}
-          disabled={loading}
+          disabled={loading || readOnly}
         />
         <Button
           type="submit"
           label={documentoInicial?.id ? "Actualizar" : "Guardar"}
           icon="pi pi-check"
           loading={loading}
+          disabled={readOnly}
         />
       </div>
     </form>

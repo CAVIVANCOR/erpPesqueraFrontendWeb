@@ -14,6 +14,7 @@ export default function AccionesPreviasFaenaForm({
   onSubmit,
   onCancel,
   loading,
+  readOnly = false,
 }) {
   const {
     control,
@@ -65,7 +66,7 @@ export default function AccionesPreviasFaenaForm({
                 value={field.value}
                 onChange={(e) => field.onChange(e.target.value)}
                 required
-                disabled={loading}
+                disabled={readOnly || loading}
                 maxLength={100}
               />
             )}
@@ -80,7 +81,7 @@ export default function AccionesPreviasFaenaForm({
                 value={field.value}
                 rows={6}
                 onChange={(e) => field.onChange(e.target.value)}
-                disabled={loading}
+                disabled={readOnly || loading}
               />
             )}
           />
@@ -109,7 +110,7 @@ export default function AccionesPreviasFaenaForm({
                 offIcon="pi pi-times"
                 checked={field.value}
                 onChange={(e) => field.onChange(e.value)}
-                disabled={loading}
+                disabled={readOnly || loading}
                 className={field.value ? "p-button-success" : "p-button-secondary"}
               />
             )}
@@ -126,7 +127,7 @@ export default function AccionesPreviasFaenaForm({
                 offIcon="pi pi-times"
                 checked={field.value}
                 onChange={(e) => field.onChange(e.value)}
-                disabled={loading}
+                disabled={readOnly || loading}
                 className={field.value ? "p-button-warning" : "p-button-secondary"}
               />
             )}
@@ -143,7 +144,7 @@ export default function AccionesPreviasFaenaForm({
                 offIcon="pi pi-times"
                 checked={field.value}
                 onChange={(e) => field.onChange(e.value)}
-                disabled={loading}
+                disabled={readOnly || loading}
                 className={field.value ? "p-button-info" : "p-button-secondary"}
               />
             )}
@@ -180,6 +181,7 @@ export default function AccionesPreviasFaenaForm({
           outlined
           raised
           loading={loading}
+          disabled={readOnly || loading}
         />
       </div>
     </form>

@@ -30,6 +30,8 @@ const ContratoServicioForm = ({
   empresaFija = null,
   toast: toastProp,
   isEdit = false,
+  permisos = {},
+  readOnly = false,
 }) => {
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -249,6 +251,7 @@ const ContratoServicioForm = ({
             onCountChange={setDetallesCount}
             subtotal={totales.subtotal}
             total={totales.total}
+            readOnly={readOnly}
           />
         </TabPanel>
 
@@ -258,6 +261,7 @@ const ContratoServicioForm = ({
             urlContratoPdf={urlContratoPdf}
             setUrlContratoPdf={setUrlContratoPdf}
             toast={toast}
+            readOnly={readOnly}
           />
         </TabPanel>
 
@@ -275,6 +279,8 @@ const ContratoServicioForm = ({
             tiposDocumento={tiposDocumento}
             puedeEditar={isEdit}
             onCountChange={setCountEntregasRendir}
+            readOnly={readOnly}
+            permisos={permisos}
           />
         </TabPanel>
       </TabView>
@@ -302,6 +308,8 @@ const ContratoServicioForm = ({
           className="p-button-success"
           onClick={handleSubmit}
           loading={loading}
+          disabled={readOnly || !permisos.puedeEditar}
+          tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""}
           type="button"
         />
       </div>

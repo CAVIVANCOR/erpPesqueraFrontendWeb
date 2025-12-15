@@ -44,7 +44,7 @@ const esquemaValidacion = yup.object().shape({
     .trim(),
 });
 
-const DepartamentoForm = ({ departamento, onGuardar, onCancelar }) => {
+const DepartamentoForm = ({ departamento, onGuardar, onCancelar, readOnly = false }) => {
   const [loading, setLoading] = useState(false);
   const [paises, setPaises] = useState([]);
   const toast = useRef(null);
@@ -169,6 +169,7 @@ const DepartamentoForm = ({ departamento, onGuardar, onCancelar }) => {
                   className={getFieldClass("paisId")}
                   filter
                   showClear
+                  disabled={readOnly}
                 />
               )}
             />
@@ -193,6 +194,7 @@ const DepartamentoForm = ({ departamento, onGuardar, onCancelar }) => {
                   className={getFieldClass("codSUNAT")}
                   maxLength={10}
                   style={{ textTransform: 'uppercase' }}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -217,6 +219,7 @@ const DepartamentoForm = ({ departamento, onGuardar, onCancelar }) => {
                   className={getFieldClass("nombre")}
                   maxLength={100}
                   style={{ textTransform: 'uppercase' }}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -238,6 +241,7 @@ const DepartamentoForm = ({ departamento, onGuardar, onCancelar }) => {
             label={esEdicion ? "Actualizar" : "Crear"}
             icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
             loading={loading}
+            disabled={readOnly}
           />
         </div>
       </form>

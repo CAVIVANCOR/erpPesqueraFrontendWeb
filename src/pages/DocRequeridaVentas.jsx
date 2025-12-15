@@ -432,6 +432,7 @@ const DocRequeridaVentas = ({ ruta }) => {
           onSubmit={handleFormSubmit}
           onCancel={handleFormCancel}
           toast={toast}
+          readOnly={documentoSeleccionado && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

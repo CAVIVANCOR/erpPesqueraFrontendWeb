@@ -48,7 +48,7 @@ const esquemaValidacion = yup.object().shape({
     .default(true),
 });
 
-const FormaPagoForm = ({ formaPago, onGuardar, onCancelar }) => {
+const FormaPagoForm = ({ formaPago, onGuardar, onCancelar, readOnly = false }) => {
   const [loading, setLoading] = useState(false);
   const esEdicion = !!formaPago;
 
@@ -148,6 +148,7 @@ const FormaPagoForm = ({ formaPago, onGuardar, onCancelar }) => {
                 className={getFieldClass("nombre")}
                 style={{ textTransform: 'uppercase' }}
                 autoFocus
+                disabled={readOnly}
               />
             )}
           />
@@ -171,6 +172,7 @@ const FormaPagoForm = ({ formaPago, onGuardar, onCancelar }) => {
                 placeholder="Descripción de la forma de pago (opcional)"
                 className={getFieldClass("descripcion")}
                 style={{ textTransform: 'uppercase' }}
+                disabled={readOnly}
               />
             )}
           />
@@ -191,6 +193,7 @@ const FormaPagoForm = ({ formaPago, onGuardar, onCancelar }) => {
                   checked={field.value}
                   onChange={(e) => field.onChange(e.checked)}
                   className={getFieldClass("esCliente")}
+                  disabled={readOnly}
                 />
                 <label htmlFor="esCliente" className="p-checkbox-label">
                   Aplica para clientes
@@ -214,6 +217,7 @@ const FormaPagoForm = ({ formaPago, onGuardar, onCancelar }) => {
                   checked={field.value}
                   onChange={(e) => field.onChange(e.checked)}
                   className={getFieldClass("esProveedor")}
+                  disabled={readOnly}
                 />
                 <label htmlFor="esProveedor" className="p-checkbox-label">
                   Aplica para proveedores
@@ -237,6 +241,7 @@ const FormaPagoForm = ({ formaPago, onGuardar, onCancelar }) => {
                   checked={field.value}
                   onChange={(e) => field.onChange(e.checked)}
                   className={getFieldClass("activo")}
+                  disabled={readOnly}
                 />
                 <label htmlFor="activo" className="p-checkbox-label">
                   Forma de pago activa
@@ -263,6 +268,7 @@ const FormaPagoForm = ({ formaPago, onGuardar, onCancelar }) => {
           label={esEdicion ? "Actualizar" : "Crear"}
           icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
           loading={loading}
+          disabled={readOnly}
         />
       </div>
     </form>

@@ -24,6 +24,7 @@ import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
 import { getActivos, eliminarActivo } from "../api/activo";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import ActivoForm from "../components/activo/ActivoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 import { getEmpresas } from "../api/empresa";
@@ -38,7 +39,11 @@ const Activo = () => {
   const [activoAEliminar, setActivoAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const permisos = usePermissions("Activo");
   const [globalFilter, setGlobalFilter] = useState("");
+
+  // Determinar si es modo solo lectura
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   useEffect(() => {
     cargarActivos();
@@ -216,6 +221,7 @@ const Activo = () => {
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              disabled={!permisos.puedeCrear}
             />
             <span className="p-input-icon-left">
               <InputText
@@ -284,6 +290,7 @@ const Activo = () => {
           activo={activoSeleccionado}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
+          readOnly={readOnly}
         />
       </Dialog>
 

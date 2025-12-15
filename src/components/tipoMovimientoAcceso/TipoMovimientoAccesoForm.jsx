@@ -48,7 +48,7 @@ const esquemaValidacion = yup.object().shape({
  * Componente TipoMovimientoAccesoForm
  * Formulario para crear y editar tipos de movimientos de acceso
  */
-const TipoMovimientoAccesoForm = ({ tipo, onSave, onCancel }) => {
+const TipoMovimientoAccesoForm = ({ tipo, onSave, onCancel, permisos = {}, readOnly = false }) => {
   const toast = useRef(null);
   const [loading, setLoading] = useState(false);
 
@@ -181,6 +181,7 @@ const TipoMovimientoAccesoForm = ({ tipo, onSave, onCancel }) => {
                 placeholder="Nombre del tipo de movimiento"
                 className={errors.nombre ? "p-invalid" : ""}
                 maxLength={100}
+                disabled={readOnly}
               />
             )}
           />
@@ -204,6 +205,7 @@ const TipoMovimientoAccesoForm = ({ tipo, onSave, onCancel }) => {
                 className={errors.descripcion ? "p-invalid" : ""}
                 rows={4}
                 maxLength={500}
+                disabled={readOnly}
               />
             )}
           />
@@ -224,6 +226,7 @@ const TipoMovimientoAccesoForm = ({ tipo, onSave, onCancel }) => {
                   checked={field.value}
                   onChange={(e) => field.onChange(e.checked)}
                   className="mr-2"
+                  disabled={readOnly}
                 />
               )}
             />
@@ -249,6 +252,8 @@ const TipoMovimientoAccesoForm = ({ tipo, onSave, onCancel }) => {
             label={tipo?.id ? "Actualizar" : "Crear"}
             icon={tipo?.id ? "pi pi-check" : "pi pi-plus"}
             loading={loading}
+            disabled={readOnly || (tipo?.id && !permisos.puedeEditar) || (!tipo?.id && !permisos.puedeCrear)}
+            tooltip={readOnly ? "Modo solo lectura" : (!permisos.puedeEditar && tipo?.id) ? "No tiene permisos para editar" : (!permisos.puedeCrear && !tipo?.id) ? "No tiene permisos para crear" : ""}
           />
         </div>
       </form>

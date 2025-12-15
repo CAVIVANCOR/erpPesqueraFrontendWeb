@@ -15,7 +15,8 @@ export default function LineaCreditoEntidadForm({
   monedas, 
   onSubmit, 
   onCancel, 
-  loading 
+  loading,
+  readOnly = false
 }) {
   const [entidadComercialId, setEntidadComercialId] = React.useState(defaultValues.entidadComercialId || null);
   const [montoMaximo, setMontoMaximo] = React.useState(defaultValues.montoMaximo || null);
@@ -83,7 +84,7 @@ export default function LineaCreditoEntidadForm({
               optionLabel="label"
               optionValue="value"
               placeholder="Seleccionar entidad"
-              disabled={loading}
+              disabled={loading || readOnly}
               required
             />
           </div>
@@ -99,7 +100,7 @@ export default function LineaCreditoEntidadForm({
               optionLabel="label"
               optionValue="value"
               placeholder="Seleccionar moneda"
-              disabled={loading}
+              disabled={loading || readOnly}
               required
             />
           </div>
@@ -112,7 +113,7 @@ export default function LineaCreditoEntidadForm({
               value={montoMaximo} 
               onValueChange={e => setMontoMaximo(e.value)} 
               required 
-              disabled={loading}
+              disabled={loading || readOnly}
               minFractionDigits={2}
               maxFractionDigits={2}
               min={0}
@@ -127,7 +128,7 @@ export default function LineaCreditoEntidadForm({
               value={diasCredito} 
               onValueChange={e => setDiasCredito(e.value)} 
               required 
-              disabled={loading}
+              disabled={loading || readOnly}
               useGrouping={false}
               min={0}
             />
@@ -143,7 +144,7 @@ export default function LineaCreditoEntidadForm({
               dateFormat="dd/mm/yy"
               showIcon
               required
-              disabled={loading}
+              disabled={loading || readOnly}
             />
           </div>
         </div>
@@ -156,7 +157,7 @@ export default function LineaCreditoEntidadForm({
               onChange={e => setVigenteHasta(e.value)}
               dateFormat="dd/mm/yy"
               showIcon
-              disabled={loading}
+              disabled={loading || readOnly}
             />
           </div>
         </div>
@@ -167,8 +168,9 @@ export default function LineaCreditoEntidadForm({
               id="condiciones" 
               value={condiciones} 
               onChange={e => setCondiciones(e.target.value)} 
-              disabled={loading}
+              disabled={loading || readOnly}
               rows={3}
+              style={{ textTransform: 'uppercase' }}
             />
           </div>
         </div>
@@ -179,8 +181,9 @@ export default function LineaCreditoEntidadForm({
               id="observaciones" 
               value={observaciones} 
               onChange={e => setObservaciones(e.target.value)} 
-              disabled={loading}
+              disabled={loading || readOnly}
               rows={3}
+              style={{ textTransform: 'uppercase' }}
             />
           </div>
         </div>
@@ -190,7 +193,7 @@ export default function LineaCreditoEntidadForm({
               id="activo" 
               checked={activo} 
               onChange={e => setActivo(e.checked)} 
-              disabled={loading} 
+              disabled={loading || readOnly} 
             />
             <label htmlFor="activo">Activo</label>
           </div>
@@ -198,7 +201,7 @@ export default function LineaCreditoEntidadForm({
       </div>
       <div className="p-d-flex p-jc-end" style={{ gap: 8, marginTop: 16 }}>
         <Button type="button" label="Cancelar" className="p-button-text" onClick={onCancel} disabled={loading} />
-        <Button type="submit" label={isEdit ? "Actualizar" : "Crear"} icon="pi pi-save" loading={loading} />
+        <Button type="submit" label={isEdit ? "Actualizar" : "Crear"} icon="pi pi-save" loading={loading} disabled={readOnly} />
       </div>
     </form>
   );

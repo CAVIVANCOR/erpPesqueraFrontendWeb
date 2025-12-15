@@ -28,6 +28,7 @@ const DatosGeneralesPreFacturaCard = ({
   empresaFija,
   disabled = false,
   permisos = {},
+  readOnly = false,
   empresas = [],
   clientes = [],
   tiposDocumento = [],
@@ -135,7 +136,7 @@ const DatosGeneralesPreFacturaCard = ({
             placeholder="Seleccionar empresa"
             filter
             showClear
-            disabled={disabled || empresaFija !== null}
+            disabled={disabled || readOnly || empresaFija !== null}
             style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
           />
         </div>
@@ -148,7 +149,7 @@ const DatosGeneralesPreFacturaCard = ({
             dateFormat="dd/mm/yy"
             showIcon
             inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
-            disabled={disabled}
+            disabled={disabled || readOnly}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -160,7 +161,7 @@ const DatosGeneralesPreFacturaCard = ({
             dateFormat="dd/mm/yy"
             showIcon
             inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
-            disabled={disabled}
+            disabled={disabled || readOnly}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -173,7 +174,7 @@ const DatosGeneralesPreFacturaCard = ({
             placeholder="Seleccionar tipo"
             filter
             showClear
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
           />
         </div>
@@ -190,7 +191,7 @@ const DatosGeneralesPreFacturaCard = ({
             placeholder="Seleccionar serie"
             filter
             showClear
-            disabled={disabled || !formData.empresaId || !formData.tipoDocumentoId}
+            disabled={disabled || readOnly || !formData.empresaId || !formData.tipoDocumentoId}
             style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
           />
         </div>
@@ -234,7 +235,7 @@ const DatosGeneralesPreFacturaCard = ({
             placeholder="Seleccionar cliente"
             filter
             showClear
-            disabled={disabled || !formData.empresaId}
+            disabled={disabled || readOnly || !formData.empresaId}
             style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
           />
         </div>
@@ -248,7 +249,7 @@ const DatosGeneralesPreFacturaCard = ({
             placeholder="Seleccionar estado"
             filter
             showClear
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
           />
         </div>
@@ -262,7 +263,7 @@ const DatosGeneralesPreFacturaCard = ({
             placeholder="Seleccionar centro"
             filter
             showClear
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
           />
         </div>
@@ -278,7 +279,7 @@ const DatosGeneralesPreFacturaCard = ({
             placeholder="Seleccionar moneda"
             filter
             showClear
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
           />
         </div>
@@ -292,7 +293,7 @@ const DatosGeneralesPreFacturaCard = ({
             minFractionDigits={4}
             maxFractionDigits={4}
             min={0}
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
@@ -306,7 +307,7 @@ const DatosGeneralesPreFacturaCard = ({
             placeholder="Seleccionar forma"
             filter
             showClear
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
           />
         </div>
@@ -320,7 +321,7 @@ const DatosGeneralesPreFacturaCard = ({
             placeholder="Seleccionar tipo"
             filter
             showClear
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
           />
         </div>
@@ -339,7 +340,7 @@ const DatosGeneralesPreFacturaCard = ({
             min={0}
             max={100}
             suffix="%"
-            disabled={disabled || formData.esExoneradoAlIGV}
+            disabled={disabled || readOnly || formData.esExoneradoAlIGV}
             style={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
@@ -348,7 +349,7 @@ const DatosGeneralesPreFacturaCard = ({
             inputId="esExoneradoAlIGV"
             checked={formData.esExoneradoAlIGV}
             onChange={(e) => handleChange("esExoneradoAlIGV", e.checked)}
-            disabled={disabled}
+            disabled={disabled || readOnly}
           />
           <label htmlFor="esExoneradoAlIGV" style={{ marginLeft: "0.5rem" }}>Exonerado IGV</label>
         </div>
@@ -357,7 +358,7 @@ const DatosGeneralesPreFacturaCard = ({
             inputId="esExportacion"
             checked={formData.esExportacion}
             onChange={(e) => handleChange("esExportacion", e.checked)}
-            disabled={disabled}
+            disabled={disabled || readOnly}
           />
           <label htmlFor="esExportacion" style={{ marginLeft: "0.5rem" }}>Es Exportación</label>
         </div>
@@ -374,7 +375,7 @@ const DatosGeneralesPreFacturaCard = ({
             placeholder="Seleccionar responsable"
             filter
             showClear
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
           />
         </div>
@@ -388,7 +389,7 @@ const DatosGeneralesPreFacturaCard = ({
             placeholder="Seleccionar autorizador"
             filter
             showClear
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
           />
         </div>
@@ -402,7 +403,7 @@ const DatosGeneralesPreFacturaCard = ({
             placeholder="Seleccionar supervisor"
             filter
             showClear
-            disabled={disabled}
+            disabled={disabled || readOnly}
             style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
           />
         </div>
@@ -421,7 +422,7 @@ const DatosGeneralesPreFacturaCard = ({
                 placeholder="Seleccionar país"
                 filter
                 showClear
-                disabled={disabled}
+                disabled={disabled || readOnly}
                 style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
               />
             </div>
@@ -435,7 +436,7 @@ const DatosGeneralesPreFacturaCard = ({
                 placeholder="Seleccionar incoterm"
                 filter
                 showClear
-                disabled={disabled}
+                disabled={disabled || readOnly}
                 style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
               />
             </div>
@@ -449,7 +450,7 @@ const DatosGeneralesPreFacturaCard = ({
                 placeholder="Seleccionar puerto"
                 filter
                 showClear
-                disabled={disabled}
+                disabled={disabled || readOnly}
                 style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
               />
             </div>
@@ -463,7 +464,7 @@ const DatosGeneralesPreFacturaCard = ({
                 placeholder="Seleccionar puerto"
                 filter
                 showClear
-                disabled={disabled}
+                disabled={disabled || readOnly}
                 style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
               />
             </div>
@@ -480,7 +481,7 @@ const DatosGeneralesPreFacturaCard = ({
                 placeholder="Seleccionar agente"
                 filter
                 showClear
-                disabled={disabled}
+                disabled={disabled || readOnly}
                 style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
               />
             </div>
@@ -494,7 +495,7 @@ const DatosGeneralesPreFacturaCard = ({
                 placeholder="Seleccionar operador"
                 filter
                 showClear
-                disabled={disabled}
+                disabled={disabled || readOnly}
                 style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
               />
             </div>
@@ -508,7 +509,7 @@ const DatosGeneralesPreFacturaCard = ({
                 placeholder="Seleccionar naviera"
                 filter
                 showClear
-                disabled={disabled}
+                disabled={disabled || readOnly}
                 style={{ fontWeight: "bold", textTransform: "uppercase", width: "100%" }}
               />
             </div>
@@ -523,7 +524,7 @@ const DatosGeneralesPreFacturaCard = ({
           value={formData.observaciones}
           onChange={(e) => handleChange("observaciones", e.target.value)}
           rows={3}
-          disabled={disabled}
+          disabled={disabled || readOnly}
         />
       </div>
 
@@ -534,7 +535,7 @@ const DatosGeneralesPreFacturaCard = ({
           value={formData.observacionesInternas}
           onChange={(e) => handleChange("observacionesInternas", e.target.value)}
           rows={2}
-          disabled={disabled}
+          disabled={disabled || readOnly}
         />
       </div>
 
@@ -563,6 +564,7 @@ const DatosGeneralesPreFacturaCard = ({
           toast={toast}
           onCountChange={onCountChange}
           monedasOptions={monedasOptions}
+          readOnly={readOnly}
         />
       </Panel>
     </div>

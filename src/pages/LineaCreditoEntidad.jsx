@@ -12,6 +12,7 @@ import { getLineasCreditoEntidad, crearLineaCreditoEntidad, actualizarLineaCredi
 import { getEntidadesComerciales } from "../api/entidadComercial";
 import { getMonedas } from "../api/moneda";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 
 /**
  * Pantalla profesional para gestión de Líneas de Crédito de Entidad.
@@ -24,7 +25,9 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
  */
 export default function LineaCreditoEntidad() {
   const toast = useRef(null);
+  const permisos = usePermissions("LineaCreditoEntidad");
   const [items, setItems] = useState([]);
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
   const [monedas, setMonedas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -143,7 +146,7 @@ export default function LineaCreditoEntidad() {
       <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar esta línea de crédito?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
       <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
         <h2>Gestión de Líneas de Crédito</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
+        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading || !permisos.puedeCrear} />
       </div>
       <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
         <Column field="id" header="ID" style={{ width: 80 }} />
@@ -165,6 +168,7 @@ export default function LineaCreditoEntidad() {
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

@@ -44,6 +44,7 @@ export default function DatosGeneralesTemporadaForm({
   temporadaData = null,
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
   onFaenasChange, // Callback para notificar cambios en faenas
+  readOnly = false,
 }) {
   const detalleFaenasRef = useRef(null);
 
@@ -236,10 +237,17 @@ export default function DatosGeneralesTemporadaForm({
                   id="empresaId"
                   {...field}
                   value={field.value ? Number(field.value) : null}
+                  onChange={(e) => {
+                    field.onChange(e.value);
+                    setValue("empresaId", e.value);
+                  }}
                   options={empresasOptions}
+                  optionLabel="label"
+                  optionValue="value"
                   placeholder="Seleccione una empresa"
                   filter
                   showClear
+                  disabled={readOnly}
                   style={{ fontWeight: "bold" }}
                   className={classNames({ "p-invalid": errors.empresaId })}
                 />
@@ -264,15 +272,17 @@ export default function DatosGeneralesTemporadaForm({
                   id="BahiaId"
                   {...field}
                   value={field.value ? Number(field.value) : null}
+                  onChange={(e) => {
+                    field.onChange(e.value);
+                    setValue("BahiaId", e.value);
+                  }}
                   options={bahiasComercialesOptions}
-                  placeholder={
-                    empresaSeleccionada
-                      ? "Seleccione una bahía comercial"
-                      : "Primero seleccione empresa"
-                  }
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Seleccione una bahía comercial"
                   filter
                   showClear
-                  disabled={!empresaSeleccionada}
+                  disabled={readOnly || !empresaSeleccionada}
                   style={{ fontWeight: "bold" }}
                   className={classNames({ "p-invalid": errors.BahiaId })}
                 />
@@ -296,8 +306,13 @@ export default function DatosGeneralesTemporadaForm({
                   id="numeroResolucion"
                   {...field}
                   value={field.value?.toUpperCase() || ""}
-                  onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                  placeholder="Ej: R.M. N° 123-2024-PRODUCE"
+                  onChange={(e) => {
+                    const upperValue = e.target.value.toUpperCase();
+                    field.onChange(upperValue);
+                    setValue("numeroResolucion", upperValue);
+                  }}
+                  placeholder="Ingrese el número de resolución"
+                  disabled={readOnly}
                   style={{ fontWeight: "bold" }}
                   className={classNames({
                     "p-invalid": errors.numeroResolucion,
@@ -327,7 +342,10 @@ export default function DatosGeneralesTemporadaForm({
                   {...field}
                   value={field.value ? Number(field.value) : null}
                   options={estadosTemporadaOptions}
+                  optionLabel="label"
+                  optionValue="value"
                   placeholder="Seleccione un estado"
+                  disabled={readOnly}
                   style={{ fontWeight: "bold" }}
                   className={classNames({
                     "p-invalid": errors.estadoTemporadaId,
@@ -374,11 +392,16 @@ export default function DatosGeneralesTemporadaForm({
                   id="fechaInicio"
                   {...field}
                   value={field.value}
-                  onChange={(e) => field.onChange(e.value)}
+                  onChange={(e) => {
+                    field.onChange(e.value);
+                    setValue("fechaInicio", e.value);
+                  }}
                   dateFormat="dd/mm/yy"
-                  placeholder="Seleccione fecha de inicio"
                   showIcon
-                  inputStyle={{ fontWeight: "bold" }}
+                  placeholder="Seleccione fecha de inicio"
+                  showButtonBar
+                  disabled={readOnly}
+                  style={{ fontWeight: "bold" }}
                   className={classNames({ "p-invalid": errors.fechaInicio })}
                 />
               )}
@@ -411,11 +434,16 @@ export default function DatosGeneralesTemporadaForm({
                   id="fechaFin"
                   {...field}
                   value={field.value}
-                  onChange={(e) => field.onChange(e.value)}
+                  onChange={(e) => {
+                    field.onChange(e.value);
+                    setValue("fechaFin", e.value);
+                  }}
                   dateFormat="dd/mm/yy"
-                  placeholder="Seleccione fecha de fin"
                   showIcon
-                  inputStyle={{ fontWeight: "bold" }}
+                  placeholder="Seleccione fecha de fin"
+                  showButtonBar
+                  disabled={readOnly}
+                  style={{ fontWeight: "bold" }}
                   className={classNames({ "p-invalid": errors.fechaFin })}
                 />
               )}
@@ -441,13 +469,14 @@ export default function DatosGeneralesTemporadaForm({
                   id="limiteMaximoCapturaTn"
                   value={field.value}
                   onValueChange={(e) => field.onChange(e.value)}
-                  placeholder="0.000"
                   mode="decimal"
-                  minFractionDigits={3}
-                  maxFractionDigits={3}
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  placeholder="0.00"
                   inputStyle={{ fontWeight: "bold" }}
                   min={0}
                   suffix=" Ton"
+                  disabled={readOnly}
                   className={classNames({
                     "p-invalid": errors.limiteMaximoCapturaTn,
                   })}
@@ -556,6 +585,7 @@ export default function DatosGeneralesTemporadaForm({
           onFaenasChange={onFaenasChange} // Callback para notificar cambios en faenas
           faenasUpdateTrigger={faenasUpdateTrigger}
           setFaenasUpdateTrigger={setFaenasUpdateTrigger}
+          readOnly={readOnly}
         />
       </div>
     </Card>

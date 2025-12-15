@@ -118,6 +118,8 @@ export default function AccesoInstalacionForm({
   onCancel,
   empresaId,
   sedeId,
+  permisos = {},
+  readOnly = false,
 }) {
   const toast = useRef(null);
 
@@ -1115,6 +1117,7 @@ export default function AccesoInstalacionForm({
               buscandoPersona={buscandoPersona}
               onDocumentBlur={buscarPersonaPorDoc}
               accesoSellado={accesoSellado}
+              readOnly={readOnly}
             />
           )}
 
@@ -1127,6 +1130,7 @@ export default function AccesoInstalacionForm({
               buscandoVehiculo={buscandoVehiculo}
               onPlacaBlur={buscarVehiculoPorPlacaFunc}
               accesoSellado={accesoSellado}
+              readOnly={readOnly}
             />
           )}
 
@@ -1137,6 +1141,7 @@ export default function AccesoInstalacionForm({
               setValue={setValue}
               getFormErrorMessage={getFormErrorMessage}
               accesoSellado={accesoSellado}
+              readOnly={readOnly}
             />
           )}
 
@@ -1148,6 +1153,7 @@ export default function AccesoInstalacionForm({
               setValue={setValue}
               toast={toast}
               accesoSellado={accesoSellado}
+              readOnly={readOnly}
             />
           )}
 
@@ -1159,6 +1165,7 @@ export default function AccesoInstalacionForm({
               tiposMovimientoAcceso={tiposMovimientoAcceso} // Pasar tipos de movimiento
               modoEdicion={modoEdicion}
               accesoSellado={accesoSellado}
+              readOnly={readOnly}
             />
           )}
         </div>
@@ -1199,7 +1206,8 @@ export default function AccesoInstalacionForm({
               className="p-button-success"
               type="submit"
               loading={loading}
-              disabled={accesoSellado}
+              disabled={readOnly || accesoSellado || !permisos.puedeEditar}
+              tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : accesoSellado ? "Acceso sellado" : ""}
               style={{ minWidth: "120px" }}
             />
           </ButtonGroup>

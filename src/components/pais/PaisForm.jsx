@@ -41,7 +41,7 @@ const esquemaValidacion = yup.object().shape({
   activo: yup.boolean().default(true),
 });
 
-const PaisForm = ({ pais, onGuardar, onCancelar }) => {
+const PaisForm = ({ pais, onGuardar, onCancelar, readOnly = false }) => {
   const [loading, setLoading] = useState(false);
   const toast = useRef(null);
   const esEdicion = !!pais;
@@ -152,6 +152,7 @@ const PaisForm = ({ pais, onGuardar, onCancelar }) => {
                   className={getFieldClass("codSUNAT")}
                   maxLength={10}
                   style={{ textTransform: 'uppercase' }}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -176,6 +177,7 @@ const PaisForm = ({ pais, onGuardar, onCancelar }) => {
                   className={getFieldClass("nombre")}
                   maxLength={100}
                   style={{ textTransform: 'uppercase' }}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -200,6 +202,7 @@ const PaisForm = ({ pais, onGuardar, onCancelar }) => {
                   className={getFieldClass("gentilicio")}
                   maxLength={100}
                   style={{ textTransform: 'uppercase' }}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -220,6 +223,7 @@ const PaisForm = ({ pais, onGuardar, onCancelar }) => {
                     checked={field.value}
                     onChange={(e) => field.onChange(e.checked)}
                     className={getFieldClass("activo")}
+                    disabled={readOnly}
                   />
                 )}
               />
@@ -245,6 +249,7 @@ const PaisForm = ({ pais, onGuardar, onCancelar }) => {
             label={esEdicion ? "Actualizar" : "Crear"}
             icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
             loading={loading}
+            disabled={readOnly}
           />
         </div>
       </form>

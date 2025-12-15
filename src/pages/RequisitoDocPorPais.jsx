@@ -432,6 +432,7 @@ const RequisitoDocPorPais = ({ ruta }) => {
           onSubmit={handleFormSubmit}
           onCancel={handleFormCancel}
           toast={toast}
+          readOnly={modoEdicion && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

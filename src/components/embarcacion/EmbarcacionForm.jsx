@@ -38,6 +38,7 @@ export default function EmbarcacionForm({
   embarcacion,
   onGuardar,
   onCancelar,
+  readOnly = false,
 }) {
   const toast = useRef(null);
   const [loading, setLoading] = useState(false);
@@ -199,6 +200,7 @@ export default function EmbarcacionForm({
             tiposEmbarcacionOptions={tiposEmbarcacion}
             estadosActivoOptions={estadosActivo}
             defaultValues={embarcacion || {}}
+            readOnly={readOnly}
           />
         )}
 
@@ -261,6 +263,7 @@ export default function EmbarcacionForm({
               label={esEdicion ? "Actualizar" : "Crear"}
               icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
               loading={loading}
+              disabled={readOnly}
               className="p-button-success"
               raised
               outlined

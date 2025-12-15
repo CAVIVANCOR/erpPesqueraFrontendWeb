@@ -66,7 +66,7 @@ const esquemaValidacion = yup.object().shape({
   esPuertoOtroPais: yup.boolean().default(false),
 });
 
-const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
+const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar, readOnly = false }) => {
   const [loading, setLoading] = useState(false);
   const esEdicion = !!puertoPesca;
 
@@ -195,6 +195,7 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
                   placeholder="Ingrese la zona del puerto"
                   className={getFieldClass("zona")}
                   maxLength={20}
+                  disabled={readOnly || loading}
                   style={{ textTransform: "uppercase" }}
                 />
               )}
@@ -218,6 +219,7 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
                   placeholder="Ingrese el nombre del puerto"
                   className={getFieldClass("nombre")}
                   maxLength={100}
+                  disabled={readOnly || loading}
                   style={{ textTransform: "uppercase" }}
                 />
               )}
@@ -251,6 +253,7 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
                   {...field}
                   placeholder="Ingrese la provincia"
                   className={getFieldClass("provincia")}
+                  disabled={readOnly || loading}
                   style={{ textTransform: "uppercase" }}
                 />
               )}
@@ -276,6 +279,7 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
                   {...field}
                   placeholder="Ingrese el departamento"
                   className={getFieldClass("departamento")}
+                  disabled={readOnly || loading}
                   style={{ textTransform: "uppercase" }}
                 />
               )}
@@ -312,6 +316,7 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
                   onValueChange={(e) => field.onChange(e.value)}
                   placeholder="Ingrese la latitud"
                   className={getFieldClass("latitud")}
+                  disabled={readOnly || loading}
                   mode="decimal"
                   minFractionDigits={0}
                   maxFractionDigits={8}
@@ -342,6 +347,7 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
                   onValueChange={(e) => field.onChange(e.value)}
                   placeholder="Ingrese la longitud"
                   className={getFieldClass("longitud")}
+                  disabled={readOnly || loading}
                   mode="decimal"
                   minFractionDigits={0}
                   maxFractionDigits={8}
@@ -384,6 +390,7 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
                   offLabel="Puerto Nacional"
                   onIcon="pi pi-globe"
                   offIcon="pi pi-flag"
+                  disabled={readOnly || loading}
                   className={`w-full ${
                     field.value ? "p-button-info" : "p-button-warning"
                   }`}
@@ -412,6 +419,7 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
                   offLabel="Inactivo"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
+                  disabled={readOnly || loading}
                   className={`w-full ${
                     field.value ? "p-button-success" : "p-button-danger"
                   }`}
@@ -440,6 +448,7 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar }) => {
           label={esEdicion ? "Actualizar" : "Crear"}
           icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
           loading={loading}
+          disabled={readOnly || loading}
         />
       </div>
     </form>

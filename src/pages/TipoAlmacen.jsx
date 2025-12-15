@@ -15,6 +15,7 @@ import {
   eliminarTipoAlmacen,
 } from "../api/tipoAlmacen";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 
 /**
@@ -28,7 +29,9 @@ import { getResponsiveFontSize } from "../utils/utils";
  */
 export default function TipoAlmacen() {
   const toast = useRef(null);
+  const permisos = usePermissions("TipoAlmacen");
   const [items, setItems] = useState([]);
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -191,7 +194,7 @@ export default function TipoAlmacen() {
                 size="small"
                 outlined
                 onClick={handleAdd}
-                disabled={loading}
+                disabled={loading || !permisos.puedeCrear}
               />
             </div>
           </div>
@@ -224,6 +227,7 @@ export default function TipoAlmacen() {
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

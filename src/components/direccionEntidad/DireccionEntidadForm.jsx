@@ -7,7 +7,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
 
-export default function DireccionEntidadForm({ isEdit, defaultValues, entidades, onSubmit, onCancel, loading }) {
+export default function DireccionEntidadForm({ isEdit, defaultValues, entidades, onSubmit, onCancel, loading, readOnly = false }) {
   const [entidadComercialId, setEntidadComercialId] = React.useState(defaultValues.entidadComercialId || null);
   const [direccion, setDireccion] = React.useState(defaultValues.direccion || '');
   const [direccionArmada, setDireccionArmada] = React.useState(defaultValues.direccionArmada || '');
@@ -70,7 +70,7 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
               optionLabel="label"
               optionValue="value"
               placeholder="Seleccionar entidad"
-              disabled={loading}
+              disabled={loading || readOnly}
               required
             />
           </div>
@@ -83,7 +83,8 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
               value={direccion} 
               onChange={e => setDireccion(e.target.value)} 
               required 
-              disabled={loading}
+              disabled={loading || readOnly}
+              style={{ textTransform: 'uppercase' }}
             />
           </div>
         </div>
@@ -95,7 +96,8 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
               value={direccionArmada} 
               onChange={e => setDireccionArmada(e.target.value)} 
               rows={2} 
-              disabled={loading} 
+              disabled={loading || readOnly} 
+              style={{ textTransform: 'uppercase' }}
             />
           </div>
         </div>
@@ -107,7 +109,7 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
               value={ubigeoId} 
               onChange={e => setUbigeoId(e.target.value)} 
               required 
-              disabled={loading}
+              disabled={loading || readOnly}
             />
           </div>
         </div>
@@ -118,7 +120,8 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
               id="referencia" 
               value={referencia} 
               onChange={e => setReferencia(e.target.value)} 
-              disabled={loading}
+              disabled={loading || readOnly}
+              style={{ textTransform: 'uppercase' }}
             />
           </div>
         </div>
@@ -129,7 +132,7 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
               id="telefono" 
               value={telefono} 
               onChange={e => setTelefono(e.target.value)} 
-              disabled={loading}
+              disabled={loading || readOnly}
             />
           </div>
         </div>
@@ -140,7 +143,7 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
               id="correo" 
               value={correo} 
               onChange={e => setCorreo(e.target.value)} 
-              disabled={loading}
+              disabled={loading || readOnly}
               type="email"
             />
           </div>
@@ -153,7 +156,7 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
                   id="fiscal" 
                   checked={fiscal} 
                   onChange={e => setFiscal(e.checked)} 
-                  disabled={loading} 
+                  disabled={loading || readOnly} 
                 />
                 <label htmlFor="fiscal">Dirección Fiscal</label>
               </div>
@@ -164,7 +167,7 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
                   id="almacenPrincipal" 
                   checked={almacenPrincipal} 
                   onChange={e => setAlmacenPrincipal(e.checked)} 
-                  disabled={loading} 
+                  disabled={loading || readOnly} 
                 />
                 <label htmlFor="almacenPrincipal">Almacén Principal</label>
               </div>
@@ -175,7 +178,7 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
                   id="activo" 
                   checked={activo} 
                   onChange={e => setActivo(e.checked)} 
-                  disabled={loading} 
+                  disabled={loading || readOnly} 
                 />
                 <label htmlFor="activo">Activo</label>
               </div>
@@ -185,7 +188,7 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
       </div>
       <div className="p-d-flex p-jc-end" style={{ gap: 8, marginTop: 16 }}>
         <Button type="button" label="Cancelar" className="p-button-text" onClick={onCancel} disabled={loading} />
-        <Button type="submit" label={isEdit ? "Actualizar" : "Crear"} icon="pi pi-save" loading={loading} />
+        <Button type="submit" label={isEdit ? "Actualizar" : "Crear"} icon="pi pi-save" loading={loading} disabled={readOnly} />
       </div>
     </form>
   );

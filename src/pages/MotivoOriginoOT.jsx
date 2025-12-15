@@ -300,6 +300,7 @@ export default function MotivoOriginoOT({ ruta }) {
           onSubmit={onSubmitForm}
           onCancel={() => setMostrarDialogo(false)}
           loading={formLoading}
+          readOnly={modoEdicion && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

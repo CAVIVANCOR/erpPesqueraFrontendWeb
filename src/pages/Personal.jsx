@@ -57,6 +57,7 @@ export default function PersonalPage({ ruta }) {
   const [empresaFilter, setEmpresaFilter] = useState(null);
   const [cargoFilter, setCargoFilter] = useState(null);
   const [filtroTipoPesca, setFiltroTipoPesca] = useState("todos");
+  const [filtroEstado, setFiltroEstado] = useState("activos");
   const [filteredPersonales, setFilteredPersonales] = useState([]);
 
   /**
@@ -186,7 +187,7 @@ export default function PersonalPage({ ruta }) {
 
   useEffect(() => {
     aplicarFiltros();
-  }, [personales, filtroTipoPesca, empresaFilter, cargoFilter]);
+  }, [personales, filtroTipoPesca, filtroEstado, empresaFilter, cargoFilter]);
 
   const aplicarFiltros = () => {
     let personalesFiltrados = [...personales];
@@ -205,9 +206,21 @@ export default function PersonalPage({ ruta }) {
       );
     }
 
+    // Filtrar por estado (cesado)
+    if (filtroEstado === "activos") {
+      personalesFiltrados = personalesFiltrados.filter(
+        (personal) => personal.cesado === false
+      );
+    } else if (filtroEstado === "cesados") {
+      personalesFiltrados = personalesFiltrados.filter(
+        (personal) => personal.cesado === true
+      );
+    }
+    // Si filtroEstado === "todos", no filtramos por cesado
+
     // Filtrar por tipo de pesca
     if (filtroTipoPesca === "todos") {
-      // Mostrar todos los registros ya filtrados por empresa/cargo
+      // Mostrar todos los registros ya filtrados por empresa/cargo/estado
       setFilteredPersonales(personalesFiltrados);
     } else if (filtroTipoPesca === "temporada") {
       // Filtrar solo registros con paraTemporadaPesca = true
@@ -231,6 +244,36 @@ export default function PersonalPage({ ruta }) {
       consumo: "todos",
     };
     setFiltroTipoPesca(siguienteEstado[filtroTipoPesca]);
+  };
+
+  const cambiarFiltroEstado = () => {
+    const siguienteEstado = {
+      activos: "cesados",
+      cesados: "todos",
+      todos: "activos",
+    };
+    setFiltroEstado(siguienteEstado[filtroEstado]);
+  };
+
+  const obtenerConfigFiltroEstado = () => {
+    const config = {
+      activos: {
+        label: "ACTIVOS",
+        icon: "pi pi-check",
+        severity: "primary",
+      },
+      cesados: {
+        label: "CESADOS",
+        icon: "pi pi-times",
+        severity: "danger",
+      },
+      todos: {
+        label: "TODOS",
+        icon: "pi pi-list",
+        severity: "success",
+      },
+    };
+    return config[filtroEstado] || config["activos"];
   };
 
   const obtenerConfigFiltro = () => {
@@ -523,12 +566,12 @@ export default function PersonalPage({ ruta }) {
       <DataTable
         value={filteredPersonales}
         loading={loading}
-        showGridlines
         size="small"
         stripedRows
+        showGridlines
         paginator
-        rows={5}
-        rowsPerPageOptions={[5, 10, 15, 20]}
+        rows={20}
+        rowsPerPageOptions={[20, 40, 80, 160]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} personal"
         selectionMode="single"
@@ -545,6 +588,9 @@ export default function PersonalPage({ ruta }) {
           >
             <div style={{ flex: 1 }}>
               <h2>Personal</h2>
+              <small style={{ color: "#666", fontWeight: "normal" }}>
+                Total de registros: {filteredPersonales.length}
+              </small>
             </div>
             <div style={{ flex: 0.5 }}>
               <Button
@@ -588,6 +634,17 @@ export default function PersonalPage({ ruta }) {
               />
             </div>
             <div style={{ flex: 1 }}>
+              <label htmlFor="estado">Filtrar por Estado</label>
+              <Button
+                label={obtenerConfigFiltroEstado().label}
+                icon={obtenerConfigFiltroEstado().icon}
+                severity={obtenerConfigFiltroEstado().severity}
+                outlined
+                onClick={cambiarFiltroEstado}
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
               <label htmlFor="tipoPesca">Filtrar por Tipo de Pesca</label>
               <Button
                 label={obtenerConfigFiltro().label}
@@ -623,6 +680,7 @@ export default function PersonalPage({ ruta }) {
                   setCargoFilter(null);
                   setGlobalFilter("");
                   setFiltroTipoPesca("todos");
+                  setFiltroEstado("activos");
                 }}
               />
             </div>

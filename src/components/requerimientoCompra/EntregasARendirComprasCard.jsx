@@ -44,6 +44,8 @@ export default function EntregasARendirComprasCard({
   tiposDocumento = [],
   puedeEditar = true,
   onCountChange,
+  readOnly = false,
+  permisos = {},
 }) {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);

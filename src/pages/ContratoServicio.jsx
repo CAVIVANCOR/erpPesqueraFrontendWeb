@@ -3,6 +3,7 @@
 // - Edición por clic en fila, borrado seguro con roles, ConfirmDialog, Toast
 // - Autenticación JWT desde Zustand, normalización de IDs, documentación en español
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -44,8 +45,13 @@ import ColorTag from "../components/shared/ColorTag";
  * Gestión CRUD de contratos de servicio con patrón profesional ERP Megui
  */
 const ContratoServicio = ({ ruta }) => {
-  const usuario = useAuthStore((state) => state.usuario);
+  const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
   const [contratos, setContratos] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [sedes, setSedes] = useState([]);
@@ -300,6 +306,26 @@ const ContratoServicio = ({ ruta }) => {
   };
 
   const handleGuardar = async (data) => {
+    // Validar permisos antes de guardar
+    if (isEditing && !permisos.puedeEditar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para editar registros.",
+        life: 3000,
+      });
+      return;
+    }
+    if (!isEditing && !permisos.puedeCrear) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear registros.",
+        life: 3000,
+      });
+      return;
+    }
+
     try {
       if (isEditing) {
         // Actualizar contrato existente
@@ -340,6 +366,16 @@ const ContratoServicio = ({ ruta }) => {
   };
 
   const confirmarEliminar = (contrato) => {
+    // Validar permisos de eliminación
+    if (!permisos.puedeEliminar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar registros.",
+        life: 3000,
+      });
+      return;
+    }
     confirmDialog({
       message: `¿Está seguro de eliminar el contrato ${contrato.numeroCompleto}?`,
       header: "Confirmar Eliminación",
@@ -433,18 +469,18 @@ const ContratoServicio = ({ ruta }) => {
           icon="pi pi-pencil"
           className="p-button-rounded p-button-text p-button-warning"
           onClick={() => abrirDialogoEditar(rowData)}
-          tooltip="Editar"
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
           tooltipOptions={{ position: "top" }}
         />
-        {(usuario?.rol === "superusuario" || usuario?.rol === "admin") && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-rounded p-button-text p-button-danger"
-            onClick={() => confirmarEliminar(rowData)}
-            tooltip="Eliminar"
-            tooltipOptions={{ position: "top" }}
-          />
-        )}
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-text p-button-danger"
+          onClick={() => confirmarEliminar(rowData)}
+          disabled={!permisos.puedeEliminar}
+          tooltip="Eliminar"
+          tooltipOptions={{ position: "top" }}
+        />
       </div>
     );
   };
@@ -471,8 +507,14 @@ const ContratoServicio = ({ ruta }) => {
           icon="pi pi-plus"
           onClick={abrirDialogoNuevo}
           className="p-button-success"
-          disabled={!empresaSeleccionada}
-          tooltip={!empresaSeleccionada ? "Seleccione una empresa para crear un contrato" : ""}
+          disabled={!permisos.puedeCrear || !empresaSeleccionada}
+          tooltip={
+            !permisos.puedeCrear
+              ? "No tiene permisos para crear"
+              : !empresaSeleccionada
+              ? "Seleccione una empresa para crear un contrato"
+              : "Nuevo Contrato"
+          }
           tooltipOptions={{ position: "left" }}
         />
       </div>
@@ -587,9 +629,17 @@ const ContratoServicio = ({ ruta }) => {
         rows={10}
         rowsPerPageOptions={[5, 10, 25, 50]}
         emptyMessage="No se encontraron contratos"
-        onRowClick={(e) => abrirDialogoEditar(e.data)}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => abrirDialogoEditar(e.data)
+            : undefined
+        }
         selectionMode="single"
-        style={{ fontSize: "12px", cursor: "pointer" }}
+        style={{
+          fontSize: "12px",
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+        }}
         stripedRows
       >
         <Column field="numeroCompleto" header="Número" body={numeroTemplate} sortable />
@@ -635,6 +685,8 @@ const ContratoServicio = ({ ruta }) => {
           empresaFija={empresaSeleccionada}
           toast={toast}
           isEdit={isEditing}
+          permisos={permisos}
+          readOnly={!!selectedContrato && !!selectedContrato.id && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

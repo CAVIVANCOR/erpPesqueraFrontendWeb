@@ -16,6 +16,7 @@ import { getAllCentroCosto } from "../api/centroCosto";
 import { getPersonalActivoPorEmpresa } from "../api/personal";
 import { getProveedoresPorEmpresa } from "../api/entidadComercial";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 
 /**
@@ -40,6 +41,8 @@ export default function EmpresaCentroCosto() {
   const [relacionSeleccionada, setRelacionSeleccionada] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const { usuario } = useAuthStore();
+  const permisos = usePermissions("EmpresaCentroCosto");
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   // Configuración de filtros para DataTable
   const [filters] = useState({
@@ -260,7 +263,7 @@ export default function EmpresaCentroCosto() {
                 outlined
                 raised
                 onClick={abrirNuevo}
-                disabled={loading}
+                disabled={loading || !permisos.puedeCrear}
               />
               <span className="p-input-icon-left">
                 <InputText
@@ -344,6 +347,7 @@ export default function EmpresaCentroCosto() {
           onSubmit={guardarRelacion}
           onCancel={cerrarDialog}
           loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

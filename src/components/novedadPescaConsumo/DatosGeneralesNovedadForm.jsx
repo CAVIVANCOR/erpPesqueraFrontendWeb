@@ -41,6 +41,7 @@ export default function DatosGeneralesNovedadForm({
   puertos = [],
   novedadData = null,
   onNovedadDataChange, // Callback para notificar cambios en datos de novedad
+  readOnly = false,
 }) {
   const detalleFaenasRef = useRef(null);
 

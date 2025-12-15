@@ -41,6 +41,8 @@ export default function EntregaARendirOTMantenimientoCard({
   tiposDocumento = [],
   puedeEditar = true,
   onCountChange,
+  readOnly = false,
+  permisos = {},
 }) {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
@@ -410,7 +412,7 @@ export default function EntregaARendirOTMantenimientoCard({
             className="p-button-success"
             onClick={crearEntregaAutomatica}
             loading={loadingEntrega}
-            disabled={!puedeEditar}
+            disabled={!puedeEditar || readOnly}
           />
         </div>
       </Panel>
@@ -458,7 +460,7 @@ export default function EntregaARendirOTMantenimientoCard({
               showClear
               className="w-full"
               style={{ fontWeight: "bold" }}
-              disabled={!puedeEditar || entregaARendir.entregaLiquidada}
+              disabled={!puedeEditar || readOnly || entregaARendir.entregaLiquidada}
             />
           </div>
           <div style={{ flex: 0.5 }}>
@@ -512,7 +514,7 @@ export default function EntregaARendirOTMantenimientoCard({
               showClear
               className="w-full"
               style={{ fontWeight: "bold" }}
-              disabled={!puedeEditar || entregaARendir.entregaLiquidada}
+              disabled={!puedeEditar || readOnly || entregaARendir.entregaLiquidada}
             />
           </div>
         </div>
@@ -595,7 +597,7 @@ export default function EntregaARendirOTMantenimientoCard({
               className="p-button-success"
               onClick={handleGuardarCambios}
               loading={loadingEntrega}
-              disabled={!hayCambios || entregaARendir.entregaLiquidada}
+              disabled={!hayCambios || readOnly || entregaARendir.entregaLiquidada}
             />
           </div>
         </div>
@@ -617,6 +619,8 @@ export default function EntregaARendirOTMantenimientoCard({
               productos={productos}
               otAprobada={true}
               onDataChange={cargarMovimientos}
+              readOnly={readOnly}
+              permisos={permisos}
             />
           </TabPanel>
         </TabView>

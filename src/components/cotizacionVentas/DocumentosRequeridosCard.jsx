@@ -17,14 +17,18 @@ import DocumentoRequeridoDialog from "./DocumentoRequeridoDialog";
 const DocumentosRequeridosCard = ({
   formData,
   handleChange,
-  documentos,
+  documentos = [],
   setDocumentos,
+  bancos = [],
+  formasTransaccion = [],
+  modosDespacho = [],
+  monedasOptions = [],
+  docRequeridaVentasOptions = [],
+  readOnly = false,
   disabled = false,
   cotizacionId = null,
   toast = null,
   onDocumentosGenerados = null,
-  monedasOptions = [],
-  docRequeridaVentasOptions = [],
 }) => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingDocumento, setEditingDocumento] = useState(null);
@@ -210,13 +214,13 @@ const DocumentosRequeridosCard = ({
           icon="pi pi-pencil"
           className="p-button-rounded p-button-info p-button-text"
           onClick={() => handleEditDocumento(rowData, rowIndex)}
-          disabled={disabled}
+          disabled={disabled || readOnly}
         />
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-danger p-button-text"
           onClick={() => handleDeleteDocumento(rowIndex)}
-          disabled={disabled}
+          disabled={disabled || readOnly}
         />
       </div>
     );
@@ -232,7 +236,7 @@ const DocumentosRequeridosCard = ({
             icon="pi pi-bolt"
             className="p-button-success"
             onClick={handleGenerarDocumentosAutomaticos}
-            disabled={disabled || loadingGenerar || !cotizacionId}
+            disabled={disabled || readOnly || loadingGenerar || !cotizacionId}
             loading={loadingGenerar}
             tooltip="Genera documentos según país, tipo de producto e incoterm"
             tooltipOptions={{ position: "top" }}
@@ -241,7 +245,7 @@ const DocumentosRequeridosCard = ({
             label="Agregar Manual"
             icon="pi pi-plus"
             onClick={handleAddDocumento}
-            disabled={disabled}
+            disabled={disabled || readOnly}
           />
         </div>
       </div>

@@ -46,6 +46,7 @@ export default function DatosGeneralesEmbarcacionForm({
   estadosActivoOptions,
   activosOptions,
   proveedoresGpsOptions,
+  readOnly = false,
 }) {
   // Estados para manejo de foto - siguiendo patrón exacto de DatosGeneralesProductoForm
   const [fotoPreview, setFotoPreview] = useState(
@@ -219,6 +220,7 @@ export default function DatosGeneralesEmbarcacionForm({
                   style={{ fontWeight: "bold" }}
                   filter
                   showClear
+                  disabled={readOnly}
                 />
               )}
             />
@@ -240,6 +242,7 @@ export default function DatosGeneralesEmbarcacionForm({
                   placeholder="Ingrese la matrícula"
                   className={getFieldClass("matricula")}
                   style={{ textTransform: "uppercase", fontWeight: "bold" }}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -265,6 +268,7 @@ export default function DatosGeneralesEmbarcacionForm({
                   style={{ fontWeight: "bold" }}
                   filter
                   showClear
+                  disabled={readOnly}
                 />
               )}
             />
@@ -290,6 +294,7 @@ export default function DatosGeneralesEmbarcacionForm({
                   style={{ fontWeight: "bold" }}
                   filter
                   showClear
+                  disabled={readOnly}
                 />
               )}
             />
@@ -315,6 +320,7 @@ export default function DatosGeneralesEmbarcacionForm({
                   className={getFieldClass("proveedorGpsId")}
                   filter
                   showClear
+                  disabled={readOnly}
                 />
               )}
             />
@@ -336,6 +342,7 @@ export default function DatosGeneralesEmbarcacionForm({
                   placeholder="Marca de la tablet"
                   className={getFieldClass("tabletMarca")}
                   style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -357,6 +364,7 @@ export default function DatosGeneralesEmbarcacionForm({
                   placeholder="Modelo de la tablet"
                   className={getFieldClass("tabletModelo")}
                   style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -387,6 +395,7 @@ export default function DatosGeneralesEmbarcacionForm({
                   maxFractionDigits={2}
                   min={0}
                   suffix=" Ton"
+                  disabled={readOnly}
                 />
               )}
             />
@@ -414,6 +423,7 @@ export default function DatosGeneralesEmbarcacionForm({
                   maxFractionDigits={2}
                   min={0}
                   suffix=" m"
+                  disabled={readOnly}
                 />
               )}
             />
@@ -441,6 +451,7 @@ export default function DatosGeneralesEmbarcacionForm({
                   maxFractionDigits={2}
                   min={0}
                   suffix=" m"
+                  disabled={readOnly}
                 />
               )}
             />
@@ -468,6 +479,7 @@ export default function DatosGeneralesEmbarcacionForm({
                   maxFractionDigits={2}
                   min={0}
                   suffix=" m"
+                  disabled={readOnly}
                 />
               )}
             />
@@ -489,6 +501,7 @@ export default function DatosGeneralesEmbarcacionForm({
                   placeholder="Marca del motor"
                   className={getFieldClass("motorMarca")}
                   style={{ textTransform: "uppercase", fontWeight: "bold" }}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -513,6 +526,7 @@ export default function DatosGeneralesEmbarcacionForm({
                   inputStyle={{ fontWeight: "bold" }}
                   min={0}
                   suffix=" HP"
+                  disabled={readOnly}
                 />
               )}
             />
@@ -538,6 +552,7 @@ export default function DatosGeneralesEmbarcacionForm({
                   min={1900}
                   max={new Date().getFullYear() + 1}
                   useGrouping={false}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -561,7 +576,7 @@ export default function DatosGeneralesEmbarcacionForm({
                 cancelLabel="Cancelar"
                 customUpload
                 uploadHandler={handleFotoUpload}
-                disabled={!defaultValues.id || uploadingFoto}
+                disabled={!defaultValues.id || uploadingFoto || readOnly}
                 auto
                 mode="basic"
                 className="p-mb-2"
@@ -582,6 +597,7 @@ export default function DatosGeneralesEmbarcacionForm({
                       "p-invalid": fieldState.error,
                     })}
                     placeholder="URL de la foto (opcional)"
+                    disabled={readOnly}
                   />
                 )}
               />

@@ -26,6 +26,7 @@ export default function CotizacionesCompras({
   puedeEditar,
   toast,
   onCountChange,
+  readOnly = false,
 }) {
   const [cotizaciones, setCotizaciones] = useState([]);
   const [cotizacionesFiltradas, setCotizacionesFiltradas] = useState([]);

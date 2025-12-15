@@ -48,6 +48,7 @@ const CostosExportacionCard = ({
   toast,
   onFactorCalculado,
   detalles = [],
+  readOnly = false,
 }) => {
   // Estados
   const [costos, setCostos] = useState([]);
@@ -403,14 +404,14 @@ const CostosExportacionCard = ({
         icon="pi pi-pencil"
         className="p-button-text p-button-sm"
         onClick={() => handleEditar(rowData)}
-        disabled={!puedeEditar}
+        disabled={!puedeEditar || readOnly}
         tooltip="Editar"
       />
       <Button
         icon="pi pi-trash"
         className="p-button-text p-button-danger p-button-sm"
         onClick={() => handleEliminar(rowData)}
-        disabled={!puedeEditar}
+        disabled={!puedeEditar || readOnly}
         tooltip="Eliminar"
       />
     </div>
@@ -463,7 +464,7 @@ const CostosExportacionCard = ({
             label="Cargar según Incoterm"
             icon="pi pi-download"
             onClick={handleCargarCostosIncoterm}
-            disabled={!puedeEditar || !cotizacionId || cargandoCostos}
+            disabled={!puedeEditar || readOnly || !cotizacionId || cargandoCostos}
             loading={cargandoCostos}
             className="p-button-info"
             tooltip="Carga automáticamente los costos configurados para el Incoterm seleccionado"
@@ -474,7 +475,7 @@ const CostosExportacionCard = ({
             label="Agregar Costo"
             icon="pi pi-plus"
             onClick={handleAgregar}
-            disabled={!puedeEditar || !cotizacionId}
+            disabled={!puedeEditar || readOnly || !cotizacionId}
             className="p-button-success"
           />
         </div>

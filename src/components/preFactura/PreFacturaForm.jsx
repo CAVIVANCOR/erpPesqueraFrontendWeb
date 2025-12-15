@@ -33,6 +33,7 @@ const PreFacturaForm = ({
   bancos = [],
   empresaFija = null,
   permisos = {},
+  readOnly = false,
   loading: loadingProp = false,
   toast: toastProp,
 }) => {
@@ -289,6 +290,7 @@ const PreFacturaForm = ({
               totalIGV={totales.igv}
               total={totales.total}
               monedasOptions={monedas.map(m => ({ value: m.id, codigoSunat: m.codigoSunat || 'PEN' }))}
+              readOnly={readOnly}
             />
           </TabPanel>
           <TabPanel header="PDF Pre-Factura" leftIcon="pi pi-file-pdf">
@@ -302,7 +304,7 @@ const PreFacturaForm = ({
         </TabView>
         <div className="flex justify-content-end gap-2 mt-4">
           <Button type="button" label="Cancelar" icon="pi pi-times" className="p-button-secondary" onClick={handleCancel} disabled={loading || loadingProp} />
-          <Button type="submit" label={defaultValues ? "Actualizar" : "Guardar"} icon="pi pi-save" className="p-button-primary" loading={loading || loadingProp} />
+          <Button type="submit" label={defaultValues ? "Actualizar" : "Guardar"} icon="pi pi-save" className="p-button-primary" loading={loading || loadingProp} disabled={readOnly || !permisos.puedeEditar} tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""} />
         </div>
       </form>
     </div>

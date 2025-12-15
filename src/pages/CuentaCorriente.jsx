@@ -19,6 +19,7 @@ import { getBancos } from "../api/banco";
 import { getAllTipoCuentaCorriente } from "../api/tipoCuentaCorriente";
 import { getMonedas } from "../api/moneda";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 import { Dropdown } from "primereact/dropdown";
 
@@ -32,7 +33,10 @@ import { Dropdown } from "primereact/dropdown";
  * - Documentación de la regla en el encabezado.
  */
 export default function CuentaCorriente() {
+  const { user } = useAuthStore();
+  const permisos = usePermissions("CuentaCorriente");
   const toast = useRef(null);
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [items, setItems] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [bancos, setBancos] = useState([]);
@@ -292,7 +296,7 @@ export default function CuentaCorriente() {
                 severity="success"
                 raised
                 onClick={handleAdd}
-                disabled={loading}
+                disabled={loading || !permisos.puedeCrear}
               />
             </div>
             <div style={{ flex: 2 }}>
@@ -421,6 +425,7 @@ export default function CuentaCorriente() {
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}
+          readOnly={readOnly}
           empresas={empresas}
           bancos={bancos}
           tiposCuentaCorriente={tiposCuentaCorriente}

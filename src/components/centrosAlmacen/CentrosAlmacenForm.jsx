@@ -16,6 +16,7 @@ export default function CentrosAlmacenForm({
   onSubmit,
   onCancel,
   loading,
+  readOnly = false,
 }) {
   const [nombre, setNombre] = React.useState(defaultValues.nombre || "");
   const [descripcion, setDescripcion] = React.useState(
@@ -94,7 +95,7 @@ export default function CentrosAlmacenForm({
                 setProveedorId("");
               }}
               placeholder="Seleccione empresa"
-              disabled={loading || isEdit}
+              disabled={loading || readOnly || isEdit}
               required
               filter
             />
@@ -108,7 +109,7 @@ export default function CentrosAlmacenForm({
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               required
-              disabled={loading}
+              disabled={loading || readOnly}
               maxLength={100}
             />
           </div>
@@ -120,7 +121,7 @@ export default function CentrosAlmacenForm({
               id="descripcion"
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
-              disabled={loading}
+              disabled={loading || readOnly}
               rows={3}
             />
           </div>
@@ -136,7 +137,7 @@ export default function CentrosAlmacenForm({
               optionValue="id"
               onChange={(e) => setProveedorId(e.value)}
               placeholder={empresaIdLocal ? "Seleccione proveedor" : "Primero seleccione una empresa"}
-              disabled={loading || !empresaIdLocal}
+              disabled={loading || readOnly || !empresaIdLocal}
               showClear
               filter
             />
@@ -148,7 +149,7 @@ export default function CentrosAlmacenForm({
               id="esCentroExterno"
               checked={esCentroExterno}
               onChange={(e) => setEsCentroExterno(e.checked)}
-              disabled={loading}
+              disabled={loading || readOnly}
             />
             <label htmlFor="esCentroExterno">Es Centro Externo</label>
           </div>
@@ -159,7 +160,7 @@ export default function CentrosAlmacenForm({
               id="esCentroPropioSede"
               checked={esCentroPropioSede}
               onChange={(e) => setEsCentroPropioSede(e.checked)}
-              disabled={loading}
+              disabled={loading || readOnly}
             />
             <label htmlFor="esCentroPropioSede">Es Centro Propio Sede</label>
           </div>
@@ -170,7 +171,7 @@ export default function CentrosAlmacenForm({
               id="esCentroProduccion"
               checked={esCentroProduccion}
               onChange={(e) => setEsCentroProduccion(e.checked)}
-              disabled={loading}
+              disabled={loading || readOnly}
             />
             <label htmlFor="esCentroProduccion">Es Centro Producción</label>
           </div>
@@ -181,7 +182,7 @@ export default function CentrosAlmacenForm({
               id="activo"
               checked={activo}
               onChange={(e) => setActivo(e.checked)}
-              disabled={loading}
+              disabled={loading || readOnly}
             />
             <label htmlFor="activo">Activo</label>
           </div>
@@ -200,7 +201,7 @@ export default function CentrosAlmacenForm({
           label="Guardar"
           icon="pi pi-check"
           type="submit"
-          disabled={loading}
+          disabled={loading || readOnly}
         />
       </div>
     </form>

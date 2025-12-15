@@ -38,6 +38,7 @@ export default function ResolucionPDFTemporadaForm({
   watch,
   getValues,
   defaultValues = {},
+  readOnly = false,
 }) {
   const [subiendoPDF, setSubiendoPDF] = useState(false);
   const [pdfRefreshKey, setPdfRefreshKey] = useState(0);
@@ -143,12 +144,12 @@ export default function ResolucionPDFTemporadaForm({
                 name="resolucionPdf"
                 accept="application/pdf"
                 maxFileSize={5 * 1024 * 1024}
-                chooseLabel="Subir Resolución PDF"
+                chooseLabel="Seleccionar PDF"
                 uploadLabel="Subir"
                 cancelLabel="Cancelar"
                 customUpload
                 uploadHandler={handlePDFUpload}
-                disabled={subiendoPDF}
+                disabled={readOnly || subiendoPDF}
                 auto
                 mode="basic"
                 className="p-button-outlined"

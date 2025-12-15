@@ -28,7 +28,8 @@ const MovimientosCard = ({
   areasDestino = [],
   tiposMovimientoAcceso = [],
   modoEdicion = false,
-  accesoSellado = false
+  accesoSellado = false,
+  readOnly = false
 }) => {
   const [showDialog, setShowDialog] = useState(false);
   const [nuevoMovimiento, setNuevoMovimiento] = useState({
@@ -132,7 +133,7 @@ const MovimientosCard = ({
 
   // Determinar si se pueden agregar más movimientos
   const puedeAgregarMovimientos = () => {
-    return getTiposPermitidos().length > 0 && !accesoSellado;
+    return modoEdicion && !accesoSellado && !readOnly && getTiposPermitidos().length > 0;
   };
 
   // Obtener el mensaje de estado actual

@@ -1,6 +1,7 @@
 // src/pages/AccionesPreviasFaena.jsx
 // Pantalla CRUD profesional para AccionesPreviasFaena. Cumple la regla transversal ERP Megui.
 import React, { useRef, useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -16,18 +17,28 @@ import {
   eliminarAccionesPreviasFaena,
 } from "../api/accionesPreviasFaena";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 
 /**
  * Pantalla profesional para gestión de Acciones Previas de Faena.
  * Cumple la regla transversal ERP Megui:
  * - Edición profesional por clic en fila (abre modal).
- * - Botón de eliminar solo visible para superusuario o admin (usuario?.esSuperUsuario || usuario?.esAdmin), usando useAuthStore.
+ * - Control de permisos mediante usePermissions.
  * - Confirmación de borrado con ConfirmDialog visual rojo.
  * - Feedback visual con Toast.
  * - Documentación de la regla en el encabezado.
  */
-export default function AccionesPreviasFaena() {
+export default function AccionesPreviasFaena({ ruta }) {
+  // Obtener usuario autenticado para control de permisos
+  const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const toast = useRef(null);
   const [items, setItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
@@ -37,7 +48,7 @@ export default function AccionesPreviasFaena() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [filtroTipoPesca, setFiltroTipoPesca] = useState("todos");
-  const usuario = useAuthStore((state) => state.usuario);
+  const [isEdit, setIsEdit] = useState(false);
 
   useEffect(() => {
     cargarItems();
@@ -111,6 +122,7 @@ export default function AccionesPreviasFaena() {
 
   const handleEdit = (rowData) => {
     setEditing(rowData);
+    setIsEdit(true);
     setShowDialog(true);
   };
 
@@ -143,6 +155,14 @@ export default function AccionesPreviasFaena() {
   };
 
   const handleFormSubmit = async (data) => {
+    // Validar permisos antes de guardar
+    if (isEdit && !permisos.puedeEditar) {
+      return;
+    }
+    if (!isEdit && !permisos.puedeCrear) {
+      return;
+    }
+
     setLoading(true);
     try {
       if (editing && editing.id) {
@@ -162,6 +182,7 @@ export default function AccionesPreviasFaena() {
       }
       setShowDialog(false);
       setEditing(null);
+      setIsEdit(false);
       cargarItems();
     } catch (err) {
       toast.current.show({
@@ -175,6 +196,7 @@ export default function AccionesPreviasFaena() {
 
   const handleAdd = () => {
     setEditing(null);
+    setIsEdit(false);
     setShowDialog(true);
   };
 
@@ -210,17 +232,27 @@ export default function AccionesPreviasFaena() {
       <Button
         icon="pi pi-pencil"
         className="p-button-text p-button-sm"
-        onClick={() => handleEdit(rowData)}
-        aria-label="Editar"
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        onClick={() => {
+          if (permisos.puedeVer || permisos.puedeEditar) {
+            handleEdit(rowData);
+          }
+        }}
+        aria-label={permisos.puedeEditar ? "Editar" : "Ver"}
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
       />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-        <Button
-          icon="pi pi-trash"
-          className="p-button-text p-button-danger p-button-sm"
-          onClick={() => handleDelete(rowData)}
-          aria-label="Eliminar"
-        />
-      )}
+      <Button
+        icon="pi pi-trash"
+        className="p-button-text p-button-danger p-button-sm"
+        disabled={!permisos.puedeEliminar}
+        onClick={() => {
+          if (permisos.puedeEliminar) {
+            handleDelete(rowData);
+          }
+        }}
+        aria-label="Eliminar"
+        tooltip="Eliminar"
+      />
     </>
   );
 
@@ -244,8 +276,16 @@ export default function AccionesPreviasFaena() {
         dataKey="id"
         paginator
         rows={10}
-        onRowClick={(e) => handleEdit(e.data)}
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => handleEdit(e.data)
+            : undefined
+        }
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
         header={
           <div
             style={{
@@ -268,7 +308,7 @@ export default function AccionesPreviasFaena() {
                 size="small"
                 outlined
                 onClick={handleAdd}
-                disabled={loading}
+                disabled={!permisos.puedeCrear || loading}
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -310,18 +350,31 @@ export default function AccionesPreviasFaena() {
         />
       </DataTable>
       <Dialog
-        header={editing ? "Editar Acción Previa" : "Nueva Acción Previa"}
+        header={
+          isEdit
+            ? permisos.puedeEditar
+              ? "Editar Acción Previa"
+              : "Ver Acción Previa"
+            : "Nueva Acción Previa"
+        }
         visible={showDialog}
         style={{ width: 900 }}
-        onHide={() => setShowDialog(false)}
+        onHide={() => {
+          setShowDialog(false);
+          setIsEdit(false);
+        }}
         modal
       >
         <AccionesPreviasFaenaForm
-          isEdit={!!editing}
+          isEdit={isEdit}
           defaultValues={editing || {}}
           onSubmit={handleFormSubmit}
-          onCancel={() => setShowDialog(false)}
+          onCancel={() => {
+            setShowDialog(false);
+            setIsEdit(false);
+          }}
           loading={loading}
+          readOnly={isEdit && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

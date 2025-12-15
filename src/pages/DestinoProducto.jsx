@@ -18,6 +18,7 @@ import {
   actualizarDestinoProducto,
 } from "../api/destinoProducto";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import DestinoProductoForm from "../components/destinoProducto/DestinoProductoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -30,7 +31,10 @@ const DestinoProducto = () => {
   const [destinoAEliminar, setDestinoAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const permisos = usePermissions("DestinoProducto");
   const [globalFilter, setGlobalFilter] = useState("");
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   useEffect(() => {
     cargarDestinosProducto();
@@ -226,6 +230,7 @@ const DestinoProducto = () => {
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              disabled={!permisos.puedeCrear}
             />
             <span className="p-input-icon-left">
               <InputText
@@ -269,6 +274,7 @@ const DestinoProducto = () => {
           destinoProducto={destinoSeleccionado}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
+          readOnly={readOnly}
         />
       </Dialog>
 

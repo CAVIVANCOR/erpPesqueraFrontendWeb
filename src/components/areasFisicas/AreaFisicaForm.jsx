@@ -42,10 +42,9 @@ const schema = Yup.object().shape({
  * @param {boolean} props.isEdit Si es edición o alta
  * @param {Object} props.defaultValues Valores iniciales
  * @param {function} props.onSubmit Callback al guardar
- * @param {function} props.onCancel Callback al cancelar
- * @param {boolean} props.loading Estado de loading
  * @param {Array} props.empresas Lista de empresas para el combo
  * @param {Array} props.sedes Lista completa de sedes para el combo dependiente
+ * @param {boolean} props.readOnly Estado de solo lectura
  */
 export default function AreaFisicaForm({
   isEdit = false,

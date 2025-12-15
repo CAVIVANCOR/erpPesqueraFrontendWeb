@@ -275,6 +275,7 @@ export default function FormaTransaccion({ ruta }) {
             cargarFormas();
           }}
           onCancel={() => setMostrarDialogo(false)}
+          readOnly={formaEdit && !permisos.puedeEditar}
         />
       </Dialog>
     </div>

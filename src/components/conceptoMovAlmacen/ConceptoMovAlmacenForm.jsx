@@ -7,7 +7,19 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
 
-export default function ConceptoMovAlmacenForm({ isEdit, defaultValues, tiposConcepto, tiposMovimiento, tiposAlmacen, almacenes, empresaId, onSubmit, onCancel, loading }) {
+export default function ConceptoMovAlmacenForm({
+  isEdit,
+  defaultValues,
+  tiposConcepto,
+  tiposMovimiento,
+  tiposAlmacen,
+  almacenes,
+  empresaId,
+  onSubmit,
+  onCancel,
+  loading,
+  readOnly = false,
+}) {
   const [tipoConceptoId, setTipoConceptoId] = React.useState(defaultValues.tipoConceptoId || null);
   const [tipoMovimientoId, setTipoMovimientoId] = React.useState(defaultValues.tipoMovimientoId || null);
   const [tipoAlmacenId, setTipoAlmacenId] = React.useState(defaultValues.tipoAlmacenId || null);
@@ -106,7 +118,7 @@ export default function ConceptoMovAlmacenForm({ isEdit, defaultValues, tiposCon
               optionValue="id"
               onChange={e => setTipoConceptoId(e.value)}
               placeholder="Seleccione tipo de concepto"
-              disabled={loading}
+              disabled={loading || readOnly}
               style={{ fontWeight: 'bold' }}
               required
               filter
@@ -124,7 +136,7 @@ export default function ConceptoMovAlmacenForm({ isEdit, defaultValues, tiposCon
               optionValue="id"
               onChange={e => setTipoMovimientoId(e.value)}
               placeholder="Seleccione tipo de movimiento"
-              disabled={loading}
+              disabled={loading || readOnly}
               style={{ fontWeight: 'bold' }}
               required
               filter
@@ -142,7 +154,7 @@ export default function ConceptoMovAlmacenForm({ isEdit, defaultValues, tiposCon
               optionValue="id"
               onChange={e => setTipoAlmacenId(e.value)}
               placeholder="Seleccione tipo de almacén"
-              disabled={loading}
+              disabled={loading || readOnly}
               style={{ fontWeight: 'bold' }}
               required
               filter
@@ -192,7 +204,7 @@ export default function ConceptoMovAlmacenForm({ isEdit, defaultValues, tiposCon
               id="descripcion" 
               value={descripcion} 
               onChange={e => setDescripcion(e.target.value)} 
-              disabled={loading}
+              disabled={loading || readOnly}
               rows={1}
               style={{ fontWeight: 'bold' }}
               maxLength={200}
@@ -240,7 +252,7 @@ export default function ConceptoMovAlmacenForm({ isEdit, defaultValues, tiposCon
               id="custodia" 
               checked={custodia} 
               onChange={e => setCustodia(e.checked)} 
-              disabled={loading} 
+              disabled={loading || readOnly} 
             />
             <label htmlFor="custodia">Custodia</label>
           </div>
@@ -251,7 +263,7 @@ export default function ConceptoMovAlmacenForm({ isEdit, defaultValues, tiposCon
               id="activo" 
               checked={activo} 
               onChange={e => setActivo(e.checked)} 
-              disabled={loading} 
+              disabled={loading || readOnly} 
             />
             <label htmlFor="activo">Activo</label>
           </div>
@@ -264,13 +276,13 @@ export default function ConceptoMovAlmacenForm({ isEdit, defaultValues, tiposCon
           onClick={onCancel}
           className="p-button-text"
           type="button"
-          disabled={loading}
+          disabled={loading || readOnly}
         />
         <Button
           label="Guardar"
           icon="pi pi-check"
           type="submit"
-          disabled={loading}
+          disabled={loading || readOnly}
         />
       </div>
     </form>

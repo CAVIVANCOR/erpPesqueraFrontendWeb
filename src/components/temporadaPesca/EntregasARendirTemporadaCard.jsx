@@ -52,6 +52,7 @@ const EntregasARendirTemporadaCard = ({
   tiposMovimiento = [],
   tiposDocumento = [],
   onDataChange,
+  readOnly = false,
 }) => {
   const toast = useRef(null);
 
@@ -515,6 +516,7 @@ const EntregasARendirTemporadaCard = ({
                 icon="pi pi-plus"
                 className="mt-3"
                 onClick={() => setShowEntregaForm(true)}
+                disabled={readOnly}
               />
             </div>
           )}

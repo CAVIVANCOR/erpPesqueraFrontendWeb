@@ -10,6 +10,7 @@ import { Dialog } from "primereact/dialog";
 import CalaForm from "../components/cala/CalaForm";
 import { getCalas, crearCala, actualizarCala, eliminarCala } from "../api/cala";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 
 /**
  * Pantalla profesional para gestión de Calas.
@@ -21,7 +22,10 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
  * - Documentación de la regla en el encabezado.
  */
 export default function Cala() {
+  const { user } = useAuthStore();
+  const permisos = usePermissions("Cala");
   const toast = useRef(null);
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
@@ -109,7 +113,7 @@ export default function Cala() {
       <ConfirmDialog visible={showConfirm} onHide={() => setShowConfirm(false)} message="¿Está seguro que desea eliminar este registro?" header="Confirmar eliminación" icon="pi pi-exclamation-triangle" acceptClassName="p-button-danger" accept={handleDeleteConfirm} reject={() => setShowConfirm(false)} />
       <div className="p-d-flex p-jc-between p-ai-center" style={{ marginBottom: 16 }}>
         <h2>Gestión de Calas</h2>
-        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading} />
+        <Button label="Nuevo" icon="pi pi-plus" className="p-button-success" size="small" outlined onClick={handleAdd} disabled={loading || !permisos.puedeCrear} />
       </div>
       <DataTable value={items} loading={loading} dataKey="id" paginator rows={10} onRowClick={e => handleEdit(e.data)} style={{ cursor: "pointer" }}>
         <Column field="id" header="ID" style={{ width: 80 }} />
@@ -134,6 +138,7 @@ export default function Cala() {
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

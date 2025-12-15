@@ -45,7 +45,7 @@ const esquemaValidacion = yup.object().shape({
     .default(false),
 });
 
-const AgrupacionEntidadForm = ({ agrupacionEntidad, onGuardar, onCancelar }) => {
+const AgrupacionEntidadForm = ({ agrupacionEntidad, onGuardar, onCancelar, readOnly = false }) => {
   const [loading, setLoading] = useState(false);
   const esEdicion = !!agrupacionEntidad;
 
@@ -142,6 +142,7 @@ const AgrupacionEntidadForm = ({ agrupacionEntidad, onGuardar, onCancelar }) => 
                 placeholder="Ingrese el nombre de la agrupación"
                 className={getFieldClass("nombre")}
                 style={{ textTransform: 'uppercase' }}
+                disabled={readOnly}
                 autoFocus
               />
             )}
@@ -166,6 +167,7 @@ const AgrupacionEntidadForm = ({ agrupacionEntidad, onGuardar, onCancelar }) => 
                 placeholder="Descripción de la agrupación (opcional)"
                 className={getFieldClass("descripcion")}
                 style={{ textTransform: 'uppercase' }}
+                disabled={readOnly}
               />
             )}
           />
@@ -186,6 +188,7 @@ const AgrupacionEntidadForm = ({ agrupacionEntidad, onGuardar, onCancelar }) => 
                   checked={field.value}
                   onChange={(e) => field.onChange(e.checked)}
                   className={getFieldClass("esCliente")}
+                  disabled={readOnly}
                 />
                 <label htmlFor="esCliente" className="p-checkbox-label">
                   Aplica para clientes
@@ -209,6 +212,7 @@ const AgrupacionEntidadForm = ({ agrupacionEntidad, onGuardar, onCancelar }) => 
                   checked={field.value}
                   onChange={(e) => field.onChange(e.checked)}
                   className={getFieldClass("esProveedor")}
+                  disabled={readOnly}
                 />
                 <label htmlFor="esProveedor" className="p-checkbox-label">
                   Aplica para proveedores
@@ -235,6 +239,7 @@ const AgrupacionEntidadForm = ({ agrupacionEntidad, onGuardar, onCancelar }) => 
           label={esEdicion ? "Actualizar" : "Crear"}
           icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
           loading={loading}
+          disabled={readOnly}
         />
       </div>
     </form>

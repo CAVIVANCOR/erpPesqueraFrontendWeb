@@ -46,6 +46,7 @@ export default function DatosGeneralesProductoForm({
   unidadMetricaDefault,
   especies = [],
   defaultValues = {},
+  readOnly = false,
 }) {
   const familiaIdWatch = watch("familiaId");
   const empresaIdWatch = watch("empresaId");
@@ -512,6 +513,7 @@ export default function DatosGeneralesProductoForm({
                   })}
                   style={{ fontWeight: "bold" }}
                   filter
+                  disabled={readOnly}
                 />
               )}
             />
@@ -542,7 +544,7 @@ export default function DatosGeneralesProductoForm({
                   })}
                   style={{ fontWeight: "bold" }}
                   filter
-                  disabled={!empresaIdWatch}
+                  disabled={readOnly || !empresaIdWatch}
                 />
               )}
             />
@@ -567,6 +569,7 @@ export default function DatosGeneralesProductoForm({
                   })}
                   style={{ fontWeight: "bold" }}
                   maxLength={20}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -602,6 +605,7 @@ export default function DatosGeneralesProductoForm({
                   })}
                   filter
                   showClear
+                  disabled={readOnly}
                 />
               )}
             />
@@ -621,6 +625,7 @@ export default function DatosGeneralesProductoForm({
                   id="aplicaSubfamilia"
                   {...field}
                   checked={field.value}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -639,7 +644,7 @@ export default function DatosGeneralesProductoForm({
                   })}
                   filter
                   showClear
-                  disabled={!familiaIdWatch}
+                  disabled={readOnly || !familiaIdWatch}
                 />
               )}
             />
@@ -666,6 +671,7 @@ export default function DatosGeneralesProductoForm({
                   })}
                   showClear
                   filter
+                  disabled={readOnly}
                 />
               )}
             />
@@ -701,6 +707,7 @@ export default function DatosGeneralesProductoForm({
                     fontWeight: "bold",
                   }}
                   maxLength={120}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -730,6 +737,7 @@ export default function DatosGeneralesProductoForm({
                     fontWeight: "bold",
                   }}
                   maxLength={120}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -806,6 +814,7 @@ export default function DatosGeneralesProductoForm({
                     id="aplicaProcedencia"
                     {...field}
                     checked={field.value}
+                    disabled={readOnly}
                   />
                 )}
               />
@@ -824,6 +833,7 @@ export default function DatosGeneralesProductoForm({
                     })}
                     showClear
                     filter
+                    disabled={readOnly}
                   />
                 )}
               />
@@ -845,6 +855,7 @@ export default function DatosGeneralesProductoForm({
                     id="aplicaTipoAlmacenamiento"
                     {...field}
                     checked={field.value}
+                    disabled={readOnly}
                   />
                 )}
               />
@@ -863,6 +874,7 @@ export default function DatosGeneralesProductoForm({
                     })}
                     showClear
                     filter
+                    disabled={readOnly}
                   />
                 )}
               />
@@ -884,6 +896,7 @@ export default function DatosGeneralesProductoForm({
                     id="aplicaUnidadMedida"
                     {...field}
                     checked={field.value}
+                    disabled={readOnly}
                   />
                 )}
               />
@@ -902,6 +915,7 @@ export default function DatosGeneralesProductoForm({
                     })}
                     showClear
                     filter
+                    disabled={readOnly}
                   />
                 )}
               />
@@ -930,6 +944,7 @@ export default function DatosGeneralesProductoForm({
                     min={0}
                     max={100}
                     suffix="%"
+                    disabled={readOnly}
                   />
                 )}
               />
@@ -957,6 +972,7 @@ export default function DatosGeneralesProductoForm({
                       "p-invalid": fieldState.error,
                     })}
                     showClear
+                    disabled={readOnly}
                   />
                 )}
               />
@@ -983,6 +999,7 @@ export default function DatosGeneralesProductoForm({
                     }
                     onClick={() => field.onChange(!field.value)}
                     style={{ marginTop: "0.5rem", width: "100%" }}
+                    disabled={readOnly}
                     raised
                   />
                 )}
@@ -1012,7 +1029,7 @@ export default function DatosGeneralesProductoForm({
                 cancelLabel="Cancelar"
                 customUpload
                 uploadHandler={handleFotoUpload}
-                disabled={!defaultValues.id || uploadingFoto}
+                disabled={readOnly || !defaultValues.id || uploadingFoto}
                 auto
                 mode="basic"
               />
@@ -1145,6 +1162,7 @@ export default function DatosGeneralesProductoForm({
                     maxFractionDigits={2}
                     suffix=" %"
                     placeholder="0.00 %"
+                    disabled={readOnly}
                   />
                 )}
               />
@@ -1176,6 +1194,7 @@ export default function DatosGeneralesProductoForm({
                     maxFractionDigits={2}
                     suffix=" %"
                     placeholder="0.00 %"
+                    disabled={readOnly}
                   />
                 )}
               />

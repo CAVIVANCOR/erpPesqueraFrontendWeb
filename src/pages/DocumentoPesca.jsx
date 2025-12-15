@@ -17,6 +17,7 @@ import {
   eliminarDocumentoPesca,
 } from "../api/documentoPesca";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 
 /**
@@ -30,7 +31,9 @@ import { getResponsiveFontSize } from "../utils/utils";
  */
 export default function DocumentoPesca() {
   const toast = useRef(null);
+  const permisos = usePermissions("DocumentoPesca");
   const [items, setItems] = useState([]);
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -291,7 +294,7 @@ export default function DocumentoPesca() {
                   icon="pi pi-plus"
                   className="p-button-success"
                   onClick={handleAdd}
-                  disabled={loading}
+                  disabled={loading || !permisos.puedeCrear}
                   style={{ fontSize: "0.875rem" }}
                 />
               </div>
@@ -376,6 +379,7 @@ export default function DocumentoPesca() {
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

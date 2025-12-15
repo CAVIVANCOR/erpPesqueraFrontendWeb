@@ -43,6 +43,7 @@ export default function EntregaARendirMovAlmacenCard({
   puedeEditar = true,
   onCountChange,
   permisos = {},
+  readOnly = false,
 }) {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
@@ -194,7 +195,7 @@ export default function EntregaARendirMovAlmacenCard({
    * Crear entrega a rendir automáticamente
    */
   const crearEntregaAutomatica = async () => {
-    if (!movimientoAlmacen.responsableId || Number(movimientoAlmacen.responsableId) <= 0) {
+    if (!movimientoAlmacen.personalRespAlmacen || Number(movimientoAlmacen.personalRespAlmacen) <= 0) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -208,7 +209,7 @@ export default function EntregaARendirMovAlmacenCard({
     try {
       const dataToCreate = {
         movimientoAlmacenId: Number(movimientoAlmacen.id),
-        respEntregaRendirId: Number(movimientoAlmacen.responsableId),
+        respEntregaRendirId: Number(movimientoAlmacen.personalRespAlmacen),
         centroCostoId: 1, // Centro de costo por defecto para almacén
         entregaLiquidada: false,
         fechaCreacion: new Date().toISOString(),

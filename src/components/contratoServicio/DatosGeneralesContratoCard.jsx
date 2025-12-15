@@ -41,6 +41,7 @@ const DatosGeneralesContratoCard = ({
   onCountChange,
   subtotal = 0,
   total = 0,
+  readOnly = false,
 }) => {
   // Filtrar sedes por empresa
   const sedesFiltradas = sedes.filter(
@@ -171,7 +172,7 @@ const DatosGeneralesContratoCard = ({
               filter
               showClear
               style={{ width: "100%" }}
-              disabled={isEdit}
+              disabled={isEdit || readOnly}
             />
           </div>
 
@@ -190,7 +191,7 @@ const DatosGeneralesContratoCard = ({
               filter
               showClear
               style={{ width: "100%" }}
-              disabled={!formData.empresaId}
+              disabled={!formData.empresaId || readOnly}
             />
           </div>
 
@@ -209,7 +210,7 @@ const DatosGeneralesContratoCard = ({
               filter
               showClear
               style={{ width: "100%" }}
-              disabled={!formData.empresaId}
+              disabled={!formData.empresaId || readOnly}
             />
           </div>
 
@@ -228,7 +229,7 @@ const DatosGeneralesContratoCard = ({
               filter
               showClear
               style={{ width: "100%" }}
-              disabled={!formData.empresaId}
+              disabled={!formData.empresaId || readOnly}
             />
           </div>
 
@@ -247,7 +248,7 @@ const DatosGeneralesContratoCard = ({
               filter
               showClear
               style={{ width: "100%" }}
-              disabled={!formData.empresaId}
+              disabled={!formData.empresaId || readOnly}
             />
           </div>
 
@@ -266,7 +267,7 @@ const DatosGeneralesContratoCard = ({
               filter
               showClear
               style={{ width: "100%" }}
-              disabled={!formData.clienteId}
+              disabled={!formData.clienteId || readOnly}
             />
           </div>
 
@@ -278,14 +279,17 @@ const DatosGeneralesContratoCard = ({
             <Dropdown
               value={formData.responsableId ? Number(formData.responsableId) : null}
               options={personalOptions.map((p) => ({
-                label: `${p.nombres} ${p.apellidos}`,
+                label: p.nombreCompleto || `${p.nombres || ""} ${p.apellidos || ""}`,
                 value: Number(p.id),
               }))}
               onChange={(e) => handleChange("responsableId", e.value)}
-              placeholder="Auto-asignado desde Usuario Logueado"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccionar"
               filter
               showClear
               style={{ width: "100%" }}
+              disabled={readOnly}
             />
           </div>
 
@@ -352,7 +356,7 @@ const DatosGeneralesContratoCard = ({
               optionLabel="label"
               optionValue="value"
               placeholder="Seleccionar serie"
-              disabled={!formData.empresaId || !!formData.serieDocId}
+              disabled={!formData.empresaId || !!formData.serieDocId || readOnly}
               style={{ width: "100%" }}
             />
           </div>
@@ -394,6 +398,7 @@ const DatosGeneralesContratoCard = ({
               dateFormat="dd/mm/yy"
               showIcon
               style={{ width: "100%" }}
+              disabled={readOnly}
             />
           </div>
 
@@ -408,6 +413,7 @@ const DatosGeneralesContratoCard = ({
               dateFormat="dd/mm/yy"
               showIcon
               style={{ width: "100%" }}
+              disabled={readOnly}
             />
           </div>
 
@@ -422,6 +428,7 @@ const DatosGeneralesContratoCard = ({
               dateFormat="dd/mm/yy"
               showIcon
               style={{ width: "100%" }}
+              disabled={readOnly}
             />
           </div>
         </div>
@@ -449,6 +456,7 @@ const DatosGeneralesContratoCard = ({
               placeholder="Seleccionar"
               showClear
               style={{ width: "100%" }}
+              disabled={readOnly}
             />
           </div>
 
@@ -464,6 +472,7 @@ const DatosGeneralesContratoCard = ({
               minFractionDigits={2}
               maxFractionDigits={4}
               style={{ width: "100%" }}
+              disabled={readOnly}
             />
           </div>
 
@@ -482,6 +491,7 @@ const DatosGeneralesContratoCard = ({
               placeholder="Seleccionar estado"
               showClear
               style={{ width: "100%" }}
+              disabled={readOnly}
             />
           </div>
 
@@ -504,6 +514,7 @@ const DatosGeneralesContratoCard = ({
             <Checkbox
               checked={formData.incluyeLuz || false}
               onChange={(e) => handleChange("incluyeLuz", e.checked)}
+              disabled={readOnly}
             />
           </div>
 
@@ -521,7 +532,7 @@ const DatosGeneralesContratoCard = ({
               min={0}
               max={100}
               style={{ width: "100%" }}
-              disabled={!formData.incluyeLuz}
+              disabled={!formData.incluyeLuz || readOnly}
             />
           </div>
 
@@ -537,7 +548,7 @@ const DatosGeneralesContratoCard = ({
               minFractionDigits={4}
               maxFractionDigits={4}
               style={{ width: "100%" }}
-              disabled={!formData.incluyeLuz}
+              disabled={!formData.incluyeLuz || readOnly}
             />
           </div>
         </div>
@@ -560,6 +571,7 @@ const DatosGeneralesContratoCard = ({
                 fontWeight: "bold",
               }}
               placeholder="Ingrese el texto esencial del contrato..."
+              disabled={readOnly}
             />
           </div>
         </div>
@@ -576,6 +588,7 @@ const DatosGeneralesContratoCard = ({
             moneda={monedas.find(m => Number(m.id) === Number(formData.monedaId))}
             toast={toast}
             isEdit={isEdit}
+            readOnly={readOnly}
             onCountChange={onCountChange}
             subtotal={subtotal}
             total={total}

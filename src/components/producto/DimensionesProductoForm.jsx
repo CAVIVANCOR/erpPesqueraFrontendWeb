@@ -52,6 +52,7 @@ export default function DimensionesProductoForm({
   marcaDefault,
   unidadMetricaDefault,
   modoEdicion,
+  readOnly = false,
 }) {
   // Opciones para medidas físicas específicas (solo unidades métricas)
   const unidadesMetricasOptions = unidadesMetricas.map((u) => ({
@@ -144,6 +145,7 @@ export default function DimensionesProductoForm({
                   id="aplicaTipoMaterial"
                   {...field}
                   checked={field.value}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -155,12 +157,14 @@ export default function DimensionesProductoForm({
                   id="tipoMaterialId"
                   {...field}
                   options={tiposMaterialOptions}
-                  placeholder="Seleccione un tipo de material"
+                  placeholder="Seleccione tipo de material"
                   style={{ fontWeight: "bold" }}
                   className={classNames({
                     "p-invalid": fieldState.error,
                   })}
                   showClear
+                  filter
+                  disabled={readOnly}
                 />
               )}
             />
@@ -183,6 +187,7 @@ export default function DimensionesProductoForm({
                   id="aplicaColor"
                   {...field}
                   checked={field.value}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -194,12 +199,14 @@ export default function DimensionesProductoForm({
                   id="colorId"
                   {...field}
                   options={coloresOptions}
-                  placeholder="Seleccione un color"
+                  placeholder="Seleccione color"
                   style={{ fontWeight: "bold" }}
                   className={classNames({
                     "p-invalid": fieldState.error,
                   })}
                   showClear
+                  filter
+                  disabled={readOnly}
                 />
               )}
             />
@@ -220,6 +227,7 @@ export default function DimensionesProductoForm({
                   id="aplicaMarca"
                   {...field}
                   checked={field.value}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -237,6 +245,8 @@ export default function DimensionesProductoForm({
                     "p-invalid": fieldState.error,
                   })}
                   showClear
+                  filter
+                  disabled={readOnly}
                 />
               )}
             />
@@ -270,6 +280,7 @@ export default function DimensionesProductoForm({
                     "p-invalid": fieldState.error,
                   })}
                   maxLength={20}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -291,12 +302,14 @@ export default function DimensionesProductoForm({
                   id="unidadDiametroId"
                   {...field}
                   options={unidadesMetricasOptions}
-                  placeholder="Seleccione unidad"
+                  placeholder="Unidad"
                   style={{ fontWeight: "bold" }}
                   className={classNames({
                     "p-invalid": fieldState.error,
                   })}
                   showClear
+                  filter
+                  disabled={readOnly}
                 />
               )}
             />
@@ -322,6 +335,7 @@ export default function DimensionesProductoForm({
                     "p-invalid": fieldState.error,
                   })}
                   maxLength={20}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -344,12 +358,14 @@ export default function DimensionesProductoForm({
                   id="unidadAnchoId"
                   {...field}
                   options={unidadesMetricasOptions}
-                  placeholder="Seleccione unidad"
+                  placeholder="Unidad"
                   style={{ fontWeight: "bold" }}
                   className={classNames({
                     "p-invalid": fieldState.error,
                   })}
                   showClear
+                  filter
+                  disabled={readOnly}
                 />
               )}
             />
@@ -375,6 +391,7 @@ export default function DimensionesProductoForm({
                     "p-invalid": fieldState.error,
                   })}
                   maxLength={20}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -396,12 +413,14 @@ export default function DimensionesProductoForm({
                   id="unidadAltoId"
                   {...field}
                   options={unidadesMetricasOptions}
-                  placeholder="Seleccione unidad"
+                  placeholder="Unidad"
                   style={{ fontWeight: "bold" }}
                   className={classNames({
                     "p-invalid": fieldState.error,
                   })}
                   showClear
+                  filter
+                  disabled={readOnly}
                 />
               )}
             />
@@ -436,6 +455,7 @@ export default function DimensionesProductoForm({
                     "p-invalid": fieldState.error,
                   })}
                   maxLength={20}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -464,6 +484,7 @@ export default function DimensionesProductoForm({
                     "p-invalid": fieldState.error,
                   })}
                   showClear
+                  disabled={readOnly}
                 />
               )}
             />
@@ -490,6 +511,7 @@ export default function DimensionesProductoForm({
                     "p-invalid": fieldState.error,
                   })}
                   maxLength={20}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -518,6 +540,7 @@ export default function DimensionesProductoForm({
                     "p-invalid": fieldState.error,
                   })}
                   showClear
+                  disabled={readOnly}
                 />
               )}
             />
@@ -544,6 +567,7 @@ export default function DimensionesProductoForm({
                     "p-invalid": fieldState.error,
                   })}
                   maxLength={20}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -572,6 +596,7 @@ export default function DimensionesProductoForm({
                     "p-invalid": fieldState.error,
                   })}
                   showClear
+                  disabled={readOnly}
                 />
               )}
             />
@@ -605,6 +630,7 @@ export default function DimensionesProductoForm({
                 }}
                 maxLength={120}
                 placeholder="Descripción adicional de medidas (opcional)"
+                disabled={readOnly}
               />
             )}
           />

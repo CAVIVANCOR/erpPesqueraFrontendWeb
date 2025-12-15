@@ -16,16 +16,25 @@ import {
 import { getEntidadesComerciales } from "../api/entidadComercial";
 import { getEmpresas } from "../api/empresa";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
+import { Navigate } from "react-router-dom";
 
 /**
  * Página CRUD para CentrosAlmacen
  * Cumple la regla transversal ERP Megui.
  * Documentado en español.
  */
-export default function CentrosAlmacen() {
+export default function CentrosAlmacen({ ruta }) {
   const { user } = useAuthStore();
+  const permisos = usePermissions(ruta);
   const toast = useRef(null);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [items, setItems] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [empresas, setEmpresas] = useState([]);
@@ -313,7 +322,7 @@ export default function CentrosAlmacen() {
                   label="Nuevo"
                   icon="pi pi-plus"
                   onClick={handleNew}
-                  disabled={!empresaSeleccionada}
+                  disabled={!empresaSeleccionada || !permisos.puedeCrear}
                   style={{ marginTop: "1.8rem" }}
                 />
               </div>
@@ -547,6 +556,7 @@ export default function CentrosAlmacen() {
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}
+          readOnly={readOnly}
         />
       </Dialog>
     </div>

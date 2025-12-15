@@ -29,6 +29,7 @@ import {
   actualizarModoDespachoRecepcion,
 } from "../api/modoDespachoRecepcion";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import ModoDespachoRecepcionForm from "../components/modoDespachoRecepcion/ModoDespachoRecepcionForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -41,7 +42,10 @@ const ModoDespachoRecepcion = () => {
   const [modoAEliminar, setModoAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const permisos = usePermissions("ModoDespachoRecepcion");
   const [globalFilter, setGlobalFilter] = useState("");
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   useEffect(() => {
     cargarModosDespachoRecepcion();
@@ -221,10 +225,11 @@ const ModoDespachoRecepcion = () => {
               icon="pi pi-plus"
               size="small"
               raised
-              tooltip="Nuevo Modo de Despacho/Recepción"
+              tooltip="Nuevo Modo de Despacho y Recepción"
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              disabled={!permisos.puedeCrear}
             />
             <span className="p-input-icon-left">
               <InputText
@@ -267,6 +272,7 @@ const ModoDespachoRecepcion = () => {
           modoDespachoRecepcion={modoSeleccionado}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
+          readOnly={readOnly}
         />
       </Dialog>
 

@@ -1,6 +1,7 @@
 // src/pages/MovimientoCaja.jsx
 // Pantalla CRUD profesional para MovimientoCaja. Cumple la regla transversal ERP Megui.
 import React, { useRef, useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -58,18 +59,26 @@ import { getAllEntregaARendir } from "../api/entregaARendir";
 import { getAllDetMovsEntRendirPescaConsumo } from "../api/detMovsEntRendirPescaConsumo";
 import { getEntregasARendirPescaConsumo } from "../api/entregaARendirPescaConsumo";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 
-export default function MovimientoCaja() {
+export default function MovimientoCaja({ ruta }) {
   const toast = useRef(null);
+  const usuario = useAuthStore((state) => state.usuario);
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
-  const usuario = useAuthStore((state) => state.usuario);
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [modulos, setModulos] = useState([]);
   const [personal, setPersonal] = useState([]);
@@ -216,7 +225,9 @@ export default function MovimientoCaja() {
     setLoading(true);
     try {
       const data = await getAllMovimientoCaja();
-      setItems(data);
+      // Ordenar por ID descendente para mantener el orden consistente
+      const dataSorted = data.sort((a, b) => Number(b.id) - Number(a.id));
+      setItems(dataSorted);
     } catch (err) {
       toast.current.show({
         severity: "error",
@@ -600,6 +611,16 @@ export default function MovimientoCaja() {
   };
 
   const handleDelete = (rowData) => {
+    // Validar permisos de eliminación
+    if (!permisos.puedeEliminar) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para eliminar registros.',
+        life: 3000,
+      });
+      return;
+    }
     setToDelete(rowData);
     setShowConfirm(true);
   };
@@ -628,9 +649,31 @@ export default function MovimientoCaja() {
   };
 
   const handleFormSubmit = async (data) => {
+    const esEdicion = editing && editing.id;
+
+    // Validar permisos antes de guardar
+    if (esEdicion && !permisos.puedeEditar) {
+      toast.current.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para editar registros.',
+        life: 3000,
+      });
+      return;
+    }
+    if (!esEdicion && !permisos.puedeCrear) {
+      toast.current.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para crear registros.',
+        life: 3000,
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      if (editing && editing.id) {
+      if (esEdicion) {
         await actualizarMovimientoCaja(editing.id, data);
         toast.current.show({
           severity: "success",
@@ -960,16 +1003,16 @@ export default function MovimientoCaja() {
           icon="pi pi-pencil"
           className="p-button-rounded p-button-text"
           onClick={() => handleEdit(rowData)}
-          tooltip="Editar"
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          tooltip={permisos.puedeEditar ? 'Editar' : 'Ver'}
         />
-        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-rounded p-button-text p-button-danger"
-            onClick={() => handleDelete(rowData)}
-            tooltip="Eliminar"
-          />
-        )}
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-text p-button-danger"
+          onClick={() => handleDelete(rowData)}
+          disabled={!permisos.puedeEliminar}
+          tooltip="Eliminar"
+        />
       </div>
     );
   };
@@ -1214,6 +1257,8 @@ export default function MovimientoCaja() {
             setEditing(null);
             setShowDialog(true);
           }}
+          disabled={!permisos.puedeCrear}
+          tooltip={!permisos.puedeCrear ? 'No tiene permisos para crear' : 'Nuevo Movimiento de Caja'}
         />
       </div>
 
@@ -1225,7 +1270,15 @@ export default function MovimientoCaja() {
         rowsPerPageOptions={[5, 10, 25, 50]}
         emptyMessage="No hay movimientos de caja registrados"
         className="p-datatable-sm"
-        style={{ fontSize: getResponsiveFontSize() }}
+        style={{ fontSize: getResponsiveFontSize(), cursor: 'pointer' }}
+        sortField="id"
+        sortOrder={-1}
+        onRowClick={(e) => {
+          if (permisos.puedeVer || permisos.puedeEditar) {
+            handleEdit(e.data);
+          }
+        }}
+        selectionMode="single"
       >
         <Column field="id" header="ID" sortable style={{ width: "80px" }} />
 
@@ -1395,6 +1448,8 @@ export default function MovimientoCaja() {
         onValidarMovimiento={handleValidarMovimiento}
         onGenerarAsiento={handleGenerarAsiento}
         loading={loading}
+        permisos={permisos}
+        readOnly={!!editing && !!editing.id && !permisos.puedeEditar}
         onCancel={() => {
             setShowDialog(false);
             setEditing(null);

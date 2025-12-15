@@ -6,7 +6,7 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Checkbox } from 'primereact/checkbox';
 
-export default function TipoAlmacenForm({ isEdit, defaultValues, onSubmit, onCancel, loading }) {
+export default function TipoAlmacenForm({ isEdit, defaultValues, onSubmit, onCancel, loading, readOnly = false }) {
   const [nombre, setNombre] = React.useState(defaultValues.nombre || '');
   const [descripcion, setDescripcion] = React.useState(defaultValues.descripcion || '');
   const [activo, setActivo] = React.useState(defaultValues.activo !== undefined ? defaultValues.activo : true);
@@ -37,8 +37,9 @@ export default function TipoAlmacenForm({ isEdit, defaultValues, onSubmit, onCan
               value={nombre} 
               onChange={e => setNombre(e.target.value)} 
               required 
-              disabled={loading}
+              disabled={loading || readOnly}
               maxLength={50}
+              style={{ textTransform: 'uppercase' }}
             />
           </div>
         </div>
@@ -49,8 +50,9 @@ export default function TipoAlmacenForm({ isEdit, defaultValues, onSubmit, onCan
               id="descripcion" 
               value={descripcion} 
               onChange={e => setDescripcion(e.target.value)} 
-              disabled={loading}
+              disabled={loading || readOnly}
               rows={3}
+              style={{ textTransform: 'uppercase' }}
             />
           </div>
         </div>
@@ -60,7 +62,7 @@ export default function TipoAlmacenForm({ isEdit, defaultValues, onSubmit, onCan
               id="activo" 
               checked={activo} 
               onChange={e => setActivo(e.checked)} 
-              disabled={loading} 
+              disabled={loading || readOnly} 
             />
             <label htmlFor="activo">Activo</label>
           </div>
@@ -68,7 +70,7 @@ export default function TipoAlmacenForm({ isEdit, defaultValues, onSubmit, onCan
       </div>
       <div className="p-d-flex p-jc-end" style={{ gap: 8, marginTop: 16 }}>
         <Button type="button" label="Cancelar" className="p-button-text" onClick={onCancel} disabled={loading} />
-        <Button type="submit" label={isEdit ? "Actualizar" : "Crear"} icon="pi pi-save" loading={loading} />
+        <Button type="submit" label={isEdit ? "Actualizar" : "Crear"} icon="pi pi-save" loading={loading} disabled={readOnly} />
       </div>
     </form>
   );

@@ -27,6 +27,7 @@ const DetInsumosOTCard = ({
   permisos = {},
   onInsumosChange,
   disabled = false,
+  readOnly = false,
 }) => {
   const [insumos, setInsumos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -71,13 +72,13 @@ const DetInsumosOTCard = ({
   };
 
   const abrirDialogoNuevo = () => {
-    if (disabled) return;
+    if (disabled || readOnly) return;
     setInsumoSeleccionado(null);
     setDialogVisible(true);
   };
 
   const abrirDialogoEditar = (insumo) => {
-    if (disabled) return;
+    if (disabled || readOnly) return;
     setInsumoSeleccionado(insumo);
     setDialogVisible(true);
   };
@@ -217,7 +218,7 @@ const DetInsumosOTCard = ({
           text
           severity="info"
           onClick={() => abrirDialogoEditar(rowData)}
-          disabled={disabled}
+          disabled={disabled || readOnly}
           tooltip="Editar"
           tooltipOptions={{ position: "top" }}
         />
@@ -228,7 +229,7 @@ const DetInsumosOTCard = ({
             text
             severity="danger"
             onClick={() => confirmarEliminar(rowData)}
-            disabled={disabled}
+            disabled={disabled || readOnly}
             tooltip="Eliminar"
             tooltipOptions={{ position: "top" }}
           />
@@ -273,9 +274,9 @@ const DetInsumosOTCard = ({
         size="small"
         scrollable
         scrollHeight="300px"
-        onRowClick={(e) => !disabled && abrirDialogoEditar(e.data)}
+        onRowClick={(e) => !(disabled || readOnly) && abrirDialogoEditar(e.data)}
         rowHover
-        style={{ cursor: disabled ? "default" : "pointer" }}
+        style={{ cursor: (disabled || readOnly) ? "default" : "pointer" }}
       >
         <Column
           header="Producto"

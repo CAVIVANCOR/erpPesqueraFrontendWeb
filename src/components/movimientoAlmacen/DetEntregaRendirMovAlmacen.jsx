@@ -35,6 +35,7 @@ export default function DetEntregaRendirMovAlmacen({
   onSelectionChange,
   onDataChange,
   permisos = {},
+  readOnly = false,
 }) {
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
   const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);

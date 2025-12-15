@@ -45,6 +45,7 @@ const CotizacionVentasForm = ({
   docRequeridaVentasOptions = [],
   empresaFija = null,
   permisos = {},
+  readOnly = false,
   loading: loadingProp = false,
   toast: toastProp,
 }) => {
@@ -488,6 +489,7 @@ const CotizacionVentasForm = ({
               totalIGV={totales.igv}
               total={totales.total}
               monedasOptions={monedas.map(m => ({ value: m.id, codigoSunat: m.codigoSunat || 'PEN' }))}
+              readOnly={readOnly}
             />
           </TabPanel>
           <TabPanel header="Costos Exportación" leftIcon="pi pi-dollar">
@@ -501,6 +503,7 @@ const CotizacionVentasForm = ({
               toast={toast}
               onFactorCalculado={(factor) => handleChange("factorExportacion", factor)}
               detalles={detalles}
+              readOnly={readOnly}
             />
           </TabPanel>
           <TabPanel header="Documentos Requeridos" leftIcon="pi pi-file">
@@ -519,6 +522,7 @@ const CotizacionVentasForm = ({
                 simbolo: m.simbolo 
               }))}
               docRequeridaVentasOptions={docRequeridaVentasOptions}
+              readOnly={readOnly}
             />
           </TabPanel>
           <TabPanel header="Entrega a Rendir" leftIcon="pi pi-money-bill" disabled={!isEdit}>
@@ -531,6 +535,8 @@ const CotizacionVentasForm = ({
               monedas={monedas}
               tiposDocumento={tiposDocumento}
               puedeEditar={permisos?.editar !== false}
+              readOnly={readOnly}
+              permisos={permisos}
             />
           </TabPanel>
           <TabPanel header="PDF Cotización" leftIcon="pi pi-file-pdf">
@@ -547,7 +553,7 @@ const CotizacionVentasForm = ({
         </TabView>
         <div className="flex justify-content-end gap-2 mt-4">
           <Button type="button" label="Cancelar" icon="pi pi-times" className="p-button-secondary" onClick={handleCancel} disabled={loading || loadingProp} />
-          <Button type="submit" label={defaultValues ? "Actualizar" : "Guardar"} icon="pi pi-save" className="p-button-primary" loading={loading || loadingProp} />
+          <Button type="submit" label={defaultValues ? "Actualizar" : "Guardar"} icon="pi pi-save" className="p-button-primary" loading={loading || loadingProp} disabled={readOnly || !permisos.puedeEditar} tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""} />
         </div>
       </form>
     </div>

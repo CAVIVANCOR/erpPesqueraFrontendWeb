@@ -16,6 +16,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -30,6 +31,7 @@ import { Badge } from "primereact/badge";
 import { Tooltip } from "primereact/tooltip";
 import { FilterMatchMode } from "primereact/api";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import {
   getTemporadasPesca,
   getTemporadaPescaPorId,
@@ -49,7 +51,16 @@ import { abrirPdfEnNuevaPestana } from "../utils/pdfUtils";
  * Componente principal para gestión de temporadas de pesca
  * Implementa las reglas transversales del ERP Megui
  */
-const TemporadaPesca = () => {
+const TemporadaPesca = ({ ruta }) => {
+  // Store de autenticación y permisos
+  const { usuario } = useAuthStore();
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   // Estados principales
   const [temporadas, setTemporadas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +72,7 @@ const TemporadaPesca = () => {
   // Estados del formulario
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [isEdit, setIsEdit] = useState(false);
 
   // Estados para combos de filtro
   const [empresas, setEmpresas] = useState([]);
@@ -75,9 +87,6 @@ const TemporadaPesca = () => {
   const toast = useRef(null);
   const dt = useRef(null);
   const isMounted = useRef(false);
-
-  // Store de autenticación
-  const { usuario } = useAuthStore();
 
   /**
    * Cargar datos iniciales
@@ -221,6 +230,7 @@ const TemporadaPesca = () => {
    */
   const openNew = () => {
     setEditingItem({ empresaId: filtroEmpresa });
+    setIsEdit(false);
     setShowForm(true);
   };
 
@@ -229,6 +239,7 @@ const TemporadaPesca = () => {
    */
   const editItem = (temporada) => {
     setEditingItem(temporada);
+    setIsEdit(true);
     setShowForm(true);
   };
 
@@ -236,8 +247,8 @@ const TemporadaPesca = () => {
    * Confirmar eliminación de temporada
    */
   const confirmDelete = (temporada) => {
-    // Solo superusuario o admin pueden eliminar (regla transversal ERP Megui)
-    if (!usuario?.esSuperUsuario && !usuario?.esAdmin) {
+    // Validar permisos de eliminación
+    if (!permisos.puedeEliminar) {
       toast.current?.show({
         severity: "warn",
         summary: "Acceso Denegado",
@@ -322,6 +333,26 @@ const TemporadaPesca = () => {
    * Guardar temporada (crear o actualizar)
    */
   const saveItem = async (data) => {
+    // Validar permisos antes de guardar
+    if (isEdit && !permisos.puedeEditar) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para editar registros.",
+        life: 3000,
+      });
+      return;
+    }
+    if (!isEdit && !permisos.puedeCrear) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear registros.",
+        life: 3000,
+      });
+      return;
+    }
+
     try {
       let temporadaGuardada;
       
@@ -516,11 +547,6 @@ const TemporadaPesca = () => {
    * Template para acciones (solo eliminar, edición por clic en fila)
    */
   const actionTemplate = (rowData) => {
-    // Solo mostrar botón eliminar para superusuario o admin (regla transversal ERP Megui)
-    if (!usuario?.esSuperUsuario && !usuario?.esAdmin) {
-      return null;
-    }
-
     return (
       <div className="flex gap-2">
         <Button
@@ -528,7 +554,12 @@ const TemporadaPesca = () => {
           className="p-button-rounded p-button-text p-button-danger p-button-sm"
           tooltip="Eliminar temporada"
           tooltipOptions={{ position: "top" }}
-          onClick={() => confirmDelete(rowData)}
+          disabled={!permisos.puedeEliminar}
+          onClick={() => {
+            if (permisos.puedeEliminar) {
+              confirmDelete(rowData);
+            }
+          }}
         />
       </div>
     );
@@ -654,9 +685,17 @@ const TemporadaPesca = () => {
           stripedRows
           scrollable
           scrollHeight="600px"
-          onRowClick={(e) => editItem(e.data)}
+          onRowClick={
+            permisos.puedeVer || permisos.puedeEditar
+              ? (e) => editItem(e.data)
+              : undefined
+          }
           rowClassName={() => "cursor-pointer hover:bg-primary-50"}
-          style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+          style={{
+            cursor:
+              permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+            fontSize: getResponsiveFontSize(),
+          }}
           sortField="id"
           sortOrder={-1}
           header={
@@ -705,9 +744,11 @@ const TemporadaPesca = () => {
                     icon="pi pi-plus"
                     className="p-button-success"
                     onClick={openNew}
-                    disabled={!filtroEmpresa}
+                    disabled={!permisos.puedeCrear || !filtroEmpresa}
                     tooltip={
-                      !filtroEmpresa
+                      !permisos.puedeCrear
+                        ? "No tiene permisos para crear temporadas"
+                        : !filtroEmpresa
                         ? "Seleccione una empresa para crear una nueva temporada"
                         : "Crear nueva temporada"
                     }
@@ -871,12 +912,15 @@ const TemporadaPesca = () => {
         onHide={() => {
           setShowForm(false);
           setEditingItem(null);
+          setIsEdit(false);
         }}
         onSave={saveItem}
         editingItem={editingItem}
         empresas={empresas}
         tiposDocumento={tiposDocumento}
         onTemporadaDataChange={actualizarEditingItem}
+        readOnly={isEdit && !permisos.puedeEditar}
+        isEdit={isEdit}
       />
     </div>
   );

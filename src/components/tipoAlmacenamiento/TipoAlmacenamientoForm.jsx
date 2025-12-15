@@ -40,7 +40,7 @@ const esquemaValidacion = yup.object().shape({
  * @param {Function} onCancel - Callback ejecutado al cancelar
  * @param {Object} toast - Referencia al Toast del componente padre
  */
-const TipoAlmacenamientoForm = ({ tipoAlmacenamiento, onSave, onCancel, toast }) => {
+const TipoAlmacenamientoForm = ({ tipoAlmacenamiento, onSave, onCancel, toast, readOnly = false }) => {
   const [loading, setLoading] = useState(false);
 
   // Configuración del formulario con react-hook-form y Yup
@@ -178,6 +178,7 @@ const TipoAlmacenamientoForm = ({ tipoAlmacenamiento, onSave, onCancel, toast })
                 className={errors.nombre ? 'p-invalid' : ''}
                 maxLength={80}
                 style={{ textTransform: 'uppercase' }}
+                disabled={readOnly}
               />
             )}
           />
@@ -206,6 +207,7 @@ const TipoAlmacenamientoForm = ({ tipoAlmacenamiento, onSave, onCancel, toast })
             raised
             size='small'
             loading={loading}
+            disabled={readOnly}
           />
         </div>
       </form>

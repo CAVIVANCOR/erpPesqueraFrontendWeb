@@ -44,6 +44,8 @@ export default function EntregaARendirCard({
   tiposDocumento = [],
   puedeEditar = true,
   onCountChange,
+  readOnly = false,
+  permisos = {},
 }) {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
@@ -576,7 +578,7 @@ export default function EntregaARendirCard({
               showClear
               className="w-full"
               style={{ fontWeight: "bold" }}
-              disabled={!puedeEditar || entregaARendir.entregaLiquidada}
+              disabled={!puedeEditar || readOnly || entregaARendir.entregaLiquidada}
             />
           </div>
           <div style={{ flex: 0.5 }}>
@@ -636,7 +638,7 @@ export default function EntregaARendirCard({
               showClear
               className="w-full"
               style={{ fontWeight: "bold" }}
-              disabled={!puedeEditar || entregaARendir.entregaLiquidada}
+              disabled={!puedeEditar || readOnly || entregaARendir.entregaLiquidada}
             />
           </div>
 
@@ -727,7 +729,7 @@ export default function EntregaARendirCard({
               className="p-button-success"
               onClick={handleGuardarCambios}
               loading={loadingEntrega}
-              disabled={entregaARendir.entregaLiquidada}
+              disabled={readOnly || entregaARendir.entregaLiquidada}
             />
           </div>
         </div>
@@ -749,6 +751,8 @@ export default function EntregaARendirCard({
               productos={productos}
               cotizacionVentasAprobada={true}
               onDataChange={cargarMovimientos}
+              readOnly={readOnly}
+              permisos={permisos}
             />
           </TabPanel>
 

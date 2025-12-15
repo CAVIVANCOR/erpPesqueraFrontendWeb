@@ -44,7 +44,7 @@ const esquemaValidacion = yup.object().shape({
     .trim(),
 });
 
-const ProvinciaForm = ({ provincia, onGuardar, onCancelar }) => {
+const ProvinciaForm = ({ provincia, onGuardar, onCancelar, readOnly = false }) => {
   const [loading, setLoading] = useState(false);
   const [departamentos, setDepartamentos] = useState([]);
   const toast = useRef(null);
@@ -168,6 +168,7 @@ const ProvinciaForm = ({ provincia, onGuardar, onCancelar }) => {
                   className={getFieldClass("departamentoId")}
                   filter
                   showClear
+                  disabled={readOnly}
                 />
               )}
             />
@@ -192,6 +193,7 @@ const ProvinciaForm = ({ provincia, onGuardar, onCancelar }) => {
                   className={getFieldClass("codSUNAT")}
                   maxLength={10}
                   style={{ textTransform: 'uppercase' }}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -216,6 +218,7 @@ const ProvinciaForm = ({ provincia, onGuardar, onCancelar }) => {
                   className={getFieldClass("nombre")}
                   maxLength={100}
                   style={{ textTransform: 'uppercase' }}
+                  disabled={readOnly}
                 />
               )}
             />
@@ -237,6 +240,7 @@ const ProvinciaForm = ({ provincia, onGuardar, onCancelar }) => {
             label={esEdicion ? "Actualizar" : "Crear"}
             icon={esEdicion ? "pi pi-check" : "pi pi-plus"}
             loading={loading}
+            disabled={readOnly}
           />
         </div>
       </form>

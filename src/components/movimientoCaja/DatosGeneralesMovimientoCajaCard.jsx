@@ -69,6 +69,7 @@ const DatosGeneralesMovimientoCajaCard = ({
   setProductoId,
   familiaFiltroId,
   setFamiliaFiltroId,
+  readOnly = false,
 }) => {
   // IDs de familias de gastos (igual que en DetMovsEntregaRendirForm)
   const familiasGastosIds = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100];
@@ -136,7 +137,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               onChange={(e) => setEmpresaOrigenId(e.value)}
               placeholder="Seleccione empresa origen"
               required
-              disabled={loading}
+              disabled={readOnly}
               filter
               showClear
               style={{ fontWeight: "bold" }}
@@ -156,7 +157,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               onChange={(e) => setCuentaCorrienteOrigenId(e.value)}
               placeholder="Seleccione cuenta origen"
               required
-              disabled={loading || !empresaOrigenId}
+              disabled={readOnly || !empresaOrigenId}
               filter
               showClear
               style={{ fontWeight: "bold" }}
@@ -184,7 +185,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               }))}
               onChange={(e) => setEmpresaDestinoId(e.value)}
               placeholder="Solo para transferencias entre empresas"
-              disabled={loading}
+              disabled={readOnly}
               filter
               showClear
               style={{ fontWeight: "normal" }}
@@ -203,7 +204,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               }))}
               onChange={(e) => setCuentaCorrienteDestinoId(e.value)}
               placeholder="Solo para transferencias/reembolsos"
-              disabled={loading || !empresaDestinoId}
+              disabled={readOnly || !empresaDestinoId}
               filter
               showClear
               style={{ fontWeight: "normal" }}
@@ -228,7 +229,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               onChange={(e) => setFecha(e.value)}
               showIcon
               dateFormat="yy-mm-dd"
-              disabled={loading}
+              disabled={readOnly}
               required
               style={{ fontWeight: "bold" }}
             />
@@ -245,7 +246,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               onChange={(e) => setTipoMovimientoId(e.value)}
               placeholder="Seleccione tipo de movimiento"
               required
-              disabled={loading}
+              disabled={readOnly}
               filter
               showClear
               style={{ fontWeight: "bold" }}
@@ -262,7 +263,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               }))}
               onChange={(e) => setEntidadComercialId(e.value)}
               placeholder="Solo cuando hay proveedor/cliente"
-              disabled={loading}
+              disabled={readOnly}
               filter
               showClear
               style={{ fontWeight: "normal" }}
@@ -295,7 +296,7 @@ const DatosGeneralesMovimientoCajaCard = ({
                   }))}
                 onChange={(e) => setCuentaDestinoEntidadComercialId(e.value)}
                 placeholder="Seleccione cuenta bancaria del proveedor/cliente"
-                disabled={loading || !entidadComercialId}
+                disabled={readOnly || !entidadComercialId}
                 filter
                 showClear
                 style={{ fontWeight: "normal" }}
@@ -327,7 +328,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               showClear
               filter
               style={{ fontWeight: "normal" }}
-              disabled={loading}
+              disabled={readOnly || loading}
             />
           </div>
           <div style={{ flex: 2 }}>
@@ -343,7 +344,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               filter
               showClear
               style={{ fontWeight: "normal" }}
-              disabled={loading}
+              disabled={readOnly || loading}
             />
           </div>
         </div>
@@ -369,7 +370,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               onChange={(e) => setMonedaId(e.value)}
               placeholder="Seleccione moneda"
               required
-              disabled={loading}
+              disabled={readOnly || loading}
               filter
               showClear
               style={{ fontWeight: "bold" }}
@@ -384,7 +385,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               mode="decimal"
               minFractionDigits={2}
               required
-              disabled={loading}
+              disabled={readOnly || loading}
               inputStyle={{ fontWeight: "bold" }}
             />
           </div>
@@ -394,7 +395,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               id="referenciaExtId"
               value={referenciaExtId}
               onChange={(e) => setReferenciaExtId(e.target.value)}
-              disabled={loading}
+              disabled={readOnly || loading}
               style={{ fontWeight: "bold" }}
             />
           </div>
@@ -409,7 +410,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               }))}
               onChange={(e) => setTipoReferenciaId(e.value)}
               placeholder="Seleccione tipo de referencia"
-              disabled={loading}
+              disabled={readOnly || loading}
               filter
               showClear
               style={{ fontWeight: "bold" }}
@@ -432,7 +433,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               id="descripcion"
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
-              disabled={loading}
+              disabled={readOnly || loading}
               style={{ fontWeight: "bold" }}
             />
           </div>
@@ -448,7 +449,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               onChange={(e) => setEstadoId(e.value)}
               placeholder="Seleccione estado"
               required
-              disabled={loading}
+              disabled={readOnly || loading}
               filter
               showClear
               style={{ fontWeight: "bold" }}
@@ -512,7 +513,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               }))}
               onChange={(e) => setCentroCostoId(e.value)}
               placeholder="Seleccione centro de costo"
-              disabled={loading}
+              disabled={readOnly || loading}
               filter
               showClear
               style={{ fontWeight: "bold" }}
@@ -634,7 +635,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               onClick={() => setOperacionSinFactura(!operacionSinFactura)}
               size="small"
               style={{ width: "100%" }}
-              disabled={loading}
+              disabled={readOnly || loading}
             />
           </div>
         </div>

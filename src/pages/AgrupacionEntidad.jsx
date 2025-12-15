@@ -24,6 +24,7 @@ import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
 import { getAgrupacionesEntidad, eliminarAgrupacionEntidad } from "../api/agrupacionEntidad";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import AgrupacionEntidadForm from "../components/agrupacionEntidad/AgrupacionEntidadForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -36,7 +37,10 @@ const AgrupacionEntidad = () => {
   const [agrupacionEntidadAEliminar, setAgrupacionEntidadAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const permisos = usePermissions("AgrupacionEntidad");
   const [globalFilter, setGlobalFilter] = useState("");
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   useEffect(() => {
     cargarAgrupacionesEntidad();
@@ -193,6 +197,7 @@ const AgrupacionEntidad = () => {
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              disabled={!permisos.puedeCrear}
             />
             <span className="p-input-icon-left">
               <InputText
@@ -233,6 +238,7 @@ const AgrupacionEntidad = () => {
           agrupacionEntidad={agrupacionEntidadSeleccionada}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
+          readOnly={readOnly}
         />
       </Dialog>
 

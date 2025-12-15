@@ -14,6 +14,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -24,10 +25,20 @@ import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
 import { getPuertosPesca, eliminarPuertoPesca } from "../api/puertoPesca";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import PuertoPescaForm from "../components/puertoPesca/PuertoPescaForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
-const PuertoPesca = () => {
+const PuertoPesca = ({ ruta }) => {
+  // Obtener usuario autenticado para control de permisos
+  const { usuario } = useAuthStore();
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const [puertosPesca, setPuertosPesca] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -35,8 +46,8 @@ const PuertoPesca = () => {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [puertoPescaAEliminar, setPuertoPescaAEliminar] = useState(null);
   const toast = useRef(null);
-  const { usuario } = useAuthStore();
   const [globalFilter, setGlobalFilter] = useState("");
+  const [isEdit, setIsEdit] = useState(false);
 
   useEffect(() => {
     cargarPuertosPesca();
@@ -61,20 +72,31 @@ const PuertoPesca = () => {
 
   const abrirDialogoNuevo = () => {
     setPuertoPescaSeleccionado(null);
+    setIsEdit(false);
     setDialogVisible(true);
   };
 
   const abrirDialogoEdicion = (puertoPesca) => {
     setPuertoPescaSeleccionado(puertoPesca);
+    setIsEdit(true);
     setDialogVisible(true);
   };
 
   const cerrarDialogo = () => {
     setDialogVisible(false);
     setPuertoPescaSeleccionado(null);
+    setIsEdit(false);
   };
 
   const onGuardarExitoso = () => {
+    // Validar permisos antes de guardar
+    if (isEdit && !permisos.puedeEditar) {
+      return;
+    }
+    if (!isEdit && !permisos.puedeCrear) {
+      return;
+    }
+
     cargarPuertosPesca();
     cerrarDialogo();
     toast.current.show({
@@ -142,21 +164,28 @@ const PuertoPesca = () => {
         <Button
           icon="pi pi-pencil"
           className="p-button-text p-mr-2"
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
           onClick={(ev) => {
             ev.stopPropagation();
-            abrirDialogoEdicion(rowData);
+            if (permisos.puedeVer || permisos.puedeEditar) {
+              abrirDialogoEdicion(rowData);
+            }
           }}
-          tooltip="Editar"
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
           tooltipOptions={{ position: "top" }}
         />
-        {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-text p-button-danger"
-            onClick={() => confirmarEliminacion(rowData)}
-            tooltip="Eliminar"
-          />
-        )}
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger"
+          disabled={!permisos.puedeEliminar}
+          onClick={(ev) => {
+            ev.stopPropagation();
+            if (permisos.puedeEliminar) {
+              confirmarEliminacion(rowData);
+            }
+          }}
+          tooltip="Eliminar"
+        />
       </div>
     );
   };
@@ -170,7 +199,11 @@ const PuertoPesca = () => {
         paginator
         rows={10}
         rowsPerPageOptions={[5, 10, 25, 50]}
-        onRowClick={(e) => abrirDialogoEdicion(e.data)}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => abrirDialogoEdicion(e.data)
+            : undefined
+        }
         selectionMode="single"
         className="p-datatable-hover cursor-pointer"
         emptyMessage="No se encontraron puertos de pesca"
@@ -188,6 +221,7 @@ const PuertoPesca = () => {
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              disabled={!permisos.puedeCrear}
             />
             <span className="p-input-icon-left">
               <InputText
@@ -201,7 +235,11 @@ const PuertoPesca = () => {
         }
         scrollable
         scrollHeight="600px"
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
       >
         <Column field="id" header="ID" sortable />
         <Column field="zona" header="Zona" sortable />
@@ -221,8 +259,10 @@ const PuertoPesca = () => {
 
       <Dialog
         header={
-          puertoPescaSeleccionado
-            ? "Editar Puerto de Pesca"
+          isEdit
+            ? permisos.puedeEditar
+              ? "Editar Puerto de Pesca"
+              : "Ver Puerto de Pesca"
             : "Nuevo Puerto de Pesca"
         }
         visible={dialogVisible}
@@ -234,6 +274,7 @@ const PuertoPesca = () => {
           puertoPesca={puertoPescaSeleccionado}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
+          readOnly={isEdit && !permisos.puedeEditar}
         />
       </Dialog>
 

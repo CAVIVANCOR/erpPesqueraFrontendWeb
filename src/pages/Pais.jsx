@@ -24,6 +24,7 @@ import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
 import { getPaises, eliminarPais } from "../api/pais";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import PaisForm from "../components/pais/PaisForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -36,7 +37,10 @@ const Pais = () => {
   const [paisAEliminar, setPaisAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const permisos = usePermissions("Pais");
   const [globalFilter, setGlobalFilter] = useState("");
+
+  const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   useEffect(() => {
     cargarPaises();
@@ -179,6 +183,7 @@ const Pais = () => {
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
+              disabled={!permisos.puedeCrear}
             />
             <span className="p-input-icon-left">
               <InputText
@@ -221,6 +226,7 @@ const Pais = () => {
           pais={paisSeleccionado}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
+          readOnly={readOnly}
         />
       </Dialog>
 
