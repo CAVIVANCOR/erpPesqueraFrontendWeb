@@ -146,11 +146,7 @@ export default function DatosGeneralesTemporadaForm({
 
   const autocompletarBahiaId = async (empresaId) => {
     try {
-      // Solo autocompletar si no hay valor previo
-      const valorActual = getValues("BahiaId");
-      if (valorActual) return;
-
-      // Usar directamente el prop bahiasComerciales en lugar de filtrar personal
+      // Autocompletar siempre que haya solo una bahía disponible
       if (bahiasComerciales.length === 1) {
         const valorCalculado = Number(bahiasComerciales[0].id);
         setValue("BahiaId", valorCalculado);

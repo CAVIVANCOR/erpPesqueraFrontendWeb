@@ -302,6 +302,7 @@ const NovedadPescaConsumo = ({ ruta }) => {
       // para mantener el formulario en modo edición
       if (!editingItem?.id) {
         setEditingItem(resultado);
+        setIsEdit(true); // Cambiar a modo edición para que el botón muestre "Actualizar"
       }
 
       // Recargar datos para actualizar la tabla
@@ -394,16 +395,50 @@ const NovedadPescaConsumo = ({ ruta }) => {
       await deleteNovedadPescaConsumo(id);
       toast.current?.show({
         severity: "success",
-        summary: "Éxito",
-        detail: "Novedad eliminada correctamente",
+        summary: "Eliminación Exitosa",
+        detail: "La novedad ha sido eliminada correctamente.",
+        life: 3000,
       });
       cargarNovedades();
     } catch (error) {
-      console.error("Error eliminando novedad:", error);
+      console.error("Error al eliminar novedad:", error);
+      
+      let mensajeError = "No se pudo eliminar la novedad. Verifique su conexión e intente nuevamente.";
+      
+      // Manejo específico de errores HTTP
+      if (error.response) {
+        const { status, data } = error.response;
+        
+        switch (status) {
+          case 409: // Conflict
+            if (data.mensaje && data.mensaje.includes("dependencias")) {
+              mensajeError = "No se puede eliminar esta novedad porque tiene faenas o entregas asociadas. Debe eliminar primero estos registros relacionados antes de poder eliminar la novedad.";
+            } else {
+              mensajeError = "Ya existe un registro similar. Por favor, verifique los datos ingresados.";
+            }
+            break;
+          case 400: // Bad Request
+            mensajeError = "Solicitud inválida. Verifique que el registro existe y es válido para eliminación.";
+            break;
+          case 404: // Not Found
+            mensajeError = "La novedad que intenta eliminar no existe o ya ha sido eliminada.";
+            break;
+          case 403: // Forbidden
+            mensajeError = "No tiene permisos para eliminar este registro.";
+            break;
+          case 500: // Internal Server Error
+            mensajeError = "Error interno del servidor. Por favor, contacte al administrador del sistema.";
+            break;
+          default:
+            mensajeError = `Error del servidor (${status}). Por favor, intente nuevamente o contacte al soporte técnico.`;
+        }
+      }
+      
       toast.current?.show({
         severity: "error",
-        summary: "Error",
-        detail: "Error al eliminar la novedad",
+        summary: "Error de Eliminación",
+        detail: mensajeError,
+        life: 5000,
       });
     }
   };
@@ -462,6 +497,15 @@ const NovedadPescaConsumo = ({ ruta }) => {
    */
   const empresaTemplate = (rowData) => {
     return rowData.empresa?.razonSocial || "Sin empresa";
+  };
+
+  /**
+   * Template para bahía comercial
+   */
+  const bahiaTemplate = (rowData) => {
+    if (!rowData.bahiaComercial) return "Sin bahía";
+    const nombreCompleto = `${rowData.bahiaComercial.nombres || ""} ${rowData.bahiaComercial.apellidos || ""}`.trim();
+    return nombreCompleto || "Sin nombre";
   };
 
   /**
@@ -646,11 +690,13 @@ const NovedadPescaConsumo = ({ ruta }) => {
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-danger p-button-text"
-          onClick={(e) => {
-            e.stopPropagation();
-            confirmarEliminacion(rowData);
+          onClick={() => {
+            if (permisos.puedeEliminar) {
+              confirmarEliminacion(rowData);
+            }
           }}
           tooltip="Eliminar"
+          tooltipOptions={{ position: "top" }}
           disabled={!permisos.puedeEliminar}
         />
       </div>
@@ -821,29 +867,29 @@ const NovedadPescaConsumo = ({ ruta }) => {
             style={{ minWidth: "120px" }}
           />
           <Column
-            field="BahiaId"
-            header="Bahía ID"
+            header="Bahía Comercial"
+            body={bahiaTemplate}
             sortable
-            style={{ width: "100px" }}
+            style={{ minWidth: "180px" }}
           />
           <Column
             field="fechaInicio"
             header="Fecha Inicio"
             body={fechaInicioTemplate}
             sortable
-            style={{ width: "130px" }}
+            style={{ width: "100px" }}
           />
           <Column
             field="fechaFin"
             header="Fecha Fin"
             body={fechaFinTemplate}
             sortable
-            style={{ width: "130px" }}
+            style={{ width: "100px" }}
           />
           <Column
             header="Duración"
             body={duracionTemplate}
-            style={{ width: "100px" }}
+            style={{ width: "80px" }}
             className="text-center"
           />
           <Column
@@ -883,18 +929,6 @@ const NovedadPescaConsumo = ({ ruta }) => {
             sortable
             style={{ minWidth: "120px" }}
             className="text-right"
-          />
-          <Column
-            header="Resolución"
-            body={resolucionTemplate}
-            style={{ width: "150px" }}
-          />
-          <Column
-            field="fechaCreacion"
-            header="F. Creación"
-            body={fechaCreacionTemplate}
-            sortable
-            style={{ width: "150px" }}
           />
           <Column
             header="Acciones"

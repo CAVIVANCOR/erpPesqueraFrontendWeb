@@ -378,6 +378,7 @@ const TemporadaPesca = ({ ruta }) => {
         // Para nuevas temporadas, actualizar editingItem con los datos guardados
         // para mantener el formulario en modo edición
         setEditingItem(temporadaGuardada);
+        setIsEdit(true); // Cambiar a modo edición para que el botón muestre "Actualizar"
       }
 
       // NO cerrar el formulario - mantener modo edición activo
