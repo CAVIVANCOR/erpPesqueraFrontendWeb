@@ -120,7 +120,9 @@ const TripulantesFaenaPescaConsumoCard = ({
       }
 
       // 2. Obtener tripulantes existentes en TripulanteFaenaConsumo para esta faena
-      const tripulantesExistentes = await getTripulantesPorFaena(faenaPescaConsumoId);
+      const tripulantesExistentes = await getTripulantesPorFaena(
+        faenaPescaConsumoId
+      );
 
       // 3. Crear o actualizar registros (UNO POR UNO para verificar duplicados)
       let creados = 0;
@@ -411,8 +413,13 @@ const TripulantesFaenaPescaConsumoCard = ({
             value={tripulantes}
             loading={loadingTripulantes || loading}
             paginator
-            rows={20}
+            size="small"
             showGridlines
+            stripedRows
+            rows={20}
+            rowsPerPageOptions={[20, 40, 80, 160]}
+            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+            currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} tripulantes"
             emptyMessage="No hay tripulantes registrados para esta faena"
             className="p-datatable-sm"
             onRowClick={(e) => handleVerTripulante(e.data)}
@@ -428,6 +435,9 @@ const TripulantesFaenaPescaConsumoCard = ({
               >
                 <div style={{ flex: 1 }}>
                   <h2 className="m-0">TRIPULANTES DE LA FAENA</h2>
+                  <small style={{ color: "#666", fontWeight: "normal" }}>
+                    Total de registros: {tripulantes.length}
+                  </small>
                 </div>
                 <div style={{ flex: 1 }}>
                   <Button

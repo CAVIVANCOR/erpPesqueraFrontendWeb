@@ -70,15 +70,11 @@ export default function DatosGeneralesFaenaPescaConsumo({
     }
   }, [fechaSalida, puertoSalidaId, estadoFaenaId, setValue]);
 
-  // ← AGREGAR LÓGICA PARA VERIFICAR CAMPOS COMPLETOS
+  // Verificar si todos los campos requeridos están completos para finalizar faena
   const allRequiredFieldsComplete = useMemo(() => {
     const requiredFields = [
       fechaSalida,
-      fechaDescarga,
-      fechaHoraFondeo,
       puertoSalidaId,
-      puertoDescargaId,
-      puertoFondeoId,
     ];
 
     return requiredFields.every(
@@ -86,11 +82,7 @@ export default function DatosGeneralesFaenaPescaConsumo({
     );
   }, [
     fechaSalida,
-    fechaDescarga,
-    fechaHoraFondeo,
     puertoSalidaId,
-    puertoDescargaId,
-    puertoFondeoId,
   ]);
 
   // ← AGREGAR LÓGICA PARA MOSTRAR BOTÓN
@@ -513,6 +505,8 @@ export default function DatosGeneralesFaenaPescaConsumo({
               tooltip={
                 finalizandoFaena
                   ? "Procesando finalización de faena..."
+                  : !showFinalizarButton
+                  ? "Complete Fecha de Salida y Puerto de Salida, y asegúrese que el estado sea EN ZARPE"
                   : "Finalizar faena de pesca consumo"
               }
               tooltipOptions={{ position: "top" }}

@@ -44,6 +44,7 @@ import { getTemporadaPescaPorId } from "../../api/temporadaPesca"; // Importar f
 import DatosGeneralesTemporadaForm from "./DatosGeneralesTemporadaForm";
 import ResolucionPDFTemporadaForm from "./ResolucionPDFTemporadaForm";
 import EntregasARendirTemporadaCard from "./EntregasARendirTemporadaCard";
+import MuestraResultadoInicioTemporada from "./muestraResultadoInicioTemporada";
 // Importar APIs adicionales
 import { getPersonal } from "../../api/personal";
 import { getCentrosCosto } from "../../api/centroCosto";
@@ -85,6 +86,9 @@ const TemporadaPescaForm = ({
   const [tieneFaenas, setTieneFaenas] = useState(false);
   const [camposRequeridosCompletos, setCamposRequeridosCompletos] =
     useState(false);
+  // Estados para modal informativo de inicio de temporada
+  const [showInicioResult, setShowInicioResult] = useState(false);
+  const [inicioResultData, setInicioResultData] = useState(null);
   // Estados para nuevos catálogos
   const [personal, setPersonal] = useState([]);
   const [centrosCosto, setCentrosCosto] = useState([]);
@@ -427,14 +431,21 @@ const TemporadaPescaForm = ({
             life: 3000,
           });
 
-          await iniciarTemporada(editingItem.id);
+          const resultado = await iniciarTemporada(editingItem.id);
           
-          toast.current?.show({
-            severity: "success",
-            summary: "Éxito",
-            detail: "Temporada iniciada correctamente",
-            life: 3000,
-          });
+          // Mostrar modal informativo con los resultados
+          if (resultado?.resumen) {
+            setInicioResultData(resultado);
+            setShowInicioResult(true);
+          } else {
+            // Fallback si no hay resumen
+            toast.current?.show({
+              severity: "success",
+              summary: "Éxito",
+              detail: "Temporada iniciada correctamente",
+              life: 3000,
+            });
+          }
 
           // Re-verificar registros para deshabilitar el botón
           await verificarTemporadaIniciada(editingItem.id);
@@ -912,6 +923,14 @@ const TemporadaPescaForm = ({
       )}
       
       <Toast ref={toast} />
+      
+      {/* Modal Informativo de Inicio de Temporada */}
+      <MuestraResultadoInicioTemporada
+        visible={showInicioResult}
+        onHide={() => setShowInicioResult(false)}
+        data={inicioResultData?.resumen}
+      />
+      
       </BlockUI>
     </Dialog>
   );

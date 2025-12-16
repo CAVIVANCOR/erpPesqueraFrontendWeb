@@ -293,7 +293,6 @@ const DetalleDocEmbarcacionCard = ({
     setEditingDocEmbarcacion(null);
   };
 
-
   const confirmDeleteDocEmbarcacion = (docEmbarcacion) => {
     setSelectedDocEmbarcacion(docEmbarcacion);
     // Implementar confirmación de eliminación si es necesario
@@ -436,12 +435,15 @@ const DetalleDocEmbarcacionCard = ({
       >
         <div style={{ flex: 1 }}>
           <h2>DOCUMENTOS EMBARCACION</h2>
+          <small style={{ color: "#666", fontWeight: "normal" }}>
+            Total de registros: {datosFiltrados.length}
+          </small>
         </div>
         <div style={{ flex: 1 }}>
           <Button
             type="button"
             icon="pi pi-download"
-            label="Cargar Documentos Embarcación"
+            label="Recargar Documentos"
             className="p-button-info"
             onClick={cargarDocumentosEmbarcacion}
             disabled={loadingData || !temporadaData}

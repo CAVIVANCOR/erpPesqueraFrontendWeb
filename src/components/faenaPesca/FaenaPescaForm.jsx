@@ -341,12 +341,12 @@ export default function FaenaPescaForm({
 
     confirmDialog({
       message:
-        "¿Está seguro de finalizar esta faena de pesca? Esta acción cambiará el estado a FINALIZADA y generará automáticamente el ingreso a almacén de todas las descargas.",
+        "¿Está seguro de finalizar esta faena de pesca? Esta acción cambiará el estado a FINALIZADA. Los movimientos de almacén se generarán desde cada descarga individual usando el botón 'Finalizar Descarga'.",
       header: "Confirmar Finalización de Faena",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-danger",
       rejectClassName: "p-button-secondary",
-      acceptLabel: "Sí, Finalizar y Generar Ingreso",
+      acceptLabel: "Sí, Finalizar Faena",
       rejectLabel: "Cancelar",
       accept: async () => {
         setFinalizandoFaena(true);
@@ -354,11 +354,11 @@ export default function FaenaPescaForm({
           toast.current?.show({
             severity: "info",
             summary: "Procesando",
-            detail: "Finalizando faena y generando ingreso a almacén, por favor espere...",
+            detail: "Finalizando faena, por favor espere...",
             life: 3000,
           });
           
-          // Llamar al backend para finalizar y generar movimiento de almacén
+          // Llamar al backend para finalizar (solo actualiza estado)
           const resultado = await finalizarFaenaConMovimientoAlmacen(
             defaultValues.id,
             temporadaData.id
@@ -367,8 +367,8 @@ export default function FaenaPescaForm({
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
-            detail: `Faena finalizada correctamente. Se generó el documento ${resultado.movimientoAlmacen?.numeroDocumento || ''} con ${resultado.movimientoAlmacen?.cantidadDetalles || 0} detalles.`,
-            life: 5000,
+            detail: "Faena finalizada correctamente. Ahora puede generar los movimientos de almacén desde cada descarga usando el botón 'Finalizar Descarga'.",
+            life: 6000,
           });
 
           // Actualizar el estado local

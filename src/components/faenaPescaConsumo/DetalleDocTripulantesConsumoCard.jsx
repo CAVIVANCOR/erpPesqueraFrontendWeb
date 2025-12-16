@@ -150,7 +150,7 @@ export default function DetalleDocTripulantesConsumoCard({
   const cargarDocumentosTripulantes = async () => {
     try {
       setLoadingData(true);
-  
+
       // 1. Filtrar personal por paraPescaConsumo=true, cargoId y cesado=false
       const tripulantesEmbarcacion = personal.filter(
         (p) =>
@@ -160,28 +160,29 @@ export default function DetalleDocTripulantesConsumoCard({
             Number(p.cargoId) === 14) && // MOTORISTA EMBARCACION
           p.cesado === false
       );
-  
+
       if (tripulantesEmbarcacion.length === 0) {
         toast.current?.show({
           severity: "info",
           summary: "Sin Tripulantes",
-          detail: "No se encontraron tripulantes disponibles para pesca consumo",
+          detail:
+            "No se encontraron tripulantes disponibles para pesca consumo",
           life: 3000,
         });
         return;
       }
-  
+
       // 2. Obtener IDs de los tripulantes filtrados
       const tripulantesIds = tripulantesEmbarcacion.map((t) => Number(t.id));
-  
+
       // 3. Obtener todos los documentos de personal
       const todosLosDocumentos = await getAllDocumentacionPersonal();
-  
+
       // 4. Filtrar documentos que pertenecen a los tripulantes
       const documentosTripulantes = todosLosDocumentos.filter((doc) =>
         tripulantesIds.includes(Number(doc.personalId))
       );
-  
+
       if (documentosTripulantes.length === 0) {
         toast.current?.show({
           severity: "info",
@@ -191,17 +192,17 @@ export default function DetalleDocTripulantesConsumoCard({
         });
         return;
       }
-  
+
       // 5. Obtener documentos existentes en DetDocTripulantesFaenaConsumo
       const documentosExistentes = await getDetDocTripulantesFaenaConsumo({
         faenaPescaConsumoId,
       });
-  
+
       // 6. Crear o actualizar registros
       let creados = 0;
       let actualizados = 0;
       let errores = 0;
-  
+
       for (const docPersonal of documentosTripulantes) {
         try {
           // Calcular docVencido
@@ -211,7 +212,7 @@ export default function DetalleDocTripulantesConsumoCard({
             : null;
           const docVencido =
             !fechaVencimiento || fechaVencimiento < fechaActual;
-  
+
           const dataToSend = {
             faenaPescaConsumoId: Number(faenaPescaConsumoId),
             tripulanteId: Number(docPersonal.personalId),
@@ -225,7 +226,7 @@ export default function DetalleDocTripulantesConsumoCard({
             observaciones: docPersonal.observaciones || null,
             updatedAt: new Date().toISOString(),
           };
-  
+
           // Verificar si ya existe el documento
           const documentoExistente = documentosExistentes.find(
             (d) =>
@@ -233,7 +234,7 @@ export default function DetalleDocTripulantesConsumoCard({
               Number(d.tripulanteId) === Number(docPersonal.personalId) &&
               Number(d.documentoId) === Number(docPersonal.documentoPescaId)
           );
-  
+
           if (documentoExistente) {
             // Actualizar documento existente
             await actualizarDetDocTripulantesFaenaConsumo(
@@ -251,7 +252,7 @@ export default function DetalleDocTripulantesConsumoCard({
           errores++;
         }
       }
-  
+
       // 7. Mostrar resultado
       if (creados > 0 || actualizados > 0) {
         toast.current?.show({
@@ -262,9 +263,9 @@ export default function DetalleDocTripulantesConsumoCard({
           }`,
           life: 4000,
         });
-  
+
         await cargarDocumentos();
-  
+
         if (onDataChange) {
           onDataChange();
         }
@@ -418,6 +419,9 @@ export default function DetalleDocTripulantesConsumoCard({
       >
         <div style={{ flex: 1 }}>
           <h2>DOCUMENTOS TRIPULACION</h2>
+          <small style={{ color: "#666", fontWeight: "normal" }}>
+            Total de registros: {datosFiltrados.length}
+          </small>
         </div>
         <div style={{ flex: 1 }}>
           <Button
@@ -572,8 +576,8 @@ export default function DetalleDocTripulantesConsumoCard({
         onSelectionChange={(e) => setSelectedDocumento(e.value)}
         dataKey="id"
         paginator
-        rows={5}
-        rowsPerPageOptions={[5, 10, 25]}
+        rows={20}
+        rowsPerPageOptions={[20, 40, 80]}
         className="datatable-responsive"
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} documentos"

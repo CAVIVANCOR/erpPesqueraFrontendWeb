@@ -112,7 +112,8 @@ const TripulantesFaenaPescaCard = ({
         toast.current?.show({
           severity: "info",
           summary: "Sin Tripulantes",
-          detail: "No se encontraron tripulantes elegibles para temporada de pesca",
+          detail:
+            "No se encontraron tripulantes elegibles para temporada de pesca",
           life: 3000,
         });
         return;
@@ -149,10 +150,7 @@ const TripulantesFaenaPescaCard = ({
 
           if (tripulanteExistente) {
             // Si existe: ACTUALIZAR
-            await actualizarTripulanteFaena(
-              tripulanteExistente.id,
-              dataToSend
-            );
+            await actualizarTripulanteFaena(tripulanteExistente.id, dataToSend);
             actualizados++;
           } else {
             // Si no existe: CREAR
@@ -203,7 +201,7 @@ const TripulantesFaenaPescaCard = ({
       setLoadingTripulantes(false);
     }
   };
-  
+
   const handleVerTripulante = (tripulante) => {
     setEditingTripulante(tripulante);
     setTripulanteDialog(true);
@@ -298,13 +296,14 @@ const TripulantesFaenaPescaCard = ({
     const nombres = rowData.nombres || "";
     const apellidos = rowData.apellidos || "";
     const nombreCompleto = `${nombres} ${apellidos}`.trim();
-    
+
     // Construir URL completa igual que en Personal.jsx
     const urlFoto = rowData.personal?.urlFotoPersona
-      ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${rowData.personal.urlFotoPersona}`
+      ? `${import.meta.env.VITE_UPLOADS_URL}/personal/${
+          rowData.personal.urlFotoPersona
+        }`
       : undefined;
-    
-  
+
     // Si hay foto, muestra el avatar con imagen; si no, iniciales
     if (urlFoto) {
       return (
@@ -316,14 +315,16 @@ const TripulantesFaenaPescaCard = ({
             alt="Foto"
             style={{ width: "40px", height: "40px" }}
             onImageError={(e) => {
-              console.error('Error cargando imagen avatar:', urlFoto, e);
+              console.error("Error cargando imagen avatar:", urlFoto, e);
             }}
           />
         </span>
       );
     } else {
       // Avatar con iniciales si no hay foto
-      const iniciales = `${nombres.charAt(0)}${apellidos.charAt(0)}`.toUpperCase();
+      const iniciales = `${nombres.charAt(0)}${apellidos.charAt(
+        0
+      )}`.toUpperCase();
       return (
         <span data-pr-tooltip={nombreCompleto} data-pr-position="right">
           <Avatar
@@ -375,8 +376,13 @@ const TripulantesFaenaPescaCard = ({
             value={tripulantes}
             loading={loadingTripulantes || loading}
             paginator
-            rows={20}
+            size="small"
             showGridlines
+            stripedRows
+            rows={20}
+            rowsPerPageOptions={[20, 40, 80, 160]}
+            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+            currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} tripulantes"
             emptyMessage="No hay tripulantes registrados para esta faena"
             className="p-datatable-sm"
             onRowClick={(e) => handleVerTripulante(e.data)}
@@ -392,6 +398,9 @@ const TripulantesFaenaPescaCard = ({
               >
                 <div style={{ flex: 1 }}>
                   <h2 className="m-0">TRIPULANTES DE LA FAENA</h2>
+                  <small style={{ color: "#666", fontWeight: "normal" }}>
+                    Total de registros: {tripulantes.length}
+                  </small>
                 </div>
                 <div style={{ flex: 1 }}>
                   <Button

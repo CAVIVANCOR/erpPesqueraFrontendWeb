@@ -193,7 +193,8 @@ const DetalleDocTripulantesCard = ({
         toast.current?.show({
           severity: "info",
           summary: "Sin Tripulantes",
-          detail: "No se encontraron tripulantes disponibles para temporada de pesca",
+          detail:
+            "No se encontraron tripulantes disponibles para temporada de pesca",
           life: 3000,
         });
         return;
@@ -239,7 +240,8 @@ const DetalleDocTripulantesCard = ({
           const fechaVencimiento = docPersonal.fechaVencimiento
             ? new Date(docPersonal.fechaVencimiento)
             : null;
-          const docVencido = !fechaVencimiento || fechaVencimiento < fechaActual;
+          const docVencido =
+            !fechaVencimiento || fechaVencimiento < fechaActual;
 
           // Mapeo de campos según especificaciones:
           const dataToSend = {
@@ -253,7 +255,7 @@ const DetalleDocTripulantesCard = ({
             docVencido: docVencido,
             verificado: false,
             observaciones: docPersonal.observaciones || null,
-            updatedAt: new Date().toISOString(), 
+            updatedAt: new Date().toISOString(),
           };
 
           // Verificar si ya existe el documento para esta faena, tripulante y tipo de documento
@@ -450,18 +452,21 @@ const DetalleDocTripulantesCard = ({
       >
         <div style={{ flex: 1 }}>
           <h2>DOCUMENTOS TRIPULACION</h2>
+          <small style={{ color: "#666", fontWeight: "normal" }}>
+            Total de registros: {datosFiltrados.length}
+          </small>
         </div>
         <div style={{ flex: 1 }}>
           <Button
             type="button"
             icon="pi pi-download"
-            label="Cargar Documentos Tripulantes"
+            label="Recargar Documentos"
             className="p-button-info"
             onClick={cargarDocumentosTripulantes}
             disabled={loadingData || !temporadaData}
             tooltip="Cargar documentos de los tripulantes"
             tooltipOptions={{ position: "top" }}
-            style={{ fontSize: "0.875rem" }}
+            size="small"
           />
         </div>
 
@@ -605,8 +610,8 @@ const DetalleDocTripulantesCard = ({
         onSelectionChange={(e) => setSelectedDocTripulante(e.value)}
         dataKey="id"
         paginator
-        rows={5}
-        rowsPerPageOptions={[5, 10, 25]}
+        rows={20}
+        rowsPerPageOptions={[20, 40, 80]}
         className="datatable-responsive"
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} documentos"

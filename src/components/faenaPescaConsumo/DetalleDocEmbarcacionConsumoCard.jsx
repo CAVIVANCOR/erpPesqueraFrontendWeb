@@ -444,14 +444,17 @@ const DetalleDocEmbarcacionConsumoCard = ({
           gap: 8,
         }}
       >
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 0.5 }}>
           <h2>DOCUMENTOS EMBARCACION</h2>
+          <small style={{ color: "#666", fontWeight: "normal" }}>
+            Total de registros: {datosFiltrados.length}
+          </small>
         </div>
         <div style={{ flex: 1 }}>
           <Button
             type="button"
             icon="pi pi-download"
-            label="Cargar Documentos Embarcación"
+            label="Recargar Documentos"
             className="p-button-info"
             onClick={cargarDocumentosEmbarcacion}
             disabled={
@@ -464,10 +467,9 @@ const DetalleDocEmbarcacionConsumoCard = ({
                 : "Cargar documentos de la embarcación"
             }
             tooltipOptions={{ position: "top" }}
-            style={{ fontSize: "0.875rem" }}
           />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 0.5 }}>
           <Button
             type="button"
             icon="pi pi-plus"
@@ -478,7 +480,7 @@ const DetalleDocEmbarcacionConsumoCard = ({
             style={{ fontSize: "0.875rem" }}
           />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 0.5 }}>
           <InputText
             type="search"
             value={globalFilter}
@@ -680,7 +682,6 @@ const DetalleDocEmbarcacionConsumoCard = ({
         emptyMessage="No se encontraron documentos de embarcación."
         header={header}
         loading={loadingData}
-        responsiveLayout="scroll"
         size="small"
         stripedRows
         showGridlines

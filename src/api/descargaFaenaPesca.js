@@ -96,3 +96,23 @@ export const eliminarDescargaFaenaPesca = async (id) => {
     throw error;
   }
 };
+
+/**
+ * Finaliza una descarga y genera movimientos de almacén (ingreso y salida)
+ * @param {number} descargaId - ID de la descarga de faena pesca
+ * @param {number} temporadaPescaId - ID de la temporada de pesca
+ * @returns {Promise<Object>} Resultado con movimientos de almacén generados
+ */
+export const finalizarDescargaConMovimientos = async (descargaId, temporadaPescaId) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/${descargaId}/finalizar-con-movimientos`,
+      { temporadaPescaId },
+      { headers: getAuthHeader() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error al finalizar descarga con movimientos:', error);
+    throw error;
+  }
+};

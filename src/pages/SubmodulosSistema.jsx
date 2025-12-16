@@ -309,15 +309,40 @@ export default function SubmodulosSistemaPage({ ruta }) {
           fontSize: getResponsiveFontSize(),
         }}
       >
-        <Column field="id" header="ID" sortable />
+        <Column field="id" header="ID" sortable style={{ width: "80px" }} />
         <Column field="modulo.nombre" header="Módulo" sortable />
         <Column field="nombre" header="Nombre" sortable />
         <Column field="descripcion" header="Descripción" sortable />
+        <Column 
+          field="ruta" 
+          header="Ruta" 
+          sortable 
+          body={(row) => row.ruta || <span style={{ color: "#999" }}>-</span>}
+        />
+        <Column 
+          field="icono" 
+          header="Icono" 
+          sortable 
+          body={(row) => row.icono ? (
+            <span>
+              <i className={row.icono} style={{ marginRight: 8 }}></i>
+              {row.icono}
+            </span>
+          ) : <span style={{ color: "#999" }}>-</span>}
+        />
+        <Column 
+          field="orden" 
+          header="Orden" 
+          sortable 
+          style={{ width: "100px" }}
+          body={(row) => row.orden !== null && row.orden !== undefined ? row.orden : <span style={{ color: "#999" }}>-</span>}
+        />
         <Column
           field="activo"
           header="Activo"
           body={(row) => (row.activo ? "Sí" : "No")}
           sortable
+          style={{ width: "100px" }}
         />
         <Column
           header="Acciones"
@@ -334,7 +359,7 @@ export default function SubmodulosSistemaPage({ ruta }) {
             : "Nuevo Submódulo"
         }
         visible={showForm}
-        style={{ width: "400px" }}
+        style={{ width: "600px" }}
         modal
         onHide={() => setShowForm(false)}
       >

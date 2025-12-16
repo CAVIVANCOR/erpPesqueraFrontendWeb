@@ -100,13 +100,11 @@ const DatosGeneralesFaenaPesca = ({
   const isReadOnlyState = Number(estadoFaenaId) === 19; // FINALIZADA
   const isReadOnly = isReadOnlyState || loading;
 
-// Verificar si todos los campos requeridos están completos
+// Verificar si todos los campos requeridos están completos para finalizar faena
 const allRequiredFieldsComplete = useMemo(() => {
   const requiredFields = [
     fechaSalida,
-    fechaDescarga,
     puertoSalidaId,
-    puertoDescargaId,
   ];
 
   return requiredFields.every(
@@ -114,9 +112,7 @@ const allRequiredFieldsComplete = useMemo(() => {
   );
 }, [
   fechaSalida,
-  fechaDescarga,
   puertoSalidaId,
-  puertoDescargaId,
 ]);
 
   // Habilitar botón "Fin de Faena" solo cuando estado es EN ZARPE (18) y todos los campos están completos
@@ -245,7 +241,7 @@ const allRequiredFieldsComplete = useMemo(() => {
               finalizandoFaena
                 ? "Procesando finalización de faena..."
                 : !canFinalizarFaena
-                ? "Complete todos los campos requeridos y asegúrese que el estado sea EN ZARPE"
+                ? "Complete Fecha de Salida y Puerto de Salida, y asegúrese que el estado sea EN ZARPE"
                 : "Finalizar faena y generar ingreso a almacén"
             }
             tooltipOptions={{ position: "top" }}
@@ -361,6 +357,7 @@ const allRequiredFieldsComplete = useMemo(() => {
                 id="fechaSalida"
                 {...field}
                 showIcon
+                showTime
                 dateFormat="dd/mm/yy"
                 inputStyle={{ fontWeight: "bold", color: "#2c32d3" }}
                 disabled={loading}
@@ -426,6 +423,7 @@ const allRequiredFieldsComplete = useMemo(() => {
                     hour12: false
                   }) : ""
                 }
+                showTime
                 readOnly
                 disabled
                 style={{ fontWeight: "bold", color: "#21962e", backgroundColor: "#f8f9fa" }}
@@ -488,6 +486,7 @@ const allRequiredFieldsComplete = useMemo(() => {
                     hour12: false
                   }) : ""
                 }
+                showTime
                 readOnly
                 disabled
                 style={{ fontWeight: "bold", color: "#c61515", backgroundColor: "#f8f9fa" }}

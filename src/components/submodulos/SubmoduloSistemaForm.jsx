@@ -12,6 +12,9 @@ export default function SubmoduloSistemaForm({ initialValues, modulosOptions, on
       moduloId: initialValues?.moduloId || null,
       nombre: initialValues?.nombre || '',
       descripcion: initialValues?.descripcion || '',
+      ruta: initialValues?.ruta || '',
+      icono: initialValues?.icono || '',
+      orden: initialValues?.orden || 0,
       activo: typeof initialValues?.activo === 'boolean' ? initialValues.activo : true,
     }
   });
@@ -47,6 +50,36 @@ export default function SubmoduloSistemaForm({ initialValues, modulosOptions, on
         <div className="p-field">
           <label htmlFor="descripcion">Descripción</label>
           <InputText id="descripcion" {...register('descripcion')} disabled={readOnly} />
+        </div>
+        <div className="p-field">
+          <label htmlFor="ruta">Ruta</label>
+          <InputText 
+            id="ruta" 
+            {...register('ruta')} 
+            placeholder="/modulo/submodulo" 
+            disabled={readOnly} 
+          />
+          <small className="p-text-secondary">Ejemplo: /compras/orden-compra</small>
+        </div>
+        <div className="p-field">
+          <label htmlFor="icono">Icono</label>
+          <InputText 
+            id="icono" 
+            {...register('icono')} 
+            placeholder="pi pi-shopping-cart" 
+            disabled={readOnly} 
+          />
+          <small className="p-text-secondary">Ejemplo: pi pi-shopping-cart (PrimeIcons)</small>
+        </div>
+        <div className="p-field">
+          <label htmlFor="orden">Orden</label>
+          <InputText 
+            id="orden" 
+            type="number" 
+            {...register('orden', { valueAsNumber: true })} 
+            disabled={readOnly} 
+          />
+          <small className="p-text-secondary">Orden de aparición en el menú</small>
         </div>
         <div className="p-field-checkbox">
           <label htmlFor="activo">Activo</label>
