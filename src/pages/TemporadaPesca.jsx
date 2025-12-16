@@ -699,8 +699,6 @@ const TemporadaPesca = ({ ruta }) => {
               permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
             fontSize: getResponsiveFontSize(),
           }}
-          sortField="id"
-          sortOrder={-1}
           header={
             <div>
               {/* Primera fila: Título, empresa, botón nuevo y búsqueda */}
