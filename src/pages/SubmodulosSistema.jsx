@@ -150,6 +150,9 @@ export default function SubmodulosSistemaPage({ ruta }) {
       moduloId: data.moduloId,
       nombre: data.nombre,
       descripcion: data.descripcion,
+      ruta: data.ruta || null,
+      icono: data.icono || null,
+      orden: data.orden !== undefined && data.orden !== null ? Number(data.orden) : null,
       activo: data.activo,
     };
     try {
