@@ -567,11 +567,14 @@ const DetalleCalasForm = ({
             disabled={
               !faenaPescaId ||
               !faenaData?.fechaSalida ||
-              !faenaData?.puertoSalidaId
+              !faenaData?.puertoSalidaId ||
+              Number(faenaData?.estadoFaenaId) === 19
             }
             type="button"
             tooltip={
-              !faenaData?.fechaSalida || !faenaData?.puertoSalidaId
+              Number(faenaData?.estadoFaenaId) === 19
+                ? "No se pueden agregar calas a una faena finalizada"
+                : !faenaData?.fechaSalida || !faenaData?.puertoSalidaId
                 ? "Debe ingresar fecha de salida y puerto de salida antes de crear calas"
                 : "Agregar nueva cala"
             }

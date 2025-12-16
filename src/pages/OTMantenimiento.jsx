@@ -280,7 +280,7 @@ const OTMantenimiento = ({ ruta }) => {
    * Maneja el guardado de la orden de trabajo
    */
   const handleGuardarOrden = async (datos) => {
-    const esEdicion = ordenSeleccionada && ordenSeleccionada.id && ordenSeleccionada.codigo;
+    const esEdicion = ordenSeleccionada && ordenSeleccionada.id;
 
     // Validar permisos antes de guardar
     if (esEdicion && !permisos.puedeEditar) {
@@ -545,8 +545,8 @@ const OTMantenimiento = ({ ruta }) => {
           size="small"
           showGridlines
           stripedRows
-          rows={5}
-          rowsPerPageOptions={[5, 10, 15, 20]}
+          rows={10}
+          rowsPerPageOptions={[10, 20, 40, 80]}
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} órdenes"
           emptyMessage="No se encontraron órdenes de trabajo"
@@ -554,6 +554,8 @@ const OTMantenimiento = ({ ruta }) => {
           selectionMode="single"
           scrollable
           scrollHeight="600px"
+          sortField="id"
+          sortOrder={-1}
           style={{
             fontSize: getResponsiveFontSize(),
             cursor: permisos.puedeVer || permisos.puedeEditar ? 'pointer' : 'default',
@@ -594,6 +596,24 @@ const OTMantenimiento = ({ ruta }) => {
                         ? 'Seleccione una empresa primero'
                         : 'Nueva Orden de Trabajo'
                     }
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    icon="pi pi-refresh"
+                    className="p-button-outlined p-button-info"
+                    onClick={async () => {
+                      await cargarOrdenes();
+                      toast.current?.show({
+                        severity: "success",
+                        summary: "Actualizado",
+                        detail: "Datos actualizados correctamente desde el servidor",
+                        life: 3000,
+                      });
+                    }}
+                    loading={loading}
+                    tooltip="Actualizar todos los datos desde el servidor"
+                    tooltipOptions={{ position: "bottom" }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>

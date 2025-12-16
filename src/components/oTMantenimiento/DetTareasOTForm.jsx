@@ -21,7 +21,7 @@ const DetTareasOTForm = ({
   const toast = useRef(null);
 
   const [formData, setFormData] = useState({
-    numeroTarea: tarea?.numeroTarea || 1,
+    numeroTarea: tarea?.numeroTarea || null,
     descripcion: tarea?.descripcion || "",
     observaciones: tarea?.observaciones || "",
     responsableId: tarea?.responsableId ? Number(tarea.responsableId) : null,
@@ -33,17 +33,9 @@ const DetTareasOTForm = ({
     fechaInicio: tarea?.fechaInicio ? new Date(tarea.fechaInicio) : null,
     fechaFin: tarea?.fechaFin ? new Date(tarea.fechaFin) : null,
     realizado: tarea?.realizado || false,
-    validaTerminoTareaId: tarea?.validaTerminoTareaId
-      ? Number(tarea.validaTerminoTareaId)
+    personalValidaId: tarea?.personalValidaId
+      ? Number(tarea.personalValidaId)
       : null,
-    fechaValidaTerminoTarea: tarea?.fechaValidaTerminoTarea
-      ? new Date(tarea.fechaValidaTerminoTarea)
-      : null,
-    urlFotosAntesPdf: tarea?.urlFotosAntesPdf || null,
-    urlCotizacionUnoPdf: tarea?.urlCotizacionUnoPdf || null,
-    urlCotizacionDosPdf: tarea?.urlCotizacionDosPdf || null,
-    adjuntoCotizacionUno: tarea?.adjuntoCotizacionUno || false,
-    adjuntoCotizacionDos: tarea?.adjuntoCotizacionDos || false,
   });
 
   const handleChange = (field, value) => {
@@ -53,7 +45,6 @@ const DetTareasOTForm = ({
   const validarFormulario = () => {
     const camposFaltantes = [];
 
-    if (!formData.numeroTarea) camposFaltantes.push("Número de Tarea");
     if (!formData.descripcion?.trim()) camposFaltantes.push("Descripción");
     if (!formData.estadoTareaId) camposFaltantes.push("Estado");
 
@@ -98,7 +89,7 @@ const DetTareasOTForm = ({
     <div className="det-tareas-ot-form p-fluid">
       <Toast ref={toast} />
 
-      {/* FILA: Número de Tarea, Estado */}
+      {/* FILA: Número de Tarea (solo al editar), Estado */}
       <div
         style={{
           display: "flex",
@@ -107,20 +98,22 @@ const DetTareasOTForm = ({
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="numeroTarea" style={{ fontWeight: "bold" }}>
-            Número de Tarea *
-          </label>
-          <InputNumber
-            id="numeroTarea"
-            value={formData.numeroTarea}
-            onValueChange={(e) => handleChange("numeroTarea", e.value)}
-            min={1}
-            disabled={loading}
-            style={{ width: "100%" }}
-          />
-        </div>
-        <div style={{ flex: 2 }}>
+        {tarea?.id && (
+          <div style={{ flex: 1 }}>
+            <label htmlFor="numeroTarea" style={{ fontWeight: "bold" }}>
+              Número de Tarea
+            </label>
+            <InputNumber
+              id="numeroTarea"
+              value={formData.numeroTarea}
+              onValueChange={(e) => handleChange("numeroTarea", e.value)}
+              min={1}
+              disabled={true}
+              style={{ width: "100%" }}
+            />
+          </div>
+        )}
+        <div style={{ flex: tarea?.id ? 2 : 1 }}>
           <label htmlFor="estadoTareaId" style={{ fontWeight: "bold" }}>
             Estado *
           </label>
@@ -268,6 +261,7 @@ const DetTareasOTForm = ({
       <div style={{ marginBottom: "1rem" }}>
         <label style={{ fontWeight: "bold" }}>Estado de Realización</label>
         <Button
+          type="button"
           label={formData.realizado ? "REALIZADO" : "PENDIENTE"}
           severity={formData.realizado ? "success" : "warning"}
           icon={formData.realizado ? "pi pi-check" : "pi pi-clock"}
@@ -307,6 +301,7 @@ const DetTareasOTForm = ({
         }}
       >
         <Button
+          type="button"
           label="Cancelar"
           icon="pi pi-times"
           className="p-button-secondary"
@@ -314,6 +309,7 @@ const DetTareasOTForm = ({
           disabled={loading}
         />
         <Button
+          type="button"
           label={tarea ? "Actualizar" : "Guardar"}
           icon="pi pi-check"
           className="p-button-primary"

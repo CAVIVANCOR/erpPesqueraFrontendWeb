@@ -32,6 +32,7 @@ const DetTareasOTCard = ({
   onTareasChange,
   disabled = false,
   readOnly = false,
+  refreshTrigger = 0,
 }) => {
   const [tareas, setTareas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -39,12 +40,12 @@ const DetTareasOTCard = ({
   const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
   const toast = useRef(null);
 
-  // Cargar tareas al montar o cuando cambie la OT
+  // Cargar tareas al montar o cuando cambie la OT o refreshTrigger
   useEffect(() => {
     if (otMantenimientoId) {
       cargarTareas();
     }
-  }, [otMantenimientoId]);
+  }, [otMantenimientoId, refreshTrigger]);
 
   const cargarTareas = async () => {
     if (!otMantenimientoId) return;
@@ -58,8 +59,8 @@ const DetTareasOTCard = ({
         id: Number(t.id),
         otMantenimientoId: Number(t.otMantenimientoId),
         responsableId: t.responsableId ? Number(t.responsableId) : null,
-        validaTerminoTareaId: t.validaTerminoTareaId
-          ? Number(t.validaTerminoTareaId)
+        personalValidaId: t.personalValidaId
+          ? Number(t.personalValidaId)
           : null,
         contratistaId: t.contratistaId ? Number(t.contratistaId) : null,
         estadoTareaId: t.estadoTareaId ? Number(t.estadoTareaId) : null,
@@ -260,6 +261,7 @@ const DetTareasOTCard = ({
     return (
       <div style={{ display: "flex", gap: "0.25rem" }}>
         <Button
+          type="button"
           icon="pi pi-pencil"
           rounded
           text
@@ -271,6 +273,7 @@ const DetTareasOTCard = ({
         />
         {permisos.eliminar && (
           <Button
+            type="button"
             icon="pi pi-trash"
             rounded
             text
@@ -298,6 +301,7 @@ const DetTareasOTCard = ({
         Tareas de la Orden de Trabajo ({tareas.length})
       </span>
       <Button
+        type="button"
         label="Nueva Tarea"
         icon="pi pi-plus"
         onClick={abrirDialogoNuevo}

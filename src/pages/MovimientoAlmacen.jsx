@@ -603,13 +603,15 @@ export default function MovimientoAlmacen({ ruta }) {
         loading={loading}
         dataKey="id"
         paginator
-        rows={5}
-        rowsPerPageOptions={[5, 10, 15, 20]}
+        rows={10}
+        rowsPerPageOptions={[10, 20, 40, 80]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} movimientos"
         size="small"
         showGridlines
         stripedRows
+        sortField="id"
+        sortOrder={-1}
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar
             ? (e) => handleEdit(e.data)
@@ -674,6 +676,25 @@ export default function MovimientoAlmacen({ ruta }) {
                   raised
                   onClick={() => setShowConsultaStock(true)}
                   disabled={loading || !empresaSeleccionada}
+                />
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <Button
+                  icon="pi pi-refresh"
+                  className="p-button-outlined p-button-info"
+                  onClick={async () => {
+                    await cargarDatos();
+                    toast.current?.show({
+                      severity: "success",
+                      summary: "Actualizado",
+                      detail: "Datos actualizados correctamente desde el servidor",
+                      life: 3000,
+                    });
+                  }}
+                  loading={loading}
+                  tooltip="Actualizar todos los datos desde el servidor"
+                  tooltipOptions={{ position: "bottom" }}
                 />
               </div>
 

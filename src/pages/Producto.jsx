@@ -710,6 +710,25 @@ const Producto = ({ ruta }) => {
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <Button
+              icon="pi pi-refresh"
+              className="p-button-outlined p-button-info p-button-sm"
+              onClick={async () => {
+                await cargarProductos();
+                await cargarCatalogos();
+                toast.current?.show({
+                  severity: "success",
+                  summary: "Actualizado",
+                  detail: "Datos actualizados correctamente desde el servidor",
+                  life: 3000,
+                });
+              }}
+              loading={loading}
+              tooltip="Actualizar todos los datos desde el servidor"
+              tooltipOptions={{ position: "top" }}
+            />
+          </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <Button
               label="Limpiar Filtros"
               icon="pi pi-filter-slash"
               className="p-button-outlined p-button-secondary p-button-sm"
@@ -831,6 +850,8 @@ const Producto = ({ ruta }) => {
         header={renderHeader()}
         emptyMessage="No se encontraron productos"
         className="p-datatable-sm p-datatable-hover"
+        sortField="id"
+        sortOrder={-1}
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar
             ? (e) => abrirDialogoEdicion(e.data)

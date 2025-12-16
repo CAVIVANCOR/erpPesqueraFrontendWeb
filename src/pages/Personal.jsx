@@ -574,6 +574,8 @@ export default function PersonalPage({ ruta }) {
         rowsPerPageOptions={[20, 40, 80, 160]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} personal"
+        sortField="id"
+        sortOrder={-1}
         selectionMode="single"
         selection={selected}
         onSelectionChange={(e) => setSelected(e.value)}
@@ -665,6 +667,24 @@ export default function PersonalPage({ ruta }) {
                   style={{ width: "150px" }}
                 />
               </span>
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <Button
+                icon="pi pi-refresh"
+                className="p-button-outlined p-button-info"
+                size="small"
+                onClick={async () => {
+                  await loadPersonal();
+                  toast.current?.show({
+                    severity: "success",
+                    summary: "Actualizado",
+                    detail: "Datos actualizados correctamente desde el servidor",
+                    life: 3000,
+                  });
+                }}
+                loading={loading}
+                tooltip="Actualizar todos los datos desde el servidor"
+              />
             </div>
             <div style={{ flex: 0.5 }}>
               <Button

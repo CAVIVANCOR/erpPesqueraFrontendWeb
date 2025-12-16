@@ -570,6 +570,8 @@ export default function RequerimientoCompra({ ruta }) {
         rowsPerPageOptions={[5, 10, 15, 20]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} requerimientos"
+        sortField="id"
+        sortOrder={-1}
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar
             ? (e) => handleEdit(e.data)
@@ -628,6 +630,24 @@ export default function RequerimientoCompra({ ruta }) {
                       ? "Seleccione una empresa primero"
                       : "Nuevo Requerimiento"
                   }
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  icon="pi pi-refresh"
+                  className="p-button-outlined p-button-info"
+                  onClick={async () => {
+                    await cargarDatos();
+                    toast.current?.show({
+                      severity: "success",
+                      summary: "Actualizado",
+                      detail: "Datos actualizados correctamente desde el servidor",
+                      life: 3000,
+                    });
+                  }}
+                  loading={loading}
+                  tooltip="Actualizar todos los datos desde el servidor"
+                  tooltipOptions={{ position: "bottom" }}
                 />
               </div>
               <div style={{ flex: 1 }}>

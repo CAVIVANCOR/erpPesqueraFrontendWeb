@@ -41,6 +41,21 @@ export async function eliminarFaenaPesca(id) {
 }
 
 /**
+ * Crea una faena completa con todos sus registros asociados
+ * Replica la lógica de creación de faena del proceso "Iniciar Temporada"
+ * @param {number|string} temporadaId - ID de la temporada de pesca
+ * @returns {Promise<Object>} Resultado con faena y todos los registros creados
+ */
+export async function crearFaenaCompleta(temporadaId) {
+  const res = await axios.post(
+    `${API_URL}/crear-completa`,
+    { temporadaId },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
+
+/**
  * Finaliza una faena de pesca y genera automáticamente el movimiento de almacén
  * @param {number|string} faenaPescaId - ID de la faena de pesca
  * @param {number|string} temporadaPescaId - ID de la temporada de pesca

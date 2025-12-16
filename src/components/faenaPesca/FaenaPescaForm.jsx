@@ -349,6 +349,10 @@ export default function FaenaPescaForm({
       acceptLabel: "Sí, Finalizar Faena",
       rejectLabel: "Cancelar",
       accept: async () => {
+        console.log("🔵 Iniciando finalización de faena...");
+        console.log("📋 defaultValues.id:", defaultValues.id);
+        console.log("📋 temporadaData.id:", temporadaData.id);
+        
         setFinalizandoFaena(true);
         try {
           toast.current?.show({
@@ -358,11 +362,14 @@ export default function FaenaPescaForm({
             life: 3000,
           });
           
+          console.log("📡 Llamando al backend...");
           // Llamar al backend para finalizar (solo actualiza estado)
           const resultado = await finalizarFaenaConMovimientoAlmacen(
             defaultValues.id,
             temporadaData.id
           );
+          console.log("✅ Resultado del backend:", resultado);
+          console.log("✅✅✅ FAENA FINALIZADA EXITOSAMENTE ✅✅✅");
           
           toast.current?.show({
             severity: "success",
@@ -374,14 +381,20 @@ export default function FaenaPescaForm({
           // Actualizar el estado local
           setValue("estadoFaenaId", 19);
           
+          // Recargar datos de la faena desde el servidor para reflejar el cambio
+          if (defaultValues.id) {
+            try {
+              const faenaActualizada = await getFaenaPescaPorId(defaultValues.id);
+              reset(faenaActualizada);
+              console.log("✅ Datos de faena recargados desde el servidor");
+            } catch (error) {
+              console.error("Error recargando datos de faena:", error);
+            }
+          }
+          
           // Notificar cambios
           if (onFaenasChange) {
             onFaenasChange();
-          }
-          
-          // Cerrar el diálogo
-          if (onHide) {
-            onHide();
           }
         } catch (error) {
           console.error("Error finalizando faena:", error);

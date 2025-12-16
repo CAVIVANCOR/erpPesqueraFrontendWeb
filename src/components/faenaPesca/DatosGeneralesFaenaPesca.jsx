@@ -115,7 +115,7 @@ const allRequiredFieldsComplete = useMemo(() => {
   puertoSalidaId,
 ]);
 
-  // Habilitar botón "Fin de Faena" solo cuando estado es EN ZARPE (18) y todos los campos están completos
+  // Habilitar botón "Fin de Faena" solo cuando estado es EN PROCESO (18) y todos los campos están completos
   const canFinalizarFaena =
     Number(estadoFaenaId) === 18 && allRequiredFieldsComplete;
   return (
@@ -241,8 +241,8 @@ const allRequiredFieldsComplete = useMemo(() => {
               finalizandoFaena
                 ? "Procesando finalización de faena..."
                 : !canFinalizarFaena
-                ? "Complete Fecha de Salida y Puerto de Salida, y asegúrese que el estado sea EN ZARPE"
-                : "Finalizar faena y generar ingreso a almacén"
+                ? "Complete Fecha de Salida y Puerto de Salida, y asegúrese que el estado sea EN PROCESO"
+                : "Finalizar faena (solo actualiza estado a FINALIZADA)"
             }
             tooltipOptions={{ position: "top" }}
           />
@@ -540,6 +540,7 @@ const allRequiredFieldsComplete = useMemo(() => {
           embarcacionId: watch("embarcacionId"),
           fechaSalida: watch("fechaSalida"),
           puertoSalidaId: watch("puertoSalidaId"),
+          estadoFaenaId: watch("estadoFaenaId"),
         }}
         faenaDescripcion={watch("descripcion")}
         bahias={bahias}

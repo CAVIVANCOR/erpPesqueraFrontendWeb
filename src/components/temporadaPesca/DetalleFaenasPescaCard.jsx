@@ -22,6 +22,7 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import FaenaPescaForm from "../faenaPesca/FaenaPescaForm";
+import ResumenCreacionFaenaDialog from "../faenaPesca/ResumenCreacionFaenaDialog";
 
 // APIs
 import {
@@ -30,6 +31,7 @@ import {
   crearFaenaPesca,
   actualizarFaenaPesca,
   eliminarFaenaPesca,
+  crearFaenaCompleta,
 } from "../../api/faenaPesca";
 import { getCalasPorFaena } from "../../api/cala";
 import { getDetalleCalaEspeciePorCala } from "../../api/detalleCalaEspecie";
@@ -104,6 +106,9 @@ const DetalleFaenasPescaCard = forwardRef(
     const [expandedCalasRows, setExpandedCalasRows] = useState({}); // Estado para expansión de calas
     const [detallesEspecieData, setDetallesEspecieData] = useState({}); // Estado para detalles de especie por cala
     const [descargasData, setDescargasData] = useState({}); // Estado para descargas por faena
+    const [showResumenCreacion, setShowResumenCreacion] = useState(false); // Estado para modal de resumen
+    const [resumenCreacionData, setResumenCreacionData] = useState(null); // Datos del resumen
+    const [creandoFaenaCompleta, setCreandoFaenaCompleta] = useState(false); // Loading para creación completa
 
     // Refs
     const toast = useRef(null);
@@ -190,20 +195,61 @@ const DetalleFaenasPescaCard = forwardRef(
 
     /**
      * Abrir diálogo para nueva faena
+     * Ahora crea una faena completa con todos sus registros asociados
      */
-    const handleNuevaFaena = () => {
-      setEditingFaena(null);
-      reset({
-        descripcion: "",
-        fechaSalida: null,
-        fechaHoraFondeo: null,
-        embarcacionId: null,
-        bolicheId: null,
-        urlReporteFaenaCalas: "",
-        urlDeclaracionDesembarqueArmador: "",
-        estadoFaenaId: null,
-      });
-      setDialogVisible(true);
+    const handleNuevaFaena = async () => {
+      try {
+        setCreandoFaenaCompleta(true);
+        
+        toast.current?.show({
+          severity: "info",
+          summary: "Procesando",
+          detail: "Creando faena con todos sus registros asociados...",
+          life: 3000,
+        });
+
+        const resultado = await crearFaenaCompleta(temporadaPescaId);
+        
+        // Mostrar modal con resumen de creación
+        if (resultado?.resumen) {
+          setResumenCreacionData(resultado.resumen);
+          setShowResumenCreacion(true);
+        } else {
+          // Fallback si no hay resumen
+          toast.current?.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: "Faena creada correctamente",
+            life: 3000,
+          });
+        }
+
+        // Recargar lista de faenas
+        await cargarFaenas();
+        
+        // Notificar cambios
+        if (onFaenasChange) {
+          onFaenasChange();
+        }
+
+        // Disparar evento para actualizar otros componentes
+        window.dispatchEvent(
+          new CustomEvent("refreshFaenas", {
+            detail: { temporadaId: temporadaPescaId },
+          })
+        );
+
+      } catch (error) {
+        console.error("Error creando faena completa:", error);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: error?.response?.data?.mensaje || error?.response?.data?.error || "Error al crear la faena",
+          life: 5000,
+        });
+      } finally {
+        setCreandoFaenaCompleta(false);
+      }
     };
 
     /**
@@ -1017,12 +1063,13 @@ const DetalleFaenasPescaCard = forwardRef(
         </div>
         <div style={{ flex: 1 }}>
           <Button
-            label="Nueva Faena"
-            icon="pi pi-plus"
+            label={creandoFaenaCompleta ? "Creando..." : "Nueva Faena"}
+            icon={creandoFaenaCompleta ? "pi pi-spin pi-spinner" : "pi pi-plus"}
             onClick={handleNuevaFaena}
             disabled={
-              !temporadaPescaId || !temporadaData?.temporadaPescaIniciada
+              !temporadaPescaId || !temporadaData?.temporadaPescaIniciada || creandoFaenaCompleta
             }
+            loading={creandoFaenaCompleta}
             raised
             outlined
             size="small"
@@ -1031,7 +1078,9 @@ const DetalleFaenasPescaCard = forwardRef(
                 ? "Guarde la temporada para crear faenas"
                 : !temporadaData?.temporadaPescaIniciada
                 ? "Debe iniciar la temporada antes de crear faenas"
-                : "Crear nueva faena"
+                : creandoFaenaCompleta
+                ? "Creando faena con todos sus registros..."
+                : "Crear nueva faena con todos sus registros asociados"
             }
             tooltipOptions={{ position: "bottom" }}
             className="p-button-success"
@@ -1080,18 +1129,21 @@ const DetalleFaenasPescaCard = forwardRef(
         end={
           <div className="flex gap-2">
             <Button
-              label="Nueva Faena"
-              icon="pi pi-plus"
+              label={creandoFaenaCompleta ? "Creando..." : "Nueva Faena"}
+              icon={creandoFaenaCompleta ? "pi pi-spin pi-spinner" : "pi pi-plus"}
               onClick={handleNuevaFaena}
               disabled={
-                !temporadaPescaId || !temporadaData?.temporadaPescaIniciada
+                !temporadaPescaId || !temporadaData?.temporadaPescaIniciada || creandoFaenaCompleta
               }
+              loading={creandoFaenaCompleta}
               tooltip={
                 !temporadaPescaId
                   ? "Guarde la temporada para crear faenas"
                   : !temporadaData?.temporadaPescaIniciada
                   ? "Debe iniciar la temporada antes de crear faenas"
-                  : "Crear nueva faena"
+                  : creandoFaenaCompleta
+                  ? "Creando faena con todos sus registros..."
+                  : "Crear nueva faena con todos sus registros asociados"
               }
               tooltipOptions={{ position: "bottom" }}
             />
@@ -1222,6 +1274,13 @@ const DetalleFaenasPescaCard = forwardRef(
             setFaenaCreatedSuccessfully={setFaenaCreatedSuccessfully}
           />
         </Dialog>
+
+        {/* Modal de resumen de creación de faena */}
+        <ResumenCreacionFaenaDialog
+          visible={showResumenCreacion}
+          onHide={() => setShowResumenCreacion(false)}
+          resumen={resumenCreacionData}
+        />
       </div>
     );
   }

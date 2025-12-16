@@ -50,6 +50,7 @@ const OTMantenimientoForm = ({
   const toast = useRef(toastProp || null);
   const [seriesDoc, setSeriesDoc] = useState([]);
   const [countEntregasRendir, setCountEntregasRendir] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [formData, setFormData] = useState({
     id: defaultValues?.id || null,
@@ -140,6 +141,13 @@ const OTMantenimientoForm = ({
       setFormData((prev) => ({ ...prev, [field]: value }));
     }
   };
+
+  // Incrementar refreshTrigger cuando cambien defaultValues (orden actualizada)
+  useEffect(() => {
+    if (defaultValues?.id) {
+      setRefreshTrigger(prev => prev + 1);
+    }
+  }, [defaultValues]);
 
   // Cargar series de documentos cuando cambie empresa (tipoDocumentoId siempre es 21)
   useEffect(() => {
@@ -470,6 +478,7 @@ const OTMantenimientoForm = ({
               <div style={{ flex: 1 }}>
                 <label style={{ fontWeight: "bold" }}>Prioridad</label>
                 <Button
+                  type="button"
                   label={formData.prioridadAlta ? "ALTA" : "NORMAL"}
                   severity={formData.prioridadAlta ? "danger" : "secondary"}
                   onClick={() =>
@@ -737,6 +746,7 @@ const OTMantenimientoForm = ({
               permisos={permisos}
               disabled={!formData.id || loading || loadingProp}
               readOnly={readOnly}
+              refreshTrigger={refreshTrigger}
             />
             {!formData.id && (
               <div style={{ padding: "1rem", textAlign: "center", color: "#666" }}>
@@ -827,6 +837,7 @@ const OTMantenimientoForm = ({
         }}
       >
         <Button
+          type="button"
           label="Cancelar"
           icon="pi pi-times"
           className="p-button-secondary"
@@ -834,6 +845,7 @@ const OTMantenimientoForm = ({
           disabled={loading}
         />
         <Button
+          type="button"
           label={isEdit ? "Actualizar" : "Guardar"}
           icon="pi pi-check"
           className="p-button-primary"

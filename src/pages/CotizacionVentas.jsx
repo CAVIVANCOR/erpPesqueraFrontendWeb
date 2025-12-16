@@ -721,6 +721,8 @@ const clienteTemplate = (rowData) => {
           rowsPerPageOptions={[5, 10, 15, 20]}
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cotizaciones"
+          sortField="id"
+          sortOrder={-1}
           style={{
             cursor:
               permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
@@ -780,6 +782,25 @@ const clienteTemplate = (rowData) => {
                         ? "Seleccione una empresa primero"
                         : "Nueva Cotización"
                     }
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    icon="pi pi-refresh"
+                    className="p-button-outlined p-button-info"
+                    onClick={async () => {
+                      await cargarCotizaciones();
+                      await cargarDatos();
+                      toast.current?.show({
+                        severity: "success",
+                        summary: "Actualizado",
+                        detail: "Datos actualizados correctamente desde el servidor",
+                        life: 3000,
+                      });
+                    }}
+                    loading={loading}
+                    tooltip="Actualizar todos los datos desde el servidor"
+                    tooltipOptions={{ position: "bottom" }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>

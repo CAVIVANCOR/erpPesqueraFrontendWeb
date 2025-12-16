@@ -66,6 +66,21 @@ export async function eliminarFaenaPescaConsumo(id) {
 }
 
 /**
+ * Crea una faena de pesca consumo completa con todos sus registros asociados
+ * Replica la lógica de creación de faena del proceso "Iniciar Novedad Pesca Consumo"
+ * @param {number|string} novedadPescaConsumoId - ID de la novedad de pesca consumo
+ * @returns {Promise<Object>} Resultado con faena y todos los registros creados
+ */
+export async function crearFaenaConsumoCompleta(novedadPescaConsumoId) {
+  const res = await axios.post(
+    `${API_URL}/crear-completa`,
+    { novedadPescaConsumoId },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
+
+/**
  * Sube documento de faena de pesca consumo
  * @param {File} file - Archivo a subir
  * @returns {Promise} Respuesta con URL del documento subido

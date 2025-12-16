@@ -1249,17 +1249,35 @@ export default function MovimientoCaja({ ruta }) {
     <Card className="mt-4">
       <div className="flex justify-content-between align-items-center mb-3">
         <h2 className="m-0">Registro de Movimientos de Caja</h2>
-        <Button
-          label="Nuevo Movimiento"
-          icon="pi pi-plus"
-          className="p-button-success"
-          onClick={() => {
-            setEditing(null);
-            setShowDialog(true);
-          }}
-          disabled={!permisos.puedeCrear}
-          tooltip={!permisos.puedeCrear ? 'No tiene permisos para crear' : 'Nuevo Movimiento de Caja'}
-        />
+        <div className="flex gap-2">
+          <Button
+            icon="pi pi-refresh"
+            className="p-button-outlined p-button-info"
+            onClick={async () => {
+              await cargarItems();
+              toast.current?.show({
+                severity: "success",
+                summary: "Actualizado",
+                detail: "Datos actualizados correctamente desde el servidor",
+                life: 3000,
+              });
+            }}
+            loading={loading}
+            tooltip="Actualizar todos los datos desde el servidor"
+            tooltipOptions={{ position: "bottom" }}
+          />
+          <Button
+            label="Nuevo Movimiento"
+            icon="pi pi-plus"
+            className="p-button-success"
+            onClick={() => {
+              setEditing(null);
+              setShowDialog(true);
+            }}
+            disabled={!permisos.puedeCrear}
+            tooltip={!permisos.puedeCrear ? 'No tiene permisos para crear' : 'Nuevo Movimiento de Caja'}
+          />
+        </div>
       </div>
 
       <DataTable

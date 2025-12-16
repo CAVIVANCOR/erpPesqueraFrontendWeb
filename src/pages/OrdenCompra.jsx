@@ -502,6 +502,8 @@ export default function OrdenCompra({ ruta }) {
         size="small"
         showGridlines
         stripedRows
+        sortField="id"
+        sortOrder={-1}
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar
             ? (e) => handleEdit(e.data)
@@ -542,6 +544,24 @@ export default function OrdenCompra({ ruta }) {
                   optionValue="value"
                   showClear
                   disabled={loading}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  icon="pi pi-refresh"
+                  className="p-button-outlined p-button-info"
+                  onClick={async () => {
+                    await cargarDatos();
+                    toast.current?.show({
+                      severity: "success",
+                      summary: "Actualizado",
+                      detail: "Datos actualizados correctamente desde el servidor",
+                      life: 3000,
+                    });
+                  }}
+                  loading={loading}
+                  tooltip="Actualizar todos los datos desde el servidor"
+                  tooltipOptions={{ position: "bottom" }}
                 />
               </div>
               <div style={{ flex: 1 }}>

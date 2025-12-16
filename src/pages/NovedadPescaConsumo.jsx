@@ -720,6 +720,8 @@ const NovedadPescaConsumo = ({ ruta }) => {
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} novedades"
           emptyMessage="No se encontraron novedades."
+          sortField="id"
+          sortOrder={-1}
           onRowClick={
             permisos.puedeVer || permisos.puedeEditar
               ? (e) => openEdit(e.data)
@@ -828,6 +830,25 @@ const NovedadPescaConsumo = ({ ruta }) => {
                     placeholder="Filtrar por estado"
                     className="w-12rem"
                     showClear
+                  />
+                </div>
+                <div style={{ flex: 0.5 }}>
+                  <Button
+                    icon="pi pi-refresh"
+                    className="p-button-outlined p-button-info"
+                    onClick={async () => {
+                      await cargarNovedades();
+                      await cargarCombos();
+                      toast.current?.show({
+                        severity: "success",
+                        summary: "Actualizado",
+                        detail: "Datos actualizados correctamente desde el servidor",
+                        life: 3000,
+                      });
+                    }}
+                    loading={loading}
+                    tooltip="Actualizar todos los datos desde el servidor"
+                    tooltipOptions={{ position: "bottom" }}
                   />
                 </div>
                 <div style={{ flex: 0.5 }}>

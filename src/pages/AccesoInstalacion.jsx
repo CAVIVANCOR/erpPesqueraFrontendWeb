@@ -838,6 +838,34 @@ export default function AccesoInstalacion({ ruta }) {
                 style={{ flex: 1, display: "flex", flexDirection: "column" }}
               >
                 <label
+                  htmlFor="actualizar"
+                  className="font-bold"
+                  style={{ textAlign: "center" }}
+                >
+                  Actualizar
+                </label>
+                <Button
+                  id="actualizar"
+                  icon="pi pi-refresh"
+                  className="p-button-outlined p-button-info"
+                  size="small"
+                  onClick={async () => {
+                    await cargarDatosIniciales();
+                    toast.current?.show({
+                      severity: "success",
+                      summary: "Actualizado",
+                      detail: "Datos actualizados correctamente desde el servidor",
+                      life: 3000,
+                    });
+                  }}
+                  loading={loading}
+                  tooltip="Actualizar todos los datos desde el servidor"
+                />
+              </div>
+              <div
+                style={{ flex: 1, display: "flex", flexDirection: "column" }}
+              >
+                <label
                   htmlFor="limpiarFechas"
                   className="font-bold"
                   style={{ textAlign: "center" }}

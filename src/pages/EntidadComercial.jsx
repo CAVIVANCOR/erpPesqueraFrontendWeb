@@ -394,6 +394,24 @@ const EntidadComercial = ({ ruta }) => {
         </div>
         <div style={{ flex: 1 }}>
           <Button
+            icon="pi pi-refresh"
+            className="p-button-outlined p-button-info"
+            size="small"
+            onClick={async () => {
+              await cargarDatosIniciales();
+              toast.current?.show({
+                severity: "success",
+                summary: "Actualizado",
+                detail: "Datos actualizados correctamente desde el servidor",
+                life: 3000,
+              });
+            }}
+            loading={loading}
+            tooltip="Actualizar todos los datos desde el servidor"
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
             label="Limpiar Filtros"
             icon="pi pi-filter-slash"
             size="small"
@@ -467,6 +485,8 @@ const EntidadComercial = ({ ruta }) => {
         rowsPerPageOptions={[5, 10, 15, 20]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} tipos de contrato"
+        sortField="id"
+        sortOrder={-1}
         style={{
           cursor:
             permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",

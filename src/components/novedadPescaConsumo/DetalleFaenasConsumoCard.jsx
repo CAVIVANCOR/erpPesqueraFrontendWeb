@@ -23,6 +23,7 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import FaenaPescaConsumoForm from "../faenaPescaConsumo/FaenaPescaConsumoForm";
+import ResumenCreacionFaenaConsumoDialog from "../faenaPescaConsumo/ResumenCreacionFaenaConsumoDialog";
 
 // APIs
 import {
@@ -31,6 +32,7 @@ import {
   crearFaenaPescaConsumo,
   actualizarFaenaPescaConsumo,
   eliminarFaenaPescaConsumo,
+  crearFaenaConsumoCompleta,
 } from "../../api/faenaPescaConsumo";
 import { getCalasFaenaConsumoPorFaena } from "../../api/calaFaenaConsumo";
 import { getDetCalaPescaConsumoPorCala } from "../../api/detCalaPescaConsumo";
@@ -89,6 +91,11 @@ const DetalleFaenasConsumoCard = forwardRef(
     const [confirmVisible, setConfirmVisible] = useState(false);
     const [faenaToDelete, setFaenaToDelete] = useState(null);
     const [puertosData, setPuertosData] = useState([]);
+    
+    // Estados para modal de resumen de creación
+    const [showResumenCreacion, setShowResumenCreacion] = useState(false);
+    const [resumenCreacionData, setResumenCreacionData] = useState(null);
+    const [creandoFaenaCompleta, setCreandoFaenaCompleta] = useState(false);
     
     // Estados para expansión de 3 niveles
     const [expandedRows, setExpandedRows] = useState({});
@@ -178,19 +185,69 @@ const DetalleFaenasConsumoCard = forwardRef(
     }, []);
 
     /**
-     * Abrir diálogo para nueva faena
+     * Crear nueva faena completa con todos sus registros asociados
+     * Replica la lógica de "Iniciar Novedad Pesca Consumo"
      */
-    const handleNuevaFaena = () => {
-      setEditingFaena(null);
-      reset({
-        descripcion: "",
-        fechaSalida: null,
-        fechaHoraFondeo: null,
-        embarcacionId: null,
-        bolicheRedId: null,
-        estadoFaenaId: null,
-      });
-      setDialogVisible(true);
+    const handleNuevaFaena = async () => {
+      if (!novedadPescaConsumo?.id) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "Debe guardar la novedad antes de crear faenas",
+          life: 3000,
+        });
+        return;
+      }
+
+      if (!novedadPescaConsumoIniciada) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "Debe iniciar la novedad antes de crear faenas",
+          life: 3000,
+        });
+        return;
+      }
+
+      try {
+        setCreandoFaenaCompleta(true);
+        
+        const resultado = await crearFaenaConsumoCompleta(novedadPescaConsumo.id);
+        
+        // Mostrar modal de resumen
+        setResumenCreacionData(resultado.resumen);
+        setShowResumenCreacion(true);
+        
+        // Recargar faenas
+        await cargarFaenas();
+        
+        // Notificar cambios
+        onDataChange?.();
+        
+        // Disparar evento para refrescar otros componentes
+        window.dispatchEvent(
+          new CustomEvent("refreshFaenasConsumo", {
+            detail: { novedadId: novedadPescaConsumo.id },
+          })
+        );
+        
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Faena de pesca consumo creada exitosamente",
+          life: 3000,
+        });
+      } catch (error) {
+        console.error("Error creando faena completa:", error);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: error.response?.data?.error || "Error al crear la faena de pesca consumo",
+          life: 5000,
+        });
+      } finally {
+        setCreandoFaenaCompleta(false);
+      }
     };
 
     /**
@@ -679,10 +736,11 @@ const DetalleFaenasConsumoCard = forwardRef(
         </div>
         <div style={{ flex: 1 }}>
           <Button
-            label="Nueva Faena"
-            icon="pi pi-plus"
+            label={creandoFaenaCompleta ? "Creando..." : "Nueva Faena"}
+            icon={creandoFaenaCompleta ? "pi pi-spin pi-spinner" : "pi pi-plus"}
             onClick={handleNuevaFaena}
-            disabled={!novedadPescaConsumo?.id || !novedadPescaConsumoIniciada}
+            disabled={!novedadPescaConsumo?.id || !novedadPescaConsumoIniciada || creandoFaenaCompleta}
+            loading={creandoFaenaCompleta}
             raised
             outlined
             size="small"
@@ -691,7 +749,9 @@ const DetalleFaenasConsumoCard = forwardRef(
                 ? "Guarde la novedad para crear faenas"
                 : !novedadPescaConsumoIniciada
                 ? "Debe iniciar la novedad antes de crear faenas"
-                : "Crear nueva faena"
+                : creandoFaenaCompleta
+                ? "Creando faena con todos sus registros..."
+                : "Crear nueva faena con todos sus registros asociados"
             }
             tooltipOptions={{ position: "bottom" }}
             className="p-button-success"
@@ -954,6 +1014,13 @@ const DetalleFaenasConsumoCard = forwardRef(
           acceptLabel="Sí, Eliminar"
           rejectLabel="Cancelar"
           acceptClassName="p-button-danger"
+        />
+
+        {/* Modal de resumen de creación de faena */}
+        <ResumenCreacionFaenaConsumoDialog
+          visible={showResumenCreacion}
+          onHide={() => setShowResumenCreacion(false)}
+          resumen={resumenCreacionData}
         />
 
         <Toast ref={toast} />
