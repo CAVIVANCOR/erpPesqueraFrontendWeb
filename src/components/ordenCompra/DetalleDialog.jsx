@@ -16,6 +16,7 @@ export default function DetalleDialog({
   detalle,
   ordenCompraId,
   productos,
+  datosGenerales,
   onSaveSuccess,
   toast,
 }) {
@@ -27,6 +28,9 @@ export default function DetalleDialog({
     observaciones: "",
   });
   const [saving, setSaving] = useState(false);
+
+  // Obtener código de moneda de la cabecera
+  const codigoMoneda = datosGenerales?.moneda?.codigoSunat || "PEN";
 
   useEffect(() => {
     if (detalle) {
@@ -162,7 +166,7 @@ export default function DetalleDialog({
             value={formData.precioUnitario}
             onValueChange={(e) => handleChange("precioUnitario", e.value)}
             mode="currency"
-            currency="PEN"
+            currency={codigoMoneda}
             locale="es-PE"
             min={0}
           />
@@ -174,7 +178,7 @@ export default function DetalleDialog({
             id="subtotal"
             value={formData.subtotal}
             mode="currency"
-            currency="PEN"
+            currency={codigoMoneda}
             locale="es-PE"
             disabled
           />

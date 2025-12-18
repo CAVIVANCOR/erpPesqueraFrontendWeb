@@ -21,6 +21,9 @@ const schema = Yup.object().shape({
     .required("El porcentaje de cuota es obligatorio")
     .min(0, "El porcentaje no puede ser negativo")
     .max(100, "El porcentaje no puede ser mayor a 100%"),
+  precioPorTonDolares: Yup.number()
+    .min(0, "El precio no puede ser negativo")
+    .nullable(),
   cuotaPropia: Yup.boolean(),
   activo: Yup.boolean(),
 });
@@ -55,6 +58,7 @@ export default function DetCuotaPescaForm({
       empresaId: defaultValues.empresaId || null,
       nombre: defaultValues.nombre || "",
       porcentajeCuota: defaultValues.porcentajeCuota || 0,
+      precioPorTonDolares: defaultValues.precioPorTonDolares || 0,
       cuotaPropia: defaultValues.cuotaPropia ?? false,
       activo: defaultValues.activo ?? true,
     },
@@ -66,6 +70,7 @@ export default function DetCuotaPescaForm({
       empresaId: defaultValues.empresaId || null,
       nombre: defaultValues.nombre || "",
       porcentajeCuota: defaultValues.porcentajeCuota || 0,
+      precioPorTonDolares: defaultValues.precioPorTonDolares || 0,
       cuotaPropia: defaultValues.cuotaPropia ?? false,
       activo: defaultValues.activo ?? true,
     });
@@ -77,6 +82,7 @@ export default function DetCuotaPescaForm({
       empresaId: Number(data.empresaId),
       nombre: data.nombre.trim().toUpperCase(),
       porcentajeCuota: Number(data.porcentajeCuota),
+      precioPorTonDolares: data.precioPorTonDolares !== null && data.precioPorTonDolares !== undefined ? Number(data.precioPorTonDolares) : 0,
       cuotaPropia: !!data.cuotaPropia,
       activo: !!data.activo,
       idPersonaActualiza: Number(defaultValues.idPersonaActualiza),
@@ -130,6 +136,35 @@ export default function DetCuotaPescaForm({
           />
           {errors.porcentajeCuota && (
             <small className="p-error">{errors.porcentajeCuota.message}</small>
+          )}
+        </div>
+
+        {/* Precio por tonelada en dólares */}
+        <div className="field">
+          <label htmlFor="precioPorTonDolares">
+            Precio por Tonelada (USD)
+          </label>
+          <Controller
+            name="precioPorTonDolares"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="precioPorTonDolares"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                disabled={readOnly}
+                mode="currency"
+                currency="USD"
+                locale="en-US"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                min={0}
+                className={errors.precioPorTonDolares ? "p-invalid" : ""}
+              />
+            )}
+          />
+          {errors.precioPorTonDolares && (
+            <small className="p-error">{errors.precioPorTonDolares.message}</small>
           )}
         </div>
 

@@ -27,9 +27,13 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - Confirmación de borrado con modal visual (ConfirmDialog) en color rojo.
  * - El usuario autenticado se obtiene siempre desde useAuthStore.
  */
-export default function EspeciePage() {
+export default function EspeciePage({ ruta }) {
   const usuario = useAuthStore((state) => state.usuario);
-  const permisos = usePermissions("Especie");
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+  }
   const [especies, setEspecies] = useState([]);
   const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [showForm, setShowForm] = useState(false);
@@ -135,6 +139,8 @@ export default function EspeciePage() {
       const payload = {
         nombre: data.nombre,
         nombreCientifico: data.nombreCientifico,
+        cubetaPesoKg: Number(data.cubetaPesoKg),
+        precioPorKg: Number(data.precioPorKg),
       };
       if (isEdit && selected) {
         await actualizarEspecie(selected.id, payload);
@@ -238,13 +244,28 @@ export default function EspeciePage() {
           </div>
         }
       >
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="nombre" header="Nombre" />
-        <Column field="nombreCientifico" header="Nombre Científico" />
+        <Column field="id" header="ID" style={{ width: 80 }} sortable/>
+        <Column field="nombre" header="Nombre" sortable/>
+        <Column field="nombreCientifico" header="Nombre Científico" sortable/>
+        <Column 
+          field="cubetaPesoKg" 
+          header="Peso Cubeta (Kg)" 
+          body={(rowData) => `${Number(rowData.cubetaPesoKg || 0).toFixed(2)} kg`}
+          style={{ width: 150 }} 
+          sortable
+          />
+        <Column 
+          field="precioPorKg" 
+          header="Precio/Kg (S/)" 
+          body={(rowData) => `S/ ${Number(rowData.precioPorKg || 0).toFixed(2)}`}
+          style={{ width: 140 }}
+          sortable
+          />
         <Column
           header="Acciones"
           body={actionBodyTemplate}
           style={{ minWidth: 120 }}
+          sortable
         />
       </DataTable>
       <Dialog

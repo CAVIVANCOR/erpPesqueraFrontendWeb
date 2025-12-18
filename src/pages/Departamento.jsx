@@ -28,7 +28,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import DepartamentoForm from "../components/departamento/DepartamentoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
-const Departamento = () => {
+const Departamento = ({ ruta }) => {
   const [departamentos, setDepartamentos] = useState([]);
   const [paises, setPaises] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +38,12 @@ const Departamento = () => {
   const [departamentoAEliminar, setDepartamentoAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
-  const permisos = usePermissions("Departamento");
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+  }
+
   const [globalFilter, setGlobalFilter] = useState("");
 
   const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;

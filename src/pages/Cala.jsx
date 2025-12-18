@@ -21,9 +21,13 @@ import { usePermissions } from "../hooks/usePermissions";
  * - Feedback visual con Toast.
  * - Documentación de la regla en el encabezado.
  */
-export default function Cala() {
+export default function Cala({ ruta }) {
   const { user } = useAuthStore();
-  const permisos = usePermissions("Cala");
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+  }
   const toast = useRef(null);
   const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [items, setItems] = useState([]);

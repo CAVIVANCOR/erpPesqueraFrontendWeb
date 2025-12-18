@@ -31,10 +31,14 @@ import { getResponsiveFontSize } from "../utils/utils";
  * Pantalla principal para gestión de marcas
  * Patrón aplicado: Edición por clic en fila, eliminación profesional con confirmación, búsqueda global.
  */
-const Marca = () => {
+const Marca = ({ ruta }) => {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
-  const permisos = usePermissions("Marca");
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+  }
   const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   // Estados del componente

@@ -92,6 +92,8 @@ const DetMovsEntregaRendirForm = ({
       numeroSerieComprobante: "",
       numeroCorrelativoComprobante: "",
       productoId: "", // Nuevo campo para producto (gasto)
+      formaParteCalculoLiquidacionTripulantes: false,
+      formaParteCalculoEntregaARendir: false,
     },
   });
 
@@ -103,6 +105,8 @@ const DetMovsEntregaRendirForm = ({
 
   // Observar cambios en los nuevos campos
   const operacionSinFactura = watch("operacionSinFactura");
+  const formaParteCalculoLiquidacionTripulantes = watch("formaParteCalculoLiquidacionTripulantes");
+  const formaParteCalculoEntregaARendir = watch("formaParteCalculoEntregaARendir");
   const fechaOperacionMovCaja = watch("fechaOperacionMovCaja");
   const operacionMovCajaId = watch("operacionMovCajaId");
   const moduloOrigenMovCajaId = watch("moduloOrigenMovCajaId");
@@ -132,9 +136,9 @@ const DetMovsEntregaRendirForm = ({
           ? Number(movimiento.entidadComercialId)
           : null, // Nuevo campo
         urlComprobanteMovimiento: movimiento.urlComprobanteMovimiento || "",
-        validadoTesoreria: movimiento.validadoTesoreria || false,
+        validadoTesoreria: movimiento.validadoTesoreria ?? false,
         fechaValidacionTesoreria: movimiento.fechaValidacionTesoreria || null,
-        operacionSinFactura: movimiento.operacionSinFactura || false,
+        operacionSinFactura: movimiento.operacionSinFactura ?? false,
         fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja
           ? new Date(movimiento.fechaOperacionMovCaja)
           : null,
@@ -148,7 +152,9 @@ const DetMovsEntregaRendirForm = ({
         tipoDocumentoId: movimiento.tipoDocumentoId ? Number(movimiento.tipoDocumentoId) : null,
         numeroSerieComprobante: movimiento.numeroSerieComprobante || "",
         numeroCorrelativoComprobante: movimiento.numeroCorrelativoComprobante || "",
-        productoId: movimiento.productoId ? Number(movimiento.productoId) : null, // Nuevo campo
+        productoId: movimiento.productoId ? Number(movimiento.productoId) : null,
+        formaParteCalculoLiquidacionTripulantes: movimiento.formaParteCalculoLiquidacionTripulantes ?? false,
+        formaParteCalculoEntregaARendir: movimiento.formaParteCalculoEntregaARendir ?? false,
       });
     } else {
       // Para nuevo registro, establecer entregaARendirId y asignar responsable automáticamente
@@ -285,6 +291,36 @@ const DetMovsEntregaRendirForm = ({
     });
   };
 
+  // Función para manejar el toggle de formaParteCalculoLiquidacionTripulantes
+  const handleToggleCalculoLiquidacion = () => {
+    const valorActual = getValues("formaParteCalculoLiquidacionTripulantes");
+    setValue("formaParteCalculoLiquidacionTripulantes", !valorActual);
+
+    toast.current?.show({
+      severity: "info",
+      summary: "Estado Actualizado",
+      detail: !valorActual
+        ? "Incluido en cálculo de liquidación de tripulantes"
+        : "Excluido de cálculo de liquidación de tripulantes",
+      life: 2000,
+    });
+  };
+
+  // Función para manejar el toggle de formaParteCalculoEntregaARendir
+  const handleToggleCalculoEntrega = () => {
+    const valorActual = getValues("formaParteCalculoEntregaARendir");
+    setValue("formaParteCalculoEntregaARendir", !valorActual);
+
+    toast.current?.show({
+      severity: "info",
+      summary: "Estado Actualizado",
+      detail: !valorActual
+        ? "Incluido en cálculo de entrega a rendir"
+        : "Excluido de cálculo de entrega a rendir",
+      life: 2000,
+    });
+  };
+
   // Función para manejar el envío del formulario
   const onSubmit = async (data, event) => {
     event?.preventDefault();
@@ -332,7 +368,9 @@ const DetMovsEntregaRendirForm = ({
         tipoDocumentoId: data.tipoDocumentoId ? Number(data.tipoDocumentoId) : null,
         numeroSerieComprobante: data.numeroSerieComprobante?.trim() || null,
         numeroCorrelativoComprobante: data.numeroCorrelativoComprobante?.trim() || null,
-        productoId: data.productoId ? Number(data.productoId) : null, // Nuevo campo
+        productoId: data.productoId ? Number(data.productoId) : null,
+        formaParteCalculoLiquidacionTripulantes: data.formaParteCalculoLiquidacionTripulantes,
+        formaParteCalculoEntregaARendir: data.formaParteCalculoEntregaARendir,
         actualizadoEn: new Date(),
       };
 
@@ -841,6 +879,52 @@ const DetMovsEntregaRendirForm = ({
                       : "p-button-primary"
                   }
                   onClick={handleToggleOperacionSinFactura}
+                  size="small"
+                  style={{ width: "100%" }}
+                  disabled={formularioDeshabilitado}
+                />
+              </div>
+                            <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Liquidación Tripulantes
+                </label>
+                <Button
+                  type="button"
+                  label={formaParteCalculoLiquidacionTripulantes ? "INCLUIDO" : "EXCLUIDO"}
+                  icon={
+                    formaParteCalculoLiquidacionTripulantes
+                      ? "pi pi-check-circle"
+                      : "pi pi-times-circle"
+                  }
+                  className={
+                    formaParteCalculoLiquidacionTripulantes
+                      ? "p-button-success"
+                      : "p-button-secondary"
+                  }
+                  onClick={handleToggleCalculoLiquidacion}
+                  size="small"
+                  style={{ width: "100%" }}
+                  disabled={formularioDeshabilitado}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Entrega a Rendir
+                </label>
+                <Button
+                  type="button"
+                  label={formaParteCalculoEntregaARendir ? "INCLUIDO" : "EXCLUIDO"}
+                  icon={
+                    formaParteCalculoEntregaARendir
+                      ? "pi pi-check-circle"
+                      : "pi pi-times-circle"
+                  }
+                  className={
+                    formaParteCalculoEntregaARendir
+                      ? "p-button-success"
+                      : "p-button-secondary"
+                  }
+                  onClick={handleToggleCalculoEntrega}
                   size="small"
                   style={{ width: "100%" }}
                   disabled={formularioDeshabilitado}

@@ -83,19 +83,11 @@ export default function KardexProductoDialog({
       if (fechaDesde) params.fechaDesde = fechaDesde;
       if (fechaHasta) params.fechaHasta = fechaHasta;
 
-      console.log("=== CARGANDO KARDEX ===");
-      console.log("URL:", API_URL);
-      console.log("Params:", params);
-      console.log("esCustodia:", esCustodia);
-      console.log("clienteId:", clienteId);
-
       const res = await axios.get(API_URL, {
         params,
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log("Respuesta kardex:", res.data);
-      console.log("Total registros:", res.data?.length || 0);
 
       setKardex(res.data || []);
     } catch (error) {

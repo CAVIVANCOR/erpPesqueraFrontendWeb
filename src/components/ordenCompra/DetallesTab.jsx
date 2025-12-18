@@ -29,6 +29,12 @@ export default function DetallesTab({
   const [showDialog, setShowDialog] = useState(false);
   const [editingDetalle, setEditingDetalle] = useState(null);
 
+  // Construir datosGenerales con la moneda seleccionada
+  const monedaSeleccionada = monedas.find(m => Number(m.id) === Number(monedaId));
+  const datosGenerales = {
+    moneda: monedaSeleccionada
+  };
+
   useEffect(() => {
     if (ordenCompraId) {
       cargarDetalles();
@@ -239,6 +245,7 @@ export default function DetallesTab({
         detalle={editingDetalle}
         ordenCompraId={ordenCompraId}
         productos={productos}
+        datosGenerales={datosGenerales}
         onSaveSuccess={handleSaveSuccess}
         toast={toast}
       />

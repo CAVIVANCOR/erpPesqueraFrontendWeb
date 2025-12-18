@@ -121,7 +121,15 @@ export default function Empresas({ ruta }) {
         // Márgenes de utilidad
         margenMinimoPermitido: data.margenMinimoPermitido,
         margenUtilidadObjetivo: data.margenUtilidadObjetivo,
+        // Campos de liquidación
+        porcentajeBaseLiqPesca: data.porcentajeBaseLiqPesca,
+        porcentajeComisionPatron: data.porcentajeComisionPatron,
+        cantPersonalCalcComisionMotorista: data.cantPersonalCalcComisionMotorista,
+        cantDivisoriaCalcComisionMotorista: data.cantDivisoriaCalcComisionMotorista,
+        porcentajeCalcComisionPanguero: data.porcentajeCalcComisionPanguero,
+        monedaCalculosLiqId: data.monedaCalculosLiqId,
       };
+      
       if (modoEdicion && empresaEdit) {
         await actualizarEmpresa(empresaEdit.id, payload);
         mostrarToast(

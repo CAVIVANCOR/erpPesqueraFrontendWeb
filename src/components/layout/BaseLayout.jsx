@@ -11,6 +11,7 @@ import logoCerebro13 from "../../assets/LogoCerebro13.png";
 // Importar componentes de módulos
 import Producto from '../../pages/Producto';
 import Empresas from '../../pages/Empresas';
+import KatanaTripulacion from '../../pages/KatanaTripulacion';
 import AreasFisicasSede from '../../pages/AreasFisicasSede';
 import Usuarios from '../../pages/Usuarios';
 import Personal from '../../pages/Personal';
@@ -185,6 +186,7 @@ export default function BaseLayout({ children, onLogout }) {
     modulosSistema: { label: "Módulos Sistema", componente: <ModulosSistema ruta="modulosSistema" /> },
     SubmodulosSistema: { label: "Submódulos Sistema", componente: <SubmodulosSistema ruta="SubmodulosSistema" /> },
     empresas: { label: "Empresas", componente: <Empresas ruta="empresas" /> },
+    katanaTripulacion: { label: "Katana Tripulación", componente: <KatanaTripulacion ruta="katanaTripulacion" /> },
     sedesEmpresa: { label: "Sedes Empresa", componente: <SedesEmpresa ruta="sedesEmpresa" /> },
     areasFisicasSede: { label: "Áreas Físicas Sede", componente: <AreasFisicasSede ruta="areasFisicasSede" /> },
     estadoMultiFuncion: { label: "Estado Multi Función", componente: <EstadoMultiFuncion ruta="estadoMultiFuncion" /> },

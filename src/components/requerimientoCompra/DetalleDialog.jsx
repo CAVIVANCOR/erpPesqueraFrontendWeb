@@ -41,6 +41,9 @@ export default function DetalleDialog({
   const empresaSeleccionada = empresas?.find((e) => Number(e.id) === Number(empresaId));
   const entidadComercialId = empresaSeleccionada?.entidadComercialId;
 
+  // Obtener código de moneda de la cabecera (datosGenerales.moneda)
+  const codigoMoneda = datosGenerales?.moneda?.codigoSunat || "PEN";
+
   useEffect(() => {
     if (detalle) {
       setFormData({
@@ -320,7 +323,7 @@ export default function DetalleDialog({
               value={formData.costoUnitario}
               onValueChange={(e) => handleChange("costoUnitario", e.value)}
               mode="currency"
-              currency="PEN"
+              currency={codigoMoneda}
               locale="es-PE"
               min={0}
               disabled={saving || !puedeEditarDetalles}
@@ -333,7 +336,7 @@ export default function DetalleDialog({
               id="subtotal"
               value={formData.subtotal}
               mode="currency"
-              currency="PEN"
+              currency={codigoMoneda}
               locale="es-PE"
               disabled
               inputStyle={{ fontWeight: "bold" }}

@@ -30,15 +30,19 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - Filtrado global en DataTable.
  * - Documentación de la regla en el encabezado.
  */
-export default function CategoriaCCosto() {
+export default function CategoriaCCosto({ ruta }) {
   const toast = useRef(null);
   const [categorias, setCategorias] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const { usuario } = useAuthStore();
-  const permisos = usePermissions("CategoriaCCosto");
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+  }
   const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   // Configuración de filtros para DataTable

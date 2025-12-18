@@ -3,6 +3,7 @@
 import React from "react";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
+import { InputNumber } from "primereact/inputnumber";
 
 export default function EspecieForm({
   isEdit,
@@ -15,10 +16,18 @@ export default function EspecieForm({
   const [nombreCientifico, setNombreCientifico] = React.useState(
     defaultValues.nombreCientifico || ""
   );
+  const [cubetaPesoKg, setCubetaPesoKg] = React.useState(
+    defaultValues.cubetaPesoKg || 0
+  );
+  const [precioPorKg, setPrecioPorKg] = React.useState(
+    defaultValues.precioPorKg || 0
+  );
 
   React.useEffect(() => {
     setNombre(defaultValues.nombre || "");
     setNombreCientifico(defaultValues.nombreCientifico || "");
+    setCubetaPesoKg(defaultValues.cubetaPesoKg || 0);
+    setPrecioPorKg(defaultValues.precioPorKg || 0);
   }, [defaultValues]);
 
   const handleSubmit = (e) => {
@@ -27,6 +36,8 @@ export default function EspecieForm({
     onSubmit({
       nombre: nombre.toUpperCase(),
       nombreCientifico: nombreCientifico.toUpperCase(),
+      cubetaPesoKg: Number(cubetaPesoKg),
+      precioPorKg: Number(precioPorKg),
     });
   };
 
@@ -61,6 +72,34 @@ export default function EspecieForm({
           required
           disabled={loading}
           style={{ textTransform: "uppercase" }}
+        />
+      </div>
+      <div className="p-field">
+        <label htmlFor="cubetaPesoKg">Peso Cubeta (Kg)</label>
+        <InputNumber
+          id="cubetaPesoKg"
+          value={cubetaPesoKg}
+          onValueChange={(e) => setCubetaPesoKg(e.value)}
+          disabled={loading}
+          mode="decimal"
+          minFractionDigits={2}
+          maxFractionDigits={2}
+          min={0}
+          suffix=" kg"
+        />
+      </div>
+      <div className="p-field">
+        <label htmlFor="precioPorKg">Precio por Kg (S/)</label>
+        <InputNumber
+          id="precioPorKg"
+          value={precioPorKg}
+          onValueChange={(e) => setPrecioPorKg(e.value)}
+          disabled={loading}
+          mode="decimal"
+          minFractionDigits={2}
+          maxFractionDigits={2}
+          min={0}
+          prefix="S/ "
         />
       </div>
       {/* Botones de acción */}

@@ -125,6 +125,12 @@ export default function MovimientoCajaForm({
         ? Number(defaultValues.usuarioMotivoOperacionId)
         : ""
     );
+  const [origenReferenciaIngresoMovCajaId, setOrigenReferenciaIngresoMovCajaId] =
+    React.useState(
+      defaultValues.origenReferenciaIngresoMovCajaId
+        ? Number(defaultValues.origenReferenciaIngresoMovCajaId)
+        : ""
+    );
   const [fechaOperacionMovCaja, setFechaOperacionMovCaja] = React.useState(
     defaultValues.fechaOperacionMovCaja
       ? new Date(defaultValues.fechaOperacionMovCaja)
@@ -225,6 +231,11 @@ export default function MovimientoCajaForm({
         ? Number(defaultValues.usuarioMotivoOperacionId)
         : ""
     );
+    setOrigenReferenciaIngresoMovCajaId(
+      defaultValues.origenReferenciaIngresoMovCajaId
+        ? Number(defaultValues.origenReferenciaIngresoMovCajaId)
+        : ""
+    );
     setFechaOperacionMovCaja(
       defaultValues.fechaOperacionMovCaja
         ? new Date(defaultValues.fechaOperacionMovCaja)
@@ -309,6 +320,9 @@ export default function MovimientoCajaForm({
       fechaMotivoOperacion,
       usuarioMotivoOperacionId: usuarioMotivoOperacionId
         ? Number(usuarioMotivoOperacionId)
+        : null,
+      origenReferenciaIngresoMovCajaId: origenReferenciaIngresoMovCajaId
+        ? Number(origenReferenciaIngresoMovCajaId)
         : null,
       fechaOperacionMovCaja: new Date(),
       operacionSinFactura,

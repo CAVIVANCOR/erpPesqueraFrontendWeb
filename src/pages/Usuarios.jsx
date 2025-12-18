@@ -249,6 +249,7 @@ export default function Usuarios({ ruta }) {
   }
 
   async function onSubmitForm(data) {
+    
     setFormLoading(true);
     try {
       const usuarioPayload = {
@@ -261,8 +262,12 @@ export default function Usuarios({ ruta }) {
         activo: !!data.activo,
         password: data.password,
       };
+      
+      
       if (modoEdicion && usuarioEdit) {
-        await actualizarUsuario(usuarioEdit.id, usuarioPayload);
+        
+        const resultado = await actualizarUsuario(usuarioEdit.id, usuarioPayload);
+        
         mostrarToast(
           "success",
           "Usuario actualizado",
@@ -276,10 +281,19 @@ export default function Usuarios({ ruta }) {
           `El usuario ${data.username} fue registrado correctamente.`
         );
       }
+      
       setMostrarDialogo(false);
-      cargarUsuarios();
+      await cargarUsuarios();
     } catch (err) {
-      mostrarToast("error", "Error", "No se pudo guardar el usuario.");
+      console.error('=== ERROR EN onSubmitForm ===');
+      console.error('Error completo:', err);
+      console.error('Error response:', err.response);
+      console.error('Error message:', err.message);
+      
+      // Extraer mensaje de error específico del backend
+      const mensajeError = err?.response?.data?.error || err?.response?.data?.message || err.message || "No se pudo guardar el usuario.";
+      
+      mostrarToast("error", "Error", mensajeError);
     } finally {
       setFormLoading(false);
     }

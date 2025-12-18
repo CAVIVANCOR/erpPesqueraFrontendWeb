@@ -29,7 +29,7 @@ import ActivoForm from "../components/activo/ActivoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 import { getEmpresas } from "../api/empresa";
 
-const Activo = () => {
+const Activo = ({ ruta }) => {
   const [activos, setActivos] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +39,12 @@ const Activo = () => {
   const [activoAEliminar, setActivoAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
-  const permisos = usePermissions("Activo");
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+  }
+
   const [globalFilter, setGlobalFilter] = useState("");
 
   // Determinar si es modo solo lectura

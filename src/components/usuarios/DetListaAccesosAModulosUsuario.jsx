@@ -16,6 +16,7 @@ import { getSubmodulos } from "../../api/submoduloSistema";
 import {
   asignarAccesosEnLote,
   getAccesosPorUsuario,
+  eliminarAccesosUsuario,
 } from "../../api/accesosUsuario";
 import { getResponsiveFontSize } from "../../utils/utils";
 
@@ -46,6 +47,7 @@ export default function DetListaAccesosAModulosUsuario({
   const [submodulos, setSubmodulos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showConfirmEliminar, setShowConfirmEliminar] = useState(false);
 
   // Estados para filtros
   const [filtroModulo, setFiltroModulo] = useState(null);
@@ -196,7 +198,7 @@ export default function DetListaAccesosAModulosUsuario({
   /**
    * Agrega todos los submódulos de todos los módulos con permisos por defecto.
    * Si es superusuario, todos los permisos se marcan como true.
-   * Inteligente: Solo agrega los faltantes, mantiene existentes y elimina obsoletos.
+   * Inteligente: Solo agrega los faltantes, RESPETA Y MANTIENE los existentes sin alterarlos.
    * GUARDA DIRECTAMENTE EN LA BASE DE DATOS.
    */
   const agregarTodosLosModulos = async () => {
@@ -214,49 +216,9 @@ export default function DetListaAccesosAModulosUsuario({
       // IDs de submódulos actuales en el catálogo
       const idsSubmodulosActuales = submodulos.map((s) => s.id);
 
-      // Filtrar accesos existentes que aún estén en el catálogo y actualizar sus permisos según el rol
+      // Filtrar accesos existentes que aún estén en el catálogo SIN MODIFICARLOS
       const accesosExistentesValidos = accesosInternos
-        .filter((acceso) => idsSubmodulosActuales.includes(acceso.submoduloId))
-        .map((acceso) => {
-          // Actualizar permisos según el rol actual
-          if (esSuperUsuario) {
-            return {
-              ...acceso,
-              puedeVer: true,
-              puedeCrear: true,
-              puedeEditar: true,
-              puedeEliminar: true,
-              puedeReactivarDocs: true,
-              puedeAprobarDocs: true,
-              puedeRechazarDocs: true,
-              activo: true,
-            };
-          } else if (esAdmin) {
-            return {
-              ...acceso,
-              puedeVer: true,
-              puedeCrear: true,
-              puedeEditar: true,
-              puedeEliminar: false,
-              puedeReactivarDocs: true,
-              puedeAprobarDocs: true,
-              puedeRechazarDocs: true,
-              activo: true,
-            };
-          } else {
-            return {
-              ...acceso,
-              puedeVer: false,
-              puedeCrear: false,
-              puedeEditar: false,
-              puedeEliminar: false,
-              puedeReactivarDocs: false,
-              puedeAprobarDocs: false,
-              puedeRechazarDocs: false,
-              activo: true,
-            };
-          }
-        });
+        .filter((acceso) => idsSubmodulosActuales.includes(acceso.submoduloId));
 
       // IDs de submódulos que ya tienen acceso
       const idsConAcceso = accesosExistentesValidos.map((a) => a.submoduloId);
@@ -325,29 +287,23 @@ export default function DetListaAccesosAModulosUsuario({
       // Mensajes informativos
       const eliminados =
         accesosInternos.length - accesosExistentesValidos.length;
-      const actualizados = accesosExistentesValidos.length;
+      const mantenidos = accesosExistentesValidos.length;
       let mensaje = "";
 
       if (nuevosAccesos.length > 0 && eliminados > 0) {
-        mensaje = `Se agregaron ${nuevosAccesos.length} nuevos, se actualizaron ${actualizados} y se eliminaron ${eliminados} obsoletos`;
+        mensaje = `Se agregaron ${nuevosAccesos.length} nuevos módulos, se mantuvieron ${mantenidos} existentes y se eliminaron ${eliminados} obsoletos`;
       } else if (nuevosAccesos.length > 0) {
         if (esSuperUsuario) {
-          mensaje = `Se agregaron ${nuevosAccesos.length} y se actualizaron ${actualizados} submódulos con TODOS los permisos (Superusuario)`;
+          mensaje = `Se agregaron ${nuevosAccesos.length} nuevos módulos con TODOS los permisos (Superusuario). Se respetaron ${mantenidos} módulos existentes`;
         } else if (esAdmin) {
-          mensaje = `Se agregaron ${nuevosAccesos.length} y se actualizaron ${actualizados} submódulos con permisos de Administrador`;
+          mensaje = `Se agregaron ${nuevosAccesos.length} nuevos módulos con permisos de Administrador. Se respetaron ${mantenidos} módulos existentes`;
         } else {
-          mensaje = `Se agregaron ${nuevosAccesos.length} y se actualizaron ${actualizados} submódulos sin permisos (Usuario estándar)`;
+          mensaje = `Se agregaron ${nuevosAccesos.length} nuevos módulos sin permisos (Usuario estándar). Se respetaron ${mantenidos} módulos existentes`;
         }
       } else if (eliminados > 0) {
-        mensaje = `Se actualizaron ${actualizados} y se eliminaron ${eliminados} accesos obsoletos`;
+        mensaje = `Se mantuvieron ${mantenidos} módulos existentes y se eliminaron ${eliminados} accesos obsoletos`;
       } else {
-        if (esSuperUsuario) {
-          mensaje = `Se actualizaron ${actualizados} submódulos con TODOS los permisos (Superusuario)`;
-        } else if (esAdmin) {
-          mensaje = `Se actualizaron ${actualizados} submódulos con permisos de Administrador`;
-        } else {
-          mensaje = `Se actualizaron ${actualizados} submódulos sin permisos (Usuario estándar)`;
-        }
+        mensaje = `Todos los módulos ya estaban asignados. Se mantuvieron ${mantenidos} módulos existentes sin cambios`;
       }
 
       // GUARDAR EN BASE DE DATOS
@@ -404,6 +360,69 @@ export default function DetListaAccesosAModulosUsuario({
    */
   const confirmarAgregarTodos = () => {
     setShowConfirm(true);
+  };
+
+  /**
+   * Confirma si desea eliminar todos los permisos
+   */
+  const confirmarEliminarTodos = () => {
+    if (accesosInternos.length === 0) {
+      toast.current?.show({
+        severity: "info",
+        summary: "Información",
+        detail: "No hay permisos para eliminar",
+      });
+      return;
+    }
+    setShowConfirmEliminar(true);
+  };
+
+  /**
+   * Elimina todos los permisos del usuario.
+   * GUARDA DIRECTAMENTE EN LA BASE DE DATOS.
+   */
+  const eliminarTodosLosPermisos = async () => {
+    if (!usuarioId) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se puede eliminar permisos sin un usuario válido",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Eliminar físicamente todos los accesos del usuario
+      // Eliminar uno por uno usando el ID específico de cada acceso
+      for (const acceso of accesosInternos) {
+        if (acceso && acceso.id) {
+          await eliminarAccesosUsuario(acceso.id);
+        }
+      }
+      
+      // Actualizar estado local
+      setAccesosInternos([]);
+      if (onChange) onChange([]);
+      
+      // Recargar desde BD para confirmar
+      await cargarAccesosDesdeDB();
+      
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Todos los permisos fueron eliminados correctamente",
+      });
+    } catch (err) {
+      console.error('Error al eliminar permisos:', err);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron eliminar los permisos",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   /**
@@ -522,17 +541,32 @@ export default function DetListaAccesosAModulosUsuario({
   );
 
   const moduloBody = (rowData) => {
+    // Primero intentar usar la relación que viene de BD
+    if (rowData.submodulo?.modulo?.nombre) {
+      return rowData.submodulo.modulo.nombre;
+    }
+    // Fallback: buscar en los arrays cargados (para accesos nuevos no guardados)
     const submodulo = submodulos.find((s) => s.id === rowData.submoduloId);
     const modulo = modulos.find((m) => m.id === submodulo?.moduloId);
     return modulo?.nombre || "-";
   };
 
   const submoduloBody = (rowData) => {
+    // Primero intentar usar la relación que viene de BD
+    if (rowData.submodulo?.nombre) {
+      return rowData.submodulo.nombre;
+    }
+    // Fallback: buscar en los arrays cargados (para accesos nuevos no guardados)
     const submodulo = submodulos.find((s) => s.id === rowData.submoduloId);
     return submodulo?.nombre || "-";
   };
 
   const iconoBody = (rowData) => {
+    // Primero intentar usar la relación que viene de BD
+    if (rowData.submodulo?.icono) {
+      return <i className={rowData.submodulo.icono} />;
+    }
+    // Fallback: buscar en los arrays cargados (para accesos nuevos no guardados)
     const submodulo = submodulos.find((s) => s.id === rowData.submoduloId);
     return submodulo?.icono ? <i className={submodulo.icono} /> : null;
   };
@@ -562,6 +596,21 @@ export default function DetListaAccesosAModulosUsuario({
         acceptLabel="Sí, agregar todos"
         rejectLabel="Cancelar"
       />
+      <ConfirmDialog
+        visible={showConfirmEliminar}
+        onHide={() => setShowConfirmEliminar(false)}
+        message="¿Está seguro de eliminar TODOS los permisos del usuario? Esta acción no se puede deshacer."
+        header="Confirmar eliminación"
+        icon="pi pi-exclamation-triangle"
+        acceptClassName="p-button-danger"
+        accept={() => {
+          eliminarTodosLosPermisos();
+          setShowConfirmEliminar(false);
+        }}
+        reject={() => setShowConfirmEliminar(false)}
+        acceptLabel="Sí, eliminar todos"
+        rejectLabel="Cancelar"
+      />
       <DataTable
         key={renderKey}
         value={accesosFiltrados}
@@ -585,6 +634,8 @@ export default function DetListaAccesosAModulosUsuario({
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} accesos"
         stateStorage="session"
         stateKey={`dt-accesos-usuario-${usuarioId}`}
+        sortField="id"
+        sortOrder={-1}
         header={
           <div>
             {/* Título y botón agregar */}
@@ -601,24 +652,37 @@ export default function DetListaAccesosAModulosUsuario({
                 border: "2px solid #dee2e6",
               }}
             >
-              <div style={{ flex: 3 }}>
+              <div style={{ flex: 2 }}>
                 <h3>
                   Accesos a Módulos ({accesosFiltrados.length} de{" "}
                   {accesosInternos.length})
                 </h3>
               </div>
               {puedeCrear && (
-                <div style={{ flex: 1 }}>
-                  <Button
-                    type="button"
-                    label="Agregar Todos los Módulos"
-                    icon="pi pi-plus-circle"
-                    className="p-button-warning p-button-sm"
-                    onClick={confirmarAgregarTodos}
-                    disabled={loading}
-                    outlined
-                  />
-                </div>
+                <>
+                  <div style={{ flex: 1 }}>
+                    <Button
+                      type="button"
+                      label="Agregar Todos los Módulos"
+                      icon="pi pi-plus-circle"
+                      className="p-button-warning p-button-sm"
+                      onClick={confirmarAgregarTodos}
+                      disabled={loading}
+                      outlined
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Button
+                      type="button"
+                      label="Eliminar Todos los Permisos"
+                      icon="pi pi-trash"
+                      className="p-button-danger p-button-sm"
+                      onClick={confirmarEliminarTodos}
+                      disabled={loading || accesosInternos.length === 0}
+                      outlined
+                    />
+                  </div>
+                </>
               )}
             </div>
 
@@ -814,6 +878,13 @@ export default function DetListaAccesosAModulosUsuario({
           </div>
         }
       >
+        <Column
+          field="id"
+          header="ID"
+          body={(rowData) => rowData.id || '-'}
+          style={{ width: "80px", textAlign: "center" }}
+          sortable
+        />
         <Column
           header="Módulo"
           body={moduloBody}

@@ -39,7 +39,9 @@ import {
  * Props esperadas desde el componente padre:
  * - puertos: Array de puertos (todos los puertos disponibles)
  * - clientes: Array de clientes filtrados por EntidadComercial (empresaId, tipoEntidadId=8, esCliente=true, estado=true)
- * - especies: Array de especies
+ * - especies: Array de especies (con precioPorKg y cubetaPesoKg)
+ * - katanasTripulacion: Array de rangos de katana tripulación filtrados por empresaId
+ * - empresaData: Objeto con datos de la empresa (opcional, para futuras funcionalidades)
  * - bahiaId: ID de bahía (valor fijo desde FaenaPescaConsumo)
  * - motoristaId: ID de motorista (valor fijo desde FaenaPescaConsumo)
  * - patronId: ID de patrón (valor fijo desde FaenaPescaConsumo)
@@ -50,6 +52,8 @@ export default function DescargaFaenaConsumoForm({
   puertos = [],
   clientes = [],
   especies = [],
+  katanasTripulacion = [],
+  empresaData = null,
   bahiaId = null,
   motoristaId = null,
   patronId = null,
@@ -59,6 +63,9 @@ export default function DescargaFaenaConsumoForm({
 }) {
   // Estados para loading
   const [loading, setLoading] = useState(false);
+
+  // Ref para rastrear la especie anterior y evitar sobrescribir precio editado manualmente
+  const especieAnteriorRef = useRef(null);
 
   // Configuración del formulario
   const {
@@ -98,6 +105,10 @@ export default function DescargaFaenaConsumoForm({
       latitudFondeo: 0,
       longitudFondeo: 0,
       puertoFondeoId: null,
+      nroCubetas: 0,
+      precioPorKgEspecie: 0,
+      precioTotal: 0,
+      katanaTripulacionId: null,
     },
   });
 
@@ -106,6 +117,11 @@ export default function DescargaFaenaConsumoForm({
   const longitud = watch("longitud");
   const latitudFondeo = watch("latitudFondeo");
   const longitudFondeo = watch("longitudFondeo");
+
+  // Observar cambios para cálculos automáticos
+  const especieIdWatched = watch("especieId");
+  const toneladasWatched = watch("toneladas");
+  const precioPorKgEspecieWatched = watch("precioPorKgEspecie");
 
   // Estados para formato DMS de descarga
   const [latGrados, setLatGrados] = useState(0);
@@ -143,6 +159,13 @@ export default function DescargaFaenaConsumoForm({
   const especiesNormalizadas = especies.map((e) => ({
     label: e.nombre || e.label,
     value: Number(e.id || e.value),
+  }));
+
+  const katanasTripulacionNormalizadas = katanasTripulacion.map((k) => ({
+    label: `${k.rangoInicialTn || 0} - ${k.rangoFinaTn || 0} Tn (${
+      k.kgOtorgadoCalculo || 0
+    } Kg)`,
+    value: Number(k.id || k.value),
   }));
 
   // Cargar datos del registro a editar cuando cambie detalle
@@ -197,6 +220,12 @@ export default function DescargaFaenaConsumoForm({
         puertoFondeoId: detalle.puertoFondeoId
           ? Number(detalle.puertoFondeoId)
           : null,
+        nroCubetas: detalle.nroCubetas || 0,
+        precioPorKgEspecie: detalle.precioPorKgEspecie || 0,
+        precioTotal: detalle.precioTotal || 0,
+        katanaTripulacionId: detalle.katanaTripulacionId
+          ? Number(detalle.katanaTripulacionId)
+          : null,
       });
     } else {
       // Resetear para nuevo registro con valores fijos de faena
@@ -229,20 +258,22 @@ export default function DescargaFaenaConsumoForm({
         latitudFondeo: 0,
         longitudFondeo: 0,
         puertoFondeoId: null,
+        nroCubetas: 0,
+        precioPorKgEspecie: 0,
+        precioTotal: 0,
+        katanaTripulacionId: null,
       });
     }
-  }, [
-    detalle,
-    reset,
-    bahiaId,
-    motoristaId,
-    patronId,
-    faenaPescaConsumoId,
-  ]);
+  }, [detalle, reset, bahiaId, motoristaId, patronId, faenaPescaConsumoId]);
 
   // Sincronizar cambios de decimal a DMS para DESCARGA
   useEffect(() => {
-    if (latitud !== "" && latitud !== null && latitud !== undefined && latitud !== 0) {
+    if (
+      latitud !== "" &&
+      latitud !== null &&
+      latitud !== undefined &&
+      latitud !== 0
+    ) {
       const dms = descomponerDMS(Number(latitud), true);
       setLatGrados(dms.grados);
       setLatMinutos(dms.minutos);
@@ -252,7 +283,12 @@ export default function DescargaFaenaConsumoForm({
   }, [latitud]);
 
   useEffect(() => {
-    if (longitud !== "" && longitud !== null && longitud !== undefined && longitud !== 0) {
+    if (
+      longitud !== "" &&
+      longitud !== null &&
+      longitud !== undefined &&
+      longitud !== 0
+    ) {
       const dms = descomponerDMS(Number(longitud), false);
       setLonGrados(dms.grados);
       setLonMinutos(dms.minutos);
@@ -263,7 +299,12 @@ export default function DescargaFaenaConsumoForm({
 
   // Sincronizar cambios de decimal a DMS para FONDEO
   useEffect(() => {
-    if (latitudFondeo !== "" && latitudFondeo !== null && latitudFondeo !== undefined && latitudFondeo !== 0) {
+    if (
+      latitudFondeo !== "" &&
+      latitudFondeo !== null &&
+      latitudFondeo !== undefined &&
+      latitudFondeo !== 0
+    ) {
       const dms = descomponerDMS(Number(latitudFondeo), true);
       setLatFondeoGrados(dms.grados);
       setLatFondeoMinutos(dms.minutos);
@@ -273,7 +314,12 @@ export default function DescargaFaenaConsumoForm({
   }, [latitudFondeo]);
 
   useEffect(() => {
-    if (longitudFondeo !== "" && longitudFondeo !== null && longitudFondeo !== undefined && longitudFondeo !== 0) {
+    if (
+      longitudFondeo !== "" &&
+      longitudFondeo !== null &&
+      longitudFondeo !== undefined &&
+      longitudFondeo !== 0
+    ) {
       const dms = descomponerDMS(Number(longitudFondeo), false);
       setLonFondeoGrados(dms.grados);
       setLonFondeoMinutos(dms.minutos);
@@ -282,25 +328,123 @@ export default function DescargaFaenaConsumoForm({
     }
   }, [longitudFondeo]);
 
+  // Cálculos automáticos al cambiar especie, toneladas o precio
+  useEffect(() => {
+    const realizarCalculos = () => {
+      // Solo calcular si hay toneladas
+      if (!toneladasWatched || toneladasWatched === 0) {
+        return;
+      }
+
+      // 1. Obtener precio por Kg de la especie seleccionada (SOLO si cambió la especie)
+      const especieSeleccionada = especies.find(
+        (e) => Number(e.id) === Number(especieIdWatched)
+      );
+      const especiaCambio = especieAnteriorRef.current !== especieIdWatched;
+
+      if (
+        especieSeleccionada &&
+        especieSeleccionada.precioPorKg &&
+        especieIdWatched &&
+        especiaCambio
+      ) {
+        const precioDB = Number(especieSeleccionada.precioPorKg);
+        setValue("precioPorKgEspecie", precioDB);
+        especieAnteriorRef.current = especieIdWatched; // Actualizar ref
+        return; // Salir para que el useEffect se ejecute de nuevo con el nuevo precio
+      }
+
+      // Actualizar ref si aún no se ha hecho
+      if (especiaCambio && especieIdWatched) {
+        especieAnteriorRef.current = especieIdWatched;
+      }
+
+      // 2. Calcular número de cubetas usando cubetaPesoKg de la ESPECIE
+      if (especieSeleccionada?.cubetaPesoKg && Number(especieSeleccionada.cubetaPesoKg) > 0) {
+        const nroCubetas = toneladasWatched / Number(especieSeleccionada.cubetaPesoKg);
+        setValue('nroCubetas', Number(nroCubetas.toFixed(2)));
+      } else {
+        setValue('nroCubetas', 0);
+      }
+
+      // 3. Encontrar katana según rango de toneladas (convertir Kg a Tn)
+      const toneladasEnTn = toneladasWatched / 1000;
+
+      const katanaEncontrada = katanasTripulacion.find((k) => {
+        const rangoInicial = Number(k.rangoInicialTn || 0);
+        const rangoFinal = Number(k.rangoFinaTn || 0);
+        return toneladasEnTn >= rangoInicial && toneladasEnTn <= rangoFinal;
+      });
+
+      if (katanaEncontrada) {
+        setValue("katanaTripulacionId", Number(katanaEncontrada.id));
+
+        // 4. Calcular precio total usando el precio actual (manual o de especie)
+        const kgOtorgado = Number(katanaEncontrada.kgOtorgadoCalculo || 0);
+        const precioPorKg = Number(precioPorKgEspecieWatched || 0);
+
+        if (precioPorKg > 0) {
+          const precioTotal = (toneladasWatched - kgOtorgado) * precioPorKg;
+          setValue("precioTotal", Number(precioTotal.toFixed(2)));
+        } else {
+          setValue("precioTotal", 0);
+        }
+      } else {
+        setValue("katanaTripulacionId", null);
+        setValue("precioTotal", 0);
+      }
+    };
+
+    realizarCalculos();
+  }, [
+    especieIdWatched,
+    toneladasWatched,
+    precioPorKgEspecieWatched,
+    especies,
+    katanasTripulacion,
+    empresaData,
+    setValue,
+  ]);
+
   // Funciones para actualizar decimal cuando cambia DMS - DESCARGA
   const actualizarLatitudDesdeDMS = () => {
-    const decimal = convertirDMSADecimal(latGrados, latMinutos, latSegundos, latDireccion);
+    const decimal = convertirDMSADecimal(
+      latGrados,
+      latMinutos,
+      latSegundos,
+      latDireccion
+    );
     setValue("latitud", decimal);
   };
 
   const actualizarLongitudDesdeDMS = () => {
-    const decimal = convertirDMSADecimal(lonGrados, lonMinutos, lonSegundos, lonDireccion);
+    const decimal = convertirDMSADecimal(
+      lonGrados,
+      lonMinutos,
+      lonSegundos,
+      lonDireccion
+    );
     setValue("longitud", decimal);
   };
 
   // Funciones para actualizar decimal cuando cambia DMS - FONDEO
   const actualizarLatitudFondeoDesdeDMS = () => {
-    const decimal = convertirDMSADecimal(latFondeoGrados, latFondeoMinutos, latFondeoSegundos, latFondeoDireccion);
+    const decimal = convertirDMSADecimal(
+      latFondeoGrados,
+      latFondeoMinutos,
+      latFondeoSegundos,
+      latFondeoDireccion
+    );
     setValue("latitudFondeo", decimal);
   };
 
   const actualizarLongitudFondeoDesdeDMS = () => {
-    const decimal = convertirDMSADecimal(lonFondeoGrados, lonFondeoMinutos, lonFondeoSegundos, lonFondeoDireccion);
+    const decimal = convertirDMSADecimal(
+      lonFondeoGrados,
+      lonFondeoMinutos,
+      lonFondeoSegundos,
+      lonFondeoDireccion
+    );
     setValue("longitudFondeo", decimal);
   };
 
@@ -361,6 +505,12 @@ export default function DescargaFaenaConsumoForm({
         longitudFondeo: data.longitudFondeo || 0,
         puertoFondeoId: data.puertoFondeoId
           ? Number(data.puertoFondeoId)
+          : null,
+        nroCubetas: data.nroCubetas || 0,
+        precioPorKgEspecie: data.precioPorKgEspecie || 0,
+        precioTotal: data.precioTotal || 0,
+        katanaTripulacionId: data.katanaTripulacionId
+          ? Number(data.katanaTripulacionId)
           : null,
       };
 
@@ -617,23 +767,78 @@ export default function DescargaFaenaConsumoForm({
 
         {/* Tabla compacta de coordenadas GPS */}
         <div style={{ flex: 3 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", border: "2px solid #0EA5E9" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              border: "2px solid #0EA5E9",
+            }}
+          >
             <thead>
               <tr style={{ backgroundColor: "#0EA5E9", color: "white" }}>
-                <th style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Formato</th>
-                <th colSpan="4" style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", textAlign: "center" }}>Latitud</th>
-                <th colSpan="4" style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", textAlign: "center" }}>Longitud</th>
+                <th
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #0EA5E9",
+                    fontSize: "12px",
+                    width: "75px",
+                    minWidth: "75px",
+                    maxWidth: "75px",
+                  }}
+                >
+                  Formato
+                </th>
+                <th
+                  colSpan="4"
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #0EA5E9",
+                    fontSize: "12px",
+                    textAlign: "center",
+                  }}
+                >
+                  Latitud
+                </th>
+                <th
+                  colSpan="4"
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #0EA5E9",
+                    fontSize: "12px",
+                    textAlign: "center",
+                  }}
+                >
+                  Longitud
+                </th>
               </tr>
             </thead>
             <tbody>
               {/* Fila Decimal */}
               <tr>
-                <td style={{ padding: "4px", border: "1px solid #0EA5E9", fontWeight: "bold", fontSize: "11px", backgroundColor: "#e1f1f7", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Decimal</td>
-                <td colSpan="4" style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                <td
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #0EA5E9",
+                    fontWeight: "bold",
+                    fontSize: "11px",
+                    backgroundColor: "#e1f1f7",
+                    width: "75px",
+                    minWidth: "75px",
+                    maxWidth: "75px",
+                  }}
+                >
+                  Decimal
+                </td>
+                <td
+                  colSpan="4"
+                  style={{ padding: "2px", border: "1px solid #0EA5E9" }}
+                >
                   <input
                     type="number"
                     value={latitud || ""}
-                    onChange={(e) => setValue("latitud", parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setValue("latitud", parseFloat(e.target.value) || 0)
+                    }
                     disabled={loading}
                     step="0.000001"
                     placeholder="-12.345678"
@@ -647,11 +852,16 @@ export default function DescargaFaenaConsumoForm({
                     }}
                   />
                 </td>
-                <td colSpan="4" style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                <td
+                  colSpan="4"
+                  style={{ padding: "2px", border: "1px solid #0EA5E9" }}
+                >
                   <input
                     type="number"
                     value={longitud || ""}
-                    onChange={(e) => setValue("longitud", parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setValue("longitud", parseFloat(e.target.value) || 0)
+                    }
                     disabled={loading}
                     step="0.000001"
                     placeholder="-77.123456"
@@ -669,13 +879,35 @@ export default function DescargaFaenaConsumoForm({
 
               {/* Fila GMS */}
               <tr>
-                <td style={{ padding: "4px", border: "1px solid #0EA5E9", fontWeight: "bold", fontSize: "11px", backgroundColor: "#e1f1f7", width: "75px", minWidth: "75px", maxWidth: "75px" }}>GMS</td>
+                <td
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #0EA5E9",
+                    fontWeight: "bold",
+                    fontSize: "11px",
+                    backgroundColor: "#e1f1f7",
+                    width: "75px",
+                    minWidth: "75px",
+                    maxWidth: "75px",
+                  }}
+                >
+                  GMS
+                </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={latGrados}
-                      onChange={(e) => setLatGrados(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLatGrados(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLatitudDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -689,15 +921,26 @@ export default function DescargaFaenaConsumoForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      °
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={latMinutos}
-                      onChange={(e) => setLatMinutos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLatMinutos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLatitudDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -711,15 +954,26 @@ export default function DescargaFaenaConsumoForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      '
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={latSegundos}
-                      onChange={(e) => setLatSegundos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLatSegundos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLatitudDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -734,7 +988,9 @@ export default function DescargaFaenaConsumoForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      "
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
@@ -759,11 +1015,20 @@ export default function DescargaFaenaConsumoForm({
                   </select>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={lonGrados}
-                      onChange={(e) => setLonGrados(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLonGrados(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLongitudDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -777,15 +1042,26 @@ export default function DescargaFaenaConsumoForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      °
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={lonMinutos}
-                      onChange={(e) => setLonMinutos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLonMinutos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLongitudDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -799,15 +1075,26 @@ export default function DescargaFaenaConsumoForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      '
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={lonSegundos}
-                      onChange={(e) => setLonSegundos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLonSegundos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLongitudDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -822,7 +1109,9 @@ export default function DescargaFaenaConsumoForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      "
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
@@ -1125,6 +1414,134 @@ export default function DescargaFaenaConsumoForm({
             <Message severity="error" text={errors.toneladas.message} />
           )}
         </div>
+        <div style={{ flex: 0.5 }}>
+          <label htmlFor="nroCubetas">Nro. Cubetas</label>
+          <Controller
+            name="nroCubetas"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="nroCubetas"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="decimal"
+                minFractionDigits={0}
+                maxFractionDigits={2}
+                min={0}
+                inputStyle={{ fontWeight: "bold" }}
+                disabled
+                className={classNames({ "p-invalid": errors.nroCubetas })}
+              />
+            )}
+          />
+          {errors.nroCubetas && (
+            <Message severity="error" text={errors.nroCubetas.message} />
+          )}
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="precioPorKgEspecie">Precio por Kg</label>
+          <Controller
+            name="precioPorKgEspecie"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="precioPorKgEspecie"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                min={0}
+                prefix="S/ "
+                inputStyle={{ fontWeight: "bold" }}
+                disabled={loading}
+                className={classNames({
+                  "p-invalid": errors.precioPorKgEspecie,
+                })}
+              />
+            )}
+          />
+          {errors.precioPorKgEspecie && (
+            <Message
+              severity="error"
+              text={errors.precioPorKgEspecie.message}
+            />
+          )}
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="precioTotal">Precio Total</label>
+          <Controller
+            name="precioTotal"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="precioTotal"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                min={0}
+                prefix="S/ "
+                inputStyle={{ fontWeight: "bold", backgroundColor: "#e3f2fd" }}
+                disabled={true}
+                className={classNames({ "p-invalid": errors.precioTotal })}
+              />
+            )}
+          />
+          {errors.precioTotal && (
+            <Message severity="error" text={errors.precioTotal.message} />
+          )}
+        </div>
+                <div style={{ flex: 1 }}>
+          <label htmlFor="katanaTripulacionId">Katana Tripulación</label>
+          <Controller
+            name="katanaTripulacionId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="katanaTripulacionId"
+                value={field.value}
+                options={katanasTripulacionNormalizadas}
+                onChange={(e) => field.onChange(e.value)}
+                placeholder="Seleccionado automáticamente"
+                filter
+                showClear
+                disabled={true}
+                style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+                className={classNames({
+                  "p-invalid": errors.katanaTripulacionId,
+                })}
+              />
+            )}
+          />
+          {errors.katanaTripulacionId && (
+            <Message
+              severity="error"
+              text={errors.katanaTripulacionId.message}
+            />
+          )}
+        </div>
+      </div>
+      {/* Fila: Katana Tripulación */}
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+
+      </div>
+
+      {/* Fila: Observaciones */}
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         <div style={{ flex: 2 }}>
           <label htmlFor="observaciones">Observaciones</label>
           <Controller
@@ -1232,23 +1649,78 @@ export default function DescargaFaenaConsumoForm({
 
         {/* Tabla compacta de coordenadas GPS FONDEO */}
         <div style={{ flex: 3 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", border: "2px solid #F97316" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              border: "2px solid #F97316",
+            }}
+          >
             <thead>
               <tr style={{ backgroundColor: "#F97316", color: "white" }}>
-                <th style={{ padding: "4px", border: "1px solid #F97316", fontSize: "12px", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Formato</th>
-                <th colSpan="4" style={{ padding: "4px", border: "1px solid #F97316", fontSize: "12px", textAlign: "center" }}>Latitud</th>
-                <th colSpan="4" style={{ padding: "4px", border: "1px solid #F97316", fontSize: "12px", textAlign: "center" }}>Longitud</th>
+                <th
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #F97316",
+                    fontSize: "12px",
+                    width: "75px",
+                    minWidth: "75px",
+                    maxWidth: "75px",
+                  }}
+                >
+                  Formato
+                </th>
+                <th
+                  colSpan="4"
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #F97316",
+                    fontSize: "12px",
+                    textAlign: "center",
+                  }}
+                >
+                  Latitud
+                </th>
+                <th
+                  colSpan="4"
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #F97316",
+                    fontSize: "12px",
+                    textAlign: "center",
+                  }}
+                >
+                  Longitud
+                </th>
               </tr>
             </thead>
             <tbody>
               {/* Fila Decimal */}
               <tr>
-                <td style={{ padding: "4px", border: "1px solid #F97316", fontWeight: "bold", fontSize: "11px", backgroundColor: "#fff8e1", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Decimal</td>
-                <td colSpan="4" style={{ padding: "2px", border: "1px solid #F97316" }}>
+                <td
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #F97316",
+                    fontWeight: "bold",
+                    fontSize: "11px",
+                    backgroundColor: "#fff8e1",
+                    width: "75px",
+                    minWidth: "75px",
+                    maxWidth: "75px",
+                  }}
+                >
+                  Decimal
+                </td>
+                <td
+                  colSpan="4"
+                  style={{ padding: "2px", border: "1px solid #F97316" }}
+                >
                   <input
                     type="number"
                     value={latitudFondeo || ""}
-                    onChange={(e) => setValue("latitudFondeo", parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setValue("latitudFondeo", parseFloat(e.target.value) || 0)
+                    }
                     disabled={loading}
                     step="0.000001"
                     placeholder="-12.345678"
@@ -1262,11 +1734,19 @@ export default function DescargaFaenaConsumoForm({
                     }}
                   />
                 </td>
-                <td colSpan="4" style={{ padding: "2px", border: "1px solid #F97316" }}>
+                <td
+                  colSpan="4"
+                  style={{ padding: "2px", border: "1px solid #F97316" }}
+                >
                   <input
                     type="number"
                     value={longitudFondeo || ""}
-                    onChange={(e) => setValue("longitudFondeo", parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setValue(
+                        "longitudFondeo",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                     disabled={loading}
                     step="0.000001"
                     placeholder="-77.123456"
@@ -1284,13 +1764,35 @@ export default function DescargaFaenaConsumoForm({
 
               {/* Fila GMS */}
               <tr>
-                <td style={{ padding: "4px", border: "1px solid #F97316", fontWeight: "bold", fontSize: "11px", backgroundColor: "#fff8e1", width: "75px", minWidth: "75px", maxWidth: "75px" }}>GMS</td>
+                <td
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #F97316",
+                    fontWeight: "bold",
+                    fontSize: "11px",
+                    backgroundColor: "#fff8e1",
+                    width: "75px",
+                    minWidth: "75px",
+                    maxWidth: "75px",
+                  }}
+                >
+                  GMS
+                </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={latFondeoGrados}
-                      onChange={(e) => setLatFondeoGrados(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLatFondeoGrados(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLatitudFondeoDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -1304,15 +1806,26 @@ export default function DescargaFaenaConsumoForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      °
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={latFondeoMinutos}
-                      onChange={(e) => setLatFondeoMinutos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLatFondeoMinutos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLatitudFondeoDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -1326,15 +1839,26 @@ export default function DescargaFaenaConsumoForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      '
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={latFondeoSegundos}
-                      onChange={(e) => setLatFondeoSegundos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLatFondeoSegundos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLatitudFondeoDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -1349,7 +1873,9 @@ export default function DescargaFaenaConsumoForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      "
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
@@ -1374,11 +1900,20 @@ export default function DescargaFaenaConsumoForm({
                   </select>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={lonFondeoGrados}
-                      onChange={(e) => setLonFondeoGrados(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLonFondeoGrados(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLongitudFondeoDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -1392,15 +1927,26 @@ export default function DescargaFaenaConsumoForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      °
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={lonFondeoMinutos}
-                      onChange={(e) => setLonFondeoMinutos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLonFondeoMinutos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLongitudFondeoDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -1414,15 +1960,26 @@ export default function DescargaFaenaConsumoForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      '
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={lonFondeoSegundos}
-                      onChange={(e) => setLonFondeoSegundos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLonFondeoSegundos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLongitudFondeoDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -1437,7 +1994,9 @@ export default function DescargaFaenaConsumoForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      "
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>

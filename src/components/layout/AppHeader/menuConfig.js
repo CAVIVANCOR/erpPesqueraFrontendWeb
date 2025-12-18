@@ -77,6 +77,11 @@ export const getMenuConfig = (abrirModulo) => ({
             title: "📋 Tablas",
             items: [
               {
+                label: "Katana Tripulación",
+                icon: "pi pi-users",
+                action: () => abrirModulo("katanaTripulacion", "Katana Tripulación")
+              },
+              {
                 label: "Especies",
                 icon: "pi pi-star",
                 action: () => abrirModulo("especie", "Especies")

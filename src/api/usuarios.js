@@ -50,8 +50,18 @@ export const crearUsuario = async (data) => {
  * @returns {Promise<Object>} Usuario actualizado
  */
 export const actualizarUsuario = async (id, data) => {
-  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeader() });
-  return res.data;
+  
+  try {
+    const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeader() });
+    return res.data;
+  } catch (error) {
+    console.error('=== ERROR EN PETICIÓN HTTP ===');
+    console.error('Error completo:', error);
+    console.error('Error response status:', error.response?.status);
+    console.error('Error response data:', error.response?.data);
+    console.error('Error message:', error.message);
+    throw error;
+  }
 };
 
 /**

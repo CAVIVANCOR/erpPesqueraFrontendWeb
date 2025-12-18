@@ -31,11 +31,8 @@ import { usePermissions } from "../hooks/usePermissions";
 import EmbarcacionForm from "../components/embarcacion/EmbarcacionForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
-const Embarcacion = () => {
+const Embarcacion = ({ ruta }) => {
   const [embarcaciones, setEmbarcaciones] = useState([]);
-  const [activos, setActivos] = useState([]);
-  const [tiposEmbarcacion, setTiposEmbarcacion] = useState([]);
-  const [estadosActivo, setEstadosActivo] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [embarcacionSeleccionada, setEmbarcacionSeleccionada] = useState(null);
@@ -43,7 +40,11 @@ const Embarcacion = () => {
   const [embarcacionAEliminar, setEmbarcacionAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
-  const permisos = usePermissions("Embarcacion");
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+  }
   const [globalFilter, setGlobalFilter] = useState("");
 
   const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;

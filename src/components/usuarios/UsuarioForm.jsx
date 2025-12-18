@@ -16,16 +16,43 @@ import DetListaAccesosAModulosUsuario from "./DetListaAccesosAModulosUsuario";
 const schema = Yup.object().shape({
   username: Yup.string().required("El nombre de usuario es obligatorio"),
   password: Yup.string()
-    .min(6, "Mínimo 6 caracteres")
-    .when("isEdit", {
-      is: false,
-      then: (schema) => schema.required("La contraseña es obligatoria"),
-      otherwise: (schema) => schema.notRequired(),
+    .test('password-validation', function(value) {
+      const { isEdit } = this.options.context || {};
+      
+      // En modo creación, password es obligatorio
+      if (!isEdit) {
+        if (!value || value.trim() === '') {
+          return this.createError({ message: 'La contraseña es obligatoria' });
+        }
+        if (value.length < 6) {
+          return this.createError({ message: 'Mínimo 6 caracteres' });
+        }
+      }
+      
+      // En modo edición, password es opcional
+      // Si se proporciona, debe tener mínimo 6 caracteres
+      if (isEdit && value && value.trim() !== '' && value.length < 6) {
+        return this.createError({ message: 'Mínimo 6 caracteres' });
+      }
+      
+      return true;
     }),
   empresaId: Yup.number()
+    .transform((value, originalValue) => {
+      // Convertir string a number automáticamente
+      return originalValue === "" || originalValue === null || originalValue === undefined 
+        ? undefined 
+        : Number(originalValue);
+    })
     .typeError("La empresa es obligatoria")
     .required("La empresa es obligatoria"),
   personalId: Yup.number()
+    .transform((value, originalValue) => {
+      // Convertir string a number automáticamente, permitir null
+      return originalValue === "" || originalValue === null || originalValue === undefined 
+        ? null 
+        : Number(originalValue);
+    })
     .typeError("El personal debe ser un número")
     .nullable(),
   esSuperUsuario: Yup.boolean(),
@@ -83,6 +110,7 @@ export default function UsuarioForm({
     getValues,
   } = useForm({
     resolver: yupResolver(schema),
+    context: { isEdit }, // Pasar isEdit como contexto a Yup
     defaultValues: {
       username: defaultValues.username || "",
       password: defaultValues.password || "",
@@ -189,10 +217,12 @@ export default function UsuarioForm({
                   style={{ fontWeight: "bold" }}
                   disabled={readOnly}
                   onChange={(e) => {
-                    if (field.value !== e.value) {
-                      field.onChange(e.value);
-                      setValue("personalId", null); // Solo limpia si cambia
+                    field.onChange(e.value);
+                    setValue("personalId", null);
+                    if (e.value) {
                       cargarPersonal(e.value);
+                    } else {
+                      setPersonal([]);
                     }
                   }}
                 />
@@ -374,127 +404,6 @@ export default function UsuarioForm({
           </div>
         </div>
 
-        {/* Campos de seguridad y auditoría */}
-        {isEdit && (
-          <div
-            style={{
-              marginTop: 5,
-              padding: 5,
-              backgroundColor: "#f8f9fa",
-              borderRadius: 8,
-              border: "1px solid #dee2e6",
-            }}
-          >
-            <h4 style={{ marginTop: 0, color: "#495057" }}>
-              Información de Seguridad y Auditoría
-            </h4>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "end",
-                gap: 10,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              {/* Password Hash - Protegido con asteriscos */}
-              <div style={{ flex: 1, textAlign: "center" }}>
-                <label htmlFor="passwordHash">Contraseña (Hash)</label>
-                <InputText
-                  id="passwordHash"
-                  value="********************"
-                  disabled
-                  style={{ fontWeight: "bold", backgroundColor: "#e9ecef" }}
-                />
-              </div>
-
-              {/* Intentos Fallidos */}
-              <div style={{ flex: 0.5, textAlign: "center" }}>
-                <label htmlFor="intentosFallidos">Intentos Fallidos</label>
-                <InputText
-                  id="intentosFallidos"
-                  value={defaultValues.intentosFallidos || 0}
-                  disabled
-                  style={{
-                    fontWeight: "bold",
-                    color:
-                      defaultValues.intentosFallidos > 0
-                        ? "#d32f2f"
-                        : "inherit",
-                    backgroundColor: "#e9ecef",
-                  }}
-                />
-              </div>
-
-              {/* Bloqueado Hasta */}
-              <div style={{ flex: 1, textAlign: "center" }}>
-                <label htmlFor="bloqueadoHasta">Bloqueado Hasta</label>
-                <InputText
-                  id="bloqueadoHasta"
-                  value={
-                    defaultValues.bloqueadoHasta &&
-                    esFechaValida(defaultValues.bloqueadoHasta)
-                      ? format(
-                          new Date(defaultValues.bloqueadoHasta),
-                          "dd/MM/yyyy HH:mm"
-                        )
-                      : "No bloqueado"
-                  }
-                  disabled
-                  style={{
-                    fontWeight: "bold",
-                    color: defaultValues.bloqueadoHasta ? "#d32f2f" : "inherit",
-                    backgroundColor: "#e9ecef",
-                  }}
-                />
-              </div>
-
-              {/* Motivo de Inactivación */}
-              <div style={{ flex: 2, textAlign: "center" }}>
-                <label htmlFor="motivoInactivacion">
-                  Motivo de Inactivación
-                </label>
-                <InputText
-                  id="motivoInactivacion"
-                  value={defaultValues.motivoInactivacion || "Sin motivo"}
-                  disabled
-                  style={{ backgroundColor: "#e9ecef" }}
-                />
-              </div>
-
-              {/* Inactivado Por */}
-              <div style={{ flex: 0.5, textAlign: "center" }}>
-                <label htmlFor="inactivadoPor">Inactivado Por</label>
-                <InputText
-                  id="inactivadoPor"
-                  value={defaultValues.inactivadoPor || "N/A"}
-                  disabled
-                  style={{ backgroundColor: "#e9ecef" }}
-                />
-              </div>
-
-              {/* Fecha de Inactivación */}
-              <div style={{ flex: 1, textAlign: "center" }}>
-                <label htmlFor="fechaInactivacion">Fecha de Inactivación</label>
-                <InputText
-                  id="fechaInactivacion"
-                  value={
-                    defaultValues.fechaInactivacion &&
-                    esFechaValida(defaultValues.fechaInactivacion)
-                      ? format(
-                          new Date(defaultValues.fechaInactivacion),
-                          "dd/MM/yyyy HH:mm"
-                        )
-                      : "No inactivado"
-                  }
-                  disabled
-                  style={{ backgroundColor: "#e9ecef" }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Tabs para organizar información */}
         {isEdit && (
           <div style={{ marginTop: 2 }}>
@@ -580,6 +489,19 @@ export default function UsuarioForm({
                 severity="success"
                 raised
                 size="small"
+                onClick={(e) => {
+                  
+                  // Forzar validación manual para ver errores
+                  handleSubmit(
+                    (data) => {
+                      console.log('✅ VALIDACIÓN EXITOSA:', data);
+                      handleFormSubmit(data);
+                    },
+                    (errors) => {
+                      console.error('❌ ERRORES DE VALIDACIÓN:', errors);
+                    }
+                  )();
+                }}
               />
             )}
           </div>

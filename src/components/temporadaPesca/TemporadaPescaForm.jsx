@@ -44,6 +44,7 @@ import { getTemporadaPescaPorId } from "../../api/temporadaPesca"; // Importar f
 import DatosGeneralesTemporadaForm from "./DatosGeneralesTemporadaForm";
 import ResolucionPDFTemporadaForm from "./ResolucionPDFTemporadaForm";
 import EntregasARendirTemporadaCard from "./EntregasARendirTemporadaCard";
+import DatosLiquidacionPersonalPesca from "./DatosLiquidacionPersonalPesca";
 import MuestraResultadoInicioTemporada from "./muestraResultadoInicioTemporada";
 // Importar APIs adicionales
 import { getPersonal } from "../../api/personal";
@@ -122,6 +123,25 @@ const TemporadaPescaForm = ({
       cuotaPropiaTon: null,
       cuotaAlquiladaTon: null,
       toneladasCapturadasTemporada: null,
+      // Campos de liquidación - Parámetros de comisiones
+      porcentajeBaseLiqPesca: null,
+      porcentajeComisionPatron: null,
+      cantPersonalCalcComisionMotorista: null,
+      cantDivisoriaCalcComisionMotorista: null,
+      porcentajeCalcComisionPanguero: null,
+      // Campos de liquidación - Estimados
+      liqTripulantesPescaEstimado: null,
+      liqComisionPatronEstimado: null,
+      liqComisionMotoristaEstimado: null,
+      liqComisionPangueroEstimado: null,
+      liqTotalPescaEstimada: null,
+      liqComisionAlquilerCuota: null,
+      // Campos de liquidación - Reales
+      liqTripulantesPescaReal: null,
+      liqComisionPatronReal: null,
+      liqComisionMotoristaReal: null,
+      liqComisionPangueroReal: null,
+      liqTotalPescaReal: null,
     },
   });
 
@@ -681,6 +701,19 @@ const TemporadaPescaForm = ({
           size="small"
           disabled={!editingItem?.id}
         />
+        <Button
+          icon="pi pi-calculator"
+          tooltip="Liquidación Personal Pesca"
+          tooltipOptions={{ position: "top" }}
+          className={
+            activeCard === "liquidacion-personal"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => setActiveCard("liquidacion-personal")}
+          type="button"
+          size="small"
+        />
       </div>
 
       {/* Botones de acción - lado derecho */}
@@ -781,6 +814,25 @@ const TemporadaPescaForm = ({
         cuotaAlquiladaTon: editingItem.cuotaAlquiladaTon || null,
         toneladasCapturadasTemporada:
           editingItem.toneladasCapturadasTemporada || null,
+        // Campos de liquidación - Parámetros de comisiones
+        porcentajeBaseLiqPesca: editingItem.porcentajeBaseLiqPesca || null,
+        porcentajeComisionPatron: editingItem.porcentajeComisionPatron || null,
+        cantPersonalCalcComisionMotorista: editingItem.cantPersonalCalcComisionMotorista || null,
+        cantDivisoriaCalcComisionMotorista: editingItem.cantDivisoriaCalcComisionMotorista || null,
+        porcentajeCalcComisionPanguero: editingItem.porcentajeCalcComisionPanguero || null,
+        // Campos de liquidación - Estimados
+        liqTripulantesPescaEstimado: editingItem.liqTripulantesPescaEstimado || null,
+        liqComisionPatronEstimado: editingItem.liqComisionPatronEstimado || null,
+        liqComisionMotoristaEstimado: editingItem.liqComisionMotoristaEstimado || null,
+        liqComisionPangueroEstimado: editingItem.liqComisionPangueroEstimado || null,
+        liqTotalPescaEstimada: editingItem.liqTotalPescaEstimada || null,
+        liqComisionAlquilerCuota: editingItem.liqComisionAlquilerCuota || null,
+        // Campos de liquidación - Reales
+        liqTripulantesPescaReal: editingItem.liqTripulantesPescaReal || null,
+        liqComisionPatronReal: editingItem.liqComisionPatronReal || null,
+        liqComisionMotoristaReal: editingItem.liqComisionMotoristaReal || null,
+        liqComisionPangueroReal: editingItem.liqComisionPangueroReal || null,
+        liqTotalPescaReal: editingItem.liqTotalPescaReal || null,
       });
     } else {
       reset({
@@ -797,6 +849,25 @@ const TemporadaPescaForm = ({
         cuotaPropiaTon: null,
         cuotaAlquiladaTon: null,
         toneladasCapturadasTemporada: null,
+        // Campos de liquidación - Parámetros de comisiones
+        porcentajeBaseLiqPesca: null,
+        porcentajeComisionPatron: null,
+        cantPersonalCalcComisionMotorista: null,
+        cantDivisoriaCalcComisionMotorista: null,
+        porcentajeCalcComisionPanguero: null,
+        // Campos de liquidación - Estimados
+        liqTripulantesPescaEstimado: null,
+        liqComisionPatronEstimado: null,
+        liqComisionMotoristaEstimado: null,
+        liqComisionPangueroEstimado: null,
+        liqTotalPescaEstimada: null,
+        liqComisionAlquilerCuota: null,
+        // Campos de liquidación - Reales
+        liqTripulantesPescaReal: null,
+        liqComisionPatronReal: null,
+        liqComisionMotoristaReal: null,
+        liqComisionPangueroReal: null,
+        liqTotalPescaReal: null,
       });
     }
   }, [editingItem, reset, estadoDefaultId]);
@@ -889,6 +960,16 @@ const TemporadaPescaForm = ({
             tiposMovimiento={tiposMovimiento}
             tiposDocumento={tiposDocumento}
             onDataChange={onTemporadaDataChange}
+            readOnly={readOnly}
+          />
+        )}
+
+        {activeCard === "liquidacion-personal" && (
+          <DatosLiquidacionPersonalPesca
+            control={control}
+            errors={errors}
+            setValue={setValue}
+            watch={watch}
             readOnly={readOnly}
           />
         )}

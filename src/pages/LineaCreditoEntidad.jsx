@@ -23,9 +23,13 @@ import { usePermissions } from "../hooks/usePermissions";
  * - Feedback visual con Toast.
  * - Documentación de la regla en el encabezado.
  */
-export default function LineaCreditoEntidad() {
+export default function LineaCreditoEntidad({ ruta }) {
   const toast = useRef(null);
-  const permisos = usePermissions("LineaCreditoEntidad");
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+  }
   const [items, setItems] = useState([]);
   const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);

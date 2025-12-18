@@ -26,6 +26,8 @@ import { getClientesPorEmpresa } from "../../api/entidadComercial";
 import { getEspeciesParaDropdown } from "../../api/especie";
 import { getPuertosActivos } from "../../api/puertoPesca";
 import { getFaenaPescaConsumoPorId } from "../../api/faenaPescaConsumo";
+import { getEmpresaPorId } from "../../api/empresa";
+import { getKatanasTripulacionPorEmpresa } from "../../api/katanaTripulacion";
 import logoEscudoPeru from "../../assets/logoEscudoPeru.png";
 
 export default function FaenaPescaConsumoForm({
@@ -65,6 +67,8 @@ export default function FaenaPescaConsumoForm({
   const [especies, setEspecies] = useState([]);
   const [puertosDescarga, setPuertosDescarga] = useState([]);
   const [documentosPesca, setDocumentosPesca] = useState([]);
+  const [empresaData, setEmpresaData] = useState(null);
+  const [katanasTripulacion, setKatanasTripulacion] = useState([]);
 
   // Estado de loading para prevenir doble clic
   const [finalizandoFaena, setFinalizandoFaena] = useState(false);
@@ -228,6 +232,14 @@ export default function FaenaPescaConsumoForm({
       if (novedadData?.empresaId) {
         const clientesData = await getClientesPorEmpresa(novedadData.empresaId);
         setClientes(clientesData);
+        
+        // Obtener datos de la empresa (cubetaPesoKg)
+        const empresaDataResult = await getEmpresaPorId(novedadData.empresaId);
+        setEmpresaData(empresaDataResult);
+        
+        // Obtener katanas de tripulación de la empresa
+        const katanasData = await getKatanasTripulacionPorEmpresa(novedadData.empresaId);
+        setKatanasTripulacion(katanasData);
       }
 
       const especiesData = await getEspeciesParaDropdown();
@@ -764,14 +776,16 @@ export default function FaenaPescaConsumoForm({
             faenaPescaConsumoId={currentFaenaData?.id}
             novedadData={novedad}
             faenaData={currentFaenaData}
-            puertos={puertosDescarga} // ✅ CORREGIDO: era puertosDescarga={puertosDescarga}
+            puertos={puertosDescarga}
             patrones={patronesOptions}
             motoristas={motoristasOptions}
             bahias={bahiasComercialesOptions}
             clientes={clientes}
             especies={especies}
+            empresaData={empresaData}
+            katanasTripulacion={katanasTripulacion}
             onDataChange={handleDescargaUpdate}
-            onDescargaChange={handleDescargaUpdate}  // ← AGREGAR ESTA LÍNEA
+            onDescargaChange={handleDescargaUpdate}
             lastUpdate={lastDescargaUpdate}
           />
         )}

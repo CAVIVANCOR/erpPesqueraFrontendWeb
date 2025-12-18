@@ -91,6 +91,8 @@ const DetMovsEntRendirNovedadForm = ({
       numeroSerieComprobante: "",
       numeroCorrelativoComprobante: "",
       productoId: "", // Nuevo campo para producto (gasto)
+      formaParteCalculoLiquidacionTripulantes: false,
+      formaParteCalculoEntregaARendir: false,
     },
   });
 
@@ -102,16 +104,26 @@ const DetMovsEntRendirNovedadForm = ({
 
   // Observar cambios en los nuevos campos
   const operacionSinFactura = watch("operacionSinFactura");
+  const formaParteCalculoLiquidacionTripulantes = watch(
+    "formaParteCalculoLiquidacionTripulantes"
+  );
+  const formaParteCalculoEntregaARendir = watch(
+    "formaParteCalculoEntregaARendir"
+  );
   const fechaOperacionMovCaja = watch("fechaOperacionMovCaja");
   const operacionMovCajaId = watch("operacionMovCajaId");
   const moduloOrigenMovCajaId = watch("moduloOrigenMovCajaId");
-  const urlComprobanteOperacionMovCaja = watch("urlComprobanteOperacionMovCaja");
+  const urlComprobanteOperacionMovCaja = watch(
+    "urlComprobanteOperacionMovCaja"
+  );
 
   // Cargar datos del registro en edición
   useEffect(() => {
     if (isEditing && movimiento) {
       reset({
-        entregaARendirPescaConsumoId: Number(movimiento.entregaARendirPescaConsumoId),
+        entregaARendirPescaConsumoId: Number(
+          movimiento.entregaARendirPescaConsumoId
+        ),
         responsableId: movimiento.responsableId
           ? Number(movimiento.responsableId)
           : null,
@@ -131,9 +143,9 @@ const DetMovsEntRendirNovedadForm = ({
           ? Number(movimiento.entidadComercialId)
           : null,
         urlComprobanteMovimiento: movimiento.urlComprobanteMovimiento || "",
-        validadoTesoreria: movimiento.validadoTesoreria || false,
+        validadoTesoreria: movimiento.validadoTesoreria ?? false,
         fechaValidacionTesoreria: movimiento.fechaValidacionTesoreria || null,
-        operacionSinFactura: movimiento.operacionSinFactura || false,
+        operacionSinFactura: movimiento.operacionSinFactura ?? false,
         fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja
           ? new Date(movimiento.fechaOperacionMovCaja)
           : null,
@@ -143,15 +155,28 @@ const DetMovsEntRendirNovedadForm = ({
         moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId
           ? Number(movimiento.moduloOrigenMovCajaId)
           : 3,
-        urlComprobanteOperacionMovCaja: movimiento.urlComprobanteOperacionMovCaja || "",
-        tipoDocumentoId: movimiento.tipoDocumentoId ? Number(movimiento.tipoDocumentoId) : null,
+        urlComprobanteOperacionMovCaja:
+          movimiento.urlComprobanteOperacionMovCaja || "",
+        tipoDocumentoId: movimiento.tipoDocumentoId
+          ? Number(movimiento.tipoDocumentoId)
+          : null,
         numeroSerieComprobante: movimiento.numeroSerieComprobante || "",
-        numeroCorrelativoComprobante: movimiento.numeroCorrelativoComprobante || "",
-        productoId: movimiento.productoId ? Number(movimiento.productoId) : null, // Nuevo campo
+        numeroCorrelativoComprobante:
+          movimiento.numeroCorrelativoComprobante || "",
+        productoId: movimiento.productoId
+          ? Number(movimiento.productoId)
+          : null, // Nuevo campo
+        formaParteCalculoLiquidacionTripulantes:
+          movimiento.formaParteCalculoLiquidacionTripulantes ?? false,
+        formaParteCalculoEntregaARendir:
+          movimiento.formaParteCalculoEntregaARendir ?? false,
       });
     } else {
       // Para nuevo registro, establecer entregaARendirPescaConsumoId y asignar responsable automáticamente
-      setValue("entregaARendirPescaConsumoId", Number(entregaARendirPescaConsumoId));
+      setValue(
+        "entregaARendirPescaConsumoId",
+        Number(entregaARendirPescaConsumoId)
+      );
       setValue("fechaMovimiento", new Date());
       setValue("moduloOrigenMovCajaId", 3); // Establecer valor por defecto para NOVEDAD PESCA CONSUMO
 
@@ -171,7 +196,14 @@ const DetMovsEntRendirNovedadForm = ({
         }, 500);
       }
     }
-  }, [movimiento, isEditing, entregaARendirPescaConsumoId, reset, setValue, usuario]);
+  }, [
+    movimiento,
+    isEditing,
+    entregaARendirPescaConsumoId,
+    reset,
+    setValue,
+    usuario,
+  ]);
 
   // Cargar módulo "NOVEDAD PESCA CONSUMO" al montar el componente
   useEffect(() => {
@@ -240,7 +272,8 @@ const DetMovsEntRendirNovedadForm = ({
   const tipoDocumentoOptions = tiposDocumento
     .filter((td) => td.esParaCompras === true || td.esParaVentas === true)
     .map((td) => ({
-      label: td.activo === false ? `${td.descripcion} (INACTIVO)` : td.descripcion,
+      label:
+        td.activo === false ? `${td.descripcion} (INACTIVO)` : td.descripcion,
       value: Number(td.id),
     }));
 
@@ -248,16 +281,19 @@ const DetMovsEntRendirNovedadForm = ({
   const familiasGastosIds = [2, 3, 4, 6, 7];
 
   // Filtrar productos por familias de gastos
-  const productosGastos = (productos || []).filter((p) => 
+  const productosGastos = (productos || []).filter((p) =>
     familiasGastosIds.includes(Number(p.familiaId))
   );
 
   // Obtener familias únicas de los productos filtrados usando un Map para evitar duplicados
   const familiasMap = new Map();
-  productosGastos.forEach(p => {
+  productosGastos.forEach((p) => {
     if (p.familia && p.familia.id && p.familia.nombre) {
       const familiaId = Number(p.familia.id);
-      if (familiasGastosIds.includes(familiaId) && !familiasMap.has(familiaId)) {
+      if (
+        familiasGastosIds.includes(familiaId) &&
+        !familiasMap.has(familiaId)
+      ) {
         familiasMap.set(familiaId, {
           label: p.familia.nombre,
           value: familiaId,
@@ -265,13 +301,16 @@ const DetMovsEntRendirNovedadForm = ({
       }
     }
   });
-  
-  const familiasUnicas = Array.from(familiasMap.values())
-    .sort((a, b) => a.label.localeCompare(b.label));
+
+  const familiasUnicas = Array.from(familiasMap.values()).sort((a, b) =>
+    a.label.localeCompare(b.label)
+  );
 
   // Filtrar productos por familia seleccionada
   const productosFiltrados = familiaFiltroId
-    ? productosGastos.filter(p => Number(p.familiaId) === Number(familiaFiltroId))
+    ? productosGastos.filter(
+        (p) => Number(p.familiaId) === Number(familiaFiltroId)
+      )
     : productosGastos;
 
   // Opciones de productos para el dropdown
@@ -291,6 +330,36 @@ const DetMovsEntRendirNovedadForm = ({
       detail: !valorActual
         ? "Operación marcada como SIN FACTURA"
         : "Operación marcada como CON FACTURA",
+      life: 2000,
+    });
+  };
+
+  // Función para manejar el toggle de formaParteCalculoLiquidacionTripulantes
+  const handleToggleCalculoLiquidacion = () => {
+    const valorActual = getValues("formaParteCalculoLiquidacionTripulantes");
+    setValue("formaParteCalculoLiquidacionTripulantes", !valorActual);
+
+    toast.current?.show({
+      severity: "info",
+      summary: "Estado Actualizado",
+      detail: !valorActual
+        ? "Incluido en cálculo de liquidación de tripulantes"
+        : "Excluido de cálculo de liquidación de tripulantes",
+      life: 2000,
+    });
+  };
+
+  // Función para manejar el toggle de formaParteCalculoEntregaARendir
+  const handleToggleCalculoEntrega = () => {
+    const valorActual = getValues("formaParteCalculoEntregaARendir");
+    setValue("formaParteCalculoEntregaARendir", !valorActual);
+
+    toast.current?.show({
+      severity: "info",
+      summary: "Estado Actualizado",
+      detail: !valorActual
+        ? "Incluido en cálculo de entrega a rendir"
+        : "Excluido de cálculo de entrega a rendir",
       life: 2000,
     });
   };
@@ -328,7 +397,8 @@ const DetMovsEntRendirNovedadForm = ({
           ? Number(data.entidadComercialId)
           : null,
         urlComprobanteMovimiento: data.urlComprobanteMovimiento?.trim() || null,
-        urlComprobanteOperacionMovCaja: data.urlComprobanteOperacionMovCaja?.trim() || null,
+        urlComprobanteOperacionMovCaja:
+          data.urlComprobanteOperacionMovCaja?.trim() || null,
         validadoTesoreria: data.validadoTesoreria,
         fechaValidacionTesoreria: data.fechaValidacionTesoreria,
         operacionSinFactura: data.operacionSinFactura,
@@ -339,10 +409,16 @@ const DetMovsEntRendirNovedadForm = ({
         moduloOrigenMovCajaId: data.moduloOrigenMovCajaId
           ? Number(data.moduloOrigenMovCajaId)
           : null,
-        tipoDocumentoId: data.tipoDocumentoId ? Number(data.tipoDocumentoId) : null,
+        tipoDocumentoId: data.tipoDocumentoId
+          ? Number(data.tipoDocumentoId)
+          : null,
         numeroSerieComprobante: data.numeroSerieComprobante?.trim() || null,
-        numeroCorrelativoComprobante: data.numeroCorrelativoComprobante?.trim() || null,
+        numeroCorrelativoComprobante:
+          data.numeroCorrelativoComprobante?.trim() || null,
         productoId: data.productoId ? Number(data.productoId) : null, // Nuevo campo
+        formaParteCalculoLiquidacionTripulantes:
+          data.formaParteCalculoLiquidacionTripulantes,
+        formaParteCalculoEntregaARendir: data.formaParteCalculoEntregaARendir,
         actualizadoEn: new Date(),
       };
 
@@ -566,7 +642,10 @@ const DetMovsEntRendirNovedadForm = ({
               </div>
               <div style={{ flex: 1 }}>
                 {/* Filtro de Familia */}
-                <label htmlFor="familiaFiltro" className="block text-900 font-medium mb-2">
+                <label
+                  htmlFor="familiaFiltro"
+                  className="block text-900 font-medium mb-2"
+                >
                   Filtrar Gastos por Familia
                 </label>
                 <Dropdown
@@ -585,7 +664,10 @@ const DetMovsEntRendirNovedadForm = ({
               </div>
               <div style={{ flex: 2 }}>
                 {/* Producto (Gasto) */}
-                <label htmlFor="productoId" className="block text-900 font-medium mb-2">
+                <label
+                  htmlFor="productoId"
+                  className="block text-900 font-medium mb-2"
+                >
                   Gasto
                 </label>
                 <Controller
@@ -772,7 +854,6 @@ const DetMovsEntRendirNovedadForm = ({
                   <Message severity="error" text={errors.monto.message} />
                 )}
               </div>
-
             </div>
 
             {/* Sección de Comprobante PDF */}
@@ -833,7 +914,7 @@ const DetMovsEntRendirNovedadForm = ({
                   )}
                 />
               </div>
-                            <div style={{ flex: 1 }}>
+              <div style={{ flex: 1 }}>
                 <label className="block text-900 font-medium mb-2">
                   Comprobante
                 </label>
@@ -851,6 +932,58 @@ const DetMovsEntRendirNovedadForm = ({
                       : "p-button-primary"
                   }
                   onClick={handleToggleOperacionSinFactura}
+                  size="small"
+                  style={{ width: "100%" }}
+                  disabled={formularioDeshabilitado}
+                />
+              </div>
+                            <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Liquidación Tripulantes
+                </label>
+                <Button
+                  type="button"
+                  label={
+                    formaParteCalculoLiquidacionTripulantes
+                      ? "INCLUIDO"
+                      : "EXCLUIDO"
+                  }
+                  icon={
+                    formaParteCalculoLiquidacionTripulantes
+                      ? "pi pi-check-circle"
+                      : "pi pi-times-circle"
+                  }
+                  className={
+                    formaParteCalculoLiquidacionTripulantes
+                      ? "p-button-success"
+                      : "p-button-secondary"
+                  }
+                  onClick={handleToggleCalculoLiquidacion}
+                  size="small"
+                  style={{ width: "100%" }}
+                  disabled={formularioDeshabilitado}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Entrega a Rendir
+                </label>
+                <Button
+                  type="button"
+                  label={
+                    formaParteCalculoEntregaARendir ? "INCLUIDO" : "EXCLUIDO"
+                  }
+                  icon={
+                    formaParteCalculoEntregaARendir
+                      ? "pi pi-check-circle"
+                      : "pi pi-times-circle"
+                  }
+                  className={
+                    formaParteCalculoEntregaARendir
+                      ? "p-button-success"
+                      : "p-button-secondary"
+                  }
+                  onClick={handleToggleCalculoEntrega}
                   size="small"
                   style={{ width: "100%" }}
                   disabled={formularioDeshabilitado}
@@ -924,7 +1057,10 @@ const DetMovsEntRendirNovedadForm = ({
                         className={classNames({
                           "p-invalid": errors.numeroSerieComprobante,
                         })}
-                        style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                        style={{
+                          fontWeight: "bold",
+                          textTransform: "uppercase",
+                        }}
                         disabled={formularioDeshabilitado}
                       />
                     )}
@@ -1121,7 +1257,9 @@ const DetMovsEntRendirNovedadForm = ({
           <Button
             icon="pi pi-receipt"
             className={
-              cardActiva === "pdfOperacion" ? "p-button-primary" : "p-button-outlined"
+              cardActiva === "pdfOperacion"
+                ? "p-button-primary"
+                : "p-button-outlined"
             }
             onClick={() => setCardActiva("pdfOperacion")}
             size="small"

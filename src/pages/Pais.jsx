@@ -28,7 +28,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import PaisForm from "../components/pais/PaisForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
-const Pais = () => {
+const Pais = ({ ruta }) => {
   const [paises, setPaises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -37,7 +37,11 @@ const Pais = () => {
   const [paisAEliminar, setPaisAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
-  const permisos = usePermissions("Pais");
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+  }
   const [globalFilter, setGlobalFilter] = useState("");
 
   const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;

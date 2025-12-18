@@ -38,6 +38,8 @@ const DescargaFaenaConsumoCard = ({
   bahias = [],
   clientes = [],
   especies = [],
+  empresaData = null, // Datos de la empresa (cubetaPesoKg)
+  katanasTripulacion = [], // Rangos de katana tripulación
   loading = false,
   onDataChange,
   onDescargaChange, // Callback para notificar cambios
@@ -427,11 +429,13 @@ const DescargaFaenaConsumoCard = ({
             detalle={editingDescarga}
             puertos={puertos}
             clientes={clientes}
+            especies={especies}
+            katanasTripulacion={katanasTripulacion}
+            empresaData={empresaData}
             bahiaId={faenaData?.bahiaId ? Number(faenaData.bahiaId) : null}
             motoristaId={faenaData?.motoristaId ? Number(faenaData.motoristaId) : null}
             patronId={faenaData?.patronId ? Number(faenaData.patronId) : null}
             faenaPescaConsumoId={faenaPescaConsumoId ? Number(faenaPescaConsumoId) : null}
-            especies={especies}
             onGuardadoExitoso={() => {
               cargarDescargas();
               if (onDescargaChange) {

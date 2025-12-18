@@ -27,7 +27,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import ProvinciaForm from "../components/provincia/ProvinciaForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
-const Provincia = () => {
+const Provincia = ({ ruta }) => {
   const [provincias, setProvincias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -36,7 +36,11 @@ const Provincia = () => {
   const [provinciaAEliminar, setProvinciaAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
-  const permisos = usePermissions("Provincia");
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+  }
   const [globalFilter, setGlobalFilter] = useState("");
 
   const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;

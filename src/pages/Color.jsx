@@ -32,10 +32,14 @@ import { getResponsiveFontSize } from "../utils/utils";
  * Pantalla principal para gestión de colores
  * Patrón aplicado: Edición por clic en fila, eliminación profesional con confirmación, búsqueda global.
  */
-const Color = () => {
+const Color = ({ ruta }) => {
   const toast = useRef(null);
   const { usuario } = useAuthStore();
-  const permisos = usePermissions("Color");
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+  }
   const [globalFilter, setGlobalFilter] = useState("");
 
   const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;

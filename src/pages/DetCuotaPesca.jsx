@@ -263,6 +263,17 @@ export default function DetCuotaPesca({ ruta }) {
     return `${Number(rowData.porcentajeCuota).toFixed(6)}%`;
   };
 
+  // Template para precio por tonelada
+  const precioTemplate = (rowData) => {
+    const precio = Number(rowData.precioPorTonDolares || 0);
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(precio);
+  };
+
   // Preparar opciones de empresas
   const empresasOptions = empresas.map((e) => ({
     label: e.razonSocial,
@@ -386,6 +397,12 @@ export default function DetCuotaPesca({ ruta }) {
           header="Porcentaje"
           body={porcentajeTemplate}
           style={{ width: "120px" }}
+        />
+        <Column
+          field="precioPorTonDolares"
+          header="Precio/Ton (USD)"
+          body={precioTemplate}
+          style={{ width: "140px" }}
         />
         <Column
           field="cuotaPropia"

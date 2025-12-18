@@ -29,19 +29,19 @@ import { getResponsiveFontSize } from "../utils/utils";
  * - Filtrado global en DataTable.
  * - Documentación de la regla en el encabezado.
  */
-export default function EmpresaCentroCosto() {
+export default function EmpresaCentroCosto({ ruta }) {
   const toast = useRef(null);
   const [relaciones, setRelaciones] = useState([]);
-  const [empresas, setEmpresas] = useState([]);
-  const [centrosCosto, setCentrosCosto] = useState([]);
-  const [personalPorEmpresa, setPersonalPorEmpresa] = useState([]);
-  const [proveedoresPorEmpresa, setProveedoresPorEmpresa] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [relacionSeleccionada, setRelacionSeleccionada] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const { usuario } = useAuthStore();
-  const permisos = usePermissions("EmpresaCentroCosto");
+  const permisos = usePermissions(ruta);
+
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+  }
   const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
   // Configuración de filtros para DataTable

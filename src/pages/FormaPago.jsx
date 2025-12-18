@@ -28,7 +28,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import FormaPagoForm from "../components/formaPago/FormaPagoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
-const FormaPago = () => {
+const FormaPago = ({ ruta }) => {
   const [formasPago, setFormasPago] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -37,8 +37,18 @@ const FormaPago = () => {
   const [formaPagoAEliminar, setFormaPagoAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
-  const permisos = usePermissions("FormaPago");
+  const permisos = usePermissions(ruta);
   const [globalFilter, setGlobalFilter] = useState("");
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return (
+      <div className="p-4">
+        <h2>Sin Acceso</h2>
+        <p>No tiene permisos para acceder a este módulo.</p>
+      </div>
+    );
+  }
 
   const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 

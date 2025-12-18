@@ -14,6 +14,7 @@ import { Dropdown } from "primereact/dropdown";
 import { useState } from "react";
 import { getPersonal } from "../../api/personal";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
+import { getMonedas } from "../../api/moneda";
 import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import { FileUpload } from "primereact/fileupload";
@@ -35,11 +36,11 @@ const schema = Yup.object().shape({
   cesado: Yup.boolean(),
   representantelegalId: Yup.number().nullable(),
   entidadComercialId: Yup.number().nullable(),
-  logo: Yup.string(),
+  logo: Yup.string().nullable(),
   porcentajeIgv: Yup.number().nullable(),
   porcentajeRetencion: Yup.number().nullable(),
   montoMinimoRetencion: Yup.number().nullable(),
-  cuentaDetraccion: Yup.string(),
+  cuentaDetraccion: Yup.string().nullable(),
   soyAgenteRetencion: Yup.boolean(),
   soyAgentePercepcion: Yup.boolean(),
   // Márgenes de utilidad
@@ -60,6 +61,13 @@ const schema = Yup.object().shape({
     .nullable()
     .min(0, "El margen objetivo no puede ser negativo")
     .max(100, "El margen objetivo no puede ser mayor a 100%"),
+  // Campos de liquidación
+  porcentajeBaseLiqPesca: Yup.number().nullable().min(0, "No puede ser negativo"),
+  porcentajeComisionPatron: Yup.number().nullable().min(0, "No puede ser negativo"),
+  cantPersonalCalcComisionMotorista: Yup.number().nullable().min(0, "No puede ser negativo"),
+  cantDivisoriaCalcComisionMotorista: Yup.number().nullable().min(0, "No puede ser negativo"),
+  porcentajeCalcComisionPanguero: Yup.number().nullable().min(0, "No puede ser negativo"),
+  monedaCalculosLiqId: Yup.number().nullable(),
 });
 
 /**
@@ -119,6 +127,10 @@ export default function EmpresaForm({
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
   const [loadingEntidades, setLoadingEntidades] = useState(false);
 
+  // Estado profesional para lista de monedas
+  const [monedas, setMonedas] = useState([]);
+  const [loadingMonedas, setLoadingMonedas] = useState(false);
+
   const listarPersonalEmpresa = async (empresaId) => {
     // Devuelve un array [{ id, nombreCompleto }]
     const data = await getPersonal(empresaId);
@@ -176,6 +188,29 @@ export default function EmpresaForm({
     }
     cargarEntidades();
   }, [defaultValues.id]);
+
+  // Carga las monedas para el dropdown
+  useEffect(() => {
+    async function cargarMonedas() {
+      setLoadingMonedas(true);
+      try {
+        const data = await getMonedas();
+        setMonedas(data);
+      } catch (err) {
+        console.error("❌ Error al cargar monedas:", err);
+        setMonedas([]);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudieron cargar las monedas",
+          life: 4000,
+        });
+      } finally {
+        setLoadingMonedas(false);
+      }
+    }
+    cargarMonedas();
+  }, []);
 
   // Reset al abrir en modo edición o alta
   useEffect(() => {
@@ -311,7 +346,20 @@ export default function EmpresaForm({
       {/* Toast profesional para mensajes de usuario */}
       <Toast ref={toast} position="top-right" />
       <ConfirmDialog />
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(
+        (data) => {
+          onSubmit(data);
+        },
+        (errors) => {
+          console.error("❌ FORMULARIO - Errores de validación:", errors);
+          toast.current?.show({
+            severity: "error",
+            summary: "Error de validación",
+            detail: "Por favor corrija los errores en el formulario",
+            life: 4000,
+          });
+        }
+      )}>
         <div className="p-fluid">
           {/* Gestión profesional de logo de empresa */}
           {/* Layout profesional: imagen a la izquierda, controles a la derecha */}
@@ -890,6 +938,260 @@ export default function EmpresaForm({
                   />
                 )}
               />
+            </div>
+          </div>
+
+          {/* Sección de Liquidación de Pesca */}
+          <div
+            style={{
+              marginTop: 16,
+              padding: 16,
+              backgroundColor: "#e8f5e9",
+              borderRadius: 8,
+              border: "2px solid #c8e6c9",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <i className="pi pi-calculator" style={{ fontSize: "1.5em", color: "#2e7d32" }}></i>
+              <h3 style={{ margin: 0, color: "#2e7d32" }}>Parámetros de Liquidación de Pesca</h3>
+            </div>
+            <small style={{ display: "block", color: "#558b2f", marginBottom: 12 }}>
+              Configuración para cálculos de liquidación y comisiones de tripulación.
+            </small>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "end",
+                gap: 24,
+                marginBottom: 12,
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="porcentajeBaseLiqPesca">
+                  % Base Liquidación Pesca
+                </label>
+                <Controller
+                  name="porcentajeBaseLiqPesca"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="porcentajeBaseLiqPesca"
+                      value={
+                        field.value === undefined || field.value === null
+                          ? null
+                          : Number(field.value)
+                      }
+                      onValueChange={(e) =>
+                        field.onChange(e.value === undefined ? null : e.value)
+                      }
+                      min={0}
+                      mode="decimal"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
+                      suffix=" %"
+                      placeholder="0.00 %"
+                      className={errors.porcentajeBaseLiqPesca ? "p-invalid" : ""}
+                      disabled={readOnly}
+                      inputStyle={{ fontWeight: "bold" }}
+                    />
+                  )}
+                />
+                {errors.porcentajeBaseLiqPesca && (
+                  <small className="p-error">
+                    {errors.porcentajeBaseLiqPesca.message}
+                  </small>
+                )}
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label htmlFor="porcentajeComisionPatron">
+                  % Comisión Patrón
+                </label>
+                <Controller
+                  name="porcentajeComisionPatron"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="porcentajeComisionPatron"
+                      value={
+                        field.value === undefined || field.value === null
+                          ? null
+                          : Number(field.value)
+                      }
+                      onValueChange={(e) =>
+                        field.onChange(e.value === undefined ? null : e.value)
+                      }
+                      min={0}
+                      mode="decimal"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
+                      suffix=" %"
+                      placeholder="0.00 %"
+                      className={errors.porcentajeComisionPatron ? "p-invalid" : ""}
+                      disabled={readOnly}
+                      inputStyle={{ fontWeight: "bold" }}
+                    />
+                  )}
+                />
+                {errors.porcentajeComisionPatron && (
+                  <small className="p-error">
+                    {errors.porcentajeComisionPatron.message}
+                  </small>
+                )}
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label htmlFor="porcentajeCalcComisionPanguero">
+                  % Comisión Panguero
+                </label>
+                <Controller
+                  name="porcentajeCalcComisionPanguero"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="porcentajeCalcComisionPanguero"
+                      value={
+                        field.value === undefined || field.value === null
+                          ? null
+                          : Number(field.value)
+                      }
+                      onValueChange={(e) =>
+                        field.onChange(e.value === undefined ? null : e.value)
+                      }
+                      min={0}
+                      mode="decimal"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
+                      suffix=" %"
+                      placeholder="0.00 %"
+                      className={errors.porcentajeCalcComisionPanguero ? "p-invalid" : ""}
+                      disabled={readOnly}
+                      inputStyle={{ fontWeight: "bold" }}
+                    />
+                  )}
+                />
+                {errors.porcentajeCalcComisionPanguero && (
+                  <small className="p-error">
+                    {errors.porcentajeCalcComisionPanguero.message}
+                  </small>
+                )}
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "end",
+                gap: 24,
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="cantPersonalCalcComisionMotorista">
+                  Cant. Personal Cálc. Comisión Motorista
+                </label>
+                <Controller
+                  name="cantPersonalCalcComisionMotorista"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="cantPersonalCalcComisionMotorista"
+                      value={
+                        field.value === undefined || field.value === null
+                          ? null
+                          : Number(field.value)
+                      }
+                      onValueChange={(e) =>
+                        field.onChange(e.value === undefined ? null : e.value)
+                      }
+                      min={0}
+                      mode="decimal"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
+                      placeholder="0.00"
+                      className={errors.cantPersonalCalcComisionMotorista ? "p-invalid" : ""}
+                      disabled={readOnly}
+                      inputStyle={{ fontWeight: "bold" }}
+                    />
+                  )}
+                />
+                {errors.cantPersonalCalcComisionMotorista && (
+                  <small className="p-error">
+                    {errors.cantPersonalCalcComisionMotorista.message}
+                  </small>
+                )}
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label htmlFor="cantDivisoriaCalcComisionMotorista">
+                  Cant. Divisoria Cálc. Comisión Motorista
+                </label>
+                <Controller
+                  name="cantDivisoriaCalcComisionMotorista"
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      id="cantDivisoriaCalcComisionMotorista"
+                      value={
+                        field.value === undefined || field.value === null
+                          ? null
+                          : Number(field.value)
+                      }
+                      onValueChange={(e) =>
+                        field.onChange(e.value === undefined ? null : e.value)
+                      }
+                      min={0}
+                      mode="decimal"
+                      minFractionDigits={2}
+                      maxFractionDigits={2}
+                      placeholder="0.00"
+                      className={errors.cantDivisoriaCalcComisionMotorista ? "p-invalid" : ""}
+                      disabled={readOnly}
+                      inputStyle={{ fontWeight: "bold" }}
+                    />
+                  )}
+                />
+                {errors.cantDivisoriaCalcComisionMotorista && (
+                  <small className="p-error">
+                    {errors.cantDivisoriaCalcComisionMotorista.message}
+                  </small>
+                )}
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label htmlFor="monedaCalculosLiqId">
+                  Moneda para Cálculos
+                </label>
+                <Controller
+                  name="monedaCalculosLiqId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="monedaCalculosLiqId"
+                      value={field.value ?? null}
+                      options={monedas}
+                      optionLabel="codigoSunat"
+                      optionValue="id"
+                      placeholder={
+                        loadingMonedas
+                          ? "Cargando..."
+                          : "Seleccione moneda"
+                      }
+                      className={errors.monedaCalculosLiqId ? "p-invalid" : ""}
+                      onChange={(e) => field.onChange(e.value)}
+                      disabled={readOnly || loadingMonedas}
+                      filter
+                      showClear
+                      style={{ fontWeight: "bold" }}
+                    />
+                  )}
+                />
+                {errors.monedaCalculosLiqId && (
+                  <small className="p-error">
+                    {errors.monedaCalculosLiqId.message}
+                  </small>
+                )}
+              </div>
             </div>
           </div>
 
