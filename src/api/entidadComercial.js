@@ -97,3 +97,13 @@ export async function getClientesPorEmpresa(empresaId) {
     value: Number(cliente.id)
   }));
 }
+
+/**
+ * Clona una EntidadComercial y sus tablas relacionadas a todas las demás empresas del grupo
+ * @param {number} id - ID de la entidad comercial a clonar
+ * @returns {Promise<Object>} Resumen de operaciones realizadas
+ */
+export async function clonarEntidadAEmpresas(id) {
+  const res = await axios.post(`${API_URL}/${id}/clonar-a-empresas`, {}, { headers: getAuthHeaders() });
+  return res.data;
+}

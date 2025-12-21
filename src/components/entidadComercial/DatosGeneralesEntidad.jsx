@@ -196,6 +196,7 @@ const DatosGeneralesEntidad = ({
     }
   };
 
+
   /**
    * Buscar datos por RUC en SUNAT
    * @param {string} ruc - Número de RUC
@@ -230,32 +231,11 @@ const DatosGeneralesEntidad = ({
         }
       }
 
-      // Notificar al componente padre con todos los datos (incluyendo dirección fiscal automática)
-      const valoresActuales = getValues();
-      
-      const datosCompletos = {
-        empresaId: valoresActuales.empresaId || watchedFields?.empresaId,
-        tipoDocumentoId: valoresActuales.tipoDocumentoId || watchedFields?.tipoDocumentoId,
-        tipoEntidadId: valoresActuales.tipoEntidadId || watchedFields?.tipoEntidadId,
-        numeroDocumento: ruc,
-        razonSocial: datos.razon_social || "",
-        nombreComercial: datos.razon_social || "",
-        formaPagoId: valoresActuales.formaPagoId || watchedFields?.formaPagoId,
-        agrupacionEntidadId: valoresActuales.agrupacionEntidadId || watchedFields?.agrupacionEntidadId,
-        esCliente: valoresActuales.esCliente ?? watchedFields?.esCliente ?? false,
-        esProveedor: valoresActuales.esProveedor ?? watchedFields?.esProveedor ?? false,
-        esCorporativo: valoresActuales.esCorporativo ?? watchedFields?.esCorporativo ?? false,
-        estado: valoresActuales.estado ?? watchedFields?.estado ?? true,
-        codigoErpFinanciero: valoresActuales.codigoErpFinanciero || watchedFields?.codigoErpFinanciero || "",
-        sujetoRetencion: valoresActuales.sujetoRetencion ?? watchedFields?.sujetoRetencion ?? false,
-        sujetoPercepcion: valoresActuales.sujetoPercepcion ?? watchedFields?.sujetoPercepcion ?? false,
-        estadoActivoSUNAT: datos.estado === "ACTIVO",
-        condicionHabidoSUNAT: datos.condicion === "HABIDO",
-        esAgenteRetencion: Boolean(datos.es_agente_retencion),
-        direccionFiscalAutomatica: direccionFiscalAutomatica // ← CLAVE: Pasar dirección fiscal al padre
-      };
-
-      onDatosGeneralesChange?.(datosCompletos);
+      // Notificar cambios al componente padre
+      onDatosGeneralesChange?.({
+        ...getValues(),
+        direccionFiscalAutomatica,
+      });
 
       // Mostrar notificación de éxito
       const estadoInfo = datos.estado === "ACTIVO" ? "✅ Activo" : "❌ Inactivo";
@@ -278,6 +258,7 @@ const DatosGeneralesEntidad = ({
       setBuscandoDocumento(false);
     }
   };
+
 
   /**
    * Manejar búsqueda manual cuando el usuario hace clic en el botón
@@ -318,6 +299,7 @@ const DatosGeneralesEntidad = ({
       });
     }
   };
+
 
   // Función estable para notificar cambios
   const notificarCambios = useCallback(

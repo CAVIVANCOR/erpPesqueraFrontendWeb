@@ -188,16 +188,16 @@ const EntidadComercial = ({ ruta }) => {
     setModoEdicion(false);
   };
 
-  const onGuardarExitoso = () => {
+  const onGuardarExitoso = (entidad) => {
     cargarEntidadesComerciales();
-    cerrarDialogo();
+    
+    // Mostrar mensaje de éxito sin cerrar el diálogo
     toast.current.show({
       severity: "success",
       summary: "Éxito",
-      detail:
-        entidadSeleccionada && entidadSeleccionada.id
-          ? "Entidad comercial actualizada correctamente"
-          : "Entidad comercial creada correctamente",
+      detail: entidad && entidad.id
+        ? "Entidad comercial actualizada correctamente"
+        : "Entidad comercial creada correctamente",
       life: 3000,
     });
   };
@@ -253,6 +253,10 @@ const EntidadComercial = ({ ruta }) => {
     if (rowData.esCorporativo) tipos.push("Corporativo");
 
     return tipos.length > 0 ? tipos.join(", ") : "N/A";
+  };
+
+  const empresaTemplate = (rowData) => {
+    return rowData.empresa?.razonSocial || rowData.empresa?.nombre || "N/A";
   };
 
   const tipoEntidadTemplate = (rowData) => {
@@ -481,8 +485,8 @@ const EntidadComercial = ({ ruta }) => {
         showGridlines
         stripedRows
         paginator
-        rows={5}
-        rowsPerPageOptions={[5, 10, 15, 20]}
+        rows={40}
+        rowsPerPageOptions={[40, 80, 160, 320]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} tipos de contrato"
         sortField="id"
@@ -504,6 +508,12 @@ const EntidadComercial = ({ ruta }) => {
         scrollable
       >
         <Column field="id" header="ID" sortable />
+        <Column
+          field="empresaId"
+          header="Empresa"
+          body={empresaTemplate}
+          sortable
+        />
         <Column
           field="tipoEntidadId"
           header="Tipo Entidad"

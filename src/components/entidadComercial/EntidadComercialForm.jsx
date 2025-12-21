@@ -27,6 +27,7 @@ import {
   crearEntidadComercial,
   actualizarEntidadComercial,
   getAgenciasEnvio,
+  clonarEntidadAEmpresas,
 } from "../../api/entidadComercial";
 import {
   crearDireccionEntidad,
@@ -40,6 +41,8 @@ import { getFormasPago } from "../../api/formaPago";
 import { getAgrupacionesEntidad } from "../../api/agrupacionEntidad";
 import { getVendedoresPorEmpresa } from "../../api/personal";
 import { getMonedas } from "../../api/moneda";
+import { getUbigeos} from "../../api/ubigeo";
+import { consultarSunatRucFull } from "../../api/consultaExterna";
 
 // Importar componentes de cards
 import DatosGeneralesEntidad from "./DatosGeneralesEntidad";
@@ -50,7 +53,8 @@ import DetalleVehiculosEntidad from "./DetalleVehiculosEntidad";
 import DetallePreciosEntidad from "./DetallePreciosEntidad";
 import DetalleLineasCreditoEntidad from "./DetalleLineasCreditoEntidad";
 import DetalleCtasCteEntidad from "./DetalleCtasCteEntidad";
-
+import { getDepartamentos } from "../../api/departamento";
+import { getProvincias } from "../../api/provincia";
 // Esquema de validación básico para EntidadComercial
 const validationSchema = yup.object().shape({
   // Solo validaciones básicas requeridas para el guardado principal
@@ -514,6 +518,17 @@ const EntidadComercialForm = ({
           entidadComercial.id,
           datosActualizacion
         );
+
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Entidad comercial actualizada correctamente",
+          life: 3000,
+        });
+
+        if (onGuardar) {
+          onGuardar(resultado);
+        }
       } else {
         // Crear nueva entidad
         // Agregar campos de auditoría para creación
@@ -528,6 +543,11 @@ const EntidadComercialForm = ({
         };
 
         resultado = await crearEntidadComercial(datosCreacion);
+
+        // Crear dirección fiscal automáticamente si es RUC
+        if (resultado?.id && Number(data.tipoDocumentoId) === 2 && data.numeroDocumento) {
+          crearDireccionFiscalAutomatica(resultado.id, data.numeroDocumento);
+        }
       }
 
       toast.current?.show({
@@ -539,7 +559,9 @@ const EntidadComercialForm = ({
         life: 3000,
       });
 
-      onGuardar?.(resultado);
+      if (onGuardar) {
+        onGuardar(resultado);
+      }
     } catch (error) {
       console.error("Error al guardar entidad comercial:", error);
       toast.current?.show({
@@ -548,6 +570,145 @@ const EntidadComercialForm = ({
         detail:
           error.response?.data?.message ||
           "Error al guardar la entidad comercial",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Crea automáticamente la dirección fiscal desde SUNAT para una entidad recién creada
+   * @param {number} entidadId - ID de la entidad recién creada
+   * @param {string} ruc - Número de RUC
+   */
+  const crearDireccionFiscalAutomatica = async (entidadId, ruc) => {
+    try {
+      // 1. Consultar datos de SUNAT
+      const datosSunat = await consultarSunatRucFull(ruc);
+      
+      // Verificar que tenga dirección y ubigeo
+      if (!datosSunat.direccion || !datosSunat.ubigeo) {
+        console.warn("SUNAT no devolvió dirección o ubigeo");
+        return;
+      }
+
+      // 2. Buscar ubigeo por código SUNAT
+      const ubigeos = await getUbigeos();
+      const ubigeoEncontrado = ubigeos.find(u => u.codigo === datosSunat.ubigeo);
+      
+      if (!ubigeoEncontrado) {
+        throw new Error(`No se encontró el ubigeo con código: ${datosSunat.ubigeo}`);
+      }
+
+      // 3. Buscar departamento y provincia para construir direccionArmada
+      const [departamentos, provincias] = await Promise.all([
+        getDepartamentos(),
+        getProvincias()
+      ]);
+
+      const departamento = departamentos.find(d => Number(d.id) === Number(ubigeoEncontrado.departamentoId));
+      const provincia = provincias.find(p => Number(p.id) === Number(ubigeoEncontrado.provinciaId));
+
+      if (!departamento || !provincia) {
+        throw new Error("No se encontraron datos completos de ubicación geográfica");
+      }
+
+      // 4. Construir direccionArmada
+      const direccionArmada = [
+        datosSunat.direccion,
+        ubigeoEncontrado.nombreDistrito || "",
+        departamento.nombre,
+        provincia.nombre
+      ].filter(Boolean).join(", ");
+
+      // 5. Preparar datos para la dirección fiscal
+      const datosDireccionFiscal = {
+        entidadComercialId: Number(entidadId),
+        direccion: datosSunat.direccion,
+        direccionArmada: direccionArmada,
+        ubigeoId: Number(ubigeoEncontrado.id),
+        fiscal: true,
+        almacenPrincipal: false,
+        activo: true
+      };
+
+      // 6. Crear la dirección en la base de datos
+      await crearDireccionEntidad(datosDireccionFiscal);
+
+      // 7. Mostrar notificación de éxito
+      toast.current?.show({
+        severity: "success",
+        summary: "Dirección Fiscal Creada",
+        detail: "Dirección fiscal agregada automáticamente desde SUNAT",
+        life: 4000,
+      });
+
+    } catch (error) {
+      console.error("Error creando dirección fiscal automática:", error);
+      toast.current?.show({
+        severity: "warn",
+        summary: "Dirección Fiscal",
+        detail: `No se pudo crear la dirección fiscal automáticamente: ${error.message}`,
+        life: 6000,
+      });
+    }
+  };
+
+  /**
+   * Maneja la clonación de la entidad comercial a todas las empresas
+   */
+  const handleClonarAEmpresas = async () => {
+    if (!entidadComercial?.id) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe guardar la entidad antes de clonarla",
+        life: 3000,
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const resumen = await clonarEntidadAEmpresas(Number(entidadComercial.id));
+
+      const mensaje = `
+        Clonación completada:
+        • Empresas procesadas: ${resumen.empresasProcesadas}
+        • Entidades creadas: ${resumen.entidadesCreadas}
+        • Entidades actualizadas: ${resumen.entidadesActualizadas}
+        • Direcciones creadas: ${resumen.direccionesCreadas}
+        • Direcciones actualizadas: ${resumen.direccionesActualizadas}
+        • Contactos creados: ${resumen.contactosCreados}
+        • Contactos actualizados: ${resumen.contactosActualizados}
+        • Cuentas creadas: ${resumen.ctaCteCreadas}
+        • Cuentas actualizadas: ${resumen.ctaCteActualizadas}
+      `;
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Clonación Exitosa",
+        detail: mensaje,
+        life: 8000,
+      });
+
+      if (resumen.errores && resumen.errores.length > 0) {
+        resumen.errores.forEach((error) => {
+          toast.current?.show({
+            severity: "warn",
+            summary: `Error en ${error.empresaNombre}`,
+            detail: error.error,
+            life: 5000,
+          });
+        });
+      }
+    } catch (error) {
+      console.error("Error al clonar entidad:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al clonar la entidad comercial",
         life: 3000,
       });
     } finally {
@@ -784,43 +945,71 @@ const EntidadComercialForm = ({
         <div
           style={{
             display: "flex",
-            justifyContent: "center",
+            justifyContent: "space-between",
             gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
             marginBottom: 10,
             marginTop: 10,
           }}
         >
-          <Button
-            type="button"
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-warning"
-            severity="warning"
-            onClick={onCancelar}
-            disabled={loading}
-            raised
-            size="small"
-            outlined
-          />
-          <Button
-            type="button"
-            label={modoEdicion ? "Actualizar" : "Guardar"}
-            icon="pi pi-save"
-            className="p-button-success"
-            severity="success"
-            onClick={handleSubmit(onSubmit)}
-            loading={loading}
-            disabled={
-              readOnly ||
-              loading ||
-              (modoEdicion && !permisos.puedeEditar) ||
-              (!modoEdicion && !permisos.puedeCrear)
-            }
-            raised
-            size="small"
-            outlined
-          />
+          {/* Botón Clonar a Empresas - lado izquierdo */}
+          <div>
+            {modoEdicion && entidadComercial?.id && (
+              <Button
+                type="button"
+                label="Clonar a Empresas"
+                icon="pi pi-clone"
+                className="p-button-info"
+                severity="info"
+                onClick={handleClonarAEmpresas}
+                disabled={loading || readOnly}
+                loading={loading}
+                raised
+                size="small"
+                tooltip="Clona esta entidad y sus datos relacionados a todas las empresas del grupo"
+                tooltipOptions={{ position: "top" }}
+              />
+            )}
+          </div>
+
+          {/* Botones principales - lado derecho */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <Button
+              type="button"
+              label="Cancelar"
+              icon="pi pi-times"
+              className="p-button-warning"
+              severity="warning"
+              onClick={onCancelar}
+              disabled={loading}
+              raised
+              size="small"
+              outlined
+            />
+            <Button
+              type="button"
+              label={modoEdicion ? "Actualizar" : "Guardar"}
+              icon="pi pi-save"
+              className="p-button-success"
+              severity="success"
+              onClick={handleSubmit(onSubmit)}
+              loading={loading}
+              disabled={
+                readOnly ||
+                loading ||
+                (modoEdicion && !permisos.puedeEditar) ||
+                (!modoEdicion && !permisos.puedeCrear)
+              }
+              raised
+              size="small"
+              outlined
+            />
+          </div>
         </div>
       </form>
     </div>
