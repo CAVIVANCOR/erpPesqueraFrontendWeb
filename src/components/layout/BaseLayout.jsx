@@ -103,6 +103,7 @@ import CentrosAlmacen from '../../pages/CentrosAlmacen';
 import Almacen from '../../pages/Almacen';
 import SerieDoc from '../../pages/SerieDoc';
 import OTMantenimiento from '../../pages/OTMantenimiento';
+import Videoconferencia from '../../pages/Videoconferencia';
 
 /**
  * BaseLayout - Layout principal con gestión de módulos
@@ -217,6 +218,7 @@ export default function BaseLayout({ children, onLogout }) {
     tipoActivo: { label: "Tipo Activo", componente: <TipoActivo ruta="tipoActivo" /> },
     detallePermisoActivo: { label: "Detalle Permiso Activo", componente: <DetallePermisoActivo ruta="detallePermisoActivo" /> },
     permisoAutorizacion: { label: "Permiso Autorización", componente: <PermisoAutorizacion ruta="permisoAutorizacion" /> },
+    videoconferencia: { label: "Videoconferencias", componente: <Videoconferencia ruta="videoconferencia" /> },
   };
 
   /**

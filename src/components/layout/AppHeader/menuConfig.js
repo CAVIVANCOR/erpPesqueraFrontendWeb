@@ -686,7 +686,7 @@ export const getMenuConfig = (abrirModulo) => ({
   },
 
   // ============================================
-  // 4. USUARIOS (Dropdown simple)
+  // 5. USUARIOS (Dropdown simple)
   // ============================================
   usuarios: {
     id: "usuarios",
