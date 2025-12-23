@@ -54,7 +54,14 @@ export default function NotificationBell() {
     overlayRef.current.hide();
 
     if (notificacion.urlDestino) {
-      navigate(notificacion.urlDestino);
+      // Si es una notificación de videoconferencia y la URL es de Jitsi, abrir en nueva ventana
+      if (notificacion.tipo?.includes('VIDEOCONFERENCIA') && 
+          notificacion.urlDestino.includes('meet.megui.com.pe')) {
+        window.open(notificacion.urlDestino, '_blank');
+      } else {
+        // Para otras notificaciones, navegar dentro del ERP
+        navigate(notificacion.urlDestino);
+      }
     }
   };
 
