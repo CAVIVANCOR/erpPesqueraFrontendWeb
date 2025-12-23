@@ -122,10 +122,14 @@ export default function Videoconferencia({ ruta }) {
         getPersonal(),
       ]);
 
-      const personalConNombres = personalData.map((p) => ({
-        ...p,
-        nombreCompleto: `${p.nombres || ""} ${p.apellidos || ""}`.trim(),
-      }));
+      const personalConNombres = personalData.map((p) => {
+        const nombrePersonal = `${p.nombres || ""} ${p.apellidos || ""}`.trim();
+        const empresaNombre = p.empresa?.razonSocial || "Sin Empresa";
+        return {
+          ...p,
+          nombreCompleto: `${nombrePersonal} - ${empresaNombre}`,
+        };
+      });
       setPersonalOptions(personalConNombres);
       setItems(videoconferenciasData);
     } catch (err) {
@@ -428,7 +432,7 @@ export default function Videoconferencia({ ruta }) {
       return;
     }
 
-    const jitsiUrl = `https://meet.jit.si/${rowData.salaId}`;
+    const jitsiUrl = `https://meet.megui.com.pe/${rowData.salaId}`;
     window.open(jitsiUrl, "_blank", "noopener,noreferrer");
   };
 

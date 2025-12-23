@@ -1,0 +1,252 @@
+.participante-selector-dialog .p-dialog-content {
+  padding: 0 !important;
+}
+
+.participante-selector-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  min-height: 600px;
+  padding: 1rem;
+}
+
+.participante-selector-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border-right: 2px solid #e5e7eb;
+  padding-right: 1rem;
+}
+
+.participante-selector-right {
+  padding-left: 1rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.filtros-section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.filtros-section h4 {
+  margin: 0 0 1rem 0;
+  color: #1f2937;
+  font-size: 1.1rem;
+}
+
+.personal-list-section h4 {
+  margin: 0 0 1rem 0;
+  color: #1f2937;
+  font-size: 1.1rem;
+}
+
+.personal-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.personal-card {
+  cursor: move;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.personal-card:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #3b82f6;
+}
+
+.personal-card .p-card-body {
+  padding: 0.75rem;
+}
+
+.personal-card-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.personal-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.personal-nombre {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.personal-empresa {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-bottom: 0.15rem;
+  display: flex;
+  align-items: center;
+}
+
+.personal-cargo {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+}
+
+.seleccionados-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.seleccionados-header h4 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 1.1rem;
+}
+
+.drop-zone-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 500px;
+  color: #9ca3af;
+  text-align: center;
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.drop-zone-empty i {
+  color: #d1d5db;
+  margin-bottom: 1rem;
+}
+
+.drop-zone-empty p {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+}
+
+.drop-zone-empty .hint {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 1rem;
+}
+
+.seleccionados-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.seleccionado-card {
+  background: #fff;
+  border: 2px solid #10b981;
+  transition: all 0.2s ease;
+}
+
+.seleccionado-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(16, 185, 129, 0.2);
+}
+
+.seleccionado-card .p-card-body {
+  padding: 1rem;
+}
+
+.seleccionado-card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+}
+
+.seleccionado-card-content .remove-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 10;
+}
+
+.seleccionado-card-content .p-avatar {
+  margin-bottom: 1rem;
+}
+
+.seleccionado-info {
+  width: 100%;
+}
+
+.seleccionado-nombre {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+  word-wrap: break-word;
+}
+
+.seleccionado-empresa {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+  word-wrap: break-word;
+}
+
+.seleccionado-cargo {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  word-wrap: break-word;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.empty-state i {
+  color: #d1d5db;
+  margin-bottom: 1rem;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+@media (max-width: 1200px) {
+  .participante-selector-container {
+    grid-template-columns: 1fr;
+  }
+
+  .participante-selector-left {
+    border-right: none;
+    border-bottom: 2px solid #e5e7eb;
+    padding-right: 0;
+    padding-bottom: 1rem;
+  }
+
+  .participante-selector-right {
+    padding-left: 0;
+    padding-top: 1rem;
+  }
+
+  .seleccionados-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}

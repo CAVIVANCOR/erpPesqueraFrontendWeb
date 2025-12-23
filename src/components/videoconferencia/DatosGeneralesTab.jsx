@@ -10,8 +10,9 @@ import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { Tag } from "primereact/tag";
-import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { confirmDialog } from "primereact/confirmdialog";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import ParticipanteSelectorDialog from "./ParticipanteSelectorDialog";
 import {
   getParticipantesPorVideoconferencia,
   crearParticipanteReunion,
@@ -143,6 +144,62 @@ export default function DatosGeneralesTab({
     });
   };
 
+  const handleGuardarParticipantes = async (participantesSeleccionados) => {
+    if (participantesSeleccionados.length === 0) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Sin Selección",
+        detail: "Debe seleccionar al menos un participante.",
+      });
+      return;
+    }
+
+    setLoadingParticipantes(true);
+    
+    // Mostrar mensaje de progreso
+    toast.current.show({
+      severity: "info",
+      summary: "Procesando...",
+      detail: `Agregando ${participantesSeleccionados.length} participante(s) y enviando notificaciones. Por favor espere...`,
+      life: 8000,
+      sticky: false,
+    });
+
+    try {
+      const promesas = participantesSeleccionados.map((personal) =>
+        crearParticipanteReunion({
+          videoconferenciaId,
+          personalId: Number(personal.id),
+          rol: "PARTICIPANTE",
+        })
+      );
+
+      await Promise.all(promesas);
+
+      toast.current.show({
+        severity: "success",
+        summary: "¡Completado!",
+        detail: `Se agregaron ${participantesSeleccionados.length} participante(s) correctamente. Se enviaron las notificaciones y correos electrónicos.`,
+        life: 6000,
+      });
+
+      cargarParticipantes();
+      setShowDialogParticipante(false);
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.mensaje ||
+        err.response?.data?.error ||
+        "No se pudo guardar algunos participantes.";
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: errorMsg,
+        life: 5000,
+      });
+    }
+    setLoadingParticipantes(false);
+  };
+
   const handleSubmitParticipante = async () => {
     if (!formDataParticipante.personalId) {
       toast.current.show({
@@ -161,21 +218,12 @@ export default function DatosGeneralesTab({
         rol: formDataParticipante.rol,
       };
 
-      if (editingParticipante) {
-        await actualizarParticipanteReunion(editingParticipante.id, dataToSubmit);
-        toast.current.show({
-          severity: "success",
-          summary: "Actualizado",
-          detail: "Participante actualizado correctamente.",
-        });
-      } else {
-        await crearParticipanteReunion(dataToSubmit);
-        toast.current.show({
-          severity: "success",
-          summary: "Agregado",
-          detail: "Participante agregado correctamente.",
-        });
-      }
+      await actualizarParticipanteReunion(editingParticipante.id, dataToSubmit);
+      toast.current.show({
+        severity: "success",
+        summary: "Actualizado",
+        detail: "Participante actualizado correctamente.",
+      });
 
       cargarParticipantes();
       setShowDialogParticipante(false);
@@ -465,7 +513,6 @@ export default function DatosGeneralesTab({
 
       {/* SECCIÓN PARTICIPANTES */}
       <div className="col-12 mt-4">
-        <ConfirmDialog />
         <div className="flex justify-content-between align-items-center mb-3">
           <h4 style={{ margin: 0 }}>
             <i className="pi pi-users mr-2"></i>
@@ -535,11 +582,24 @@ export default function DatosGeneralesTab({
           </DataTable>
         )}
 
-        {/* Dialog Participante */}
-        <Dialog
+        {/* Selector Avanzado de Participantes */}
+        {!editingParticipante && (
+          <ParticipanteSelectorDialog
             visible={showDialogParticipante}
             onHide={() => setShowDialogParticipante(false)}
-            header={editingParticipante ? "EDITAR PARTICIPANTE" : "AGREGAR PARTICIPANTE"}
+            personalOptions={personalOptions}
+            participantesActuales={participantes}
+            onGuardar={handleGuardarParticipantes}
+            loading={loadingParticipantes}
+          />
+        )}
+
+        {/* Dialog para Editar Participante */}
+        {editingParticipante && (
+          <Dialog
+            visible={showDialogParticipante}
+            onHide={() => setShowDialogParticipante(false)}
+            header="EDITAR PARTICIPANTE"
             modal
             style={{ width: "500px" }}
           >
@@ -559,6 +619,7 @@ export default function DatosGeneralesTab({
                   filter
                   showClear
                   style={{ fontWeight: "bold" }}
+                  disabled
                 />
               </div>
 
@@ -594,6 +655,7 @@ export default function DatosGeneralesTab({
               </div>
             </div>
           </Dialog>
+        )}
       </div>
 
     </div>

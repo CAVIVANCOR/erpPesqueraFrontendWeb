@@ -8,6 +8,7 @@ import { useModulo } from '../../../context/ModuloContext';
 import { getMenuConfig } from './menuConfig';
 import MegaMenu from './MegaMenu';
 import UserAvatar from './UserAvatar';
+import NotificationBell from './NotificationBell';
 import { useAuthStore } from '../../../shared/stores/useAuthStore';
 import logotipoMegui from '../../../assets/Logotipo/Logotipo_Megui_Negativo.png';
 import logoJitsi from '../../../assets/logoJitsiMeet.png';
@@ -118,6 +119,9 @@ export default function AppHeader() {
             />
           </motion.div>
           <Tooltip target=".jitsi-avatar-tooltip" content="Videoconferencias" position="bottom" />
+
+          {/* Notification Bell */}
+          <NotificationBell />
 
           {/* User Avatar */}
           <UserAvatar usuario={usuario} />
