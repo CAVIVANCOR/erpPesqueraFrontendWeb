@@ -54,10 +54,32 @@ export default function NotificationBell() {
     overlayRef.current.hide();
 
     if (notificacion.urlDestino) {
-      // Si es una notificación de videoconferencia y la URL es de Jitsi, abrir en nueva ventana
-      if (notificacion.tipo?.includes('VIDEOCONFERENCIA') && 
-          notificacion.urlDestino.includes('meet.megui.com.pe')) {
-        window.open(notificacion.urlDestino, '_blank');
+      // Si es una notificación de videoconferencia, confirmar y abrir Jitsi
+      if (notificacion.tipo?.includes('VIDEOCONFERENCIA') && notificacion.metadata?.participanteId) {
+        try {
+          // Confirmar asistencia y obtener URL de Jitsi
+          const response = await fetch(
+            `${import.meta.env.VITE_API_URL}/participante-reunion/${notificacion.metadata.participanteId}/confirmar-y-obtener-info`,
+            {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+            }
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            // Abrir Jitsi en nueva ventana
+            window.open(data.videoconferencia.urlReunion, '_blank');
+          } else {
+            // Si falla, navegar a la página de videoconferencia
+            navigate(notificacion.urlDestino);
+          }
+        } catch (error) {
+          console.error('Error al confirmar asistencia:', error);
+          // Si falla, navegar a la página de videoconferencia
+          navigate(notificacion.urlDestino);
+        }
       } else {
         // Para otras notificaciones, navegar dentro del ERP
         navigate(notificacion.urlDestino);

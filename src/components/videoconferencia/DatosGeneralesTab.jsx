@@ -502,12 +502,44 @@ export default function DatosGeneralesTab({
           <label htmlFor="salaId" className="block mb-2 font-bold">
             ID DE SALA JITSI
           </label>
-          <InputText
-            id="salaId"
-            value={formData.salaId}
-            disabled
-            style={{ backgroundColor: "#f0f0f0", fontFamily: "monospace" }}
-          />
+          <div className="p-inputgroup">
+            <InputText
+              id="salaId"
+              value={formData.salaId}
+              disabled
+              style={{ backgroundColor: "#f0f0f0", fontFamily: "monospace" }}
+            />
+            <Button
+              icon="pi pi-copy"
+              label="Copiar al Portapapeles"
+              className="p-button-info"
+              tooltip="Copiar link de invitación"
+              tooltipOptions={{ position: "top" }}
+              onClick={() => {
+                const jitsiUrl = import.meta.env.VITE_JITSI_URL || 'https://meet.megui.com.pe';
+                const urlReunion = `${jitsiUrl}/${formData.salaId}`;
+                navigator.clipboard.writeText(urlReunion).then(() => {
+                  toast.current.show({
+                    severity: "success",
+                    summary: "Link Copiado",
+                    detail: "El link de la reunión ha sido copiado al portapapeles. Puedes compartirlo con personas externas.",
+                    life: 4000,
+                  });
+                }).catch(() => {
+                  toast.current.show({
+                    severity: "error",
+                    summary: "Error",
+                    detail: "No se pudo copiar el link al portapapeles.",
+                    life: 3000,
+                  });
+                });
+              }}
+            />
+          </div>
+          <small className="block mt-2" style={{ color: "#6b7280" }}>
+            <i className="pi pi-info-circle mr-1"></i>
+            Usa el botón de copiar para compartir el link con personas que no tienen usuario en el ERP
+          </small>
         </div>
       )}
 

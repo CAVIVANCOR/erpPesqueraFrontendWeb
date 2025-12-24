@@ -38,9 +38,9 @@ export default function ParticipanteSelectorDialog({
     const cargos = personalOptions
       .filter((p) => p.cargo?.nombre)
       .map((p) => p.cargo.nombre);
-    
+
     const cargosUnicos = Array.from(new Set(cargos)).sort();
-    
+
     return [
       { label: "Todos los cargos", value: null },
       ...cargosUnicos.map((nombre) => ({ label: nombre, value: nombre })),
@@ -180,62 +180,78 @@ export default function ParticipanteSelectorDialog({
       <div className="participante-selector-container">
         <div className="participante-selector-left">
           <div className="filtros-section">
-            <h4>
-              <i className="pi pi-filter mr-2"></i>
-              Filtros
-            </h4>
             <div className="p-fluid">
-              <div className="field">
-                <label htmlFor="busqueda">Buscar por nombre</label>
-                <span className="p-input-icon-left">
-                  <i className="pi pi-search" />
-                  <InputText
-                    id="busqueda"
-                    value={busqueda}
-                    onChange={(e) => setBusqueda(e.target.value)}
-                    placeholder="Buscar personal..."
-                  />
-                </span>
-              </div>
-              <div className="field">
-                <label htmlFor="empresa">Empresa</label>
-                <Dropdown
-                  id="empresa"
-                  value={empresaFiltro}
-                  options={empresasOptions}
-                  onChange={(e) => setEmpresaFiltro(e.value)}
-                  placeholder="Seleccione empresa"
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="cargo">Cargo</label>
-                <Dropdown
-                  id="cargo"
-                  value={cargoFiltro}
-                  options={cargosOptions}
-                  onChange={(e) => setCargoFiltro(e.value)}
-                  placeholder="Seleccione cargo"
-                />
-              </div>
-              <Button
-                label="Limpiar Filtros"
-                icon="pi pi-filter-slash"
-                className="p-button-outlined p-button-secondary"
-                onClick={() => {
-                  setBusqueda("");
-                  setEmpresaFiltro(null);
-                  setCargoFiltro(null);
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "end",
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
                 }}
-              />
+              >
+                <div style={{ flex: 2 }}>
+                  <label htmlFor="busqueda">Buscar por nombre</label>
+                  <span className="p-input-icon-left">
+                    <InputText
+                      id="busqueda"
+                      value={busqueda}
+                      onChange={(e) => setBusqueda(e.target.value)}
+                      placeholder="Buscar personal..."
+                    />
+                  </span>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label="Limpiar Filtros"
+                    icon="pi pi-filter-slash"
+                    className="p-button-outlined p-button-secondary"
+                    onClick={() => {
+                      setBusqueda("");
+                      setEmpresaFiltro(null);
+                      setCargoFiltro(null);
+                    }}
+                  />
+                </div>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "end",
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="empresa">Empresa</label>
+                  <Dropdown
+                    id="empresa"
+                    value={empresaFiltro}
+                    options={empresasOptions}
+                    onChange={(e) => setEmpresaFiltro(e.value)}
+                    placeholder="Seleccione empresa"
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="cargo">Cargo</label>
+                  <Dropdown
+                    id="cargo"
+                    value={cargoFiltro}
+                    options={cargosOptions}
+                    onChange={(e) => setCargoFiltro(e.value)}
+                    placeholder="Seleccione cargo"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="personal-list-section">
-            <h4>
-              <i className="pi pi-users mr-2"></i>
-              Personal Disponible ({personalDisponible.length})
+            <h4 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <i className="pi pi-users"></i>
+              Personal Disponible
+              <Badge value={personalDisponible.length} severity="success" />
             </h4>
-            <ScrollPanel style={{ width: "100%", height: "450px" }}>
+            <ScrollPanel style={{ width: "100%", height: "550px" }}>
               <div className="personal-grid">
                 {personalDisponible.map((personal) => (
                   <Card
@@ -248,11 +264,17 @@ export default function ParticipanteSelectorDialog({
                     <div className="personal-card-content">
                       <Avatar
                         image={getAvatarUrl(personal.urlFotoPersona)}
-                        label={!personal.urlFotoPersona ? getInitials(personal.nombres, personal.apellidos) : undefined}
+                        label={
+                          !personal.urlFotoPersona
+                            ? getInitials(personal.nombres, personal.apellidos)
+                            : undefined
+                        }
                         size="large"
                         shape="circle"
                         style={{
-                          backgroundColor: !personal.urlFotoPersona ? getAvatarColor(personal.id) : undefined,
+                          backgroundColor: !personal.urlFotoPersona
+                            ? getAvatarColor(personal.id)
+                            : undefined,
                           color: "#fff",
                         }}
                       />
@@ -267,7 +289,7 @@ export default function ParticipanteSelectorDialog({
                         {personal.cargo && (
                           <div className="personal-cargo">
                             <i className="pi pi-briefcase mr-1"></i>
-                            {personal.cargo.nombre}
+                            {personal.cargo.descripcion}
                           </div>
                         )}
                       </div>
@@ -296,11 +318,11 @@ export default function ParticipanteSelectorDialog({
           onDrop={handleDrop}
         >
           <div className="seleccionados-header">
-            <h4>
-              <i className="pi pi-check-circle mr-2"></i>
+            <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <i className="pi pi-check-circle"></i>
               Participantes Seleccionados
+              <Badge value={seleccionados.length} severity="secondary" />
             </h4>
-            <Badge value={seleccionados.length} severity="success" />
           </div>
 
           {seleccionados.length === 0 ? (
@@ -325,11 +347,17 @@ export default function ParticipanteSelectorDialog({
                       />
                       <Avatar
                         image={getAvatarUrl(personal.urlFotoPersona)}
-                        label={!personal.urlFotoPersona ? getInitials(personal.nombres, personal.apellidos) : undefined}
+                        label={
+                          !personal.urlFotoPersona
+                            ? getInitials(personal.nombres, personal.apellidos)
+                            : undefined
+                        }
                         size="xlarge"
                         shape="circle"
                         style={{
-                          backgroundColor: !personal.urlFotoPersona ? getAvatarColor(personal.id) : undefined,
+                          backgroundColor: !personal.urlFotoPersona
+                            ? getAvatarColor(personal.id)
+                            : undefined,
                           color: "#fff",
                         }}
                       />
