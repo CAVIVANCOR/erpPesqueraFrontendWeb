@@ -382,6 +382,16 @@ export const getMenuConfig = (abrirModulo) => ({
                 action: () => abrirModulo("cuentaCorriente", "Cuenta Corriente")
               },
               {
+                label: "Saldos Cuenta Corriente",
+                icon: "pi pi-chart-line",
+                action: () => abrirModulo("saldoCuentaCorriente", "Saldos Cuenta Corriente")
+              },
+              {
+                label: "Configuración Cuenta Contable",
+                icon: "pi pi-cog",
+                action: () => abrirModulo("configuracionCuentaContable", "Configuración Cuenta Contable")
+              },
+              {
                 label: "Tipos Movimiento Entregas a Rendir",
                 icon: "pi pi-send",
                 action: () => abrirModulo("tipoMovEntregaRendir", "Tipos Movimiento Entrega a Rendir")

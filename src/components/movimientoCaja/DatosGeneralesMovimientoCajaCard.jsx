@@ -6,6 +6,8 @@ import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
+import { Checkbox } from "primereact/checkbox";
+import { InputTextarea } from "primereact/inputtextarea";
 
 const DatosGeneralesMovimientoCajaCard = ({
   // Estados
@@ -49,6 +51,13 @@ const DatosGeneralesMovimientoCajaCard = ({
   usuarioMotivoOperacionId,
   operacionSinFactura,
   setOperacionSinFactura,
+  // Nuevos campos de workflow
+  generarAsientoContable,
+  setGenerarAsientoContable,
+  incluirEnReporteFiscal,
+  setIncluirEnReporteFiscal,
+  motivoSinFactura,
+  setMotivoSinFactura,
   // Props
   loading,
   centrosCosto,
@@ -638,6 +647,59 @@ const DatosGeneralesMovimientoCajaCard = ({
               disabled={readOnly || loading}
             />
           </div>
+        </div>
+
+        {/* Sección de Configuración Contable/Fiscal */}
+        <div
+          style={{
+            display: "flex",
+            gap: "1rem",
+            marginTop: "1rem",
+            padding: "1rem",
+            backgroundColor: "#f8f9fa",
+            borderRadius: "6px",
+            border: "1px solid #dee2e6",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <div className="p-field-checkbox" style={{ marginBottom: "0.5rem" }}>
+              <Checkbox
+                inputId="generarAsientoContable"
+                checked={generarAsientoContable}
+                onChange={(e) => setGenerarAsientoContable(e.checked)}
+                disabled={readOnly || loading}
+              />
+              <label htmlFor="generarAsientoContable" style={{ marginLeft: "0.5rem" }}>
+                Generar Asiento Contable
+              </label>
+            </div>
+            <div className="p-field-checkbox">
+              <Checkbox
+                inputId="incluirEnReporteFiscal"
+                checked={incluirEnReporteFiscal}
+                onChange={(e) => setIncluirEnReporteFiscal(e.checked)}
+                disabled={readOnly || loading}
+              />
+              <label htmlFor="incluirEnReporteFiscal" style={{ marginLeft: "0.5rem" }}>
+                Incluir en Reporte Fiscal
+              </label>
+            </div>
+          </div>
+          {operacionSinFactura && (
+            <div style={{ flex: 2 }}>
+              <label htmlFor="motivoSinFactura">Motivo Sin Factura</label>
+              <InputTextarea
+                id="motivoSinFactura"
+                value={motivoSinFactura || ""}
+                onChange={(e) => setMotivoSinFactura(e.target.value)}
+                rows={3}
+                placeholder="Indique el motivo por el cual la operación no tiene factura..."
+                disabled={readOnly || loading}
+                className="p-inputtext-sm"
+                style={{ width: "100%" }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </Card>

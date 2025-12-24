@@ -7,12 +7,16 @@ import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
+import { Tag } from "primereact/tag";
+import { InputTextarea } from "primereact/inputtextarea";
 import AsientoContableInterfazForm from "../components/asientoContableInterfaz/AsientoContableInterfazForm";
 import {
   getAllAsientoContableInterfaz,
   crearAsientoContableInterfaz,
   actualizarAsientoContableInterfaz,
   eliminarAsientoContableInterfaz,
+  enviarAsientoContable,
+  registrarErrorAsientoContable,
 } from "../api/asientoContableInterfaz";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 
@@ -34,6 +38,12 @@ export default function AsientoContableInterfaz() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const usuario = useAuthStore((state) => state.usuario);
+  
+  // Estados para workflow
+  const [showEnviarDialog, setShowEnviarDialog] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [asientoWorkflow, setAsientoWorkflow] = useState(null);
+  const [mensajeError, setMensajeError] = useState("");
 
   useEffect(() => {
     cargarItems();
@@ -123,19 +133,150 @@ export default function AsientoContableInterfaz() {
     setShowDialog(true);
   };
 
+  // Handlers para workflow
+  const handleEnviar = (asiento) => {
+    setAsientoWorkflow(asiento);
+    setShowEnviarDialog(true);
+  };
+
+  const handleRegistrarError = (asiento) => {
+    setAsientoWorkflow(asiento);
+    setMensajeError("");
+    setShowErrorDialog(true);
+  };
+
+  const handleEnviarConfirm = async () => {
+    if (!asientoWorkflow) return;
+    setLoading(true);
+    try {
+      await enviarAsientoContable(asientoWorkflow.id, usuario.personalId);
+      toast.current.show({
+        severity: "success",
+        summary: "Enviado",
+        detail: "Asiento contable enviado correctamente",
+        life: 3000,
+      });
+      cargarItems();
+      setShowEnviarDialog(false);
+      setAsientoWorkflow(null);
+    } catch (error) {
+      const mensajeError = error.response?.data?.error || "No se pudo enviar el asiento";
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: mensajeError,
+        life: 5000,
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleRegistrarErrorConfirm = async () => {
+    if (!asientoWorkflow || !mensajeError.trim()) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe ingresar el mensaje de error",
+        life: 3000,
+      });
+      return;
+    }
+    setLoading(true);
+    try {
+      await registrarErrorAsientoContable(asientoWorkflow.id, mensajeError);
+      toast.current.show({
+        severity: "success",
+        summary: "Error Registrado",
+        detail: "Error registrado correctamente",
+        life: 3000,
+      });
+      cargarItems();
+      setShowErrorDialog(false);
+      setAsientoWorkflow(null);
+      setMensajeError("");
+    } catch (error) {
+      const mensajeError = error.response?.data?.error || "No se pudo registrar el error";
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: mensajeError,
+        life: 5000,
+      });
+    }
+    setLoading(false);
+  };
+
+  const estadoBodyTemplate = (rowData) => {
+    const estado = rowData.estado || "PENDIENTE";
+    let severity = "warning";
+    let icon = "pi-clock";
+    
+    if (estado === "ENVIADO") {
+      severity = "success";
+      icon = "pi-check";
+    } else if (estado === "ERROR") {
+      severity = "danger";
+      icon = "pi-times";
+    }
+    
+    return <Tag severity={severity} value={estado} icon={`pi ${icon}`} />;
+  };
+
+  const enviadoPorBodyTemplate = (rowData) => {
+    if (!rowData.personalEnviador) return "-";
+    return `${rowData.personalEnviador.nombres} ${rowData.personalEnviador.apellidos}`;
+  };
+
+  const accionesWorkflowBodyTemplate = (rowData) => {
+    const estado = rowData.estado || "PENDIENTE";
+    
+    return (
+      <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+        {estado === "PENDIENTE" && (
+          <Button
+            icon="pi pi-send"
+            className="p-button-rounded p-button-success p-button-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEnviar(rowData);
+            }}
+            tooltip="Enviar a Contabilidad"
+          />
+        )}
+        {estado === "PENDIENTE" && (
+          <Button
+            icon="pi pi-exclamation-triangle"
+            className="p-button-rounded p-button-danger p-button-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRegistrarError(rowData);
+            }}
+            tooltip="Registrar Error"
+          />
+        )}
+      </div>
+    );
+  };
+
   const actionBody = (rowData) => (
     <>
       <Button
         icon="pi pi-pencil"
         className="p-button-text p-button-sm"
-        onClick={() => handleEdit(rowData)}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleEdit(rowData);
+        }}
         aria-label="Editar"
       />
       {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
         <Button
           icon="pi pi-trash"
           className="p-button-text p-button-danger p-button-sm"
-          onClick={() => handleDelete(rowData)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete(rowData);
+          }}
           aria-label="Eliminar"
         />
       )}
@@ -190,12 +331,32 @@ export default function AsientoContableInterfaz() {
         <Column field="empresaId" header="Empresa" />
         <Column field="referenciaExtId" header="Referencia Ext" />
         <Column field="tipoReferenciaId" header="Tipo Referencia" />
-        <Column field="estado" header="Estado" />
-        <Column field="fechaEnvio" header="Fecha Envío" />
+        <Column 
+          field="estado" 
+          header="Estado" 
+          body={estadoBodyTemplate}
+          style={{ width: 120, textAlign: "center" }}
+        />
+        <Column 
+          field="fechaEnvio" 
+          header="Fecha Envío"
+          body={(rowData) => rowData.fechaEnvio ? new Date(rowData.fechaEnvio).toLocaleString("es-PE") : "-"}
+          style={{ width: 150 }}
+        />
+        <Column 
+          header="Enviado Por" 
+          body={enviadoPorBodyTemplate}
+          style={{ width: 150 }}
+        />
+        <Column
+          header="Workflow"
+          body={accionesWorkflowBodyTemplate}
+          style={{ width: 100, textAlign: "center" }}
+        />
         <Column
           body={actionBody}
           header="Acciones"
-          style={{ width: 130, textAlign: "center" }}
+          style={{ width: 100, textAlign: "center" }}
         />
       </DataTable>
       <Dialog
@@ -212,6 +373,89 @@ export default function AsientoContableInterfaz() {
           onCancel={() => setShowDialog(false)}
           loading={loading}
         />
+      </Dialog>
+
+      {/* Diálogo de Enviar */}
+      <Dialog
+        header="Enviar Asiento Contable"
+        visible={showEnviarDialog}
+        style={{ width: "450px" }}
+        onHide={() => setShowEnviarDialog(false)}
+        modal
+      >
+        <div style={{ padding: "1rem" }}>
+          <p>¿Está seguro de enviar este asiento contable a contabilidad?</p>
+          {asientoWorkflow && (
+            <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "#f8f9fa", borderRadius: "6px" }}>
+              <strong>ID:</strong> {asientoWorkflow.id}<br />
+              <strong>Cuenta:</strong> {asientoWorkflow.cuentaContable}<br />
+              <strong>Debe:</strong> {asientoWorkflow.debe}<br />
+              <strong>Haber:</strong> {asientoWorkflow.haber}
+            </div>
+          )}
+          <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              onClick={() => setShowEnviarDialog(false)}
+              className="p-button-text"
+            />
+            <Button
+              label="Enviar"
+              icon="pi pi-send"
+              onClick={handleEnviarConfirm}
+              loading={loading}
+              severity="success"
+            />
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Diálogo de Registrar Error */}
+      <Dialog
+        header="Registrar Error de Asiento Contable"
+        visible={showErrorDialog}
+        style={{ width: "500px" }}
+        onHide={() => setShowErrorDialog(false)}
+        modal
+      >
+        <div style={{ padding: "1rem" }}>
+          <p>Registre el error encontrado en este asiento contable:</p>
+          {asientoWorkflow && (
+            <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "#f8f9fa", borderRadius: "6px" }}>
+              <strong>ID:</strong> {asientoWorkflow.id}<br />
+              <strong>Cuenta:</strong> {asientoWorkflow.cuentaContable}<br />
+              <strong>Debe:</strong> {asientoWorkflow.debe}<br />
+              <strong>Haber:</strong> {asientoWorkflow.haber}
+            </div>
+          )}
+          <div style={{ marginTop: "1rem" }}>
+            <label htmlFor="mensajeError">Mensaje de Error *</label>
+            <InputTextarea
+              id="mensajeError"
+              value={mensajeError}
+              onChange={(e) => setMensajeError(e.target.value)}
+              rows={4}
+              placeholder="Describa el error encontrado..."
+              style={{ width: "100%", marginTop: "0.5rem" }}
+            />
+          </div>
+          <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              onClick={() => setShowErrorDialog(false)}
+              className="p-button-text"
+            />
+            <Button
+              label="Registrar Error"
+              icon="pi pi-exclamation-triangle"
+              onClick={handleRegistrarErrorConfirm}
+              loading={loading}
+              severity="danger"
+            />
+          </div>
+        </div>
       </Dialog>
     </div>
   );

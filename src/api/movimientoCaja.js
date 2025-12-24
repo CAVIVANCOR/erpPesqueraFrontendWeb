@@ -97,3 +97,65 @@ export const validarMovimientoCaja = async (id) => {
     throw error;
   }
 };
+
+/**
+ * Aprueba un movimiento de caja
+ * @param {number} id - ID del movimiento de caja a aprobar
+ * @param {number} aprobadoPorId - ID del personal que aprueba
+ * @returns {Promise<Object>} Movimiento de caja aprobado
+ */
+export const aprobarMovimientoCaja = async (id, aprobadoPorId) => {
+  try {
+    const response = await axios.post(`${API_URL}/${id}/aprobar`, { aprobadoPorId }, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al aprobar movimiento de caja:', error);
+    throw error;
+  }
+};
+
+/**
+ * Rechaza un movimiento de caja
+ * @param {number} id - ID del movimiento de caja a rechazar
+ * @param {number} rechazadoPorId - ID del personal que rechaza
+ * @param {string} motivoRechazo - Motivo del rechazo
+ * @returns {Promise<Object>} Movimiento de caja rechazado
+ */
+export const rechazarMovimientoCaja = async (id, rechazadoPorId, motivoRechazo) => {
+  try {
+    const response = await axios.post(`${API_URL}/${id}/rechazar`, { 
+      rechazadoPorId, 
+      motivoRechazo 
+    }, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al rechazar movimiento de caja:', error);
+    throw error;
+  }
+};
+
+/**
+ * Revierte un movimiento de caja creando un movimiento inverso
+ * @param {number} id - ID del movimiento de caja a revertir
+ * @param {string} motivoReversion - Motivo de la reversión
+ * @param {number} usuarioId - ID del usuario que revierte
+ * @returns {Promise<Object>} Movimiento de reversión creado
+ */
+export const revertirMovimientoCaja = async (id, motivoReversion, usuarioId) => {
+  try {
+    const response = await axios.post(`${API_URL}/${id}/revertir`, { 
+      motivoReversion, 
+      usuarioId 
+    }, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al revertir movimiento de caja:', error);
+    throw error;
+  }
+};

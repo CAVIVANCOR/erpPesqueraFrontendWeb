@@ -155,6 +155,17 @@ export default function MovimientoCajaForm({
     defaultValues.urlDocumentoMovCaja || ""
   );
 
+  // NUEVOS ESTADOS PARA WORKFLOW Y CONFIGURACIÓN CONTABLE/FISCAL
+  const [generarAsientoContable, setGenerarAsientoContable] = React.useState(
+    defaultValues.generarAsientoContable !== undefined ? defaultValues.generarAsientoContable : true
+  );
+  const [incluirEnReporteFiscal, setIncluirEnReporteFiscal] = React.useState(
+    defaultValues.incluirEnReporteFiscal !== undefined ? defaultValues.incluirEnReporteFiscal : true
+  );
+  const [motivoSinFactura, setMotivoSinFactura] = React.useState(
+    defaultValues.motivoSinFactura || ""
+  );
+
   React.useEffect(() => {
     setEmpresaOrigenId(
       defaultValues.empresaOrigenId ? Number(defaultValues.empresaOrigenId) : ""
@@ -332,6 +343,10 @@ export default function MovimientoCajaForm({
         ? Number(cuentaDestinoEntidadComercialId)
         : null,
       productoId: productoId ? Number(productoId) : null,
+      // Nuevos campos de workflow y configuración contable/fiscal
+      generarAsientoContable,
+      incluirEnReporteFiscal,
+      motivoSinFactura: motivoSinFactura || null,
     });
   };
 
@@ -431,6 +446,12 @@ export default function MovimientoCajaForm({
           usuarioMotivoOperacionId={usuarioMotivoOperacionId}
           operacionSinFactura={operacionSinFactura}
           setOperacionSinFactura={setOperacionSinFactura}
+          generarAsientoContable={generarAsientoContable}
+          setGenerarAsientoContable={setGenerarAsientoContable}
+          incluirEnReporteFiscal={incluirEnReporteFiscal}
+          setIncluirEnReporteFiscal={setIncluirEnReporteFiscal}
+          motivoSinFactura={motivoSinFactura}
+          setMotivoSinFactura={setMotivoSinFactura}
           loading={loading}
           centrosCosto={centrosCosto}
           modulos={modulos}

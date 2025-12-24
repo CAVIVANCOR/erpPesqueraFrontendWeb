@@ -22,6 +22,7 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 import { Dropdown } from "primereact/dropdown";
+import { Tag } from "primereact/tag";
 
 /**
  * Pantalla profesional para gestión de Cuentas Corrientes.
@@ -55,6 +56,7 @@ export default function CuentaCorriente({ ruta }) {
   // Estados para filtros
   const [filtroEmpresa, setFiltroEmpresa] = useState(null);
   const [filtroBanco, setFiltroBanco] = useState(null);
+  const [filtroEstado, setFiltroEstado] = useState(null);
 
   useEffect(() => {
     cargarItems();
@@ -138,8 +140,18 @@ export default function CuentaCorriente({ ruta }) {
         !filtroEmpresa || Number(item.empresaId) === Number(filtroEmpresa);
       const cumpleFiltroBanco =
         !filtroBanco || Number(item.bancoId) === Number(filtroBanco);
+      
+      // Filtro por estado: null = todas, true = activas, false = cerradas
+      let cumpleFiltroEstado = true;
+      if (filtroEstado === "activa") {
+        cumpleFiltroEstado = item.activa && !item.fechaCierre;
+      } else if (filtroEstado === "cerrada") {
+        cumpleFiltroEstado = item.fechaCierre !== null && item.fechaCierre !== undefined;
+      } else if (filtroEstado === "inactiva") {
+        cumpleFiltroEstado = !item.activa;
+      }
 
-      return cumpleFiltroEmpresa && cumpleFiltroBanco;
+      return cumpleFiltroEmpresa && cumpleFiltroBanco && cumpleFiltroEstado;
     });
   };
 
@@ -147,6 +159,7 @@ export default function CuentaCorriente({ ruta }) {
   const limpiarFiltros = () => {
     setFiltroEmpresa(null);
     setFiltroBanco(null);
+    setFiltroEstado(null);
   };
 
   // Función para extraer mensaje de error del backend
@@ -331,6 +344,21 @@ export default function CuentaCorriente({ ruta }) {
                 className="w-full"
               />
             </div>
+            <div style={{ flex: 1 }}>
+              <label>Estado:</label>
+              <Dropdown
+                value={filtroEstado}
+                options={[
+                  { label: "Activas", value: "activa" },
+                  { label: "Cerradas", value: "cerrada" },
+                  { label: "Inactivas", value: "inactiva" },
+                ]}
+                onChange={(e) => setFiltroEstado(e.value)}
+                placeholder="Todas"
+                showClear
+                className="w-full"
+              />
+            </div>
             <div style={{ flex: 0.5 }}>
               <Button
                 label="Limpiar"
@@ -340,7 +368,7 @@ export default function CuentaCorriente({ ruta }) {
                 severity="secondary"
                 raised
                 onClick={limpiarFiltros}
-                disabled={!filtroEmpresa && !filtroBanco}
+                disabled={!filtroEmpresa && !filtroBanco && !filtroEstado}
                 tooltip="Limpiar filtros"
               />
             </div>
@@ -404,10 +432,45 @@ export default function CuentaCorriente({ ruta }) {
         />
 
         <Column
-          field="activa"
-          header="Activa"
+          field="saldoMinimo"
+          header="Saldo Mínimo"
           sortable
-          body={(rowData) => (rowData.activa ? "Sí" : "No")}
+          body={(rowData) => {
+            if (!rowData.saldoMinimo) return "-";
+            const moneda = rowData.moneda || monedas.find(m => Number(m.id) === Number(rowData.monedaId));
+            const simbolo = moneda?.simbolo || "";
+            return `${simbolo} ${Number(rowData.saldoMinimo).toFixed(2)}`;
+          }}
+          style={{ width: 120 }}
+        />
+        <Column
+          field="fechaApertura"
+          header="F. Apertura"
+          sortable
+          body={(rowData) => rowData.fechaApertura ? new Date(rowData.fechaApertura).toLocaleDateString('es-PE') : "-"}
+          style={{ width: 110 }}
+        />
+        <Column
+          field="fechaCierre"
+          header="F. Cierre"
+          sortable
+          body={(rowData) => rowData.fechaCierre ? new Date(rowData.fechaCierre).toLocaleDateString('es-PE') : "-"}
+          style={{ width: 110 }}
+        />
+        <Column
+          field="activa"
+          header="Estado"
+          sortable
+          body={(rowData) => {
+            if (rowData.fechaCierre) {
+              return <Tag value="CERRADA" severity="danger" />;
+            }
+            if (rowData.activa) {
+              return <Tag value="ACTIVA" severity="success" />;
+            }
+            return <Tag value="INACTIVA" severity="warning" />;
+          }}
+          style={{ width: 100 }}
         />
         <Column
           body={actionBody}

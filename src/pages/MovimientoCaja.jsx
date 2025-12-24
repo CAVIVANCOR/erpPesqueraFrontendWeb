@@ -11,6 +11,8 @@ import { Dialog } from "primereact/dialog";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Card } from "primereact/card";
 import { Badge } from "primereact/badge";
+import { Tag } from "primereact/tag";
+import { InputTextarea } from "primereact/inputtextarea";
 import MovimientoCajaForm from "../components/movimientoCaja/MovimientoCajaForm";
 // Imports de TabPanels modulares
 import TabPanelPescaIndustrial from "../components/movimientoCaja/TabPanelPescaIndustrial";
@@ -43,6 +45,9 @@ import {
   actualizarMovimientoCaja,
   eliminarMovimientoCaja,
   validarMovimientoCaja,
+  aprobarMovimientoCaja,
+  rechazarMovimientoCaja,
+  revertirMovimientoCaja,
 } from "../api/movimientoCaja";
 import { getCentrosCosto } from "../api/centroCosto";
 import { getModulos } from "../api/moduloSistema";
@@ -79,6 +84,14 @@ export default function MovimientoCaja({ ruta }) {
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
+  
+  // Estados para diálogos de workflow
+  const [showAprobarDialog, setShowAprobarDialog] = useState(false);
+  const [showRechazarDialog, setShowRechazarDialog] = useState(false);
+  const [showRevertirDialog, setShowRevertirDialog] = useState(false);
+  const [movimientoWorkflow, setMovimientoWorkflow] = useState(null);
+  const [motivoRechazo, setMotivoRechazo] = useState("");
+  const [motivoReversion, setMotivoReversion] = useState("");
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [modulos, setModulos] = useState([]);
   const [personal, setPersonal] = useState([]);
@@ -771,6 +784,120 @@ export default function MovimientoCaja({ ruta }) {
     });
   };
 
+  // Handlers para workflow
+  const handleAprobar = (movimiento) => {
+    setMovimientoWorkflow(movimiento);
+    setShowAprobarDialog(true);
+  };
+
+  const handleRechazar = (movimiento) => {
+    setMovimientoWorkflow(movimiento);
+    setMotivoRechazo("");
+    setShowRechazarDialog(true);
+  };
+
+  const handleRevertir = (movimiento) => {
+    setMovimientoWorkflow(movimiento);
+    setMotivoReversion("");
+    setShowRevertirDialog(true);
+  };
+
+  const handleAprobarConfirm = async () => {
+    if (!movimientoWorkflow) return;
+    setLoading(true);
+    try {
+      await aprobarMovimientoCaja(movimientoWorkflow.id, usuario.personalId);
+      toast.current.show({
+        severity: "success",
+        summary: "Aprobado",
+        detail: "Movimiento aprobado correctamente",
+        life: 3000,
+      });
+      cargarItems();
+      setShowAprobarDialog(false);
+      setMovimientoWorkflow(null);
+    } catch (error) {
+      const mensajeError = error.response?.data?.error || "No se pudo aprobar el movimiento";
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: mensajeError,
+        life: 5000,
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleRechazarConfirm = async () => {
+    if (!movimientoWorkflow || !motivoRechazo.trim()) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe ingresar el motivo del rechazo",
+        life: 3000,
+      });
+      return;
+    }
+    setLoading(true);
+    try {
+      await rechazarMovimientoCaja(movimientoWorkflow.id, usuario.personalId, motivoRechazo);
+      toast.current.show({
+        severity: "success",
+        summary: "Rechazado",
+        detail: "Movimiento rechazado correctamente",
+        life: 3000,
+      });
+      cargarItems();
+      setShowRechazarDialog(false);
+      setMovimientoWorkflow(null);
+      setMotivoRechazo("");
+    } catch (error) {
+      const mensajeError = error.response?.data?.error || "No se pudo rechazar el movimiento";
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: mensajeError,
+        life: 5000,
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleRevertirConfirm = async () => {
+    if (!movimientoWorkflow || !motivoReversion.trim()) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe ingresar el motivo de la reversión",
+        life: 3000,
+      });
+      return;
+    }
+    setLoading(true);
+    try {
+      await revertirMovimientoCaja(movimientoWorkflow.id, motivoReversion, usuario.id);
+      toast.current.show({
+        severity: "success",
+        summary: "Revertido",
+        detail: "Movimiento revertido correctamente. Se creó un movimiento inverso.",
+        life: 4000,
+      });
+      cargarItems();
+      setShowRevertirDialog(false);
+      setMovimientoWorkflow(null);
+      setMotivoReversion("");
+    } catch (error) {
+      const mensajeError = error.response?.data?.error || "No se pudo revertir el movimiento";
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: mensajeError,
+        life: 5000,
+      });
+    }
+    setLoading(false);
+  };
+
   /**
    * Maneja la aplicación de movimientos seleccionados para crear un MovimientoCaja
    * REGLA: Solo se permite seleccionar UN item a la vez
@@ -994,6 +1121,69 @@ export default function MovimientoCaja({ ruta }) {
         life: 3000,
       });
     }
+  };
+
+  const estadoWorkflowBodyTemplate = (rowData) => {
+    const estaAprobado = rowData.aprobadoPorId != null;
+    const estaRechazado = rowData.rechazadoPorId != null;
+    const esReversion = rowData.esReversion === true;
+
+    return (
+      <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+        {estaAprobado && (
+          <Tag severity="success" value="APROBADO" icon="pi pi-check" />
+        )}
+        {estaRechazado && (
+          <Tag severity="danger" value="RECHAZADO" icon="pi pi-times" />
+        )}
+        {!estaAprobado && !estaRechazado && (
+          <Tag severity="warning" value="PENDIENTE" icon="pi pi-clock" />
+        )}
+        {esReversion && (
+          <Tag severity="info" value="REVERSIÓN" icon="pi pi-replay" />
+        )}
+      </div>
+    );
+  };
+
+  const accionesWorkflowBodyTemplate = (rowData) => {
+    const estaAprobado = rowData.aprobadoPorId != null;
+    const estaRechazado = rowData.rechazadoPorId != null;
+    const esReversion = rowData.esReversion === true;
+
+    if (esReversion) return null;
+
+    return (
+      <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+        {!estaAprobado && !estaRechazado && (
+          <>
+            <Button
+              icon="pi pi-check"
+              className="p-button-rounded p-button-success p-button-sm"
+              onClick={() => handleAprobar(rowData)}
+              tooltip="Aprobar"
+              disabled={!permisos.puedeEditar}
+            />
+            <Button
+              icon="pi pi-times"
+              className="p-button-rounded p-button-danger p-button-sm"
+              onClick={() => handleRechazar(rowData)}
+              tooltip="Rechazar"
+              disabled={!permisos.puedeEditar}
+            />
+          </>
+        )}
+        {estaAprobado && (
+          <Button
+            icon="pi pi-replay"
+            className="p-button-rounded p-button-warning p-button-sm"
+            onClick={() => handleRevertir(rowData)}
+            tooltip="Revertir"
+            disabled={!permisos.puedeEditar}
+          />
+        )}
+      </div>
+    );
   };
 
   const actionBodyTemplate = (rowData) => {
@@ -1423,6 +1613,18 @@ export default function MovimientoCaja({ ruta }) {
         />
 
         <Column
+          header="Estado Workflow"
+          body={estadoWorkflowBodyTemplate}
+          style={{ width: "150px", textAlign: "center" }}
+        />
+
+        <Column
+          header="Workflow"
+          body={accionesWorkflowBodyTemplate}
+          style={{ width: "120px", textAlign: "center" }}
+        />
+
+        <Column
           header="Acciones"
           body={actionBodyTemplate}
           style={{ width: "120px", textAlign: "center" }}
@@ -1473,6 +1675,133 @@ export default function MovimientoCaja({ ruta }) {
             setEditing(null);
           }}
         />
+      </Dialog>
+
+      {/* Diálogo de Aprobar */}
+      <Dialog
+        header="Aprobar Movimiento de Caja"
+        visible={showAprobarDialog}
+        style={{ width: "450px" }}
+        onHide={() => setShowAprobarDialog(false)}
+        modal
+      >
+        <div style={{ padding: "1rem" }}>
+          <p>¿Está seguro de aprobar este movimiento de caja?</p>
+          {movimientoWorkflow && (
+            <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "#f8f9fa", borderRadius: "6px" }}>
+              <strong>ID:</strong> {movimientoWorkflow.id}<br />
+              <strong>Monto:</strong> {movimientoWorkflow.monto}<br />
+              <strong>Descripción:</strong> {movimientoWorkflow.descripcion || "N/A"}
+            </div>
+          )}
+          <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              onClick={() => setShowAprobarDialog(false)}
+              className="p-button-text"
+            />
+            <Button
+              label="Aprobar"
+              icon="pi pi-check"
+              onClick={handleAprobarConfirm}
+              loading={loading}
+              severity="success"
+            />
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Diálogo de Rechazar */}
+      <Dialog
+        header="Rechazar Movimiento de Caja"
+        visible={showRechazarDialog}
+        style={{ width: "500px" }}
+        onHide={() => setShowRechazarDialog(false)}
+        modal
+      >
+        <div style={{ padding: "1rem" }}>
+          <p>Indique el motivo del rechazo:</p>
+          {movimientoWorkflow && (
+            <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "#f8f9fa", borderRadius: "6px" }}>
+              <strong>ID:</strong> {movimientoWorkflow.id}<br />
+              <strong>Monto:</strong> {movimientoWorkflow.monto}<br />
+              <strong>Descripción:</strong> {movimientoWorkflow.descripcion || "N/A"}
+            </div>
+          )}
+          <div style={{ marginTop: "1rem" }}>
+            <label htmlFor="motivoRechazo">Motivo del Rechazo *</label>
+            <InputTextarea
+              id="motivoRechazo"
+              value={motivoRechazo}
+              onChange={(e) => setMotivoRechazo(e.target.value)}
+              rows={4}
+              placeholder="Ingrese el motivo del rechazo..."
+              style={{ width: "100%", marginTop: "0.5rem" }}
+            />
+          </div>
+          <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              onClick={() => setShowRechazarDialog(false)}
+              className="p-button-text"
+            />
+            <Button
+              label="Rechazar"
+              icon="pi pi-times"
+              onClick={handleRechazarConfirm}
+              loading={loading}
+              severity="danger"
+            />
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Diálogo de Revertir */}
+      <Dialog
+        header="Revertir Movimiento de Caja"
+        visible={showRevertirDialog}
+        style={{ width: "500px" }}
+        onHide={() => setShowRevertirDialog(false)}
+        modal
+      >
+        <div style={{ padding: "1rem" }}>
+          <p>Se creará un movimiento inverso. Indique el motivo de la reversión:</p>
+          {movimientoWorkflow && (
+            <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "#f8f9fa", borderRadius: "6px" }}>
+              <strong>ID:</strong> {movimientoWorkflow.id}<br />
+              <strong>Monto:</strong> {movimientoWorkflow.monto}<br />
+              <strong>Descripción:</strong> {movimientoWorkflow.descripcion || "N/A"}
+            </div>
+          )}
+          <div style={{ marginTop: "1rem" }}>
+            <label htmlFor="motivoReversion">Motivo de la Reversión *</label>
+            <InputTextarea
+              id="motivoReversion"
+              value={motivoReversion}
+              onChange={(e) => setMotivoReversion(e.target.value)}
+              rows={4}
+              placeholder="Ingrese el motivo de la reversión..."
+              style={{ width: "100%", marginTop: "0.5rem" }}
+            />
+          </div>
+          <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              onClick={() => setShowRevertirDialog(false)}
+              className="p-button-text"
+            />
+            <Button
+              label="Revertir"
+              icon="pi pi-replay"
+              onClick={handleRevertirConfirm}
+              loading={loading}
+              severity="warning"
+            />
+          </div>
+        </div>
       </Dialog>
     </div>
   );

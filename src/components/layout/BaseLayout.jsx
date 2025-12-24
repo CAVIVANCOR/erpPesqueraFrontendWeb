@@ -45,6 +45,8 @@ import CentroCosto from '../../pages/CentroCosto';
 import CategoriaCCosto from '../../pages/CategoriaCCosto';
 import EmpresaCentroCosto from '../../pages/EmpresaCentroCosto';
 import AsientoContableInterfaz from '../../pages/AsientoContableInterfaz';
+import SaldoCuentaCorriente from '../../pages/SaldoCuentaCorriente';
+import ConfiguracionCuentaContable from '../../pages/ConfiguracionCuentaContable';
 import AccesosUsuario from '../../pages/AccesosUsuario';
 import TiposDocIdentidad from '../../pages/TiposDocIdentidad';
 import EntidadComercial from '../../pages/EntidadComercial';
@@ -174,6 +176,8 @@ export default function BaseLayout({ children, onLogout }) {
     motivoOriginoOT: { label: "Motivo Origino OT", componente: <MotivoOriginoOT ruta="motivoOriginoOT" /> },
     movimientoCaja: { label: "Movimientos de Caja", componente: <MovimientoCaja ruta="movimientoCaja" /> },
     cuentaCorriente: { label: "Cuenta Corriente", componente: <CuentaCorriente ruta="cuentaCorriente" /> },
+    saldoCuentaCorriente: { label: "Saldos Cuenta Corriente", componente: <SaldoCuentaCorriente ruta="saldoCuentaCorriente" /> },
+    configuracionCuentaContable: { label: "Configuración Cuenta Contable", componente: <ConfiguracionCuentaContable ruta="configuracionCuentaContable" /> },
     tipoMovEntregaRendir: { label: "Tipos Movimiento Entrega a Rendir", componente: <TipoMovEntregaRendir ruta="tipoMovEntregaRendir" /> },
     asientoContableInterfaz: { label: "Asientos Contables Generados", componente: <AsientoContableInterfaz ruta="asientoContableInterfaz" /> },
     centroCosto: { label: "Centros de Costo", componente: <CentroCosto ruta="centroCosto" /> },

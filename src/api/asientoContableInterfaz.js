@@ -68,3 +68,34 @@ export const eliminarAsientoContableInterfaz = async (id) => {
   }
 };
 
+/**
+ * Envía un asiento contable a contabilidad
+ * @param {number} id - ID del asiento contable a enviar
+ * @param {number} enviadoPorId - ID del personal que envía
+ * @returns {Promise<Object>} Asiento contable enviado
+ */
+export const enviarAsientoContable = async (id, enviadoPorId) => {
+  try {
+    const response = await axios.post(`${API_URL}/${id}/enviar`, { enviadoPorId }, {headers: getAuthHeader()});
+    return response.data;
+  } catch (error) {
+    console.error('Error al enviar asiento contable:', error);
+    throw error;
+  }
+};
+
+/**
+ * Registra un error en el envío de un asiento contable
+ * @param {number} id - ID del asiento contable
+ * @param {string} mensajeError - Mensaje de error
+ * @returns {Promise<Object>} Asiento contable actualizado
+ */
+export const registrarErrorAsientoContable = async (id, mensajeError) => {
+  try {
+    const response = await axios.post(`${API_URL}/${id}/registrar-error`, { mensajeError }, {headers: getAuthHeader()});
+    return response.data;
+  } catch (error) {
+    console.error('Error al registrar error de asiento contable:', error);
+    throw error;
+  }
+};

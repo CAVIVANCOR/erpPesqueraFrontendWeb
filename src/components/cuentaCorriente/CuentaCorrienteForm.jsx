@@ -5,6 +5,9 @@ import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Checkbox } from "primereact/checkbox";
+import { InputNumber } from "primereact/inputnumber";
+import { Calendar } from "primereact/calendar";
+import { formatearFecha } from "../../utils/utils";
 
 
 export default function CuentaCorrienteForm({
@@ -41,6 +44,15 @@ export default function CuentaCorrienteForm({
   const [numeroCuentaCCI, setNumeroCuentaCCI] = React.useState(
     defaultValues.numeroCuentaCCI || ""
   );
+  const [saldoMinimo, setSaldoMinimo] = React.useState(
+    defaultValues.saldoMinimo || null
+  );
+  const [fechaApertura, setFechaApertura] = React.useState(
+    defaultValues.fechaApertura ? new Date(defaultValues.fechaApertura) : null
+  );
+  const [fechaCierre, setFechaCierre] = React.useState(
+    defaultValues.fechaCierre ? new Date(defaultValues.fechaCierre) : null
+  );
 
   React.useEffect(() => {
     setBancoId(defaultValues.bancoId || "");
@@ -54,6 +66,13 @@ export default function CuentaCorrienteForm({
     setTipoCuentaCorrienteId(defaultValues.tipoCuentaCorrienteId || "");
     setCodigoSwift(defaultValues.codigoSwift || "");
     setNumeroCuentaCCI(defaultValues.numeroCuentaCCI || "");
+    setSaldoMinimo(defaultValues.saldoMinimo || null);
+    setFechaApertura(
+      defaultValues.fechaApertura ? new Date(defaultValues.fechaApertura) : null
+    );
+    setFechaCierre(
+      defaultValues.fechaCierre ? new Date(defaultValues.fechaCierre) : null
+    );
   }, [defaultValues]);
 
   const handleSubmit = (e) => {
@@ -74,6 +93,9 @@ export default function CuentaCorrienteForm({
       activa,
       codigoSwift: codigoSwift.trim(),
       numeroCuentaCCI: numeroCuentaCCI.trim(),
+      saldoMinimo: saldoMinimo || null,
+      fechaApertura: fechaApertura || null,
+      fechaCierre: fechaCierre || null,
     });
   };
 
@@ -246,6 +268,101 @@ export default function CuentaCorrienteForm({
           />
         </div>
       </div>
+
+      <div
+        style={{
+          alignItems: "center",
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label htmlFor="saldoMinimo">Saldo Mínimo</label>
+          <InputNumber
+            id="saldoMinimo"
+            value={saldoMinimo}
+            onValueChange={(e) => setSaldoMinimo(e.value)}
+            mode="decimal"
+            minFractionDigits={2}
+            maxFractionDigits={2}
+            min={0}
+            disabled={loading}
+            placeholder="0.00"
+            style={{ fontWeight: "bold" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="fechaApertura">Fecha de Apertura</label>
+          <Calendar
+            id="fechaApertura"
+            value={fechaApertura}
+            onChange={(e) => setFechaApertura(e.value)}
+            dateFormat="dd/mm/yy"
+            showIcon
+            disabled={loading}
+            placeholder="Seleccione fecha"
+            style={{ fontWeight: "bold" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="fechaCierre">Fecha de Cierre</label>
+          <Calendar
+            id="fechaCierre"
+            value={fechaCierre}
+            onChange={(e) => setFechaCierre(e.value)}
+            dateFormat="dd/mm/yy"
+            showIcon
+            disabled={loading}
+            placeholder="Seleccione fecha"
+            style={{ fontWeight: "bold" }}
+          />
+        </div>
+      </div>
+
+      {isEdit && defaultValues.creadoEn && (
+        <div
+          style={{
+            marginTop: 20,
+            padding: 15,
+            backgroundColor: "#f8f9fa",
+            borderRadius: 8,
+            border: "1px solid #dee2e6",
+          }}
+        >
+          <h4 style={{ margin: "0 0 10px 0", color: "#495057" }}>Auditoría</h4>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "1fr 1fr",
+              gap: 10,
+            }}
+          >
+            <div>
+              <strong>Creado:</strong>{" "}
+              {formatearFecha(defaultValues.creadoEn)}
+              {defaultValues.personalCreador && (
+                <span>
+                  {" "}- {defaultValues.personalCreador.nombres}{" "}
+                  {defaultValues.personalCreador.apellidoPaterno}
+                </span>
+              )}
+            </div>
+            {defaultValues.actualizadoEn && (
+              <div>
+                <strong>Actualizado:</strong>{" "}
+                {formatearFecha(defaultValues.actualizadoEn)}
+                {defaultValues.personalActualizador && (
+                  <span>
+                    {" "}- {defaultValues.personalActualizador.nombres}{" "}
+                    {defaultValues.personalActualizador.apellidoPaterno}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div
         style={{
