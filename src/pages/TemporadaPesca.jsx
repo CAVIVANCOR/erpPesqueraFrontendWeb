@@ -665,7 +665,7 @@ const TemporadaPesca = ({ ruta }) => {
     <div className="temporada-pesca-container">
       <Toast ref={toast} />
       <ConfirmDialog />
-      <Tooltip target=".custom-tooltip" />
+      <Tooltip mouseTrack target=".custom-tooltip" />
       <div className="card">
         <DataTable
           ref={dt}

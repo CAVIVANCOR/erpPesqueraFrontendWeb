@@ -4,6 +4,7 @@ import { OverlayPanel } from 'primereact/overlaypanel';
 import { Button } from 'primereact/button';
 import { Divider } from 'primereact/divider';
 import { ScrollPanel } from 'primereact/scrollpanel';
+import { Dialog } from 'primereact/dialog';
 import { motion } from 'framer-motion';
 import { useNotificacionStore } from '../../../shared/stores/useNotificacionStore';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +14,13 @@ export default function NotificationBell() {
   const navigate = useNavigate();
   const overlayRef = useRef(null);
   const [mostrarSoloNoLeidas, setMostrarSoloNoLeidas] = useState(true);
+  
+  const [dialogoEspera, setDialogoEspera] = useState({
+    visible: false,
+    titulo: '',
+    mensaje: '',
+    notificacionId: null
+  });
 
   const {
     notificaciones,
@@ -47,41 +55,53 @@ export default function NotificationBell() {
   };
 
   const handleNotificacionClick = async (notificacion) => {
-    if (!notificacion.leida) {
-      await marcarLeida(notificacion.id);
-    }
-
     overlayRef.current.hide();
 
-    if (notificacion.urlDestino) {
-      // Si es una notificación de videoconferencia, confirmar y abrir Jitsi
-      if (notificacion.tipo?.includes('VIDEOCONFERENCIA') && notificacion.metadata?.participanteId) {
-        try {
-          // Confirmar asistencia y obtener URL de Jitsi
-          const response = await fetch(
-            `${import.meta.env.VITE_API_URL}/participante-reunion/${notificacion.metadata.participanteId}/confirmar-y-obtener-info`,
-            {
-              headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-              }
-            }
-          );
-          
-          if (response.ok) {
-            const data = await response.json();
-            // Abrir Jitsi en nueva ventana
-            window.open(data.videoconferencia.urlReunion, '_blank');
-          } else {
-            // Si falla, navegar a la página de videoconferencia
-            navigate(notificacion.urlDestino);
-          }
-        } catch (error) {
-          console.error('Error al confirmar asistencia:', error);
-          // Si falla, navegar a la página de videoconferencia
-          navigate(notificacion.urlDestino);
+    if (notificacion.tipo?.includes('VIDEOCONFERENCIA') && notificacion.metadata?.salaId) {
+      const esModerador = notificacion.metadata?.esModerador === true || notificacion.metadata?.rol === 'MODERADOR';
+      const salaId = notificacion.metadata.salaId;
+
+      console.log('🎥 Procesando notificación de videoconferencia:', {
+        esModerador,
+        salaId,
+        notificacionId: notificacion.id
+      });
+
+      if (esModerador) {
+        console.log('👨‍💼 Usuario es MODERADOR - Abriendo Jitsi directamente');
+        
+        // Patrón simple que funciona en Videoconferencia.jsx
+        const jitsiUrl = `https://meet.megui.com.pe/${salaId}`;
+        console.log('🌐 Abriendo Jitsi:', jitsiUrl);
+        window.open(jitsiUrl, '_blank', 'noopener,noreferrer');
+        
+        // Marcar como leída
+        if (!notificacion.leida) {
+          console.log('✉️ Marcando notificación como leída');
+          await marcarLeida(notificacion.id);
         }
+
       } else {
-        // Para otras notificaciones, navegar dentro del ERP
+        console.log('👤 Usuario es PARTICIPANTE - Abriendo Jitsi directamente');
+        
+        // Mismo patrón simple para participantes
+        const jitsiUrl = `https://meet.megui.com.pe/${salaId}`;
+        console.log('🌐 Abriendo Jitsi:', jitsiUrl);
+        window.open(jitsiUrl, '_blank', 'noopener,noreferrer');
+        
+        // Marcar como leída
+        if (!notificacion.leida) {
+          console.log('✉️ Marcando notificación como leída');
+          await marcarLeida(notificacion.id);
+        }
+      }
+    } else {
+      // Para otras notificaciones, comportamiento normal
+      if (!notificacion.leida) {
+        await marcarLeida(notificacion.id);
+      }
+      
+      if (notificacion.urlDestino) {
         navigate(notificacion.urlDestino);
       }
     }
@@ -106,6 +126,15 @@ export default function NotificationBell() {
     cargarNotificaciones({ 
       leida: nuevoFiltro ? false : undefined, 
       limit: 20 
+    });
+  };
+
+  const handleCerrarDialogoEspera = () => {
+    setDialogoEspera({
+      visible: false,
+      titulo: '',
+      mensaje: '',
+      notificacionId: null
     });
   };
 
@@ -295,6 +324,58 @@ export default function NotificationBell() {
           )}
         </ScrollPanel>
       </OverlayPanel>
+
+      <Dialog
+        visible={dialogoEspera.visible}
+        onHide={handleCerrarDialogoEspera}
+        header="Reunión no iniciada"
+        modal
+        style={{ width: '450px' }}
+        footer={
+          <div>
+            <Button
+              label="Entendido"
+              icon="pi pi-check"
+              onClick={handleCerrarDialogoEspera}
+              className="p-button-primary"
+            />
+          </div>
+        }
+      >
+        <div style={{ padding: '1rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '1rem',
+            marginBottom: '1rem'
+          }}>
+            <i 
+              className="pi pi-clock" 
+              style={{ 
+                fontSize: '3rem', 
+                color: '#F59E0B' 
+              }} 
+            />
+            <div>
+              <h4 style={{ margin: '0 0 0.5rem 0' }}>{dialogoEspera.titulo}</h4>
+              <p style={{ margin: 0, color: '#6B7280' }}>
+                {dialogoEspera.mensaje}
+              </p>
+            </div>
+          </div>
+          <div style={{ 
+            padding: '0.75rem', 
+            backgroundColor: '#FEF3C7', 
+            borderRadius: '6px',
+            border: '1px solid #FCD34D'
+          }}>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: '#92400E' }}>
+              <i className="pi pi-info-circle" style={{ marginRight: '0.5rem' }} />
+              La notificación permanecerá activa hasta que el moderador inicie la reunión.
+            </p>
+          </div>
+        </div>
+      </Dialog>
     </>
   );
 }

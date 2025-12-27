@@ -23,12 +23,12 @@ import { Toast } from "primereact/toast";
 import { Toolbar } from "primereact/toolbar";
 import { Card } from "primereact/card";
 import { getResponsiveFontSize } from "../../utils/utils";
-import { 
-  capturarGPS, 
-  formatearCoordenadas, 
+import {
+  capturarGPS,
+  formatearCoordenadas,
   crearInputCoordenadas,
   descomponerDMS,
-  convertirDMSADecimal
+  convertirDMSADecimal,
 } from "../../utils/gpsUtils";
 import DetalleCalasEspecieForm from "./DetalleCalasEspecieForm";
 import {
@@ -176,7 +176,7 @@ const DetalleCalasForm = ({
       setCalas([]);
       return;
     }
-    
+
     try {
       const response = await getCalasPorFaena(faenaPescaId);
       setCalas(response);
@@ -247,12 +247,22 @@ const DetalleCalasForm = ({
 
   // Funciones para actualizar decimal cuando cambia DMS
   const actualizarLatitudDesdeDMS = () => {
-    const decimal = convertirDMSADecimal(latGrados, latMinutos, latSegundos, latDireccion);
+    const decimal = convertirDMSADecimal(
+      latGrados,
+      latMinutos,
+      latSegundos,
+      latDireccion
+    );
     setLatitud(decimal);
   };
 
   const actualizarLongitudDesdeDMS = () => {
-    const decimal = convertirDMSADecimal(lonGrados, lonMinutos, lonSegundos, lonDireccion);
+    const decimal = convertirDMSADecimal(
+      lonGrados,
+      lonMinutos,
+      lonSegundos,
+      lonDireccion
+    );
     setLongitud(decimal);
   };
 
@@ -294,7 +304,7 @@ const DetalleCalasForm = ({
         detail: "Cala eliminada",
         life: 3000,
       });
-      
+
       cargarCalas();
       onCalasChange(); // Notificar cambios en calas
     } catch (error) {
@@ -368,17 +378,17 @@ const DetalleCalasForm = ({
       } else {
         // Crear nueva cala
         nuevaCalaCreada = await crearCala(calaData);
-        
+
         // Actualizar el estado editingCala con la nueva cala creada
         setEditingCala(nuevaCalaCreada);
-        
+
         toast.current?.show({
           severity: "success",
           summary: "Cala Creada",
           detail: "Cala creada correctamente. Ahora puede agregar especies.",
           life: 4000,
         });
-        
+
         // NO cerrar el dialog para permitir agregar especies
         // setCalaDialog(false); // Comentado para mantener abierto
       }
@@ -416,26 +426,25 @@ const DetalleCalasForm = ({
     try {
       const ahora = new Date();
       setFechaHoraInicio(ahora);
-      
+
       // Actualizar en la base de datos
       const calaActualizada = {
         ...cala,
         fechaHoraInicio: ahora.toISOString(),
       };
-      
+
       await actualizarCala(cala.id, calaActualizada);
-      
+
       toast.current?.show({
         severity: "success",
         summary: "Cala Iniciada",
         detail: `Cala iniciada a las ${ahora.toLocaleTimeString()}`,
         life: 3000,
       });
-      
+
       // Recargar la lista de calas
       cargarCalas();
       onCalasChange(); // Notificar cambios en calas
-      
     } catch (error) {
       console.error("Error iniciando cala:", error);
       toast.current?.show({
@@ -456,26 +465,25 @@ const DetalleCalasForm = ({
     try {
       const ahora = new Date();
       setFechaHoraFin(ahora);
-      
+
       // Actualizar en la base de datos
       const calaActualizada = {
         ...cala,
         fechaHoraFin: ahora.toISOString(),
       };
-      
+
       await actualizarCala(cala.id, calaActualizada);
-      
+
       toast.current?.show({
         severity: "success",
         summary: "Cala Finalizada",
         detail: `Cala finalizada a las ${ahora.toLocaleTimeString()}`,
         life: 3000,
       });
-      
+
       // Recargar la lista de calas
       cargarCalas();
       onCalasChange(); // Notificar cambios en calas
-      
     } catch (error) {
       console.error("Error finalizando cala:", error);
       toast.current?.show({
@@ -512,36 +520,51 @@ const DetalleCalasForm = ({
   };
 
   const calaDialogFooter = (
-    <>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        gap: 10,
+      }}
+    >
       <Button
         label="Cancelar"
         icon="pi pi-times"
-        className="p-button-text"
+        type="button"
         onClick={() => setCalaDialog(false)}
+        className="p-button-warning"
+        severity="warning"
+        raised
+        size="small"
+        outlined
       />
       <Button
         label="Guardar"
         icon="pi pi-check"
-        className="p-button-text"
+        type="button"
         onClick={guardarCala}
+        className="p-button-success"
+        severity="success"
+        raised
+        size="small"
+        outlined
       />
-    </>
+    </div>
   );
 
   const calaDialogHeader = (
     <div className="flex justify-content-center mb-4">
-        <Tag
-          value={"Cala"}
-          severity="info"
-          style={{
-            fontSize: "1.1rem",
-            padding: "0.75rem 1.25rem",
-            textTransform: "uppercase",
-            fontWeight: "bold",
-            textAlign: "center",
-            width: "100%",
-          }}
-        />
+      <Tag
+        value={"Cala"}
+        severity="info"
+        style={{
+          fontSize: "1.25rem",
+          textTransform: "uppercase",
+          fontWeight: "bold",
+          textAlign: "center",
+          width: "100%",
+        }}
+      />
     </div>
   );
 
@@ -598,16 +621,18 @@ const DetalleCalasForm = ({
     </div>
   );
 
-  const handleDataChange = async () => {    
+  const handleDataChange = async () => {
     // Recargar las calas para obtener los datos actualizados
     await cargarCalas();
-    
+
     // Si hay una cala siendo editada, actualizar sus datos con los valores recalculados
     if (editingCala?.id) {
       try {
         const calasActualizadas = await getCalasPorFaena(faenaPescaId);
-        const calaActualizada = calasActualizadas.find(c => c.id === editingCala.id);
-        
+        const calaActualizada = calasActualizadas.find(
+          (c) => c.id === editingCala.id
+        );
+
         if (calaActualizada) {
           // Actualizar el estado del formulario con los nuevos valores
           setToneladasCapturadas(calaActualizada.toneladasCapturadas || "");
@@ -616,12 +641,12 @@ const DetalleCalasForm = ({
         console.error("Error actualizando datos de cala:", error);
       }
     }
-    
+
     // Notificar al componente padre que debe recargar los datos
-    if (onDataChange && typeof onDataChange === 'function') {
+    if (onDataChange && typeof onDataChange === "function") {
       await onDataChange();
     }
-    if (onFaenasChange && typeof onFaenasChange === 'function') {
+    if (onFaenasChange && typeof onFaenasChange === "function") {
       await onFaenasChange();
     }
   };
@@ -839,320 +864,468 @@ const DetalleCalasForm = ({
             </div>
           </div>
 
-        {/* Coordenadas GPS - Formato compacto */}
-        <div
-          style={{
-            border: "6px solid #0EA5E9",
-            padding: "0.5rem",
-            borderRadius: "8px",
-            marginTop: "1rem",
-            marginBottom: "1rem",
-            display: "flex",
-            alignItems: "self-end",
-            gap: 10,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <Button
-              type="button"
-              label="Capturar GPS"
-              icon="pi pi-map-marker"
-              className="p-button-info"
-              onClick={async () => {
-                try {
-                  await capturarGPS(
-                    async (latitude, longitude, accuracy) => {
-                      setLatitud(latitude);
-                      setLongitud(longitude);
+          {/* Coordenadas GPS - Formato compacto */}
+          <div
+            style={{
+              border: "6px solid #0EA5E9",
+              padding: "0.5rem",
+              borderRadius: "8px",
+              marginTop: "1rem",
+              marginBottom: "1rem",
+              display: "flex",
+              alignItems: "self-end",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <Button
+                type="button"
+                label="Capturar GPS"
+                icon="pi pi-map-marker"
+                className="p-button-info"
+                onClick={async () => {
+                  try {
+                    await capturarGPS(
+                      async (latitude, longitude, accuracy) => {
+                        setLatitud(latitude);
+                        setLongitud(longitude);
 
-                      toast.current?.show({
-                        severity: "success",
-                        summary: "GPS capturado",
-                        detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m. Guardando cala...`,
-                        life: 3000,
-                      });
+                        toast.current?.show({
+                          severity: "success",
+                          summary: "GPS capturado",
+                          detail: `GPS capturado con precisión de ${accuracy.toFixed(
+                            1
+                          )}m. Guardando cala...`,
+                          life: 3000,
+                        });
 
-                      try {
-                        await guardarCala(false);
-                      } catch (error) {
-                        console.error("Error al guardar cala automáticamente:", error);
+                        try {
+                          await guardarCala(false);
+                        } catch (error) {
+                          console.error(
+                            "Error al guardar cala automáticamente:",
+                            error
+                          );
+                          toast.current?.show({
+                            severity: "error",
+                            summary: "Error",
+                            detail:
+                              "GPS capturado pero error al guardar la cala",
+                            life: 4000,
+                          });
+                        }
+                      },
+                      (errorMessage) => {
                         toast.current?.show({
                           severity: "error",
                           summary: "Error",
-                          detail: "GPS capturado pero error al guardar la cala",
-                          life: 4000,
+                          detail: errorMessage,
+                          life: 3000,
                         });
                       }
-                    },
-                    (errorMessage) => {
-                      toast.current?.show({
-                        severity: "error",
-                        summary: "Error",
-                        detail: errorMessage,
-                        life: 3000,
-                      });
-                    }
-                  );
-                } catch (error) {
-                  console.error("Error capturando GPS:", error);
-                }
-              }}
-              disabled={loading || calaFinalizada}
-              size="small"
-            />
-          </div>
+                    );
+                  } catch (error) {
+                    console.error("Error capturando GPS:", error);
+                  }
+                }}
+                disabled={loading || calaFinalizada}
+                size="small"
+              />
+            </div>
 
-          {/* Tabla compacta de coordenadas GPS */}
-          <div style={{ flex: 3 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", border: "2px solid #0EA5E9" }}>
-              <thead>
-                <tr style={{ backgroundColor: "#0EA5E9", color: "white" }}>
-                  <th style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Formato</th>
-                  <th colSpan="4" style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", textAlign: "center" }}>Latitud</th>
-                  <th colSpan="4" style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", textAlign: "center" }}>Longitud</th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* Fila Decimal */}
-                <tr>
-                  <td style={{ padding: "4px", border: "1px solid #0EA5E9", fontWeight: "bold", fontSize: "11px", backgroundColor: "#e1f1f7", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Decimal</td>
-                  <td colSpan="4" style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                    <input
-                      type="number"
-                      value={latitud || ""}
-                      onChange={(e) => {
-                        const valor = parseFloat(e.target.value);
-                        setLatitud(isNaN(valor) ? "" : valor);
-                      }}
-                      disabled={calaFinalizada}
-                      step="0.000001"
-                      placeholder="-12.345678"
+            {/* Tabla compacta de coordenadas GPS */}
+            <div style={{ flex: 3 }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  border: "2px solid #0EA5E9",
+                }}
+              >
+                <thead>
+                  <tr style={{ backgroundColor: "#0EA5E9", color: "white" }}>
+                    <th
                       style={{
-                        width: "100%",
                         padding: "4px",
-                        border: "none",
+                        border: "1px solid #0EA5E9",
                         fontSize: "12px",
-                        fontWeight: "bold",
-                        textAlign: "center",
+                        width: "75px",
+                        minWidth: "75px",
+                        maxWidth: "75px",
                       }}
-                    />
-                  </td>
-                  <td colSpan="4" style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                    <input
-                      type="number"
-                      value={longitud || ""}
-                      onChange={(e) => {
-                        const valor = parseFloat(e.target.value);
-                        setLongitud(isNaN(valor) ? "" : valor);
-                      }}
-                      disabled={calaFinalizada}
-                      step="0.000001"
-                      placeholder="-77.123456"
+                    >
+                      Formato
+                    </th>
+                    <th
+                      colSpan="4"
                       style={{
-                        width: "100%",
                         padding: "4px",
-                        border: "none",
+                        border: "1px solid #0EA5E9",
                         fontSize: "12px",
-                        fontWeight: "bold",
-                        textAlign: "center",
-                      }}
-                    />
-                  </td>
-                </tr>
-                {/* Fila GMS */}
-                <tr>
-                  <td style={{ padding: "4px", border: "1px solid #0EA5E9", fontWeight: "bold", fontSize: "11px", backgroundColor: "#e1f1f7", width: "75px", minWidth: "75px", maxWidth: "75px" }}>GMS</td>
-                  <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
-                      <input
-                        type="number"
-                        value={latGrados}
-                        onChange={(e) => setLatGrados(Number(e.target.value) || 0)}
-                        onBlur={actualizarLatitudDesdeDMS}
-                        disabled={calaFinalizada}
-                        min="0"
-                        max="90"
-                        style={{
-                          width: "60px",
-                          padding: "4px",
-                          border: "none",
-                          fontSize: "12px",
-                          fontWeight: "bold",
-                          textAlign: "center",
-                        }}
-                      />
-                      <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
-                      <input
-                        type="number"
-                        value={latMinutos}
-                        onChange={(e) => setLatMinutos(Number(e.target.value) || 0)}
-                        onBlur={actualizarLatitudDesdeDMS}
-                        disabled={calaFinalizada}
-                        min="0"
-                        max="59"
-                        style={{
-                          width: "50px",
-                          padding: "4px",
-                          border: "none",
-                          fontSize: "12px",
-                          fontWeight: "bold",
-                          textAlign: "center",
-                        }}
-                      />
-                      <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
-                      <input
-                        type="number"
-                        value={latSegundos}
-                        onChange={(e) => setLatSegundos(Number(e.target.value) || 0)}
-                        onBlur={actualizarLatitudDesdeDMS}
-                        disabled={calaFinalizada}
-                        min="0"
-                        max="59.99"
-                        step="0.01"
-                        style={{
-                          width: "60px",
-                          padding: "4px",
-                          border: "none",
-                          fontSize: "12px",
-                          fontWeight: "bold",
-                          textAlign: "center",
-                        }}
-                      />
-                      <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                    <select
-                      value={latDireccion}
-                      onChange={(e) => {
-                        setLatDireccion(e.target.value);
-                        setTimeout(actualizarLatitudDesdeDMS, 0);
-                      }}
-                      disabled={calaFinalizada}
-                      style={{
-                        width: "100%",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
-                        fontWeight: "bold",
                         textAlign: "center",
                       }}
                     >
-                      <option value="N">N</option>
-                      <option value="S">S</option>
-                    </select>
-                  </td>
-                  <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
-                      <input
-                        type="number"
-                        value={lonGrados}
-                        onChange={(e) => setLonGrados(Number(e.target.value) || 0)}
-                        onBlur={actualizarLongitudDesdeDMS}
-                        disabled={calaFinalizada}
-                        min="0"
-                        max="180"
-                        style={{
-                          width: "60px",
-                          padding: "4px",
-                          border: "none",
-                          fontSize: "12px",
-                          fontWeight: "bold",
-                          textAlign: "center",
-                        }}
-                      />
-                      <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
-                      <input
-                        type="number"
-                        value={lonMinutos}
-                        onChange={(e) => setLonMinutos(Number(e.target.value) || 0)}
-                        onBlur={actualizarLongitudDesdeDMS}
-                        disabled={calaFinalizada}
-                        min="0"
-                        max="59"
-                        style={{
-                          width: "50px",
-                          padding: "4px",
-                          border: "none",
-                          fontSize: "12px",
-                          fontWeight: "bold",
-                          textAlign: "center",
-                        }}
-                      />
-                      <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
-                      <input
-                        type="number"
-                        value={lonSegundos}
-                        onChange={(e) => setLonSegundos(Number(e.target.value) || 0)}
-                        onBlur={actualizarLongitudDesdeDMS}
-                        disabled={calaFinalizada}
-                        min="0"
-                        max="59.99"
-                        step="0.01"
-                        style={{
-                          width: "60px",
-                          padding: "4px",
-                          border: "none",
-                          fontSize: "12px",
-                          fontWeight: "bold",
-                          textAlign: "center",
-                        }}
-                      />
-                      <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                    <select
-                      value={lonDireccion}
-                      onChange={(e) => {
-                        setLonDireccion(e.target.value);
-                        setTimeout(actualizarLongitudDesdeDMS, 0);
-                      }}
-                      disabled={calaFinalizada}
+                      Latitud
+                    </th>
+                    <th
+                      colSpan="4"
                       style={{
-                        width: "100%",
                         padding: "4px",
-                        border: "none",
+                        border: "1px solid #0EA5E9",
                         fontSize: "12px",
-                        fontWeight: "bold",
                         textAlign: "center",
                       }}
                     >
-                      <option value="E">E</option>
-                      <option value="W">W</option>
-                    </select>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                      Longitud
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Fila Decimal */}
+                  <tr>
+                    <td
+                      style={{
+                        padding: "4px",
+                        border: "1px solid #0EA5E9",
+                        fontWeight: "bold",
+                        fontSize: "11px",
+                        backgroundColor: "#e1f1f7",
+                        width: "75px",
+                        minWidth: "75px",
+                        maxWidth: "75px",
+                      }}
+                    >
+                      Decimal
+                    </td>
+                    <td
+                      colSpan="4"
+                      style={{ padding: "2px", border: "1px solid #0EA5E9" }}
+                    >
+                      <input
+                        type="number"
+                        value={latitud || ""}
+                        onChange={(e) => {
+                          const valor = parseFloat(e.target.value);
+                          setLatitud(isNaN(valor) ? "" : valor);
+                        }}
+                        disabled={calaFinalizada}
+                        step="0.000001"
+                        placeholder="-12.345678"
+                        style={{
+                          width: "100%",
+                          padding: "4px",
+                          border: "none",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                          textAlign: "center",
+                        }}
+                      />
+                    </td>
+                    <td
+                      colSpan="4"
+                      style={{ padding: "2px", border: "1px solid #0EA5E9" }}
+                    >
+                      <input
+                        type="number"
+                        value={longitud || ""}
+                        onChange={(e) => {
+                          const valor = parseFloat(e.target.value);
+                          setLongitud(isNaN(valor) ? "" : valor);
+                        }}
+                        disabled={calaFinalizada}
+                        step="0.000001"
+                        placeholder="-77.123456"
+                        style={{
+                          width: "100%",
+                          padding: "4px",
+                          border: "none",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                          textAlign: "center",
+                        }}
+                      />
+                    </td>
+                  </tr>
+                  {/* Fila GMS */}
+                  <tr>
+                    <td
+                      style={{
+                        padding: "4px",
+                        border: "1px solid #0EA5E9",
+                        fontWeight: "bold",
+                        fontSize: "11px",
+                        backgroundColor: "#e1f1f7",
+                        width: "75px",
+                        minWidth: "75px",
+                        maxWidth: "75px",
+                      }}
+                    >
+                      GMS
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "2px",
+                        }}
+                      >
+                        <input
+                          type="number"
+                          value={latGrados}
+                          onChange={(e) =>
+                            setLatGrados(Number(e.target.value) || 0)
+                          }
+                          onBlur={actualizarLatitudDesdeDMS}
+                          disabled={calaFinalizada}
+                          min="0"
+                          max="90"
+                          style={{
+                            width: "60px",
+                            padding: "4px",
+                            border: "none",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        />
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                          °
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "2px",
+                        }}
+                      >
+                        <input
+                          type="number"
+                          value={latMinutos}
+                          onChange={(e) =>
+                            setLatMinutos(Number(e.target.value) || 0)
+                          }
+                          onBlur={actualizarLatitudDesdeDMS}
+                          disabled={calaFinalizada}
+                          min="0"
+                          max="59"
+                          style={{
+                            width: "50px",
+                            padding: "4px",
+                            border: "none",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        />
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                          '
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "2px",
+                        }}
+                      >
+                        <input
+                          type="number"
+                          value={latSegundos}
+                          onChange={(e) =>
+                            setLatSegundos(Number(e.target.value) || 0)
+                          }
+                          onBlur={actualizarLatitudDesdeDMS}
+                          disabled={calaFinalizada}
+                          min="0"
+                          max="59.99"
+                          step="0.01"
+                          style={{
+                            width: "60px",
+                            padding: "4px",
+                            border: "none",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        />
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                          "
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <select
+                        value={latDireccion}
+                        onChange={(e) => {
+                          setLatDireccion(e.target.value);
+                          setTimeout(actualizarLatitudDesdeDMS, 0);
+                        }}
+                        disabled={calaFinalizada}
+                        style={{
+                          width: "100%",
+                          padding: "4px",
+                          border: "none",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                          textAlign: "center",
+                        }}
+                      >
+                        <option value="N">N</option>
+                        <option value="S">S</option>
+                      </select>
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "2px",
+                        }}
+                      >
+                        <input
+                          type="number"
+                          value={lonGrados}
+                          onChange={(e) =>
+                            setLonGrados(Number(e.target.value) || 0)
+                          }
+                          onBlur={actualizarLongitudDesdeDMS}
+                          disabled={calaFinalizada}
+                          min="0"
+                          max="180"
+                          style={{
+                            width: "60px",
+                            padding: "4px",
+                            border: "none",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        />
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                          °
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "2px",
+                        }}
+                      >
+                        <input
+                          type="number"
+                          value={lonMinutos}
+                          onChange={(e) =>
+                            setLonMinutos(Number(e.target.value) || 0)
+                          }
+                          onBlur={actualizarLongitudDesdeDMS}
+                          disabled={calaFinalizada}
+                          min="0"
+                          max="59"
+                          style={{
+                            width: "50px",
+                            padding: "4px",
+                            border: "none",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        />
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                          '
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "2px",
+                        }}
+                      >
+                        <input
+                          type="number"
+                          value={lonSegundos}
+                          onChange={(e) =>
+                            setLonSegundos(Number(e.target.value) || 0)
+                          }
+                          onBlur={actualizarLongitudDesdeDMS}
+                          disabled={calaFinalizada}
+                          min="0"
+                          max="59.99"
+                          step="0.01"
+                          style={{
+                            width: "60px",
+                            padding: "4px",
+                            border: "none",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        />
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                          "
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                      <select
+                        value={lonDireccion}
+                        onChange={(e) => {
+                          setLonDireccion(e.target.value);
+                          setTimeout(actualizarLongitudDesdeDMS, 0);
+                        }}
+                        disabled={calaFinalizada}
+                        style={{
+                          width: "100%",
+                          padding: "4px",
+                          border: "none",
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                          textAlign: "center",
+                        }}
+                      >
+                        <option value="E">E</option>
+                        <option value="W">W</option>
+                      </select>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            alignItems: "end",
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
+          <DetalleCalasEspecieForm
+            calaId={editingCala?.id}
+            faenaPescaId={faenaPescaId}
+            temporadaId={temporadaData?.id}
+            calaFinalizada={calaFinalizada}
+            onDataChange={handleDataChange}
+            onFaenasChange={onFaenasChange}
+          />
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "end",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
             <div style={{ flex: 1 }}>
               <Button
                 label="Finalizar Cala"
@@ -1191,7 +1364,6 @@ const DetalleCalasForm = ({
                 disabled
               />
             </div>
-
             <div style={{ flex: 2 }}>
               <label htmlFor="observaciones">Observaciones</label>
               <InputTextarea
@@ -1204,16 +1376,6 @@ const DetalleCalasForm = ({
                 cols={20}
               />
             </div>
-          </div>
-          <div className="col-12">
-            <DetalleCalasEspecieForm 
-              calaId={editingCala?.id} 
-              faenaPescaId={faenaPescaId}
-              temporadaId={temporadaData?.id}
-              calaFinalizada={calaFinalizada}
-              onDataChange={handleDataChange}
-              onFaenasChange={onFaenasChange}
-            />
           </div>
         </div>
       </Dialog>

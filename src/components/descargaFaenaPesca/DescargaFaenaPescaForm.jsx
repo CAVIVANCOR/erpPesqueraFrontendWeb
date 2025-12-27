@@ -243,7 +243,12 @@ export default function DescargaFaenaPescaForm({
 
   // Sincronizar cambios de decimal a DMS para DESCARGA
   useEffect(() => {
-    if (latitud !== "" && latitud !== null && latitud !== undefined && latitud !== 0) {
+    if (
+      latitud !== "" &&
+      latitud !== null &&
+      latitud !== undefined &&
+      latitud !== 0
+    ) {
       const dms = descomponerDMS(Number(latitud), true);
       setLatGrados(dms.grados);
       setLatMinutos(dms.minutos);
@@ -253,7 +258,12 @@ export default function DescargaFaenaPescaForm({
   }, [latitud]);
 
   useEffect(() => {
-    if (longitud !== "" && longitud !== null && longitud !== undefined && longitud !== 0) {
+    if (
+      longitud !== "" &&
+      longitud !== null &&
+      longitud !== undefined &&
+      longitud !== 0
+    ) {
       const dms = descomponerDMS(Number(longitud), false);
       setLonGrados(dms.grados);
       setLonMinutos(dms.minutos);
@@ -264,7 +274,12 @@ export default function DescargaFaenaPescaForm({
 
   // Sincronizar cambios de decimal a DMS para FONDEO
   useEffect(() => {
-    if (latitudFondeo !== "" && latitudFondeo !== null && latitudFondeo !== undefined && latitudFondeo !== 0) {
+    if (
+      latitudFondeo !== "" &&
+      latitudFondeo !== null &&
+      latitudFondeo !== undefined &&
+      latitudFondeo !== 0
+    ) {
       const dms = descomponerDMS(Number(latitudFondeo), true);
       setLatFondeoGrados(dms.grados);
       setLatFondeoMinutos(dms.minutos);
@@ -274,7 +289,12 @@ export default function DescargaFaenaPescaForm({
   }, [latitudFondeo]);
 
   useEffect(() => {
-    if (longitudFondeo !== "" && longitudFondeo !== null && longitudFondeo !== undefined && longitudFondeo !== 0) {
+    if (
+      longitudFondeo !== "" &&
+      longitudFondeo !== null &&
+      longitudFondeo !== undefined &&
+      longitudFondeo !== 0
+    ) {
       const dms = descomponerDMS(Number(longitudFondeo), false);
       setLonFondeoGrados(dms.grados);
       setLonFondeoMinutos(dms.minutos);
@@ -285,23 +305,43 @@ export default function DescargaFaenaPescaForm({
 
   // Funciones para actualizar decimal cuando cambia DMS - DESCARGA
   const actualizarLatitudDesdeDMS = () => {
-    const decimal = convertirDMSADecimal(latGrados, latMinutos, latSegundos, latDireccion);
+    const decimal = convertirDMSADecimal(
+      latGrados,
+      latMinutos,
+      latSegundos,
+      latDireccion
+    );
     setValue("latitud", decimal);
   };
 
   const actualizarLongitudDesdeDMS = () => {
-    const decimal = convertirDMSADecimal(lonGrados, lonMinutos, lonSegundos, lonDireccion);
+    const decimal = convertirDMSADecimal(
+      lonGrados,
+      lonMinutos,
+      lonSegundos,
+      lonDireccion
+    );
     setValue("longitud", decimal);
   };
 
   // Funciones para actualizar decimal cuando cambia DMS - FONDEO
   const actualizarLatitudFondeoDesdeDMS = () => {
-    const decimal = convertirDMSADecimal(latFondeoGrados, latFondeoMinutos, latFondeoSegundos, latFondeoDireccion);
+    const decimal = convertirDMSADecimal(
+      latFondeoGrados,
+      latFondeoMinutos,
+      latFondeoSegundos,
+      latFondeoDireccion
+    );
     setValue("latitudFondeo", decimal);
   };
 
   const actualizarLongitudFondeoDesdeDMS = () => {
-    const decimal = convertirDMSADecimal(lonFondeoGrados, lonFondeoMinutos, lonFondeoSegundos, lonFondeoDireccion);
+    const decimal = convertirDMSADecimal(
+      lonFondeoGrados,
+      lonFondeoMinutos,
+      lonFondeoSegundos,
+      lonFondeoDireccion
+    );
     setValue("longitudFondeo", decimal);
   };
 
@@ -463,7 +503,8 @@ export default function DescargaFaenaPescaForm({
           toast.current?.show({
             severity: "info",
             summary: "Procesando",
-            detail: "Finalizando descarga y generando movimientos de almacén, por favor espere...",
+            detail:
+              "Finalizando descarga y generando movimientos de almacén, por favor espere...",
             life: 3000,
           });
 
@@ -476,7 +517,11 @@ export default function DescargaFaenaPescaForm({
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
-            detail: `Descarga finalizada correctamente. Se generaron los documentos ${resultado.movimientoIngreso?.numeroDocumento || ''} (Ingreso) y ${resultado.movimientoSalida?.numeroDocumento || ''} (Salida).`,
+            detail: `Descarga finalizada correctamente. Se generaron los documentos ${
+              resultado.movimientoIngreso?.numeroDocumento || ""
+            } (Ingreso) y ${
+              resultado.movimientoSalida?.numeroDocumento || ""
+            } (Salida).`,
             life: 6000,
           });
 
@@ -486,7 +531,11 @@ export default function DescargaFaenaPescaForm({
           }
         } catch (error) {
           console.error("Error finalizando descarga:", error);
-          const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || "Error al finalizar la descarga";
+          const errorMsg =
+            error.response?.data?.error ||
+            error.response?.data?.message ||
+            error.message ||
+            "Error al finalizar la descarga";
           toast.current?.show({
             severity: "error",
             summary: "Error",
@@ -601,34 +650,9 @@ export default function DescargaFaenaPescaForm({
         }}
       >
         <div style={{ flex: 1 }}>
-          <label htmlFor="puertoDescargaId">Puerto Descarga*</label>
-          <Controller
-            name="puertoDescargaId"
-            control={control}
-            rules={{ required: "El puerto de descarga es obligatorio" }}
-            render={({ field }) => (
-              <Dropdown
-                id="puertoDescargaId"
-                {...field}
-                value={field.value}
-                options={puertos}
-                optionLabel="label"
-                optionValue="value"
-                style={{ fontWeight: "bold" }}
-                placeholder="Seleccione puerto"
-                disabled={loading}
-                className={classNames({ "p-invalid": errors.puertoDescargaId })}
-              />
-            )}
-          />
-          {errors.puertoDescargaId && (
-            <Message severity="error" text={errors.puertoDescargaId.message} />
-          )}
-        </div>
-        <div style={{ flex: 1 }}>
           <Button
             type="button"
-            label="Retorno a Puerto"
+            label="Inicio Retorno a Puerto"
             icon="pi pi-clock"
             className="p-button-info"
             onClick={() => setValue("fechaHoraArriboPuerto", new Date())}
@@ -639,7 +663,7 @@ export default function DescargaFaenaPescaForm({
         </div>
         <div style={{ flex: 1 }}>
           <label htmlFor="fechaHoraArriboPuerto" style={{ color: "#2c32d3" }}>
-            Retorno a Puerto*
+            Inicio Retorno a Puerto*
           </label>
           <Controller
             name="fechaHoraArriboPuerto"
@@ -739,23 +763,78 @@ export default function DescargaFaenaPescaForm({
 
         {/* Tabla compacta de coordenadas GPS */}
         <div style={{ flex: 3 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", border: "2px solid #0EA5E9" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              border: "2px solid #0EA5E9",
+            }}
+          >
             <thead>
               <tr style={{ backgroundColor: "#0EA5E9", color: "white" }}>
-                <th style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Formato</th>
-                <th colSpan="4" style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", textAlign: "center" }}>Latitud</th>
-                <th colSpan="4" style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", textAlign: "center" }}>Longitud</th>
+                <th
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #0EA5E9",
+                    fontSize: "12px",
+                    width: "75px",
+                    minWidth: "75px",
+                    maxWidth: "75px",
+                  }}
+                >
+                  Formato
+                </th>
+                <th
+                  colSpan="4"
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #0EA5E9",
+                    fontSize: "12px",
+                    textAlign: "center",
+                  }}
+                >
+                  Latitud
+                </th>
+                <th
+                  colSpan="4"
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #0EA5E9",
+                    fontSize: "12px",
+                    textAlign: "center",
+                  }}
+                >
+                  Longitud
+                </th>
               </tr>
             </thead>
             <tbody>
               {/* Fila Decimal */}
               <tr>
-                <td style={{ padding: "4px", border: "1px solid #0EA5E9", fontWeight: "bold", fontSize: "11px", backgroundColor: "#e1f1f7", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Decimal</td>
-                <td colSpan="4" style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                <td
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #0EA5E9",
+                    fontWeight: "bold",
+                    fontSize: "11px",
+                    backgroundColor: "#e1f1f7",
+                    width: "75px",
+                    minWidth: "75px",
+                    maxWidth: "75px",
+                  }}
+                >
+                  Decimal
+                </td>
+                <td
+                  colSpan="4"
+                  style={{ padding: "2px", border: "1px solid #0EA5E9" }}
+                >
                   <input
                     type="number"
                     value={latitud || ""}
-                    onChange={(e) => setValue("latitud", parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setValue("latitud", parseFloat(e.target.value) || 0)
+                    }
                     disabled={loading}
                     step="0.000001"
                     placeholder="-12.345678"
@@ -769,11 +848,16 @@ export default function DescargaFaenaPescaForm({
                     }}
                   />
                 </td>
-                <td colSpan="4" style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                <td
+                  colSpan="4"
+                  style={{ padding: "2px", border: "1px solid #0EA5E9" }}
+                >
                   <input
                     type="number"
                     value={longitud || ""}
-                    onChange={(e) => setValue("longitud", parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setValue("longitud", parseFloat(e.target.value) || 0)
+                    }
                     disabled={loading}
                     step="0.000001"
                     placeholder="-77.123456"
@@ -790,13 +874,35 @@ export default function DescargaFaenaPescaForm({
               </tr>
               {/* Fila GMS */}
               <tr>
-                <td style={{ padding: "4px", border: "1px solid #0EA5E9", fontWeight: "bold", fontSize: "11px", backgroundColor: "#e1f1f7", width: "75px", minWidth: "75px", maxWidth: "75px" }}>GMS</td>
+                <td
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #0EA5E9",
+                    fontWeight: "bold",
+                    fontSize: "11px",
+                    backgroundColor: "#e1f1f7",
+                    width: "75px",
+                    minWidth: "75px",
+                    maxWidth: "75px",
+                  }}
+                >
+                  GMS
+                </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={latGrados}
-                      onChange={(e) => setLatGrados(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLatGrados(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLatitudDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -810,15 +916,26 @@ export default function DescargaFaenaPescaForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      °
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={latMinutos}
-                      onChange={(e) => setLatMinutos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLatMinutos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLatitudDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -832,15 +949,26 @@ export default function DescargaFaenaPescaForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      '
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={latSegundos}
-                      onChange={(e) => setLatSegundos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLatSegundos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLatitudDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -855,7 +983,9 @@ export default function DescargaFaenaPescaForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      "
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
@@ -880,11 +1010,20 @@ export default function DescargaFaenaPescaForm({
                   </select>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={lonGrados}
-                      onChange={(e) => setLonGrados(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLonGrados(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLongitudDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -898,15 +1037,26 @@ export default function DescargaFaenaPescaForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      °
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={lonMinutos}
-                      onChange={(e) => setLonMinutos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLonMinutos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLongitudDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -920,15 +1070,26 @@ export default function DescargaFaenaPescaForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      '
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={lonSegundos}
-                      onChange={(e) => setLonSegundos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLonSegundos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLongitudDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -943,7 +1104,9 @@ export default function DescargaFaenaPescaForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      "
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
@@ -982,6 +1145,31 @@ export default function DescargaFaenaPescaForm({
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
+        <div style={{ flex: 1 }}>
+          <label htmlFor="puertoDescargaId">Puerto Descarga*</label>
+          <Controller
+            name="puertoDescargaId"
+            control={control}
+            rules={{ required: "El puerto de descarga es obligatorio" }}
+            render={({ field }) => (
+              <Dropdown
+                id="puertoDescargaId"
+                {...field}
+                value={field.value}
+                options={puertos}
+                optionLabel="label"
+                optionValue="value"
+                style={{ fontWeight: "bold" }}
+                placeholder="Seleccione puerto"
+                disabled={loading}
+                className={classNames({ "p-invalid": errors.puertoDescargaId })}
+              />
+            )}
+          />
+          {errors.puertoDescargaId && (
+            <Message severity="error" text={errors.puertoDescargaId.message} />
+          )}
+        </div>
         <div style={{ flex: 2 }}>
           <label htmlFor="clienteId">Cliente*</label>
           <Controller
@@ -996,6 +1184,7 @@ export default function DescargaFaenaPescaForm({
                 options={clientes}
                 optionLabel="label"
                 optionValue="value"
+                filter
                 style={{ fontWeight: "bold" }}
                 placeholder="Seleccione cliente"
                 disabled={loading}
@@ -1132,70 +1321,7 @@ export default function DescargaFaenaPescaForm({
             />
           )}
         </div>
-        <div style={{ flex: 1 }}>
-          <Button
-            type="button"
-            label="Fin Descarga"
-            icon="pi pi-clock"
-            className="p-button-success"
-            onClick={() => setValue("fechaHoraFinDescarga", new Date())}
-            disabled={loading}
-            size="small"
-            style={{ marginTop: "5px" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaHoraFinDescarga" style={{ color: "#21962e" }}>
-            Fin Descarga*
-          </label>
-          <Controller
-            name="fechaHoraFinDescarga"
-            control={control}
-            rules={{ required: "La fecha de fin es obligatoria" }}
-            render={({ field }) => (
-              <Calendar
-                id="fechaHoraFinDescarga"
-                {...field}
-                showIcon
-                showTime
-                hourFormat="24"
-                dateFormat="dd/mm/yy"
-                inputStyle={{ fontWeight: "bold", color: "#21962e" }}
-                disabled={loading}
-                className={classNames({
-                  "p-invalid": errors.fechaHoraFinDescarga,
-                })}
-              />
-            )}
-          />
-          {errors.fechaHoraFinDescarga && (
-            <Message
-              severity="error"
-              text={errors.fechaHoraFinDescarga.message}
-            />
-          )}
-        </div>
-      </div>
 
-      {/* Tercera fila: Datos numéricos */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          marginBottom: "0.5rem",
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      ></div>
-
-      {/* Quinta fila: Especie */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          marginBottom: "0.5rem",
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
         <div style={{ flex: 1 }}>
           <label htmlFor="especieId">Especie*</label>
           <Controller
@@ -1210,6 +1336,7 @@ export default function DescargaFaenaPescaForm({
                 options={especies}
                 optionLabel="label"
                 optionValue="value"
+                filter
                 style={{ fontWeight: "bold" }}
                 placeholder="Seleccione especie"
                 disabled={loading}
@@ -1246,6 +1373,29 @@ export default function DescargaFaenaPescaForm({
             <Message severity="error" text={errors.toneladas.message} />
           )}
         </div>
+      </div>
+
+      {/* Tercera fila: Datos numéricos */}
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          marginBottom: "0.5rem",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      ></div>
+
+      {/* Quinta fila: Especie */}
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          marginBottom: "0.5rem",
+          alignItems: "end",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+
         <div style={{ flex: 1 }}>
           <label htmlFor="numReporteRecepcion">Reporte Recepción</label>
           <Controller
@@ -1284,6 +1434,48 @@ export default function DescargaFaenaPescaForm({
               />
             )}
           />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            type="button"
+            label="Fin Descarga"
+            icon="pi pi-clock"
+            className="p-button-success"
+            onClick={() => setValue("fechaHoraFinDescarga", new Date())}
+            disabled={loading}
+            style={{ marginTop: "5px" }}
+          />
+        </div>
+                <div style={{ flex: 1 }}>
+          <label htmlFor="fechaHoraFinDescarga" style={{ color: "#21962e" }}>
+            Fin Descarga*
+          </label>
+          <Controller
+            name="fechaHoraFinDescarga"
+            control={control}
+            rules={{ required: "La fecha de fin es obligatoria" }}
+            render={({ field }) => (
+              <Calendar
+                id="fechaHoraFinDescarga"
+                {...field}
+                showIcon
+                showTime
+                hourFormat="24"
+                dateFormat="dd/mm/yy"
+                inputStyle={{ fontWeight: "bold", color: "#21962e" }}
+                disabled={loading}
+                className={classNames({
+                  "p-invalid": errors.fechaHoraFinDescarga,
+                })}
+              />
+            )}
+          />
+          {errors.fechaHoraFinDescarga && (
+            <Message
+              severity="error"
+              text={errors.fechaHoraFinDescarga.message}
+            />
+          )}
         </div>
       </div>
       {/* Quinta fila: Coordenadas GPS Fondeo */}
@@ -1351,9 +1543,9 @@ export default function DescargaFaenaPescaForm({
                 id="puertoFondeoId"
                 value={field.value ? Number(field.value) : null}
                 onChange={(e) => field.onChange(e.value)}
-                options={puertos.map(p => ({ 
-                  ...p, 
-                  id: Number(p.id)
+                options={puertos.map((p) => ({
+                  ...p,
+                  id: Number(p.id),
                 }))}
                 optionLabel="nombre"
                 optionValue="id"
@@ -1372,23 +1564,78 @@ export default function DescargaFaenaPescaForm({
 
         {/* Tabla compacta de coordenadas GPS FONDEO */}
         <div style={{ flex: 3 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", border: "2px solid #F97316" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              border: "2px solid #F97316",
+            }}
+          >
             <thead>
               <tr style={{ backgroundColor: "#F97316", color: "white" }}>
-                <th style={{ padding: "4px", border: "1px solid #F97316", fontSize: "12px", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Formato</th>
-                <th colSpan="4" style={{ padding: "4px", border: "1px solid #F97316", fontSize: "12px", textAlign: "center" }}>Latitud</th>
-                <th colSpan="4" style={{ padding: "4px", border: "1px solid #F97316", fontSize: "12px", textAlign: "center" }}>Longitud</th>
+                <th
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #F97316",
+                    fontSize: "12px",
+                    width: "75px",
+                    minWidth: "75px",
+                    maxWidth: "75px",
+                  }}
+                >
+                  Formato
+                </th>
+                <th
+                  colSpan="4"
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #F97316",
+                    fontSize: "12px",
+                    textAlign: "center",
+                  }}
+                >
+                  Latitud
+                </th>
+                <th
+                  colSpan="4"
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #F97316",
+                    fontSize: "12px",
+                    textAlign: "center",
+                  }}
+                >
+                  Longitud
+                </th>
               </tr>
             </thead>
             <tbody>
               {/* Fila Decimal */}
               <tr>
-                <td style={{ padding: "4px", border: "1px solid #F97316", fontWeight: "bold", fontSize: "11px", backgroundColor: "#fff8e1", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Decimal</td>
-                <td colSpan="4" style={{ padding: "2px", border: "1px solid #F97316" }}>
+                <td
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #F97316",
+                    fontWeight: "bold",
+                    fontSize: "11px",
+                    backgroundColor: "#fff8e1",
+                    width: "75px",
+                    minWidth: "75px",
+                    maxWidth: "75px",
+                  }}
+                >
+                  Decimal
+                </td>
+                <td
+                  colSpan="4"
+                  style={{ padding: "2px", border: "1px solid #F97316" }}
+                >
                   <input
                     type="number"
                     value={latitudFondeo || ""}
-                    onChange={(e) => setValue("latitudFondeo", parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setValue("latitudFondeo", parseFloat(e.target.value) || 0)
+                    }
                     disabled={loading}
                     step="0.000001"
                     placeholder="-12.345678"
@@ -1402,11 +1649,19 @@ export default function DescargaFaenaPescaForm({
                     }}
                   />
                 </td>
-                <td colSpan="4" style={{ padding: "2px", border: "1px solid #F97316" }}>
+                <td
+                  colSpan="4"
+                  style={{ padding: "2px", border: "1px solid #F97316" }}
+                >
                   <input
                     type="number"
                     value={longitudFondeo || ""}
-                    onChange={(e) => setValue("longitudFondeo", parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setValue(
+                        "longitudFondeo",
+                        parseFloat(e.target.value) || 0
+                      )
+                    }
                     disabled={loading}
                     step="0.000001"
                     placeholder="-77.123456"
@@ -1423,13 +1678,35 @@ export default function DescargaFaenaPescaForm({
               </tr>
               {/* Fila GMS */}
               <tr>
-                <td style={{ padding: "4px", border: "1px solid #F97316", fontWeight: "bold", fontSize: "11px", backgroundColor: "#fff8e1", width: "75px", minWidth: "75px", maxWidth: "75px" }}>GMS</td>
+                <td
+                  style={{
+                    padding: "4px",
+                    border: "1px solid #F97316",
+                    fontWeight: "bold",
+                    fontSize: "11px",
+                    backgroundColor: "#fff8e1",
+                    width: "75px",
+                    minWidth: "75px",
+                    maxWidth: "75px",
+                  }}
+                >
+                  GMS
+                </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={latFondeoGrados}
-                      onChange={(e) => setLatFondeoGrados(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLatFondeoGrados(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLatitudFondeoDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -1443,15 +1720,26 @@ export default function DescargaFaenaPescaForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      °
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={latFondeoMinutos}
-                      onChange={(e) => setLatFondeoMinutos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLatFondeoMinutos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLatitudFondeoDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -1465,15 +1753,26 @@ export default function DescargaFaenaPescaForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      '
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={latFondeoSegundos}
-                      onChange={(e) => setLatFondeoSegundos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLatFondeoSegundos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLatitudFondeoDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -1488,7 +1787,9 @@ export default function DescargaFaenaPescaForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      "
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
@@ -1513,11 +1814,20 @@ export default function DescargaFaenaPescaForm({
                   </select>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={lonFondeoGrados}
-                      onChange={(e) => setLonFondeoGrados(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLonFondeoGrados(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLongitudFondeoDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -1531,15 +1841,26 @@ export default function DescargaFaenaPescaForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      °
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={lonFondeoMinutos}
-                      onChange={(e) => setLonFondeoMinutos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLonFondeoMinutos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLongitudFondeoDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -1553,15 +1874,26 @@ export default function DescargaFaenaPescaForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      '
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "2px",
+                    }}
+                  >
                     <input
                       type="number"
                       value={lonFondeoSegundos}
-                      onChange={(e) => setLonFondeoSegundos(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setLonFondeoSegundos(Number(e.target.value) || 0)
+                      }
                       onBlur={actualizarLongitudFondeoDesdeDMS}
                       disabled={loading}
                       min="0"
@@ -1576,7 +1908,9 @@ export default function DescargaFaenaPescaForm({
                         textAlign: "center",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                      "
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: "2px", border: "1px solid #F97316" }}>
@@ -1619,7 +1953,9 @@ export default function DescargaFaenaPescaForm({
         <Button
           type="button"
           label={finalizandoDescarga ? "Finalizando..." : "Finalizar Descarga"}
-          icon={finalizandoDescarga ? "pi pi-spin pi-spinner" : "pi pi-check-circle"}
+          icon={
+            finalizandoDescarga ? "pi pi-spin pi-spinner" : "pi pi-check-circle"
+          }
           severity="info"
           onClick={handleFinalizarDescarga}
           disabled={!detalle?.id || loading || finalizandoDescarga}
@@ -1633,7 +1969,7 @@ export default function DescargaFaenaPescaForm({
           }
           tooltipOptions={{ position: "top" }}
         />
-        
+
         {/* Botones Cancelar y Guardar - Lado derecho */}
         <div style={{ display: "flex", gap: 8 }}>
           <Button

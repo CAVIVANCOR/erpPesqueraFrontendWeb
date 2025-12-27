@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
-import { Avatar } from "primereact/avatar";
-import { Card } from "primereact/card";
-import { Badge } from "primereact/badge";
-import { ScrollPanel } from "primereact/scrollpanel";
+import { Divider } from "primereact/divider";
+import AvatarGroupSelector from "./AvatarGroupSelector";
 import "./ParticipanteSelectorDialog.css";
+import { getResponsiveFontSize } from "../../utils/utils";
 
 export default function ParticipanteSelectorDialog({
   visible,
@@ -36,14 +35,14 @@ export default function ParticipanteSelectorDialog({
 
   const cargosOptions = React.useMemo(() => {
     const cargos = personalOptions
-      .filter((p) => p.cargo?.nombre)
-      .map((p) => p.cargo.nombre);
+      .filter((p) => p.cargo?.descripcion)
+      .map((p) => p.cargo.descripcion);
 
     const cargosUnicos = Array.from(new Set(cargos)).sort();
 
     return [
       { label: "Todos los cargos", value: null },
-      ...cargosUnicos.map((nombre) => ({ label: nombre, value: nombre })),
+      ...cargosUnicos.map((descripcion) => ({ label: descripcion, value: descripcion })),
     ];
   }, [personalOptions]);
 
@@ -68,7 +67,7 @@ export default function ParticipanteSelectorDialog({
       return false;
     }
 
-    if (cargoFiltro && p.cargo?.nombre !== cargoFiltro) {
+    if (cargoFiltro && p.cargo?.descripcion !== cargoFiltro) {
       return false;
     }
 
@@ -88,19 +87,6 @@ export default function ParticipanteSelectorDialog({
     e.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    if (draggedItem) {
-      handleAgregarPersonal(draggedItem);
-      setDraggedItem(null);
-    }
-  };
-
   const handleGuardar = () => {
     onGuardar(seleccionados);
     setSeleccionados([]);
@@ -117,271 +103,133 @@ export default function ParticipanteSelectorDialog({
     onHide();
   };
 
-  const getInitials = (nombres, apellidos) => {
-    const n = nombres?.charAt(0) || "";
-    const a = apellidos?.charAt(0) || "";
-    return (n + a).toUpperCase();
-  };
-
-  const getAvatarColor = (id) => {
-    const colors = [
-      "#3B82F6",
-      "#10B981",
-      "#F59E0B",
-      "#EF4444",
-      "#8B5CF6",
-      "#EC4899",
-      "#14B8A6",
-      "#F97316",
-    ];
-    return colors[Number(id) % colors.length];
-  };
-
-  const getAvatarUrl = (urlFotoPersona) => {
-    if (!urlFotoPersona) return null;
-    return `${import.meta.env.VITE_UPLOADS_URL}/personal/${urlFotoPersona}`;
-  };
-
-  const dialogFooter = (
-    <div className="flex justify-content-end gap-2">
-      <Button
-        label="Cancelar"
-        icon="pi pi-times"
-        className="p-button-secondary"
-        onClick={handleCancelar}
-        disabled={loading}
-      />
-      <Button
-        label={
-          loading
-            ? "Procesando..."
-            : `Agregar ${seleccionados.length} Participante${
-                seleccionados.length !== 1 ? "s" : ""
-              }`
-        }
-        icon={loading ? "pi pi-spin pi-spinner" : "pi pi-check"}
-        onClick={handleGuardar}
-        disabled={loading || seleccionados.length === 0}
-        loading={loading}
-      />
-    </div>
-  );
-
   return (
     <Dialog
       visible={visible}
       onHide={handleCancelar}
       header="Seleccionar Participantes"
-      footer={dialogFooter}
       className="participante-selector-dialog"
-      style={{ width: "90vw", maxWidth: "1400px" }}
-      modal
+      style={{ width: "90vw", maxWidth: "1200px" }}
+      maximizable
     >
-      <div className="participante-selector-container">
-        <div className="participante-selector-left">
-          <div className="filtros-section">
-            <div className="p-fluid">
-              <div
+      {/* FILTROS */}
+      <div className="filtros-section">
+        <div className="p-fluid">
+          <div
+            style={{
+              display: "flex",
+              gap: 2,
+              alignItems: "end",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="busqueda"
                 style={{
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "end",
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  display: "block", fontSize: getResponsiveFontSize()
                 }}
               >
-                <div style={{ flex: 2 }}>
-                  <label htmlFor="busqueda">Buscar por nombre</label>
-                  <span className="p-input-icon-left">
-                    <InputText
-                      id="busqueda"
-                      value={busqueda}
-                      onChange={(e) => setBusqueda(e.target.value)}
-                      placeholder="Buscar personal..."
-                    />
-                  </span>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <Button
-                    label="Limpiar Filtros"
-                    icon="pi pi-filter-slash"
-                    className="p-button-outlined p-button-secondary"
-                    onClick={() => {
-                      setBusqueda("");
-                      setEmpresaFiltro(null);
-                      setCargoFiltro(null);
-                    }}
-                  />
-                </div>
-              </div>
-              <div
+                Buscar
+              </label>
+              <span className="p-input-icon-left" style={{ width: "100%" }}>
+                <InputText
+                  id="busqueda"
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  placeholder="Por Nombres..."
+                  style={{ width: "100%", fontWeight: "bold" }}
+                />
+              </span>
+            </div>
+            <div style={{ flex: 1.5 }}>
+              <label
+                htmlFor="empresa"
                 style={{
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "end",
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  display: "block", fontSize: getResponsiveFontSize()
                 }}
               >
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="empresa">Empresa</label>
-                  <Dropdown
-                    id="empresa"
-                    value={empresaFiltro}
-                    options={empresasOptions}
-                    onChange={(e) => setEmpresaFiltro(e.value)}
-                    placeholder="Seleccione empresa"
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="cargo">Cargo</label>
-                  <Dropdown
-                    id="cargo"
-                    value={cargoFiltro}
-                    options={cargosOptions}
-                    onChange={(e) => setCargoFiltro(e.value)}
-                    placeholder="Seleccione cargo"
-                  />
-                </div>
-              </div>
+                Empresa
+              </label>
+              <Dropdown
+                id="empresa"
+                value={empresaFiltro}
+                options={empresasOptions}
+                onChange={(e) => setEmpresaFiltro(e.value)}
+                placeholder="Todas"
+                filter
+                style={{ width: "100%", fontWeight: "bold" }}
+              />
+            </div>
+            <div style={{ flex: 1.5 }}>
+              <label
+                htmlFor="cargo"
+                style={{
+                  display: "block", fontSize: getResponsiveFontSize()
+                }}
+              >
+                Cargo
+              </label>
+              <Dropdown
+                id="cargo"
+                value={cargoFiltro}
+                options={cargosOptions}
+                onChange={(e) => setCargoFiltro(e.value)}
+                placeholder="Todos"
+                filter
+                style={{ width: "100%", fontWeight: "bold" }}
+              />
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <Button
+                label="Limpiar"
+                icon="pi pi-filter-slash"
+                className="p-button-outlined p-button-secondary"
+                onClick={() => {
+                  setBusqueda("");
+                  setEmpresaFiltro(null);
+                  setCargoFiltro(null);
+                }}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <Button
+                label="Cancelar"
+                icon="pi pi-times"
+                className="p-button-secondary"
+                onClick={handleCancelar}
+                disabled={loading}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 1.8 }}>
+              <Button
+                label={
+                  loading
+                    ? "Procesando..."
+                    : `Agregar ${seleccionados.length} Participante${
+                        seleccionados.length !== 1 ? "s" : ""
+                      }`
+                }
+                icon={loading ? "pi pi-spin pi-spinner" : "pi pi-check"}
+                onClick={handleGuardar}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+                disabled={loading || seleccionados.length === 0}
+                loading={loading}
+              />
             </div>
           </div>
-
-          <div className="personal-list-section">
-            <h4 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <i className="pi pi-users"></i>
-              Personal Disponible
-              <Badge value={personalDisponible.length} severity="success" />
-            </h4>
-            <ScrollPanel style={{ width: "100%", height: "550px" }}>
-              <div className="personal-grid">
-                {personalDisponible.map((personal) => (
-                  <Card
-                    key={personal.id}
-                    className="personal-card"
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, personal)}
-                    onDoubleClick={() => handleAgregarPersonal(personal)}
-                  >
-                    <div className="personal-card-content">
-                      <Avatar
-                        image={getAvatarUrl(personal.urlFotoPersona)}
-                        label={
-                          !personal.urlFotoPersona
-                            ? getInitials(personal.nombres, personal.apellidos)
-                            : undefined
-                        }
-                        size="large"
-                        shape="circle"
-                        style={{
-                          backgroundColor: !personal.urlFotoPersona
-                            ? getAvatarColor(personal.id)
-                            : undefined,
-                          color: "#fff",
-                        }}
-                      />
-                      <div className="personal-info">
-                        <div className="personal-nombre">
-                          {personal.nombres} {personal.apellidos}
-                        </div>
-                        <div className="personal-empresa">
-                          <i className="pi pi-building mr-1"></i>
-                          {personal.empresa?.razonSocial || "Sin empresa"}
-                        </div>
-                        {personal.cargo && (
-                          <div className="personal-cargo">
-                            <i className="pi pi-briefcase mr-1"></i>
-                            {personal.cargo.descripcion}
-                          </div>
-                        )}
-                      </div>
-                      <Button
-                        icon="pi pi-plus"
-                        className="p-button-rounded p-button-success p-button-sm"
-                        onClick={() => handleAgregarPersonal(personal)}
-                      />
-                    </div>
-                  </Card>
-                ))}
-                {personalDisponible.length === 0 && (
-                  <div className="empty-state">
-                    <i className="pi pi-users" style={{ fontSize: "3rem" }}></i>
-                    <p>No hay personal disponible con los filtros aplicados</p>
-                  </div>
-                )}
-              </div>
-            </ScrollPanel>
-          </div>
-        </div>
-
-        <div
-          className="participante-selector-right"
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-        >
-          <div className="seleccionados-header">
-            <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <i className="pi pi-check-circle"></i>
-              Participantes Seleccionados
-              <Badge value={seleccionados.length} severity="secondary" />
-            </h4>
-          </div>
-
-          {seleccionados.length === 0 ? (
-            <div className="drop-zone-empty">
-              <i className="pi pi-users" style={{ fontSize: "4rem" }}></i>
-              <p>Arrastra o haz doble clic en el personal para agregarlo</p>
-              <p className="hint">
-                <i className="pi pi-info-circle mr-1"></i>
-                Puedes seleccionar múltiples participantes
-              </p>
-            </div>
-          ) : (
-            <ScrollPanel style={{ width: "100%", height: "550px" }}>
-              <div className="seleccionados-grid">
-                {seleccionados.map((personal) => (
-                  <Card key={personal.id} className="seleccionado-card">
-                    <div className="seleccionado-card-content">
-                      <Button
-                        icon="pi pi-times"
-                        className="p-button-rounded p-button-danger p-button-sm remove-btn"
-                        onClick={() => handleRemoverSeleccionado(personal.id)}
-                      />
-                      <Avatar
-                        image={getAvatarUrl(personal.urlFotoPersona)}
-                        label={
-                          !personal.urlFotoPersona
-                            ? getInitials(personal.nombres, personal.apellidos)
-                            : undefined
-                        }
-                        size="xlarge"
-                        shape="circle"
-                        style={{
-                          backgroundColor: !personal.urlFotoPersona
-                            ? getAvatarColor(personal.id)
-                            : undefined,
-                          color: "#fff",
-                        }}
-                      />
-                      <div className="seleccionado-info">
-                        <div className="seleccionado-nombre">
-                          {personal.nombres} {personal.apellidos}
-                        </div>
-                        <div className="seleccionado-empresa">
-                          {personal.empresa?.razonSocial || "Sin empresa"}
-                        </div>
-                        {personal.cargo && (
-                          <div className="seleccionado-cargo">
-                            {personal.cargo.nombre}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </ScrollPanel>
-          )}
         </div>
       </div>
+      {/* AVATAR GROUP SELECTOR */}
+      <AvatarGroupSelector
+        personalDisponible={personalDisponible}
+        seleccionados={seleccionados}
+        onAgregarPersonal={handleAgregarPersonal}
+        onRemoverSeleccionado={handleRemoverSeleccionado}
+        onDragStart={handleDragStart}
+      />
     </Dialog>
   );
 }

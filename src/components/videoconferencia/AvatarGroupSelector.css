@@ -1,0 +1,208 @@
+/* ============================================
+   AVATAR GROUP SELECTOR - ESTILO IDÉNTICO A IMAGEN
+   ============================================ */
+
+.avatar-group-selector-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 1rem 0;
+}
+
+.avatar-group-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 2px dashed #cbd5e1;
+}
+
+.avatar-group-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 1.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.avatar-group-title i {
+  font-size: 1.3rem;
+  color: #3b82f6;
+}
+
+/* ============================================
+   AVATAR GROUP - SUPERPOSICIÓN HORIZONTAL SUTIL
+   ============================================ */
+
+.avatar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 1rem;
+  min-height: 100px;
+  align-items: center;
+}
+
+.avatar-group-item {
+  position: relative;
+  margin-left: -8px; /* CORREGIDO: Superposición más sutil */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.avatar-group-item:first-child {
+  margin-left: 0;
+}
+
+/* ============================================
+   HOVER ANIMATION - AVATAR SUBE
+   ============================================ */
+
+.avatar-group-item:hover {
+  transform: translateY(-12px);
+  z-index: 9999 !important;
+}
+
+.avatar-group-item:hover .avatar-group-avatar {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  transform: scale(1.1);
+}
+
+.avatar-group-avatar {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+/* ============================================
+   TOOLTIP DE PRIMEREACT - ESTILOS PERSONALIZADOS
+   ============================================ */
+
+/* Los estilos del tooltip se aplican inline en el componente */
+.p-tooltip {
+  max-width: 300px;
+}
+
+.p-tooltip .p-tooltip-text {
+  background: #1a1a1a !important;
+  color: #ffffff !important;
+  font-size: 0.75rem !important;
+  padding: 8px 14px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.p-tooltip .p-tooltip-arrow {
+  border-bottom-color: #1a1a1a !important;
+}
+
+/* ============================================
+   BOTÓN REMOVER EN AVATAR
+   ============================================ */
+
+.avatar-wrapper-with-remove {
+  position: relative;
+}
+
+.avatar-remove-btn {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid #fff;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 10;
+  padding: 0;
+  font-size: 0.7rem;
+}
+
+.avatar-remove-btn:hover {
+  background: #dc2626;
+  transform: scale(1.15);
+}
+
+.avatar-remove-btn i {
+  font-size: 0.65rem;
+}
+
+/* ============================================
+   ESTADOS VACÍOS
+   ============================================ */
+
+.avatar-group-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.avatar-group-empty p {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.95rem;
+}
+
+/* ============================================
+   HINT TEXT
+   ============================================ */
+
+.avatar-group-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: #e0f2fe;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.avatar-group-hint i {
+  font-size: 1rem;
+}
+
+/* ============================================
+   DRAG & DROP STATES
+   ============================================ */
+
+.avatar-group-item[draggable="true"] {
+  cursor: grab;
+}
+
+.avatar-group-item[draggable="true"]:active {
+  cursor: grabbing;
+  opacity: 0.6;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .avatar-group-selector-container {
+    gap: 1.5rem;
+  }
+
+  .avatar-group-section {
+    padding: 1rem;
+  }
+
+  .avatar-group {
+    justify-content: center;
+  }
+
+  .avatar-group-item {
+    margin-left: -5px; /* Menos superposición en móvil */
+  }
+}

@@ -654,7 +654,6 @@ const DetalleDocEmbarcacionCard = ({
         emptyMessage="No se encontraron documentos de embarcación."
         header={header}
         loading={loadingData}
-        responsiveLayout="scroll"
         size="small"
         stripedRows
         showGridlines

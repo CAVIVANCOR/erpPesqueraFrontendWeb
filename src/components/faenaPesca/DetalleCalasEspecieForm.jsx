@@ -20,24 +20,35 @@ import { Dropdown } from "primereact/dropdown";
 import { Toast } from "primereact/toast";
 import { Toolbar } from "primereact/toolbar";
 import { Card } from "primereact/card";
-import { getResponsiveFontSize, createPorcentajeTemplate } from "../../utils/utils";
+import {
+  getResponsiveFontSize,
+  createPorcentajeTemplate,
+} from "../../utils/utils";
 import { getEspecies } from "../../api/especie";
-import { 
+import {
   getDetalleCalaEspeciePorCala,
   crearDetalleCalaEspecie,
   actualizarDetalleCalaEspecie,
-  eliminarDetalleCalaEspecie
+  eliminarDetalleCalaEspecie,
 } from "../../api/detalleCalaEspecie";
 import { recalcularToneladasCala } from "../../api/recalcularToneladas";
 
-const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinalizada = false, onDataChange, onFaenasChange, loading = false }) => {
+const DetalleCalasEspecieForm = ({
+  calaId,
+  faenaPescaId,
+  temporadaId,
+  calaFinalizada = false,
+  onDataChange,
+  onFaenasChange,
+  loading = false,
+}) => {
   const [especiesDetalle, setEspeciesDetalle] = useState([]);
   const [especiesDisponibles, setEspeciesDisponibles] = useState([]);
   const [detalleDialog, setDetalleDialog] = useState(false);
   const [editingDetalle, setEditingDetalle] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const toast = useRef(null);
-  
+
   // Estados del formulario
   const [especieId, setEspecieId] = useState("");
   const [toneladas, setToneladas] = useState("");
@@ -55,10 +66,12 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
   const cargarEspecies = async () => {
     try {
       const response = await getEspecies();
-      setEspeciesDisponibles(response.map(e => ({ 
-        label: `${e.nombre} (${e.nombreCientifico})`, 
-        value: e.id 
-      })));
+      setEspeciesDisponibles(
+        response.map((e) => ({
+          label: `${e.nombre} (${e.nombreCientifico})`,
+          value: e.id,
+        }))
+      );
     } catch (error) {
       console.error("Error cargando especies:", error);
       toast.current?.show({
@@ -142,7 +155,10 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
         return;
       }
 
-      if (porcentajeJuveniles && (Number(porcentajeJuveniles) < 0 || Number(porcentajeJuveniles) > 100)) {
+      if (
+        porcentajeJuveniles &&
+        (Number(porcentajeJuveniles) < 0 || Number(porcentajeJuveniles) > 100)
+      ) {
         toast.current?.show({
           severity: "error",
           summary: "Valor Inválido",
@@ -155,14 +171,15 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
       // Validar duplicados solo al crear (no al editar)
       if (!editingDetalle) {
         const especieYaExiste = especiesDetalle.some(
-          detalle => Number(detalle.especieId) === Number(especieId)
+          (detalle) => Number(detalle.especieId) === Number(especieId)
         );
-        
+
         if (especieYaExiste) {
           toast.current?.show({
             severity: "warn",
             summary: "Especie Duplicada",
-            detail: "Ya existe un registro para esta especie en la cala. Use 'Editar' para modificar el registro existente.",
+            detail:
+              "Ya existe un registro para esta especie en la cala. Use 'Editar' para modificar el registro existente.",
             life: 5000,
           });
           return;
@@ -179,14 +196,17 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
       };
       if (editingDetalle) {
         // Actualizar detalle existente
-        const result = await actualizarDetalleCalaEspecie(editingDetalle.id, detalleData);
+        const result = await actualizarDetalleCalaEspecie(
+          editingDetalle.id,
+          detalleData
+        );
       } else {
         // Crear nuevo detalle
         const result = await crearDetalleCalaEspecie(detalleData);
       }
       // RECÁLCULO AUTOMÁTICO: Siempre ejecutar después de guardar DetalleCalaEspecie
       try {
-        await recalcularToneladasCala(calaId, faenaPescaId, temporadaId);        
+        await recalcularToneladasCala(calaId, faenaPescaId, temporadaId);
         // Notificar al componente padre que los datos han cambiado
         if (onDataChange) {
           onDataChange();
@@ -195,11 +215,12 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
           onFaenasChange();
         }
       } catch (error) {
-        console.error('❌ Error en recálculo automático:', error);
+        console.error("❌ Error en recálculo automático:", error);
         toast.current?.show({
           severity: "warn",
           summary: "Advertencia",
-          detail: "Los datos se guardaron pero hubo un error en el recálculo automático",
+          detail:
+            "Los datos se guardaron pero hubo un error en el recálculo automático",
           life: 4000,
         });
       }
@@ -207,7 +228,9 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
       toast.current?.show({
         severity: "success",
         summary: "Operación Exitosa",
-        detail: editingDetalle ? "Especie actualizada correctamente" : "Especie agregada correctamente",
+        detail: editingDetalle
+          ? "Especie actualizada correctamente"
+          : "Especie agregada correctamente",
         life: 3000,
       });
 
@@ -219,42 +242,51 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
         toast.current?.show({
           severity: "warn",
           summary: "Registro Duplicado",
-          detail: "Ya existe un registro para esta especie en la cala. No se pueden tener especies duplicadas.",
+          detail:
+            "Ya existe un registro para esta especie en la cala. No se pueden tener especies duplicadas.",
           life: 5000,
         });
       } else if (error.response?.status === 400) {
         toast.current?.show({
           severity: "error",
           summary: "Datos Inválidos",
-          detail: error.response?.data?.message || "Los datos ingresados no son válidos. Verifique la información.",
+          detail:
+            error.response?.data?.message ||
+            "Los datos ingresados no son válidos. Verifique la información.",
           life: 4000,
         });
       } else if (error.response?.status === 422) {
         toast.current?.show({
           severity: "error",
           summary: "Error de Validación",
-          detail: error.response?.data?.message || "Los datos no cumplen con las reglas de validación del sistema.",
+          detail:
+            error.response?.data?.message ||
+            "Los datos no cumplen con las reglas de validación del sistema.",
           life: 4000,
         });
       } else if (error.response?.status >= 500) {
         toast.current?.show({
           severity: "error",
           summary: "Error del Servidor",
-          detail: "Error interno del servidor. Contacte al administrador del sistema.",
+          detail:
+            "Error interno del servidor. Contacte al administrador del sistema.",
           life: 5000,
         });
-      } else if (error.code === 'NETWORK_ERROR' || !error.response) {
+      } else if (error.code === "NETWORK_ERROR" || !error.response) {
         toast.current?.show({
           severity: "error",
           summary: "Error de Conexión",
-          detail: "No se pudo conectar con el servidor. Verifique su conexión a internet.",
+          detail:
+            "No se pudo conectar con el servidor. Verifique su conexión a internet.",
           life: 5000,
         });
       } else {
         toast.current?.show({
           severity: "error",
           summary: "Error Inesperado",
-          detail: error.response?.data?.message || "Ocurrió un error inesperado. Intente nuevamente.",
+          detail:
+            error.response?.data?.message ||
+            "Ocurrió un error inesperado. Intente nuevamente.",
           life: 4000,
         });
       }
@@ -271,11 +303,11 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
         life: 3000,
       });
       cargarEspeciesDetalle();
-      
+
       // RECÁLCULO AUTOMÁTICO: Cuando se elimina DetalleCalaEspecie → recalcular en cascada desde Cala
       try {
         await recalcularToneladasCala(calaId, faenaPescaId, temporadaId);
-        
+
         // Notificar al componente padre que los datos han cambiado
         if (onDataChange) {
           onDataChange();
@@ -284,7 +316,7 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
           onFaenasChange();
         }
       } catch (error) {
-        console.error('❌ Error en recálculo automático:', error);
+        console.error("❌ Error en recálculo automático:", error);
       }
     } catch (error) {
       console.error("Error eliminando detalle:", error);
@@ -302,14 +334,14 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
       <div>
         <Button
           icon="pi pi-pencil"
-          className="p-button-rounded p-button-success p-mr-2"
+          className="p-button-rounded p-button-success p-button-text"
           onClick={() => editarDetalle(rowData)}
           tooltip="Editar"
           size="small"
         />
         <Button
           icon="pi pi-trash"
-          className="p-button-rounded p-button-warning"
+          className="p-button-rounded p-button-danger p-button-text"
           onClick={() => eliminarDetalle(rowData)}
           tooltip="Eliminar"
           size="small"
@@ -321,90 +353,101 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
 
   const porcentajeJuvenilesTemplate = (rowData) => {
     const templateData = createPorcentajeTemplate(rowData.porcentajeJuveniles);
-    
+
     if (!templateData) return "-";
-    
+
     return (
       <span style={templateData.estilos}>
-        {templateData.valor}{templateData.sufijo}
+        {templateData.valor}
+        {templateData.sufijo}
       </span>
     );
   };
 
   const header = (
-    <div className="flex align-items-center gap-2">
-      <div
-        style={{
-          alignItems: "center",
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 2 }}>
-          <h2>Especies Capturadas</h2>
-        </div>
-        <div style={{ flex: 1 }}>
-          <Button
-            label="Agregar Especie"
-            icon="pi pi-plus"
-            className="p-button-success"
-            onClick={abrirNuevoDetalle}
-            disabled={!calaId || calaFinalizada}
+    <div
+      style={{
+        alignItems: "center",
+        display: "flex",
+        gap: 10,
+        flexDirection: window.innerWidth < 768 ? "column" : "row",
+      }}
+    >
+      <div style={{ flex: 2 }}>
+        <h2>Especies Capturadas</h2>
+      </div>
+      <div style={{ flex: 1 }}>
+        <Button
+          label="Agregar Especie"
+          icon="pi pi-plus"
+          className="p-button-success"
+          onClick={abrirNuevoDetalle}
+          disabled={!calaId || calaFinalizada}
+          size="small"
+          type="button"
+          tooltip="Agregar Especie"
+          tooltipOptions={{ position: "top" }}
+          raised
+          severity="success"
+        />
+      </div>
+      <div style={{ flex: 1 }}>
+        <span className="p-input-icon-left">
+          <InputText
+            type="search"
+            onInput={(e) => setGlobalFilter(e.target.value)}
+            placeholder="Buscar..."
             size="small"
-            type="button"
-            tooltip="Agregar Especie"
-            tooltipOptions={{ position: "top" }}
-            raised
-            severity="success"
           />
-        </div>
-        <div style={{ flex: 1 }}>
-          <span className="p-input-icon-left">
-            <InputText
-              type="search"
-              onInput={(e) => setGlobalFilter(e.target.value)}
-              placeholder="Buscar..."
-              size="small"
-            />
-          </span>
-        </div>
+        </span>
       </div>
     </div>
   );
 
   const detalleDialogFooter = (
-    <>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        gap: 8,
+        marginTop: 18,
+      }}
+    >
       <Button
         label="Cancelar"
         icon="pi pi-times"
-        className="p-button-text"
+        type="button"
         onClick={() => setDetalleDialog(false)}
+        className="p-button-warning"
+        severity="warning"
+        raised
+        size="small"
+        outlined
       />
       <Button
         label="Guardar"
         icon="pi pi-check"
-        className="p-button-text"
+        type="button"
         onClick={guardarDetalle}
+        className="p-button-success"
+        severity="success"
+        raised
+        size="small"
+        outlined
       />
-    </>
+    </div>
   );
 
   return (
     <Card className="mt-3">
       <Toast ref={toast} />
-
       <DataTable
         value={especiesDetalle}
         selection={null}
         onSelectionChange={(e) => null}
         dataKey="id"
-        paginator
-        rows={5}
-        rowsPerPageOptions={[5, 10, 15]}
-        className="datatable-responsive"
-        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} especies"
+        stripedRows
+        showGridlines
         globalFilter={globalFilter}
         header={header}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
@@ -455,7 +498,9 @@ const DetalleCalasEspecieForm = ({ calaId, faenaPescaId, temporadaId, calaFinali
       <Dialog
         visible={detalleDialog}
         style={{ width: "500px" }}
-        header={editingDetalle ? "Editar Captura Especie" : "Agregar Captura Especie"}
+        header={
+          editingDetalle ? "Editar Captura Especie" : "Agregar Captura Especie"
+        }
         modal
         className="p-fluid"
         footer={detalleDialogFooter}

@@ -118,14 +118,14 @@ export default function AppHeader() {
               }} 
             />
           </motion.div>
-          <Tooltip target=".jitsi-avatar-tooltip" content="Videoconferencias" position="bottom" />
+          <Tooltip mouseTrack target=".jitsi-avatar-tooltip" content="Videoconferencias" position="bottom" />
 
           {/* Notification Bell */}
           <NotificationBell />
 
           {/* User Avatar */}
           <UserAvatar usuario={usuario} />
-          <Tooltip target=".user-avatar-tooltip" position="bottom" />
+          <Tooltip mouseTrack target=".user-avatar-tooltip" position="bottom" />
 
           {/* Logout Button */}
           <motion.div
