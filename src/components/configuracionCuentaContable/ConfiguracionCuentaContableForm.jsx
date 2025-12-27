@@ -1,304 +1,348 @@
 // src/components/configuracionCuentaContable/ConfiguracionCuentaContableForm.jsx
-// Formulario profesional para ConfiguracionCuentaContable. Cumple la regla transversal ERP Megui.
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
-import { Checkbox } from "primereact/checkbox";
 import { InputTextarea } from "primereact/inputtextarea";
-import { formatearFecha } from "../../utils/utils";
+import { Toast } from "primereact/toast";
+import { ToggleButton } from "primereact/togglebutton";
+import {
+  crearConfiguracionCuentaContable,
+  actualizarConfiguracionCuentaContable,
+} from "../../api/configuracionCuentaContable";
 
 export default function ConfiguracionCuentaContableForm({
-  isEdit,
-  defaultValues,
-  onSubmit,
-  onCancel,
-  loading,
+  isEdit = false,
+  defaultValues = {},
   empresas = [],
   tiposMovimiento = [],
   tiposReferencia = [],
+  onSubmit,
+  onCancel,
+  loading = false,
+  readOnly = false,
 }) {
-  const [empresaId, setEmpresaId] = React.useState(
-    defaultValues.empresaId || ""
-  );
-  const [tipoMovimientoId, setTipoMovimientoId] = React.useState(
-    defaultValues.tipoMovimientoId || ""
-  );
-  const [tipoReferenciaId, setTipoReferenciaId] = React.useState(
-    defaultValues.tipoReferenciaId || null
-  );
-  const [cuentaContableDebe, setCuentaContableDebe] = React.useState(
-    defaultValues.cuentaContableDebe || ""
-  );
-  const [cuentaContableHaber, setCuentaContableHaber] = React.useState(
-    defaultValues.cuentaContableHaber || ""
-  );
-  const [descripcionPlantilla, setDescripcionPlantilla] = React.useState(
-    defaultValues.descripcionPlantilla || ""
-  );
-  const [activo, setActivo] = React.useState(
-    defaultValues.activo !== undefined ? !!defaultValues.activo : true
-  );
+  const toast = useRef(null);
+  const [guardando, setGuardando] = useState(false);
 
-  React.useEffect(() => {
-    setEmpresaId(defaultValues.empresaId || "");
-    setTipoMovimientoId(defaultValues.tipoMovimientoId || "");
-    setTipoReferenciaId(defaultValues.tipoReferenciaId || null);
-    setCuentaContableDebe(defaultValues.cuentaContableDebe || "");
-    setCuentaContableHaber(defaultValues.cuentaContableHaber || "");
-    setDescripcionPlantilla(defaultValues.descripcionPlantilla || "");
-    setActivo(
-      defaultValues.activo !== undefined ? !!defaultValues.activo : true
-    );
+  const [formData, setFormData] = useState({
+    empresaId: defaultValues?.empresaId || null,
+    tipoMovimientoId: defaultValues?.tipoMovimientoId || null,
+    tipoReferenciaId: defaultValues?.tipoReferenciaId || null,
+    cuentaContableDebe: defaultValues?.cuentaContableDebe || "",
+    cuentaContableHaber: defaultValues?.cuentaContableHaber || "",
+    descripcionPlantilla: defaultValues?.descripcionPlantilla || "",
+    activo: defaultValues?.activo !== undefined ? !!defaultValues.activo : true,
+  });
+
+  useEffect(() => {
+    setFormData({
+      empresaId: defaultValues?.empresaId
+        ? Number(defaultValues.empresaId)
+        : null,
+      tipoMovimientoId: defaultValues?.tipoMovimientoId
+        ? Number(defaultValues.tipoMovimientoId)
+        : null,
+      tipoReferenciaId: defaultValues?.tipoReferenciaId
+        ? Number(defaultValues.tipoReferenciaId)
+        : null,
+      cuentaContableDebe: (defaultValues?.cuentaContableDebe || "").toUpperCase(),
+      cuentaContableHaber: (defaultValues?.cuentaContableHaber || "").toUpperCase(),
+      descripcionPlantilla: defaultValues?.descripcionPlantilla || "",
+      activo:
+        defaultValues?.activo !== undefined ? !!defaultValues.activo : true,
+    });
   }, [defaultValues]);
 
-  const handleSubmit = (e) => {
+  const handleChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validaciones básicas en frontend
-    if (
-      !empresaId ||
-      !tipoMovimientoId ||
-      !cuentaContableDebe ||
-      !cuentaContableHaber
-    ) {
+    if (!formData.empresaId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar una empresa",
+        life: 3000,
+      });
       return;
     }
 
-    onSubmit({
-      empresaId: Number(empresaId),
-      tipoMovimientoId: Number(tipoMovimientoId),
-      tipoReferenciaId: tipoReferenciaId ? Number(tipoReferenciaId) : null,
-      cuentaContableDebe: cuentaContableDebe.trim().toUpperCase(),
-      cuentaContableHaber: cuentaContableHaber.trim().toUpperCase(),
-      descripcionPlantilla: descripcionPlantilla.trim(),
-      activo,
-    });
+    if (!formData.tipoMovimientoId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar un tipo de movimiento",
+        life: 3000,
+      });
+      return;
+    }
+
+    if (!formData.cuentaContableDebe) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe ingresar la cuenta contable DEBE",
+        life: 3000,
+      });
+      return;
+    }
+
+    if (!formData.cuentaContableHaber) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe ingresar la cuenta contable HABER",
+        life: 3000,
+      });
+      return;
+    }
+
+    const dataToSend = {
+      empresaId: Number(formData.empresaId),
+      tipoMovimientoId: Number(formData.tipoMovimientoId),
+      tipoReferenciaId: formData.tipoReferenciaId
+        ? Number(formData.tipoReferenciaId)
+        : null,
+      cuentaContableDebe: formData.cuentaContableDebe.trim().toUpperCase(),
+      cuentaContableHaber: formData.cuentaContableHaber.trim().toUpperCase(),
+      descripcionPlantilla: formData.descripcionPlantilla.trim(),
+      activo: formData.activo,
+    };
+
+    setGuardando(true);
+    try {
+      if (isEdit) {
+        await actualizarConfiguracionCuentaContable(
+          defaultValues.id,
+          dataToSend
+        );
+      } else {
+        await crearConfiguracionCuentaContable(dataToSend);
+      }
+      onSubmit(dataToSend);
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error al Guardar",
+        detail:
+          error.response?.data?.message ||
+          "Error al guardar configuración",
+        life: 5000,
+      });
+    } finally {
+      setGuardando(false);
+    }
   };
 
+  const empresasOptions = empresas.map((empresa) => ({
+    label: empresa.razonSocial,
+    value: Number(empresa.id),
+  }));
+
+  const tiposMovimientoOptions = tiposMovimiento.map((tipo) => ({
+    label: tipo.nombre,
+    value: Number(tipo.id),
+  }));
+
+  const tiposReferenciaOptions = tiposReferencia.map((tipo) => ({
+    label: tipo.nombre,
+    value: Number(tipo.id),
+  }));
+
   return (
-    <form onSubmit={handleSubmit} className="p-fluid">
-      <div
-        style={{
-          alignItems: "center",
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="empresaId">Empresa*</label>
-          <Dropdown
-            id="empresaId"
-            value={empresaId}
-            options={empresas.map((empresa) => ({
-              label: empresa.razonSocial,
-              value: empresa.id,
-            }))}
-            onChange={(e) => setEmpresaId(e.value)}
-            placeholder="Seleccione empresa"
-            required
-            disabled={loading}
-            filter
-            showClear
-            style={{ fontWeight: "bold" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="tipoMovimientoId">Tipo de Movimiento*</label>
-          <Dropdown
-            id="tipoMovimientoId"
-            value={tipoMovimientoId}
-            options={tiposMovimiento.map((tipo) => ({
-              label: tipo.nombre,
-              value: tipo.id,
-            }))}
-            onChange={(e) => setTipoMovimientoId(e.value)}
-            placeholder="Seleccione tipo"
-            required
-            disabled={loading}
-            filter
-            showClear
-            style={{ fontWeight: "bold" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="tipoReferenciaId">Tipo de Referencia</label>
-          <Dropdown
-            id="tipoReferenciaId"
-            value={tipoReferenciaId}
-            options={tiposReferencia.map((tipo) => ({
-              label: tipo.nombre,
-              value: tipo.id,
-            }))}
-            onChange={(e) => setTipoReferenciaId(e.value)}
-            placeholder="Seleccione tipo (opcional)"
-            disabled={loading}
-            filter
-            showClear
-            style={{ fontWeight: "bold" }}
-          />
-        </div>
-      </div>
-
-      <div
-        style={{
-          alignItems: "center",
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-          marginTop: 10,
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="cuentaContableDebe">Cuenta Contable DEBE*</label>
-          <InputText
-            id="cuentaContableDebe"
-            value={cuentaContableDebe}
-            onChange={(e) => setCuentaContableDebe(e.target.value.toUpperCase())}
-            required
-            disabled={loading}
-            maxLength={20}
-            placeholder="Ej: 10411001"
-            style={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="cuentaContableHaber">Cuenta Contable HABER*</label>
-          <InputText
-            id="cuentaContableHaber"
-            value={cuentaContableHaber}
-            onChange={(e) =>
-              setCuentaContableHaber(e.target.value.toUpperCase())
-            }
-            required
-            disabled={loading}
-            maxLength={20}
-            placeholder="Ej: 42111001"
-            style={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
+    <>
+      <Toast ref={toast} />
+      <form onSubmit={handleSubmit} className="p-fluid">
         <div
           style={{
-            flex: 0.5,
             display: "flex",
-            alignItems: "center",
-            marginTop: 20,
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          <Checkbox
-            inputId="activo"
-            checked={activo}
-            onChange={(e) => setActivo(e.checked)}
-            disabled={loading}
-          />
-          <label
-            htmlFor="activo"
-            style={{ marginLeft: 8, fontWeight: "bold" }}
-          >
-            Activo
-          </label>
-        </div>
-      </div>
-
-      <div
-        style={{
-          marginTop: 10,
-        }}
-      >
-        <label htmlFor="descripcionPlantilla">
-          Plantilla de Descripción (Opcional)
-        </label>
-        <InputTextarea
-          id="descripcionPlantilla"
-          value={descripcionPlantilla}
-          onChange={(e) => setDescripcionPlantilla(e.target.value)}
-          disabled={loading}
-          rows={3}
-          maxLength={200}
-          placeholder="Ej: Movimiento de {tipo} - {concepto}"
-          style={{ fontWeight: "bold" }}
-        />
-        <small style={{ color: "#666" }}>
-          Puede usar variables como {"{tipo}"}, {"{concepto}"}, {"{monto}"}, etc.
-        </small>
-      </div>
-
-      {isEdit && defaultValues.creadoEn && (
-        <div
-          style={{
-            marginTop: 20,
-            padding: 15,
-            backgroundColor: "#f8f9fa",
-            borderRadius: 8,
-            border: "1px solid #dee2e6",
-          }}
-        >
-          <h4 style={{ margin: "0 0 10px 0", color: "#495057" }}>Auditoría</h4>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "1fr 1fr",
-              gap: 10,
-            }}
-          >
-            <div>
-              <strong>Creado:</strong>{" "}
-              {formatearFecha(defaultValues.creadoEn)}
-              {defaultValues.personalCreador && (
-                <span>
-                  {" "}
-                  - {defaultValues.personalCreador.nombres}{" "}
-                  {defaultValues.personalCreador.apellidoPaterno}
-                </span>
-              )}
-            </div>
-            {defaultValues.actualizadoEn && (
-              <div>
-                <strong>Actualizado:</strong>{" "}
-                {formatearFecha(defaultValues.actualizadoEn)}
-                {defaultValues.personalActualizador && (
-                  <span>
-                    {" "}
-                    - {defaultValues.personalActualizador.nombres}{" "}
-                    {defaultValues.personalActualizador.apellidoPaterno}
-                  </span>
-                )}
-              </div>
-            )}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="empresaId" style={{ fontWeight: "bold" }}>
+              Empresa <span style={{ color: "red" }}>*</span>
+            </label>
+            <Dropdown
+              id="empresaId"
+              value={formData.empresaId}
+              options={empresasOptions}
+              onChange={(e) => handleChange("empresaId", e.value)}
+              placeholder="Seleccione empresa"
+              required
+              disabled={readOnly || loading || guardando}
+              filter
+              showClear
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="tipoMovimientoId" style={{ fontWeight: "bold" }}>
+              Tipo de Movimiento <span style={{ color: "red" }}>*</span>
+            </label>
+            <Dropdown
+              id="tipoMovimientoId"
+              value={formData.tipoMovimientoId}
+              options={tiposMovimientoOptions}
+              onChange={(e) => handleChange("tipoMovimientoId", e.value)}
+              placeholder="Seleccione tipo"
+              required
+              disabled={readOnly || loading || guardando}
+              filter
+              showClear
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="tipoReferenciaId">Tipo de Referencia</label>
+            <Dropdown
+              id="tipoReferenciaId"
+              value={formData.tipoReferenciaId}
+              options={tiposReferenciaOptions}
+              onChange={(e) => handleChange("tipoReferenciaId", e.value)}
+              placeholder="Seleccione tipo (opcional)"
+              disabled={readOnly || loading || guardando}
+              filter
+              showClear
+            />
           </div>
         </div>
-      )}
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 8,
-          marginTop: 18,
-        }}
-      >
-        <Button
-          type="button"
-          label="Cancelar"
-          onClick={onCancel}
-          disabled={loading}
-          className="p-button-warning"
-          severity="warning"
-          raised
-          size="small"
-        />
-        <Button
-          type="submit"
-          label={isEdit ? "Actualizar" : "Crear"}
-          icon="pi pi-save"
-          loading={loading}
-          className="p-button-success"
-          severity="success"
-          raised
-          size="small"
-        />
-      </div>
-    </form>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginTop: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label htmlFor="cuentaContableDebe" style={{ fontWeight: "bold" }}>
+              Cuenta Contable DEBE <span style={{ color: "red" }}>*</span>
+            </label>
+            <InputText
+              id="cuentaContableDebe"
+              value={formData.cuentaContableDebe}
+              onChange={(e) =>
+                handleChange("cuentaContableDebe", e.target.value.toUpperCase())
+              }
+              required
+              disabled={readOnly || loading || guardando}
+              maxLength={20}
+              placeholder="Ej: 10411001"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="cuentaContableHaber" style={{ fontWeight: "bold" }}>
+              Cuenta Contable HABER <span style={{ color: "red" }}>*</span>
+            </label>
+            <InputText
+              id="cuentaContableHaber"
+              value={formData.cuentaContableHaber}
+              onChange={(e) =>
+                handleChange("cuentaContableHaber", e.target.value.toUpperCase())
+              }
+              required
+              disabled={readOnly || loading || guardando}
+              maxLength={20}
+              placeholder="Ej: 42111001"
+            />
+          </div>
+          <div style={{ flex: 0.5 }}>
+            <label htmlFor="activo">Estado</label>
+            <ToggleButton
+              id="activo"
+              checked={formData.activo}
+              onChange={(e) => handleChange("activo", e.value)}
+              onLabel="ACTIVO"
+              offLabel="INACTIVO"
+              onIcon="pi pi-check"
+              offIcon="pi pi-times"
+              disabled={readOnly || loading || guardando}
+              className={formData.activo ? "p-button-success" : "p-button-danger"}
+              style={{ width: "100%" }}
+            />
+          </div>
+        </div>
+
+        <div style={{ marginTop: 10 }}>
+          <label htmlFor="descripcionPlantilla">
+            Plantilla de Descripción (Opcional)
+          </label>
+          <InputTextarea
+            id="descripcionPlantilla"
+            value={formData.descripcionPlantilla}
+            onChange={(e) => handleChange("descripcionPlantilla", e.target.value)}
+            disabled={readOnly || loading || guardando}
+            rows={3}
+            maxLength={200}
+            placeholder="Ej: Movimiento de {tipo} - {concepto}"
+          />
+          <small style={{ color: "#666" }}>
+            Puede usar variables como {"{tipo}"}, {"{concepto}"}, {"{monto}"}, etc.
+          </small>
+        </div>
+
+        {isEdit && defaultValues.creadoEn && (
+          <div
+            style={{
+              marginTop: 20,
+              padding: 10,
+              backgroundColor: "#f8f9fa",
+              borderRadius: 4,
+              border: "1px solid #dee2e6",
+            }}
+          >
+            <small style={{ color: "#666" }}>
+              <strong>Creado:</strong>{" "}
+              {new Date(defaultValues.creadoEn).toLocaleString("es-PE")}
+              {defaultValues.personalCreador &&
+                ` - ${defaultValues.personalCreador.nombres} ${defaultValues.personalCreador.apellidoPaterno}`}
+              {defaultValues.actualizadoEn && (
+                <>
+                  {" | "}
+                  <strong>Actualizado:</strong>{" "}
+                  {new Date(defaultValues.actualizadoEn).toLocaleString(
+                    "es-PE"
+                  )}
+                  {defaultValues.personalActualizador &&
+                    ` - ${defaultValues.personalActualizador.nombres} ${defaultValues.personalActualizador.apellidoPaterno}`}
+                </>
+              )}
+            </small>
+          </div>
+        )}
+
+        <div className="flex justify-content-end gap-2 mt-4">
+          <Button
+            label="Cancelar"
+            icon="pi pi-times"
+            className="p-button-secondary"
+            severity="secondary"
+            size="small"
+            raised
+            outlined
+            onClick={onCancel}
+            type="button"
+            disabled={loading || guardando}
+          />
+          <Button
+            label={isEdit ? "Actualizar" : "Guardar"}
+            icon="pi pi-check"
+            type="submit"
+            loading={loading || guardando}
+            disabled={readOnly || loading || guardando}
+            className="p-button-success"
+            severity="success"
+            raised
+            size="small"
+            outlined
+          />
+        </div>
+      </form>
+    </>
   );
 }

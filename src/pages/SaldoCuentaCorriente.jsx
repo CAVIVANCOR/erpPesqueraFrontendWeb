@@ -1,23 +1,22 @@
 // src/pages/SaldoCuentaCorriente.jsx
-// Pantalla CRUD profesional para SaldoCuentaCorriente. Cumple la regla transversal ERP Megui.
 import React, { useRef, useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
+import { InputText } from "primereact/inputtext";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { Tag } from "primereact/tag";
 import SaldoCuentaCorrienteForm from "../components/saldoCuentaCorriente/SaldoCuentaCorrienteForm";
+import HistoricoCuentaCorriente from "../components/saldoCuentaCorriente/HistoricoCuentaCorriente";
+import ProyeccionCuentaCorriente from "../components/saldoCuentaCorriente/ProyeccionCuentaCorriente";
 import {
   getAllSaldoCuentaCorriente,
-  getHistorialSaldos,
   calcularSaldoActual,
-  crearSaldoCuentaCorriente,
-  actualizarSaldoCuentaCorriente,
   eliminarSaldoCuentaCorriente,
 } from "../api/saldoCuentaCorriente";
 import { getAllCuentaCorriente } from "../api/cuentaCorriente";
@@ -27,9 +26,6 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
 
-/**
- * Pantalla profesional para gestión de Saldos de Cuentas Corrientes.
- */
 export default function SaldoCuentaCorriente({ ruta }) {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
@@ -43,26 +39,32 @@ export default function SaldoCuentaCorriente({ ruta }) {
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [centrosCosto, setCentrosCosto] = useState([]);
+  const [empresaFilter, setEmpresaFilter] = useState(null);
+  const [cuentaFilter, setCuentaFilter] = useState(null);
+  const [fechaInicioFilter, setFechaInicioFilter] = useState(null);
+  const [fechaFinFilter, setFechaFinFilter] = useState(null);
+  const [conciliadoFilter, setConciliadoFilter] = useState(null);
+  const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [toDelete, setToDelete] = useState(null);
-
-  // Filtros
-  const [filtroEmpresa, setFiltroEmpresa] = useState(null);
-  const [filtroCuenta, setFiltroCuenta] = useState(null);
-  const [filtroFechaInicio, setFiltroFechaInicio] = useState(null);
-  const [filtroFechaFin, setFiltroFechaFin] = useState(null);
-  const [filtroConciliado, setFiltroConciliado] = useState(null);
-
-  // Saldo actual
-  const [showSaldoActual, setShowSaldoActual] = useState(false);
-  const [saldoActualData, setSaldoActualData] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [isEdit, setIsEdit] = useState(false);
+  const [confirmState, setConfirmState] = useState({
+    visible: false,
+    row: null,
+  });
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [showHistorico, setShowHistorico] = useState(false);
+  const [showProyeccion, setShowProyeccion] = useState(false);
+  const [selectedCuentaAnalisis, setSelectedCuentaAnalisis] = useState(null);
 
   useEffect(() => {
     cargarDatos();
   }, []);
+
+  useEffect(() => {
+    filtrarItems();
+  }, [items, empresaFilter, cuentaFilter, fechaInicioFilter, fechaFinFilter, conciliadoFilter]);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -77,226 +79,386 @@ export default function SaldoCuentaCorriente({ ruta }) {
       setCuentasCorrientes(cuentas);
       setEmpresas(emps);
       setCentrosCosto(centros);
-    } catch (err) {
-      toast.current.show({
+    } catch (error) {
+      toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo cargar los datos.",
+        detail: "Error al cargar datos",
+        life: 3000,
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const getItemsFiltrados = () => {
-    return items.filter((item) => {
-      const cumpleFiltroEmpresa =
-        !filtroEmpresa || Number(item.empresaId) === Number(filtroEmpresa);
-      const cumpleFiltroCuenta =
-        !filtroCuenta ||
-        Number(item.cuentaCorrienteId) === Number(filtroCuenta);
+  const filtrarItems = () => {
+    let filtrados = [...items];
 
-      let cumpleFiltroFecha = true;
-      if (filtroFechaInicio) {
-        const fechaItem = new Date(item.fecha);
-        const fechaIni = new Date(filtroFechaInicio);
-        fechaIni.setHours(0, 0, 0, 0);
-        cumpleFiltroFecha = cumpleFiltroFecha && fechaItem >= fechaIni;
-      }
-      if (filtroFechaFin) {
-        const fechaItem = new Date(item.fecha);
-        const fechaFinDia = new Date(filtroFechaFin);
-        fechaFinDia.setHours(23, 59, 59, 999);
-        cumpleFiltroFecha = cumpleFiltroFecha && fechaItem <= fechaFinDia;
-      }
-
-      const cumpleFiltroConciliado =
-        filtroConciliado === null || item.conciliado === filtroConciliado;
-
-      return (
-        cumpleFiltroEmpresa &&
-        cumpleFiltroCuenta &&
-        cumpleFiltroFecha &&
-        cumpleFiltroConciliado
+    if (empresaFilter) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.empresaId) === Number(empresaFilter)
       );
-    });
+    }
+
+    if (cuentaFilter) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.cuentaCorrienteId) === Number(cuentaFilter)
+      );
+    }
+
+    if (fechaInicioFilter) {
+      filtrados = filtrados.filter((item) => {
+        const fechaItem = new Date(item.fecha);
+        const fechaIni = new Date(fechaInicioFilter);
+        fechaIni.setHours(0, 0, 0, 0);
+        return fechaItem >= fechaIni;
+      });
+    }
+
+    if (fechaFinFilter) {
+      filtrados = filtrados.filter((item) => {
+        const fechaItem = new Date(item.fecha);
+        const fechaFinDia = new Date(fechaFinFilter);
+        fechaFinDia.setHours(23, 59, 59, 999);
+        return fechaItem <= fechaFinDia;
+      });
+    }
+
+    if (conciliadoFilter !== null) {
+      filtrados = filtrados.filter((item) => item.conciliado === conciliadoFilter);
+    }
+
+    setItemsFiltrados(filtrados);
   };
 
-  const limpiarFiltros = () => {
-    setFiltroEmpresa(null);
-    setFiltroCuenta(null);
-    setFiltroFechaInicio(null);
-    setFiltroFechaFin(null);
-    setFiltroConciliado(null);
-  };
-
-  const obtenerMensajeError = (error) => {
-    if (error.response?.data?.message) {
-      return error.response.data.message;
+  const onNew = () => {
+    if (!permisos.puedeCrear) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear registros.",
+        life: 3000,
+      });
+      return;
     }
-    if (error.response?.data?.error) {
-      return error.response.data.error;
-    }
-    if (typeof error.response?.data === "string") {
-      return error.response.data;
-    }
-    if (error.message) {
-      return error.message;
-    }
-    return "Error desconocido";
-  };
-
-  const handleEdit = (rowData) => {
-    setEditing(rowData);
+    setSelected(null);
+    setIsEdit(false);
     setShowDialog(true);
   };
 
-  const handleDelete = (rowData) => {
-    setToDelete(rowData);
-    setShowConfirm(true);
+  const onEdit = (rowData) => {
+    if (!permisos.puedeVer && !permisos.puedeEditar) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para ver o editar registros.",
+        life: 3000,
+      });
+      return;
+    }
+    setSelected(rowData);
+    setIsEdit(true);
+    setShowDialog(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    setShowConfirm(false);
-    if (!toDelete) return;
+  const onDelete = (rowData) => {
+    if (!permisos.puedeEliminar) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar registros.",
+        life: 3000,
+      });
+      return;
+    }
+    setConfirmState({ visible: true, row: rowData });
+  };
+
+  const handleConfirmDelete = async () => {
+    const row = confirmState.row;
+    if (!row) return;
+    setConfirmState({ visible: false, row: null });
     setLoading(true);
     try {
-      await eliminarSaldoCuentaCorriente(toDelete.id);
-      toast.current.show({
+      await eliminarSaldoCuentaCorriente(row.id);
+      toast.current?.show({
         severity: "success",
-        summary: "Eliminado",
-        detail: "Registro eliminado correctamente.",
+        summary: "Saldo eliminado",
+        detail: `El saldo del ${new Date(row.fecha).toLocaleDateString("es-PE")} fue eliminado correctamente.`,
+        life: 3000,
       });
-      cargarDatos();
+      await cargarDatos();
     } catch (err) {
-      const mensajeError = obtenerMensajeError(err);
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: mensajeError,
+        detail:
+          err.response?.data?.message ||
+          "No se pudo eliminar el saldo.",
+        life: 3000,
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    setToDelete(null);
   };
 
-  const handleFormSubmit = async (data) => {
-    setLoading(true);
-    try {
-      if (editing && editing.id) {
-        await actualizarSaldoCuentaCorriente(editing.id, data);
-        toast.current.show({
-          severity: "success",
-          summary: "Actualizado",
-          detail: "Registro actualizado.",
-        });
-      } else {
-        await crearSaldoCuentaCorriente(data);
-        toast.current.show({
-          severity: "success",
-          summary: "Creado",
-          detail: "Registro creado.",
-        });
-      }
-      setShowDialog(false);
-      setEditing(null);
-      cargarDatos();
-    } catch (err) {
-      const mensajeError = obtenerMensajeError(err);
-      toast.current.show({
-        severity: "error",
-        summary: "Error al Guardar",
-        detail: mensajeError,
-        life: 5000,
-      });
+  const onCancel = () => {
+    setShowDialog(false);
+    setSelected(null);
+    setIsEdit(false);
+  };
+
+  const onSubmit = async (data) => {
+    if (isEdit && !permisos.puedeEditar) {
+      return;
     }
-    setLoading(false);
-  };
-
-  const handleAdd = () => {
-    setEditing(null);
-    setShowDialog(true);
-  };
-
-  const handleVerSaldoActual = async () => {
-    if (!filtroCuenta) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "Seleccione una cuenta corriente primero",
-      });
+    if (!isEdit && !permisos.puedeCrear) {
       return;
     }
 
     setLoading(true);
     try {
-      const resultado = await calcularSaldoActual(filtroCuenta);
-      setSaldoActualData(resultado);
-      setShowSaldoActual(true);
+      await data;
+      toast.current?.show({
+        severity: "success",
+        summary: isEdit ? "Saldo actualizado" : "Saldo creado",
+        detail: isEdit
+          ? "El saldo fue actualizado correctamente."
+          : "El saldo fue creado correctamente.",
+        life: 3000,
+      });
+      setShowDialog(false);
+      setSelected(null);
+      setIsEdit(false);
+      cargarDatos();
     } catch (err) {
-      const mensajeError = obtenerMensajeError(err);
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: mensajeError,
+        detail: "No se pudo guardar el saldo.",
+        life: 3000,
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const actionBody = (rowData) => (
-    <>
-      <Button
-        icon="pi pi-pencil"
-        className="p-button-text p-button-sm"
-        onClick={() => handleEdit(rowData)}
-        aria-label="Editar"
-      />
-      {(usuario?.esSuperUsuario || usuario?.esAdmin) && (
+  const handleVerHistorico = (rowData) => {
+    if (!rowData?.cuentaCorrienteId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "No se pudo identificar la cuenta corriente",
+        life: 3000,
+      });
+      return;
+    }
+    setSelectedCuentaAnalisis(rowData);
+    setShowHistorico(true);
+  };
+
+  const handleVerProyeccion = (rowData) => {
+    if (!rowData?.cuentaCorrienteId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "No se pudo identificar la cuenta corriente",
+        life: 3000,
+      });
+      return;
+    }
+    setSelectedCuentaAnalisis(rowData);
+    setShowProyeccion(true);
+  };
+
+  const limpiarFiltros = () => {
+    setEmpresaFilter(null);
+    setCuentaFilter(null);
+    setFechaInicioFilter(null);
+    setFechaFinFilter(null);
+    setConciliadoFilter(null);
+    setGlobalFilter("");
+  };
+
+  const cuentaNombreBodyTemplate = (rowData) => {
+    const cuenta = rowData.cuentaCorriente;
+    return cuenta
+      ? `${cuenta.numeroCuenta} - ${cuenta.banco?.nombre || ""}`
+      : "-";
+  };
+
+  const empresaNombreBodyTemplate = (rowData) => {
+    const empresa = rowData.empresa;
+    return empresa ? empresa.razonSocial : "-";
+  };
+
+  const montoBodyTemplate = (rowData, field, color) => {
+    const moneda = rowData.cuentaCorriente?.moneda;
+    const simbolo = moneda?.simbolo || "";
+    return (
+      <span style={{ color: color || "inherit" }}>
+        {simbolo} {Number(rowData[field]).toFixed(2)}
+      </span>
+    );
+  };
+
+  const diferenciaBodyTemplate = (rowData) => {
+    if (!rowData.diferencia && rowData.diferencia !== 0) return "-";
+    const moneda = rowData.cuentaCorriente?.moneda;
+    const simbolo = moneda?.simbolo || "";
+    const valor = Number(rowData.diferencia);
+    return (
+      <span style={{ color: Math.abs(valor) > 0.01 ? "red" : "green" }}>
+        {simbolo} {valor.toFixed(2)}
+      </span>
+    );
+  };
+
+  const fechaBodyTemplate = (rowData) => {
+    if (!rowData.fecha) return "-";
+    return new Date(rowData.fecha).toLocaleDateString("es-PE");
+  };
+
+  const conciliadoBodyTemplate = (rowData) => {
+    return rowData.conciliado ? (
+      <Tag value="SÍ" severity="success" />
+    ) : (
+      <Tag value="NO" severity="warning" />
+    );
+  };
+
+  const actionBodyTemplate = (rowData) => {
+    const saldosCuenta = items.filter(
+      (item) => Number(item.cuentaCorrienteId) === Number(rowData.cuentaCorrienteId)
+    );
+
+    return (
+      <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: "0.25rem" }}>
+        <Button
+          icon="pi pi-chart-line"
+          className="p-button-text p-button-info"
+          disabled={loading || saldosCuenta.length === 0}
+          onClick={() => handleVerHistorico(rowData)}
+          tooltip="Análisis Histórico"
+        />
+        <Button
+          icon="pi pi-chart-bar"
+          className="p-button-text p-button-warning"
+          disabled={loading || saldosCuenta.length === 0}
+          onClick={() => handleVerProyeccion(rowData)}
+          tooltip="Proyección Financiera"
+        />
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text"
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          onClick={() => {
+            if (permisos.puedeVer || permisos.puedeEditar) {
+              onEdit(rowData);
+            }
+          }}
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+        />
         <Button
           icon="pi pi-trash"
-          className="p-button-text p-button-danger p-button-sm"
-          onClick={() => handleDelete(rowData)}
-          aria-label="Eliminar"
+          className="p-button-text p-button-danger"
+          disabled={!permisos.puedeEliminar}
+          onClick={() => {
+            if (permisos.puedeEliminar) {
+              onDelete(rowData);
+            }
+          }}
+          tooltip="Eliminar"
         />
-      )}
-    </>
-  );
+      </div>
+    );
+  };
+
+  const empresaOptions = empresas.map((emp) => ({
+    label: emp.razonSocial,
+    value: Number(emp.id),
+  }));
+
+  const cuentaOptions = cuentasCorrientes.map((cuenta) => ({
+    label: `${cuenta.numeroCuenta} - ${cuenta.banco?.nombre || ""}`,
+    value: Number(cuenta.id),
+  }));
+
+  const conciliadoOptions = [
+    { label: "Sí", value: true },
+    { label: "No", value: false },
+  ];
 
   return (
-    <div className="p-fluid">
+    <div className="p-m-4">
       <Toast ref={toast} />
       <ConfirmDialog
-        visible={showConfirm}
-        onHide={() => setShowConfirm(false)}
-        message="¿Está seguro que desea eliminar este registro?"
-        header="Confirmar eliminación"
+        visible={confirmState.visible}
+        onHide={() => setConfirmState({ visible: false, row: null })}
+        message={
+          <span style={{ color: "#b71c1c", fontWeight: 600 }}>
+            ¿Está seguro que desea{" "}
+            <span style={{ color: "#b71c1c" }}>eliminar</span> el saldo del{" "}
+            <b>{confirmState.row?.fecha && new Date(confirmState.row.fecha).toLocaleDateString("es-PE")}</b>?
+            <br />
+            <span style={{ fontWeight: 400, color: "#b71c1c" }}>
+              Esta acción no se puede deshacer.
+            </span>
+          </span>
+        }
+        header={<span style={{ color: "#b71c1c" }}>Confirmar eliminación</span>}
         icon="pi pi-exclamation-triangle"
         acceptClassName="p-button-danger"
-        accept={handleDeleteConfirm}
-        reject={() => setShowConfirm(false)}
+        acceptLabel="Eliminar"
+        rejectLabel="Cancelar"
+        accept={handleConfirmDelete}
+        reject={() => setConfirmState({ visible: false, row: null })}
+        style={{ minWidth: 400 }}
       />
-
       <DataTable
-        value={getItemsFiltrados()}
+        value={itemsFiltrados}
         loading={loading}
-        dataKey="id"
+        size="small"
+        stripedRows
+        showGridlines
         paginator
-        rows={10}
-        onRowClick={(e) => handleEdit(e.data)}
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        rows={20}
+        rowsPerPageOptions={[20, 40, 80, 160]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} saldos"
+        sortField="fecha"
+        sortOrder={-1}
+        selectionMode="single"
+        selection={selected}
+        onSelectionChange={(e) => setSelected(e.value)}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => onEdit(e.data)
+            : undefined
+        }
+        globalFilter={globalFilter}
+        globalFilterFields={["id"]}
+        emptyMessage="No se encontraron registros que coincidan con la búsqueda."
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
         header={
           <div>
             <div
               style={{
-                display: "flex",
                 alignItems: "end",
+                display: "flex",
                 gap: 10,
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
-                marginBottom: 10,
               }}
             >
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 2 }}>
                 <h2>Saldos de Cuentas Corrientes</h2>
+                <small style={{ color: "#666", fontWeight: "normal" }}>
+                  Total de registros: {itemsFiltrados.length}
+                </small>
               </div>
               <div style={{ flex: 0.5 }}>
                 <Button
@@ -304,97 +466,30 @@ export default function SaldoCuentaCorriente({ ruta }) {
                   icon="pi pi-plus"
                   className="p-button-success"
                   size="small"
-                  severity="success"
                   raised
-                  onClick={handleAdd}
-                  disabled={loading || !permisos.puedeCrear}
+                  disabled={!permisos.puedeCrear}
+                  tooltip="Nuevo Saldo"
+                  outlined
+                  onClick={onNew}
                 />
               </div>
               <div style={{ flex: 0.5 }}>
                 <Button
-                  label="Ver Saldo Actual"
-                  icon="pi pi-chart-line"
-                  className="p-button-info"
+                  icon="pi pi-refresh"
+                  className="p-button-outlined p-button-info"
                   size="small"
-                  severity="info"
-                  raised
-                  onClick={handleVerSaldoActual}
-                  disabled={loading || !filtroCuenta}
-                  tooltip="Seleccione una cuenta para ver su saldo actual"
-                />
-              </div>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "end",
-                gap: 10,
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 1.5 }}>
-                <label>Filtrar por Empresa:</label>
-                <Dropdown
-                  value={filtroEmpresa}
-                  options={empresas.map((emp) => ({
-                    label: emp.razonSocial,
-                    value: Number(emp.id),
-                  }))}
-                  onChange={(e) => setFiltroEmpresa(e.value)}
-                  placeholder="Todas"
-                  showClear
-                  className="w-full"
-                />
-              </div>
-              <div style={{ flex: 2 }}>
-                <label>Filtrar por Cuenta:</label>
-                <Dropdown
-                  value={filtroCuenta}
-                  options={cuentasCorrientes.map((cuenta) => ({
-                    label: `${cuenta.numeroCuenta} - ${cuenta.banco?.nombre || ""}`,
-                    value: Number(cuenta.id),
-                  }))}
-                  onChange={(e) => setFiltroCuenta(e.value)}
-                  placeholder="Todas"
-                  showClear
-                  filter
-                  className="w-full"
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label>Desde:</label>
-                <Calendar
-                  value={filtroFechaInicio}
-                  onChange={(e) => setFiltroFechaInicio(e.value)}
-                  dateFormat="dd/mm/yy"
-                  showIcon
-                  placeholder="Fecha inicio"
-                  showButtonBar
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label>Hasta:</label>
-                <Calendar
-                  value={filtroFechaFin}
-                  onChange={(e) => setFiltroFechaFin(e.value)}
-                  dateFormat="dd/mm/yy"
-                  showIcon
-                  placeholder="Fecha fin"
-                  showButtonBar
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label>Conciliado:</label>
-                <Dropdown
-                  value={filtroConciliado}
-                  options={[
-                    { label: "Sí", value: true },
-                    { label: "No", value: false },
-                  ]}
-                  onChange={(e) => setFiltroConciliado(e.value)}
-                  placeholder="Todos"
-                  showClear
-                  className="w-full"
+                  onClick={async () => {
+                    await cargarDatos();
+                    toast.current?.show({
+                      severity: "success",
+                      summary: "Actualizado",
+                      detail:
+                        "Datos actualizados correctamente desde el servidor",
+                      life: 3000,
+                    });
+                  }}
+                  loading={loading}
+                  tooltip="Actualizar todos los datos desde el servidor"
                 />
               </div>
               <div style={{ flex: 0.5 }}>
@@ -403,209 +498,222 @@ export default function SaldoCuentaCorriente({ ruta }) {
                   icon="pi pi-filter-slash"
                   className="p-button-secondary"
                   size="small"
-                  severity="secondary"
-                  raised
+                  outlined
                   onClick={limpiarFiltros}
-                  disabled={
-                    !filtroEmpresa &&
-                    !filtroCuenta &&
-                    !filtroFechaInicio &&
-                    !filtroFechaFin &&
-                    filtroConciliado === null
-                  }
+                  disabled={loading}
                 />
+              </div>
+            </div>
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                marginTop: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="empresaFilter">Filtrar por Empresa</label>
+                <Dropdown
+                  id="empresaFilter"
+                  value={empresaFilter}
+                  options={empresaOptions}
+                  onChange={(e) => setEmpresaFilter(e.value)}
+                  placeholder="Todas"
+                  showClear
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1.5 }}>
+                <label htmlFor="cuentaFilter">Filtrar por Cuenta</label>
+                <Dropdown
+                  id="cuentaFilter"
+                  value={cuentaFilter}
+                  options={cuentaOptions}
+                  onChange={(e) => setCuentaFilter(e.value)}
+                  placeholder="Todas"
+                  showClear
+                  filter
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaInicioFilter">Desde</label>
+                <Calendar
+                  id="fechaInicioFilter"
+                  value={fechaInicioFilter}
+                  onChange={(e) => setFechaInicioFilter(e.value)}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  placeholder="Fecha inicio"
+                  showButtonBar
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaFinFilter">Hasta</label>
+                <Calendar
+                  id="fechaFinFilter"
+                  value={fechaFinFilter}
+                  onChange={(e) => setFechaFinFilter(e.value)}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  placeholder="Fecha fin"
+                  showButtonBar
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="conciliadoFilter">Conciliado</label>
+                <Dropdown
+                  id="conciliadoFilter"
+                  value={conciliadoFilter}
+                  options={conciliadoOptions}
+                  onChange={(e) => setConciliadoFilter(e.value)}
+                  placeholder="Todos"
+                  showClear
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="globalFilter">Buscar</label>
+                <span className="p-input-icon-left">
+                  <i className="pi pi-search" />
+                  <InputText
+                    id="globalFilter"
+                    value={globalFilter}
+                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    placeholder="Buscar..."
+                    style={{ width: "100%" }}
+                  />
+                </span>
               </div>
             </div>
           </div>
         }
       >
-        <Column field="id" header="ID" style={{ width: 80 }} sortable />
+        <Column field="id" header="ID" sortable />
         <Column
           field="fecha"
           header="Fecha"
+          body={fechaBodyTemplate}
           sortable
-          body={(rowData) =>
-            new Date(rowData.fecha).toLocaleDateString("es-PE")
-          }
-          style={{ width: 110 }}
         />
         <Column
           field="cuentaCorrienteId"
           header="Cuenta Corriente"
+          body={cuentaNombreBodyTemplate}
           sortable
-          body={(rowData) => {
-            const cuenta = rowData.cuentaCorriente;
-            return cuenta
-              ? `${cuenta.numeroCuenta} - ${cuenta.banco?.nombre || ""}`
-              : rowData.cuentaCorrienteId;
-          }}
         />
         <Column
           field="empresaId"
           header="Empresa"
+          body={empresaNombreBodyTemplate}
           sortable
-          body={(rowData) => {
-            const empresa = rowData.empresa;
-            return empresa ? empresa.razonSocial : rowData.empresaId;
-          }}
         />
         <Column
           field="saldoAnterior"
           header="Saldo Anterior"
+          body={(rowData) => montoBodyTemplate(rowData, "saldoAnterior")}
           sortable
-          body={(rowData) => {
-            const moneda = rowData.cuentaCorriente?.moneda;
-            const simbolo = moneda?.simbolo || "";
-            return `${simbolo} ${Number(rowData.saldoAnterior).toFixed(2)}`;
-          }}
-          style={{ width: 130, textAlign: "right" }}
+          style={{ textAlign: "right" }}
         />
         <Column
           field="ingresos"
           header="Ingresos"
+          body={(rowData) => montoBodyTemplate(rowData, "ingresos", "green")}
           sortable
-          body={(rowData) => {
-            const moneda = rowData.cuentaCorriente?.moneda;
-            const simbolo = moneda?.simbolo || "";
-            return `${simbolo} ${Number(rowData.ingresos).toFixed(2)}`;
-          }}
-          style={{ width: 120, textAlign: "right", color: "green" }}
+          style={{ textAlign: "right" }}
         />
         <Column
           field="egresos"
           header="Egresos"
+          body={(rowData) => montoBodyTemplate(rowData, "egresos", "red")}
           sortable
-          body={(rowData) => {
-            const moneda = rowData.cuentaCorriente?.moneda;
-            const simbolo = moneda?.simbolo || "";
-            return `${simbolo} ${Number(rowData.egresos).toFixed(2)}`;
-          }}
-          style={{ width: 120, textAlign: "right", color: "red" }}
+          style={{ textAlign: "right" }}
         />
         <Column
           field="saldoActual"
           header="Saldo Actual"
+          body={(rowData) => montoBodyTemplate(rowData, "saldoActual")}
           sortable
-          body={(rowData) => {
-            const moneda = rowData.cuentaCorriente?.moneda;
-            const simbolo = moneda?.simbolo || "";
-            return `${simbolo} ${Number(rowData.saldoActual).toFixed(2)}`;
-          }}
-          style={{ width: 130, textAlign: "right", fontWeight: "bold" }}
+          style={{ textAlign: "right", fontWeight: "bold" }}
         />
         <Column
           field="diferencia"
           header="Diferencia"
+          body={diferenciaBodyTemplate}
           sortable
-          body={(rowData) => {
-            if (!rowData.diferencia && rowData.diferencia !== 0) return "-";
-            const moneda = rowData.cuentaCorriente?.moneda;
-            const simbolo = moneda?.simbolo || "";
-            const valor = Number(rowData.diferencia);
-            return (
-              <span style={{ color: Math.abs(valor) > 0.01 ? "red" : "green" }}>
-                {simbolo} {valor.toFixed(2)}
-              </span>
-            );
-          }}
-          style={{ width: 110, textAlign: "right" }}
+          style={{ textAlign: "right" }}
         />
         <Column
           field="conciliado"
           header="Conciliado"
+          body={conciliadoBodyTemplate}
           sortable
-          body={(rowData) =>
-            rowData.conciliado ? (
-              <Tag value="SÍ" severity="success" />
-            ) : (
-              <Tag value="NO" severity="warning" />
-            )
-          }
-          style={{ width: 100 }}
         />
-        <Column
-          body={actionBody}
-          header="Acciones"
-          style={{ width: 130, textAlign: "center" }}
-        />
+        <Column body={actionBodyTemplate} header="Acciones" style={{ width: "180px" }} />
       </DataTable>
 
       <Dialog
-        header={editing ? "Editar Saldo" : "Nuevo Saldo"}
+        header={
+          isEdit
+            ? permisos.puedeEditar
+              ? "Editar Saldo"
+              : "Ver Saldo"
+            : "Nuevo Saldo"
+        }
         visible={showDialog}
-        style={{ width: 1300 }}
-        onHide={() => setShowDialog(false)}
+        style={{ width: "1300px" }}
         modal
+        className="p-fluid"
+        onHide={onCancel}
+        closeOnEscape
+        dismissableMask
       >
         <SaldoCuentaCorrienteForm
-          isEdit={!!editing}
-          defaultValues={editing || {}}
-          onSubmit={handleFormSubmit}
-          onCancel={() => setShowDialog(false)}
-          loading={loading}
+          isEdit={isEdit}
+          defaultValues={selected || {}}
           cuentasCorrientes={cuentasCorrientes}
           empresas={empresas}
-          movimientosCaja={[]}
           centrosCosto={centrosCosto}
+          onSubmit={onSubmit}
+          onCancel={onCancel}
+          loading={loading}
+          readOnly={isEdit && !permisos.puedeEditar}
         />
       </Dialog>
 
-      <Dialog
-        header="Saldo Actual de la Cuenta"
-        visible={showSaldoActual}
-        style={{ width: 600 }}
-        onHide={() => setShowSaldoActual(false)}
-        modal
-      >
-        {saldoActualData && (
-          <div style={{ padding: 20 }}>
-            <div
-              style={{
-                fontSize: 18,
-                fontWeight: "bold",
-                marginBottom: 20,
-                textAlign: "center",
-              }}
-            >
-              {saldoActualData.ultimoRegistro?.cuentaCorriente?.numeroCuenta ||
-                ""}
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 10,
-              }}
-            >
-              <span>Saldo Actual:</span>
-              <span style={{ fontWeight: "bold", fontSize: 20, color: "blue" }}>
-                {saldoActualData.ultimoRegistro?.cuentaCorriente?.moneda
-                  ?.simbolo || ""}{" "}
-                {Number(saldoActualData.saldoActual).toFixed(2)}
-              </span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 10,
-              }}
-            >
-              <span>Última actualización:</span>
-              <span>
-                {saldoActualData.ultimoRegistro
-                  ? new Date(
-                      saldoActualData.ultimoRegistro.fecha
-                    ).toLocaleDateString("es-PE")
-                  : "-"}
-              </span>
-            </div>
-            <div style={{ marginTop: 20, color: "#666" }}>
-              {saldoActualData.mensaje}
-            </div>
-          </div>
-        )}
-      </Dialog>
+      <HistoricoCuentaCorriente
+        visible={showHistorico}
+        onHide={() => setShowHistorico(false)}
+        saldos={
+          selectedCuentaAnalisis
+            ? items.filter(
+                (item) =>
+                  Number(item.cuentaCorrienteId) ===
+                  Number(selectedCuentaAnalisis.cuentaCorrienteId)
+              )
+            : []
+        }
+        cuentaCorriente={selectedCuentaAnalisis?.cuentaCorriente || null}
+      />
+
+      <ProyeccionCuentaCorriente
+        visible={showProyeccion}
+        onHide={() => setShowProyeccion(false)}
+        saldos={
+          selectedCuentaAnalisis
+            ? items.filter(
+                (item) =>
+                  Number(item.cuentaCorrienteId) ===
+                  Number(selectedCuentaAnalisis.cuentaCorrienteId)
+              )
+            : []
+        }
+        cuentaCorriente={selectedCuentaAnalisis?.cuentaCorriente || null}
+      />
     </div>
   );
 }

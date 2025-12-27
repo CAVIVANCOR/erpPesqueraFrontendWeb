@@ -110,7 +110,7 @@ async function generarPDFRequerimientoCompra(
   // Preparar datos del requerimiento para el encabezado
   const datosIzquierda = [
     ["Fecha Documento:", formatearFecha(requerimiento.fechaDocumento)],
-    ["Tipo Producto:", requerimiento.tipoProducto?.descripcion || "-"],
+    ["Tipo Producto:", requerimiento.tipoProducto?.nombre || "-"],
     [
       "Estado Producto:",
       requerimiento.tipoEstadoProducto?.descripcion || "-",

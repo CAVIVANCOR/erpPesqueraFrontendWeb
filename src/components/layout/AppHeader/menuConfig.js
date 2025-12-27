@@ -439,7 +439,89 @@ export const getMenuConfig = (abrirModulo) => ({
   },
 
   // ============================================
-  // 3. MAESTROS (Mega Menu con 7 columnas)
+  // 3. CONTABILIDAD (Dropdown simple)
+  // ============================================
+  contabilidad: {
+    id: "contabilidad",
+    label: "CONTABILIDAD",
+    icon: "pi pi-calculator",
+    type: "dropdown",
+    items: [
+      {
+        label: "Plan Contable",
+        icon: "pi pi-list",
+        action: () => abrirModulo("planCuentasContable", "Plan Contable")
+      },
+      {
+        label: "Período Contable",
+        icon: "pi pi-calendar",
+        action: () => abrirModulo("periodoContable", "Período Contable")
+      },
+      {
+        label: "Asiento Contable",
+        icon: "pi pi-book",
+        action: () => abrirModulo("asientoContable", "Asiento Contable")
+      },
+      {
+        label: "Tipo Afectación IGV",
+        icon: "pi pi-percentage",
+        action: () => abrirModulo("tipoAfectacionIGV", "Tipo Afectación IGV")
+      },
+      {
+        label: "Comprobante Electrónico",
+        icon: "pi pi-file-pdf",
+        action: () => abrirModulo("comprobanteElectronico", "Comprobante Electrónico")
+      },
+      {
+        label: "Cuenta Por Cobrar",
+        icon: "pi pi-money-bill",
+        action: () => abrirModulo("cuentaPorCobrar", "Cuenta Por Cobrar")
+      },
+      {
+        label: "Cuenta Por Pagar",
+        icon: "pi pi-credit-card",
+        action: () => abrirModulo("cuentaPorPagar", "Cuenta Por Pagar")
+      },
+      {
+        label: "Pagos",
+        icon: "pi pi-dollar",
+        action: () => abrirModulo("pago", "Pagos")
+      },
+      {
+        label: "Flujo de Caja Financiero",
+        icon: "pi pi-chart-line",
+        action: () => abrirModulo("flujoCaja", "Flujo de Caja Financiero")
+      },
+      {
+        label: "Conciliación Bancaria",
+        icon: "pi pi-check-square",
+        action: () => abrirModulo("conciliacionBancaria", "Conciliación Bancaria")
+      },
+      {
+        label: "Letras de Cambio",
+        icon: "pi pi-file-edit",
+        action: () => abrirModulo("letraCambio", "Letras de Cambio")
+      },
+      {
+        label: "Retenciones",
+        icon: "pi pi-minus-circle",
+        action: () => abrirModulo("retencion", "Retenciones")
+      },
+      {
+        label: "Percepciones",
+        icon: "pi pi-plus-circle",
+        action: () => abrirModulo("percepcion", "Percepciones")
+      },
+      {
+        label: "Presupuestos",
+        icon: "pi pi-chart-bar",
+        action: () => abrirModulo("presupuesto", "Presupuestos")
+      }
+    ]
+  },
+
+  // ============================================
+  // 4. MAESTROS (Mega Menu con 7 columnas)
   // ============================================
   maestros: {
     id: "maestros",

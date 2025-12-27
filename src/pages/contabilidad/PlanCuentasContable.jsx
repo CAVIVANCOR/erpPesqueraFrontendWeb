@@ -1,25 +1,25 @@
-// src/pages/CentroCosto.jsx
+// src/pages/contabilidad/PlanCuentasContable.jsx
 import React, { useRef, useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
-import { InputText } from "primereact/inputtext";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
-import { Dropdown } from "primereact/dropdown";
-import CentroCostoForm from "../components/centroCosto/CentroCostoForm";
+import { Tag } from "primereact/tag";
+import { InputText } from "primereact/inputtext";
+import PlanCuentasContableForm from "../../components/contabilidad/PlanCuentasContableForm";
 import {
-  getCentrosCosto,
-  eliminarCentroCosto,
-} from "../api/centroCosto";
-import { getAllCategoriaCCosto } from "../api/categoriaCCosto";
-import { useAuthStore } from "../shared/stores/useAuthStore";
-import { usePermissions } from "../hooks/usePermissions";
-import { getResponsiveFontSize } from "../utils/utils";
+  getPlanCuentasContable,
+  deletePlanCuentasContable,
+  getPlanCuentasContableById,
+} from "../../api/contabilidad/planCuentasContable";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { usePermissions } from "../../hooks/usePermissions";
+import { getResponsiveFontSize } from "../../utils/utils";
 
-export default function CentroCosto({ ruta }) {
+export default function PlanCuentasContable({ ruta }) {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
 
@@ -30,10 +30,6 @@ export default function CentroCosto({ ruta }) {
 
   const toast = useRef(null);
   const [items, setItems] = useState([]);
-  const [categorias, setCategorias] = useState([]);
-  const [categoriaFilter, setCategoriaFilter] = useState(null);
-  const [centroPadreFilter, setCentroPadreFilter] = useState(null);
-  const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -48,47 +44,20 @@ export default function CentroCosto({ ruta }) {
     cargarDatos();
   }, []);
 
-  useEffect(() => {
-    filtrarItems();
-  }, [items, categoriaFilter, centroPadreFilter]);
-
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const [centrosData, categoriasData] = await Promise.all([
-        getCentrosCosto(),
-        getAllCategoriaCCosto(),
-      ]);
-      setItems(centrosData);
-      setCategorias(categoriasData);
-    } catch (error) {
+      const cuentasData = await getPlanCuentasContable();
+      setItems(cuentasData);
+    } catch (err) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar datos",
+        detail: "No se pudo cargar los datos.",
         life: 3000,
       });
-    } finally {
-      setLoading(false);
     }
-  };
-
-  const filtrarItems = () => {
-    let filtrados = [...items];
-
-    if (categoriaFilter) {
-      filtrados = filtrados.filter(
-        (item) => Number(item.CategoriaID) === Number(categoriaFilter)
-      );
-    }
-
-    if (centroPadreFilter) {
-      filtrados = filtrados.filter(
-        (item) => item.ParentCentroID === centroPadreFilter
-      );
-    }
-
-    setItemsFiltrados(filtrados);
+    setLoading(false);
   };
 
   const onNew = () => {
@@ -106,7 +75,7 @@ export default function CentroCosto({ ruta }) {
     setShowDialog(true);
   };
 
-  const onEdit = (rowData) => {
+  const onEdit = async (rowData) => {
     if (!permisos.puedeVer && !permisos.puedeEditar) {
       toast.current?.show({
         severity: "warn",
@@ -116,9 +85,21 @@ export default function CentroCosto({ ruta }) {
       });
       return;
     }
-    setSelected(rowData);
-    setIsEdit(true);
-    setShowDialog(true);
+
+    try {
+      const cuentaCompleta = await getPlanCuentasContableById(rowData.id);
+      setSelected(cuentaCompleta);
+      setIsEdit(true);
+      setShowDialog(true);
+    } catch (error) {
+      console.error("Error al cargar cuenta:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar la cuenta contable",
+        life: 3000,
+      });
+    }
   };
 
   const onDelete = (rowData) => {
@@ -140,11 +121,11 @@ export default function CentroCosto({ ruta }) {
     setConfirmState({ visible: false, row: null });
     setLoading(true);
     try {
-      await eliminarCentroCosto(row.id);
+      await deletePlanCuentasContable(row.id);
       toast.current?.show({
         severity: "success",
-        summary: "Centro eliminado",
-        detail: `El centro de costo ${row.Nombre} fue eliminado correctamente.`,
+        summary: "Cuenta eliminada",
+        detail: `La cuenta ${row.codigoCuenta} - ${row.nombreCuenta} fue eliminada correctamente.`,
         life: 3000,
       });
       await cargarDatos();
@@ -152,9 +133,7 @@ export default function CentroCosto({ ruta }) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail:
-          err.response?.data?.message ||
-          "No se pudo eliminar el centro de costo.",
+        detail: err.response?.data?.message || "No se pudo eliminar la cuenta contable.",
         life: 3000,
       });
     } finally {
@@ -182,10 +161,10 @@ export default function CentroCosto({ ruta }) {
       await data; // El formulario ya maneja la llamada a la API
       toast.current?.show({
         severity: "success",
-        summary: isEdit ? "Centro actualizado" : "Centro creado",
+        summary: isEdit ? "Cuenta actualizada" : "Cuenta creada",
         detail: isEdit
-          ? "El centro de costo fue actualizado correctamente."
-          : "El centro de costo fue creado correctamente.",
+          ? "La cuenta contable fue actualizada correctamente."
+          : "La cuenta contable fue creada correctamente.",
         life: 3000,
       });
       setShowDialog(false);
@@ -196,7 +175,7 @@ export default function CentroCosto({ ruta }) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo guardar el centro de costo.",
+        detail: "No se pudo guardar la cuenta contable.",
         life: 3000,
       });
     } finally {
@@ -205,59 +184,71 @@ export default function CentroCosto({ ruta }) {
   };
 
   const limpiarFiltros = () => {
-    setCategoriaFilter(null);
-    setCentroPadreFilter(null);
     setGlobalFilter("");
   };
 
-  const categoriaNombreBodyTemplate = (rowData) => {
-    const categoria = categorias.find(
-      (c) => Number(c.id) === Number(rowData.CategoriaID)
-    );
-    return categoria ? categoria.nombre : "-";
+  const cuentaPadreNombre = (rowData) => {
+    return rowData.cuentaPadre
+      ? `${rowData.cuentaPadre.codigoCuenta} - ${rowData.cuentaPadre.nombreCuenta}`
+      : "RAÍZ";
   };
 
-  const actionBodyTemplate = (rowData) => {
+  const nivelTemplate = (rowData) => {
+    const colores = {
+      CLASE: "info",
+      CUENTA: "success",
+      SUBCUENTA: "warning",
+      DIVISIONARIA: "help",
+      SUBDIVISIONARIA: "danger",
+    };
     return (
-      <div onClick={(e) => e.stopPropagation()}>
-        <Button
-          icon="pi pi-pencil"
-          className="p-button-text p-mr-2"
-          disabled={!permisos.puedeVer && !permisos.puedeEditar}
-          onClick={() => {
-            if (permisos.puedeVer || permisos.puedeEditar) {
-              onEdit(rowData);
-            }
-          }}
-          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
-        />
-        <Button
-          icon="pi pi-trash"
-          className="p-button-text p-button-danger"
-          disabled={!permisos.puedeEliminar}
-          onClick={() => {
-            if (permisos.puedeEliminar) {
-              onDelete(rowData);
-            }
-          }}
-          tooltip="Eliminar"
-        />
-      </div>
+      <Tag value={rowData.nivel} severity={colores[rowData.nivel] || "info"} />
     );
   };
 
-  // Opciones para filtros
-  const categoriaOptions = categorias.map((cat) => ({
-    label: cat.nombre,
-    value: Number(cat.id),
-  }));
+  const naturalezaTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.naturaleza}
+        severity={rowData.naturaleza === "DEUDORA" ? "info" : "success"}
+      />
+    );
+  };
 
-  const centroPadreOptions = Array.from(
-    new Set(items.map((item) => item.ParentCentroID).filter(Boolean))
-  ).map((centro) => ({
-    label: centro,
-    value: centro,
-  }));
+  const activoTemplate = (rowData) => {
+    return rowData.activo ? (
+      <Tag value="SÍ" severity="success" icon="pi pi-check" />
+    ) : (
+      <Tag value="NO" severity="danger" icon="pi pi-times" />
+    );
+  };
+
+  const actionBodyTemplate = (rowData) => (
+    <div onClick={(e) => e.stopPropagation()}>
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-text p-mr-2"
+        disabled={!permisos.puedeVer && !permisos.puedeEditar}
+        onClick={() => {
+          if (permisos.puedeVer || permisos.puedeEditar) {
+            onEdit(rowData);
+          }
+        }}
+        tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+      />
+      <Button
+        icon="pi pi-trash"
+        className="p-button-text p-button-danger"
+        disabled={!permisos.puedeEliminar}
+        onClick={() => {
+          if (permisos.puedeEliminar) {
+            onDelete(rowData);
+          }
+        }}
+        tooltip="Eliminar"
+      />
+    </div>
+  );
 
   return (
     <div className="p-m-4">
@@ -268,15 +259,21 @@ export default function CentroCosto({ ruta }) {
         message={
           <span style={{ color: "#b71c1c", fontWeight: 600 }}>
             ¿Está seguro que desea{" "}
-            <span style={{ color: "#b71c1c" }}>eliminar</span> el centro de
-            costo <b>{confirmState.row?.Nombre}</b>?
-            <br />
+            <span style={{ color: "#b71c1c" }}>eliminar</span> la cuenta{" "}
+            <b>
+              {confirmState.row
+                ? `${confirmState.row.codigoCuenta} - ${confirmState.row.nombreCuenta}`
+                : ""}
+            </b>
+            ?<br />
             <span style={{ fontWeight: 400, color: "#b71c1c" }}>
               Esta acción no se puede deshacer.
             </span>
           </span>
         }
-        header={<span style={{ color: "#b71c1c" }}>Confirmar eliminación</span>}
+        header={
+          <span style={{ color: "#b71c1c" }}>Confirmar eliminación</span>
+        }
         icon="pi pi-exclamation-triangle"
         acceptClassName="p-button-danger"
         acceptLabel="Eliminar"
@@ -286,7 +283,7 @@ export default function CentroCosto({ ruta }) {
         style={{ minWidth: 400 }}
       />
       <DataTable
-        value={itemsFiltrados}
+        value={items}
         loading={loading}
         size="small"
         stripedRows
@@ -295,8 +292,8 @@ export default function CentroCosto({ ruta }) {
         rows={20}
         rowsPerPageOptions={[20, 40, 80, 160]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} centros de costo"
-        sortField="Codigo"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cuentas"
+        sortField="codigoCuenta"
         sortOrder={1}
         selectionMode="single"
         selection={selected}
@@ -307,7 +304,7 @@ export default function CentroCosto({ ruta }) {
             : undefined
         }
         globalFilter={globalFilter}
-        globalFilterFields={["Codigo", "Nombre", "Descripcion", "ParentCentroID"]}
+        globalFilterFields={["codigoCuenta", "nombreCuenta", "descripcion"]}
         emptyMessage="No se encontraron registros que coincidan con la búsqueda."
         style={{
           cursor:
@@ -325,9 +322,9 @@ export default function CentroCosto({ ruta }) {
               }}
             >
               <div style={{ flex: 2 }}>
-                <h2>Centros de Costo</h2>
+                <h2>Plan de Cuentas Contable</h2>
                 <small style={{ color: "#666", fontWeight: "normal" }}>
-                  Total de registros: {itemsFiltrados.length}
+                  Total de registros: {items.length}
                 </small>
               </div>
               <div style={{ flex: 0.5 }}>
@@ -338,7 +335,7 @@ export default function CentroCosto({ ruta }) {
                   size="small"
                   raised
                   disabled={!permisos.puedeCrear}
-                  tooltip="Nuevo Centro de Costo"
+                  tooltip="Nueva Cuenta Contable"
                   outlined
                   onClick={onNew}
                 />
@@ -374,32 +371,6 @@ export default function CentroCosto({ ruta }) {
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label htmlFor="categoriaFilter">Filtrar por Categoría</label>
-                <Dropdown
-                  id="categoriaFilter"
-                  value={categoriaFilter}
-                  options={categoriaOptions}
-                  onChange={(e) => setCategoriaFilter(e.value)}
-                  placeholder="Seleccionar categoría"
-                  showClear
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="centroPadreFilter">
-                  Filtrar por Centro Padre
-                </label>
-                <Dropdown
-                  id="centroPadreFilter"
-                  value={centroPadreFilter}
-                  options={centroPadreOptions}
-                  onChange={(e) => setCentroPadreFilter(e.value)}
-                  placeholder="Seleccionar centro padre"
-                  showClear
-                  style={{ width: "100%" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
                 <label htmlFor="globalFilter">Buscar</label>
                 <span className="p-input-icon-left">
                   <i className="pi pi-search" />
@@ -407,7 +378,7 @@ export default function CentroCosto({ ruta }) {
                     id="globalFilter"
                     value={globalFilter}
                     onChange={(e) => setGlobalFilter(e.target.value)}
-                    placeholder="Buscar..."
+                    placeholder="Buscar por código o nombre..."
                     style={{ width: "100%" }}
                   />
                 </span>
@@ -417,38 +388,68 @@ export default function CentroCosto({ ruta }) {
         }
       >
         <Column field="id" header="ID" sortable />
-        <Column field="Codigo" header="Código" sortable />
-        <Column field="Nombre" header="Nombre" sortable />
-        <Column field="Descripcion" header="Descripción" sortable />
+        <Column field="codigoCuenta" header="Código" sortable />
+        <Column field="nombreCuenta" header="Nombre" sortable />
         <Column
-          field="CategoriaID"
-          header="Categoría"
-          body={categoriaNombreBodyTemplate}
+          field="cuentaPadreId"
+          header="Cuenta Padre"
+          body={cuentaPadreNombre}
+          style={{ width: 200 }}
+        />
+        <Column
+          field="nivel"
+          header="Nivel"
+          body={nivelTemplate}
+          style={{ width: 150 }}
           sortable
         />
-        <Column field="ParentCentroID" header="Centro Padre" sortable />
+        <Column
+          field="naturaleza"
+          header="Naturaleza"
+          body={naturalezaTemplate}
+          style={{ width: 130 }}
+          sortable
+        />
+        <Column
+          field="esImputable"
+          header="Imputable"
+          body={(rowData) =>
+            rowData.esImputable ? (
+              <Tag value="SÍ" severity="success" icon="pi pi-check" />
+            ) : (
+              <Tag value="NO" severity="secondary" />
+            )
+          }
+          style={{ width: 110 }}
+        />
+        <Column
+          field="activo"
+          header="Activo"
+          body={activoTemplate}
+          style={{ width: 100 }}
+        />
         <Column body={actionBodyTemplate} header="Acciones" />
       </DataTable>
       <Dialog
         header={
           isEdit
             ? permisos.puedeEditar
-              ? "Editar Centro de Costo"
-              : "Ver Centro de Costo"
-            : "Nuevo Centro de Costo"
+              ? "Editar Cuenta Contable"
+              : "Ver Cuenta Contable"
+            : "Nueva Cuenta Contable"
         }
         visible={showDialog}
-        style={{ width: "700px" }}
+        style={{ width: "1300px" }}
         modal
         className="p-fluid"
         onHide={onCancel}
         closeOnEscape
         dismissableMask
       >
-        <CentroCostoForm
+        <PlanCuentasContableForm
           isEdit={isEdit}
           defaultValues={selected || {}}
-          categorias={categorias}
+          cuentas={items}
           onSubmit={onSubmit}
           onCancel={onCancel}
           loading={loading}

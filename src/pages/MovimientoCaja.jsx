@@ -1,20 +1,21 @@
 // src/pages/MovimientoCaja.jsx
-// Pantalla CRUD profesional para MovimientoCaja. Cumple la regla transversal ERP Megui.
 import React, { useRef, useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
-import { ConfirmDialog } from "primereact/confirmdialog";
+import { InputText } from "primereact/inputtext";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Card } from "primereact/card";
 import { Badge } from "primereact/badge";
 import { Tag } from "primereact/tag";
 import { InputTextarea } from "primereact/inputtextarea";
+import { Dropdown } from "primereact/dropdown";
+import { Calendar } from "primereact/calendar";
 import MovimientoCajaForm from "../components/movimientoCaja/MovimientoCajaForm";
-// Imports de TabPanels modulares
 import TabPanelPescaIndustrial from "../components/movimientoCaja/TabPanelPescaIndustrial";
 import TabPanelPescaConsumo from "../components/movimientoCaja/TabPanelPescaConsumo";
 import TabPanelCompras from "../components/movimientoCaja/TabPanelCompras";
@@ -22,23 +23,19 @@ import TabPanelVentas from "../components/movimientoCaja/TabPanelVentas";
 import TabPanelAlmacen from "../components/movimientoCaja/TabPanelAlmacen";
 import TabPanelServicios from "../components/movimientoCaja/TabPanelServicios";
 import TabPanelMantenimiento from "../components/movimientoCaja/TabPanelMantenimiento";
-// APIs para Compras
+import TabPanelOTMantenimiento from "../components/movimientoCaja/TabPanelOTMantenimiento";
 import { getDetMovsEntregaRendirPCompras } from "../api/detMovsEntregaRendirPCompras";
 import { getEntregasARendirPCompras } from "../api/entregaARendirPCompras";
-// APIs para Ventas
 import { getAllDetMovsEntregaRendirPVentas } from "../api/detMovsEntregaRendirPVentas";
 import { getAllEntregaARendirPVentas } from "../api/entregaARendirPVentas";
-// APIs para Almacén
 import { getAllDetMovsEntregaRendirMovAlmacen } from "../api/detMovsEntregaRendirMovAlmacen";
 import { getAllEntregaARendirMovAlmacen } from "../api/entregaARendirMovAlmacen";
-// APIs para Contratos de Servicios
 import { getAllDetMovsEntregaRendirContratoServicios } from "../api/detMovsEntregaRendirContratoServicios";
 import { getAllEntregaARendirContratoServicios } from "../api/entregaARendirContratoServicios";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getProductos } from "../api/producto";
-import { obtenerEntregasRendirOTMantenimiento } from '../api/entregaARendirOTMantenimiento.api';
-import { obtenerDetMovsEntregaRendirOTMantenimiento } from '../api/detMovsEntregaRendirOTMantenimiento.api';
-import TabPanelOTMantenimiento from '../components/movimientoCaja/TabPanelOTMantenimiento';
+import { obtenerEntregasRendirOTMantenimiento } from "../api/entregaARendirOTMantenimiento.api";
+import { obtenerDetMovsEntregaRendirOTMantenimiento } from "../api/detMovsEntregaRendirOTMantenimiento.api";
 import {
   getAllMovimientoCaja,
   crearMovimientoCaja,
@@ -73,19 +70,22 @@ export default function MovimientoCaja({ ruta }) {
   const usuario = useAuthStore((state) => state.usuario);
   const permisos = usePermissions(ruta);
 
-  // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
 
   const [items, setItems] = useState([]);
+  const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [toDelete, setToDelete] = useState(null);
-  
-  // Estados para diálogos de workflow
+  const [selected, setSelected] = useState(null);
+  const [isEdit, setIsEdit] = useState(false);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [empresaOrigenFilter, setEmpresaOrigenFilter] = useState(null);
+  const [empresaDestinoFilter, setEmpresaDestinoFilter] = useState(null);
+  const [estadoFilter, setEstadoFilter] = useState(null);
+  const [fechaInicioFilter, setFechaInicioFilter] = useState(null);
+  const [fechaFinFilter, setFechaFinFilter] = useState(null);
   const [showAprobarDialog, setShowAprobarDialog] = useState(false);
   const [showRechazarDialog, setShowRechazarDialog] = useState(false);
   const [showRevertirDialog, setShowRevertirDialog] = useState(false);
@@ -98,157 +98,148 @@ export default function MovimientoCaja({ ruta }) {
   const [empresas, setEmpresas] = useState([]);
   const [tipoMovEntregaRendir, setTipoMovEntregaRendir] = useState([]);
   const [monedas, setMonedas] = useState([]);
-  const [tipoReferenciaMovimientoCaja, setTipoReferenciaMovimientoCaja] =
-    useState([]);
+  const [tipoReferenciaMovimientoCaja, setTipoReferenciaMovimientoCaja] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
   const [cuentasEntidadComercial, setCuentasEntidadComercial] = useState([]);
-
-  // Estados para DetEntregaRendirPescaIndustrial
   const [movimientosDetEntrega, setMovimientosDetEntrega] = useState([]);
   const [entregasARendir, setEntregasARendir] = useState([]);
-  const [selectedMovimientosDetEntrega, setSelectedMovimientosDetEntrega] =
-    useState(null);
+  const [selectedMovimientosDetEntrega, setSelectedMovimientosDetEntrega] = useState(null);
   const [loadingDetEntrega, setLoadingDetEntrega] = useState(false);
   const [selectedDetMovsIds, setSelectedDetMovsIds] = useState([]);
   const [estadosMultiFuncion, setEstadosMultiFuncion] = useState([]);
-
-  // Estados para DetEntregaRendirNovedadConsumo (Pesca Consumo)
-  const [movimientosDetEntregaConsumo, setMovimientosDetEntregaConsumo] =
-    useState([]);
+  const [movimientosDetEntregaConsumo, setMovimientosDetEntregaConsumo] = useState([]);
   const [entregasARendirConsumo, setEntregasARendirConsumo] = useState([]);
-  const [
-    selectedMovimientosDetEntregaConsumo,
-    setSelectedMovimientosDetEntregaConsumo,
-  ] = useState(null);
-  const [loadingDetEntregaConsumo, setLoadingDetEntregaConsumo] =
-    useState(false);
-  const [selectedDetMovsIdsConsumo, setSelectedDetMovsIdsConsumo] = useState(
-    []
-  );
-  // Estados para DetEntregaRendirCompras (Compras)
-  const [movimientosDetEntregaCompras, setMovimientosDetEntregaCompras] =
-    useState([]);
+  const [selectedMovimientosDetEntregaConsumo, setSelectedMovimientosDetEntregaConsumo] = useState(null);
+  const [loadingDetEntregaConsumo, setLoadingDetEntregaConsumo] = useState(false);
+  const [selectedDetMovsIdsConsumo, setSelectedDetMovsIdsConsumo] = useState([]);
+  const [movimientosDetEntregaCompras, setMovimientosDetEntregaCompras] = useState([]);
   const [entregasARendirCompras, setEntregasARendirCompras] = useState([]);
-  const [
-    selectedMovimientosDetEntregaCompras,
-    setSelectedMovimientosDetEntregaCompras,
-  ] = useState(null);
-  const [loadingDetEntregaCompras, setLoadingDetEntregaCompras] =
-    useState(false);
-  const [selectedDetMovsIdsCompras, setSelectedDetMovsIdsCompras] = useState(
-    []
-  );
-  // Estados para DetEntregaRendirVentas (Ventas)
-  const [movimientosDetEntregaVentas, setMovimientosDetEntregaVentas] =
-    useState([]);
+  const [selectedMovimientosDetEntregaCompras, setSelectedMovimientosDetEntregaCompras] = useState(null);
+  const [loadingDetEntregaCompras, setLoadingDetEntregaCompras] = useState(false);
+  const [selectedDetMovsIdsCompras, setSelectedDetMovsIdsCompras] = useState([]);
+  const [movimientosDetEntregaVentas, setMovimientosDetEntregaVentas] = useState([]);
   const [entregasARendirVentas, setEntregasARendirVentas] = useState([]);
-  const [
-    selectedMovimientosDetEntregaVentas,
-    setSelectedMovimientosDetEntregaVentas,
-  ] = useState(null);
-  const [loadingDetEntregaVentas, setLoadingDetEntregaVentas] =
-    useState(false);
-  const [selectedDetMovsIdsVentas, setSelectedDetMovsIdsVentas] = useState(
-    []
-  );
-  // Estados para DetEntregaRendirMovAlmacen (Almacén)
-  const [movimientosDetEntregaAlmacen, setMovimientosDetEntregaAlmacen] =
-    useState([]);
+  const [selectedMovimientosDetEntregaVentas, setSelectedMovimientosDetEntregaVentas] = useState(null);
+  const [loadingDetEntregaVentas, setLoadingDetEntregaVentas] = useState(false);
+  const [selectedDetMovsIdsVentas, setSelectedDetMovsIdsVentas] = useState([]);
+  const [movimientosDetEntregaAlmacen, setMovimientosDetEntregaAlmacen] = useState([]);
   const [entregasARendirAlmacen, setEntregasARendirAlmacen] = useState([]);
-  const [
-    selectedMovimientosDetEntregaAlmacen,
-    setSelectedMovimientosDetEntregaAlmacen,
-  ] = useState(null);
-  const [loadingDetEntregaAlmacen, setLoadingDetEntregaAlmacen] =
-    useState(false);
-  const [selectedDetMovsIdsAlmacen, setSelectedDetMovsIdsAlmacen] = useState(
-    []
-  );
-  // Estados para DetEntregaRendirContratoServicios (Servicios)
-  const [movimientosDetEntregaServicios, setMovimientosDetEntregaServicios] =
-    useState([]);
+  const [selectedMovimientosDetEntregaAlmacen, setSelectedMovimientosDetEntregaAlmacen] = useState(null);
+  const [loadingDetEntregaAlmacen, setLoadingDetEntregaAlmacen] = useState(false);
+  const [selectedDetMovsIdsAlmacen, setSelectedDetMovsIdsAlmacen] = useState([]);
+  const [movimientosDetEntregaServicios, setMovimientosDetEntregaServicios] = useState([]);
   const [entregasARendirServicios, setEntregasARendirServicios] = useState([]);
-  const [
-    selectedMovimientosDetEntregaServicios,
-    setSelectedMovimientosDetEntregaServicios,
-  ] = useState(null);
-  const [loadingDetEntregaServicios, setLoadingDetEntregaServicios] =
-    useState(false);
-  const [selectedDetMovsIdsServicios, setSelectedDetMovsIdsServicios] = useState(
-    []
-  );
-  // Estados para OT Mantenimiento
+  const [selectedMovimientosDetEntregaServicios, setSelectedMovimientosDetEntregaServicios] = useState(null);
+  const [loadingDetEntregaServicios, setLoadingDetEntregaServicios] = useState(false);
+  const [selectedDetMovsIdsServicios, setSelectedDetMovsIdsServicios] = useState([]);
   const [entregasOTMantenimiento, setEntregasOTMantenimiento] = useState([]);
   const [movimientosOTMantenimiento, setMovimientosOTMantenimiento] = useState([]);
-    // Estados para OT Mantenimiento
   const [selectedMovimientosOTMantenimiento, setSelectedMovimientosOTMantenimiento] = useState(null);
   const [selectedDetMovsIdsOTMantenimiento, setSelectedDetMovsIdsOTMantenimiento] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [productos, setProductos] = useState([]);
+    useEffect(() => {
+    cargarDatosIniciales();
+  }, []);
 
-  const cargarEstadosMultiFuncion = async () => {
+  useEffect(() => {
+    aplicarFiltros();
+  }, [items, empresaOrigenFilter, empresaDestinoFilter, estadoFilter, fechaInicioFilter, fechaFinFilter, globalFilter]);
+
+  const cargarDatosIniciales = async () => {
+    setLoading(true);
     try {
-      const data = await getEstadosMultiFuncion();
-      // Filtrar solo los estados de "MOVIMIENTOS CAJA" (tipoProvieneDeId === 6)
-      const estadosFiltrados = data.filter(
-        (estado) => Number(estado.tipoProvieneDeId) === 6
-      );
-      setEstadosMultiFuncion(estadosFiltrados);
+      await Promise.all([
+        cargarItems(),
+        cargarCentrosCosto(),
+        cargarModulos(),
+        cargarPersonal(),
+        cargarEmpresas(),
+        cargarTipoMovEntregaRendir(),
+        cargarMonedas(),
+        cargarTipoReferenciaMovimientoCaja(),
+        cargarCuentasCorrientes(),
+        cargarEntidadesComerciales(),
+        cargarCuentasEntidadComercial(),
+        cargarEstadosMultiFuncion(),
+        cargarTiposDocumento(),
+        cargarProductos(),
+      ]);
+      await Promise.all([
+        cargarMovimientosDetEntrega(),
+        cargarEntregasARendir(),
+        cargarMovimientosDetEntregaConsumo(),
+        cargarEntregasARendirConsumo(),
+        cargarMovimientosDetEntregaCompras(),
+        cargarEntregasARendirCompras(),
+        cargarMovimientosDetEntregaVentas(),
+        cargarEntregasARendirVentas(),
+        cargarMovimientosDetEntregaAlmacen(),
+        cargarEntregasARendirAlmacen(),
+        cargarMovimientosDetEntregaServicios(),
+        cargarEntregasARendirServicios(),
+        cargarMovimientosOTMantenimiento(),
+      ]);
     } catch (err) {
-      toast.current.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo cargar los estados multifunción.",
-      });
+      console.error('Error cargando datos iniciales:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    cargarItems();
-    cargarCentrosCosto();
-    cargarModulos();
-    cargarPersonal();
-    cargarEmpresas();
-    cargarTipoMovEntregaRendir();
-    cargarMonedas();
-    cargarTipoReferenciaMovimientoCaja();
-    cargarCuentasCorrientes();
-    cargarEntidadesComerciales();
-    cargarCuentasEntidadComercial();
-    cargarMovimientosDetEntrega();
-    cargarEntregasARendir();
-    cargarMovimientosDetEntregaConsumo();
-    cargarEntregasARendirConsumo();
-    cargarEstadosMultiFuncion();
-    cargarMovimientosDetEntregaCompras();
-    cargarEntregasARendirCompras();
-    cargarMovimientosDetEntregaVentas();
-    cargarEntregasARendirVentas();
-    cargarMovimientosDetEntregaAlmacen();
-    cargarEntregasARendirAlmacen();
-    cargarMovimientosDetEntregaServicios();
-    cargarEntregasARendirServicios();
-    cargarTiposDocumento();
-    cargarProductos();
-    cargarMovimientosOTMantenimiento();
-  }, []);
+  const aplicarFiltros = () => {
+    let filtrados = [...items];
+
+    if (empresaOrigenFilter) {
+      filtrados = filtrados.filter(item => Number(item.empresaOrigenId) === Number(empresaOrigenFilter));
+    }
+    if (empresaDestinoFilter) {
+      filtrados = filtrados.filter(item => Number(item.empresaDestinoId) === Number(empresaDestinoFilter));
+    }
+    if (estadoFilter) {
+      filtrados = filtrados.filter(item => Number(item.estadoId) === Number(estadoFilter));
+    }
+    if (fechaInicioFilter) {
+      filtrados = filtrados.filter(item => {
+        const fechaItem = new Date(item.fechaOperacionMovCaja);
+        return fechaItem >= fechaInicioFilter;
+      });
+    }
+    if (fechaFinFilter) {
+      filtrados = filtrados.filter(item => {
+        const fechaItem = new Date(item.fechaOperacionMovCaja);
+        return fechaItem <= fechaFinFilter;
+      });
+    }
+
+    if (globalFilter) {
+      const filterLower = globalFilter.toLowerCase();
+      filtrados = filtrados.filter(item => {
+        return (
+          item.id?.toString().includes(filterLower) ||
+          item.descripcion?.toLowerCase().includes(filterLower) ||
+          item.monto?.toString().includes(filterLower)
+        );
+      });
+    }
+
+    setItemsFiltrados(filtrados);
+  };
 
   const cargarItems = async () => {
-    setLoading(true);
     try {
       const data = await getAllMovimientoCaja();
-      // Ordenar por ID descendente para mantener el orden consistente
       const dataSorted = data.sort((a, b) => Number(b.id) - Number(a.id));
       setItems(dataSorted);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar los movimientos de caja.",
+        life: 3000,
       });
     }
-    setLoading(false);
   };
 
   const cargarCentrosCosto = async () => {
@@ -256,10 +247,11 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getCentrosCosto();
       setCentrosCosto(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar los centros de costo.",
+        life: 3000,
       });
     }
   };
@@ -269,10 +261,11 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getModulos();
       setModulos(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar los módulos.",
+        life: 3000,
       });
     }
   };
@@ -282,10 +275,11 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getPersonal();
       setPersonal(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar el personal.",
+        life: 3000,
       });
     }
   };
@@ -295,10 +289,11 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getEmpresas();
       setEmpresas(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar las empresas.",
+        life: 3000,
       });
     }
   };
@@ -308,10 +303,11 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getAllTipoMovEntregaRendir();
       setTipoMovEntregaRendir(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar los tipos de movimiento.",
+        life: 3000,
       });
     }
   };
@@ -321,10 +317,11 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getMonedas();
       setMonedas(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar las monedas.",
+        life: 3000,
       });
     }
   };
@@ -334,10 +331,11 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getAllTipoReferenciaMovimientoCaja();
       setTipoReferenciaMovimientoCaja(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar los tipos de referencia.",
+        life: 3000,
       });
     }
   };
@@ -347,10 +345,11 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getAllCuentaCorriente();
       setCuentasCorrientes(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar las cuentas corrientes.",
+        life: 3000,
       });
     }
   };
@@ -360,10 +359,11 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getEntidadesComerciales();
       setEntidadesComerciales(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar las entidades comerciales.",
+        life: 3000,
       });
     }
   };
@@ -373,27 +373,44 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getCtasCteEntidad();
       setCuentasEntidadComercial(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar las cuentas de entidades comerciales.",
+        life: 3000,
       });
     }
   };
 
-  // Funciones para cargar datos de DetEntregaRendirPescaIndustrial
+  const cargarEstadosMultiFuncion = async () => {
+    try {
+      const data = await getEstadosMultiFuncion();
+      const estadosFiltrados = data.filter(
+        (estado) => Number(estado.tipoProvieneDeId) === 6
+      );
+      setEstadosMultiFuncion(estadosFiltrados);
+    } catch (err) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar los estados multifunción.",
+        life: 3000,
+      });
+    }
+  };
+
   const cargarMovimientosDetEntrega = async () => {
     setLoadingDetEntrega(true);
     try {
       const data = await getAllDetMovsEntregaRendir();
-      // Filtrar solo los movimientos pendientes (no validados por tesorería)
       const pendientes = data.filter((mov) => !mov.validadoTesoreria);
       setMovimientosDetEntrega(pendientes);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar los movimientos de entrega a rendir.",
+        life: 3000,
       });
     }
     setLoadingDetEntrega(false);
@@ -404,30 +421,27 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getAllEntregaARendir();
       setEntregasARendir(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar las entregas a rendir.",
+        life: 3000,
       });
     }
   };
 
-
-
-  // Funciones para cargar datos de DetEntregaRendirNovedadConsumo (Pesca Consumo)
   const cargarMovimientosDetEntregaConsumo = async () => {
     setLoadingDetEntregaConsumo(true);
     try {
       const data = await getAllDetMovsEntRendirPescaConsumo();
-      // Filtrar solo los movimientos pendientes (no validados por tesorería)
       const pendientes = data.filter((mov) => !mov.validadoTesoreria);
       setMovimientosDetEntregaConsumo(pendientes);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail:
-          "No se pudo cargar los movimientos de entrega a rendir de pesca consumo.",
+        detail: "No se pudo cargar los movimientos de entrega a rendir de pesca consumo.",
+        life: 3000,
       });
     }
     setLoadingDetEntregaConsumo(false);
@@ -438,32 +452,30 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getEntregasARendirPescaConsumo();
       setEntregasARendirConsumo(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar las entregas a rendir de pesca consumo.",
+        life: 3000,
       });
     }
   };
 
-  // Cargar movimientos de entregas a rendir para Compras
   const cargarMovimientosDetEntregaCompras = async () => {
+    setLoadingDetEntregaCompras(true);
     try {
-      setLoadingDetEntregaCompras(true);
       const data = await getDetMovsEntregaRendirPCompras();
-      // Filtrar solo los movimientos pendientes (no validados por tesorería)
       const pendientes = data.filter((mov) => !mov.validadoTesoreria);
       setMovimientosDetEntregaCompras(pendientes);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail:
-          "No se pudo cargar los movimientos de entregas a rendir de compras.",
+        detail: "No se pudo cargar los movimientos de entregas a rendir de compras.",
+        life: 3000,
       });
-    } finally {
-      setLoadingDetEntregaCompras(false);
     }
+    setLoadingDetEntregaCompras(false);
   };
 
   const cargarEntregasARendirCompras = async () => {
@@ -471,32 +483,30 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getEntregasARendirPCompras();
       setEntregasARendirCompras(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar las entregas a rendir de compras.",
+        life: 3000,
       });
     }
   };
 
-  // Cargar movimientos de entregas a rendir para Ventas
   const cargarMovimientosDetEntregaVentas = async () => {
+    setLoadingDetEntregaVentas(true);
     try {
-      setLoadingDetEntregaVentas(true);
       const data = await getAllDetMovsEntregaRendirPVentas();
-      // Filtrar solo los movimientos pendientes (no validados por tesorería)
       const pendientes = data.filter((mov) => !mov.validadoTesoreria);
       setMovimientosDetEntregaVentas(pendientes);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail:
-          "No se pudo cargar los movimientos de entregas a rendir de ventas.",
+        detail: "No se pudo cargar los movimientos de entregas a rendir de ventas.",
+        life: 3000,
       });
-    } finally {
-      setLoadingDetEntregaVentas(false);
     }
+    setLoadingDetEntregaVentas(false);
   };
 
   const cargarEntregasARendirVentas = async () => {
@@ -504,29 +514,30 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getAllEntregaARendirPVentas();
       setEntregasARendirVentas(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar las entregas a rendir de ventas.",
+        life: 3000,
       });
     }
   };
 
-  // Cargar movimientos de entregas a rendir para Almacén
   const cargarMovimientosDetEntregaAlmacen = async () => {
+    setLoadingDetEntregaAlmacen(true);
     try {
-      setLoadingDetEntregaAlmacen(true);
       const data = await getAllDetMovsEntregaRendirMovAlmacen();
-      setMovimientosDetEntregaAlmacen(data);
+      const pendientes = data.filter((mov) => !mov.validadoTesoreria);
+      setMovimientosDetEntregaAlmacen(pendientes);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar los movimientos de entregas a rendir de almacén.",
+        life: 3000,
       });
-    } finally {
-      setLoadingDetEntregaAlmacen(false);
     }
+    setLoadingDetEntregaAlmacen(false);
   };
 
   const cargarEntregasARendirAlmacen = async () => {
@@ -534,29 +545,30 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getAllEntregaARendirMovAlmacen();
       setEntregasARendirAlmacen(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar las entregas a rendir de almacén.",
+        life: 3000,
       });
     }
   };
 
-  // Cargar movimientos de entregas a rendir para Contratos de Servicios
   const cargarMovimientosDetEntregaServicios = async () => {
+    setLoadingDetEntregaServicios(true);
     try {
-      setLoadingDetEntregaServicios(true);
       const data = await getAllDetMovsEntregaRendirContratoServicios();
-      setMovimientosDetEntregaServicios(data);
+      const pendientes = data.filter((mov) => !mov.validadoTesoreria);
+      setMovimientosDetEntregaServicios(pendientes);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar los movimientos de entregas a rendir de servicios.",
+        life: 3000,
       });
-    } finally {
-      setLoadingDetEntregaServicios(false);
     }
+    setLoadingDetEntregaServicios(false);
   };
 
   const cargarEntregasARendirServicios = async () => {
@@ -564,15 +576,15 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getAllEntregaARendirContratoServicios();
       setEntregasARendirServicios(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar las entregas a rendir de servicios.",
+        life: 3000,
       });
     }
   };
 
-  // Cargar movimientos de entregas a rendir para OT Mantenimiento
   const cargarMovimientosOTMantenimiento = async () => {
     try {
       const [entregasData, movimientosData] = await Promise.all([
@@ -582,13 +594,18 @@ export default function MovimientoCaja({ ruta }) {
       
       setEntregasOTMantenimiento(entregasData || []);
       
-      // Filtrar solo movimientos no validados por tesorería
       const movimientosPendientes = (movimientosData || []).filter(
         mov => !mov.validadoTesoreria && !mov.operacionMovCajaId
       );
       setMovimientosOTMantenimiento(movimientosPendientes);
     } catch (error) {
       console.error('Error cargando movimientos de OT Mantenimiento:', error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar los movimientos de OT Mantenimiento.",
+        life: 3000,
+      });
     }
   };
 
@@ -597,10 +614,11 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getTiposDocumento();
       setTiposDocumento(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar los tipos de documento.",
+        life: 3000,
       });
     }
   };
@@ -610,21 +628,47 @@ export default function MovimientoCaja({ ruta }) {
       const data = await getProductos();
       setProductos(data);
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "No se pudo cargar los productos.",
+        life: 3000,
       });
     }
   };
 
+
+  const handleNew = () => {
+    if (!permisos.puedeCrear) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para crear registros.',
+        life: 3000,
+      });
+      return;
+    }
+    setSelected(null);
+    setIsEdit(false);
+    setShowDialog(true);
+  };
+
   const handleEdit = (rowData) => {
-    setEditing(rowData);
+    if (!permisos.puedeVer && !permisos.puedeEditar) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para ver o editar registros.',
+        life: 3000,
+      });
+      return;
+    }
+    setSelected(rowData);
+    setIsEdit(true);
     setShowDialog(true);
   };
 
   const handleDelete = (rowData) => {
-    // Validar permisos de eliminación
     if (!permisos.puedeEliminar) {
       toast.current?.show({
         severity: 'warn',
@@ -634,39 +678,54 @@ export default function MovimientoCaja({ ruta }) {
       });
       return;
     }
-    setToDelete(rowData);
-    setShowConfirm(true);
+
+    confirmDialog({
+      message: (
+        <div>
+          <p>¿Está seguro de eliminar este registro?</p>
+          <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+            <strong>ID:</strong> {rowData.id}<br />
+            <strong>Monto:</strong> {new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(rowData.monto || 0)}<br />
+            <strong>Descripción:</strong> {rowData.descripcion || "N/A"}
+          </div>
+        </div>
+      ),
+      header: 'Confirmar Eliminación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Sí, eliminar',
+      rejectLabel: 'Cancelar',
+      acceptClassName: 'p-button-danger',
+      accept: () => handleDeleteConfirm(rowData),
+    });
   };
 
-  const handleDeleteConfirm = async () => {
-    setShowConfirm(false);
-    if (!toDelete) return;
+  const handleDeleteConfirm = async (rowData) => {
     setLoading(true);
     try {
-      await eliminarMovimientoCaja(toDelete.id);
-      toast.current.show({
+      await eliminarMovimientoCaja(rowData.id);
+      toast.current?.show({
         severity: "success",
         summary: "Eliminado",
         detail: "Registro eliminado correctamente.",
+        life: 3000,
       });
-      cargarItems();
+      await cargarItems();
     } catch (err) {
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo eliminar.",
+        detail: err.response?.data?.mensaje || "No se pudo eliminar el registro.",
+        life: 3000,
       });
     }
     setLoading(false);
-    setToDelete(null);
   };
 
   const handleFormSubmit = async (data) => {
-    const esEdicion = editing && editing.id;
+    const esEdicion = selected && selected.id;
 
-    // Validar permisos antes de guardar
     if (esEdicion && !permisos.puedeEditar) {
-      toast.current.show({
+      toast.current?.show({
         severity: 'warn',
         summary: 'Acceso Denegado',
         detail: 'No tiene permisos para editar registros.',
@@ -675,7 +734,7 @@ export default function MovimientoCaja({ ruta }) {
       return;
     }
     if (!esEdicion && !permisos.puedeCrear) {
-      toast.current.show({
+      toast.current?.show({
         severity: 'warn',
         summary: 'Acceso Denegado',
         detail: 'No tiene permisos para crear registros.',
@@ -687,40 +746,38 @@ export default function MovimientoCaja({ ruta }) {
     setLoading(true);
     try {
       if (esEdicion) {
-        await actualizarMovimientoCaja(editing.id, data);
-        toast.current.show({
+        await actualizarMovimientoCaja(selected.id, data);
+        toast.current?.show({
           severity: "success",
           summary: "Actualizado",
-          detail: "Registro actualizado.",
+          detail: "Registro actualizado correctamente.",
+          life: 3000,
         });
-        // Recargar datos del movimiento actualizado
         const movimientoActualizado = await getAllMovimientoCaja();
         const movActualizado = movimientoActualizado.find(
-          (m) => m.id === editing.id
+          (m) => Number(m.id) === Number(selected.id)
         );
         if (movActualizado) {
-          setEditing(movActualizado);
+          setSelected(movActualizado);
         }
-        cargarItems();
+        await cargarItems();
       } else {
         const nuevoMovimiento = await crearMovimientoCaja(data);
-        toast.current.show({
+        toast.current?.show({
           severity: "success",
           summary: "Creado",
-          detail:
-            "Registro creado exitosamente. Puede continuar editando o cerrar la ventana.",
+          detail: "Registro creado exitosamente. Puede continuar editando o cerrar la ventana.",
           life: 4000,
         });
-        // Recargar datos del movimiento recién creado para mostrar el PDF
         const movimientos = await getAllMovimientoCaja();
         const movimientoCreado = movimientos.find(
-          (m) => m.id === nuevoMovimiento.id
+          (m) => Number(m.id) === Number(nuevoMovimiento.id)
         );
         if (movimientoCreado) {
-          setEditing(movimientoCreado);
+          setSelected(movimientoCreado);
+          setIsEdit(true);
         }
-        cargarItems();
-        // NO cerrar el diálogo para que el usuario pueda ver el PDF
+        await cargarItems();
       }
     } catch (err) {
       console.error("Error al guardar movimiento de caja:", err);
@@ -728,7 +785,7 @@ export default function MovimientoCaja({ ruta }) {
         err.response?.data?.mensaje ||
         err.message ||
         "No se pudo guardar el movimiento de caja.";
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: mensajeError,
@@ -742,22 +799,24 @@ export default function MovimientoCaja({ ruta }) {
     setLoading(true);
     try {
       await validarMovimientoCaja(movimiento.id);
-      toast.current.show({
+      toast.current?.show({
         severity: "success",
         summary: "Validado",
         detail: "Movimiento validado correctamente y origen actualizado.",
         life: 4000,
       });
       setShowDialog(false);
-      setEditing(null);
-      cargarItems();
-      cargarMovimientosDetEntrega();
-      cargarMovimientosDetEntregaConsumo();
-      cargarMovimientosDetEntregaCompras();
-      cargarMovimientosDetEntregaVentas();
-      cargarMovimientosDetEntregaAlmacen();
-      cargarMovimientosDetEntregaServicios();
-      cargarMovimientosOTMantenimiento();
+      setSelected(null);
+      await Promise.all([
+        cargarItems(),
+        cargarMovimientosDetEntrega(),
+        cargarMovimientosDetEntregaConsumo(),
+        cargarMovimientosDetEntregaCompras(),
+        cargarMovimientosDetEntregaVentas(),
+        cargarMovimientosDetEntregaAlmacen(),
+        cargarMovimientosDetEntregaServicios(),
+        cargarMovimientosOTMantenimiento(),
+      ]);
     } catch (err) {
       const mensajeError =
         err.response?.data?.mensaje ||
@@ -765,7 +824,7 @@ export default function MovimientoCaja({ ruta }) {
         err.response?.data?.error ||
         err.message ||
         "No se pudo validar el movimiento.";
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error al Validar",
         detail: mensajeError,
@@ -776,7 +835,7 @@ export default function MovimientoCaja({ ruta }) {
   };
 
   const handleGenerarAsiento = async (movimiento) => {
-    toast.current.show({
+    toast.current?.show({
       severity: "info",
       summary: "En Desarrollo",
       detail: "Funcionalidad de generar asiento contable en desarrollo.",
@@ -784,19 +843,45 @@ export default function MovimientoCaja({ ruta }) {
     });
   };
 
-  // Handlers para workflow
   const handleAprobar = (movimiento) => {
+    if (!permisos.puedeEditar) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para aprobar movimientos.',
+        life: 3000,
+      });
+      return;
+    }
     setMovimientoWorkflow(movimiento);
     setShowAprobarDialog(true);
   };
 
   const handleRechazar = (movimiento) => {
+    if (!permisos.puedeEditar) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para rechazar movimientos.',
+        life: 3000,
+      });
+      return;
+    }
     setMovimientoWorkflow(movimiento);
     setMotivoRechazo("");
     setShowRechazarDialog(true);
   };
 
   const handleRevertir = (movimiento) => {
+    if (!permisos.puedeEditar) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Acceso Denegado',
+        detail: 'No tiene permisos para revertir movimientos.',
+        life: 3000,
+      });
+      return;
+    }
     setMovimientoWorkflow(movimiento);
     setMotivoReversion("");
     setShowRevertirDialog(true);
@@ -807,18 +892,18 @@ export default function MovimientoCaja({ ruta }) {
     setLoading(true);
     try {
       await aprobarMovimientoCaja(movimientoWorkflow.id, usuario.personalId);
-      toast.current.show({
+      toast.current?.show({
         severity: "success",
         summary: "Aprobado",
         detail: "Movimiento aprobado correctamente",
         life: 3000,
       });
-      cargarItems();
+      await cargarItems();
       setShowAprobarDialog(false);
       setMovimientoWorkflow(null);
     } catch (error) {
       const mensajeError = error.response?.data?.error || "No se pudo aprobar el movimiento";
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: mensajeError,
@@ -830,7 +915,7 @@ export default function MovimientoCaja({ ruta }) {
 
   const handleRechazarConfirm = async () => {
     if (!movimientoWorkflow || !motivoRechazo.trim()) {
-      toast.current.show({
+      toast.current?.show({
         severity: "warn",
         summary: "Advertencia",
         detail: "Debe ingresar el motivo del rechazo",
@@ -841,19 +926,19 @@ export default function MovimientoCaja({ ruta }) {
     setLoading(true);
     try {
       await rechazarMovimientoCaja(movimientoWorkflow.id, usuario.personalId, motivoRechazo);
-      toast.current.show({
+      toast.current?.show({
         severity: "success",
         summary: "Rechazado",
         detail: "Movimiento rechazado correctamente",
         life: 3000,
       });
-      cargarItems();
+      await cargarItems();
       setShowRechazarDialog(false);
       setMovimientoWorkflow(null);
       setMotivoRechazo("");
     } catch (error) {
       const mensajeError = error.response?.data?.error || "No se pudo rechazar el movimiento";
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: mensajeError,
@@ -865,7 +950,7 @@ export default function MovimientoCaja({ ruta }) {
 
   const handleRevertirConfirm = async () => {
     if (!movimientoWorkflow || !motivoReversion.trim()) {
-      toast.current.show({
+      toast.current?.show({
         severity: "warn",
         summary: "Advertencia",
         detail: "Debe ingresar el motivo de la reversión",
@@ -876,19 +961,19 @@ export default function MovimientoCaja({ ruta }) {
     setLoading(true);
     try {
       await revertirMovimientoCaja(movimientoWorkflow.id, motivoReversion, usuario.id);
-      toast.current.show({
+      toast.current?.show({
         severity: "success",
         summary: "Revertido",
         detail: "Movimiento revertido correctamente. Se creó un movimiento inverso.",
         life: 4000,
       });
-      cargarItems();
+      await cargarItems();
       setShowRevertirDialog(false);
       setMovimientoWorkflow(null);
       setMotivoReversion("");
     } catch (error) {
       const mensajeError = error.response?.data?.error || "No se pudo revertir el movimiento";
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: mensajeError,
@@ -898,17 +983,9 @@ export default function MovimientoCaja({ ruta }) {
     setLoading(false);
   };
 
-  /**
-   * Maneja la aplicación de movimientos seleccionados para crear un MovimientoCaja
-   * REGLA: Solo se permite seleccionar UN item a la vez
-   */
-  const handleAplicarMovimientos = async (
-    movimientoSeleccionado,
-    tipoOrigen
-  ) => {
-    // Validar que haya un movimiento seleccionado
+    const handleAplicarMovimientos = async (movimientoSeleccionado, tipoOrigen) => {
     if (!movimientoSeleccionado) {
-      toast.current.show({
+      toast.current?.show({
         severity: "warn",
         summary: "Advertencia",
         detail: "Debe seleccionar un movimiento",
@@ -918,13 +995,12 @@ export default function MovimientoCaja({ ruta }) {
     }
 
     try {
-      // Buscar el estado "PENDIENTE" (id=20)
       const estadoPendiente = estadosMultiFuncion.find(
         (estado) => Number(estado.id) === 20
       );
 
       if (!estadoPendiente) {
-        toast.current.show({
+        toast.current?.show({
           severity: "error",
           summary: "Error",
           detail: "No se encontró el estado PENDIENTE (id=20)",
@@ -933,134 +1009,82 @@ export default function MovimientoCaja({ ruta }) {
         return;
       }
 
-      // Obtener la entrega a rendir completa con sus relaciones
       let empresaDestinoId = null;
 
       if (tipoOrigen === "industrial") {
-        // Para Pesca Industrial: DetMovsEntregaRendir -> EntregaARendir -> TemporadaPesca -> empresaId
         const entregaARendir = entregasARendir.find(
-          (e) =>
-            Number(e.id) === Number(movimientoSeleccionado.entregaARendirId)
+          (e) => Number(e.id) === Number(movimientoSeleccionado.entregaARendirId)
         );
-
         if (entregaARendir && entregaARendir.temporadaPesca) {
           empresaDestinoId = entregaARendir.temporadaPesca.empresaId;
         }
       } else if (tipoOrigen === "consumo") {
-        // Para Pesca Consumo: DetMovsEntRendirPescaConsumo -> EntregaARendirPescaConsumo -> NovedadPescaConsumo -> empresaId
         const entregaARendirConsumo = entregasARendirConsumo.find(
-          (e) =>
-            Number(e.id) ===
-            Number(movimientoSeleccionado.entregaARendirPescaConsumoId)
+          (e) => Number(e.id) === Number(movimientoSeleccionado.entregaARendirPescaConsumoId)
         );
-
-        if (
-          entregaARendirConsumo &&
-          entregaARendirConsumo.novedadPescaConsumo
-        ) {
-          empresaDestinoId =
-            entregaARendirConsumo.novedadPescaConsumo.empresaId;
+        if (entregaARendirConsumo && entregaARendirConsumo.novedadPescaConsumo) {
+          empresaDestinoId = entregaARendirConsumo.novedadPescaConsumo.empresaId;
         }
       } else if (tipoOrigen === "compras") {
-        // Para Compras: DetMovsEntregaRendirPCompras -> EntregaARendirPCompras -> RequerimientoCompra -> empresaId
         const entregaARendirCompras = entregasARendirCompras.find(
-          (e) =>
-            Number(e.id) ===
-            Number(movimientoSeleccionado.entregaARendirPComprasId)
+          (e) => Number(e.id) === Number(movimientoSeleccionado.entregaARendirPComprasId)
         );
-
-        if (
-          entregaARendirCompras &&
-          entregaARendirCompras.requerimientoCompra
-        ) {
+        if (entregaARendirCompras && entregaARendirCompras.requerimientoCompra) {
           empresaDestinoId = entregaARendirCompras.requerimientoCompra.empresaId;
         }
       } else if (tipoOrigen === "ventas") {
-        // Para Ventas: DetMovsEntregaRendirPVentas -> EntregaARendirPVentas -> CotizacionVentas -> empresaId
         const entregaARendirVentas = entregasARendirVentas.find(
-          (e) =>
-            Number(e.id) ===
-            Number(movimientoSeleccionado.entregaARendirPVentasId)
+          (e) => Number(e.id) === Number(movimientoSeleccionado.entregaARendirPVentasId)
         );
-
-        if (
-          entregaARendirVentas &&
-          entregaARendirVentas.cotizacionVentas
-        ) {
+        if (entregaARendirVentas && entregaARendirVentas.cotizacionVentas) {
           empresaDestinoId = entregaARendirVentas.cotizacionVentas.empresaId;
         }
       } else if (tipoOrigen === "almacen") {
-        // Para Almacén: DetMovsEntregaRendirMovAlmacen -> EntregaARendirMovAlmacen -> MovimientoAlmacen -> empresaId
         const entregaARendirAlmacen = entregasARendirAlmacen.find(
-          (e) =>
-            Number(e.id) ===
-            Number(movimientoSeleccionado.entregaARendirMovAlmacenId)
+          (e) => Number(e.id) === Number(movimientoSeleccionado.entregaARendirMovAlmacenId)
         );
-
-        if (
-          entregaARendirAlmacen &&
-          entregaARendirAlmacen.movimientoAlmacen
-        ) {
+        if (entregaARendirAlmacen && entregaARendirAlmacen.movimientoAlmacen) {
           empresaDestinoId = entregaARendirAlmacen.movimientoAlmacen.empresaId;
         }
       } else if (tipoOrigen === "servicios") {
-        // Para Servicios: DetMovsEntregaRendirContratoServicios -> EntregaARendirContratoServicios -> ContratoServicio -> empresaId
         const entregaARendirServicios = entregasARendirServicios.find(
-          (e) =>
-            Number(e.id) ===
-            Number(movimientoSeleccionado.entregaARendirContratoServiciosId)
+          (e) => Number(e.id) === Number(movimientoSeleccionado.entregaARendirContratoServiciosId)
         );
-
-        if (
-          entregaARendirServicios &&
-          entregaARendirServicios.contratoServicio
-        ) {
+        if (entregaARendirServicios && entregaARendirServicios.contratoServicio) {
           empresaDestinoId = entregaARendirServicios.contratoServicio.empresaId;
         }
       } else if (tipoOrigen === "otMantenimiento") {
-        // Para OT Mantenimiento: DetMovsEntregaRendirOTMantenimiento -> EntregaARendirOTMantenimiento -> OTMantenimiento -> empresaId
         const entregaARendirOTMantenimiento = entregasOTMantenimiento.find(
-          (e) =>
-            Number(e.id) ===
-            Number(movimientoSeleccionado.entregaARendirOTMantenimientoId)
+          (e) => Number(e.id) === Number(movimientoSeleccionado.entregaARendirOTMantenimientoId)
         );
-
-        if (
-          entregaARendirOTMantenimiento &&
-          entregaARendirOTMantenimiento.otMantenimiento
-        ) {
+        if (entregaARendirOTMantenimiento && entregaARendirOTMantenimiento.otMantenimiento) {
           empresaDestinoId = entregaARendirOTMantenimiento.otMantenimiento.empresaId;
         }
       }
 
-      // Determinar el módulo origen según el tipo
       let moduloOrigenId = movimientoSeleccionado.moduloOrigenMovCajaId
         ? Number(movimientoSeleccionado.moduloOrigenMovCajaId)
         : null;
 
       if (!moduloOrigenId) {
         if (tipoOrigen === "industrial") {
-          moduloOrigenId = 2; // PESCA INDUSTRIAL
+          moduloOrigenId = 2;
         } else if (tipoOrigen === "consumo") {
-          moduloOrigenId = 3; // PESCA CONSUMO
+          moduloOrigenId = 3;
         } else if (tipoOrigen === "compras") {
-          moduloOrigenId = 4; // COMPRAS
+          moduloOrigenId = 4;
         } else if (tipoOrigen === "ventas") {
-          moduloOrigenId = 5; // VENTAS
+          moduloOrigenId = 5;
         } else if (tipoOrigen === "almacen") {
-          moduloOrigenId = 6; // ALMACÉN
+          moduloOrigenId = 6;
         } else if (tipoOrigen === "servicios") {
-          moduloOrigenId = 7; // SERVICIOS (Contratos de Servicios)
+          moduloOrigenId = 7;
         } else if (tipoOrigen === "otMantenimiento") {
-          moduloOrigenId = 8; // OT MANTENIMIENTO
+          moduloOrigenId = 8;
         }
       }
 
-
-
-            // Preparar datos iniciales para el formulario de MovimientoCaja según el mapeo
       const datosIniciales = {
-        // Campos automáticos del mapeo
         empresaDestinoId: empresaDestinoId ? Number(empresaDestinoId) : null,
         tipoMovimientoId: movimientoSeleccionado.tipoMovimientoId
           ? Number(movimientoSeleccionado.tipoMovimientoId)
@@ -1080,47 +1104,71 @@ export default function MovimientoCaja({ ruta }) {
           ? Number(movimientoSeleccionado.responsableId)
           : null,
         moduloOrigenMotivoOperacionId: moduloOrigenId,
-        estadoId: Number(estadoPendiente.id), // 20 - PENDIENTE
+        estadoId: Number(estadoPendiente.id),
         centroCostoId: movimientoSeleccionado.centroCostoId
           ? Number(movimientoSeleccionado.centroCostoId)
           : null,
         origenMotivoOperacionId: Number(movimientoSeleccionado.id),
-        operacionSinFactura:
-          movimientoSeleccionado.operacionSinFactura || false,
+        operacionSinFactura: movimientoSeleccionado.operacionSinFactura || false,
         productoId: movimientoSeleccionado.productoId
           ? Number(movimientoSeleccionado.productoId)
           : null,
-
-        // Campos que se llenarán en el formulario
         empresaOrigenId: null,
         cuentaCorrienteOrigenId: null,
         cuentaCorrienteDestinoId: null,
         referenciaExtId: null,
         tipoReferenciaId: null,
         usuarioId: usuario?.id ? Number(usuario.id) : null,
-
-        // Fechas automáticas
         fechaCreacion: new Date(),
         fechaActualizacion: new Date(),
         fechaOperacionMovCaja: new Date(),
-
-        // Metadata para el formulario
         movimientoAplicado: movimientoSeleccionado,
         tipoOrigen: tipoOrigen,
       };
 
-      // Abrir el diálogo con los datos iniciales
-      setEditing(datosIniciales);
+      setSelected(datosIniciales);
+      setIsEdit(false);
       setShowDialog(true);
     } catch (error) {
       console.error("Error al preparar datos:", error);
-      toast.current.show({
+      toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "Error al preparar los datos del movimiento",
         life: 3000,
       });
     }
+  };
+
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      await cargarDatosIniciales();
+      toast.current?.show({
+        severity: "success",
+        summary: "Actualizado",
+        detail: "Datos actualizados correctamente desde el servidor",
+        life: 3000,
+      });
+    } catch (err) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo actualizar los datos",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearFilters = () => {
+    setGlobalFilter("");
+    setEmpresaOrigenFilter(null);
+    setEmpresaDestinoFilter(null);
+    setEstadoFilter(null);
+    setFechaInicioFilter(null);
+    setFechaFinFilter(null);
   };
 
   const estadoWorkflowBodyTemplate = (rowData) => {
@@ -1159,27 +1207,42 @@ export default function MovimientoCaja({ ruta }) {
           <>
             <Button
               icon="pi pi-check"
-              className="p-button-rounded p-button-success p-button-sm"
-              onClick={() => handleAprobar(rowData)}
+              rounded
+              severity="success"
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAprobar(rowData);
+              }}
               tooltip="Aprobar"
-              disabled={!permisos.puedeEditar}
+              disabled={!permisos.puedeEditar || loading}
             />
             <Button
               icon="pi pi-times"
-              className="p-button-rounded p-button-danger p-button-sm"
-              onClick={() => handleRechazar(rowData)}
+              rounded
+              severity="danger"
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRechazar(rowData);
+              }}
               tooltip="Rechazar"
-              disabled={!permisos.puedeEditar}
+              disabled={!permisos.puedeEditar || loading}
             />
           </>
         )}
         {estaAprobado && (
           <Button
             icon="pi pi-replay"
-            className="p-button-rounded p-button-warning p-button-sm"
-            onClick={() => handleRevertir(rowData)}
+            rounded
+            severity="warning"
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRevertir(rowData);
+            }}
             tooltip="Revertir"
-            disabled={!permisos.puedeEditar}
+            disabled={!permisos.puedeEditar || loading}
           />
         )}
       </div>
@@ -1191,18 +1254,64 @@ export default function MovimientoCaja({ ruta }) {
       <div className="flex gap-2">
         <Button
           icon="pi pi-pencil"
-          className="p-button-rounded p-button-text"
-          onClick={() => handleEdit(rowData)}
-          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          rounded
+          text
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEdit(rowData);
+          }}
+          disabled={(!permisos.puedeVer && !permisos.puedeEditar) || loading}
           tooltip={permisos.puedeEditar ? 'Editar' : 'Ver'}
         />
         <Button
           icon="pi pi-trash"
-          className="p-button-rounded p-button-text p-button-danger"
-          onClick={() => handleDelete(rowData)}
-          disabled={!permisos.puedeEliminar}
+          rounded
+          text
+          severity="danger"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete(rowData);
+          }}
+          disabled={!permisos.puedeEliminar || loading}
           tooltip="Eliminar"
         />
+      </div>
+    );
+  };
+
+  const renderHeader = () => {
+    return (
+      <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
+        <div className="flex gap-2 align-items-center">
+          <h4 className="m-0">Total de registros: {itemsFiltrados.length}</h4>
+        </div>
+        <div className="flex gap-2">
+          <span className="p-input-icon-left">
+            <i className="pi pi-search" />
+            <InputText
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              placeholder="Buscar..."
+              style={{ width: '250px' }}
+            />
+          </span>
+          <Button
+            icon="pi pi-filter-slash"
+            outlined
+            severity="secondary"
+            onClick={handleClearFilters}
+            tooltip="Limpiar filtros"
+            disabled={loading}
+          />
+          <Button
+            icon="pi pi-refresh"
+            outlined
+            severity="info"
+            onClick={handleRefresh}
+            loading={loading}
+            tooltip="Refrescar datos"
+          />
+        </div>
       </div>
     );
   };
@@ -1210,474 +1319,419 @@ export default function MovimientoCaja({ ruta }) {
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
-      <ConfirmDialog
-        visible={showConfirm}
-        onHide={() => setShowConfirm(false)}
-        message="¿Está seguro de eliminar este registro?"
-        header="Confirmar Eliminación"
-        icon="pi pi-exclamation-triangle"
-        accept={handleDeleteConfirm}
-        reject={() => setShowConfirm(false)}
-      />
+      <ConfirmDialog />
 
-    {/* TabView con TabPanels Modulares */}
-    <TabView>
-      <TabPanel header="Pesca Industrial">
-        <TabPanelPescaIndustrial
-          entregaARendir={entregasARendir[0] || null}
-          movimientos={movimientosDetEntrega}
-          personal={personal}
-          centrosCosto={centrosCosto}
-          tiposMovimiento={tipoMovEntregaRendir}
-          entidadesComerciales={entidadesComerciales}
-          monedas={monedas}
-          loading={loadingDetEntrega}
-          selectedMovimiento={selectedMovimientosDetEntrega}
-          onSelectionChange={(e) => {
-            setSelectedMovimientosDetEntrega(e.value);
-            setSelectedDetMovsIds(e.value ? [e.value.id] : []);
-          }}
-          onDataChange={() => {
-            cargarMovimientosDetEntrega();
-            cargarEntregasARendir();
-          }}
-          onAplicarValidacion={() =>
-            handleAplicarMovimientos(
-              selectedMovimientosDetEntrega,
-              "industrial"
-            )
-          }
-          toast={toast}
-        />
-      </TabPanel>
-
-      <TabPanel header="Pesca Consumo">
-        <TabPanelPescaConsumo
-          entregaARendir={entregasARendirConsumo[0] || null}
-          movimientos={movimientosDetEntregaConsumo}
-          personal={personal}
-          centrosCosto={centrosCosto}
-          tiposMovimiento={tipoMovEntregaRendir}
-          entidadesComerciales={entidadesComerciales}
-          monedas={monedas}
-          loading={loadingDetEntregaConsumo}
-          selectedMovimiento={selectedMovimientosDetEntregaConsumo}
-          onSelectionChange={(e) => {
-            setSelectedMovimientosDetEntregaConsumo(e.value);
-            setSelectedDetMovsIdsConsumo(e.value ? [e.value.id] : []);
-          }}
-          onDataChange={() => {
-            cargarMovimientosDetEntregaConsumo();
-            cargarEntregasARendirConsumo();
-          }}
-          onAplicarValidacion={() =>
-            handleAplicarMovimientos(
-              selectedMovimientosDetEntregaConsumo,
-              "consumo"
-            )
-          }
-          toast={toast}
-        />
-      </TabPanel>
-
-      <TabPanel header="Compras">
-        <TabPanelCompras
-          entregaARendir={entregasARendirCompras[0] || null}
-          movimientos={movimientosDetEntregaCompras}
-          personal={personal}
-          centrosCosto={centrosCosto}
-          tiposMovimiento={tipoMovEntregaRendir}
-          entidadesComerciales={entidadesComerciales}
-          monedas={monedas}
-          tiposDocumento={tiposDocumento}
-          productos={productos}
-          loading={loadingDetEntregaCompras}
-          selectedMovimiento={selectedMovimientosDetEntregaCompras}
-          onSelectionChange={(e) => {
-            setSelectedMovimientosDetEntregaCompras(e.value);
-            setSelectedDetMovsIdsCompras(e.value ? [e.value.id] : []);
-          }}
-          onDataChange={() => {
-            cargarMovimientosDetEntregaCompras();
-            cargarEntregasARendirCompras();
-          }}
-          onAplicarValidacion={() =>
-            handleAplicarMovimientos(
-              selectedMovimientosDetEntregaCompras,
-              "compras"
-            )
-          }
-          toast={toast}
-        />
-      </TabPanel>
-
-      <TabPanel header="Ventas">
-        <TabPanelVentas
-          entregaARendir={entregasARendirVentas[0] || null}
-          movimientos={movimientosDetEntregaVentas}
-          personal={personal}
-          centrosCosto={centrosCosto}
-          tiposMovimiento={tipoMovEntregaRendir}
-          entidadesComerciales={entidadesComerciales}
-          monedas={monedas}
-          tiposDocumento={tiposDocumento}
-          productos={productos}
-          loading={loadingDetEntregaVentas}
-          selectedMovimiento={selectedMovimientosDetEntregaVentas}
-          onSelectionChange={(e) => {
-            setSelectedMovimientosDetEntregaVentas(e.value);
-            setSelectedDetMovsIdsVentas(e.value ? [e.value.id] : []);
-          }}
-          onDataChange={() => {
-            cargarMovimientosDetEntregaVentas();
-            cargarEntregasARendirVentas();
-          }}
-          onAplicarValidacion={() =>
-            handleAplicarMovimientos(
-              selectedMovimientosDetEntregaVentas,
-              "ventas"
-            )
-          }
-          toast={toast}
-        />
-      </TabPanel>
-
-      <TabPanel header="Almacén">
-        <TabPanelAlmacen
-          entregaARendir={entregasARendirAlmacen[0] || null}
-          movimientos={movimientosDetEntregaAlmacen}
-          personal={personal}
-          centrosCosto={centrosCosto}
-          tiposMovimiento={tipoMovEntregaRendir}
-          entidadesComerciales={entidadesComerciales}
-          monedas={monedas}
-          tiposDocumento={tiposDocumento}
-          productos={productos}
-          loading={loadingDetEntregaAlmacen}
-          selectedMovimiento={selectedMovimientosDetEntregaAlmacen}
-          onSelectionChange={(e) => {
-            setSelectedMovimientosDetEntregaAlmacen(e.value);
-            setSelectedDetMovsIdsAlmacen(e.value ? [e.value.id] : []);
-          }}
-          onDataChange={() => {
-            cargarMovimientosDetEntregaAlmacen();
-            cargarEntregasARendirAlmacen();
-          }}
-          onAplicarValidacion={() =>
-            handleAplicarMovimientos(
-              selectedMovimientosDetEntregaAlmacen,
-              "almacen"
-            )
-          }
-          toast={toast}
-        />
-      </TabPanel>
-
-      <TabPanel header="Servicios">
-        <TabPanelServicios
-          entregaARendir={entregasARendirServicios[0] || null}
-          movimientos={movimientosDetEntregaServicios}
-          personal={personal}
-          centrosCosto={centrosCosto}
-          tiposMovimiento={tipoMovEntregaRendir}
-          entidadesComerciales={entidadesComerciales}
-          monedas={monedas}
-          tiposDocumento={tiposDocumento}
-          productos={productos}
-          loading={loadingDetEntregaServicios}
-          selectedMovimiento={selectedMovimientosDetEntregaServicios}
-          onSelectionChange={(e) => {
-            setSelectedMovimientosDetEntregaServicios(e.value);
-            setSelectedDetMovsIdsServicios(e.value ? [e.value.id] : []);
-          }}
-          onDataChange={() => {
-            cargarMovimientosDetEntregaServicios();
-            cargarEntregasARendirServicios();
-          }}
-          onAplicarValidacion={() =>
-            handleAplicarMovimientos(
-              selectedMovimientosDetEntregaServicios,
-              "servicios"
-            )
-          }
-          toast={toast}
-        />
-      </TabPanel>
-
-      <TabPanel header="OT Mantenimiento">
-        <TabPanelOTMantenimiento
-          entregaARendir={entregasOTMantenimiento[0] || null}
-          movimientos={movimientosOTMantenimiento}
-          personal={personal}
-          centrosCosto={centrosCosto}
-          tiposMovimiento={tipoMovEntregaRendir}
-          entidadesComerciales={entidadesComerciales}
-          monedas={monedas}
-          tiposDocumento={tiposDocumento}
-          productos={productos}
-          loading={false}
-          selectedMovimiento={selectedMovimientosOTMantenimiento}
-          onSelectionChange={(e) => {
-            setSelectedMovimientosOTMantenimiento(e.value);
-            setSelectedDetMovsIdsOTMantenimiento(e.value ? [e.value.id] : []);
-          }}
-          onDataChange={() => {
-            cargarMovimientosOTMantenimiento();
-          }}
-          onAplicarValidacion={() =>
-            handleAplicarMovimientos(
-              selectedMovimientosOTMantenimiento,
-              "otMantenimiento"
-            )
-          }
-          toast={toast}
-        />
-      </TabPanel>
-    </TabView>
-
-    {/* Sección CRUD de Movimientos de Caja */}
-    <Card className="mt-4">
-      <div className="flex justify-content-between align-items-center mb-3">
-        <h2 className="m-0">Registro de Movimientos de Caja</h2>
-        <div className="flex gap-2">
-          <Button
-            icon="pi pi-refresh"
-            className="p-button-outlined p-button-info"
-            onClick={async () => {
-              await cargarItems();
-              toast.current?.show({
-                severity: "success",
-                summary: "Actualizado",
-                detail: "Datos actualizados correctamente desde el servidor",
-                life: 3000,
-              });
+      <TabView>
+        <TabPanel header="Pesca Industrial">
+          <TabPanelPescaIndustrial
+            entregaARendir={entregasARendir[0] || null}
+            movimientos={movimientosDetEntrega}
+            personal={personal}
+            centrosCosto={centrosCosto}
+            tiposMovimiento={tipoMovEntregaRendir}
+            entidadesComerciales={entidadesComerciales}
+            monedas={monedas}
+            loading={loadingDetEntrega}
+            selectedMovimiento={selectedMovimientosDetEntrega}
+            onSelectionChange={(e) => {
+              setSelectedMovimientosDetEntrega(e.value);
+              setSelectedDetMovsIds(e.value ? [e.value.id] : []);
             }}
-            loading={loading}
-            tooltip="Actualizar todos los datos desde el servidor"
-            tooltipOptions={{ position: "bottom" }}
+            onDataChange={() => {
+              cargarMovimientosDetEntrega();
+              cargarEntregasARendir();
+            }}
+            onAplicarValidacion={() =>
+              handleAplicarMovimientos(selectedMovimientosDetEntrega, "industrial")
+            }
+            toast={toast}
           />
+        </TabPanel>
+
+        <TabPanel header="Pesca Consumo">
+          <TabPanelPescaConsumo
+            entregaARendir={entregasARendirConsumo[0] || null}
+            movimientos={movimientosDetEntregaConsumo}
+            personal={personal}
+            centrosCosto={centrosCosto}
+            tiposMovimiento={tipoMovEntregaRendir}
+            entidadesComerciales={entidadesComerciales}
+            monedas={monedas}
+            loading={loadingDetEntregaConsumo}
+            selectedMovimiento={selectedMovimientosDetEntregaConsumo}
+            onSelectionChange={(e) => {
+              setSelectedMovimientosDetEntregaConsumo(e.value);
+              setSelectedDetMovsIdsConsumo(e.value ? [e.value.id] : []);
+            }}
+            onDataChange={() => {
+              cargarMovimientosDetEntregaConsumo();
+              cargarEntregasARendirConsumo();
+            }}
+            onAplicarValidacion={() =>
+              handleAplicarMovimientos(selectedMovimientosDetEntregaConsumo, "consumo")
+            }
+            toast={toast}
+          />
+        </TabPanel>
+
+        <TabPanel header="Compras">
+          <TabPanelCompras
+            entregaARendir={entregasARendirCompras[0] || null}
+            movimientos={movimientosDetEntregaCompras}
+            personal={personal}
+            centrosCosto={centrosCosto}
+            tiposMovimiento={tipoMovEntregaRendir}
+            entidadesComerciales={entidadesComerciales}
+            monedas={monedas}
+            tiposDocumento={tiposDocumento}
+            productos={productos}
+            loading={loadingDetEntregaCompras}
+            selectedMovimiento={selectedMovimientosDetEntregaCompras}
+            onSelectionChange={(e) => {
+              setSelectedMovimientosDetEntregaCompras(e.value);
+              setSelectedDetMovsIdsCompras(e.value ? [e.value.id] : []);
+            }}
+            onDataChange={() => {
+              cargarMovimientosDetEntregaCompras();
+              cargarEntregasARendirCompras();
+            }}
+            onAplicarValidacion={() =>
+              handleAplicarMovimientos(selectedMovimientosDetEntregaCompras, "compras")
+            }
+            toast={toast}
+          />
+        </TabPanel>
+
+        <TabPanel header="Ventas">
+          <TabPanelVentas
+            entregaARendir={entregasARendirVentas[0] || null}
+            movimientos={movimientosDetEntregaVentas}
+            personal={personal}
+            centrosCosto={centrosCosto}
+            tiposMovimiento={tipoMovEntregaRendir}
+            entidadesComerciales={entidadesComerciales}
+            monedas={monedas}
+            tiposDocumento={tiposDocumento}
+            productos={productos}
+            loading={loadingDetEntregaVentas}
+            selectedMovimiento={selectedMovimientosDetEntregaVentas}
+            onSelectionChange={(e) => {
+              setSelectedMovimientosDetEntregaVentas(e.value);
+              setSelectedDetMovsIdsVentas(e.value ? [e.value.id] : []);
+            }}
+            onDataChange={() => {
+              cargarMovimientosDetEntregaVentas();
+              cargarEntregasARendirVentas();
+            }}
+            onAplicarValidacion={() =>
+              handleAplicarMovimientos(selectedMovimientosDetEntregaVentas, "ventas")
+            }
+            toast={toast}
+          />
+        </TabPanel>
+
+        <TabPanel header="Almacén">
+          <TabPanelAlmacen
+            entregaARendir={entregasARendirAlmacen[0] || null}
+            movimientos={movimientosDetEntregaAlmacen}
+            personal={personal}
+            centrosCosto={centrosCosto}
+            tiposMovimiento={tipoMovEntregaRendir}
+            entidadesComerciales={entidadesComerciales}
+            monedas={monedas}
+            tiposDocumento={tiposDocumento}
+            productos={productos}
+            loading={loadingDetEntregaAlmacen}
+            selectedMovimiento={selectedMovimientosDetEntregaAlmacen}
+            onSelectionChange={(e) => {
+              setSelectedMovimientosDetEntregaAlmacen(e.value);
+              setSelectedDetMovsIdsAlmacen(e.value ? [e.value.id] : []);
+            }}
+            onDataChange={() => {
+              cargarMovimientosDetEntregaAlmacen();
+              cargarEntregasARendirAlmacen();
+            }}
+            onAplicarValidacion={() =>
+              handleAplicarMovimientos(selectedMovimientosDetEntregaAlmacen, "almacen")
+            }
+            toast={toast}
+          />
+        </TabPanel>
+
+        <TabPanel header="Servicios">
+          <TabPanelServicios
+            entregaARendir={entregasARendirServicios[0] || null}
+            movimientos={movimientosDetEntregaServicios}
+            personal={personal}
+            centrosCosto={centrosCosto}
+            tiposMovimiento={tipoMovEntregaRendir}
+            entidadesComerciales={entidadesComerciales}
+            monedas={monedas}
+            tiposDocumento={tiposDocumento}
+            productos={productos}
+            loading={loadingDetEntregaServicios}
+            selectedMovimiento={selectedMovimientosDetEntregaServicios}
+            onSelectionChange={(e) => {
+              setSelectedMovimientosDetEntregaServicios(e.value);
+              setSelectedDetMovsIdsServicios(e.value ? [e.value.id] : []);
+            }}
+            onDataChange={() => {
+              cargarMovimientosDetEntregaServicios();
+              cargarEntregasARendirServicios();
+            }}
+            onAplicarValidacion={() =>
+              handleAplicarMovimientos(selectedMovimientosDetEntregaServicios, "servicios")
+            }
+            toast={toast}
+          />
+        </TabPanel>
+
+        <TabPanel header="OT Mantenimiento">
+          <TabPanelOTMantenimiento
+            entregaARendir={entregasOTMantenimiento[0] || null}
+            movimientos={movimientosOTMantenimiento}
+            personal={personal}
+            centrosCosto={centrosCosto}
+            tiposMovimiento={tipoMovEntregaRendir}
+            entidadesComerciales={entidadesComerciales}
+            monedas={monedas}
+            tiposDocumento={tiposDocumento}
+            productos={productos}
+            loading={false}
+            selectedMovimiento={selectedMovimientosOTMantenimiento}
+            onSelectionChange={(e) => {
+              setSelectedMovimientosOTMantenimiento(e.value);
+              setSelectedDetMovsIdsOTMantenimiento(e.value ? [e.value.id] : []);
+            }}
+            onDataChange={() => {
+              cargarMovimientosOTMantenimiento();
+            }}
+            onAplicarValidacion={() =>
+              handleAplicarMovimientos(selectedMovimientosOTMantenimiento, "otMantenimiento")
+            }
+            toast={toast}
+          />
+        </TabPanel>
+      </TabView>
+
+      <Card className="mt-4">
+        <div className="flex justify-content-between align-items-center mb-3">
+          <h2 className="m-0">Registro de Movimientos de Caja</h2>
           <Button
             label="Nuevo Movimiento"
             icon="pi pi-plus"
-            className="p-button-success"
-            onClick={() => {
-              setEditing(null);
-              setShowDialog(true);
-            }}
-            disabled={!permisos.puedeCrear}
+            severity="success"
+            raised
+            onClick={handleNew}
+            disabled={!permisos.puedeCrear || loading}
             tooltip={!permisos.puedeCrear ? 'No tiene permisos para crear' : 'Nuevo Movimiento de Caja'}
           />
         </div>
-      </div>
 
-      <DataTable
-        value={items}
-        loading={loading}
-        paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
-        emptyMessage="No hay movimientos de caja registrados"
-        className="p-datatable-sm"
-        style={{ fontSize: getResponsiveFontSize(), cursor: 'pointer' }}
-        sortField="id"
-        sortOrder={-1}
-        onRowClick={(e) => {
-          if (permisos.puedeVer || permisos.puedeEditar) {
-            handleEdit(e.data);
-          }
+        <DataTable
+          value={itemsFiltrados}
+          loading={loading}
+          paginator
+          rows={10}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          emptyMessage="No hay movimientos de caja registrados"
+          size="small"
+          stripedRows
+          showGridlines
+          header={renderHeader()}
+          style={{ fontSize: getResponsiveFontSize() }}
+          sortField="id"
+          sortOrder={-1}
+          selectionMode="single"
+          selection={selected}
+          onSelectionChange={(e) => setSelected(e.value)}
+          onRowClick={(e) => {
+            if (permisos.puedeVer || permisos.puedeEditar) {
+              handleEdit(e.data);
+            }
+          }}
+        >
+          <Column field="id" header="ID" sortable style={{ width: "80px" }} />
+
+          <Column
+            field="fechaOperacionMovCaja"
+            header="Fecha Operación"
+            sortable
+            body={(rowData) => {
+              return rowData.fechaOperacionMovCaja
+                ? new Date(rowData.fechaOperacionMovCaja).toLocaleDateString("es-PE")
+                : "N/A";
+            }}
+            style={{ width: "120px" }}
+          />
+
+          <Column
+            field="monto"
+            header="Monto"
+            sortable
+            body={(rowData) => {
+              return new Intl.NumberFormat("es-PE", {
+                style: "currency",
+                currency: "PEN",
+              }).format(rowData.monto || 0);
+            }}
+            style={{ width: "120px", textAlign: "right" }}
+          />
+
+          <Column
+            field="descripcion"
+            header="Descripción"
+            sortable
+            style={{ minWidth: "200px" }}
+          />
+
+          <Column
+            field="empresaOrigenId"
+            header="Empresa Origen"
+            sortable
+            body={(rowData) => {
+              const empresa = empresas.find(
+                (e) => Number(e.id) === Number(rowData.empresaOrigenId)
+              );
+              return empresa ? empresa.razonSocial : "N/A";
+            }}
+            style={{ width: "150px" }}
+          />
+
+          <Column
+            field="empresaDestinoId"
+            header="Empresa Destino"
+            sortable
+            body={(rowData) => {
+              const empresa = empresas.find(
+                (e) => Number(e.id) === Number(rowData.empresaDestinoId)
+              );
+              return empresa ? empresa.razonSocial : "N/A";
+            }}
+            style={{ width: "150px" }}
+          />
+
+          <Column
+            field="cuentaCorrienteOrigenId"
+            header="Cuenta Origen"
+            sortable
+            body={(rowData) => {
+              const cuenta = cuentasCorrientes.find(
+                (c) => Number(c.id) === Number(rowData.cuentaCorrienteOrigenId)
+              );
+              return cuenta ? cuenta.numeroCuenta : "N/A";
+            }}
+            style={{ width: "130px" }}
+          />
+
+          <Column
+            field="cuentaCorrienteDestinoId"
+            header="Cuenta Destino"
+            sortable
+            body={(rowData) => {
+              const cuenta = cuentasCorrientes.find(
+                (c) => Number(c.id) === Number(rowData.cuentaCorrienteDestinoId)
+              );
+              return cuenta ? cuenta.numeroCuenta : "N/A";
+            }}
+            style={{ width: "130px" }}
+          />
+
+          <Column
+            field="operacionSinFactura"
+            header="Sin Factura"
+            sortable
+            body={(rowData) => {
+              return rowData.operacionSinFactura ? (
+                <Badge value="SÍ" severity="warning" />
+              ) : (
+                <Badge value="NO" severity="success" />
+              );
+            }}
+            style={{ width: "100px", textAlign: "center" }}
+          />
+
+          <Column
+            field="estadoId"
+            header="Estado"
+            sortable
+            body={(rowData) => {
+              const estado = estadosMultiFuncion.find(
+                (e) => Number(e.id) === Number(rowData.estadoId)
+              );
+              return estado ? (
+                <Badge
+                  value={estado.descripcion}
+                  severity={estado.descripcion === "ACTIVO" ? "success" : "danger"}
+                />
+              ) : (
+                "N/A"
+              );
+            }}
+            style={{ width: "120px", textAlign: "center" }}
+          />
+
+          <Column
+            header="Estado Workflow"
+            body={estadoWorkflowBodyTemplate}
+            style={{ width: "150px", textAlign: "center" }}
+          />
+
+          <Column
+            header="Workflow"
+            body={accionesWorkflowBodyTemplate}
+            style={{ width: "120px", textAlign: "center" }}
+          />
+
+          <Column
+            header="Acciones"
+            body={actionBodyTemplate}
+            style={{ width: "120px", textAlign: "center" }}
+          />
+        </DataTable>
+      </Card>
+
+      <Dialog
+        visible={showDialog}
+        style={{ width: "1300px" }}
+        header={isEdit ? "Editar Movimiento Caja" : "Nuevo Movimiento Caja"}
+        modal
+        onHide={() => {
+          setShowDialog(false);
+          setSelected(null);
+          setIsEdit(false);
         }}
-        selectionMode="single"
       >
-        <Column field="id" header="ID" sortable style={{ width: "80px" }} />
-
-        <Column
-          field="fechaOperacionMovCaja"
-          header="Fecha Operación"
-          sortable
-          body={(rowData) => {
-            return rowData.fechaOperacionMovCaja
-              ? new Date(rowData.fechaOperacionMovCaja).toLocaleDateString(
-                  "es-PE"
-                )
-              : "N/A";
-          }}
-          style={{ width: "120px" }}
-        />
-
-        <Column
-          field="monto"
-          header="Monto"
-          sortable
-          body={(rowData) => {
-            return new Intl.NumberFormat("es-PE", {
-              style: "currency",
-              currency: "PEN",
-            }).format(rowData.monto || 0);
-          }}
-          style={{ width: "120px", textAlign: "right" }}
-        />
-
-        <Column
-          field="descripcion"
-          header="Descripción"
-          sortable
-          style={{ minWidth: "200px" }}
-        />
-
-        <Column
-          field="empresaOrigenId"
-          header="Empresa Origen"
-          sortable
-          body={(rowData) => {
-            const empresa = empresas.find(
-              (e) => Number(e.id) === Number(rowData.empresaOrigenId)
-            );
-            return empresa ? empresa.razonSocial : "N/A";
-          }}
-          style={{ width: "150px" }}
-        />
-
-        <Column
-          field="empresaDestinoId"
-          header="Empresa Destino"
-          sortable
-          body={(rowData) => {
-            const empresa = empresas.find(
-              (e) => Number(e.id) === Number(rowData.empresaDestinoId)
-            );
-            return empresa ? empresa.razonSocial : "N/A";
-          }}
-          style={{ width: "150px" }}
-        />
-
-        <Column
-          field="cuentaCorrienteOrigenId"
-          header="Cuenta Origen"
-          sortable
-          body={(rowData) => {
-            const cuenta = cuentasCorrientes.find(
-              (c) => Number(c.id) === Number(rowData.cuentaCorrienteOrigenId)
-            );
-            return cuenta ? cuenta.numeroCuenta : "N/A";
-          }}
-          style={{ width: "130px" }}
-        />
-
-        <Column
-          field="cuentaCorrienteDestinoId"
-          header="Cuenta Destino"
-          sortable
-          body={(rowData) => {
-            const cuenta = cuentasCorrientes.find(
-              (c) => Number(c.id) === Number(rowData.cuentaCorrienteDestinoId)
-            );
-            return cuenta ? cuenta.numeroCuenta : "N/A";
-          }}
-          style={{ width: "130px" }}
-        />
-
-        <Column
-          field="operacionSinFactura"
-          header="Sin Factura"
-          sortable
-          body={(rowData) => {
-            return rowData.operacionSinFactura ? (
-              <Badge value="SÍ" severity="warning" />
-            ) : (
-              <Badge value="NO" severity="success" />
-            );
-          }}
-          style={{ width: "100px", textAlign: "center" }}
-        />
-
-        <Column
-          field="estadoId"
-          header="Estado"
-          sortable
-          body={(rowData) => {
-            const estado = estadosMultiFuncion.find(
-              (e) => Number(e.id) === Number(rowData.estadoId)
-            );
-            return estado ? (
-              <Badge
-                value={estado.descripcion}
-                severity={
-                  estado.descripcion === "ACTIVO" ? "success" : "danger"
-                }
-              />
-            ) : (
-              "N/A"
-            );
-          }}
-          style={{ width: "120px", textAlign: "center" }}
-        />
-
-        <Column
-          header="Estado Workflow"
-          body={estadoWorkflowBodyTemplate}
-          style={{ width: "150px", textAlign: "center" }}
-        />
-
-        <Column
-          header="Workflow"
-          body={accionesWorkflowBodyTemplate}
-          style={{ width: "120px", textAlign: "center" }}
-        />
-
-        <Column
-          header="Acciones"
-          body={actionBodyTemplate}
-          style={{ width: "120px", textAlign: "center" }}
-        />
-      </DataTable>
-    </Card>
-
-
-    {/* Dialog para formulario */}
-    <Dialog
-      visible={showDialog}
-      style={{ width: "1300px" }}
-      header={
-        editing && !editing.movimientosAplicados
-          ? "Editar Movimiento Caja"
-          : "Nuevo Movimiento Caja"
-      }
-      modal
-      onHide={() => {
-        setShowDialog(false);
-        setEditing(null);
-      }}
-    >
-      <MovimientoCajaForm
-        key={editing?.id || "new"}
-        isEdit={editing && editing.id ? true : false}
-        defaultValues={editing || {}}
-        centrosCosto={centrosCosto}
-        modulos={modulos}
-        personal={personal}
-        empresas={empresas}
-        tipoMovEntregaRendir={tipoMovEntregaRendir}
-        monedas={monedas}
-        tipoReferenciaMovimientoCaja={tipoReferenciaMovimientoCaja}
-        cuentasCorrientes={cuentasCorrientes}
-        entidadesComerciales={entidadesComerciales}
-        cuentasEntidadComercial={cuentasEntidadComercial}
-        estadosMultiFuncion={estadosMultiFuncion}
-        productos={productos}
-        onSubmit={handleFormSubmit}
-        onValidarMovimiento={handleValidarMovimiento}
-        onGenerarAsiento={handleGenerarAsiento}
-        loading={loading}
-        permisos={permisos}
-        readOnly={!!editing && !!editing.id && !permisos.puedeEditar}
-        onCancel={() => {
+        <MovimientoCajaForm
+          key={selected?.id || "new"}
+          isEdit={isEdit}
+          defaultValues={selected || {}}
+          centrosCosto={centrosCosto}
+          modulos={modulos}
+          personal={personal}
+          empresas={empresas}
+          tipoMovEntregaRendir={tipoMovEntregaRendir}
+          monedas={monedas}
+          tipoReferenciaMovimientoCaja={tipoReferenciaMovimientoCaja}
+          cuentasCorrientes={cuentasCorrientes}
+          entidadesComerciales={entidadesComerciales}
+          cuentasEntidadComercial={cuentasEntidadComercial}
+          estadosMultiFuncion={estadosMultiFuncion}
+          productos={productos}
+          onSubmit={handleFormSubmit}
+          onValidarMovimiento={handleValidarMovimiento}
+          onGenerarAsiento={handleGenerarAsiento}
+          loading={loading}
+          permisos={permisos}
+          readOnly={isEdit && !permisos.puedeEditar}
+          onCancel={() => {
             setShowDialog(false);
-            setEditing(null);
+            setSelected(null);
+            setIsEdit(false);
           }}
         />
       </Dialog>
 
-      {/* Diálogo de Aprobar */}
       <Dialog
         header="Aprobar Movimiento de Caja"
         visible={showAprobarDialog}
@@ -1690,7 +1744,7 @@ export default function MovimientoCaja({ ruta }) {
           {movimientoWorkflow && (
             <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "#f8f9fa", borderRadius: "6px" }}>
               <strong>ID:</strong> {movimientoWorkflow.id}<br />
-              <strong>Monto:</strong> {movimientoWorkflow.monto}<br />
+              <strong>Monto:</strong> {new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(movimientoWorkflow.monto || 0)}<br />
               <strong>Descripción:</strong> {movimientoWorkflow.descripcion || "N/A"}
             </div>
           )}
@@ -1699,7 +1753,7 @@ export default function MovimientoCaja({ ruta }) {
               label="Cancelar"
               icon="pi pi-times"
               onClick={() => setShowAprobarDialog(false)}
-              className="p-button-text"
+              outlined
             />
             <Button
               label="Aprobar"
@@ -1712,7 +1766,6 @@ export default function MovimientoCaja({ ruta }) {
         </div>
       </Dialog>
 
-      {/* Diálogo de Rechazar */}
       <Dialog
         header="Rechazar Movimiento de Caja"
         visible={showRechazarDialog}
@@ -1725,12 +1778,12 @@ export default function MovimientoCaja({ ruta }) {
           {movimientoWorkflow && (
             <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "#f8f9fa", borderRadius: "6px" }}>
               <strong>ID:</strong> {movimientoWorkflow.id}<br />
-              <strong>Monto:</strong> {movimientoWorkflow.monto}<br />
+              <strong>Monto:</strong> {new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(movimientoWorkflow.monto || 0)}<br />
               <strong>Descripción:</strong> {movimientoWorkflow.descripcion || "N/A"}
             </div>
           )}
           <div style={{ marginTop: "1rem" }}>
-            <label htmlFor="motivoRechazo">Motivo del Rechazo *</label>
+            <label htmlFor="motivoRechazo" style={{ fontWeight: "bold" }}>Motivo del Rechazo <span style={{ color: "red" }}>*</span></label>
             <InputTextarea
               id="motivoRechazo"
               value={motivoRechazo}
@@ -1745,7 +1798,7 @@ export default function MovimientoCaja({ ruta }) {
               label="Cancelar"
               icon="pi pi-times"
               onClick={() => setShowRechazarDialog(false)}
-              className="p-button-text"
+              outlined
             />
             <Button
               label="Rechazar"
@@ -1758,7 +1811,6 @@ export default function MovimientoCaja({ ruta }) {
         </div>
       </Dialog>
 
-      {/* Diálogo de Revertir */}
       <Dialog
         header="Revertir Movimiento de Caja"
         visible={showRevertirDialog}
@@ -1771,12 +1823,12 @@ export default function MovimientoCaja({ ruta }) {
           {movimientoWorkflow && (
             <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "#f8f9fa", borderRadius: "6px" }}>
               <strong>ID:</strong> {movimientoWorkflow.id}<br />
-              <strong>Monto:</strong> {movimientoWorkflow.monto}<br />
+              <strong>Monto:</strong> {new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(movimientoWorkflow.monto || 0)}<br />
               <strong>Descripción:</strong> {movimientoWorkflow.descripcion || "N/A"}
             </div>
           )}
           <div style={{ marginTop: "1rem" }}>
-            <label htmlFor="motivoReversion">Motivo de la Reversión *</label>
+            <label htmlFor="motivoReversion" style={{ fontWeight: "bold" }}>Motivo de la Reversión <span style={{ color: "red" }}>*</span></label>
             <InputTextarea
               id="motivoReversion"
               value={motivoReversion}
@@ -1791,7 +1843,7 @@ export default function MovimientoCaja({ ruta }) {
               label="Cancelar"
               icon="pi pi-times"
               onClick={() => setShowRevertirDialog(false)}
-              className="p-button-text"
+              outlined
             />
             <Button
               label="Revertir"
@@ -1806,4 +1858,3 @@ export default function MovimientoCaja({ ruta }) {
     </div>
   );
 }
-

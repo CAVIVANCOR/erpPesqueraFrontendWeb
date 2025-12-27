@@ -1,398 +1,460 @@
 // src/components/cuentaCorriente/CuentaCorrienteForm.jsx
-// Formulario profesional para CuentaCorriente. Cumple la regla transversal ERP Megui.
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
-import { Checkbox } from "primereact/checkbox";
 import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
-import { formatearFecha } from "../../utils/utils";
-
+import { Toast } from "primereact/toast";
+import { ToggleButton } from "primereact/togglebutton";
+import {
+  crearCuentaCorriente,
+  actualizarCuentaCorriente,
+} from "../../api/cuentaCorriente";
 
 export default function CuentaCorrienteForm({
-  isEdit,
-  defaultValues,
+  isEdit = false,
+  defaultValues = {},
+  empresas = [],
+  bancos = [],
+  tiposCuentaCorriente = [],
+  monedas = [],
   onSubmit,
   onCancel,
-  loading,
-  bancos = [],
-  monedas = [],
-  empresas = [],
-  tiposCuentaCorriente = [],
+  loading = false,
+  readOnly = false,
 }) {
-  const [bancoId, setBancoId] = React.useState(defaultValues.bancoId || "");
-  const [numeroCuenta, setNumeroCuenta] = React.useState(
-    defaultValues.numeroCuenta || ""
-  );
-  const [monedaId, setMonedaId] = React.useState(defaultValues.monedaId || "");
-  const [descripcion, setDescripcion] = React.useState(
-    defaultValues.descripcion || ""
-  );
-  const [activa, setActiva] = React.useState(
-    defaultValues.activa !== undefined ? !!defaultValues.activa : true
-  );
-  const [empresaId, setEmpresaId] = React.useState(
-    defaultValues.empresaId || ""
-  );
-  const [tipoCuentaCorrienteId, setTipoCuentaCorrienteId] = React.useState(
-    defaultValues.tipoCuentaCorrienteId || ""
-  );
-  const [codigoSwift, setCodigoSwift] = React.useState(
-    defaultValues.codigoSwift || ""
-  );
-  const [numeroCuentaCCI, setNumeroCuentaCCI] = React.useState(
-    defaultValues.numeroCuentaCCI || ""
-  );
-  const [saldoMinimo, setSaldoMinimo] = React.useState(
-    defaultValues.saldoMinimo || null
-  );
-  const [fechaApertura, setFechaApertura] = React.useState(
-    defaultValues.fechaApertura ? new Date(defaultValues.fechaApertura) : null
-  );
-  const [fechaCierre, setFechaCierre] = React.useState(
-    defaultValues.fechaCierre ? new Date(defaultValues.fechaCierre) : null
-  );
+  const toast = useRef(null);
+  const [guardando, setGuardando] = useState(false);
 
-  React.useEffect(() => {
-    setBancoId(defaultValues.bancoId || "");
-    setNumeroCuenta(defaultValues.numeroCuenta || "");
-    setMonedaId(defaultValues.monedaId || "");
-    setDescripcion(defaultValues.descripcion || "");
-    setActiva(
-      defaultValues.activa !== undefined ? !!defaultValues.activa : true
-    );
-    setEmpresaId(defaultValues.empresaId || "");
-    setTipoCuentaCorrienteId(defaultValues.tipoCuentaCorrienteId || "");
-    setCodigoSwift(defaultValues.codigoSwift || "");
-    setNumeroCuentaCCI(defaultValues.numeroCuentaCCI || "");
-    setSaldoMinimo(defaultValues.saldoMinimo || null);
-    setFechaApertura(
-      defaultValues.fechaApertura ? new Date(defaultValues.fechaApertura) : null
-    );
-    setFechaCierre(
-      defaultValues.fechaCierre ? new Date(defaultValues.fechaCierre) : null
-    );
+  const [formData, setFormData] = useState({
+    empresaId: defaultValues?.empresaId || null,
+    bancoId: defaultValues?.bancoId || null,
+    numeroCuenta: defaultValues?.numeroCuenta || "",
+    tipoCuentaCorrienteId: defaultValues?.tipoCuentaCorrienteId || null,
+    monedaId: defaultValues?.monedaId || null,
+    descripcion: defaultValues?.descripcion || "",
+    activa: defaultValues?.activa !== undefined ? !!defaultValues.activa : true,
+    codigoSwift: defaultValues?.codigoSwift || "",
+    numeroCuentaCCI: defaultValues?.numeroCuentaCCI || "",
+    saldoMinimo: defaultValues?.saldoMinimo || null,
+    fechaApertura: defaultValues?.fechaApertura
+      ? new Date(defaultValues.fechaApertura)
+      : null,
+    fechaCierre: defaultValues?.fechaCierre
+      ? new Date(defaultValues.fechaCierre)
+      : null,
+  });
+
+  useEffect(() => {
+    setFormData({
+      empresaId: defaultValues?.empresaId
+        ? Number(defaultValues.empresaId)
+        : null,
+      bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
+      numeroCuenta: (defaultValues?.numeroCuenta || "").toUpperCase(),
+      tipoCuentaCorrienteId: defaultValues?.tipoCuentaCorrienteId
+        ? Number(defaultValues.tipoCuentaCorrienteId)
+        : null,
+      monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
+      descripcion: (defaultValues?.descripcion || "").toUpperCase(),
+      activa:
+        defaultValues?.activa !== undefined ? !!defaultValues.activa : true,
+      codigoSwift: (defaultValues?.codigoSwift || "").toUpperCase(),
+      numeroCuentaCCI: (defaultValues?.numeroCuentaCCI || "").toUpperCase(),
+      saldoMinimo: defaultValues?.saldoMinimo || null,
+      fechaApertura: defaultValues?.fechaApertura
+        ? new Date(defaultValues.fechaApertura)
+        : null,
+      fechaCierre: defaultValues?.fechaCierre
+        ? new Date(defaultValues.fechaCierre)
+        : null,
+    });
   }, [defaultValues]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    // Validaciones básicas en frontend - solo return sin toast
-    if (!empresaId || !bancoId || !numeroCuenta) {
-      return; // Solo return, sin mostrar toast
-    }
-    
-    onSubmit({
-      empresaId: Number(empresaId),
-      bancoId: Number(bancoId),
-      numeroCuenta: numeroCuenta.trim(),
-      tipoCuentaCorrienteId: tipoCuentaCorrienteId ? Number(tipoCuentaCorrienteId) : null,
-      monedaId: monedaId ? Number(monedaId) : null,
-      descripcion: descripcion.trim(),
-      activa,
-      codigoSwift: codigoSwift.trim(),
-      numeroCuentaCCI: numeroCuentaCCI.trim(),
-      saldoMinimo: saldoMinimo || null,
-      fechaApertura: fechaApertura || null,
-      fechaCierre: fechaCierre || null,
-    });
+  const handleChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!formData.empresaId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar una empresa",
+        life: 3000,
+      });
+      return;
+    }
+
+    if (!formData.bancoId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar un banco",
+        life: 3000,
+      });
+      return;
+    }
+
+    if (!formData.numeroCuenta) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe ingresar un número de cuenta",
+        life: 3000,
+      });
+      return;
+    }
+
+    if (!formData.tipoCuentaCorrienteId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe seleccionar un tipo de cuenta corriente",
+        life: 3000,
+      });
+      return;
+    }
+
+    const dataToSend = {
+      empresaId: Number(formData.empresaId),
+      bancoId: Number(formData.bancoId),
+      numeroCuenta: formData.numeroCuenta.trim().toUpperCase(),
+      tipoCuentaCorrienteId: Number(formData.tipoCuentaCorrienteId),
+      monedaId: formData.monedaId ? Number(formData.monedaId) : null,
+      descripcion: formData.descripcion.trim().toUpperCase(),
+      activa: formData.activa,
+      codigoSwift: formData.codigoSwift.trim().toUpperCase(),
+      numeroCuentaCCI: formData.numeroCuentaCCI.trim().toUpperCase(),
+      saldoMinimo: formData.saldoMinimo || null,
+      fechaApertura: formData.fechaApertura || null,
+      fechaCierre: formData.fechaCierre || null,
+    };
+
+    setGuardando(true);
+    try {
+      if (isEdit) {
+        await actualizarCuentaCorriente(defaultValues.id, dataToSend);
+      } else {
+        await crearCuentaCorriente(dataToSend);
+      }
+      onSubmit(dataToSend);
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error al Guardar",
+        detail:
+          error.response?.data?.message || "Error al guardar cuenta corriente",
+        life: 5000,
+      });
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const empresasOptions = empresas.map((empresa) => ({
+    label: empresa.razonSocial,
+    value: Number(empresa.id),
+  }));
+
+  const bancosOptions = bancos.map((banco) => ({
+    label: banco.nombre,
+    value: Number(banco.id),
+  }));
+
+  const monedasOptions = monedas.map((moneda) => ({
+    label: moneda.codigoSunat,
+    value: Number(moneda.id),
+  }));
+
+  const tiposOptions = tiposCuentaCorriente.map((tipo) => ({
+    label: tipo.nombre,
+    value: Number(tipo.id),
+  }));
+
   return (
-    <form onSubmit={handleSubmit} className="p-fluid">
-      <div
-        style={{
-          alignItems: "center",
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="empresaId">Empresa*</label>
-          <Dropdown
-            id="empresaId"
-            value={empresaId}
-            options={empresas.map((empresa) => ({
-              label: empresa.razonSocial,
-              value: empresa.id,
-            }))}
-            onChange={(e) => setEmpresaId(e.value)}
-            placeholder="Seleccione empresa"
-            required
-            disabled={loading}
-            filter
-            showClear
-            style={{ fontWeight: "bold" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="bancoId">Banco*</label>
-          <Dropdown
-            id="bancoId"
-            value={bancoId}
-            options={bancos.map((banco) => ({
-              label: banco.nombre,
-              value: banco.id,
-            }))}
-            onChange={(e) => setBancoId(e.value)}
-            placeholder="Seleccione banco"
-            required
-            disabled={loading}
-            filter
-            showClear
-            style={{ fontWeight: "bold" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="monedaId">Moneda*</label>
-          <Dropdown
-            id="monedaId"
-            value={monedaId}
-            options={monedas.map((moneda) => ({
-              label: moneda.simbolo,
-              value: moneda.id,
-            }))}
-            onChange={(e) => setMonedaId(e.value)}
-            placeholder="Seleccione moneda"
-            required
-            disabled={loading}
-            filter
-            showClear
-            style={{ fontWeight: "bold" }}
-          />
-        </div>
-      </div>
-
-      <div
-        style={{
-          alignItems: "center",
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      ></div>
-
-      <div
-        style={{
-          alignItems: "center",
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="numeroCuenta">Número de Cuenta*</label>
-          <InputText
-            id="numeroCuenta"
-            value={numeroCuenta}
-            onChange={(e) => setNumeroCuenta(e.target.value.toUpperCase())}
-            required
-            disabled={loading}
-            style={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-
-        <div style={{ flex: 1 }}>
-          <label htmlFor="numeroCuentaCCI">Número CCI</label>
-          <InputText
-            id="numeroCuentaCCI"
-            value={numeroCuentaCCI}
-            onChange={(e) => setNumeroCuentaCCI(e.target.value.toUpperCase())}
-            disabled={loading}
-            style={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="codigoSwift">Código Swift</label>
-          <InputText
-            id="codigoSwift"
-            value={codigoSwift}
-            onChange={(e) => setCodigoSwift(e.target.value.toUpperCase())}
-            disabled={loading}
-            style={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-      </div>
-      <div
-        style={{
-          alignItems: "end",
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="descripcion">Descripción</label>
-          <InputText
-            id="descripcion"
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value.toUpperCase())}
-            disabled={loading}
-            style={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-
-        <div style={{ flex: 1 }}>
-          <label htmlFor="tipoCuentaCorrienteId">
-            Tipo de Cuenta Corriente*
-          </label>
-          <Dropdown
-            id="tipoCuentaCorrienteId"
-            value={tipoCuentaCorrienteId}
-            options={tiposCuentaCorriente.map((tipo) => ({
-              label: tipo.nombre,
-              value: tipo.id,
-            }))}
-            onChange={(e) => setTipoCuentaCorrienteId(e.value)}
-            placeholder="Seleccione tipo de cuenta corriente"
-            required
-            disabled={loading}
-            filter
-            showClear
-            style={{ fontWeight: "bold" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <Button
-            type="button"
-            label={activa ? "ACTIVO" : "CESADO"}
-            icon={activa ? "pi pi-check-circle" : "pi pi-times-circle"}
-            className={activa ? "p-button-primary" : "p-button-danger"}
-            severity={activa ? "primary" : "danger"}
-            onClick={() => setActiva(!activa)}
-            size="small"
-            style={{ width: "200px", fontWeight: "bold" }}
-            disabled={loading}
-          />
-        </div>
-      </div>
-
-      <div
-        style={{
-          alignItems: "center",
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="saldoMinimo">Saldo Mínimo</label>
-          <InputNumber
-            id="saldoMinimo"
-            value={saldoMinimo}
-            onValueChange={(e) => setSaldoMinimo(e.value)}
-            mode="decimal"
-            minFractionDigits={2}
-            maxFractionDigits={2}
-            min={0}
-            disabled={loading}
-            placeholder="0.00"
-            style={{ fontWeight: "bold" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaApertura">Fecha de Apertura</label>
-          <Calendar
-            id="fechaApertura"
-            value={fechaApertura}
-            onChange={(e) => setFechaApertura(e.value)}
-            dateFormat="dd/mm/yy"
-            showIcon
-            disabled={loading}
-            placeholder="Seleccione fecha"
-            style={{ fontWeight: "bold" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaCierre">Fecha de Cierre</label>
-          <Calendar
-            id="fechaCierre"
-            value={fechaCierre}
-            onChange={(e) => setFechaCierre(e.value)}
-            dateFormat="dd/mm/yy"
-            showIcon
-            disabled={loading}
-            placeholder="Seleccione fecha"
-            style={{ fontWeight: "bold" }}
-          />
-        </div>
-      </div>
-
-      {isEdit && defaultValues.creadoEn && (
+    <>
+      <Toast ref={toast} />
+      <form onSubmit={handleSubmit} className="p-fluid">
         <div
           style={{
-            marginTop: 20,
-            padding: 15,
-            backgroundColor: "#f8f9fa",
-            borderRadius: 8,
-            border: "1px solid #dee2e6",
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          <h4 style={{ margin: "0 0 10px 0", color: "#495057" }}>Auditoría</h4>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "1fr 1fr",
-              gap: 10,
-            }}
-          >
-            <div>
-              <strong>Creado:</strong>{" "}
-              {formatearFecha(defaultValues.creadoEn)}
-              {defaultValues.personalCreador && (
-                <span>
-                  {" "}- {defaultValues.personalCreador.nombres}{" "}
-                  {defaultValues.personalCreador.apellidoPaterno}
-                </span>
-              )}
-            </div>
-            {defaultValues.actualizadoEn && (
-              <div>
-                <strong>Actualizado:</strong>{" "}
-                {formatearFecha(defaultValues.actualizadoEn)}
-                {defaultValues.personalActualizador && (
-                  <span>
-                    {" "}- {defaultValues.personalActualizador.nombres}{" "}
-                    {defaultValues.personalActualizador.apellidoPaterno}
-                  </span>
-                )}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="empresaId" style={{ fontWeight: "bold" }}>
+              Empresa <span style={{ color: "red" }}>*</span>
+            </label>
+            <Dropdown
+              id="empresaId"
+              value={formData.empresaId}
+              options={empresasOptions}
+              onChange={(e) => handleChange("empresaId", e.value)}
+              placeholder="Seleccione empresa"
+              required
+              disabled={readOnly || loading || guardando}
+              filter
+              showClear
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="bancoId" style={{ fontWeight: "bold" }}>
+              Banco <span style={{ color: "red" }}>*</span>
+            </label>
+            <Dropdown
+              id="bancoId"
+              value={formData.bancoId}
+              options={bancosOptions}
+              onChange={(e) => handleChange("bancoId", e.value)}
+              placeholder="Seleccione banco"
+              required
+              disabled={readOnly || loading || guardando}
+              filter
+              showClear
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="monedaId" style={{ fontWeight: "bold" }}>
+              Moneda <span style={{ color: "red" }}>*</span>
+            </label>
+            <Dropdown
+              id="monedaId"
+              value={formData.monedaId}
+              options={monedasOptions}
+              onChange={(e) => handleChange("monedaId", e.value)}
+              placeholder="Seleccione moneda"
+              required
+              disabled={readOnly || loading || guardando}
+              filter
+              showClear
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label htmlFor="numeroCuenta" style={{ fontWeight: "bold" }}>
+              Número de Cuenta <span style={{ color: "red" }}>*</span>
+            </label>
+            <InputText
+              id="numeroCuenta"
+              value={formData.numeroCuenta}
+              onChange={(e) =>
+                handleChange("numeroCuenta", e.target.value.toUpperCase())
+              }
+              required
+              disabled={readOnly || loading || guardando}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="numeroCuentaCCI">Número CCI</label>
+            <InputText
+              id="numeroCuentaCCI"
+              value={formData.numeroCuentaCCI}
+              onChange={(e) =>
+                handleChange("numeroCuentaCCI", e.target.value.toUpperCase())
+              }
+              disabled={readOnly || loading || guardando}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="codigoSwift">Código Swift</label>
+            <InputText
+              id="codigoSwift"
+              value={formData.codigoSwift}
+              onChange={(e) =>
+                handleChange("codigoSwift", e.target.value.toUpperCase())
+              }
+              disabled={readOnly || loading || guardando}
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "end",
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label htmlFor="descripcion">Descripción</label>
+            <InputText
+              id="descripcion"
+              value={formData.descripcion}
+              onChange={(e) =>
+                handleChange("descripcion", e.target.value.toUpperCase())
+              }
+              disabled={readOnly || loading || guardando}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label
+              htmlFor="tipoCuentaCorrienteId"
+              style={{ fontWeight: "bold" }}
+            >
+              Tipo de Cuenta Corriente <span style={{ color: "red" }}>*</span>
+            </label>
+            <Dropdown
+              id="tipoCuentaCorrienteId"
+              value={formData.tipoCuentaCorrienteId}
+              options={tiposOptions}
+              onChange={(e) => handleChange("tipoCuentaCorrienteId", e.value)}
+              placeholder="Seleccione tipo de cuenta corriente"
+              required
+              disabled={readOnly || loading || guardando}
+              filter
+              showClear
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <ToggleButton
+              id="activa"
+              checked={formData.activa}
+              onChange={(e) => handleChange("activa", e.value)}
+              onLabel="ACTIVO"
+              offLabel="INACTIVO"
+              onIcon="pi pi-check"
+              offIcon="pi pi-times"
+              disabled={readOnly || loading || guardando}
+              className={
+                formData.activa ? "p-button-success" : "p-button-danger"
+              }
+              style={{ width: "100%" }}
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label htmlFor="saldoMinimo">Saldo Mínimo</label>
+            <InputNumber
+              id="saldoMinimo"
+              value={formData.saldoMinimo}
+              onValueChange={(e) => handleChange("saldoMinimo", e.value)}
+              mode="decimal"
+              minFractionDigits={2}
+              maxFractionDigits={2}
+              min={0}
+              disabled={readOnly || loading || guardando}
+              placeholder="0.00"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="fechaApertura">Fecha de Apertura</label>
+            <Calendar
+              id="fechaApertura"
+              value={formData.fechaApertura}
+              onChange={(e) => handleChange("fechaApertura", e.value)}
+              dateFormat="dd/mm/yy"
+              showIcon
+              disabled={readOnly || loading || guardando}
+              placeholder="Seleccione fecha"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="fechaCierre">Fecha de Cierre</label>
+            <Calendar
+              id="fechaCierre"
+              value={formData.fechaCierre}
+              onChange={(e) => handleChange("fechaCierre", e.value)}
+              dateFormat="dd/mm/yy"
+              showIcon
+              disabled={readOnly || loading || guardando}
+              placeholder="Seleccione fecha"
+            />
+          </div>
+        </div>
+
+        {/* Botones de acción */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems:"end",
+            gap: 8,
+            marginTop: 18,
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            {isEdit && defaultValues.creadoEn && (
+              <div
+                style={{
+                  marginTop: 20,
+                  padding: 10,
+                  backgroundColor: "#f8f9fa",
+                  borderRadius: 4,
+                  border: "1px solid #dee2e6",
+                }}
+              >
+                <small style={{ color: "#666" }}>
+                  <strong>Creado:</strong>{" "}
+                  {new Date(defaultValues.creadoEn).toLocaleString("es-PE")}
+                  {defaultValues.personalCreador &&
+                    ` - ${defaultValues.personalCreador.nombres} ${defaultValues.personalCreador.apellidoPaterno}`}
+                  {defaultValues.actualizadoEn && (
+                    <>
+                      {" | "}
+                      <strong>Actualizado:</strong>{" "}
+                      {new Date(defaultValues.actualizadoEn).toLocaleString(
+                        "es-PE"
+                      )}
+                      {defaultValues.personalActualizador &&
+                        ` - ${defaultValues.personalActualizador.nombres} ${defaultValues.personalActualizador.apellidoPaterno}`}
+                    </>
+                  )}
+                </small>
               </div>
             )}
           </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              type="button"
+              onClick={onCancel}
+              disabled={loading || guardando}
+              className="p-button-warning"
+              severity="warning"
+              raised
+              size="small"
+              outlined
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              label={isEdit ? "Actualizar" : "Guardar"}
+              icon="pi pi-check"
+              type="submit"
+              loading={loading || guardando}
+              disabled={readOnly || loading || guardando}
+              className="p-button-success"
+              severity="success"
+              raised
+              size="small"
+              outlined
+            />
+          </div>
         </div>
-      )}
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 8,
-          marginTop: 18,
-        }}
-      >
-        <Button
-          type="button"
-          label="Cancelar"
-          onClick={onCancel}
-          disabled={loading}
-          className="p-button-warning"
-          severity="warning"
-          raised
-          size="small"
-        />
-        <Button
-          type="submit"
-          label={isEdit ? "Actualizar" : "Crear"}
-          icon="pi pi-save"
-          loading={loading}
-          className="p-button-success"
-          severity="success"
-          raised
-          size="small"
-        />
-      </div>
-    </form>
+      </form>
+    </>
   );
 }

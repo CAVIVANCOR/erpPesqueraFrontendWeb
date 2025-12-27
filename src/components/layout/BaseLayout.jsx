@@ -106,6 +106,9 @@ import Almacen from '../../pages/Almacen';
 import SerieDoc from '../../pages/SerieDoc';
 import OTMantenimiento from '../../pages/OTMantenimiento';
 import Videoconferencia from '../../pages/Videoconferencia';
+import PlanCuentasContable from '../../pages/contabilidad/PlanCuentasContable';
+import PeriodoContable from '../../pages/contabilidad/PeriodoContable';
+import AsientoContable from '../../pages/contabilidad/AsientoContable';
 
 /**
  * BaseLayout - Layout principal con gestión de módulos
@@ -223,6 +226,9 @@ export default function BaseLayout({ children, onLogout }) {
     detallePermisoActivo: { label: "Detalle Permiso Activo", componente: <DetallePermisoActivo ruta="detallePermisoActivo" /> },
     permisoAutorizacion: { label: "Permiso Autorización", componente: <PermisoAutorizacion ruta="permisoAutorizacion" /> },
     videoconferencia: { label: "Videoconferencias", componente: <Videoconferencia ruta="videoconferencia" /> },
+    planCuentasContable: { label: "Plan de Cuentas Contable", componente: <PlanCuentasContable ruta="planCuentasContable" /> },
+    periodoContable: { label: "Períodos Contables", componente: <PeriodoContable ruta="periodoContable" /> },
+    asientoContable: { label: "Asientos Contables", componente: <AsientoContable ruta="asientoContable" /> },
   };
 
   /**
