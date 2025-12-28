@@ -16,7 +16,12 @@ import { Tag } from "primereact/tag";
 import { confirmDialog } from "primereact/confirmdialog";
 import { Controller, useForm } from "react-hook-form";
 import { getResponsiveFontSize } from "../../utils/utils";
-import { capturarGPS, formatearCoordenadas, descomponerDMS, convertirDMSADecimal } from "../../utils/gpsUtils";
+import {
+  capturarGPS,
+  formatearCoordenadas,
+  descomponerDMS,
+  convertirDMSADecimal,
+} from "../../utils/gpsUtils";
 import {
   getCalasFaenaConsumoPorFaena,
   crearCalaFaenaConsumo,
@@ -137,7 +142,12 @@ export default function CalasConsumoCard({
 
   // Sincronizar cambios de decimal a DMS
   useEffect(() => {
-    if (latitud !== "" && latitud !== null && latitud !== undefined && latitud !== 0) {
+    if (
+      latitud !== "" &&
+      latitud !== null &&
+      latitud !== undefined &&
+      latitud !== 0
+    ) {
       const dms = descomponerDMS(Number(latitud), true);
       setLatGrados(dms.grados);
       setLatMinutos(dms.minutos);
@@ -147,7 +157,12 @@ export default function CalasConsumoCard({
   }, [latitud]);
 
   useEffect(() => {
-    if (longitud !== "" && longitud !== null && longitud !== undefined && longitud !== 0) {
+    if (
+      longitud !== "" &&
+      longitud !== null &&
+      longitud !== undefined &&
+      longitud !== 0
+    ) {
       const dms = descomponerDMS(Number(longitud), false);
       setLonGrados(dms.grados);
       setLonMinutos(dms.minutos);
@@ -158,13 +173,23 @@ export default function CalasConsumoCard({
 
   // Funciones para actualizar decimal cuando cambia DMS
   const actualizarLatitudDesdeDMS = () => {
-    const decimal = convertirDMSADecimal(latGrados, latMinutos, latSegundos, latDireccion);
+    const decimal = convertirDMSADecimal(
+      latGrados,
+      latMinutos,
+      latSegundos,
+      latDireccion
+    );
     setLatitud(decimal);
     setValueCala("latitud", decimal);
   };
 
   const actualizarLongitudDesdeDMS = () => {
-    const decimal = convertirDMSADecimal(lonGrados, lonMinutos, lonSegundos, lonDireccion);
+    const decimal = convertirDMSADecimal(
+      lonGrados,
+      lonMinutos,
+      lonSegundos,
+      lonDireccion
+    );
     setLongitud(decimal);
     setValueCala("longitud", decimal);
   };
@@ -287,7 +312,8 @@ export default function CalasConsumoCard({
     });
   };
 
-  const guardarCala = async (cerrarDialogo = true) => {  // ← AGREGAR parámetro
+  const guardarCala = async (cerrarDialogo = true) => {
+    // ← AGREGAR parámetro
     // Obtener valores directamente desde faenaData para evitar problemas de asincronía
     const bahiaIdNum = faenaData?.bahiaId ? Number(faenaData.bahiaId) : null;
     const motoristaIdNum = faenaData?.motoristaId
@@ -312,7 +338,7 @@ export default function CalasConsumoCard({
       observaciones: controlCala._formValues.observaciones,
     };
 
-    await onSubmitCala(data, cerrarDialogo);  // ← PASAR parámetro
+    await onSubmitCala(data, cerrarDialogo); // ← PASAR parámetro
   };
 
   const finalizarCalaAction = async (cala) => {
@@ -364,7 +390,8 @@ export default function CalasConsumoCard({
     }
   };
 
-  const onSubmitCala = async (data, cerrarDialogo = true) => {  // ← AGREGAR parámetro con default true
+  const onSubmitCala = async (data, cerrarDialogo = true) => {
+    // ← AGREGAR parámetro con default true
     try {
       const payload = {
         faenaPescaConsumoId: Number(faenaPescaConsumoId),
@@ -404,7 +431,8 @@ export default function CalasConsumoCard({
         });
       }
 
-      if (cerrarDialogo) {  // ← SOLO CERRAR SI cerrarDialogo es true
+      if (cerrarDialogo) {
+        // ← SOLO CERRAR SI cerrarDialogo es true
         setDialogCalaVisible(false);
       }
       cargarCalas();
@@ -511,38 +539,53 @@ export default function CalasConsumoCard({
   );
 
   // Dialog Headers y Footers
-  const calaDialogHeader = (
-    <div className="flex justify-content-center mb-4">
-      <Tag
-        value={"Cala"}
-        severity="info"
-        style={{
-          fontSize: "1.1rem",
-          padding: "0.75rem 1.25rem",
-          textTransform: "uppercase",
-          fontWeight: "bold",
-          textAlign: "center",
-          width: "100%",
-        }}
-      />
-    </div>
-  );
+    const calaDialogHeader = (
+      <div className="flex justify-content-center mb-4">
+        <Tag
+          value={"Cala"}
+          severity="info"
+          style={{
+            fontSize: "1.25rem",
+            textTransform: "uppercase",
+            fontWeight: "bold",
+            textAlign: "center",
+            width: "100%",
+          }}
+        />
+      </div>
+    );
 
   const calaDialogFooter = (
-    <>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        gap: 10,
+      }}
+    >
       <Button
         label="Cancelar"
         icon="pi pi-times"
-        className="p-button-text"
+        type="button"
         onClick={() => setDialogCalaVisible(false)}
+        className="p-button-warning"
+        severity="warning"
+        raised
+        size="small"
+        outlined
       />
       <Button
         label="Guardar"
         icon="pi pi-check"
-        className="p-button-text"
-        onClick={() => guardarCala(true)}  // ← PASAR true para cerrar el diálogo
+        type="button"
+        onClick={() => guardarCala(true)} // ← PASAR true para cerrar el diálogo
+        className="p-button-success"
+        severity="success"
+        raised
+        size="small"
+        outlined
       />
-    </>
+    </div>
   );
 
   if (!faenaPescaConsumoId) {
@@ -557,26 +600,15 @@ export default function CalasConsumoCard({
 
   return (
     <>
-      <Card
-        className="mt-4"
-        pt={{
-          header: { style: { display: "none" } },
-          body: { style: { paddingTop: "0" } },
-        }}
-      >
+      <Card>
         <Toast ref={toast} style={{ zIndex: 9999 }} baseZIndex={9999} />
         <DataTable
           value={calas}
           loading={loading}
           emptyMessage="No hay calas registradas"
-          paginator
-          rows={10}
           showGridlines
           stripedRows
-          rowsPerPageOptions={[5, 10, 25]}
-          className="datatable-responsive"
-          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} calas"
+          size="small"
           globalFilter={globalFilter}
           header={header}
           style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
@@ -651,7 +683,7 @@ export default function CalasConsumoCard({
         onHide={() => setDialogCalaVisible(false)}
         header={calaDialogHeader}
         footer={calaDialogFooter}
-        style={{ width: "1200px" }}
+        style={{ width: "1250px" }}
         breakpoints={{ "960px": "85vw", "641px": "95vw" }}
         modal
         className="p-fluid"
@@ -697,6 +729,16 @@ export default function CalasConsumoCard({
                 style={{ fontWeight: "bold" }}
               />
             </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "end",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
             <div style={{ flex: 1 }}>
               <label htmlFor="embarcacionId">Embarcación</label>
               <Dropdown
@@ -708,17 +750,6 @@ export default function CalasConsumoCard({
                 style={{ fontWeight: "bold" }}
               />
             </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "end",
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-              marginTop: 10,
-            }}
-          >
             <div style={{ flex: 1 }}>
               <label htmlFor="createdAt">Fecha Creación</label>
               <Calendar
@@ -771,7 +802,6 @@ export default function CalasConsumoCard({
               padding: "0.5rem",
               borderRadius: "8px",
               marginTop: "1rem",
-              marginBottom: "1rem",
               display: "flex",
               alignItems: "self-end",
               gap: 10,
@@ -798,7 +828,9 @@ export default function CalasConsumoCard({
                         toast.current?.show({
                           severity: "success",
                           summary: "GPS capturado",
-                          detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m. Presione Guardar para confirmar.`,
+                          detail: `GPS capturado con precisión de ${accuracy.toFixed(
+                            1
+                          )}m. Presione Guardar para confirmar.`,
                           life: 3000,
                         });
                       },
@@ -822,19 +854,72 @@ export default function CalasConsumoCard({
 
             {/* Tabla compacta de coordenadas GPS */}
             <div style={{ flex: 3 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", border: "2px solid #0EA5E9" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  border: "2px solid #0EA5E9",
+                }}
+              >
                 <thead>
                   <tr style={{ backgroundColor: "#0EA5E9", color: "white" }}>
-                    <th style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Formato</th>
-                    <th colSpan="4" style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", textAlign: "center" }}>Latitud</th>
-                    <th colSpan="4" style={{ padding: "4px", border: "1px solid #0EA5E9", fontSize: "12px", textAlign: "center" }}>Longitud</th>
+                    <th
+                      style={{
+                        padding: "4px",
+                        border: "1px solid #0EA5E9",
+                        fontSize: "12px",
+                        width: "75px",
+                        minWidth: "75px",
+                        maxWidth: "75px",
+                      }}
+                    >
+                      Formato
+                    </th>
+                    <th
+                      colSpan="4"
+                      style={{
+                        padding: "4px",
+                        border: "1px solid #0EA5E9",
+                        fontSize: "12px",
+                        textAlign: "center",
+                      }}
+                    >
+                      Latitud
+                    </th>
+                    <th
+                      colSpan="4"
+                      style={{
+                        padding: "4px",
+                        border: "1px solid #0EA5E9",
+                        fontSize: "12px",
+                        textAlign: "center",
+                      }}
+                    >
+                      Longitud
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {/* Fila Decimal */}
                   <tr>
-                    <td style={{ padding: "4px", border: "1px solid #0EA5E9", fontWeight: "bold", fontSize: "11px", backgroundColor: "#e1f1f7", width: "75px", minWidth: "75px", maxWidth: "75px" }}>Decimal</td>
-                    <td colSpan="4" style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                    <td
+                      style={{
+                        padding: "4px",
+                        border: "1px solid #0EA5E9",
+                        fontWeight: "bold",
+                        fontSize: "11px",
+                        backgroundColor: "#e1f1f7",
+                        width: "75px",
+                        minWidth: "75px",
+                        maxWidth: "75px",
+                      }}
+                    >
+                      Decimal
+                    </td>
+                    <td
+                      colSpan="4"
+                      style={{ padding: "2px", border: "1px solid #0EA5E9" }}
+                    >
                       <input
                         type="number"
                         value={latitud || ""}
@@ -856,7 +941,10 @@ export default function CalasConsumoCard({
                         }}
                       />
                     </td>
-                    <td colSpan="4" style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+                    <td
+                      colSpan="4"
+                      style={{ padding: "2px", border: "1px solid #0EA5E9" }}
+                    >
                       <input
                         type="number"
                         value={longitud || ""}
@@ -881,13 +969,35 @@ export default function CalasConsumoCard({
                   </tr>
                   {/* Fila GMS */}
                   <tr>
-                    <td style={{ padding: "4px", border: "1px solid #0EA5E9", fontWeight: "bold", fontSize: "11px", backgroundColor: "#e1f1f7", width: "75px", minWidth: "75px", maxWidth: "75px" }}>GMS</td>
+                    <td
+                      style={{
+                        padding: "4px",
+                        border: "1px solid #0EA5E9",
+                        fontWeight: "bold",
+                        fontSize: "11px",
+                        backgroundColor: "#e1f1f7",
+                        width: "75px",
+                        minWidth: "75px",
+                        maxWidth: "75px",
+                      }}
+                    >
+                      GMS
+                    </td>
                     <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "2px",
+                        }}
+                      >
                         <input
                           type="number"
                           value={latGrados}
-                          onChange={(e) => setLatGrados(Number(e.target.value) || 0)}
+                          onChange={(e) =>
+                            setLatGrados(Number(e.target.value) || 0)
+                          }
                           onBlur={actualizarLatitudDesdeDMS}
                           disabled={loading}
                           min="0"
@@ -901,15 +1011,26 @@ export default function CalasConsumoCard({
                             textAlign: "center",
                           }}
                         />
-                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                          °
+                        </span>
                       </div>
                     </td>
                     <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "2px",
+                        }}
+                      >
                         <input
                           type="number"
                           value={latMinutos}
-                          onChange={(e) => setLatMinutos(Number(e.target.value) || 0)}
+                          onChange={(e) =>
+                            setLatMinutos(Number(e.target.value) || 0)
+                          }
                           onBlur={actualizarLatitudDesdeDMS}
                           disabled={loading}
                           min="0"
@@ -923,15 +1044,26 @@ export default function CalasConsumoCard({
                             textAlign: "center",
                           }}
                         />
-                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                          '
+                        </span>
                       </div>
                     </td>
                     <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "2px",
+                        }}
+                      >
                         <input
                           type="number"
                           value={latSegundos}
-                          onChange={(e) => setLatSegundos(Number(e.target.value) || 0)}
+                          onChange={(e) =>
+                            setLatSegundos(Number(e.target.value) || 0)
+                          }
                           onBlur={actualizarLatitudDesdeDMS}
                           disabled={loading}
                           min="0"
@@ -946,7 +1078,9 @@ export default function CalasConsumoCard({
                             textAlign: "center",
                           }}
                         />
-                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                          "
+                        </span>
                       </div>
                     </td>
                     <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
@@ -971,11 +1105,20 @@ export default function CalasConsumoCard({
                       </select>
                     </td>
                     <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "2px",
+                        }}
+                      >
                         <input
                           type="number"
                           value={lonGrados}
-                          onChange={(e) => setLonGrados(Number(e.target.value) || 0)}
+                          onChange={(e) =>
+                            setLonGrados(Number(e.target.value) || 0)
+                          }
                           onBlur={actualizarLongitudDesdeDMS}
                           disabled={loading}
                           min="0"
@@ -989,15 +1132,26 @@ export default function CalasConsumoCard({
                             textAlign: "center",
                           }}
                         />
-                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>°</span>
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                          °
+                        </span>
                       </div>
                     </td>
                     <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "2px",
+                        }}
+                      >
                         <input
                           type="number"
                           value={lonMinutos}
-                          onChange={(e) => setLonMinutos(Number(e.target.value) || 0)}
+                          onChange={(e) =>
+                            setLonMinutos(Number(e.target.value) || 0)
+                          }
                           onBlur={actualizarLongitudDesdeDMS}
                           disabled={loading}
                           min="0"
@@ -1011,15 +1165,26 @@ export default function CalasConsumoCard({
                             textAlign: "center",
                           }}
                         />
-                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>'</span>
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                          '
+                        </span>
                       </div>
                     </td>
                     <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "2px",
+                        }}
+                      >
                         <input
                           type="number"
                           value={lonSegundos}
-                          onChange={(e) => setLonSegundos(Number(e.target.value) || 0)}
+                          onChange={(e) =>
+                            setLonSegundos(Number(e.target.value) || 0)
+                          }
                           onBlur={actualizarLongitudDesdeDMS}
                           disabled={loading}
                           min="0"
@@ -1034,7 +1199,9 @@ export default function CalasConsumoCard({
                             textAlign: "center",
                           }}
                         />
-                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>"</span>
+                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                          "
+                        </span>
                       </div>
                     </td>
                     <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
@@ -1063,7 +1230,12 @@ export default function CalasConsumoCard({
               </table>
             </div>
           </div>
-
+          <DetalleCalasConsumoEspecieForm
+            calaId={editingCala?.id}
+            faenaPescaConsumoId={faenaPescaConsumoId}
+            calaFinalizada={calaFinalizada}
+            onDataChange={onDataChange}
+          />
           <div
             style={{
               display: "flex",
@@ -1140,14 +1312,6 @@ export default function CalasConsumoCard({
                 )}
               />
             </div>
-          </div>
-          <div className="col-12">
-            <DetalleCalasConsumoEspecieForm
-              calaId={editingCala?.id}
-              faenaPescaConsumoId={faenaPescaConsumoId}
-              calaFinalizada={calaFinalizada}
-              onDataChange={onDataChange}
-            />
           </div>
         </div>
       </Dialog>

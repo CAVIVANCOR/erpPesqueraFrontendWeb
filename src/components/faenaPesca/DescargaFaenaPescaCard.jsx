@@ -329,12 +329,6 @@ const DescargaFaenaPescaCard = ({
         selection={selectedDescarga}
         onSelectionChange={(e) => setSelectedDescarga(e.value)}
         dataKey="id"
-        paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25]}
-        className="datatable-responsive"
-        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} descargas"
         globalFilter={globalFilter}
         emptyMessage="No se encontraron descargas."
         header={header}

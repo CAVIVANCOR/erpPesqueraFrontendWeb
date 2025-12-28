@@ -200,7 +200,7 @@ const DetalleFaenasPescaCard = forwardRef(
     const handleNuevaFaena = async () => {
       try {
         setCreandoFaenaCompleta(true);
-        
+
         toast.current?.show({
           severity: "info",
           summary: "Procesando",
@@ -209,7 +209,7 @@ const DetalleFaenasPescaCard = forwardRef(
         });
 
         const resultado = await crearFaenaCompleta(temporadaPescaId);
-        
+
         // Mostrar modal con resumen de creación
         if (resultado?.resumen) {
           setResumenCreacionData(resultado.resumen);
@@ -226,7 +226,7 @@ const DetalleFaenasPescaCard = forwardRef(
 
         // Recargar lista de faenas
         await cargarFaenas();
-        
+
         // Notificar cambios
         if (onFaenasChange) {
           onFaenasChange();
@@ -238,13 +238,15 @@ const DetalleFaenasPescaCard = forwardRef(
             detail: { temporadaId: temporadaPescaId },
           })
         );
-
       } catch (error) {
         console.error("Error creando faena completa:", error);
         toast.current?.show({
           severity: "error",
           summary: "Error",
-          detail: error?.response?.data?.mensaje || error?.response?.data?.error || "Error al crear la faena",
+          detail:
+            error?.response?.data?.mensaje ||
+            error?.response?.data?.error ||
+            "Error al crear la faena",
           life: 5000,
         });
       } finally {
@@ -469,7 +471,7 @@ const DetalleFaenasPescaCard = forwardRef(
         sortable: true,
         body: (rowData) =>
           rowData.fechaSalida
-            ? new Date(rowData.fechaSalida).toLocaleDateString('es-PE')
+            ? new Date(rowData.fechaSalida).toLocaleDateString("es-PE")
             : "-",
       },
       {
@@ -484,7 +486,7 @@ const DetalleFaenasPescaCard = forwardRef(
         sortable: true,
         body: (rowData) =>
           rowData.fechaRetorno
-            ? new Date(rowData.fechaRetorno).toLocaleDateString('es-PE')
+            ? new Date(rowData.fechaRetorno).toLocaleDateString("es-PE")
             : "-",
       },
       {
@@ -493,7 +495,7 @@ const DetalleFaenasPescaCard = forwardRef(
         sortable: true,
         body: (rowData) =>
           rowData.fechaHoraFondeo
-            ? new Date(rowData.fechaHoraFondeo).toLocaleDateString('es-PE')
+            ? new Date(rowData.fechaHoraFondeo).toLocaleDateString("es-PE")
             : "-",
       },
       {
@@ -569,6 +571,10 @@ const DetalleFaenasPescaCard = forwardRef(
               value={descargas}
               dataKey="id"
               className="datatable-responsive"
+              showGridlines
+              stripedRows
+              sortField="id"
+              sortOrder={-1}
               style={{ cursor: "no-drop", fontSize: getResponsiveFontSize() }}
             >
               <Column
@@ -583,7 +589,9 @@ const DetalleFaenasPescaCard = forwardRef(
                 sortable
                 style={{ minWidth: "10rem" }}
                 body={(rowData) => {
-                  const puerto = puertosData.find(p => p.id === rowData.puertoDescargaId);
+                  const puerto = puertosData.find(
+                    (p) => p.id === rowData.puertoDescargaId
+                  );
                   return puerto ? puerto.nombre : "N/A";
                 }}
               />
@@ -592,7 +600,9 @@ const DetalleFaenasPescaCard = forwardRef(
                 header="Inicio Descarga"
                 sortable
                 style={{ minWidth: "10rem" }}
-                body={(rowData) => formatearFecha(rowData.fechaHoraInicioDescarga)}
+                body={(rowData) =>
+                  formatearFecha(rowData.fechaHoraInicioDescarga)
+                }
               />
               <Column
                 field="fechaHoraFinDescarga"
@@ -638,7 +648,7 @@ const DetalleFaenasPescaCard = forwardRef(
               style={{
                 width: "100%",
                 color: "black",
-                backgroundColor: "#fcd4ab",  // Naranja personalizado
+                backgroundColor: "#fcd4ab", // Naranja personalizado
               }}
             />
           </div>
@@ -649,6 +659,10 @@ const DetalleFaenasPescaCard = forwardRef(
               value={detallesEspecie}
               dataKey="id"
               className="datatable-responsive"
+              showGridlines
+              stripedRows
+              sortField="id"
+              sortOrder={-1}
               style={{ cursor: "no-drop", fontSize: getResponsiveFontSize() }}
             >
               <Column
@@ -770,7 +784,7 @@ const DetalleFaenasPescaCard = forwardRef(
                       color: "black",
                       fontSize: "1rem",
                       padding: "0.5rem",
-                      backgroundColor: "#ff9800",  // Naranja personalizado
+                      backgroundColor: "#ff9800", // Naranja personalizado
                     }}
                   />
                 </div>
@@ -780,6 +794,10 @@ const DetalleFaenasPescaCard = forwardRef(
                   value={[cala]}
                   dataKey="id"
                   className="datatable-responsive"
+                  showGridlines
+                  stripedRows
+                  sortField="id"
+                  sortOrder={-1}
                   style={{
                     cursor: "no-drop",
                     fontSize: getResponsiveFontSize(),
@@ -850,7 +868,7 @@ const DetalleFaenasPescaCard = forwardRef(
     // Funciones para expandir y contraer filas
     const onRowExpand = async (event) => {
       const faenaId = event.data.id;
-      
+
       // Cargar calas si no existen
       if (!calasData[faenaId]) {
         try {
@@ -1067,7 +1085,9 @@ const DetalleFaenasPescaCard = forwardRef(
             icon={creandoFaenaCompleta ? "pi pi-spin pi-spinner" : "pi pi-plus"}
             onClick={handleNuevaFaena}
             disabled={
-              !temporadaPescaId || !temporadaData?.temporadaPescaIniciada || creandoFaenaCompleta
+              !temporadaPescaId ||
+              !temporadaData?.temporadaPescaIniciada ||
+              creandoFaenaCompleta
             }
             loading={creandoFaenaCompleta}
             raised
@@ -1130,10 +1150,14 @@ const DetalleFaenasPescaCard = forwardRef(
           <div className="flex gap-2">
             <Button
               label={creandoFaenaCompleta ? "Creando..." : "Nueva Faena"}
-              icon={creandoFaenaCompleta ? "pi pi-spin pi-spinner" : "pi pi-plus"}
+              icon={
+                creandoFaenaCompleta ? "pi pi-spin pi-spinner" : "pi pi-plus"
+              }
               onClick={handleNuevaFaena}
               disabled={
-                !temporadaPescaId || !temporadaData?.temporadaPescaIniciada || creandoFaenaCompleta
+                !temporadaPescaId ||
+                !temporadaData?.temporadaPescaIniciada ||
+                creandoFaenaCompleta
               }
               loading={creandoFaenaCompleta}
               tooltip={
@@ -1205,6 +1229,8 @@ const DetalleFaenasPescaCard = forwardRef(
               rows={10}
               showGridlines
               stripedRows
+              sortField="id"
+              sortOrder={-1}
               emptyMessage="No hay faenas registradas para esta temporada"
               className="p-datatable-sm"
               onRowClick={(e) => handleEditarFaena(e.data, e.originalEvent)}
@@ -1226,54 +1252,45 @@ const DetalleFaenasPescaCard = forwardRef(
         </Card>
 
         {/* Diálogo para crear/editar faena */}
-        <Dialog
+
+        <FaenaPescaForm
           visible={dialogVisible}
-          style={{ width: "1300px" }}
-          header={
-            editingFaena ? "Editar Faena de Pesca" : "Nueva Faena de Pesca"
-          }
-          modal
           onHide={() => setDialogVisible(false)}
-        >
-          <FaenaPescaForm
-            visible={dialogVisible}
-            onHide={() => setDialogVisible(false)}
-            isEdit={!!editingFaena}
-            defaultValues={editingFaena || {}}
-            onSubmit={onSubmit}
-            loading={loading}
-            onDataChange={cargarFaenas} // Callback para recargar faenas cuando cambien las toneladas
-            temporadaData={temporadaData}
-            onTemporadaDataChange={onTemporadaDataChange} // Callback para notificar cambios en datos de temporada
-            onFaenasChange={onFaenasChange} // Callback para notificar cambios en faenas
-            embarcacionesOptions={embarcaciones.map((e) => ({
-              label: e.activo?.nombre || e.nombre || "Sin nombre",
-              value: e.id,
-            }))}
-            bolichesOptions={boliches.map((b) => ({
-              label: b.descripcion,
-              value: b.id,
-            }))}
-            bahiasComercialesOptions={bahiasComerciales.map((b) => ({
-              label: `${b.nombres} ${b.apellidos}`,
-              value: b.id,
-            }))}
-            motoristasOptions={motoristas.map((m) => ({
-              label: `${m.nombres} ${m.apellidos}`,
-              value: m.id,
-            }))}
-            patronesOptions={patrones.map((p) => ({
-              label: `${p.nombres} ${p.apellidos}`,
-              value: p.id,
-            }))}
-            puertosOptions={puertosData.map((p) => ({
-              label: p.nombre,
-              value: p.id,
-            }))}
-            faenaCreatedSuccessfully={faenaCreatedSuccessfully}
-            setFaenaCreatedSuccessfully={setFaenaCreatedSuccessfully}
-          />
-        </Dialog>
+          isEdit={!!editingFaena}
+          defaultValues={editingFaena || {}}
+          onSubmit={onSubmit}
+          loading={loading}
+          onDataChange={cargarFaenas} // Callback para recargar faenas cuando cambien las toneladas
+          temporadaData={temporadaData}
+          onTemporadaDataChange={onTemporadaDataChange} // Callback para notificar cambios en datos de temporada
+          onFaenasChange={onFaenasChange} // Callback para notificar cambios en faenas
+          embarcacionesOptions={embarcaciones.map((e) => ({
+            label: e.activo?.nombre || e.nombre || "Sin nombre",
+            value: e.id,
+          }))}
+          bolichesOptions={boliches.map((b) => ({
+            label: b.descripcion,
+            value: b.id,
+          }))}
+          bahiasComercialesOptions={bahiasComerciales.map((b) => ({
+            label: `${b.nombres} ${b.apellidos}`,
+            value: b.id,
+          }))}
+          motoristasOptions={motoristas.map((m) => ({
+            label: `${m.nombres} ${m.apellidos}`,
+            value: m.id,
+          }))}
+          patronesOptions={patrones.map((p) => ({
+            label: `${p.nombres} ${p.apellidos}`,
+            value: p.id,
+          }))}
+          puertosOptions={puertosData.map((p) => ({
+            label: p.nombre,
+            value: p.id,
+          }))}
+          faenaCreatedSuccessfully={faenaCreatedSuccessfully}
+          setFaenaCreatedSuccessfully={setFaenaCreatedSuccessfully}
+        />
 
         {/* Modal de resumen de creación de faena */}
         <ResumenCreacionFaenaDialog

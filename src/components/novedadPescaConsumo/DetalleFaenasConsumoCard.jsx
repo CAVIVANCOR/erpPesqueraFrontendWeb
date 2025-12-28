@@ -974,15 +974,6 @@ const DetalleFaenasConsumoCard = forwardRef(
           </DataTable>
         </Card>
 
-        {/* Dialog para formulario de faena */}
-        <Dialog
-          visible={dialogVisible}
-          style={{ width: "90vw", maxWidth: "1400px" }}
-          header={editingFaena ? "Editar Faena" : "Nueva Faena"}
-          modal
-          onHide={() => setDialogVisible(false)}
-          className="p-fluid"
-        >
           <FaenaPescaConsumoForm
             visible={dialogVisible}
             onHide={() => setDialogVisible(false)}
@@ -1000,7 +991,6 @@ const DetalleFaenasConsumoCard = forwardRef(
             faenaCreatedSuccessfully={faenaCreatedSuccessfully}
             setFaenaCreatedSuccessfully={setFaenaCreatedSuccessfully}
           />
-        </Dialog>
 
         {/* Dialog de confirmación */}
         <ConfirmDialog

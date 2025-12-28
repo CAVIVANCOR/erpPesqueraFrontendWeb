@@ -354,7 +354,9 @@ const TemporadaPescaForm = ({
       numeroResolucion: data.numeroResolucion?.trim().toUpperCase() || null,
       urlResolucionPdf:
         data.urlResolucionPdf?.trim() || archivoSubido?.url || null,
-      limiteMaximoCapturaTn: data.limiteMaximoCapturaTn ? Number(data.limiteMaximoCapturaTn) : null,
+      limiteMaximoCapturaTn: data.limiteMaximoCapturaTn
+        ? Number(data.limiteMaximoCapturaTn)
+        : null,
       cuotaPropiaTon: data.cuotaPropiaTon ? Number(data.cuotaPropiaTon) : null,
       cuotaAlquiladaTon: data.cuotaAlquiladaTon
         ? Number(data.cuotaAlquiladaTon)
@@ -452,7 +454,7 @@ const TemporadaPescaForm = ({
           });
 
           const resultado = await iniciarTemporada(editingItem.id);
-          
+
           // Mostrar modal informativo con los resultados
           if (resultado?.resumen) {
             setInicioResultData(resultado);
@@ -494,7 +496,8 @@ const TemporadaPescaForm = ({
           toast.current?.show({
             severity: "error",
             summary: "Error",
-            detail: error?.response?.data?.mensaje || "Error al iniciar la temporada",
+            detail:
+              error?.response?.data?.mensaje || "Error al iniciar la temporada",
             life: 5000,
           });
         } finally {
@@ -565,7 +568,9 @@ const TemporadaPescaForm = ({
           toast.current?.show({
             severity: "error",
             summary: "Error",
-            detail: error?.response?.data?.mensaje || "Error al finalizar la temporada",
+            detail:
+              error?.response?.data?.mensaje ||
+              "Error al finalizar la temporada",
             life: 5000,
           });
         } finally {
@@ -636,7 +641,9 @@ const TemporadaPescaForm = ({
           toast.current?.show({
             severity: "error",
             summary: "Error",
-            detail: error?.response?.data?.mensaje || "Error al cancelar la temporada",
+            detail:
+              error?.response?.data?.mensaje ||
+              "Error al cancelar la temporada",
             life: 5000,
           });
         } finally {
@@ -725,7 +732,9 @@ const TemporadaPescaForm = ({
             icon={iniciandoTemporada ? "pi pi-spin pi-spinner" : "pi pi-play"}
             className="p-button-success"
             onClick={handleIniciarTemporada}
-            disabled={readOnly || !puedeIniciarTemporada() || iniciandoTemporada}
+            disabled={
+              readOnly || !puedeIniciarTemporada() || iniciandoTemporada
+            }
             loading={iniciandoTemporada}
             tooltip={
               readOnly
@@ -744,8 +753,14 @@ const TemporadaPescaForm = ({
         {/* Botón Finalizar Temporada - Solo visible en estado EN PROCESO (14) */}
         {editingItem && Number(estadoSeleccionado) === 14 && (
           <Button
-            label={finalizandoTemporada ? "Finalizando..." : "Finalizar Temporada"}
-            icon={finalizandoTemporada ? "pi pi-spin pi-spinner" : "pi pi-check-circle"}
+            label={
+              finalizandoTemporada ? "Finalizando..." : "Finalizar Temporada"
+            }
+            icon={
+              finalizandoTemporada
+                ? "pi pi-spin pi-spinner"
+                : "pi pi-check-circle"
+            }
             className="p-button-warning"
             onClick={handleFinalizarTemporada}
             disabled={finalizandoTemporada}
@@ -763,7 +778,9 @@ const TemporadaPescaForm = ({
           (Number(estadoSeleccionado) === 13 ||
             Number(estadoSeleccionado) === 14) && (
             <Button
-              label={cancelandoTemporada ? "Cancelando..." : "Cancelar Temporada"}
+              label={
+                cancelandoTemporada ? "Cancelando..." : "Cancelar Temporada"
+              }
               icon={cancelandoTemporada ? "pi pi-spin pi-spinner" : "pi pi-ban"}
               className="p-button-danger"
               onClick={handleCancelarTemporada}
@@ -782,14 +799,21 @@ const TemporadaPescaForm = ({
           icon="pi pi-times"
           outlined
           onClick={handleHide}
-          disabled={iniciandoTemporada || finalizandoTemporada || cancelandoTemporada}
+          disabled={
+            iniciandoTemporada || finalizandoTemporada || cancelandoTemporada
+          }
         />
         <Button
           label={isEdit ? "Actualizar" : "Crear"}
           icon="pi pi-check"
           onClick={handleSubmit(handleFormSubmit)}
           loading={validandoSuperposicion}
-          disabled={readOnly || iniciandoTemporada || finalizandoTemporada || cancelandoTemporada}
+          disabled={
+            readOnly ||
+            iniciandoTemporada ||
+            finalizandoTemporada ||
+            cancelandoTemporada
+          }
         />
       </div>
     </div>
@@ -817,14 +841,21 @@ const TemporadaPescaForm = ({
         // Campos de liquidación - Parámetros de comisiones
         porcentajeBaseLiqPesca: editingItem.porcentajeBaseLiqPesca || null,
         porcentajeComisionPatron: editingItem.porcentajeComisionPatron || null,
-        cantPersonalCalcComisionMotorista: editingItem.cantPersonalCalcComisionMotorista || null,
-        cantDivisoriaCalcComisionMotorista: editingItem.cantDivisoriaCalcComisionMotorista || null,
-        porcentajeCalcComisionPanguero: editingItem.porcentajeCalcComisionPanguero || null,
+        cantPersonalCalcComisionMotorista:
+          editingItem.cantPersonalCalcComisionMotorista || null,
+        cantDivisoriaCalcComisionMotorista:
+          editingItem.cantDivisoriaCalcComisionMotorista || null,
+        porcentajeCalcComisionPanguero:
+          editingItem.porcentajeCalcComisionPanguero || null,
         // Campos de liquidación - Estimados
-        liqTripulantesPescaEstimado: editingItem.liqTripulantesPescaEstimado || null,
-        liqComisionPatronEstimado: editingItem.liqComisionPatronEstimado || null,
-        liqComisionMotoristaEstimado: editingItem.liqComisionMotoristaEstimado || null,
-        liqComisionPangueroEstimado: editingItem.liqComisionPangueroEstimado || null,
+        liqTripulantesPescaEstimado:
+          editingItem.liqTripulantesPescaEstimado || null,
+        liqComisionPatronEstimado:
+          editingItem.liqComisionPatronEstimado || null,
+        liqComisionMotoristaEstimado:
+          editingItem.liqComisionMotoristaEstimado || null,
+        liqComisionPangueroEstimado:
+          editingItem.liqComisionPangueroEstimado || null,
         liqTotalPescaEstimada: editingItem.liqTotalPescaEstimada || null,
         liqComisionAlquilerCuota: editingItem.liqComisionAlquilerCuota || null,
         // Campos de liquidación - Reales
@@ -882,136 +913,138 @@ const TemporadaPescaForm = ({
   }, [editingItem?.id]);
 
   // Determinar si hay alguna operación en proceso
-  const operacionEnProceso = iniciandoTemporada || finalizandoTemporada || cancelandoTemporada;
+  const operacionEnProceso =
+    iniciandoTemporada || finalizandoTemporada || cancelandoTemporada;
 
   return (
     <Dialog
       visible={visible}
       style={{ width: "1300px" }}
-      headerStyle={{ display: "none" }}
+      header={
+        <div className="flex justify-content-center mb-4">
+          <Tag
+            value={watch("nombre") || "Nueva Temporada de Pesca"}
+            severity="info"
+            style={{
+              fontSize: "1rem",
+              textTransform: "uppercase",
+              fontWeight: "bold",
+              textAlign: "center",
+              width: "100%",
+            }}
+          />
+        </div>
+      }
       modal
       footer={dialogFooter}
       onHide={handleHide}
       className="p-fluid"
       closable={!operacionEnProceso}
+      maximizable // 🆕 Habilitar maximizar
+      maximized={true} // Opcional: estado inicial
     >
-      <BlockUI blocked={operacionEnProceso} template={operacionEnProceso ? <ProgressSpinner /> : null}>
-      {/* Mostrar nombre de temporada con Tag */}
-      <div className="flex justify-content-center mb-4">
-        <Tag
-          value={watch("nombre") || "Nueva Temporada de Pesca"}
-          severity="info"
-          style={{
-            fontSize: "1.1rem",
-            padding: "0.75rem 0.5rem",
-            textTransform: "uppercase",
-            fontWeight: "bold",
-            textAlign: "center",
-            width: "100%",
-            marginTop: "0.5rem",
-          }}
-        />
-      </div>
+      <BlockUI
+        blocked={operacionEnProceso}
+        template={operacionEnProceso ? <ProgressSpinner /> : null}
+      >
+        <form onSubmit={handleSubmit(handleFormSubmit)}>
+          {activeCard === "datos-generales" && (
+            <DatosGeneralesTemporadaForm
+              control={control}
+              errors={errors}
+              setValue={setValue}
+              watch={watch}
+              getValues={getValues}
+              empresas={empresasList}
+              bahiasComerciales={bahiasComerciales}
+              motoristas={motoristas}
+              patrones={patrones}
+              estadosTemporada={estadosTemporada}
+              empresaSeleccionada={empresaSeleccionada}
+              defaultValues={getValues()}
+              embarcaciones={embarcaciones}
+              boliches={boliches}
+              puertos={puertosPesca}
+              temporadaData={editingItem}
+              onTemporadaDataChange={onTemporadaDataChange}
+              readOnly={readOnly}
+            />
+          )}
 
-      <form onSubmit={handleSubmit(handleFormSubmit)}>
-        {activeCard === "datos-generales" && (
-          <DatosGeneralesTemporadaForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            empresas={empresasList}
-            bahiasComerciales={bahiasComerciales}
-            motoristas={motoristas}
-            patrones={patrones}
-            estadosTemporada={estadosTemporada}
-            empresaSeleccionada={empresaSeleccionada}
-            defaultValues={getValues()}
-            embarcaciones={embarcaciones}
-            boliches={boliches}
-            puertos={puertosPesca}
-            temporadaData={editingItem}
-            onTemporadaDataChange={onTemporadaDataChange}
-            readOnly={readOnly}
-          />
-        )}
+          {activeCard === "resolucion-pdf" && (
+            <ResolucionPDFTemporadaForm
+              control={control}
+              errors={errors}
+              setValue={setValue}
+              watch={watch}
+              getValues={getValues}
+              defaultValues={getValues()}
+              readOnly={readOnly}
+            />
+          )}
+          {activeCard === "entregas-a-rendir" && (
+            <EntregasARendirTemporadaCard
+              temporadaPescaId={editingItem?.id}
+              temporadaPescaIniciada={
+                editingItem?.temporadaPescaIniciada || false
+              }
+              empresaId={editingItem?.empresaId}
+              personal={personal}
+              centrosCosto={centrosCosto}
+              tiposMovimiento={tiposMovimiento}
+              tiposDocumento={tiposDocumento}
+              onDataChange={onTemporadaDataChange}
+              readOnly={readOnly}
+            />
+          )}
 
-        {activeCard === "resolucion-pdf" && (
-          <ResolucionPDFTemporadaForm
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            getValues={getValues}
-            defaultValues={getValues()}
-            readOnly={readOnly}
-          />
-        )}
-        {activeCard === "entregas-a-rendir" && (
-          <EntregasARendirTemporadaCard
-            temporadaPescaId={editingItem?.id}
-            temporadaPescaIniciada={
-              editingItem?.temporadaPescaIniciada || false
-            }
-            empresaId={editingItem?.empresaId}
-            personal={personal}
-            centrosCosto={centrosCosto}
-            tiposMovimiento={tiposMovimiento}
-            tiposDocumento={tiposDocumento}
-            onDataChange={onTemporadaDataChange}
-            readOnly={readOnly}
-          />
-        )}
+          {activeCard === "liquidacion-personal" && (
+            <DatosLiquidacionPersonalPesca
+              control={control}
+              errors={errors}
+              setValue={setValue}
+              watch={watch}
+              readOnly={readOnly}
+            />
+          )}
 
-        {activeCard === "liquidacion-personal" && (
-          <DatosLiquidacionPersonalPesca
-            control={control}
-            errors={errors}
-            setValue={setValue}
-            watch={watch}
-            readOnly={readOnly}
-          />
-        )}
+          {/* Indicador de validación de superposición */}
+          {validandoSuperposicion && (
+            <div className="col-12">
+              <Message
+                severity="info"
+                text="Validando superposición de fechas con otras temporadas..."
+                className="w-full"
+              />
+            </div>
+          )}
+        </form>
 
-        {/* Indicador de validación de superposición */}
-        {validandoSuperposicion && (
-          <div className="col-12">
+        {/* Mensaje de operación en proceso */}
+        {operacionEnProceso && (
+          <div className="col-12 mt-3">
             <Message
               severity="info"
-              text="Validando superposición de fechas con otras temporadas..."
+              text={
+                iniciandoTemporada
+                  ? "Iniciando temporada, por favor espere. No cierre esta ventana."
+                  : finalizandoTemporada
+                  ? "Finalizando temporada, por favor espere. No cierre esta ventana."
+                  : "Cancelando temporada, por favor espere. No cierre esta ventana."
+              }
               className="w-full"
             />
           </div>
         )}
-      </form>
-      
-      {/* Mensaje de operación en proceso */}
-      {operacionEnProceso && (
-        <div className="col-12 mt-3">
-          <Message
-            severity="info"
-            text={
-              iniciandoTemporada
-                ? "Iniciando temporada, por favor espere. No cierre esta ventana."
-                : finalizandoTemporada
-                ? "Finalizando temporada, por favor espere. No cierre esta ventana."
-                : "Cancelando temporada, por favor espere. No cierre esta ventana."
-            }
-            className="w-full"
-          />
-        </div>
-      )}
-      
-      <Toast ref={toast} />
-      
-      {/* Modal Informativo de Inicio de Temporada */}
-      <MuestraResultadoInicioTemporada
-        visible={showInicioResult}
-        onHide={() => setShowInicioResult(false)}
-        data={inicioResultData?.resumen}
-      />
-      
+
+        <Toast ref={toast} />
+
+        {/* Modal Informativo de Inicio de Temporada */}
+        <MuestraResultadoInicioTemporada
+          visible={showInicioResult}
+          onHide={() => setShowInicioResult(false)}
+          data={inicioResultData?.resumen}
+        />
       </BlockUI>
     </Dialog>
   );

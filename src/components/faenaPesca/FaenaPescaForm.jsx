@@ -22,10 +22,13 @@ import { listarEstadosMultiFuncionFaenaPesca } from "../../api/estadoMultiFuncio
 import { getPersonal } from "../../api/personal";
 import { getDocumentosPesca } from "../../api/documentoPesca";
 import { getDocumentacionesEmbarcacion } from "../../api/documentacionEmbarcacion";
-import { getClientesPorEmpresa } from "../../api/entidadComercial"; 
+import { getClientesPorEmpresa } from "../../api/entidadComercial";
 import { getEspeciesParaDropdown } from "../../api/especie";
 import { getPuertosActivos } from "../../api/puertoPesca";
-import { getFaenaPescaPorId, finalizarFaenaConMovimientoAlmacen } from "../../api/faenaPesca"; // Importar función para obtener faena por ID
+import {
+  getFaenaPescaPorId,
+  finalizarFaenaConMovimientoAlmacen,
+} from "../../api/faenaPesca"; // Importar función para obtener faena por ID
 import { confirmDialog } from "primereact/confirmdialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import logoEscudoPeru from "../../assets/logoEscudoPeru.png";
@@ -64,7 +67,7 @@ export default function FaenaPescaForm({
   const [documentacionEmbarcacion, setDocumentacionEmbarcacion] = useState([]);
   const [clientes, setClientes] = useState([]); // Estado para clientes
   const [especies, setEspecies] = useState([]); // Estado para especies
-  
+
   // Estado de loading para prevenir doble clic
   const [finalizandoFaena, setFinalizandoFaena] = useState(false);
 
@@ -106,9 +109,14 @@ export default function FaenaPescaForm({
       estadoFaenaId: null,
       fechaHoraFondeo: null,
       latitudFondeo: null,
-      longitudFondeo: null
+      longitudFondeo: null,
     },
   });
+
+  // Actualizar isEditMode cuando cambien las props
+  useEffect(() => {
+    setIsEditMode(isEdit || !!defaultValues?.id);
+  }, [isEdit, defaultValues]);
 
   useEffect(() => {
     // Actualizar opciones cuando cambien las props
@@ -138,10 +146,11 @@ export default function FaenaPescaForm({
         // Cargar personal
         const personalData = await getPersonal();
         const documentosPescaData = await getDocumentosPesca();
-        const documentacionEmbarcacionData = await getDocumentacionesEmbarcacion();
+        const documentacionEmbarcacionData =
+          await getDocumentacionesEmbarcacion();
         const especiesData = await getEspeciesParaDropdown();
         const puertosData = await getPuertosActivos();
-        
+
         setPersonal(personalData);
         setDocumentosPesca(documentosPescaData);
         setDocumentacionEmbarcacion(documentacionEmbarcacionData);
@@ -150,7 +159,9 @@ export default function FaenaPescaForm({
 
         // Cargar clientes si hay temporada con empresaId
         if (temporadaData?.empresaId) {
-          const clientesData = await getClientesPorEmpresa(temporadaData.empresaId);
+          const clientesData = await getClientesPorEmpresa(
+            temporadaData.empresaId
+          );
           setClientes(clientesData);
         }
       } catch (error) {
@@ -192,7 +203,12 @@ export default function FaenaPescaForm({
     const descripcion = watch("descripcion");
     const id = watch("id");
     setForceUpdate((prev) => prev + 1);
-  }, [watch("descripcion"), watch("id"), currentFaenaData.id, currentFaenaData.descripcion]);
+  }, [
+    watch("descripcion"),
+    watch("id"),
+    currentFaenaData.id,
+    currentFaenaData.descripcion,
+  ]);
 
   useEffect(() => {
     // Escuchar cambios en DescargaFaenaPesca
@@ -204,28 +220,46 @@ export default function FaenaPescaForm({
             // Recargar la faena actualizada desde el backend
             const faenaActualizada = await getFaenaPescaPorId(faenaId);
             if (faenaActualizada) {
-
-              
               // Actualizar los campos del formulario con los datos sincronizados
-              setValue("fechaDescarga", faenaActualizada.fechaDescarga ? new Date(faenaActualizada.fechaDescarga) : null);
-              setValue("puertoDescargaId", faenaActualizada.puertoDescargaId ? Number(faenaActualizada.puertoDescargaId) : null);
-              setValue("fechaHoraFondeo", faenaActualizada.fechaHoraFondeo ? new Date(faenaActualizada.fechaHoraFondeo) : null);
-              setValue("puertoFondeoId", faenaActualizada.puertoFondeoId ? Number(faenaActualizada.puertoFondeoId) : null);
-              
+              setValue(
+                "fechaDescarga",
+                faenaActualizada.fechaDescarga
+                  ? new Date(faenaActualizada.fechaDescarga)
+                  : null
+              );
+              setValue(
+                "puertoDescargaId",
+                faenaActualizada.puertoDescargaId
+                  ? Number(faenaActualizada.puertoDescargaId)
+                  : null
+              );
+              setValue(
+                "fechaHoraFondeo",
+                faenaActualizada.fechaHoraFondeo
+                  ? new Date(faenaActualizada.fechaHoraFondeo)
+                  : null
+              );
+              setValue(
+                "puertoFondeoId",
+                faenaActualizada.puertoFondeoId
+                  ? Number(faenaActualizada.puertoFondeoId)
+                  : null
+              );
+
               // Actualizar currentFaenaData para forzar re-render completo
-              setCurrentFaenaData(prev => ({
+              setCurrentFaenaData((prev) => ({
                 ...prev,
                 fechaDescarga: faenaActualizada.fechaDescarga,
                 puertoDescargaId: faenaActualizada.puertoDescargaId,
                 fechaHoraFondeo: faenaActualizada.fechaHoraFondeo,
-                puertoFondeoId: faenaActualizada.puertoFondeoId
+                puertoFondeoId: faenaActualizada.puertoFondeoId,
               }));
-              
+
               // Forzar actualización del DOM después de un pequeño delay
               setTimeout(() => {
-                setForceUpdate(prev => prev + 1);
+                setForceUpdate((prev) => prev + 1);
               }, 100);
-              
+
               // Mostrar notificación de sincronización
               toast.current?.show({
                 severity: "info",
@@ -239,7 +273,7 @@ export default function FaenaPescaForm({
           console.error("Error al sincronizar campos de faena:", error);
         }
       };
-      
+
       sincronizarCampos();
     }
   }, [lastDescargaUpdate, currentFaenaData.id, defaultValues.id, setValue]);
@@ -256,58 +290,59 @@ export default function FaenaPescaForm({
   const handleFormSubmit = async (data) => {
     try {
       // Llamar onSubmit original y obtener la respuesta
-      const resultado = await onSubmit(data);      
+      const resultado = await onSubmit(data);
       // Si es creación y se obtuvo un ID, actualizar los datos actuales
       if (!isEditMode && resultado && resultado.id) {
-        
         // Generar descripción si el backend no la devuelve
-        const descripcionGenerada = resultado.descripcion || `Faena ${resultado.id} Temporada ${temporadaData?.numeroResolucion || 'S/N'}`;
-        
-        const nuevaFaenaData = { 
-          ...data, 
+        const descripcionGenerada =
+          resultado.descripcion ||
+          `Faena ${resultado.id} Temporada ${
+            temporadaData?.numeroResolucion || "S/N"
+          }`;
+
+        const nuevaFaenaData = {
+          ...data,
           id: resultado.id,
-          descripcion: descripcionGenerada
+          descripcion: descripcionGenerada,
         };
         setCurrentFaenaData(nuevaFaenaData);
-        
+
         // Actualizar el formulario con el nuevo ID ANTES de cambiar isEditMode
         reset({
           ...data,
           id: resultado.id,
-          descripcion: descripcionGenerada
+          descripcion: descripcionGenerada,
         });
-        
-        
+
         // Cambiar a modo edición inmediatamente
         setIsEditMode(true);
-        
-        
+
         // Forzar actualización después de un pequeño delay para asegurar que el reset se complete
         setTimeout(() => {
-          setForceUpdate(prev => prev + 1);
+          setForceUpdate((prev) => prev + 1);
         }, 100);
-        
+
         // Actualizar la prop faenaCreatedSuccessfully
         setFaenaCreatedSuccessfully?.(true);
-        
+
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
-          detail: "Faena creada correctamente. Ahora puede acceder a todas las funciones.",
+          detail:
+            "Faena creada correctamente. Ahora puede acceder a todas las funciones.",
           life: 4000,
         });
       } else if (isEditMode) {
         toast.current?.show({
           severity: "success",
-          summary: "Éxito", 
+          summary: "Éxito",
           detail: "Faena actualizada correctamente",
           life: 3000,
         });
       }
-      
+
       // NO cerrar la ventana - comentar o eliminar onHide()
       // onHide();
-      
     } catch (error) {
       console.error("❌ Error en handleFormSubmit:", error);
       toast.current?.show({
@@ -328,7 +363,7 @@ export default function FaenaPescaForm({
     if (finalizandoFaena) {
       return;
     }
-    
+
     if (!temporadaData?.id) {
       toast.current?.show({
         severity: "warn",
@@ -349,7 +384,6 @@ export default function FaenaPescaForm({
       acceptLabel: "Sí, Finalizar Faena",
       rejectLabel: "Cancelar",
       accept: async () => {
-
         setFinalizandoFaena(true);
         try {
           toast.current?.show({
@@ -358,40 +392,47 @@ export default function FaenaPescaForm({
             detail: "Finalizando faena, por favor espere...",
             life: 3000,
           });
-          
+
           // Llamar al backend para finalizar (solo actualiza estado)
           const resultado = await finalizarFaenaConMovimientoAlmacen(
             defaultValues.id,
             temporadaData.id
           );
-          
+
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
-            detail: "Faena finalizada correctamente. Ahora puede generar los movimientos de almacén desde cada descarga usando el botón 'Finalizar Descarga'.",
+            detail:
+              "Faena finalizada correctamente. Ahora puede generar los movimientos de almacén desde cada descarga usando el botón 'Finalizar Descarga'.",
             life: 6000,
           });
 
           // Actualizar el estado local
           setValue("estadoFaenaId", 19);
-          
+
           // Recargar datos de la faena desde el servidor para reflejar el cambio
           if (defaultValues.id) {
             try {
-              const faenaActualizada = await getFaenaPescaPorId(defaultValues.id);
+              const faenaActualizada = await getFaenaPescaPorId(
+                defaultValues.id
+              );
               reset(faenaActualizada);
             } catch (error) {
               console.error("Error recargando datos de faena:", error);
             }
           }
-          
+
           // Notificar cambios
           if (onFaenasChange) {
             onFaenasChange();
           }
         } catch (error) {
           console.error("Error finalizando faena:", error);
-          const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || "Error al finalizar la faena";
+          const errorMsg =
+            error.response?.data?.error ||
+            error.response?.data?.message ||
+            error.message ||
+            "Error al finalizar la faena";
           toast.current?.show({
             severity: "error",
             summary: "Error",
@@ -418,11 +459,18 @@ export default function FaenaPescaForm({
         marginTop: 2,
       }}
     >
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: "4px",
+        }}
+      >
         <Button
           icon="pi pi-list"
           tooltip="Acciones Previas"
-          label="Previas"
+          label="Revision Acciones Previas"
           tooltipOptions={{ position: "bottom" }}
           className={
             activeCard === "acciones-previas"
@@ -450,7 +498,14 @@ export default function FaenaPescaForm({
           style={{ width: "100%", height: "100%" }}
         />
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: "4px",
+        }}
+      >
         <Button
           icon="pi pi-users"
           tooltip="Documentos de Tripulantes"
@@ -482,7 +537,14 @@ export default function FaenaPescaForm({
           style={{ width: "100%", height: "100%" }}
         />
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: "4px",
+        }}
+      >
         <Button
           icon="pi pi-download"
           tooltip="Descarga de Faena"
@@ -504,9 +566,7 @@ export default function FaenaPescaForm({
           label="Tripulantes"
           tooltipOptions={{ position: "bottom" }}
           className={
-            activeCard === "tripulantes"
-              ? "p-button-info"
-              : "p-button-outlined"
+            activeCard === "tripulantes" ? "p-button-info" : "p-button-outlined"
           }
           onClick={() => handleNavigateToCard("tripulantes")}
           type="button"
@@ -514,7 +574,14 @@ export default function FaenaPescaForm({
           style={{ width: "100%", height: "100%" }}
         />
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}
+      >
         <Button
           tooltip="Reporte de Faenas y Calas PRODUCE"
           tooltipOptions={{ position: "bottom" }}
@@ -540,7 +607,14 @@ export default function FaenaPescaForm({
           PRODUCE
         </Button>
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}
+      >
         <Button
           label="Cancelar"
           icon="pi pi-times"
@@ -571,53 +645,66 @@ export default function FaenaPescaForm({
     <Dialog
       visible={visible}
       style={{ width: "1300px" }}
-      headerStyle={{ display: "none" }}
+      header={
+        <div className="flex justify-content-center mb-4">
+          <Tag
+            key={`tag-${isEditMode}-${faenaCreatedSuccessfully}-${watch(
+              "id"
+            )}-${watch("descripcion")}-${forceUpdate}`}
+            value={(() => {
+              const descripcion =
+                watch("descripcion") ||
+                currentFaenaData.descripcion ||
+                defaultValues.descripcion;
+              const faenaId =
+                watch("id") || currentFaenaData.id || defaultValues.id;
+              const numeroResolucion = temporadaData?.numeroResolucion || "S/N";
+              let descripcionBase = "";
+              if (descripcion && descripcion.includes("Faena")) {
+                descripcionBase = descripcion;
+              } else if (faenaId) {
+                descripcionBase = `Faena ${faenaId} Temporada ${numeroResolucion}`;
+              } else {
+                descripcionBase = `Nueva Faena Temporada ${numeroResolucion}`;
+              }
+
+              let resultado = "";
+              if (isEditMode) {
+                resultado = `EDITAR: ${descripcionBase}`;
+              } else if (faenaCreatedSuccessfully) {
+                resultado = `CREADA: ${descripcionBase}`;
+              } else {
+                resultado = descripcionBase;
+              }
+
+              return resultado;
+            })()}
+            severity={
+              isEditMode
+                ? "warning"
+                : faenaCreatedSuccessfully
+                ? "success"
+                : "info"
+            }
+            style={{
+              fontSize: "1.rem",
+              textTransform: "uppercase",
+              fontWeight: "bold",
+              textAlign: "center",
+              width: "100%",
+            }}
+          />
+        </div>
+      }
       modal
       maximizable
       footer={dialogFooter}
       onHide={handleHide}
+      maximized={true}
     >
       <Toast ref={toast} />
       {/* Mostrar descripción de faena con Tag */}
-      <div className="flex justify-content-center mb-4">
-        <Tag
-          key={`tag-${isEditMode}-${faenaCreatedSuccessfully}-${watch("id")}-${watch("descripcion")}-${forceUpdate}`}
-          value={(() => {
-            const descripcion = watch("descripcion") || currentFaenaData.descripcion || defaultValues.descripcion;
-            const faenaId = watch("id") || currentFaenaData.id || defaultValues.id;
-            const numeroResolucion = temporadaData?.numeroResolucion || 'S/N';
-            let descripcionBase = "";
-            if (descripcion && descripcion.includes('Faena')) {
-              descripcionBase = descripcion;
-            } else if (faenaId) {
-              descripcionBase = `Faena ${faenaId} Temporada ${numeroResolucion}`;
-            } else {
-              descripcionBase = `Nueva Faena Temporada ${numeroResolucion}`;
-            }
-            
-            let resultado = "";
-            if (isEditMode) {
-              resultado = `EDITAR: ${descripcionBase}`;
-            } else if (faenaCreatedSuccessfully) {
-              resultado = `CREADA: ${descripcionBase}`;
-            } else {
-              resultado = descripcionBase;
-            }
-            
-            return resultado;
-          })()}
-          severity={isEditMode ? "warning" : faenaCreatedSuccessfully ? "success" : "info"}
-          style={{
-            fontSize: "1.1rem",
-            padding: "0.75rem 1.25rem",
-            textTransform: "uppercase",
-            fontWeight: "bold",
-            textAlign: "center",
-            width: "100%",
-            marginTop: "0.5rem",
-          }}
-        />
-      </div>
+
       {/* Contenido de Cards */}
       <div className="p-fluid">
         {activeCard === "datos-generales" && (

@@ -675,31 +675,32 @@ const handleFormSubmit = async (data) => {
   }, [editingItem?.id]);
 
   return (
-    <Dialog
-      visible={visible}
-      style={{ width: "1300px" }}
-      headerStyle={{ display: "none" }}
-      modal
-      footer={dialogFooter}
-      onHide={handleHide}
-      className="p-fluid"
-    >
-      {/* Mostrar nombre de novedad con Tag */}
-      <div className="flex justify-content-center mb-4">
-        <Tag
-          value={watch("nombre") || "Nueva Novedad de Pesca Consumo"}
-          severity="info"
-          style={{
-            fontSize: "1.1rem",
-            padding: "0.75rem 0.5rem",
-            textTransform: "uppercase",
-            fontWeight: "bold",
-            textAlign: "center",
-            width: "100%",
-            marginTop: "0.5rem",
-          }}
-        />
-      </div>
+<Dialog
+  visible={visible}
+  style={{ width: "1300px" }}
+  header={
+    <div className="flex justify-content-center mb-4">
+    <Tag
+      value={watch("nombre") || "Nueva Novedad de Pesca Consumo"}
+      severity="info"
+      style={{
+        fontSize: "1rem",
+        textTransform: "uppercase",
+        fontWeight: "bold",
+        textAlign: "center",
+        width: "100%",
+      }}
+    />
+  </div>
+  }  // 🆕 Usar header en lugar de Tag
+  modal
+  footer={dialogFooter}
+  onHide={handleHide}
+  className="p-fluid"
+  maximizable  // 🆕 Habilitar maximizar
+  maximized={true}  // Opcional: estado inicial
+>
+
 
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         {activeCard === "datos-generales" && (

@@ -19,21 +19,24 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
 import { Toast } from "primereact/toast";
 import { Card } from "primereact/card";
-import { getResponsiveFontSize, createPorcentajeTemplate } from "../../utils/utils";
+import {
+  getResponsiveFontSize,
+  createPorcentajeTemplate,
+} from "../../utils/utils";
 import { getEspecies } from "../../api/especie";
-import { 
+import {
   getDetCalaPescaConsumoPorCala,
   crearDetCalaPescaConsumo,
   actualizarDetCalaPescaConsumo,
-  eliminarDetCalaPescaConsumo
+  eliminarDetCalaPescaConsumo,
 } from "../../api/detCalaPescaConsumo";
 
-const DetalleCalasConsumoEspecieForm = ({ 
-  calaId, 
-  faenaPescaConsumoId, 
-  calaFinalizada = false, 
-  onDataChange, 
-  loading = false 
+const DetalleCalasConsumoEspecieForm = ({
+  calaId,
+  faenaPescaConsumoId,
+  calaFinalizada = false,
+  onDataChange,
+  loading = false,
 }) => {
   const [especiesDetalle, setEspeciesDetalle] = useState([]);
   const [especiesDisponibles, setEspeciesDisponibles] = useState([]);
@@ -41,7 +44,7 @@ const DetalleCalasConsumoEspecieForm = ({
   const [editingDetalle, setEditingDetalle] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const toast = useRef(null);
-  
+
   // Estados del formulario
   const [especieId, setEspecieId] = useState("");
   const [toneladas, setToneladas] = useState("");
@@ -59,10 +62,12 @@ const DetalleCalasConsumoEspecieForm = ({
   const cargarEspecies = async () => {
     try {
       const response = await getEspecies();
-      setEspeciesDisponibles(response.map(e => ({ 
-        label: `${e.nombre} (${e.nombreCientifico})`, 
-        value: e.id 
-      })));
+      setEspeciesDisponibles(
+        response.map((e) => ({
+          label: `${e.nombre} (${e.nombreCientifico})`,
+          value: e.id,
+        }))
+      );
     } catch (error) {
       console.error("Error cargando especies:", error);
       toast.current?.show({
@@ -146,7 +151,10 @@ const DetalleCalasConsumoEspecieForm = ({
         return;
       }
 
-      if (porcentajeJuveniles && (Number(porcentajeJuveniles) < 0 || Number(porcentajeJuveniles) > 100)) {
+      if (
+        porcentajeJuveniles &&
+        (Number(porcentajeJuveniles) < 0 || Number(porcentajeJuveniles) > 100)
+      ) {
         toast.current?.show({
           severity: "error",
           summary: "Valor Inválido",
@@ -159,14 +167,15 @@ const DetalleCalasConsumoEspecieForm = ({
       // Validar duplicados solo al crear
       if (!editingDetalle) {
         const especieYaExiste = especiesDetalle.some(
-          detalle => Number(detalle.especieId) === Number(especieId)
+          (detalle) => Number(detalle.especieId) === Number(especieId)
         );
-        
+
         if (especieYaExiste) {
           toast.current?.show({
             severity: "warn",
             summary: "Especie Duplicada",
-            detail: "Ya existe un registro para esta especie en la cala. Use 'Editar' para modificar el registro existente.",
+            detail:
+              "Ya existe un registro para esta especie en la cala. Use 'Editar' para modificar el registro existente.",
             life: 5000,
           });
           return;
@@ -177,10 +186,11 @@ const DetalleCalasConsumoEspecieForm = ({
         calaFaenaConsumoId: Number(calaId),
         especieId: Number(especieId),
         toneladas: kilogramos ? Number(kilogramos) / 1000 : null,
-        porcentajeJuveniles: porcentajeJuveniles ? Number(porcentajeJuveniles) : null,
+        porcentajeJuveniles: porcentajeJuveniles
+          ? Number(porcentajeJuveniles)
+          : null,
         observaciones: observaciones || null,
-        updatedAt: new Date().toISOString(),  // ← AGREGAR ESTA LÍNEA
-
+        updatedAt: new Date().toISOString(), // ← AGREGAR ESTA LÍNEA
       };
 
       if (editingDetalle) {
@@ -192,13 +202,15 @@ const DetalleCalasConsumoEspecieForm = ({
       toast.current?.show({
         severity: "success",
         summary: "Operación Exitosa",
-        detail: editingDetalle ? "Especie actualizada correctamente" : "Especie agregada correctamente",
+        detail: editingDetalle
+          ? "Especie actualizada correctamente"
+          : "Especie agregada correctamente",
         life: 3000,
       });
 
       setDetalleDialog(false);
       cargarEspeciesDetalle();
-      
+
       // Notificar al componente padre
       if (onDataChange) {
         onDataChange();
@@ -215,14 +227,17 @@ const DetalleCalasConsumoEspecieForm = ({
         toast.current?.show({
           severity: "error",
           summary: "Datos Inválidos",
-          detail: error.response?.data?.message || "Los datos ingresados no son válidos.",
+          detail:
+            error.response?.data?.message ||
+            "Los datos ingresados no son válidos.",
           life: 4000,
         });
       } else {
         toast.current?.show({
           severity: "error",
           summary: "Error Inesperado",
-          detail: error.response?.data?.message || "Ocurrió un error inesperado.",
+          detail:
+            error.response?.data?.message || "Ocurrió un error inesperado.",
           life: 4000,
         });
       }
@@ -239,7 +254,7 @@ const DetalleCalasConsumoEspecieForm = ({
         life: 3000,
       });
       cargarEspeciesDetalle();
-      
+
       // Notificar al componente padre
       if (onDataChange) {
         onDataChange();
@@ -260,14 +275,14 @@ const DetalleCalasConsumoEspecieForm = ({
       <div>
         <Button
           icon="pi pi-pencil"
-          className="p-button-rounded p-button-success p-mr-2"
+          className="p-button-rounded p-button-success p-button-text"
           onClick={() => editarDetalle(rowData)}
           tooltip="Editar"
           size="small"
         />
         <Button
           icon="pi pi-trash"
-          className="p-button-rounded p-button-warning"
+          className="p-button-rounded p-button-danger p-button-text"
           onClick={() => eliminarDetalle(rowData)}
           tooltip="Eliminar"
           size="small"
@@ -279,12 +294,13 @@ const DetalleCalasConsumoEspecieForm = ({
 
   const porcentajeJuvenilesTemplate = (rowData) => {
     const templateData = createPorcentajeTemplate(rowData.porcentajeJuveniles);
-    
+
     if (!templateData) return "-";
-    
+
     return (
       <span style={templateData.estilos}>
-        {templateData.valor}{templateData.sufijo}
+        {templateData.valor}
+        {templateData.sufijo}
       </span>
     );
   };
@@ -332,37 +348,49 @@ const DetalleCalasConsumoEspecieForm = ({
   );
 
   const detalleDialogFooter = (
-    <>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        gap: 8,
+        marginTop: 18,
+      }}
+    >
       <Button
         label="Cancelar"
         icon="pi pi-times"
-        className="p-button-text"
+        type="button"
         onClick={() => setDetalleDialog(false)}
+        className="p-button-warning"
+        severity="warning"
+        raised
+        size="small"
+        outlined
       />
       <Button
         label="Guardar"
         icon="pi pi-check"
-        className="p-button-text"
+        type="button"
         onClick={guardarDetalle}
+        className="p-button-success"
+        severity="success"
+        raised
+        size="small"
+        outlined
       />
-    </>
+    </div>
   );
 
   return (
     <Card className="mt-3">
       <Toast ref={toast} />
-
       <DataTable
         value={especiesDetalle}
         selection={null}
         onSelectionChange={(e) => null}
         dataKey="id"
-        paginator
-        rows={5}
-        rowsPerPageOptions={[5, 10, 15]}
-        className="datatable-responsive"
-        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} especies"
+        stripedRows
+        showGridlines
         globalFilter={globalFilter}
         header={header}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
@@ -413,7 +441,9 @@ const DetalleCalasConsumoEspecieForm = ({
       <Dialog
         visible={detalleDialog}
         style={{ width: "500px" }}
-        header={editingDetalle ? "Editar Captura Especie" : "Agregar Captura Especie"}
+        header={
+          editingDetalle ? "Editar Captura Especie" : "Agregar Captura Especie"
+        }
         modal
         className="p-fluid"
         footer={detalleDialogFooter}

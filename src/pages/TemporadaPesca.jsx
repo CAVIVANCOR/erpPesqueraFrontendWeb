@@ -758,7 +758,6 @@ const TemporadaPesca = ({ ruta }) => {
                 </div>
                 <div style={{ flex: 1 }}>
                   <span className="p-input-icon-left">
-                    <i className="pi pi-search" />
                     <InputText
                       value={globalFilterValue}
                       onChange={onGlobalFilterChange}

@@ -121,7 +121,11 @@ export default function DescargaFaenaConsumoForm({
   // Observar cambios para cálculos automáticos
   const especieIdWatched = watch("especieId");
   const toneladasWatched = watch("toneladas");
+  const nroCubetasWatched = watch("nroCubetas");
   const precioPorKgEspecieWatched = watch("precioPorKgEspecie");
+
+  // Ref para controlar qué campo se está editando (para evitar loops infinitos)
+  const ultimoCambioRef = useRef(null);
 
   // Estados para formato DMS de descarga
   const [latGrados, setLatGrados] = useState(0);
@@ -328,68 +332,93 @@ export default function DescargaFaenaConsumoForm({
     }
   }, [longitudFondeo]);
 
-  // Cálculos automáticos al cambiar especie, toneladas o precio
+  // Cálculos automáticos al cambiar especie, toneladas, cubetas o precio
   useEffect(() => {
     const realizarCalculos = () => {
-      // Solo calcular si hay toneladas
-      if (!toneladasWatched || toneladasWatched === 0) {
+      // Solo calcular si hay especie seleccionada
+      if (!especieIdWatched) {
         return;
       }
 
-      // 1. Obtener precio por Kg de la especie seleccionada (SOLO si cambió la especie)
+      // 1. Obtener especie seleccionada
       const especieSeleccionada = especies.find(
         (e) => Number(e.id) === Number(especieIdWatched)
       );
-      const especiaCambio = especieAnteriorRef.current !== especieIdWatched;
 
-      if (
-        especieSeleccionada &&
-        especieSeleccionada.precioPorKg &&
-        especieIdWatched &&
-        especiaCambio
-      ) {
-        const precioDB = Number(especieSeleccionada.precioPorKg);
-        setValue("precioPorKgEspecie", precioDB);
-        especieAnteriorRef.current = especieIdWatched; // Actualizar ref
-        return; // Salir para que el useEffect se ejecute de nuevo con el nuevo precio
+      if (!especieSeleccionada) {
+        return;
       }
 
-      // Actualizar ref si aún no se ha hecho
-      if (especiaCambio && especieIdWatched) {
+      // 2. Cargar precio por Kg SOLO si cambió la especie
+      const especiaCambio = especieAnteriorRef.current !== especieIdWatched;
+      if (especiaCambio && especieSeleccionada.precioPorKg) {
+        const precioDB = Number(especieSeleccionada.precioPorKg);
+        setValue("precioPorKgEspecie", precioDB);
         especieAnteriorRef.current = especieIdWatched;
       }
 
-      // 2. Calcular número de cubetas usando cubetaPesoKg de la ESPECIE
-      if (especieSeleccionada?.cubetaPesoKg && Number(especieSeleccionada.cubetaPesoKg) > 0) {
-        const nroCubetas = toneladasWatched / Number(especieSeleccionada.cubetaPesoKg);
-        setValue('nroCubetas', Number(nroCubetas.toFixed(2)));
-      } else {
-        setValue('nroCubetas', 0);
+      const cubetaPesoKg = Number(especieSeleccionada.cubetaPesoKg || 0);
+
+      // 3. Calcular según qué campo cambió (para evitar loops infinitos)
+      // Si el usuario cambió kilogramos, calcular cubetas
+      if (
+        ultimoCambioRef.current === "toneladas" &&
+        toneladasWatched &&
+        cubetaPesoKg > 0
+      ) {
+        const nroCubetas = toneladasWatched / cubetaPesoKg;
+        setValue("nroCubetas", Number(nroCubetas.toFixed(2)));
+        ultimoCambioRef.current = null; // Reset
+      }
+      // Si el usuario cambió cubetas, calcular kilogramos
+      else if (
+        ultimoCambioRef.current === "cubetas" &&
+        nroCubetasWatched &&
+        cubetaPesoKg > 0
+      ) {
+        const toneladas = nroCubetasWatched * cubetaPesoKg;
+        setValue("toneladas", Number(toneladas.toFixed(2)));
+        ultimoCambioRef.current = null; // Reset
+      }
+      // Si cambió la especie, calcular cubetas basado en kilogramos actuales
+      else if (especiaCambio && toneladasWatched && cubetaPesoKg > 0) {
+        const nroCubetas = toneladasWatched / cubetaPesoKg;
+        setValue("nroCubetas", Number(nroCubetas.toFixed(2)));
       }
 
-      // 3. Encontrar katana según rango de toneladas (convertir Kg a Tn)
-      const toneladasEnTn = toneladasWatched / 1000;
+      // 4. Calcular katana y precio total (SIEMPRE, con o sin katana)
+      const kgActuales = Number(toneladasWatched || 0);
+      if (kgActuales > 0) {
+        // Encontrar katana según rango de toneladas (convertir Kg a Tn)
+        const toneladasEnTn = kgActuales / 1000;
+        const katanaEncontrada = katanasTripulacion.find((k) => {
+          const rangoInicial = Number(k.rangoInicialTn || 0);
+          const rangoFinal = Number(k.rangoFinaTn || 0);
+          return toneladasEnTn >= rangoInicial && toneladasEnTn <= rangoFinal;
+        });
 
-      const katanaEncontrada = katanasTripulacion.find((k) => {
-        const rangoInicial = Number(k.rangoInicialTn || 0);
-        const rangoFinal = Number(k.rangoFinaTn || 0);
-        return toneladasEnTn >= rangoInicial && toneladasEnTn <= rangoFinal;
-      });
+        // Asignar katana si se encontró
+        if (katanaEncontrada) {
+          setValue("katanaTripulacionId", Number(katanaEncontrada.id));
+        } else {
+          setValue("katanaTripulacionId", null);
+        }
 
-      if (katanaEncontrada) {
-        setValue("katanaTripulacionId", Number(katanaEncontrada.id));
-
-        // 4. Calcular precio total usando el precio actual (manual o de especie)
-        const kgOtorgado = Number(katanaEncontrada.kgOtorgadoCalculo || 0);
+        // CALCULAR PRECIO TOTAL SIEMPRE (con o sin katana)
+        const kgOtorgado = katanaEncontrada
+          ? Number(katanaEncontrada.kgOtorgadoCalculo || 0)
+          : 0;
         const precioPorKg = Number(precioPorKgEspecieWatched || 0);
 
         if (precioPorKg > 0) {
-          const precioTotal = (toneladasWatched - kgOtorgado) * precioPorKg;
+          const precioTotal = (kgActuales - kgOtorgado) * precioPorKg;
           setValue("precioTotal", Number(precioTotal.toFixed(2)));
         } else {
           setValue("precioTotal", 0);
         }
       } else {
+        // Si no hay kilogramos, resetear valores calculados
+        setValue("nroCubetas", 0);
         setValue("katanaTripulacionId", null);
         setValue("precioTotal", 0);
       }
@@ -399,10 +428,10 @@ export default function DescargaFaenaConsumoForm({
   }, [
     especieIdWatched,
     toneladasWatched,
+    nroCubetasWatched,
     precioPorKgEspecieWatched,
     especies,
     katanasTripulacion,
-    empresaData,
     setValue,
   ]);
 
@@ -661,6 +690,8 @@ export default function DescargaFaenaConsumoForm({
             className="p-button-info"
             onClick={() => setValue("fechaHoraArriboPuerto", new Date())}
             disabled={loading}
+            severity="info"
+            raised
             size="small"
             style={{ marginTop: "5px" }}
           />
@@ -704,6 +735,8 @@ export default function DescargaFaenaConsumoForm({
             className="p-button-info"
             onClick={() => setValue("fechaHoraLlegadaPuerto", new Date())}
             disabled={loading}
+            severity="info"
+            raised
             size="small"
             style={{ marginTop: "5px" }}
           />
@@ -762,6 +795,8 @@ export default function DescargaFaenaConsumoForm({
             onClick={handleCapturarGPS}
             disabled={loading}
             size="small"
+            severity="info"
+            raised
           />
         </div>
 
@@ -1162,6 +1197,7 @@ export default function DescargaFaenaConsumoForm({
                 {...field}
                 value={field.value}
                 options={clientesNormalizados}
+                filter
                 optionLabel="label"
                 optionValue="value"
                 style={{ fontWeight: "bold" }}
@@ -1265,6 +1301,8 @@ export default function DescargaFaenaConsumoForm({
             className="p-button-success"
             onClick={() => setValue("fechaHoraInicioDescarga", new Date())}
             disabled={loading}
+            severity="success"
+            raised
             size="small"
             style={{ marginTop: "5px" }}
           />
@@ -1309,6 +1347,8 @@ export default function DescargaFaenaConsumoForm({
             onClick={() => setValue("fechaHoraFinDescarga", new Date())}
             disabled={loading}
             size="small"
+            severity="success"
+            raised
             style={{ marginTop: "5px" }}
           />
         </div>
@@ -1378,6 +1418,7 @@ export default function DescargaFaenaConsumoForm({
                 options={especiesNormalizadas}
                 optionLabel="label"
                 optionValue="value"
+                filter
                 style={{ fontWeight: "bold" }}
                 placeholder="Seleccione especie"
                 disabled={loading}
@@ -1389,7 +1430,7 @@ export default function DescargaFaenaConsumoForm({
             <Message severity="error" text={errors.especieId.message} />
           )}
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 0.5 }}>
           <label htmlFor="toneladas">Kilogramos*</label>
           <Controller
             name="toneladas"
@@ -1399,7 +1440,10 @@ export default function DescargaFaenaConsumoForm({
               <InputNumber
                 id="toneladas"
                 value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
+                onValueChange={(e) => {
+                  field.onChange(e.value);
+                  ultimoCambioRef.current = "toneladas";
+                }}
                 mode="decimal"
                 minFractionDigits={0}
                 maxFractionDigits={3}
@@ -1415,7 +1459,7 @@ export default function DescargaFaenaConsumoForm({
           )}
         </div>
         <div style={{ flex: 0.5 }}>
-          <label htmlFor="nroCubetas">Nro. Cubetas</label>
+          <label htmlFor="nroCubetas"># Cubetas</label>
           <Controller
             name="nroCubetas"
             control={control}
@@ -1423,13 +1467,16 @@ export default function DescargaFaenaConsumoForm({
               <InputNumber
                 id="nroCubetas"
                 value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
+                onValueChange={(e) => {
+                  field.onChange(e.value);
+                  ultimoCambioRef.current = "cubetas";
+                }}
                 mode="decimal"
                 minFractionDigits={0}
                 maxFractionDigits={2}
                 min={0}
                 inputStyle={{ fontWeight: "bold" }}
-                disabled
+                disabled={loading}
                 className={classNames({ "p-invalid": errors.nroCubetas })}
               />
             )}
@@ -1438,8 +1485,8 @@ export default function DescargaFaenaConsumoForm({
             <Message severity="error" text={errors.nroCubetas.message} />
           )}
         </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="precioPorKgEspecie">Precio por Kg</label>
+        <div style={{ flex: 0.5 }}>
+          <label htmlFor="precioPorKgEspecie">Precio Kg</label>
           <Controller
             name="precioPorKgEspecie"
             control={control}
@@ -1493,7 +1540,7 @@ export default function DescargaFaenaConsumoForm({
             <Message severity="error" text={errors.precioTotal.message} />
           )}
         </div>
-                <div style={{ flex: 1 }}>
+        <div style={{ flex: 1.5 }}>
           <label htmlFor="katanaTripulacionId">Katana Tripulación</label>
           <Controller
             name="katanaTripulacionId"
@@ -1530,9 +1577,7 @@ export default function DescargaFaenaConsumoForm({
           gap: 10,
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
-      >
-
-      </div>
+      ></div>
 
       {/* Fila: Observaciones */}
       <div
@@ -1587,6 +1632,8 @@ export default function DescargaFaenaConsumoForm({
             onClick={() => setValue("fechaHoraFondeo", new Date())}
             disabled={loading}
             size="small"
+            severity="warning"
+            raised
             style={{ width: "100%", marginBottom: "4px" }}
           />
           <Controller
@@ -1621,6 +1668,8 @@ export default function DescargaFaenaConsumoForm({
             onClick={handleCapturarGPSFondeo}
             disabled={loading}
             size="small"
+            raised
+            severity="warning"
             style={{ width: "100%", marginBottom: "4px" }}
           />
           <Controller
