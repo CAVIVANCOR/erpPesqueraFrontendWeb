@@ -14,7 +14,7 @@ import { getEmpresas } from "../../api/empresa";
 import { getBancos } from "../../api/banco";
 import { getMonedas } from "../../api/moneda";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
-import { TIPOS_LINEA_CREDITO } from "../../utils/tesoreriaConstants";
+import { getEnumsTesoreria } from "../../api/tesoreria/enumsTesoreria";
 
 export default function LineaCreditoForm({
   isEdit = false,
@@ -47,6 +47,9 @@ export default function LineaCreditoForm({
   const [bancos, setBancos] = useState([]);
   const [monedas, setMonedas] = useState([]);
   const [estados, setEstados] = useState([]);
+  const [enums, setEnums] = useState({
+    tiposLineaCredito: [],
+  });
   const [cargandoDatos, setCargandoDatos] = useState(true);
 
   useEffect(() => {
@@ -55,17 +58,19 @@ export default function LineaCreditoForm({
 
   const cargarDatos = async () => {
     try {
-      const [empresasData, bancosData, monedasData, estadosData] = await Promise.all([
+      const [empresasData, bancosData, monedasData, estadosData, enumsData] = await Promise.all([
         getEmpresas(),
         getBancos(),
         getMonedas(),
         getEstadosMultiFuncionPorTipoProviene(22),
+        getEnumsTesoreria(),
       ]);
 
       setEmpresas(empresasData);
       setBancos(bancosData);
       setMonedas(monedasData);
       setEstados(estadosData);
+      setEnums(enumsData);
     } catch (error) {
       console.error("Error al cargar datos:", error);
     } finally {
@@ -258,7 +263,7 @@ export default function LineaCreditoForm({
           <Dropdown
             id="tipoLinea"
             value={formData.tipoLinea}
-            options={TIPOS_LINEA_CREDITO}
+            options={enums.tiposLineaCredito}
             onChange={(e) => handleChange("tipoLinea", e.value)}
             placeholder="Seleccionar tipo"
             disabled={readOnly}
@@ -372,7 +377,7 @@ export default function LineaCreditoForm({
         </div>
         <div style={{ flex: 1 }}>
           <label htmlFor="montoUtilizado" style={{ fontWeight: "bold" }}>
-            Monto Utilizado *
+            Monto Utilizado
           </label>
           <InputNumber
             id="montoUtilizado"
@@ -382,7 +387,6 @@ export default function LineaCreditoForm({
             minFractionDigits={2}
             maxFractionDigits={2}
             disabled={readOnly}
-            required
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -396,7 +400,6 @@ export default function LineaCreditoForm({
             minFractionDigits={2}
             maxFractionDigits={2}
             disabled
-            style={{ backgroundColor: "#f0f0f0" }}
           />
         </div>
       </div>
@@ -426,7 +429,7 @@ export default function LineaCreditoForm({
         </div>
         <div style={{ flex: 1 }}>
           <label htmlFor="comisionManejo" style={{ fontWeight: "bold" }}>
-            Comisión de Manejo (%)
+            Comisión de Manejo
           </label>
           <InputNumber
             id="comisionManejo"
@@ -434,13 +437,13 @@ export default function LineaCreditoForm({
             onValueChange={(e) => handleChange("comisionManejo", e.value)}
             mode="decimal"
             minFractionDigits={2}
-            maxFractionDigits={4}
+            maxFractionDigits={2}
             disabled={readOnly}
           />
         </div>
         <div style={{ flex: 1 }}>
           <label htmlFor="comisionNoUtilizacion" style={{ fontWeight: "bold" }}>
-            Comisión No Utilización (%)
+            Comisión No Utilización
           </label>
           <InputNumber
             id="comisionNoUtilizacion"
@@ -477,38 +480,29 @@ export default function LineaCreditoForm({
         </div>
       </div>
 
-      {/* BOTONES */}
+      {/* Botones */}
       <div
         style={{
           display: "flex",
           justifyContent: "flex-end",
-          gap: 8,
-          marginTop: 18,
+          gap: 10,
+          marginTop: 20,
         }}
       >
         <Button
           label="Cancelar"
           icon="pi pi-times"
-          type="button"
           onClick={onCancel}
+          className="p-button-text"
+          type="button"
           disabled={loading}
-          className="p-button-warning"
-          severity="warning"
-          raised
-          size="small"
-          outlined
         />
         <Button
           label={isEdit ? "Actualizar" : "Guardar"}
           icon="pi pi-check"
           type="submit"
+          disabled={loading || readOnly}
           loading={loading}
-          disabled={readOnly || loading}
-          className="p-button-success"
-          severity="success"
-          raised
-          size="small"
-          outlined
         />
       </div>
     </form>

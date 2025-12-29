@@ -14,6 +14,11 @@ export async function getPrestamoBancario() {
   return res.data;
 }
 
+export async function getAllPrestamoBancario() {
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  return res.data;
+}
+
 export async function getPrestamoBancarioById(id) {
   const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;

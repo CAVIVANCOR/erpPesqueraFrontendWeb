@@ -14,11 +14,7 @@ import { getEmpresas } from "../../api/empresa";
 import { getBancos } from "../../api/banco";
 import { getMonedas } from "../../api/moneda";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
-import {
-  TIPOS_INVERSION,
-  PERIODICIDADES_PAGO,
-  OPCIONES_RENOVACION,
-} from "../../utils/tesoreriaConstants";
+import { getEnumsTesoreria } from "../../api/tesoreria/enumsTesoreria";
 
 export default function InversionFinancieraForm({
   isEdit = false,
@@ -32,7 +28,7 @@ export default function InversionFinancieraForm({
     empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : null,
     bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
     numeroInversion: defaultValues?.numeroInversion || "",
-    tipoInversion: defaultValues?.tipoInversion || "DEPOSITO_PLAZO_FIJO",
+    tipoInversion: defaultValues?.tipoInversion || "PLAZO_FIJO",
     descripcion: defaultValues?.descripcion || "",
     fechaInicio: defaultValues?.fechaInicio ? new Date(defaultValues.fechaInicio) : null,
     fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
@@ -50,6 +46,11 @@ export default function InversionFinancieraForm({
   const [bancos, setBancos] = useState([]);
   const [monedas, setMonedas] = useState([]);
   const [estados, setEstados] = useState([]);
+  const [enums, setEnums] = useState({
+    tiposInversion: [],
+    periodicidadesRendimiento: [],
+    opcionesRenovacion: [],
+  });
   const [cargandoDatos, setCargandoDatos] = useState(true);
 
   useEffect(() => {
@@ -58,17 +59,19 @@ export default function InversionFinancieraForm({
 
   const cargarDatos = async () => {
     try {
-      const [empresasData, bancosData, monedasData, estadosData] = await Promise.all([
+      const [empresasData, bancosData, monedasData, estadosData, enumsData] = await Promise.all([
         getEmpresas(),
         getBancos(),
         getMonedas(),
         getEstadosMultiFuncionPorTipoProviene(23),
+        getEnumsTesoreria(),
       ]);
 
       setEmpresas(empresasData);
       setBancos(bancosData);
       setMonedas(monedasData);
       setEstados(estadosData);
+      setEnums(enumsData);
     } catch (error) {
       console.error("Error al cargar datos:", error);
     } finally {
@@ -89,7 +92,7 @@ export default function InversionFinancieraForm({
         empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : null,
         bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
         numeroInversion: defaultValues?.numeroInversion || "",
-        tipoInversion: defaultValues?.tipoInversion || "DEPOSITO_PLAZO_FIJO",
+        tipoInversion: defaultValues?.tipoInversion || "PLAZO_FIJO",
         descripcion: defaultValues?.descripcion || "",
         fechaInicio: defaultValues?.fechaInicio ? new Date(defaultValues.fechaInicio) : null,
         fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
@@ -193,7 +196,7 @@ export default function InversionFinancieraForm({
         </div>
         <div style={{ flex: 1 }}>
           <label htmlFor="bancoId" style={{ fontWeight: "bold" }}>
-            Banco/Institución Financiera *
+            Banco/Institucion Financiera *
           </label>
           <Dropdown
             id="bancoId"
@@ -252,7 +255,7 @@ export default function InversionFinancieraForm({
           <Dropdown
             id="tipoInversion"
             value={formData.tipoInversion}
-            options={TIPOS_INVERSION}
+            options={enums.tiposInversion}
             onChange={(e) => handleChange("tipoInversion", e.value)}
             placeholder="Seleccionar tipo"
             disabled={readOnly}
@@ -282,7 +285,7 @@ export default function InversionFinancieraForm({
           <Dropdown
             id="periodicidadPago"
             value={formData.periodicidadPago}
-            options={PERIODICIDADES_PAGO}
+            options={enums.periodicidadesRendimiento}
             onChange={(e) => handleChange("periodicidadPago", e.value)}
             placeholder="Seleccionar periodicidad"
             disabled={readOnly}
@@ -307,7 +310,7 @@ export default function InversionFinancieraForm({
             id="descripcion"
             value={formData.descripcion}
             onChange={(e) => handleChange("descripcion", e.target.value.toUpperCase())}
-            placeholder="Descripción de la inversión financiera"
+            placeholder="Descripción de la inversión"
             disabled={readOnly}
             required
             rows={2}
@@ -340,7 +343,7 @@ export default function InversionFinancieraForm({
         </div>
         <div style={{ flex: 1 }}>
           <label htmlFor="fechaVencimiento" style={{ fontWeight: "bold" }}>
-            Fecha de Vencimiento *
+            Fecha de Vencimiento
           </label>
           <Calendar
             id="fechaVencimiento"
@@ -348,7 +351,6 @@ export default function InversionFinancieraForm({
             onChange={(e) => handleChange("fechaVencimiento", e.value)}
             placeholder="Seleccionar fecha"
             disabled={readOnly}
-            required
             dateFormat="dd/mm/yy"
             showIcon
           />
@@ -405,7 +407,7 @@ export default function InversionFinancieraForm({
       >
         <div style={{ flex: 1 }}>
           <label htmlFor="tasaRendimiento" style={{ fontWeight: "bold" }}>
-            Tasa de Rendimiento (%) *
+            Tasa de Rendimiento (%)
           </label>
           <InputNumber
             id="tasaRendimiento"
@@ -415,7 +417,6 @@ export default function InversionFinancieraForm({
             minFractionDigits={2}
             maxFractionDigits={4}
             disabled={readOnly}
-            required
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -425,7 +426,7 @@ export default function InversionFinancieraForm({
           <Dropdown
             id="renovacionAutomatica"
             value={formData.renovacionAutomatica}
-            options={OPCIONES_RENOVACION}
+            options={enums.opcionesRenovacion}
             onChange={(e) => handleChange("renovacionAutomatica", e.value)}
             placeholder="Seleccionar opción"
             disabled={readOnly}
@@ -457,38 +458,29 @@ export default function InversionFinancieraForm({
         </div>
       </div>
 
-      {/* BOTONES */}
+      {/* Botones */}
       <div
         style={{
           display: "flex",
           justifyContent: "flex-end",
-          gap: 8,
-          marginTop: 18,
+          gap: 10,
+          marginTop: 20,
         }}
       >
         <Button
           label="Cancelar"
           icon="pi pi-times"
-          type="button"
           onClick={onCancel}
+          className="p-button-text"
+          type="button"
           disabled={loading}
-          className="p-button-warning"
-          severity="warning"
-          raised
-          size="small"
-          outlined
         />
         <Button
           label={isEdit ? "Actualizar" : "Guardar"}
           icon="pi pi-check"
           type="submit"
+          disabled={loading || readOnly}
           loading={loading}
-          disabled={readOnly || loading}
-          className="p-button-success"
-          severity="success"
-          raised
-          size="small"
-          outlined
         />
       </div>
     </form>
