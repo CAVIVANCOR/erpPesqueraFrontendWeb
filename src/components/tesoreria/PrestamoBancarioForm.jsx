@@ -6,7 +6,6 @@ import { Dropdown } from "primereact/dropdown";
 import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
-import { Checkbox } from "primereact/checkbox";
 import {
   createPrestamoBancario,
   updatePrestamoBancario,
@@ -18,6 +17,9 @@ import { getAllCuentaCorriente } from "../../api/cuentaCorriente";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
 import { getEnumsTesoreria } from "../../api/tesoreria/enumsTesoreria";
 import { getAllPrestamoBancario } from "../../api/tesoreria/prestamoBancarios";
+import { getResponsiveFontSize } from "../../utils/utils";
+import DocumentoCapture from "../shared/DocumentoCapture";
+import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
 
 export default function PrestamoBancarioForm({
   isEdit = false,
@@ -28,26 +30,38 @@ export default function PrestamoBancarioForm({
   readOnly = false,
 }) {
   const [formData, setFormData] = useState({
-    empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : null,
+    empresaId: defaultValues?.empresaId
+      ? Number(defaultValues.empresaId)
+      : null,
     bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
-    cuentaCorrienteId: defaultValues?.cuentaCorrienteId ? Number(defaultValues.cuentaCorrienteId) : null,
+    cuentaCorrienteId: defaultValues?.cuentaCorrienteId
+      ? Number(defaultValues.cuentaCorrienteId)
+      : null,
     numeroPrestamo: defaultValues?.numeroPrestamo || "",
     numeroContrato: defaultValues?.numeroContrato || "",
-    fechaContrato: defaultValues?.fechaContrato ? new Date(defaultValues.fechaContrato) : null,
-    fechaDesembolso: defaultValues?.fechaDesembolso ? new Date(defaultValues.fechaDesembolso) : null,
-    fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
+    fechaContrato: defaultValues?.fechaContrato
+      ? new Date(defaultValues.fechaContrato)
+      : null,
+    fechaDesembolso: defaultValues?.fechaDesembolso
+      ? new Date(defaultValues.fechaDesembolso)
+      : null,
+    fechaVencimiento: defaultValues?.fechaVencimiento
+      ? new Date(defaultValues.fechaVencimiento)
+      : null,
     montoAprobado: defaultValues?.montoAprobado || 0,
     montoDesembolsado: defaultValues?.montoDesembolsado || 0,
     monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
     tasaInteresAnual: defaultValues?.tasaInteresAnual || 0,
     tasaInteresEfectiva: defaultValues?.tasaInteresEfectiva || null,
     tasaMoratoria: defaultValues?.tasaMoratoria || null,
-    comisionInicial: defaultValues?.comisionInicial || null,
-    comisionMantenimiento: defaultValues?.comisionMantenimiento || null,
+    comisionApertura: defaultValues?.comisionApertura || null,
+    comisionEstudio: defaultValues?.comisionEstudio || null,
+    comisionOtros: defaultValues?.comisionOtros || null,
     seguroDesgravamen: defaultValues?.seguroDesgravamen || null,
     plazoMeses: defaultValues?.plazoMeses || 12,
     numeroCuotas: defaultValues?.numeroCuotas || 12,
     frecuenciaPago: defaultValues?.frecuenciaPago || "MENSUAL",
+    numeroDias: defaultValues?.numeroDias || null,
     diaPago: defaultValues?.diaPago || null,
     periodoGracia: defaultValues?.periodoGracia || null,
     tipoPrestamo: defaultValues?.tipoPrestamo || "CAPITAL_TRABAJO",
@@ -57,7 +71,9 @@ export default function PrestamoBancarioForm({
     descripcionGarantia: defaultValues?.descripcionGarantia || "",
     valorGarantia: defaultValues?.valorGarantia || null,
     esRefinanciamiento: defaultValues?.esRefinanciamiento || false,
-    prestamoRefinanciadoId: defaultValues?.prestamoRefinanciadoId ? Number(defaultValues.prestamoRefinanciadoId) : null,
+    prestamoRefinanciadoId: defaultValues?.prestamoRefinanciadoId
+      ? Number(defaultValues.prestamoRefinanciadoId)
+      : null,
     estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 79,
     observaciones: defaultValues?.observaciones || "",
   });
@@ -76,7 +92,8 @@ export default function PrestamoBancarioForm({
     tiposGarantia: [],
   });
   const [cargandoDatos, setCargandoDatos] = useState(true);
-
+  const [estadoRefinanciado, setEstadoRefinanciado] = useState(null);
+  const [mostrarCapturaDoc, setMostrarCapturaDoc] = useState(false);
   useEffect(() => {
     cargarDatos();
   }, []);
@@ -108,6 +125,14 @@ export default function PrestamoBancarioForm({
       setPrestamos(prestamosData);
       setEstados(estadosData);
       setEnums(enumsData);
+
+      // Buscar estado REFINANCIADO
+      const estadoRef = estadosData.find((e) =>
+        e.descripcion?.toUpperCase().includes("REFINANCIADO")
+      );
+      if (estadoRef) {
+        setEstadoRefinanciado(Number(estadoRef.id));
+      }
     } catch (error) {
       console.error("Error al cargar datos:", error);
     } finally {
@@ -126,6 +151,37 @@ export default function PrestamoBancarioForm({
     }
   }, [formData.empresaId, todasLasCuentas]);
 
+  // Efecto para activar automáticamente esRefinanciamiento cuando estadoId = REFINANCIADO
+  useEffect(() => {
+    if (
+      estadoRefinanciado &&
+      Number(formData.estadoId) === estadoRefinanciado
+    ) {
+      setFormData((prev) => ({ ...prev, esRefinanciamiento: true }));
+    }
+  }, [formData.estadoId, estadoRefinanciado]);
+
+  const handleDocumentoSubido = (urlDocumento) => {
+    setFormData((prev) => ({ ...prev, urlDocumentoPDF: urlDocumento }));
+    setMostrarCapturaDoc(false);
+    toast.current?.show({
+      severity: "success",
+      summary: "Documento Subido",
+      detail: "El documento PDF se ha subido correctamente",
+      life: 3000,
+    });
+  };
+
+  const handleVerDocumentoPDF = () => {
+    if (formData.urlDocumentoPDF) {
+      abrirPdfEnNuevaPestana(
+        formData.urlDocumentoPDF,
+        toast,
+        "No hay documento PDF disponible"
+      );
+    }
+  };
+
   const handleChange = (field, value) => {
     setFormData((prev) => {
       const newData = { ...prev, [field]: value };
@@ -140,6 +196,24 @@ export default function PrestamoBancarioForm({
         newData.cuentaCorrienteId = null;
       }
 
+      if (field === "frecuenciaPago" && value !== "DIAS") {
+        newData.numeroDias = null;
+      }
+
+      // Si cambia estado a REFINANCIADO, activar esRefinanciamiento
+      if (
+        field === "estadoId" &&
+        estadoRefinanciado &&
+        Number(value) === estadoRefinanciado
+      ) {
+        newData.esRefinanciamiento = true;
+      }
+
+      // Si desactiva esRefinanciamiento, limpiar préstamo refinanciado
+      if (field === "esRefinanciamiento" && !value) {
+        newData.prestamoRefinanciadoId = null;
+      }
+
       return newData;
     });
   };
@@ -147,26 +221,40 @@ export default function PrestamoBancarioForm({
   useEffect(() => {
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       setFormData({
-        empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : null,
+        empresaId: defaultValues?.empresaId
+          ? Number(defaultValues.empresaId)
+          : null,
         bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
-        cuentaCorrienteId: defaultValues?.cuentaCorrienteId ? Number(defaultValues.cuentaCorrienteId) : null,
+        cuentaCorrienteId: defaultValues?.cuentaCorrienteId
+          ? Number(defaultValues.cuentaCorrienteId)
+          : null,
         numeroPrestamo: defaultValues?.numeroPrestamo || "",
         numeroContrato: defaultValues?.numeroContrato || "",
-        fechaContrato: defaultValues?.fechaContrato ? new Date(defaultValues.fechaContrato) : null,
-        fechaDesembolso: defaultValues?.fechaDesembolso ? new Date(defaultValues.fechaDesembolso) : null,
-        fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
+        fechaContrato: defaultValues?.fechaContrato
+          ? new Date(defaultValues.fechaContrato)
+          : null,
+        fechaDesembolso: defaultValues?.fechaDesembolso
+          ? new Date(defaultValues.fechaDesembolso)
+          : null,
+        fechaVencimiento: defaultValues?.fechaVencimiento
+          ? new Date(defaultValues.fechaVencimiento)
+          : null,
         montoAprobado: defaultValues?.montoAprobado || 0,
         montoDesembolsado: defaultValues?.montoDesembolsado || 0,
-        monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
+        monedaId: defaultValues?.monedaId
+          ? Number(defaultValues.monedaId)
+          : null,
         tasaInteresAnual: defaultValues?.tasaInteresAnual || 0,
         tasaInteresEfectiva: defaultValues?.tasaInteresEfectiva || null,
         tasaMoratoria: defaultValues?.tasaMoratoria || null,
-        comisionInicial: defaultValues?.comisionInicial || null,
-        comisionMantenimiento: defaultValues?.comisionMantenimiento || null,
+        comisionApertura: defaultValues?.comisionApertura || null,
+        comisionEstudio: defaultValues?.comisionEstudio || null,
+        comisionOtros: defaultValues?.comisionOtros || null,
         seguroDesgravamen: defaultValues?.seguroDesgravamen || null,
         plazoMeses: defaultValues?.plazoMeses || 12,
         numeroCuotas: defaultValues?.numeroCuotas || 12,
         frecuenciaPago: defaultValues?.frecuenciaPago || "MENSUAL",
+        numeroDias: defaultValues?.numeroDias || null,
         diaPago: defaultValues?.diaPago || null,
         periodoGracia: defaultValues?.periodoGracia || null,
         tipoPrestamo: defaultValues?.tipoPrestamo || "CAPITAL_TRABAJO",
@@ -176,7 +264,9 @@ export default function PrestamoBancarioForm({
         descripcionGarantia: defaultValues?.descripcionGarantia || "",
         valorGarantia: defaultValues?.valorGarantia || null,
         esRefinanciamiento: defaultValues?.esRefinanciamiento || false,
-        prestamoRefinanciadoId: defaultValues?.prestamoRefinanciadoId ? Number(defaultValues.prestamoRefinanciadoId) : null,
+        prestamoRefinanciadoId: defaultValues?.prestamoRefinanciadoId
+          ? Number(defaultValues.prestamoRefinanciadoId)
+          : null,
         estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 79,
         observaciones: defaultValues?.observaciones || "",
       });
@@ -189,7 +279,9 @@ export default function PrestamoBancarioForm({
     const dataToSend = {
       empresaId: Number(formData.empresaId),
       bancoId: Number(formData.bancoId),
-      cuentaCorrienteId: formData.cuentaCorrienteId ? Number(formData.cuentaCorrienteId) : null,
+      cuentaCorrienteId: formData.cuentaCorrienteId
+        ? Number(formData.cuentaCorrienteId)
+        : null,
       numeroPrestamo: formData.numeroPrestamo.trim().toUpperCase(),
       numeroContrato: formData.numeroContrato?.trim().toUpperCase() || null,
       fechaContrato: formData.fechaContrato,
@@ -199,24 +291,45 @@ export default function PrestamoBancarioForm({
       montoDesembolsado: Number(formData.montoDesembolsado),
       monedaId: Number(formData.monedaId),
       tasaInteresAnual: Number(formData.tasaInteresAnual),
-      tasaInteresEfectiva: formData.tasaInteresEfectiva ? Number(formData.tasaInteresEfectiva) : null,
-      tasaMoratoria: formData.tasaMoratoria ? Number(formData.tasaMoratoria) : null,
-      comisionInicial: formData.comisionInicial ? Number(formData.comisionInicial) : null,
-      comisionMantenimiento: formData.comisionMantenimiento ? Number(formData.comisionMantenimiento) : null,
-      seguroDesgravamen: formData.seguroDesgravamen ? Number(formData.seguroDesgravamen) : null,
+      tasaInteresEfectiva: formData.tasaInteresEfectiva
+        ? Number(formData.tasaInteresEfectiva)
+        : null,
+      tasaMoratoria: formData.tasaMoratoria
+        ? Number(formData.tasaMoratoria)
+        : null,
+      comisionApertura: formData.comisionApertura
+        ? Number(formData.comisionApertura)
+        : null,
+      comisionEstudio: formData.comisionEstudio
+        ? Number(formData.comisionEstudio)
+        : null,
+      comisionOtros: formData.comisionOtros
+        ? Number(formData.comisionOtros)
+        : null,
+      seguroDesgravamen: formData.seguroDesgravamen
+        ? Number(formData.seguroDesgravamen)
+        : null,
       plazoMeses: Number(formData.plazoMeses),
       numeroCuotas: Number(formData.numeroCuotas),
       frecuenciaPago: formData.frecuenciaPago,
+      numeroDias: formData.numeroDias ? Number(formData.numeroDias) : null,
       diaPago: formData.diaPago ? Number(formData.diaPago) : null,
-      periodoGracia: formData.periodoGracia ? Number(formData.periodoGracia) : null,
+      periodoGracia: formData.periodoGracia
+        ? Number(formData.periodoGracia)
+        : null,
       tipoPrestamo: formData.tipoPrestamo,
       tipoAmortizacion: formData.tipoAmortizacion,
       destinoFondos: formData.destinoFondos?.trim().toUpperCase() || null,
       tipoGarantia: formData.tipoGarantia || null,
-      descripcionGarantia: formData.descripcionGarantia?.trim().toUpperCase() || null,
-      valorGarantia: formData.valorGarantia ? Number(formData.valorGarantia) : null,
+      descripcionGarantia:
+        formData.descripcionGarantia?.trim().toUpperCase() || null,
+      valorGarantia: formData.valorGarantia
+        ? Number(formData.valorGarantia)
+        : null,
       esRefinanciamiento: formData.esRefinanciamiento,
-      prestamoRefinanciadoId: formData.prestamoRefinanciadoId ? Number(formData.prestamoRefinanciadoId) : null,
+      prestamoRefinanciadoId: formData.prestamoRefinanciadoId
+        ? Number(formData.prestamoRefinanciadoId)
+        : null,
       estadoId: Number(formData.estadoId),
       observaciones: formData.observaciones?.trim().toUpperCase() || null,
     };
@@ -255,13 +368,17 @@ export default function PrestamoBancarioForm({
   }));
 
   const cuentasFiltradas = cuentasCorrientes.filter((c) => {
-    const coincideBanco = !formData.bancoId || Number(c.bancoId) === Number(formData.bancoId);
-    const coincideMoneda = !formData.monedaId || Number(c.monedaId) === Number(formData.monedaId);
+    const coincideBanco =
+      !formData.bancoId || Number(c.bancoId) === Number(formData.bancoId);
+    const coincideMoneda =
+      !formData.monedaId || Number(c.monedaId) === Number(formData.monedaId);
     return coincideBanco && coincideMoneda;
   });
 
   const cuentasOptions = cuentasFiltradas.map((c) => ({
-    label: `${c.numeroCuenta} - ${c.banco?.nombre || "N/A"} - ${c.moneda?.codigoSunat || "N/A"}`,
+    label: `${c.numeroCuenta} - ${c.banco?.nombre || "N/A"} - ${
+      c.moneda?.codigoSunat || "N/A"
+    }`,
     value: Number(c.id),
   }));
 
@@ -277,12 +394,27 @@ export default function PrestamoBancarioForm({
     value: Number(e.id),
   }));
 
+  const esEstadoRefinanciado =
+    estadoRefinanciado && Number(formData.estadoId) === estadoRefinanciado;
+
   return (
     <form onSubmit={handleSubmit} className="p-fluid">
       {/* FILA 1: Empresa, Banco, Moneda, Cuenta Corriente, Estado */}
-      <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          alignItems: "end",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         <div style={{ flex: 1 }}>
-          <label htmlFor="empresaId" style={{ fontWeight: "bold" }}>Empresa *</label>
+          <label
+            htmlFor="empresaId"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Empresa *
+          </label>
           <Dropdown
             id="empresaId"
             value={formData.empresaId}
@@ -296,7 +428,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 0.5 }}>
-          <label htmlFor="bancoId" style={{ fontWeight: "bold" }}>Banco *</label>
+          <label
+            htmlFor="bancoId"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Banco *
+          </label>
           <Dropdown
             id="bancoId"
             value={formData.bancoId}
@@ -310,7 +447,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 0.5 }}>
-          <label htmlFor="monedaId" style={{ fontWeight: "bold" }}>Moneda *</label>
+          <label
+            htmlFor="monedaId"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Moneda *
+          </label>
           <Dropdown
             id="monedaId"
             value={formData.monedaId}
@@ -324,8 +466,15 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="cuentaCorrienteId" style={{ fontWeight: "bold" }}>
-            Cuenta Corriente {formData.empresaId && formData.bancoId && formData.monedaId && `(${cuentasFiltradas.length})`}
+          <label
+            htmlFor="cuentaCorrienteId"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Cuenta Corriente{" "}
+            {formData.empresaId &&
+              formData.bancoId &&
+              formData.monedaId &&
+              `(${cuentasFiltradas.length})`}
           </label>
           <Dropdown
             id="cuentaCorrienteId"
@@ -339,13 +488,23 @@ export default function PrestamoBancarioForm({
                 ? "Seleccione banco y moneda"
                 : "Seleccionar cuenta"
             }
-            disabled={readOnly || !formData.empresaId || !formData.bancoId || !formData.monedaId}
+            disabled={
+              readOnly ||
+              !formData.empresaId ||
+              !formData.bancoId ||
+              !formData.monedaId
+            }
             filter
             filterBy="label"
           />
         </div>
         <div style={{ flex: 0.5 }}>
-          <label htmlFor="estadoId" style={{ fontWeight: "bold" }}>Estado *</label>
+          <label
+            htmlFor="estadoId"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Estado *
+          </label>
           <Dropdown
             id="estadoId"
             value={formData.estadoId}
@@ -356,16 +515,49 @@ export default function PrestamoBancarioForm({
             required
           />
         </div>
+        <div style={{ flex: 0.3 }}>
+          <Button
+            type="button"
+            label={
+              formData.esRefinanciamiento ? "REFINANCIADO" : "REFINANCIADO"
+            }
+            icon={
+              formData.esRefinanciamiento
+                ? "pi pi-check-circle"
+                : "pi pi-times-circle"
+            }
+            severity={formData.esRefinanciamiento ? "infor" : "secondary"}
+            onClick={() =>
+              !esEstadoRefinanciado &&
+              handleChange("esRefinanciamiento", !formData.esRefinanciamiento)
+            }
+            disabled={readOnly || esEstadoRefinanciado}
+            style={{ width: "100%" }}
+          />
+        </div>
       </div>
 
       {/* FILA 2: Número Préstamo, Número Contrato, Tipo Préstamo, Tipo Amortización, Frecuencia Pago */}
-      <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         <div style={{ flex: 1 }}>
-          <label htmlFor="numeroPrestamo" style={{ fontWeight: "bold" }}>Número de Préstamo *</label>
+          <label
+            htmlFor="numeroPrestamo"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Número de Préstamo *
+          </label>
           <InputText
             id="numeroPrestamo"
             value={formData.numeroPrestamo}
-            onChange={(e) => handleChange("numeroPrestamo", e.target.value.toUpperCase())}
+            onChange={(e) =>
+              handleChange("numeroPrestamo", e.target.value.toUpperCase())
+            }
             placeholder="Ej: PREST-2025-001"
             disabled={readOnly}
             required
@@ -373,18 +565,30 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="numeroContrato" style={{ fontWeight: "bold" }}>Número de Contrato</label>
+          <label
+            htmlFor="numeroContrato"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Número de Contrato
+          </label>
           <InputText
             id="numeroContrato"
             value={formData.numeroContrato}
-            onChange={(e) => handleChange("numeroContrato", e.target.value.toUpperCase())}
+            onChange={(e) =>
+              handleChange("numeroContrato", e.target.value.toUpperCase())
+            }
             placeholder="Número del banco"
             disabled={readOnly}
             maxLength={50}
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="tipoPrestamo" style={{ fontWeight: "bold" }}>Tipo de Préstamo *</label>
+          <label
+            htmlFor="tipoPrestamo"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Tipo de Préstamo *
+          </label>
           <Dropdown
             id="tipoPrestamo"
             value={formData.tipoPrestamo}
@@ -396,7 +600,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="tipoAmortizacion" style={{ fontWeight: "bold" }}>Tipo de Amortización *</label>
+          <label
+            htmlFor="tipoAmortizacion"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Tipo de Amortización *
+          </label>
           <Dropdown
             id="tipoAmortizacion"
             value={formData.tipoAmortizacion}
@@ -408,7 +617,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="frecuenciaPago" style={{ fontWeight: "bold" }}>Frecuencia de Pago *</label>
+          <label
+            htmlFor="frecuenciaPago"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Frecuencia de Pago *
+          </label>
           <Dropdown
             id="frecuenciaPago"
             value={formData.frecuenciaPago}
@@ -419,27 +633,41 @@ export default function PrestamoBancarioForm({
             required
           />
         </div>
-      </div>
-
-      {/* FILA 3: Destino de Fondos */}
-      <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="destinoFondos" style={{ fontWeight: "bold" }}>Destino de Fondos</label>
-          <InputTextarea
-            id="destinoFondos"
-            value={formData.destinoFondos}
-            onChange={(e) => handleChange("destinoFondos", e.target.value.toUpperCase())}
-            placeholder="Descripción del destino de los fondos"
-            disabled={readOnly}
-            rows={2}
-          />
-        </div>
+        {formData.frecuenciaPago === "DIAS" && (
+          <div style={{ flex: 1 }}>
+            <label
+              htmlFor="numeroDias"
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            >
+              Número de Días *
+            </label>
+            <InputNumber
+              id="numeroDias"
+              value={formData.numeroDias}
+              onValueChange={(e) => handleChange("numeroDias", e.value)}
+              min={1}
+              disabled={readOnly}
+              required={formData.frecuenciaPago === "DIAS"}
+            />
+          </div>
+        )}
       </div>
 
       {/* FILA 4: Fechas y Montos */}
-      <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         <div style={{ flex: 1 }}>
-          <label htmlFor="fechaContrato" style={{ fontWeight: "bold" }}>Fecha de Contrato *</label>
+          <label
+            htmlFor="fechaContrato"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Fecha de Contrato *
+          </label>
           <Calendar
             id="fechaContrato"
             value={formData.fechaContrato}
@@ -452,7 +680,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="fechaDesembolso" style={{ fontWeight: "bold" }}>Fecha de Desembolso *</label>
+          <label
+            htmlFor="fechaDesembolso"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Fecha de Desembolso *
+          </label>
           <Calendar
             id="fechaDesembolso"
             value={formData.fechaDesembolso}
@@ -465,7 +698,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="fechaVencimiento" style={{ fontWeight: "bold" }}>Fecha de Vencimiento *</label>
+          <label
+            htmlFor="fechaVencimiento"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Fecha de Vencimiento *
+          </label>
           <Calendar
             id="fechaVencimiento"
             value={formData.fechaVencimiento}
@@ -478,7 +716,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="montoAprobado" style={{ fontWeight: "bold" }}>Monto Aprobado *</label>
+          <label
+            htmlFor="montoAprobado"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Monto Aprobado *
+          </label>
           <InputNumber
             id="montoAprobado"
             value={formData.montoAprobado}
@@ -491,7 +734,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="montoDesembolsado" style={{ fontWeight: "bold" }}>Monto Desembolsado *</label>
+          <label
+            htmlFor="montoDesembolsado"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Monto Desembolsado *
+          </label>
           <InputNumber
             id="montoDesembolsado"
             value={formData.montoDesembolsado}
@@ -506,9 +754,20 @@ export default function PrestamoBancarioForm({
       </div>
 
       {/* FILA 5: Tasas */}
-      <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         <div style={{ flex: 1 }}>
-          <label htmlFor="tasaInteresAnual" style={{ fontWeight: "bold" }}>Tasa de Interés Anual (%) *</label>
+          <label
+            htmlFor="tasaInteresAnual"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Tasa Interés Anual (%) *
+          </label>
           <InputNumber
             id="tasaInteresAnual"
             value={formData.tasaInteresAnual}
@@ -521,7 +780,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="tasaInteresEfectiva" style={{ fontWeight: "bold" }}>TEA (%)</label>
+          <label
+            htmlFor="tasaInteresEfectiva"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            TEA (%)
+          </label>
           <InputNumber
             id="tasaInteresEfectiva"
             value={formData.tasaInteresEfectiva}
@@ -533,7 +797,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="tasaMoratoria" style={{ fontWeight: "bold" }}>Tasa Moratoria (%)</label>
+          <label
+            htmlFor="tasaMoratoria"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Tasa Moratoria (%)
+          </label>
           <InputNumber
             id="tasaMoratoria"
             value={formData.tasaMoratoria}
@@ -545,7 +814,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="plazoMeses" style={{ fontWeight: "bold" }}>Plazo (Meses) *</label>
+          <label
+            htmlFor="plazoMeses"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Plazo (Meses) *
+          </label>
           <InputNumber
             id="plazoMeses"
             value={formData.plazoMeses}
@@ -555,7 +829,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="numeroCuotas" style={{ fontWeight: "bold" }}>Número de Cuotas *</label>
+          <label
+            htmlFor="numeroCuotas"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Número de Cuotas *
+          </label>
           <InputNumber
             id="numeroCuotas"
             value={formData.numeroCuotas}
@@ -565,7 +844,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="diaPago" style={{ fontWeight: "bold" }}>Día de Pago (1-31)</label>
+          <label
+            htmlFor="diaPago"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Día de Pago (1-31)
+          </label>
           <InputNumber
             id="diaPago"
             value={formData.diaPago}
@@ -576,7 +860,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="periodoGracia" style={{ fontWeight: "bold" }}>Periodo de Gracia (Meses)</label>
+          <label
+            htmlFor="periodoGracia"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Periodo Gracia (Meses)
+          </label>
           <InputNumber
             id="periodoGracia"
             value={formData.periodoGracia}
@@ -587,33 +876,77 @@ export default function PrestamoBancarioForm({
       </div>
 
       {/* FILA 6: Comisiones y Seguros */}
-      <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         <div style={{ flex: 1 }}>
-          <label htmlFor="comisionInicial" style={{ fontWeight: "bold" }}>Comisión Inicial</label>
+          <label
+            htmlFor="comisionApertura"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Comisión Apertura (%)
+          </label>
           <InputNumber
-            id="comisionInicial"
-            value={formData.comisionInicial}
-            onValueChange={(e) => handleChange("comisionInicial", e.value)}
+            id="comisionApertura"
+            value={formData.comisionApertura}
+            onValueChange={(e) => handleChange("comisionApertura", e.value)}
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={2}
+            min={0}
+            max={100}
             disabled={readOnly}
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="comisionMantenimiento" style={{ fontWeight: "bold" }}>Comisión Mantenimiento</label>
+          <label
+            htmlFor="comisionEstudio"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Comisión Estudio (%)
+          </label>
           <InputNumber
-            id="comisionMantenimiento"
-            value={formData.comisionMantenimiento}
-            onValueChange={(e) => handleChange("comisionMantenimiento", e.value)}
+            id="comisionEstudio"
+            value={formData.comisionEstudio}
+            onValueChange={(e) => handleChange("comisionEstudio", e.value)}
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={2}
+            min={0}
+            max={100}
             disabled={readOnly}
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="seguroDesgravamen" style={{ fontWeight: "bold" }}>Seguro de Desgravamen</label>
+          <label
+            htmlFor="comisionOtros"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Comisión Otros (%)
+          </label>
+          <InputNumber
+            id="comisionOtros"
+            value={formData.comisionOtros}
+            onValueChange={(e) => handleChange("comisionOtros", e.value)}
+            mode="decimal"
+            minFractionDigits={2}
+            maxFractionDigits={2}
+            min={0}
+            max={100}
+            disabled={readOnly}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label
+            htmlFor="seguroDesgravamen"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Seguro Desgravamen (%)
+          </label>
           <InputNumber
             id="seguroDesgravamen"
             value={formData.seguroDesgravamen}
@@ -624,12 +957,13 @@ export default function PrestamoBancarioForm({
             disabled={readOnly}
           />
         </div>
-      </div>
-
-      {/* FILA 7: Garantías */}
-      <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
         <div style={{ flex: 1 }}>
-          <label htmlFor="tipoGarantia" style={{ fontWeight: "bold" }}>Tipo de Garantía</label>
+          <label
+            htmlFor="tipoGarantia"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Tipo de Garantía
+          </label>
           <Dropdown
             id="tipoGarantia"
             value={formData.tipoGarantia}
@@ -640,7 +974,12 @@ export default function PrestamoBancarioForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="valorGarantia" style={{ fontWeight: "bold" }}>Valor de Garantía</label>
+          <label
+            htmlFor="valorGarantia"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Valor de Garantía
+          </label>
           <InputNumber
             id="valorGarantia"
             value={formData.valorGarantia}
@@ -652,69 +991,149 @@ export default function PrestamoBancarioForm({
           />
         </div>
       </div>
-
       {/* FILA 8: Descripción de Garantía */}
-      <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         <div style={{ flex: 1 }}>
-          <label htmlFor="descripcionGarantia" style={{ fontWeight: "bold" }}>Descripción de Garantía</label>
+          <label
+            htmlFor="destinoFondos"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Destino de Fondos
+          </label>
+          <InputTextarea
+            id="destinoFondos"
+            value={formData.destinoFondos}
+            onChange={(e) =>
+              handleChange("destinoFondos", e.target.value.toUpperCase())
+            }
+            placeholder="Descripción del destino de los fondos"
+            disabled={readOnly}
+            rows={2}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label
+            htmlFor="descripcionGarantia"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Descripción de Garantía
+          </label>
           <InputTextarea
             id="descripcionGarantia"
             value={formData.descripcionGarantia}
-            onChange={(e) => handleChange("descripcionGarantia", e.target.value.toUpperCase())}
+            onChange={(e) =>
+              handleChange("descripcionGarantia", e.target.value.toUpperCase())
+            }
             placeholder="Descripción detallada de la garantía"
+            disabled={readOnly}
+            rows={2}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label
+            htmlFor="observaciones"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Observaciones
+          </label>
+          <InputTextarea
+            id="observaciones"
+            value={formData.observaciones}
+            onChange={(e) =>
+              handleChange("observaciones", e.target.value.toUpperCase())
+            }
+            placeholder="Observaciones adicionales"
             disabled={readOnly}
             rows={2}
           />
         </div>
       </div>
 
-      {/* FILA 9: Refinanciamiento */}
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
-        <div style={{ flex: 0.3, display: "flex", alignItems: "center", gap: 10 }}>
-          <Checkbox
-            inputId="esRefinanciamiento"
-            checked={formData.esRefinanciamiento}
-            onChange={(e) => handleChange("esRefinanciamiento", e.checked)}
-            disabled={readOnly}
-          />
-          <label htmlFor="esRefinanciamiento" style={{ fontWeight: "bold", margin: 0 }}>
-            ¿Es Refinanciamiento?
-          </label>
-        </div>
-        {formData.esRefinanciamiento && (
-          <div style={{ flex: 1 }}>
-            <label htmlFor="prestamoRefinanciadoId" style={{ fontWeight: "bold" }}>Préstamo Refinanciado</label>
-            <Dropdown
-              id="prestamoRefinanciadoId"
-              value={formData.prestamoRefinanciadoId}
-              options={prestamosOptions}
-              onChange={(e) => handleChange("prestamoRefinanciadoId", e.value)}
-              placeholder="Seleccionar préstamo"
-              disabled={readOnly}
-              filter
-              filterBy="label"
-            />
+      {/* Documento PDF - Solo en modo edición */}
+      {(isEdit || defaultValues.id) && (
+        <div
+          style={{ marginTop: 20, borderTop: "2px solid #ddd", paddingTop: 20 }}
+        >
+          <h4 style={{ marginBottom: 15 }}>Documento del Crédito Bancario</h4>
+
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <div style={{ flex: 2 }}>
+              <label
+                htmlFor="urlDocumentoPDF"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
+                Documento PDF
+              </label>
+              <InputText
+                id="urlDocumentoPDF"
+                value={formData.urlDocumentoPDF || ""}
+                placeholder="URL del documento PDF"
+                disabled
+                readOnly
+                style={{ fontWeight: "bold" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                <Button
+                  type="button"
+                  label="Capturar/Subir"
+                  icon="pi pi-camera"
+                  severity="info"
+                  onClick={() => setMostrarCapturaDoc(true)}
+                  disabled={readOnly || loading}
+                  size="small"
+                />
+                {formData.urlDocumentoPDF && (
+                  <Button
+                    type="button"
+                    label="Ver PDF"
+                    icon="pi pi-eye"
+                    severity="success"
+                    onClick={handleVerDocumentoPDF}
+                    disabled={loading}
+                    size="small"
+                  />
+                )}
+              </div>
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* FILA 10: Observaciones */}
-      <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="observaciones" style={{ fontWeight: "bold" }}>Observaciones</label>
-          <InputTextarea
-            id="observaciones"
-            value={formData.observaciones}
-            onChange={(e) => handleChange("observaciones", e.target.value.toUpperCase())}
-            placeholder="Observaciones adicionales"
-            disabled={readOnly}
-            rows={3}
-          />
         </div>
-      </div>
-
+      )}
+      {/* Dialog para captura de documento */}
+      {mostrarCapturaDoc && (
+        <DocumentoCapture
+          visible={mostrarCapturaDoc}
+          onHide={() => setMostrarCapturaDoc(false)}
+          onDocumentoSubido={handleDocumentoSubido}
+          endpoint={`${
+            import.meta.env.VITE_API_URL
+          }/tesoreria/prestamos-bancarios/upload`}
+          datosAdicionales={{ prestamoBancarioId: defaultValues?.id }}
+          titulo="Subir Documento de Crédito Bancario"
+          prefijo="prestamo"
+          identificador={defaultValues?.id || "nuevo"}
+          mensajeInfo="Suba el documento PDF del contrato de crédito bancario proporcionado por la entidad financiera."
+        />
+      )}
       {/* Botones */}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 10,
+          marginTop: 20,
+        }}
+      >
         <Button
           label="Cancelar"
           icon="pi pi-times"

@@ -53,3 +53,4 @@ export async function getCronogramaPrestamo(id) {
   const res = await axios.get(`${API_URL}/${id}/cronograma`, { headers: getAuthHeaders() });
   return res.data;
 }
+
