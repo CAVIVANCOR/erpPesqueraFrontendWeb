@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [hoveredCard, setHoveredCard] = useState(null);
   const [expandedCard, setExpandedCard] = useState(null);
   const [reorderedModulos, setReorderedModulos] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const containerRef = useRef(null);
 
   // Configuración de módulos con colores del logo Megui y sus submenús
@@ -155,6 +156,45 @@ export default function Dashboard() {
       ]
     },
     {
+      id: "finanzas",
+      titulo: "FINANZAS",
+      descripcion: "Tesorería Avanzada: Préstamos, Créditos e Inversiones",
+      icono: "pi-wallet",
+      modulos: 3,
+      color: "#8E44AD",
+      size: "medium",
+      submenu: [
+        { label: "Préstamo Bancario", key: "prestamoBancario", icon: "pi-briefcase" },
+        { label: "Línea de Crédito", key: "lineaCredito", icon: "pi-credit-card" },
+        { label: "Inversión Financiera", key: "inversionFinanciera", icon: "pi-chart-pie" }
+      ]
+    },
+    {
+      id: "contabilidad",
+      titulo: "CONTABILIDAD",
+      descripcion: "Plan Contable, Asientos, Períodos y Reportes Financieros",
+      icono: "pi-calculator",
+      modulos: 14,
+      color: "#E74C3C",
+      size: "large",
+      submenu: [
+        { label: "Plan Contable", key: "planCuentasContable", icon: "pi-list" },
+        { label: "Período Contable", key: "periodoContable", icon: "pi-calendar" },
+        { label: "Asiento Contable", key: "asientoContable", icon: "pi-book" },
+        { label: "Tipo Afectación IGV", key: "tipoAfectacionIGV", icon: "pi-percentage" },
+        { label: "Comprobante Electrónico", key: "comprobanteElectronico", icon: "pi-file-pdf" },
+        { label: "Cuenta Por Cobrar", key: "cuentaPorCobrar", icon: "pi-money-bill" },
+        { label: "Cuenta Por Pagar", key: "cuentaPorPagar", icon: "pi-credit-card" },
+        { label: "Pagos", key: "pago", icon: "pi-dollar" },
+        { label: "Flujo de Caja Financiero", key: "flujoCaja", icon: "pi-chart-line" },
+        { label: "Conciliación Bancaria", key: "conciliacionBancaria", icon: "pi-check-square" },
+        { label: "Letras de Cambio", key: "letraCambio", icon: "pi-file-edit" },
+        { label: "Retenciones", key: "retencion", icon: "pi-minus-circle" },
+        { label: "Percepciones", key: "percepcion", icon: "pi-plus-circle" },
+        { label: "Presupuestos", key: "presupuesto", icon: "pi-chart-bar" }
+      ]
+    },
+    {
       id: "maestros",
       titulo: "MAESTROS",
       descripcion: "Configuración de empresas, personal, productos y entidades",
@@ -198,8 +238,24 @@ export default function Dashboard() {
     }
   ];
 
-  // Usar módulos reordenados si existen, sino usar los originales
-  const modulosConfig = reorderedModulos || modulosConfigBase;
+  // Filtrar módulos por búsqueda
+  const filteredModulos = (reorderedModulos || modulosConfigBase).filter((modulo) => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    
+    // Buscar en título, descripción y submódulos
+    const matchTitle = modulo.titulo.toLowerCase().includes(query);
+    const matchDescription = modulo.descripcion.toLowerCase().includes(query);
+    const matchSubmenu = modulo.submenu?.some((item) => 
+      item.label.toLowerCase().includes(query)
+    );
+    
+    return matchTitle || matchDescription || matchSubmenu;
+  });
+
+  // Usar módulos filtrados
+  const modulosConfig = filteredModulos;
 
   // Animación del mesh gradient
   const meshVariants = {
@@ -299,6 +355,119 @@ export default function Dashboard() {
           padding: "60px 40px",
         }}
       >
+        {/* Barra de búsqueda */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          style={{
+            marginBottom: "40px",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              position: "relative",
+              width: "100%",
+              maxWidth: "600px",
+            }}
+          >
+            <i
+              className="pi pi-search"
+              style={{
+                position: "absolute",
+                left: "20px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "#64748b",
+                fontSize: "18px",
+                zIndex: 2,
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Buscar módulos, procesos o funcionalidades..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "16px 20px 16px 52px",
+                background: "rgba(15, 23, 42, 0.6)",
+                backdropFilter: "blur(20px)",
+                border: "1px solid rgba(93, 173, 226, 0.3)",
+                borderRadius: "16px",
+                color: "#ffffff",
+                fontSize: "1rem",
+                outline: "none",
+                transition: "all 0.3s ease",
+              }}
+              onFocus={(e) => {
+                e.target.style.border = "1px solid #5DADE2";
+                e.target.style.boxShadow = "0 0 0 3px rgba(93, 173, 226, 0.1)";
+              }}
+              onBlur={(e) => {
+                e.target.style.border = "1px solid rgba(93, 173, 226, 0.3)";
+                e.target.style.boxShadow = "none";
+              }}
+            />
+            {searchQuery && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={() => setSearchQuery("")}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "rgba(93, 173, 226, 0.2)",
+                  border: "none",
+                  borderRadius: "8px",
+                  width: "32px",
+                  height: "32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  color: "#5DADE2",
+                  transition: "all 0.2s ease",
+                }}
+                whileHover={{
+                  background: "rgba(93, 173, 226, 0.3)",
+                  scale: 1.1,
+                }}
+              >
+                <i className="pi pi-times" style={{ fontSize: "14px" }} />
+              </motion.button>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Mensaje de resultados */}
+        {searchQuery && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            style={{
+              textAlign: "center",
+              marginBottom: "24px",
+              color: "#94a3b8",
+              fontSize: "0.95rem",
+            }}
+          >
+            {filteredModulos.length > 0 ? (
+              <span>
+                Se encontraron <strong style={{ color: "#5DADE2" }}>{filteredModulos.length}</strong> módulos
+              </span>
+            ) : (
+              <span style={{ color: "#ef4444" }}>
+                No se encontraron resultados para "{searchQuery}"
+              </span>
+            )}
+          </motion.div>
+        )}
+
         {/* Bento Grid */}
         <div
           style={{

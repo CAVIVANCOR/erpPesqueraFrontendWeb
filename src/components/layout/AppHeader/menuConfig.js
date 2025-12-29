@@ -439,7 +439,34 @@ export const getMenuConfig = (abrirModulo) => ({
   },
 
   // ============================================
-  // 3. CONTABILIDAD (Dropdown simple)
+  // 3. FINANZAS (Dropdown simple)
+  // ============================================
+  finanzas: {
+    id: "finanzas",
+    label: "FINANZAS",
+    icon: "pi pi-wallet",
+    type: "dropdown",
+    items: [
+      {
+        label: "Préstamo Bancario",
+        icon: "pi pi-briefcase",
+        action: () => abrirModulo("prestamoBancario", "Préstamo Bancario")
+      },
+      {
+        label: "Línea de Crédito",
+        icon: "pi pi-credit-card",
+        action: () => abrirModulo("lineaCredito", "Línea de Crédito")
+      },
+      {
+        label: "Inversión Financiera",
+        icon: "pi pi-chart-pie",
+        action: () => abrirModulo("inversionFinanciera", "Inversión Financiera")
+      }
+    ]
+  },
+
+  // ============================================
+  // 4. CONTABILIDAD (Dropdown simple)
   // ============================================
   contabilidad: {
     id: "contabilidad",
@@ -521,7 +548,7 @@ export const getMenuConfig = (abrirModulo) => ({
   },
 
   // ============================================
-  // 4. MAESTROS (Mega Menu con 7 columnas)
+  // 5. MAESTROS (Mega Menu con 7 columnas)
   // ============================================
   maestros: {
     id: "maestros",
@@ -778,7 +805,7 @@ export const getMenuConfig = (abrirModulo) => ({
   },
 
   // ============================================
-  // 5. USUARIOS (Dropdown simple)
+  // 6. USUARIOS (Dropdown simple)
   // ============================================
   usuarios: {
     id: "usuarios",

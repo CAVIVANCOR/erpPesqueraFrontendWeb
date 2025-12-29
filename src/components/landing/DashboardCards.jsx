@@ -71,6 +71,24 @@ const DashboardCards = ({ menuItems, onModuleClick }) => {
       stats: { count: 'Control', label: 'Caja' }
     },
     {
+      key: 'finanzas',
+      label: 'FINANZAS',
+      icon: 'pi pi-wallet',
+      color: '#667eea',
+      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      description: 'Préstamos, Créditos, Inversiones',
+      stats: { count: 'Tesorería', label: 'Avanzada' }
+    },
+    {
+      key: 'contabilidad',
+      label: 'CONTABILIDAD',
+      icon: 'pi pi-calculator',
+      color: '#f093fb',
+      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+      description: 'Plan Contable, Asientos, Reportes',
+      stats: { count: 'Gestión', label: 'Contable' }
+    },
+    {
       key: 'usuarios',
       label: 'USUARIOS',
       icon: 'pi pi-users',
