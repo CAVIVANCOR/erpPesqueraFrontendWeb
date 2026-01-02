@@ -146,29 +146,40 @@ export default function PrestamoBancario({ ruta }) {
     setIsEdit(false);
   };
 
-  const onSubmit = async (data) => {
-    if (isEdit && !permisos.puedeEditar) {
+  const onSubmit = async (resultado) => {
+    const esEdicion = isEdit && selected && selected.id;
+
+    if (esEdicion && !permisos.puedeEditar) {
       return;
     }
-    if (!isEdit && !permisos.puedeCrear) {
+    if (!esEdicion && !permisos.puedeCrear) {
       return;
     }
 
     setLoading(true);
     try {
-      await data;
       toast.current?.show({
         severity: "success",
-        summary: isEdit ? "Préstamo actualizado" : "Préstamo creado",
-        detail: isEdit
+        summary: esEdicion ? "Préstamo actualizado" : "Préstamo creado",
+        detail: esEdicion
           ? "El préstamo bancario fue actualizado correctamente."
-          : "El préstamo bancario fue creado correctamente.",
+          : `Préstamo creado con número: ${resultado.numeroPrestamo}. Ahora puedes agregar documentos.`,
         life: 3000,
       });
-      setShowDialog(false);
-      setSelected(null);
-      setIsEdit(false);
-      cargarDatos();
+
+      if (esEdicion) {
+        // Recargar el préstamo actualizado
+        const prestamoActualizado = await getPrestamoBancarioById(selected.id);
+        setSelected(prestamoActualizado);
+      } else {
+        // Cargar el préstamo recién creado con todas sus relaciones
+        const prestamoCompleto = await getPrestamoBancarioById(resultado.id);
+        setSelected(prestamoCompleto);
+        setIsEdit(true);
+        // NO cerrar el dialog, mantenerlo abierto en modo edición
+      }
+
+      await cargarDatos();
     } catch (err) {
       toast.current?.show({
         severity: "error",
@@ -455,18 +466,17 @@ export default function PrestamoBancario({ ruta }) {
         visible={showDialog}
         style={{ width: "1400px" }}
         modal
-        className="p-fluid"
-        onHide={onCancel}
-        closeOnEscape
-        dismissableMask
+        maximizable
+        maximized={true}
+        onHide={() => setShowDialog(false)}
       >
         <PrestamoBancarioForm
           isEdit={isEdit}
           defaultValues={selected || {}}
           onSubmit={onSubmit}
-          onCancel={onCancel}
+          onCancel={() => setShowDialog(false)}
           loading={loading}
-          readOnly={isEdit && !permisos.puedeEditar}
+          readOnly={!permisos.puedeEditar && isEdit}
         />
       </Dialog>
     </div>

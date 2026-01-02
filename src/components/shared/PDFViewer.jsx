@@ -310,6 +310,15 @@ const PDFViewer = ({ urlDocumento, altura = "600px" }) => {
           urlCompleta = `${
             import.meta.env.VITE_API_URL
           }/det-movs-entrega-rendir-ot-mantenimiento-pdf/archivo-operacion/${rutaArchivo}`;
+        } else if (urlDocumento.startsWith("/uploads/prestamos-bancarios/")) {
+          // ✅ NUEVO: Soporte para documentos de préstamos bancarios (principal y adicional)
+          const rutaArchivo = urlDocumento.replace(
+            "/uploads/prestamos-bancarios/",
+            ""
+          );
+          urlCompleta = `${
+            import.meta.env.VITE_API_URL
+          }/tesoreria/prestamos-bancarios/archivo/${rutaArchivo}`;
         } else if (urlDocumento.startsWith("/api/")) {
           // Remover /api/ del inicio porque VITE_API_URL ya lo incluye
           const rutaSinApi = urlDocumento.substring(4);

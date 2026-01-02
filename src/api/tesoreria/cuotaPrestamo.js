@@ -3,7 +3,7 @@
  */
 
 import axios from 'axios';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore } from '../../shared/stores/useAuthStore';
 
 const API_URL = `${import.meta.env.VITE_API_URL}/tesoreria/cuotas`;
 

@@ -18,8 +18,13 @@ import {
   updateCuotaPrestamo,
   registrarPagoCuota,
 } from "../../api/tesoreria/cuotaPrestamo";
+import { getResponsiveFontSize } from "../../utils/utils";
+import CronogramaImportTable from "./CronogramaImportTable";
 
-export default function CuotaPrestamoList({ prestamoBancarioId, readOnly = false }) {
+export default function CuotaPrestamoList({
+  prestamoBancarioId,
+  readOnly = false,
+}) {
   const [cuotas, setCuotas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -31,6 +36,7 @@ export default function CuotaPrestamoList({ prestamoBancarioId, readOnly = false
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
   });
   const toast = useRef(null);
+  const [dialogImportVisible, setDialogImportVisible] = useState(false);
 
   useEffect(() => {
     if (prestamoBancarioId) {
@@ -98,7 +104,10 @@ export default function CuotaPrestamoList({ prestamoBancarioId, readOnly = false
           life: 3000,
         });
       } else {
-        await createCuotaPrestamo({ ...data, prestamoBancarioId: Number(prestamoBancarioId) });
+        await createCuotaPrestamo({
+          ...data,
+          prestamoBancarioId: Number(prestamoBancarioId),
+        });
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -144,6 +153,59 @@ export default function CuotaPrestamoList({ prestamoBancarioId, readOnly = false
     }
   };
 
+  const handleImportarCuotas = async (cuotasImportadas) => {
+    try {
+      setLoading(true);
+
+      let cuotasCreadas = 0;
+      let errores = 0;
+
+      for (const cuota of cuotasImportadas) {
+        try {
+          const cuotaData = {
+            prestamoBancarioId: prestamoBancarioId,
+            numeroCuota: cuota.numeroCuota,
+            fechaVencimiento: cuota.fechaVencimiento,
+            saldoCapitalAntes: cuota.saldoCapitalAntes,
+            montoCapital: cuota.montoCapital,
+            montoInteres: cuota.montoInteres,
+            montoComision: cuota.montoComision || 0,
+            montoSeguro: cuota.montoSeguro || 0,
+            montoTotal: cuota.montoTotal,
+            saldoCapitalDespues: cuota.saldoCapitalDespues,
+            estadoPago: "PENDIENTE",
+          };
+
+          await createCuotaPrestamo(cuotaData);
+          cuotasCreadas++;
+        } catch (error) {
+          console.error(`Error al crear cuota ${cuota.numeroCuota}:`, error);
+          errores++;
+        }
+      }
+
+      toast.current?.show({
+        severity: errores === 0 ? "success" : "warn",
+        summary: errores === 0 ? "Éxito" : "Importación Parcial",
+        detail: `${cuotasCreadas} cuotas importadas correctamente${
+          errores > 0 ? `, ${errores} con errores` : ""
+        }`,
+        life: 5000,
+      });
+
+      await cargarCuotas();
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al importar cuotas",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const confirmDelete = (cuota) => {
     confirmDialog({
       message: `¿Está seguro de eliminar la cuota ${cuota.numeroCuota}?`,
@@ -178,40 +240,20 @@ export default function CuotaPrestamoList({ prestamoBancarioId, readOnly = false
     }
   };
 
-  const leftToolbarTemplate = () => {
-    return (
-      <div className="flex flex-wrap gap-2">
-        <Button
-          label="Nueva Cuota"
-          icon="pi pi-plus"
-          severity="success"
-          onClick={openNew}
-          disabled={readOnly}
-        />
-      </div>
-    );
-  };
-
-  const rightToolbarTemplate = () => {
-    return (
-      <span className="p-input-icon-left">
-        <i className="pi pi-search" />
-        <InputText
-          value={globalFilterValue}
-          onChange={onGlobalFilterChange}
-          placeholder="Buscar..."
-        />
-      </span>
-    );
-  };
-
   const estadoBodyTemplate = (rowData) => {
-    const severity = rowData.estado === "PAGADA" ? "success" : rowData.estado === "VENCIDA" ? "danger" : "warning";
-    return <Tag value={rowData.estado} severity={severity} />;
+    const severity =
+      rowData.estadoPago === "PAGADA"
+        ? "success"
+        : rowData.estadoPago === "VENCIDA"
+        ? "danger"
+        : "warning";
+    return <Tag value={rowData.estadoPago} severity={severity} />;
   };
 
   const fechaBodyTemplate = (rowData, field) => {
-    return rowData[field] ? new Date(rowData[field]).toLocaleDateString("es-PE") : "-";
+    return rowData[field]
+      ? new Date(rowData[field]).toLocaleDateString("es-PE")
+      : "-";
   };
 
   const montoBodyTemplate = (rowData, field) => {
@@ -225,7 +267,7 @@ export default function CuotaPrestamoList({ prestamoBancarioId, readOnly = false
   const actionBodyTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
-        {rowData.estado === "PENDIENTE" && (
+        {rowData.estadoPago === "PENDIENTE" && (
           <Button
             icon="pi pi-dollar"
             rounded
@@ -265,67 +307,112 @@ export default function CuotaPrestamoList({ prestamoBancarioId, readOnly = false
     <div>
       <Toast ref={toast} />
       <ConfirmDialog />
-
       <div className="card">
-        <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate} />
-
+        <Toolbar className="mb-4" />
         <DataTable
           value={cuotas}
           loading={loading}
           dataKey="id"
+          showGridlines
+          stripedRows
+          size="small"
           paginator
-          rows={10}
-          rowsPerPageOptions={[5, 10, 25, 50]}
+          rows={20}
+          rowsPerPageOptions={[20, 40, 80, 160]}
           filters={filters}
-          globalFilterFields={["numeroCuota", "estado"]}
+          globalFilterFields={["numeroCuota", "estadoPago"]}
           emptyMessage="No se encontraron cuotas"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cuotas"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+          style={{ fontSize: getResponsiveFontSize() }}
+          header={
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <h2>Cuotas del Préstamo</h2>
+              </div>
+              <div style={{ flex: 1, display: "flex", gap: "10px" }}>
+                <Button
+                  label="Nueva Cuota"
+                  icon="pi pi-plus"
+                  severity="success"
+                  onClick={openNew}
+                  disabled={readOnly}
+                />
+                <Button
+                  label="Importar desde PDF"
+                  icon="pi pi-file-import"
+                  severity="info"
+                  onClick={() => setDialogImportVisible(true)}
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+          }
         >
-          <Column field="numeroCuota" header="N° Cuota" sortable style={{ minWidth: "8rem" }} />
+          <Column
+            field="numeroCuota"
+            header="N° Cuota"
+            sortable
+            style={{ minWidth: "8rem" }}
+          />
           <Column
             field="fechaVencimiento"
-            header="Fecha Vencimiento"
+            header="Vencimiento"
             body={(rowData) => fechaBodyTemplate(rowData, "fechaVencimiento")}
             sortable
-            style={{ minWidth: "12rem" }}
+            style={{ minWidth: "6rem" }}
           />
           <Column
-            field="saldoInicial"
-            header="Saldo Inicial"
-            body={(rowData) => montoBodyTemplate(rowData, "saldoInicial")}
+            field="saldoCapitalAntes"
+            header="Saldo Capital Antes"
+            body={(rowData) => montoBodyTemplate(rowData, "saldoCapitalAntes")}
+            sortable
+            style={{ minWidth: "8rem" }}
+          />
+          <Column
+            field="montoCapital"
+            header="Monto Capital"
+            body={(rowData) => montoBodyTemplate(rowData, "montoCapital")}
+            sortable
+            style={{ minWidth: "8rem" }}
+          />
+          <Column
+            field="montoInteres"
+            header="Monto Interés"
+            body={(rowData) => montoBodyTemplate(rowData, "montoInteres")}
+            sortable
+            style={{ minWidth: "6rem" }}
+          />
+          <Column
+            field="montoTotal"
+            header="Monto Total"
+            body={(rowData) => montoBodyTemplate(rowData, "montoTotal")}
+            sortable
+            style={{ minWidth: "8rem" }}
+          />
+          <Column
+            field="saldoCapitalDespues"
+            header="Saldo Capital Después"
+            body={(rowData) =>
+              montoBodyTemplate(rowData, "saldoCapitalDespues")
+            }
+            sortable
+            style={{ minWidth: "8rem" }}
+          />
+          <Column
+            field="estadoPago"
+            header="Estado"
+            body={estadoBodyTemplate}
             sortable
             style={{ minWidth: "10rem" }}
           />
-          <Column
-            field="capital"
-            header="Capital"
-            body={(rowData) => montoBodyTemplate(rowData, "capital")}
-            sortable
-            style={{ minWidth: "10rem" }}
-          />
-          <Column
-            field="interes"
-            header="Interés"
-            body={(rowData) => montoBodyTemplate(rowData, "interes")}
-            sortable
-            style={{ minWidth: "10rem" }}
-          />
-          <Column
-            field="cuota"
-            header="Cuota Total"
-            body={(rowData) => montoBodyTemplate(rowData, "cuota")}
-            sortable
-            style={{ minWidth: "10rem" }}
-          />
-          <Column
-            field="saldoFinal"
-            header="Saldo Final"
-            body={(rowData) => montoBodyTemplate(rowData, "saldoFinal")}
-            sortable
-            style={{ minWidth: "10rem" }}
-          />
-          <Column field="estado" header="Estado" body={estadoBodyTemplate} sortable style={{ minWidth: "10rem" }} />
           <Column
             field="fechaPago"
             header="Fecha Pago"
@@ -333,7 +420,11 @@ export default function CuotaPrestamoList({ prestamoBancarioId, readOnly = false
             sortable
             style={{ minWidth: "12rem" }}
           />
-          <Column body={actionBodyTemplate} exportable={false} style={{ minWidth: "12rem" }} />
+          <Column
+            body={actionBodyTemplate}
+            exportable={false}
+            style={{ minWidth: "12rem" }}
+          />
         </DataTable>
       </div>
 
@@ -371,6 +462,12 @@ export default function CuotaPrestamoList({ prestamoBancarioId, readOnly = false
           loading={loading}
         />
       </Dialog>
+      <CronogramaImportTable
+        visible={dialogImportVisible}
+        onHide={() => setDialogImportVisible(false)}
+        onImport={handleImportarCuotas}
+        prestamoBancarioId={prestamoBancarioId}
+      />
     </div>
   );
 }

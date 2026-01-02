@@ -17,14 +17,14 @@ export default function CuotaPrestamoForm({
   const [formData, setFormData] = useState({
     numeroCuota: defaultValues?.numeroCuota || 1,
     fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : new Date(),
-    saldoInicial: defaultValues?.saldoInicial || 0,
-    capital: defaultValues?.capital || 0,
-    interes: defaultValues?.interes || 0,
-    cuota: defaultValues?.cuota || 0,
-    saldoFinal: defaultValues?.saldoFinal || 0,
-    estado: defaultValues?.estado || "PENDIENTE",
+    saldoCapitalAntes: defaultValues?.saldoCapitalAntes || 0,
+    montoCapital: defaultValues?.montoCapital || 0,
+    montoInteres: defaultValues?.montoInteres || 0,
+    montoTotal: defaultValues?.montoTotal || 0,
+    saldoCapitalDespues: defaultValues?.saldoCapitalDespues || 0,
+    estadoPago: defaultValues?.estadoPago || "PENDIENTE",
     fechaPago: defaultValues?.fechaPago ? new Date(defaultValues.fechaPago) : new Date(),
-    montoPagado: defaultValues?.montoPagado || defaultValues?.cuota || 0,
+    montoPagado: defaultValues?.montoPagado || defaultValues?.montoTotal || 0,
   });
 
   const estadosOptions = [
@@ -38,13 +38,13 @@ export default function CuotaPrestamoForm({
       const newData = { ...prev, [field]: value };
 
       // Calcular cuota total automáticamente
-      if (field === "capital" || field === "interes") {
-        newData.cuota = Number(newData.capital || 0) + Number(newData.interes || 0);
+      if (field === "montoCapital" || field === "montoInteres") {
+        newData.montoTotal = Number(newData.montoCapital || 0) + Number(newData.montoInteres || 0);
       }
 
       // Calcular saldo final automáticamente
-      if (field === "saldoInicial" || field === "capital") {
-        newData.saldoFinal = Number(newData.saldoInicial || 0) - Number(newData.capital || 0);
+      if (field === "saldoCapitalAntes" || field === "montoCapital") {
+        newData.saldoCapitalDespues = Number(newData.saldoCapitalAntes || 0) - Number(newData.montoCapital || 0);
       }
 
       return newData;
@@ -56,14 +56,14 @@ export default function CuotaPrestamoForm({
       setFormData({
         numeroCuota: defaultValues?.numeroCuota || 1,
         fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : new Date(),
-        saldoInicial: defaultValues?.saldoInicial || 0,
-        capital: defaultValues?.capital || 0,
-        interes: defaultValues?.interes || 0,
-        cuota: defaultValues?.cuota || 0,
-        saldoFinal: defaultValues?.saldoFinal || 0,
-        estado: defaultValues?.estado || "PENDIENTE",
+        saldoCapitalAntes: defaultValues?.saldoCapitalAntes || 0,
+        montoCapital: defaultValues?.montoCapital || 0,
+        montoInteres: defaultValues?.montoInteres || 0,
+        montoTotal: defaultValues?.montoTotal || 0,
+        saldoCapitalDespues: defaultValues?.saldoCapitalDespues || 0,
+        estadoPago: defaultValues?.estadoPago || "PENDIENTE",
         fechaPago: defaultValues?.fechaPago ? new Date(defaultValues.fechaPago) : new Date(),
-        montoPagado: defaultValues?.montoPagado || defaultValues?.cuota || 0,
+        montoPagado: defaultValues?.montoPagado || defaultValues?.montoTotal || 0,
       });
     }
   }, [defaultValues]);
@@ -83,12 +83,12 @@ export default function CuotaPrestamoForm({
       const dataToSend = {
         numeroCuota: Number(formData.numeroCuota),
         fechaVencimiento: formData.fechaVencimiento,
-        saldoInicial: Number(formData.saldoInicial),
-        capital: Number(formData.capital),
-        interes: Number(formData.interes),
-        cuota: Number(formData.cuota),
-        saldoFinal: Number(formData.saldoFinal),
-        estado: formData.estado,
+        saldoCapitalAntes: Number(formData.saldoCapitalAntes),
+        montoCapital: Number(formData.montoCapital),
+        montoInteres: Number(formData.montoInteres),
+        montoTotal: Number(formData.montoTotal),
+        saldoCapitalDespues: Number(formData.saldoCapitalDespues),
+        estadoPago: formData.estadoPago,
       };
       await onSubmit(dataToSend);
     }
@@ -165,14 +165,14 @@ export default function CuotaPrestamoForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="estado" style={{ fontWeight: "bold" }}>
+          <label htmlFor="estadoPago" style={{ fontWeight: "bold" }}>
             Estado *
           </label>
           <Dropdown
-            id="estado"
-            value={formData.estado}
+            id="estadoPago"
+            value={formData.estadoPago}
             options={estadosOptions}
-            onChange={(e) => handleChange("estado", e.value)}
+            onChange={(e) => handleChange("estadoPago", e.value)}
             required
           />
         </div>
@@ -180,13 +180,13 @@ export default function CuotaPrestamoForm({
 
       <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
         <div style={{ flex: 1 }}>
-          <label htmlFor="saldoInicial" style={{ fontWeight: "bold" }}>
-            Saldo Inicial *
+          <label htmlFor="saldoCapitalAntes" style={{ fontWeight: "bold" }}>
+            Saldo Capital Antes *
           </label>
           <InputNumber
-            id="saldoInicial"
-            value={formData.saldoInicial}
-            onValueChange={(e) => handleChange("saldoInicial", e.value)}
+            id="saldoCapitalAntes"
+            value={formData.saldoCapitalAntes}
+            onValueChange={(e) => handleChange("saldoCapitalAntes", e.value)}
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={2}
@@ -194,13 +194,13 @@ export default function CuotaPrestamoForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="capital" style={{ fontWeight: "bold" }}>
-            Capital *
+          <label htmlFor="montoCapital" style={{ fontWeight: "bold" }}>
+            Monto Capital *
           </label>
           <InputNumber
-            id="capital"
-            value={formData.capital}
-            onValueChange={(e) => handleChange("capital", e.value)}
+            id="montoCapital"
+            value={formData.montoCapital}
+            onValueChange={(e) => handleChange("montoCapital", e.value)}
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={2}
@@ -208,13 +208,13 @@ export default function CuotaPrestamoForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="interes" style={{ fontWeight: "bold" }}>
-            Interés *
+          <label htmlFor="montoInteres" style={{ fontWeight: "bold" }}>
+            Monto Interés *
           </label>
           <InputNumber
-            id="interes"
-            value={formData.interes}
-            onValueChange={(e) => handleChange("interes", e.value)}
+            id="montoInteres"
+            value={formData.montoInteres}
+            onValueChange={(e) => handleChange("montoInteres", e.value)}
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={2}
@@ -225,13 +225,13 @@ export default function CuotaPrestamoForm({
 
       <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
         <div style={{ flex: 1 }}>
-          <label htmlFor="cuota" style={{ fontWeight: "bold" }}>
-            Cuota Total *
+          <label htmlFor="montoTotal" style={{ fontWeight: "bold" }}>
+            Monto Total *
           </label>
           <InputNumber
-            id="cuota"
-            value={formData.cuota}
-            onValueChange={(e) => handleChange("cuota", e.value)}
+            id="montoTotal"
+            value={formData.montoTotal}
+            onValueChange={(e) => handleChange("montoTotal", e.value)}
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={2}
@@ -240,13 +240,13 @@ export default function CuotaPrestamoForm({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="saldoFinal" style={{ fontWeight: "bold" }}>
-            Saldo Final *
+          <label htmlFor="saldoCapitalDespues" style={{ fontWeight: "bold" }}>
+            Saldo Capital Después *
           </label>
           <InputNumber
-            id="saldoFinal"
-            value={formData.saldoFinal}
-            onValueChange={(e) => handleChange("saldoFinal", e.value)}
+            id="saldoCapitalDespues"
+            value={formData.saldoCapitalDespues}
+            onValueChange={(e) => handleChange("saldoCapitalDespues", e.value)}
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={2}

@@ -1,11 +1,13 @@
 // src/components/tesoreria/PrestamoBancarioForm.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
+import { Toast } from "primereact/toast";
+import { TabView, TabPanel } from "primereact/tabview";
 import {
   createPrestamoBancario,
   updatePrestamoBancario,
@@ -20,15 +22,22 @@ import { getAllPrestamoBancario } from "../../api/tesoreria/prestamoBancarios";
 import { getResponsiveFontSize } from "../../utils/utils";
 import DocumentoCapture from "../shared/DocumentoCapture";
 import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
+import CuotaPrestamoList from "./CuotaPrestamoList";
+import DocPrestamoPrincipal from "./DocPrestamoPrincipal";
+import DocPrestamoAdicional from "./DocPrestamoAdicional";
 
-export default function PrestamoBancarioForm({
+const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm({
   isEdit = false,
   defaultValues = {},
   onSubmit,
   onCancel,
   loading,
   readOnly = false,
-}) {
+}, ref) {
+  const toast = useRef(null);
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [urlDocumentoPDF, setUrlDocumentoPDF] = useState(defaultValues?.urlDocumentoPDF || "");
+  const [urlDocAdicionalPDF, setUrlDocAdicionalPDF] = useState(defaultValues?.urlDocAdicionalPDF || "");
   const [formData, setFormData] = useState({
     empresaId: defaultValues?.empresaId
       ? Number(defaultValues.empresaId)
@@ -54,9 +63,8 @@ export default function PrestamoBancarioForm({
     tasaInteresAnual: defaultValues?.tasaInteresAnual || 0,
     tasaInteresEfectiva: defaultValues?.tasaInteresEfectiva || null,
     tasaMoratoria: defaultValues?.tasaMoratoria || null,
-    comisionApertura: defaultValues?.comisionApertura || null,
-    comisionEstudio: defaultValues?.comisionEstudio || null,
-    comisionOtros: defaultValues?.comisionOtros || null,
+    comisionInicial: defaultValues?.comisionInicial || null,
+    comisionMantenimiento: defaultValues?.comisionMantenimiento || null,
     seguroDesgravamen: defaultValues?.seguroDesgravamen || null,
     plazoMeses: defaultValues?.plazoMeses || 12,
     numeroCuotas: defaultValues?.numeroCuotas || 12,
@@ -94,6 +102,7 @@ export default function PrestamoBancarioForm({
   const [cargandoDatos, setCargandoDatos] = useState(true);
   const [estadoRefinanciado, setEstadoRefinanciado] = useState(null);
   const [mostrarCapturaDoc, setMostrarCapturaDoc] = useState(false);
+
   useEffect(() => {
     cargarDatos();
   }, []);
@@ -126,7 +135,6 @@ export default function PrestamoBancarioForm({
       setEstados(estadosData);
       setEnums(enumsData);
 
-      // Buscar estado REFINANCIADO
       const estadoRef = estadosData.find((e) =>
         e.descripcion?.toUpperCase().includes("REFINANCIADO")
       );
@@ -151,7 +159,6 @@ export default function PrestamoBancarioForm({
     }
   }, [formData.empresaId, todasLasCuentas]);
 
-  // Efecto para activar automáticamente esRefinanciamiento cuando estadoId = REFINANCIADO
   useEffect(() => {
     if (
       estadoRefinanciado &&
@@ -200,7 +207,6 @@ export default function PrestamoBancarioForm({
         newData.numeroDias = null;
       }
 
-      // Si cambia estado a REFINANCIADO, activar esRefinanciamiento
       if (
         field === "estadoId" &&
         estadoRefinanciado &&
@@ -209,7 +215,6 @@ export default function PrestamoBancarioForm({
         newData.esRefinanciamiento = true;
       }
 
-      // Si desactiva esRefinanciamiento, limpiar préstamo refinanciado
       if (field === "esRefinanciamiento" && !value) {
         newData.prestamoRefinanciadoId = null;
       }
@@ -247,9 +252,8 @@ export default function PrestamoBancarioForm({
         tasaInteresAnual: defaultValues?.tasaInteresAnual || 0,
         tasaInteresEfectiva: defaultValues?.tasaInteresEfectiva || null,
         tasaMoratoria: defaultValues?.tasaMoratoria || null,
-        comisionApertura: defaultValues?.comisionApertura || null,
-        comisionEstudio: defaultValues?.comisionEstudio || null,
-        comisionOtros: defaultValues?.comisionOtros || null,
+        comisionInicial: defaultValues?.comisionInicial || null,
+        comisionMantenimiento: defaultValues?.comisionMantenimiento || null,
         seguroDesgravamen: defaultValues?.seguroDesgravamen || null,
         plazoMeses: defaultValues?.plazoMeses || 12,
         numeroCuotas: defaultValues?.numeroCuotas || 12,
@@ -276,71 +280,88 @@ export default function PrestamoBancarioForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const dataToSend = {
-      empresaId: Number(formData.empresaId),
-      bancoId: Number(formData.bancoId),
-      cuentaCorrienteId: formData.cuentaCorrienteId
-        ? Number(formData.cuentaCorrienteId)
-        : null,
-      numeroPrestamo: formData.numeroPrestamo.trim().toUpperCase(),
-      numeroContrato: formData.numeroContrato?.trim().toUpperCase() || null,
-      fechaContrato: formData.fechaContrato,
-      fechaDesembolso: formData.fechaDesembolso,
-      fechaVencimiento: formData.fechaVencimiento,
-      montoAprobado: Number(formData.montoAprobado),
-      montoDesembolsado: Number(formData.montoDesembolsado),
-      monedaId: Number(formData.monedaId),
-      tasaInteresAnual: Number(formData.tasaInteresAnual),
-      tasaInteresEfectiva: formData.tasaInteresEfectiva
-        ? Number(formData.tasaInteresEfectiva)
-        : null,
-      tasaMoratoria: formData.tasaMoratoria
-        ? Number(formData.tasaMoratoria)
-        : null,
-      comisionApertura: formData.comisionApertura
-        ? Number(formData.comisionApertura)
-        : null,
-      comisionEstudio: formData.comisionEstudio
-        ? Number(formData.comisionEstudio)
-        : null,
-      comisionOtros: formData.comisionOtros
-        ? Number(formData.comisionOtros)
-        : null,
-      seguroDesgravamen: formData.seguroDesgravamen
-        ? Number(formData.seguroDesgravamen)
-        : null,
-      plazoMeses: Number(formData.plazoMeses),
-      numeroCuotas: Number(formData.numeroCuotas),
-      frecuenciaPago: formData.frecuenciaPago,
-      numeroDias: formData.numeroDias ? Number(formData.numeroDias) : null,
-      diaPago: formData.diaPago ? Number(formData.diaPago) : null,
-      periodoGracia: formData.periodoGracia
-        ? Number(formData.periodoGracia)
-        : null,
-      tipoPrestamo: formData.tipoPrestamo,
-      tipoAmortizacion: formData.tipoAmortizacion,
-      destinoFondos: formData.destinoFondos?.trim().toUpperCase() || null,
-      tipoGarantia: formData.tipoGarantia || null,
-      descripcionGarantia:
-        formData.descripcionGarantia?.trim().toUpperCase() || null,
-      valorGarantia: formData.valorGarantia
-        ? Number(formData.valorGarantia)
-        : null,
-      esRefinanciamiento: formData.esRefinanciamiento,
-      prestamoRefinanciadoId: formData.prestamoRefinanciadoId
-        ? Number(formData.prestamoRefinanciadoId)
-        : null,
-      estadoId: Number(formData.estadoId),
-      observaciones: formData.observaciones?.trim().toUpperCase() || null,
-    };
+    try {
+      const dataToSend = {
+        empresaId: Number(formData.empresaId),
+        bancoId: Number(formData.bancoId),
+        cuentaCorrienteId: formData.cuentaCorrienteId
+          ? Number(formData.cuentaCorrienteId)
+          : null,
+        numeroPrestamo: formData.numeroPrestamo.trim().toUpperCase(),
+        numeroContrato: formData.numeroContrato?.trim().toUpperCase() || null,
+        fechaContrato: formData.fechaContrato,
+        fechaDesembolso: formData.fechaDesembolso,
+        fechaVencimiento: formData.fechaVencimiento,
+        montoAprobado: Number(formData.montoAprobado),
+        montoDesembolsado: Number(formData.montoDesembolsado),
+        monedaId: Number(formData.monedaId),
+        tasaInteresAnual: Number(formData.tasaInteresAnual),
+        tasaInteresEfectiva: formData.tasaInteresEfectiva
+          ? Number(formData.tasaInteresEfectiva)
+          : null,
+        tasaMoratoria: formData.tasaMoratoria
+          ? Number(formData.tasaMoratoria)
+          : null,
+        comisionInicial: formData.comisionInicial
+          ? Number(formData.comisionInicial)
+          : null,
+        comisionMantenimiento: formData.comisionMantenimiento
+          ? Number(formData.comisionMantenimiento)
+          : null,
+        seguroDesgravamen: formData.seguroDesgravamen
+          ? Number(formData.seguroDesgravamen)
+          : null,
+        plazoMeses: Number(formData.plazoMeses),
+        numeroCuotas: Number(formData.numeroCuotas),
+        frecuenciaPago: formData.frecuenciaPago,
+        numeroDias: formData.numeroDias ? Number(formData.numeroDias) : null,
+        diaPago: formData.diaPago ? Number(formData.diaPago) : null,
+        periodoGracia: formData.periodoGracia
+          ? Number(formData.periodoGracia)
+          : null,
+        tipoPrestamo: formData.tipoPrestamo,
+        tipoAmortizacion: formData.tipoAmortizacion,
+        destinoFondos: formData.destinoFondos?.trim().toUpperCase() || null,
+        tipoGarantia: formData.tipoGarantia || null,
+        descripcionGarantia:
+          formData.descripcionGarantia?.trim().toUpperCase() || null,
+        valorGarantia: formData.valorGarantia
+          ? Number(formData.valorGarantia)
+          : null,
+        esRefinanciamiento: formData.esRefinanciamiento,
+        prestamoRefinanciadoId: formData.prestamoRefinanciadoId
+          ? Number(formData.prestamoRefinanciadoId)
+          : null,
+        estadoId: Number(formData.estadoId),
+        observaciones: formData.observaciones?.trim().toUpperCase() || null,
+      };
 
-    if (isEdit && defaultValues) {
-      await updatePrestamoBancario(defaultValues.id, dataToSend);
-    } else {
-      await createPrestamoBancario(dataToSend);
+      let resultado;
+      if (isEdit && defaultValues) {
+        resultado = await updatePrestamoBancario(defaultValues.id, dataToSend);
+      } else {
+        resultado = await createPrestamoBancario(dataToSend);
+      }
+
+      await onSubmit(resultado);
+    } catch (error) {
+      console.error("Error al guardar préstamo:", error);
+
+      // Extraer mensaje de error detallado
+      const errorMsg =
+        error.response?.data?.mensaje ||
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message ||
+        "No se pudo guardar el préstamo bancario.";
+
+      toast.current?.show({
+        severity: "error",
+        summary: "Error al guardar",
+        detail: errorMsg,
+        life: 5000,
+      });
     }
-
-    await onSubmit(dataToSend);
   };
 
   if (cargandoDatos) {
@@ -398,7 +419,11 @@ export default function PrestamoBancarioForm({
     estadoRefinanciado && Number(formData.estadoId) === estadoRefinanciado;
 
   return (
-    <form onSubmit={handleSubmit} className="p-fluid">
+    <div className="p-fluid">
+      <Toast ref={toast} />
+
+      <TabView>
+        <TabPanel header="Datos Generales">
       {/* FILA 1: Empresa, Banco, Moneda, Cuenta Corriente, Estado */}
       <div
         style={{
@@ -526,7 +551,7 @@ export default function PrestamoBancarioForm({
                 ? "pi pi-check-circle"
                 : "pi pi-times-circle"
             }
-            severity={formData.esRefinanciamiento ? "infor" : "secondary"}
+            severity={formData.esRefinanciamiento ? "info" : "secondary"}
             onClick={() =>
               !esEstadoRefinanciado &&
               handleChange("esRefinanciamiento", !formData.esRefinanciamiento)
@@ -652,6 +677,29 @@ export default function PrestamoBancarioForm({
           </div>
         )}
       </div>
+
+      {/* FILA 3: Préstamo Refinanciado (si aplica) */}
+      {formData.esRefinanciamiento && (
+        <div style={{ marginTop: 10 }}>
+          <label
+            htmlFor="prestamoRefinanciadoId"
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+          >
+            Préstamo que Refinancia *
+          </label>
+          <Dropdown
+            id="prestamoRefinanciadoId"
+            value={formData.prestamoRefinanciadoId}
+            options={prestamosOptions}
+            onChange={(e) => handleChange("prestamoRefinanciadoId", e.value)}
+            placeholder="Seleccionar préstamo"
+            disabled={readOnly || !formData.empresaId}
+            required={formData.esRefinanciamiento}
+            filter
+            filterBy="label"
+          />
+        </div>
+      )}
 
       {/* FILA 4: Fechas y Montos */}
       <div
@@ -885,58 +933,37 @@ export default function PrestamoBancarioForm({
       >
         <div style={{ flex: 1 }}>
           <label
-            htmlFor="comisionApertura"
+            htmlFor="comisionInicial"
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
           >
-            Comisión Apertura (%)
+            Comisión Inicial
           </label>
           <InputNumber
-            id="comisionApertura"
-            value={formData.comisionApertura}
-            onValueChange={(e) => handleChange("comisionApertura", e.value)}
+            id="comisionInicial"
+            value={formData.comisionInicial}
+            onValueChange={(e) => handleChange("comisionInicial", e.value)}
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={2}
-            min={0}
-            max={100}
             disabled={readOnly}
           />
         </div>
         <div style={{ flex: 1 }}>
           <label
-            htmlFor="comisionEstudio"
+            htmlFor="comisionMantenimiento"
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
           >
-            Comisión Estudio (%)
+            Comisión Mantenimiento
           </label>
           <InputNumber
-            id="comisionEstudio"
-            value={formData.comisionEstudio}
-            onValueChange={(e) => handleChange("comisionEstudio", e.value)}
+            id="comisionMantenimiento"
+            value={formData.comisionMantenimiento}
+            onValueChange={(e) =>
+              handleChange("comisionMantenimiento", e.value)
+            }
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={2}
-            min={0}
-            max={100}
-            disabled={readOnly}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label
-            htmlFor="comisionOtros"
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-          >
-            Comisión Otros (%)
-          </label>
-          <InputNumber
-            id="comisionOtros"
-            value={formData.comisionOtros}
-            onValueChange={(e) => handleChange("comisionOtros", e.value)}
-            mode="decimal"
-            minFractionDigits={2}
-            maxFractionDigits={2}
-            min={0}
-            max={100}
             disabled={readOnly}
           />
         </div>
@@ -945,7 +972,7 @@ export default function PrestamoBancarioForm({
             htmlFor="seguroDesgravamen"
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
           >
-            Seguro Desgravamen (%)
+            Seguro Desgravamen
           </label>
           <InputNumber
             id="seguroDesgravamen"
@@ -991,7 +1018,8 @@ export default function PrestamoBancarioForm({
           />
         </div>
       </div>
-      {/* FILA 8: Descripción de Garantía */}
+
+      {/* FILA 7: Descripciones */}
       <div
         style={{
           display: "flex",
@@ -1054,78 +1082,44 @@ export default function PrestamoBancarioForm({
           />
         </div>
       </div>
+        </TabPanel>
 
-      {/* Documento PDF - Solo en modo edición */}
-      {(isEdit || defaultValues.id) && (
-        <div
-          style={{ marginTop: 20, borderTop: "2px solid #ddd", paddingTop: 20 }}
-        >
-          <h4 style={{ marginBottom: 15 }}>Documento del Crédito Bancario</h4>
+        {/* Tab de Cuotas */}
+        {isEdit && defaultValues?.id && (
+          <TabPanel header="Cuotas" leftIcon="pi pi-list">
+            <CuotaPrestamoList
+              prestamoBancarioId={defaultValues.id}
+              readOnly={readOnly}
+            />
+          </TabPanel>
+        )}
 
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <div style={{ flex: 2 }}>
-              <label
-                htmlFor="urlDocumentoPDF"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Documento PDF
-              </label>
-              <InputText
-                id="urlDocumentoPDF"
-                value={formData.urlDocumentoPDF || ""}
-                placeholder="URL del documento PDF"
-                disabled
-                readOnly
-                style={{ fontWeight: "bold" }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-                <Button
-                  type="button"
-                  label="Capturar/Subir"
-                  icon="pi pi-camera"
-                  severity="info"
-                  onClick={() => setMostrarCapturaDoc(true)}
-                  disabled={readOnly || loading}
-                  size="small"
-                />
-                {formData.urlDocumentoPDF && (
-                  <Button
-                    type="button"
-                    label="Ver PDF"
-                    icon="pi pi-eye"
-                    severity="success"
-                    onClick={handleVerDocumentoPDF}
-                    disabled={loading}
-                    size="small"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Dialog para captura de documento */}
-      {mostrarCapturaDoc && (
-        <DocumentoCapture
-          visible={mostrarCapturaDoc}
-          onHide={() => setMostrarCapturaDoc(false)}
-          onDocumentoSubido={handleDocumentoSubido}
-          endpoint={`${
-            import.meta.env.VITE_API_URL
-          }/tesoreria/prestamos-bancarios/upload`}
-          datosAdicionales={{ prestamoBancarioId: defaultValues?.id }}
-          titulo="Subir Documento de Crédito Bancario"
-          prefijo="prestamo"
-          identificador={defaultValues?.id || "nuevo"}
-          mensajeInfo="Suba el documento PDF del contrato de crédito bancario proporcionado por la entidad financiera."
-        />
-      )}
-      {/* Botones */}
+        {/* Tab de Documento Principal */}
+        {isEdit && defaultValues?.id && (
+          <TabPanel header="Documento Principal" leftIcon="pi pi-file-pdf">
+            <DocPrestamoPrincipal
+              prestamoId={defaultValues.id}
+              documentoActual={urlDocumentoPDF}
+              readOnly={readOnly}
+              onDocumentoActualizado={(url) => setUrlDocumentoPDF(url)}
+            />
+          </TabPanel>
+        )}
+
+        {/* Tab de Documentación Adicional */}
+        {isEdit && defaultValues?.id && (
+          <TabPanel header="Documentación Adicional" leftIcon="pi pi-paperclip">
+            <DocPrestamoAdicional
+              prestamoId={defaultValues.id}
+              documentoActual={urlDocAdicionalPDF}
+              readOnly={readOnly}
+              onDocumentoActualizado={(url) => setUrlDocAdicionalPDF(url)}
+            />
+          </TabPanel>
+        )}
+      </TabView>
+
+      {/* Botones de acción - Visibles en todos los tabs */}
       <div
         style={{
           display: "flex",
@@ -1138,18 +1132,19 @@ export default function PrestamoBancarioForm({
           label="Cancelar"
           icon="pi pi-times"
           onClick={onCancel}
-          className="p-button-text"
-          type="button"
+          className="p-button-secondary"
           disabled={loading}
         />
         <Button
           label={isEdit ? "Actualizar" : "Guardar"}
           icon="pi pi-check"
-          type="submit"
+          onClick={handleSubmit}
           disabled={loading || readOnly}
           loading={loading}
         />
       </div>
-    </form>
+    </div>
   );
-}
+});
+
+export default PrestamoBancarioForm;
