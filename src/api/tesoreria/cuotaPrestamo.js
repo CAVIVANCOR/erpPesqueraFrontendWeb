@@ -5,7 +5,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../../shared/stores/useAuthStore';
 
-const API_URL = `${import.meta.env.VITE_API_URL}/tesoreria/cuotas`;
+const API_URL = `${import.meta.env.VITE_API_URL}/tesoreria/cuotas-prestamo`;
 
 function getAuthHeaders() {
   const token = useAuthStore.getState().token;

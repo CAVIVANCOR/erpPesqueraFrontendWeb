@@ -15,10 +15,12 @@ function getAuthHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
-export async function getBancos() {
+export async function getAllBancos() {
   const res = await axios.get(API_URL, { headers: getAuthHeaders() });
   return res.data;
 }
+
+export const getBancos = getAllBancos;
 
 export async function getBancoPorId(id) {
   const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });

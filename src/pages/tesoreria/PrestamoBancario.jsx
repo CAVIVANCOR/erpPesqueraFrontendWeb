@@ -7,6 +7,8 @@ import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
+import { Dropdown } from "primereact/dropdown";
+import { Calendar } from "primereact/calendar";
 import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
 import PrestamoBancarioForm from "../../components/tesoreria/PrestamoBancarioForm";
@@ -15,6 +17,12 @@ import {
   deletePrestamoBancario,
   getPrestamoBancarioById,
 } from "../../api/tesoreria/prestamoBancarios";
+import { getEmpresas } from "../../api/empresa";
+import { getBancos } from "../../api/banco";
+import { getAllLineaCredito } from "../../api/tesoreria/lineaCredito";
+import { getEstadosMultiFuncion } from "../../api/estadoMultiFuncion";
+import { getAllCuentaCorriente } from "../../api/cuentaCorriente";
+import { getMonedas } from "../../api/moneda";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import { getResponsiveFontSize } from "../../utils/utils";
@@ -29,6 +37,13 @@ export default function PrestamoBancario({ ruta }) {
 
   const toast = useRef(null);
   const [items, setItems] = useState([]);
+  const [itemsFiltrados, setItemsFiltrados] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
+  const [bancos, setBancos] = useState([]);
+  const [lineasCredito, setLineasCredito] = useState([]);
+  const [estados, setEstados] = useState([]);
+  const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
+  const [monedas, setMonedas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -39,15 +54,142 @@ export default function PrestamoBancario({ ruta }) {
   });
   const [globalFilter, setGlobalFilter] = useState("");
 
+  // Estados para filtros
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [bancoSeleccionado, setBancoSeleccionado] = useState(null);
+  const [lineaCreditoSeleccionada, setLineaCreditoSeleccionada] = useState(null);
+  const [tipoPrestamoSeleccionado, setTipoPrestamoSeleccionado] = useState(null);
+  const [tipoAmortizacionSeleccionado, setTipoAmortizacionSeleccionado] = useState(null);
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
+  const [cuentaCorrienteSeleccionada, setCuentaCorrienteSeleccionada] = useState(null);
+  const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
+  const [fechaContratoInicio, setFechaContratoInicio] = useState(null);
+  const [fechaContratoFin, setFechaContratoFin] = useState(null);
+
   useEffect(() => {
     cargarDatos();
   }, []);
 
+  // Aplicar filtros
+  useEffect(() => {
+    let filtrados = items;
+
+    // Filtro por empresa
+    if (empresaSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.empresaId) === Number(empresaSeleccionada)
+      );
+    }
+
+    // Filtro por banco
+    if (bancoSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.bancoId) === Number(bancoSeleccionado)
+      );
+    }
+
+    // Filtro por línea de crédito
+    if (lineaCreditoSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.lineaCreditoId) === Number(lineaCreditoSeleccionada)
+      );
+    }
+
+    // Filtro por tipo de préstamo
+    if (tipoPrestamoSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => item.tipoPrestamo === tipoPrestamoSeleccionado
+      );
+    }
+
+    // Filtro por tipo de amortización
+    if (tipoAmortizacionSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => item.tipoAmortizacion === tipoAmortizacionSeleccionado
+      );
+    }
+
+    // Filtro por estado
+    if (estadoSeleccionado) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.estadoId) === Number(estadoSeleccionado)
+      );
+    }
+
+    // Filtro por cuenta corriente
+    if (cuentaCorrienteSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.cuentaCorrienteId) === Number(cuentaCorrienteSeleccionada)
+      );
+    }
+
+    // Filtro por moneda
+    if (monedaSeleccionada) {
+      filtrados = filtrados.filter(
+        (item) => Number(item.monedaId) === Number(monedaSeleccionada)
+      );
+    }
+
+    // Filtro por rango de fechas de contrato
+    if (fechaContratoInicio) {
+      filtrados = filtrados.filter((item) => {
+        const fechaContrato = new Date(item.fechaContrato);
+        const fechaIni = new Date(fechaContratoInicio);
+        fechaIni.setHours(0, 0, 0, 0);
+        return fechaContrato >= fechaIni;
+      });
+    }
+
+    if (fechaContratoFin) {
+      filtrados = filtrados.filter((item) => {
+        const fechaContrato = new Date(item.fechaContrato);
+        const fechaFinDia = new Date(fechaContratoFin);
+        fechaFinDia.setHours(23, 59, 59, 999);
+        return fechaContrato <= fechaFinDia;
+      });
+    }
+
+    setItemsFiltrados(filtrados);
+  }, [
+    empresaSeleccionada,
+    bancoSeleccionado,
+    lineaCreditoSeleccionada,
+    tipoPrestamoSeleccionado,
+    tipoAmortizacionSeleccionado,
+    estadoSeleccionado,
+    cuentaCorrienteSeleccionada,
+    monedaSeleccionada,
+    fechaContratoInicio,
+    fechaContratoFin,
+    items,
+  ]);
+
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const data = await getPrestamoBancario();
-      setItems(data);
+      const [prestamosData, empresasData, bancosData, lineasData, estadosData, cuentasData, monedasData] = await Promise.all([
+        getPrestamoBancario(),
+        getEmpresas(),
+        getBancos(),
+        getAllLineaCredito(),
+        getEstadosMultiFuncion(),
+        getAllCuentaCorriente(),
+        getMonedas()
+      ]);
+
+      setItems(prestamosData);
+      setEmpresas(empresasData);
+      setBancos(bancosData);
+      setLineasCredito(lineasData);
+
+      // Filtrar estados para préstamos bancarios (tipoProvieneDeId = 23)
+      const estadosFiltrados = estadosData.filter(
+        (e) => Number(e.tipoProvieneDeId) === 23 && !e.cesado
+      );
+      setEstados(estadosFiltrados);
+
+      setCuentasCorrientes(cuentasData);
+      setMonedas(monedasData);
     } catch (err) {
       toast.current?.show({
         severity: "error",
@@ -193,6 +335,16 @@ export default function PrestamoBancario({ ruta }) {
   };
 
   const limpiarFiltros = () => {
+    setEmpresaSeleccionada(null);
+    setBancoSeleccionado(null);
+    setLineaCreditoSeleccionada(null);
+    setTipoPrestamoSeleccionado(null);
+    setTipoAmortizacionSeleccionado(null);
+    setEstadoSeleccionado(null);
+    setCuentaCorrienteSeleccionada(null);
+    setMonedaSeleccionada(null);
+    setFechaContratoInicio(null);
+    setFechaContratoFin(null);
     setGlobalFilter("");
   };
 
@@ -300,7 +452,7 @@ export default function PrestamoBancario({ ruta }) {
         style={{ minWidth: 400 }}
       />
       <DataTable
-        value={items}
+        value={itemsFiltrados}
         loading={loading}
         size="small"
         stripedRows
@@ -321,7 +473,7 @@ export default function PrestamoBancario({ ruta }) {
             : undefined
         }
         globalFilter={globalFilter}
-        globalFilterFields={["numeroPrestamo", "descripcion", "empresa.razonSocial", "banco.nombreBanco"]}
+        globalFilterFields={["numeroPrestamo", "descripcion", "empresa.razonSocial", "banco.nombre", "lineaCredito.numeroLinea"]}
         emptyMessage="No se encontraron registros que coincidan con la búsqueda."
         style={{
           cursor:
@@ -330,18 +482,20 @@ export default function PrestamoBancario({ ruta }) {
         }}
         header={
           <div>
+            {/* Fila 1: Título y botones de acción */}
             <div
               style={{
                 alignItems: "end",
                 display: "flex",
                 gap: 10,
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
+                marginBottom: 15,
               }}
             >
               <div style={{ flex: 2 }}>
                 <h2>Préstamos Bancarios</h2>
                 <small style={{ color: "#666", fontWeight: "normal" }}>
-                  Total de registros: {items.length}
+                  Total de registros: {itemsFiltrados.length} de {items.length}
                 </small>
               </div>
               <div style={{ flex: 0.5 }}>
@@ -351,8 +505,12 @@ export default function PrestamoBancario({ ruta }) {
                   className="p-button-success"
                   size="small"
                   raised
-                  disabled={!permisos.puedeCrear}
-                  tooltip="Nuevo Préstamo Bancario"
+                  disabled={!permisos.puedeCrear || !empresaSeleccionada}
+                  tooltip={
+                    !empresaSeleccionada
+                      ? "Seleccione una empresa primero"
+                      : "Nuevo Préstamo Bancario"
+                  }
                   outlined
                   onClick={onNew}
                 />
@@ -367,8 +525,7 @@ export default function PrestamoBancario({ ruta }) {
                     toast.current?.show({
                       severity: "success",
                       summary: "Actualizado",
-                      detail:
-                        "Datos actualizados correctamente desde el servidor",
+                      detail: "Datos actualizados correctamente desde el servidor",
                       life: 3000,
                     });
                   }}
@@ -387,10 +544,243 @@ export default function PrestamoBancario({ ruta }) {
                   disabled={loading}
                 />
               </div>
+            </div>
+
+            {/* Fila 2: Filtros principales */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+                marginBottom: 10,
+              }}
+            >
               <div style={{ flex: 1 }}>
-                <label htmlFor="globalFilter">Buscar</label>
-                <span className="p-input-icon-left">
-                  <i className="pi pi-search" />
+                <label htmlFor="empresaFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+                  Empresa *
+                </label>
+                <Dropdown
+                  id="empresaFiltro"
+                  value={empresaSeleccionada}
+                  options={empresas.map((e) => ({
+                    label: e.razonSocial,
+                    value: Number(e.id),
+                  }))}
+                  onChange={(e) => setEmpresaSeleccionada(e.value)}
+                  placeholder="Todas"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="bancoFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+                  Banco
+                </label>
+                <Dropdown
+                  id="bancoFiltro"
+                  value={bancoSeleccionado}
+                  options={bancos.map((b) => ({
+                    label: b.nombre,
+                    value: Number(b.id),
+                  }))}
+                  onChange={(e) => setBancoSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="lineaCreditoFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+                  Línea Crédito
+                </label>
+                <Dropdown
+                  id="lineaCreditoFiltro"
+                  value={lineaCreditoSeleccionada}
+                  options={lineasCredito.map((l) => ({
+                    label: l.numeroLinea,
+                    value: Number(l.id),
+                  }))}
+                  onChange={(e) => setLineaCreditoSeleccionada(e.value)}
+                  placeholder="Todas"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="tipoPrestamoFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+                  Tipo Préstamo
+                </label>
+                <Dropdown
+                  id="tipoPrestamoFiltro"
+                  value={tipoPrestamoSeleccionado}
+                  options={[
+                    { label: "CAPITAL TRABAJO", value: "CAPITAL_TRABAJO" },
+                    { label: "ACTIVO FIJO", value: "ACTIVO_FIJO" },
+                    { label: "LEASING", value: "LEASING" },
+                    { label: "FACTORING", value: "FACTORING" },
+                    { label: "CONFIRMING", value: "CONFIRMING" },
+                    { label: "OTROS", value: "OTROS" },
+                  ]}
+                  onChange={(e) => setTipoPrestamoSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+            </div>
+
+            {/* Fila 3: Más filtros */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+                marginBottom: 10,
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="tipoAmortizacionFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+                  Tipo Amortización
+                </label>
+                <Dropdown
+                  id="tipoAmortizacionFiltro"
+                  value={tipoAmortizacionSeleccionado}
+                  options={[
+                    { label: "FRANCESA", value: "FRANCESA" },
+                    { label: "ALEMANA", value: "ALEMANA" },
+                    { label: "AMERICANA", value: "AMERICANA" },
+                    { label: "CUOTA FIJA", value: "CUOTA_FIJA" },
+                    { label: "CUOTA VARIABLE", value: "CUOTA_VARIABLE" },
+                  ]}
+                  onChange={(e) => setTipoAmortizacionSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="estadoFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+                  Estado
+                </label>
+                <Dropdown
+                  id="estadoFiltro"
+                  value={estadoSeleccionado}
+                  options={estados.map((e) => ({
+                    label: e.descripcion,
+                    value: Number(e.id),
+                  }))}
+                  onChange={(e) => setEstadoSeleccionado(e.value)}
+                  placeholder="Todos"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="cuentaCorrienteFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+                  Cuenta Corriente
+                </label>
+                <Dropdown
+                  id="cuentaCorrienteFiltro"
+                  value={cuentaCorrienteSeleccionada}
+                  options={cuentasCorrientes.map((c) => ({
+                    label: c.numeroCuenta,
+                    value: Number(c.id),
+                  }))}
+                  onChange={(e) => setCuentaCorrienteSeleccionada(e.value)}
+                  placeholder="Todas"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="monedaFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+                  Moneda
+                </label>
+                <Dropdown
+                  id="monedaFiltro"
+                  value={monedaSeleccionada}
+                  options={monedas.map((m) => ({
+                    label: m.codigoSunat,
+                    value: Number(m.id),
+                  }))}
+                  onChange={(e) => setMonedaSeleccionada(e.value)}
+                  placeholder="Todas"
+                  optionLabel="label"
+                  optionValue="value"
+                  showClear
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+            </div>
+
+            {/* Fila 4: Rango de fechas y búsqueda */}
+            <div
+              style={{
+                alignItems: "end",
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaContratoInicio" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+                  Fecha Contrato Desde
+                </label>
+                <Calendar
+                  id="fechaContratoInicio"
+                  value={fechaContratoInicio}
+                  onChange={(e) => setFechaContratoInicio(e.value)}
+                  placeholder="Desde"
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fechaContratoFin" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+                  Fecha Contrato Hasta
+                </label>
+                <Calendar
+                  id="fechaContratoFin"
+                  value={fechaContratoFin}
+                  onChange={(e) => setFechaContratoFin(e.value)}
+                  placeholder="Hasta"
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  disabled={loading}
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 2 }}>
+                <label htmlFor="globalFilter" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+                  Búsqueda Global
+                </label>
+                <span className="p-input-icon-left" style={{ width: "100%" }}>
                   <InputText
                     id="globalFilter"
                     value={globalFilter}
@@ -413,10 +803,17 @@ export default function PrestamoBancario({ ruta }) {
           style={{ width: 200 }}
         />
         <Column
-          field="banco.nombreBanco"
+          field="banco.nombre"
           header="Banco"
           sortable
           style={{ width: 150 }}
+        />
+        <Column
+          field="lineaCredito.numeroLinea"
+          header="Línea Crédito"
+          sortable
+          style={{ width: 150 }}
+          body={(rowData) => rowData.lineaCredito?.numeroLinea || "N/A"}
         />
         <Column
           field="tipoPrestamo"
@@ -473,6 +870,7 @@ export default function PrestamoBancario({ ruta }) {
         <PrestamoBancarioForm
           isEdit={isEdit}
           defaultValues={selected || {}}
+          empresaFija={empresaSeleccionada}
           onSubmit={onSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}

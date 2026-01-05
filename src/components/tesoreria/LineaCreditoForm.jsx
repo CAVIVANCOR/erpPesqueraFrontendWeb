@@ -1,510 +1,370 @@
-// src/components/tesoreria/LineaCreditoForm.jsx
-import React, { useState, useEffect } from "react";
-import { Button } from "primereact/button";
-import { InputText } from "primereact/inputtext";
-import { Dropdown } from "primereact/dropdown";
-import { InputTextarea } from "primereact/inputtextarea";
-import { InputNumber } from "primereact/inputnumber";
-import { Calendar } from "primereact/calendar";
-import {
-  createLineaCredito,
-  updateLineaCredito,
-} from "../../api/tesoreria/lineaCredito";
-import { getEmpresas } from "../../api/empresa";
-import { getBancos } from "../../api/banco";
-import { getMonedas } from "../../api/moneda";
-import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
-import { getEnumsTesoreria } from "../../api/tesoreria/enumsTesoreria";
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { InputText } from 'primereact/inputtext';
+import { InputNumber } from 'primereact/inputnumber';
+import { Calendar } from 'primereact/calendar';
+import { Dropdown } from 'primereact/dropdown';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Button } from 'primereact/button';
+import { Toast } from 'primereact/toast';
+import { useRef } from 'react';
+import { getAllEmpresas } from '../../api/empresa';
+import { getAllBancos } from '../../api/banco';
+import { getAllMonedas } from '../../api/moneda';
+import { getEstadosMultiFuncionPorTipoProviene } from '../../api/estadoMultiFuncion';
+import { createLineaCredito, updateLineaCredito } from '../../api/tesoreria/lineaCredito';
 
-export default function LineaCreditoForm({
-  isEdit = false,
-  defaultValues = {},
-  onSubmit,
-  onCancel,
-  loading,
-  readOnly = false,
-}) {
+const LineaCreditoForm = forwardRef(({ lineaCredito, empresaFija = null, onSave, onCancel }, ref) => {
+  const toast = useRef(null);
   const [formData, setFormData] = useState({
-    empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : null,
-    bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
-    numeroLinea: defaultValues?.numeroLinea || "",
-    tipoLinea: defaultValues?.tipoLinea || "REVOLVENTE",
-    descripcion: defaultValues?.descripcion || "",
-    fechaAprobacion: defaultValues?.fechaAprobacion ? new Date(defaultValues.fechaAprobacion) : null,
-    fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
-    montoAprobado: defaultValues?.montoAprobado || 0,
-    montoUtilizado: defaultValues?.montoUtilizado || 0,
-    montoDisponible: defaultValues?.montoDisponible || 0,
-    monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
-    tasaInteres: defaultValues?.tasaInteres || 0,
-    comisionManejo: defaultValues?.comisionManejo || null,
-    comisionNoUtilizacion: defaultValues?.comisionNoUtilizacion || null,
-    estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 86,
-    observaciones: defaultValues?.observaciones || "",
+    empresaId: empresaFija ? Number(empresaFija) : null,
+    bancoId: null,
+    numeroLinea: '',
+    tipoLinea: null,
+    montoAprobado: 0,
+    monedaId: null,
+    tasaInteres: 0,
+    comisionMantenimiento: null,
+    comisionUtilizacion: null,
+    fechaAprobacion: null,
+    fechaVencimiento: null,
+    estadoId: null,
+    observaciones: '',
+    urlDocumentoPDF: ''
   });
 
   const [empresas, setEmpresas] = useState([]);
   const [bancos, setBancos] = useState([]);
   const [monedas, setMonedas] = useState([]);
   const [estados, setEstados] = useState([]);
-  const [enums, setEnums] = useState({
-    tiposLineaCredito: [],
-  });
-  const [cargandoDatos, setCargandoDatos] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  const tiposLinea = [
+    { label: 'Revolvente', value: 'REVOLVENTE' },
+    { label: 'Carta de Crédito', value: 'CARTA_CREDITO' },
+    { label: 'Garantía Bancaria', value: 'GARANTIA_BANCARIA' },
+    { label: 'Sobregiro', value: 'SOBREGIRO' }
+  ];
 
   useEffect(() => {
     cargarDatos();
   }, []);
 
-  const cargarDatos = async () => {
-    try {
-      const [empresasData, bancosData, monedasData, estadosData, enumsData] = await Promise.all([
-        getEmpresas(),
-        getBancos(),
-        getMonedas(),
-        getEstadosMultiFuncionPorTipoProviene(22),
-        getEnumsTesoreria(),
-      ]);
-
-      setEmpresas(empresasData);
-      setBancos(bancosData);
-      setMonedas(monedasData);
-      setEstados(estadosData);
-      setEnums(enumsData);
-    } catch (error) {
-      console.error("Error al cargar datos:", error);
-    } finally {
-      setCargandoDatos(false);
-    }
-  };
-
-  const handleChange = (field, value) => {
-    setFormData((prev) => {
-      const newData = { ...prev, [field]: value };
-      
-      if (field === "montoAprobado" || field === "montoUtilizado") {
-        const aprobado = field === "montoAprobado" ? value : newData.montoAprobado;
-        const utilizado = field === "montoUtilizado" ? value : newData.montoUtilizado;
-        newData.montoDisponible = (aprobado || 0) - (utilizado || 0);
-      }
-      
-      return newData;
-    });
-  };
-
   useEffect(() => {
-    if (defaultValues && Object.keys(defaultValues).length > 0) {
+    if (lineaCredito) {
       setFormData({
-        empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : null,
-        bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
-        numeroLinea: defaultValues?.numeroLinea || "",
-        tipoLinea: defaultValues?.tipoLinea || "REVOLVENTE",
-        descripcion: defaultValues?.descripcion || "",
-        fechaAprobacion: defaultValues?.fechaAprobacion ? new Date(defaultValues.fechaAprobacion) : null,
-        fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
-        montoAprobado: defaultValues?.montoAprobado || 0,
-        montoUtilizado: defaultValues?.montoUtilizado || 0,
-        montoDisponible: defaultValues?.montoDisponible || 0,
-        monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
-        tasaInteres: defaultValues?.tasaInteres || 0,
-        comisionManejo: defaultValues?.comisionManejo || null,
-        comisionNoUtilizacion: defaultValues?.comisionNoUtilizacion || null,
-        estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 86,
-        observaciones: defaultValues?.observaciones || "",
+        empresaId: lineaCredito.empresaId ? lineaCredito.empresaId : (empresaFija ? Number(empresaFija) : null),
+        bancoId: lineaCredito.bancoId,
+        numeroLinea: lineaCredito.numeroLinea || '',
+        tipoLinea: lineaCredito.tipoLinea,
+        montoAprobado: parseFloat(lineaCredito.montoAprobado) || 0,
+        monedaId: lineaCredito.monedaId,
+        tasaInteres: parseFloat(lineaCredito.tasaInteres) || 0,
+        comisionMantenimiento: lineaCredito.comisionMantenimiento ? parseFloat(lineaCredito.comisionMantenimiento) : null,
+        comisionUtilizacion: lineaCredito.comisionUtilizacion ? parseFloat(lineaCredito.comisionUtilizacion) : null,
+        fechaAprobacion: lineaCredito.fechaAprobacion ? new Date(lineaCredito.fechaAprobacion) : null,
+        fechaVencimiento: lineaCredito.fechaVencimiento ? new Date(lineaCredito.fechaVencimiento) : null,
+        estadoId: lineaCredito.estadoId,
+        observaciones: lineaCredito.observaciones || '',
+        urlDocumentoPDF: lineaCredito.urlDocumentoPDF || ''
       });
     }
-  }, [defaultValues]);
+  }, [lineaCredito]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const cargarDatos = async () => {
+    try {
+      const [empresasData, bancosData, monedasData, estadosData] = await Promise.all([
+        getAllEmpresas(),
+        getAllBancos(),
+        getAllMonedas(),
+        getEstadosMultiFuncionPorTipoProviene(22)
+      ]);
 
-    const dataToSend = {
-      empresaId: Number(formData.empresaId),
-      bancoId: Number(formData.bancoId),
-      numeroLinea: formData.numeroLinea.trim().toUpperCase(),
-      tipoLinea: formData.tipoLinea,
-      descripcion: formData.descripcion?.trim().toUpperCase() || null,
-      fechaAprobacion: formData.fechaAprobacion,
-      fechaVencimiento: formData.fechaVencimiento,
-      montoAprobado: Number(formData.montoAprobado),
-      montoUtilizado: Number(formData.montoUtilizado),
-      montoDisponible: Number(formData.montoDisponible),
-      monedaId: Number(formData.monedaId),
-      tasaInteres: Number(formData.tasaInteres),
-      comisionManejo: formData.comisionManejo ? Number(formData.comisionManejo) : null,
-      comisionNoUtilizacion: formData.comisionNoUtilizacion ? Number(formData.comisionNoUtilizacion) : null,
-      estadoId: Number(formData.estadoId),
-      observaciones: formData.observaciones?.trim().toUpperCase() || null,
-    };
-
-    if (isEdit && defaultValues) {
-      await updateLineaCredito(defaultValues.id, dataToSend);
-    } else {
-      await createLineaCredito(dataToSend);
+      setEmpresas(empresasData.map(e => ({ label: e.razonSocial, value: e.id })));
+      setBancos(bancosData.map(b => ({ label: b.nombre, value: b.id })));
+      setMonedas(monedasData.map(m => ({ label: m.codigoSunat, value: m.id })));
+      setEstados(estadosData.map(e => ({ label: e.descripcion || e.estado, value: e.id })));
+    } catch (error) {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'Error al cargar datos', life: 3000 });
     }
-
-    await onSubmit(dataToSend);
   };
 
-  if (cargandoDatos) {
-    return (
-      <div style={{ textAlign: "center", padding: "2rem" }}>
-        <i className="pi pi-spin pi-spinner" style={{ fontSize: "2rem" }}></i>
-        <p>Cargando formulario...</p>
-      </div>
-    );
-  }
+  const handleSubmit = async () => {
+    if (!validarFormulario()) return;
 
-  const empresasOptions = empresas.map((e) => ({
-    label: e.razonSocial,
-    value: Number(e.id),
-  }));
+    setLoading(true);
+    try {
+      const dataToSend = {
+        ...formData,
+        fechaAprobacion: formData.fechaAprobacion?.toISOString(),
+        fechaVencimiento: formData.fechaVencimiento?.toISOString()
+      };
 
-  const bancosOptions = bancos.map((b) => ({
-    label: b.nombreBanco,
-    value: Number(b.id),
-  }));
+      if (lineaCredito?.id) {
+        await updateLineaCredito(lineaCredito.id, dataToSend);
+        toast.current?.show({ severity: 'success', summary: 'Éxito', detail: 'Línea de crédito actualizada', life: 3000 });
+      } else {
+        await createLineaCredito(dataToSend);
+        toast.current?.show({ severity: 'success', summary: 'Éxito', detail: 'Línea de crédito creada', life: 3000 });
+      }
+      
+      if (onSave) onSave();
+    } catch (error) {
+      toast.current?.show({ 
+        severity: 'error', 
+        summary: 'Error', 
+        detail: error.response?.data?.message || 'Error al guardar línea de crédito', 
+        life: 3000 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const monedasOptions = monedas.map((m) => ({
-    label: `${m.codigoSunat} - ${m.nombreLargo || m.simbolo}`,
-    value: Number(m.id),
-  }));
+  const validarFormulario = () => {
+    if (!formData.empresaId) {
+      toast.current?.show({ severity: 'warn', summary: 'Advertencia', detail: 'Seleccione una empresa', life: 3000 });
+      return false;
+    }
+    if (!formData.bancoId) {
+      toast.current?.show({ severity: 'warn', summary: 'Advertencia', detail: 'Seleccione un banco', life: 3000 });
+      return false;
+    }
+    if (!formData.numeroLinea) {
+      toast.current?.show({ severity: 'warn', summary: 'Advertencia', detail: 'Ingrese el número de línea', life: 3000 });
+      return false;
+    }
+    if (!formData.tipoLinea) {
+      toast.current?.show({ severity: 'warn', summary: 'Advertencia', detail: 'Seleccione el tipo de línea', life: 3000 });
+      return false;
+    }
+    if (!formData.montoAprobado || formData.montoAprobado <= 0) {
+      toast.current?.show({ severity: 'warn', summary: 'Advertencia', detail: 'Ingrese un monto aprobado válido', life: 3000 });
+      return false;
+    }
+    if (!formData.monedaId) {
+      toast.current?.show({ severity: 'warn', summary: 'Advertencia', detail: 'Seleccione una moneda', life: 3000 });
+      return false;
+    }
+    if (!formData.fechaAprobacion) {
+      toast.current?.show({ severity: 'warn', summary: 'Advertencia', detail: 'Ingrese la fecha de aprobación', life: 3000 });
+      return false;
+    }
+    if (!formData.fechaVencimiento) {
+      toast.current?.show({ severity: 'warn', summary: 'Advertencia', detail: 'Ingrese la fecha de vencimiento', life: 3000 });
+      return false;
+    }
+    if (!formData.estadoId) {
+      toast.current?.show({ severity: 'warn', summary: 'Advertencia', detail: 'Seleccione un estado', life: 3000 });
+      return false;
+    }
+    return true;
+  };
 
-  const estadosOptions = estados.map((e) => ({
-    label: e.estado,
-    value: Number(e.id),
+  useImperativeHandle(ref, () => ({
+    submit: handleSubmit
   }));
 
   return (
-    <form onSubmit={handleSubmit} className="p-fluid">
-      {/* FILA 1: Empresa, Banco, Número Línea, Estado */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          alignItems: "end",
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="empresaId" style={{ fontWeight: "bold" }}>
-            Empresa *
-          </label>
-          <Dropdown
-            id="empresaId"
-            value={formData.empresaId}
-            options={empresasOptions}
-            onChange={(e) => handleChange("empresaId", e.value)}
-            placeholder="Seleccionar empresa"
-            disabled={readOnly}
-            required
-            filter
-            filterBy="label"
-          />
+    <div className="p-fluid">
+      <Toast ref={toast} />
+      
+      <div className="grid">
+        <div className="col-12 md:col-6">
+          <div className="field">
+            <label htmlFor="empresaId">Empresa *</label>
+            <Dropdown
+              id="empresaId"
+              value={formData.empresaId}
+              options={empresas}
+              onChange={(e) => setFormData({ ...formData, empresaId: e.value })}
+              placeholder="Seleccione una empresa"
+              filter
+            />
+          </div>
         </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="bancoId" style={{ fontWeight: "bold" }}>
-            Banco *
-          </label>
-          <Dropdown
-            id="bancoId"
-            value={formData.bancoId}
-            options={bancosOptions}
-            onChange={(e) => handleChange("bancoId", e.value)}
-            placeholder="Seleccionar banco"
-            disabled={readOnly}
-            required
-            filter
-            filterBy="label"
-          />
+
+        <div className="col-12 md:col-6">
+          <div className="field">
+            <label htmlFor="bancoId">Banco *</label>
+            <Dropdown
+              id="bancoId"
+              value={formData.bancoId}
+              options={bancos}
+              onChange={(e) => setFormData({ ...formData, bancoId: e.value })}
+              placeholder="Seleccione un banco"
+              filter
+            />
+          </div>
         </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="numeroLinea" style={{ fontWeight: "bold" }}>
-            Número de Línea *
-          </label>
-          <InputText
-            id="numeroLinea"
-            value={formData.numeroLinea}
-            onChange={(e) => handleChange("numeroLinea", e.target.value.toUpperCase())}
-            placeholder="Ej: LC-2025-001"
-            disabled={readOnly}
-            required
-            maxLength={50}
-          />
+
+        <div className="col-12 md:col-6">
+          <div className="field">
+            <label htmlFor="numeroLinea">Número de Línea *</label>
+            <InputText
+              id="numeroLinea"
+              value={formData.numeroLinea}
+              onChange={(e) => setFormData({ ...formData, numeroLinea: e.target.value })}
+              placeholder="Ej: LC-2025-001"
+            />
+          </div>
         </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="estadoId" style={{ fontWeight: "bold" }}>
-            Estado *
-          </label>
-          <Dropdown
-            id="estadoId"
-            value={formData.estadoId}
-            options={estadosOptions}
-            onChange={(e) => handleChange("estadoId", e.value)}
-            placeholder="Seleccionar estado"
-            disabled={readOnly}
-            required
-          />
+
+        <div className="col-12 md:col-6">
+          <div className="field">
+            <label htmlFor="tipoLinea">Tipo de Línea *</label>
+            <Dropdown
+              id="tipoLinea"
+              value={formData.tipoLinea}
+              options={tiposLinea}
+              onChange={(e) => setFormData({ ...formData, tipoLinea: e.value })}
+              placeholder="Seleccione tipo de línea"
+            />
+          </div>
+        </div>
+
+        <div className="col-12 md:col-4">
+          <div className="field">
+            <label htmlFor="montoAprobado">Monto Aprobado *</label>
+            <InputNumber
+              id="montoAprobado"
+              value={formData.montoAprobado}
+              onValueChange={(e) => setFormData({ ...formData, montoAprobado: e.value })}
+              mode="decimal"
+              minFractionDigits={2}
+              maxFractionDigits={2}
+            />
+          </div>
+        </div>
+
+        <div className="col-12 md:col-4">
+          <div className="field">
+            <label htmlFor="monedaId">Moneda *</label>
+            <Dropdown
+              id="monedaId"
+              value={formData.monedaId}
+              options={monedas}
+              onChange={(e) => setFormData({ ...formData, monedaId: e.value })}
+              placeholder="Seleccione moneda"
+              filter
+            />
+          </div>
+        </div>
+
+        <div className="col-12 md:col-4">
+          <div className="field">
+            <label htmlFor="tasaInteres">Tasa de Interés (%) *</label>
+            <InputNumber
+              id="tasaInteres"
+              value={formData.tasaInteres}
+              onValueChange={(e) => setFormData({ ...formData, tasaInteres: e.value })}
+              mode="decimal"
+              minFractionDigits={2}
+              maxFractionDigits={4}
+              suffix="%"
+            />
+          </div>
+        </div>
+
+        <div className="col-12 md:col-6">
+          <div className="field">
+            <label htmlFor="comisionMantenimiento">Comisión Mantenimiento</label>
+            <InputNumber
+              id="comisionMantenimiento"
+              value={formData.comisionMantenimiento}
+              onValueChange={(e) => setFormData({ ...formData, comisionMantenimiento: e.value })}
+              mode="decimal"
+              minFractionDigits={2}
+              maxFractionDigits={2}
+            />
+          </div>
+        </div>
+
+        <div className="col-12 md:col-6">
+          <div className="field">
+            <label htmlFor="comisionUtilizacion">Comisión Utilización (%)</label>
+            <InputNumber
+              id="comisionUtilizacion"
+              value={formData.comisionUtilizacion}
+              onValueChange={(e) => setFormData({ ...formData, comisionUtilizacion: e.value })}
+              mode="decimal"
+              minFractionDigits={2}
+              maxFractionDigits={4}
+              suffix="%"
+            />
+          </div>
+        </div>
+
+        <div className="col-12 md:col-6">
+          <div className="field">
+            <label htmlFor="fechaAprobacion">Fecha de Aprobación *</label>
+            <Calendar
+              id="fechaAprobacion"
+              value={formData.fechaAprobacion}
+              onChange={(e) => setFormData({ ...formData, fechaAprobacion: e.value })}
+              dateFormat="dd/mm/yy"
+              showIcon
+            />
+          </div>
+        </div>
+
+        <div className="col-12 md:col-6">
+          <div className="field">
+            <label htmlFor="fechaVencimiento">Fecha de Vencimiento *</label>
+            <Calendar
+              id="fechaVencimiento"
+              value={formData.fechaVencimiento}
+              onChange={(e) => setFormData({ ...formData, fechaVencimiento: e.value })}
+              dateFormat="dd/mm/yy"
+              showIcon
+            />
+          </div>
+        </div>
+
+        <div className="col-12 md:col-6">
+          <div className="field">
+            <label htmlFor="estadoId">Estado *</label>
+            <Dropdown
+              id="estadoId"
+              value={formData.estadoId}
+              options={estados}
+              onChange={(e) => setFormData({ ...formData, estadoId: e.value })}
+              placeholder="Seleccione un estado"
+            />
+          </div>
+        </div>
+
+        <div className="col-12">
+          <div className="field">
+            <label htmlFor="observaciones">Observaciones</label>
+            <InputTextarea
+              id="observaciones"
+              value={formData.observaciones}
+              onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+              rows={3}
+            />
+          </div>
         </div>
       </div>
 
-      {/* FILA 2: Tipo Línea, Moneda */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="tipoLinea" style={{ fontWeight: "bold" }}>
-            Tipo de Línea *
-          </label>
-          <Dropdown
-            id="tipoLinea"
-            value={formData.tipoLinea}
-            options={enums.tiposLineaCredito}
-            onChange={(e) => handleChange("tipoLinea", e.value)}
-            placeholder="Seleccionar tipo"
-            disabled={readOnly}
-            required
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="monedaId" style={{ fontWeight: "bold" }}>
-            Moneda *
-          </label>
-          <Dropdown
-            id="monedaId"
-            value={formData.monedaId}
-            options={monedasOptions}
-            onChange={(e) => handleChange("monedaId", e.value)}
-            placeholder="Seleccionar moneda"
-            disabled={readOnly}
-            required
-            filter
-            filterBy="label"
-          />
-        </div>
-      </div>
-
-      {/* FILA 3: Descripción */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="descripcion" style={{ fontWeight: "bold" }}>
-            Descripción *
-          </label>
-          <InputTextarea
-            id="descripcion"
-            value={formData.descripcion}
-            onChange={(e) => handleChange("descripcion", e.target.value.toUpperCase())}
-            placeholder="Descripción de la línea de crédito"
-            disabled={readOnly}
-            required
-            rows={2}
-          />
-        </div>
-      </div>
-
-      {/* FILA 4: Fechas */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaAprobacion" style={{ fontWeight: "bold" }}>
-            Fecha de Aprobación *
-          </label>
-          <Calendar
-            id="fechaAprobacion"
-            value={formData.fechaAprobacion}
-            onChange={(e) => handleChange("fechaAprobacion", e.value)}
-            placeholder="Seleccionar fecha"
-            disabled={readOnly}
-            required
-            dateFormat="dd/mm/yy"
-            showIcon
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaVencimiento" style={{ fontWeight: "bold" }}>
-            Fecha de Vencimiento *
-          </label>
-          <Calendar
-            id="fechaVencimiento"
-            value={formData.fechaVencimiento}
-            onChange={(e) => handleChange("fechaVencimiento", e.value)}
-            placeholder="Seleccionar fecha"
-            disabled={readOnly}
-            required
-            dateFormat="dd/mm/yy"
-            showIcon
-          />
-        </div>
-      </div>
-
-      {/* FILA 5: Montos */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="montoAprobado" style={{ fontWeight: "bold" }}>
-            Monto Aprobado *
-          </label>
-          <InputNumber
-            id="montoAprobado"
-            value={formData.montoAprobado}
-            onValueChange={(e) => handleChange("montoAprobado", e.value)}
-            mode="decimal"
-            minFractionDigits={2}
-            maxFractionDigits={2}
-            disabled={readOnly}
-            required
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="montoUtilizado" style={{ fontWeight: "bold" }}>
-            Monto Utilizado
-          </label>
-          <InputNumber
-            id="montoUtilizado"
-            value={formData.montoUtilizado}
-            onValueChange={(e) => handleChange("montoUtilizado", e.value)}
-            mode="decimal"
-            minFractionDigits={2}
-            maxFractionDigits={2}
-            disabled={readOnly}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="montoDisponible" style={{ fontWeight: "bold" }}>
-            Monto Disponible
-          </label>
-          <InputNumber
-            id="montoDisponible"
-            value={formData.montoDisponible}
-            mode="decimal"
-            minFractionDigits={2}
-            maxFractionDigits={2}
-            disabled
-          />
-        </div>
-      </div>
-
-      {/* FILA 6: Tasas y Comisiones */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="tasaInteres" style={{ fontWeight: "bold" }}>
-            Tasa de Interés (%) *
-          </label>
-          <InputNumber
-            id="tasaInteres"
-            value={formData.tasaInteres}
-            onValueChange={(e) => handleChange("tasaInteres", e.value)}
-            mode="decimal"
-            minFractionDigits={2}
-            maxFractionDigits={4}
-            disabled={readOnly}
-            required
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="comisionManejo" style={{ fontWeight: "bold" }}>
-            Comisión de Manejo
-          </label>
-          <InputNumber
-            id="comisionManejo"
-            value={formData.comisionManejo}
-            onValueChange={(e) => handleChange("comisionManejo", e.value)}
-            mode="decimal"
-            minFractionDigits={2}
-            maxFractionDigits={2}
-            disabled={readOnly}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="comisionNoUtilizacion" style={{ fontWeight: "bold" }}>
-            Comisión No Utilización
-          </label>
-          <InputNumber
-            id="comisionNoUtilizacion"
-            value={formData.comisionNoUtilizacion}
-            onValueChange={(e) => handleChange("comisionNoUtilizacion", e.value)}
-            mode="decimal"
-            minFractionDigits={2}
-            maxFractionDigits={4}
-            disabled={readOnly}
-          />
-        </div>
-      </div>
-
-      {/* FILA 7: Observaciones */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="observaciones" style={{ fontWeight: "bold" }}>
-            Observaciones
-          </label>
-          <InputTextarea
-            id="observaciones"
-            value={formData.observaciones}
-            onChange={(e) => handleChange("observaciones", e.target.value.toUpperCase())}
-            placeholder="Observaciones adicionales"
-            disabled={readOnly}
-            rows={3}
-          />
-        </div>
-      </div>
-
-      {/* Botones */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 10,
-          marginTop: 20,
-        }}
-      >
+      <div className="flex justify-content-end gap-2 mt-3">
         <Button
           label="Cancelar"
           icon="pi pi-times"
+          className="p-button-secondary"
           onClick={onCancel}
-          className="p-button-text"
-          type="button"
           disabled={loading}
         />
         <Button
-          label={isEdit ? "Actualizar" : "Guardar"}
+          label="Guardar"
           icon="pi pi-check"
-          type="submit"
-          disabled={loading || readOnly}
+          onClick={handleSubmit}
           loading={loading}
         />
       </div>
-    </form>
+    </div>
   );
-}
+});
+
+LineaCreditoForm.displayName = 'LineaCreditoForm';
+
+export default LineaCreditoForm;

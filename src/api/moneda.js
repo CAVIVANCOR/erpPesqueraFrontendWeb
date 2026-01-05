@@ -15,10 +15,12 @@ function getAuthHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
-export async function getMonedas() {
+export async function getAllMonedas() {
   const res = await axios.get(API_URL, { headers: getAuthHeaders() });
   return res.data;
 }
+
+export const getMonedas = getAllMonedas;
 
 export async function getMonedaPorId(id) {
   const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });

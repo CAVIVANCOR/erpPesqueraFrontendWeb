@@ -6,6 +6,8 @@ import { Dropdown } from "primereact/dropdown";
 import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
+import { Checkbox } from "primereact/checkbox";
+import { TabView, TabPanel } from "primereact/tabview";
 import {
   createInversionFinanciera,
   updateInversionFinanciera,
@@ -15,30 +17,33 @@ import { getBancos } from "../../api/banco";
 import { getMonedas } from "../../api/moneda";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
 import { getEnumsTesoreria } from "../../api/tesoreria/enumsTesoreria";
+import { getResponsiveFontSize } from "../../utils/utils";
+import MovimientoInversionCard from "./MovimientoInversionCard";
 
 export default function InversionFinancieraForm({
   isEdit = false,
   defaultValues = {},
+  empresaFija = null,
   onSubmit,
   onCancel,
   loading,
   readOnly = false,
 }) {
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
   const [formData, setFormData] = useState({
-    empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : null,
+    empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : (empresaFija || null),
     bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
     numeroInversion: defaultValues?.numeroInversion || "",
     tipoInversion: defaultValues?.tipoInversion || "PLAZO_FIJO",
     descripcion: defaultValues?.descripcion || "",
-    fechaInicio: defaultValues?.fechaInicio ? new Date(defaultValues.fechaInicio) : null,
+    fechaInversion: defaultValues?.fechaInversion ? new Date(defaultValues.fechaInversion) : null,
     fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
-    montoInicial: defaultValues?.montoInicial || 0,
-    montoActual: defaultValues?.montoActual || 0,
+    montoInvertido: defaultValues?.montoInvertido || 0,
     monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
     tasaRendimiento: defaultValues?.tasaRendimiento || 0,
-    periodicidadPago: defaultValues?.periodicidadPago || "VENCIMIENTO",
-    renovacionAutomatica: defaultValues?.renovacionAutomatica || false,
-    estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 91,
+    valorActual: defaultValues?.valorActual || 0,
+    rendimientoAcumulado: defaultValues?.rendimientoAcumulado || 0,
+    estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 90,
     observaciones: defaultValues?.observaciones || "",
   });
 
@@ -48,14 +53,21 @@ export default function InversionFinancieraForm({
   const [estados, setEstados] = useState([]);
   const [enums, setEnums] = useState({
     tiposInversion: [],
-    periodicidadesRendimiento: [],
-    opcionesRenovacion: [],
   });
   const [cargandoDatos, setCargandoDatos] = useState(true);
 
   useEffect(() => {
     cargarDatos();
   }, []);
+
+  useEffect(() => {
+    if (empresaFija && !defaultValues?.empresaId) {
+      setFormData((prev) => ({
+        ...prev,
+        empresaId: empresaFija
+      }));
+    }
+  }, [empresaFija, defaultValues]);
 
   const cargarDatos = async () => {
     try {
@@ -89,374 +101,383 @@ export default function InversionFinancieraForm({
   useEffect(() => {
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       setFormData({
-        empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : null,
+        empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : (empresaFija || null),
         bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
         numeroInversion: defaultValues?.numeroInversion || "",
         tipoInversion: defaultValues?.tipoInversion || "PLAZO_FIJO",
         descripcion: defaultValues?.descripcion || "",
-        fechaInicio: defaultValues?.fechaInicio ? new Date(defaultValues.fechaInicio) : null,
+        fechaInversion: defaultValues?.fechaInversion ? new Date(defaultValues.fechaInversion) : null,
         fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
-        montoInicial: defaultValues?.montoInicial || 0,
-        montoActual: defaultValues?.montoActual || 0,
+        montoInvertido: defaultValues?.montoInvertido || 0,
         monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
         tasaRendimiento: defaultValues?.tasaRendimiento || 0,
-        periodicidadPago: defaultValues?.periodicidadPago || "VENCIMIENTO",
-        renovacionAutomatica: defaultValues?.renovacionAutomatica || false,
-        estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 91,
+        valorActual: defaultValues?.valorActual || 0,
+        rendimientoAcumulado: defaultValues?.rendimientoAcumulado || 0,
+        estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 90,
         observaciones: defaultValues?.observaciones || "",
       });
     }
   }, [defaultValues]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-
-    const dataToSend = {
-      empresaId: Number(formData.empresaId),
-      bancoId: Number(formData.bancoId),
-      numeroInversion: formData.numeroInversion.trim().toUpperCase(),
+    
+    // Preparar data siguiendo patrón RequerimientoCompraForm
+    const data = {
+      empresaId: formData.empresaId ? Number(formData.empresaId) : null,
+      bancoId: formData.bancoId ? Number(formData.bancoId) : null,
+      numeroInversion: formData.numeroInversion,
       tipoInversion: formData.tipoInversion,
-      descripcion: formData.descripcion?.trim().toUpperCase() || null,
-      fechaInicio: formData.fechaInicio,
+      descripcion: formData.descripcion,
+      fechaInversion: formData.fechaInversion,
       fechaVencimiento: formData.fechaVencimiento,
-      montoInicial: Number(formData.montoInicial),
-      montoActual: Number(formData.montoActual),
-      monedaId: Number(formData.monedaId),
-      tasaRendimiento: Number(formData.tasaRendimiento),
-      periodicidadPago: formData.periodicidadPago,
-      renovacionAutomatica: Boolean(formData.renovacionAutomatica),
-      estadoId: Number(formData.estadoId),
-      observaciones: formData.observaciones?.trim().toUpperCase() || null,
+      montoInvertido: formData.montoInvertido,
+      monedaId: formData.monedaId ? Number(formData.monedaId) : null,
+      tasaRendimiento: formData.tasaRendimiento,
+      valorActual: formData.valorActual,
+      rendimientoAcumulado: formData.rendimientoAcumulado,
+      estadoId: formData.estadoId ? Number(formData.estadoId) : null,
+      observaciones: formData.observaciones,
     };
 
-    if (isEdit && defaultValues) {
-      await updateInversionFinanciera(defaultValues.id, dataToSend);
-    } else {
-      await createInversionFinanciera(dataToSend);
+    // Validaciones básicas
+    if (!data.empresaId) {
+      console.error("Empresa es requerida");
+      return;
+    }
+    if (!data.numeroInversion) {
+      console.error("Número de inversión es requerido");
+      return;
     }
 
-    await onSubmit(dataToSend);
+    // Enviar data al componente padre (patrón RequerimientoCompraForm)
+    onSubmit(data);
   };
 
-  if (cargandoDatos) {
-    return (
-      <div style={{ textAlign: "center", padding: "2rem" }}>
-        <i className="pi pi-spin pi-spinner" style={{ fontSize: "2rem" }}></i>
-        <p>Cargando formulario...</p>
-      </div>
-    );
-  }
-
   const empresasOptions = empresas.map((e) => ({
+    ...e,
+    id: Number(e.id),
     label: e.razonSocial,
     value: Number(e.id),
   }));
 
   const bancosOptions = bancos.map((b) => ({
-    label: b.nombreBanco,
+    ...b,
+    id: Number(b.id),
+    label: b.nombre,
     value: Number(b.id),
   }));
 
   const monedasOptions = monedas.map((m) => ({
-    label: `${m.codigoSunat} - ${m.nombreLargo || m.simbolo}`,
+    ...m,
+    id: Number(m.id),
+    label: m.codigoSunat,
     value: Number(m.id),
   }));
 
   const estadosOptions = estados.map((e) => ({
-    label: e.estado,
+    ...e,
+    id: Number(e.id),
+    label: e.descripcion || e.estado,
     value: Number(e.id),
   }));
 
+  if (cargandoDatos) {
+    return <div>Cargando...</div>;
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="p-fluid">
-      {/* FILA 1: Empresa, Banco, Número Inversión, Estado */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          alignItems: "end",
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="empresaId" style={{ fontWeight: "bold" }}>
-            Empresa *
-          </label>
-          <Dropdown
-            id="empresaId"
-            value={formData.empresaId}
-            options={empresasOptions}
-            onChange={(e) => handleChange("empresaId", e.value)}
-            placeholder="Seleccionar empresa"
-            disabled={readOnly}
-            required
-            filter
-            filterBy="label"
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="bancoId" style={{ fontWeight: "bold" }}>
-            Banco/Institucion Financiera *
-          </label>
-          <Dropdown
-            id="bancoId"
-            value={formData.bancoId}
-            options={bancosOptions}
-            onChange={(e) => handleChange("bancoId", e.value)}
-            placeholder="Seleccionar banco"
-            disabled={readOnly}
-            required
-            filter
-            filterBy="label"
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="numeroInversion" style={{ fontWeight: "bold" }}>
-            Número de Inversión *
-          </label>
-          <InputText
-            id="numeroInversion"
-            value={formData.numeroInversion}
-            onChange={(e) => handleChange("numeroInversion", e.target.value.toUpperCase())}
-            placeholder="Ej: INV-2025-001"
-            disabled={readOnly}
-            required
-            maxLength={50}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="estadoId" style={{ fontWeight: "bold" }}>
-            Estado *
-          </label>
-          <Dropdown
-            id="estadoId"
-            value={formData.estadoId}
-            options={estadosOptions}
-            onChange={(e) => handleChange("estadoId", e.value)}
-            placeholder="Seleccionar estado"
-            disabled={readOnly}
-            required
-          />
-        </div>
-      </div>
+    <form onSubmit={handleSubmit}>
+      <TabView activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)}>
+        {/* Tab de Datos Generales */}
+        <TabPanel header="Datos Generales" leftIcon="pi pi-info-circle">
+          {/* Fila 1: Empresa, Banco, Número Inversión */}
+          <div style={{ display: "flex", gap: 20, marginBottom: 20 }}>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="empresaId"
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              >
+                Empresa *
+              </label>
+              <Dropdown
+                id="empresaId"
+                value={formData.empresaId ? Number(formData.empresaId) : null}
+                options={empresasOptions}
+                onChange={(e) => handleChange("empresaId", e.value)}
+                placeholder="Seleccione empresa"
+                filter
+                disabled={readOnly}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="bancoId"
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              >
+                Banco
+              </label>
+              <Dropdown
+                id="bancoId"
+                value={formData.bancoId ? Number(formData.bancoId) : null}
+                options={bancosOptions}
+                onChange={(e) => handleChange("bancoId", e.value)}
+                placeholder="Seleccione banco"
+                filter
+                disabled={readOnly}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="numeroInversion"
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              >
+                Número de Inversión *
+              </label>
+              <InputText
+                id="numeroInversion"
+                value={formData.numeroInversion}
+                onChange={(e) =>
+                  handleChange("numeroInversion", e.target.value.toUpperCase())
+                }
+                placeholder="Ej: INV-2024-001"
+                disabled={readOnly}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+          </div>
 
-      {/* FILA 2: Tipo Inversión, Moneda, Periodicidad Pago */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="tipoInversion" style={{ fontWeight: "bold" }}>
-            Tipo de Inversión *
-          </label>
-          <Dropdown
-            id="tipoInversion"
-            value={formData.tipoInversion}
-            options={enums.tiposInversion}
-            onChange={(e) => handleChange("tipoInversion", e.value)}
-            placeholder="Seleccionar tipo"
-            disabled={readOnly}
-            required
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="monedaId" style={{ fontWeight: "bold" }}>
-            Moneda *
-          </label>
-          <Dropdown
-            id="monedaId"
-            value={formData.monedaId}
-            options={monedasOptions}
-            onChange={(e) => handleChange("monedaId", e.value)}
-            placeholder="Seleccionar moneda"
-            disabled={readOnly}
-            required
-            filter
-            filterBy="label"
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="periodicidadPago" style={{ fontWeight: "bold" }}>
-            Periodicidad de Pago *
-          </label>
-          <Dropdown
-            id="periodicidadPago"
-            value={formData.periodicidadPago}
-            options={enums.periodicidadesRendimiento}
-            onChange={(e) => handleChange("periodicidadPago", e.value)}
-            placeholder="Seleccionar periodicidad"
-            disabled={readOnly}
-            required
-          />
-        </div>
-      </div>
+          {/* Fila 2: Tipo Inversión, Estado, Moneda */}
+          <div style={{ display: "flex", gap: 20, marginBottom: 20 }}>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="tipoInversion"
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              >
+                Tipo de Inversión *
+              </label>
+              <Dropdown
+                id="tipoInversion"
+                value={formData.tipoInversion}
+                options={enums.tiposInversion}
+                onChange={(e) => handleChange("tipoInversion", e.value)}
+                placeholder="Seleccione tipo"
+                disabled={readOnly}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="estadoId"
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              >
+                Estado *
+              </label>
+              <Dropdown
+                id="estadoId"
+                value={formData.estadoId ? Number(formData.estadoId) : null}
+                options={estadosOptions}
+                onChange={(e) => handleChange("estadoId", e.value)}
+                placeholder="Seleccione estado"
+                disabled={readOnly}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="monedaId"
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              >
+                Moneda *
+              </label>
+              <Dropdown
+                id="monedaId"
+                value={formData.monedaId ? Number(formData.monedaId) : null}
+                options={monedasOptions}
+                onChange={(e) => handleChange("monedaId", e.value)}
+                placeholder="Seleccione moneda"
+                filter
+                disabled={readOnly}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+          </div>
 
-      {/* FILA 3: Descripción */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="descripcion" style={{ fontWeight: "bold" }}>
-            Descripción *
-          </label>
-          <InputTextarea
-            id="descripcion"
-            value={formData.descripcion}
-            onChange={(e) => handleChange("descripcion", e.target.value.toUpperCase())}
-            placeholder="Descripción de la inversión"
-            disabled={readOnly}
-            required
-            rows={2}
-          />
-        </div>
-      </div>
+          {/* Fila 3: Descripción */}
+          <div style={{ display: "flex", gap: 20, marginBottom: 20 }}>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="descripcion"
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              >
+                Descripción *
+              </label>
+              <InputText
+                id="descripcion"
+                value={formData.descripcion}
+                onChange={(e) =>
+                  handleChange("descripcion", e.target.value.toUpperCase())
+                }
+                placeholder="Descripción de la inversión"
+                disabled={readOnly}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+          </div>
 
-      {/* FILA 4: Fechas */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaInicio" style={{ fontWeight: "bold" }}>
-            Fecha de Inicio *
-          </label>
-          <Calendar
-            id="fechaInicio"
-            value={formData.fechaInicio}
-            onChange={(e) => handleChange("fechaInicio", e.value)}
-            placeholder="Seleccionar fecha"
-            disabled={readOnly}
-            required
-            dateFormat="dd/mm/yy"
-            showIcon
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="fechaVencimiento" style={{ fontWeight: "bold" }}>
-            Fecha de Vencimiento
-          </label>
-          <Calendar
-            id="fechaVencimiento"
-            value={formData.fechaVencimiento}
-            onChange={(e) => handleChange("fechaVencimiento", e.value)}
-            placeholder="Seleccionar fecha"
-            disabled={readOnly}
-            dateFormat="dd/mm/yy"
-            showIcon
-          />
-        </div>
-      </div>
+          {/* Fila 4: Fechas */}
+          <div style={{ display: "flex", gap: 20, marginBottom: 20 }}>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="fechaInversion"
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              >
+                Fecha de Inversión *
+              </label>
+              <Calendar
+                id="fechaInversion"
+                value={formData.fechaInversion}
+                onChange={(e) => handleChange("fechaInversion", e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled={readOnly}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="fechaVencimiento"
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              >
+                Fecha de Vencimiento
+              </label>
+              <Calendar
+                id="fechaVencimiento"
+                value={formData.fechaVencimiento}
+                onChange={(e) => handleChange("fechaVencimiento", e.value)}
+                dateFormat="dd/mm/yy"
+                showIcon
+                disabled={readOnly}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+          </div>
 
-      {/* FILA 5: Montos */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="montoInicial" style={{ fontWeight: "bold" }}>
-            Monto Inicial *
-          </label>
-          <InputNumber
-            id="montoInicial"
-            value={formData.montoInicial}
-            onValueChange={(e) => handleChange("montoInicial", e.value)}
-            mode="decimal"
-            minFractionDigits={2}
-            maxFractionDigits={2}
-            disabled={readOnly}
-            required
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="montoActual" style={{ fontWeight: "bold" }}>
-            Monto Actual *
-          </label>
-          <InputNumber
-            id="montoActual"
-            value={formData.montoActual}
-            onValueChange={(e) => handleChange("montoActual", e.value)}
-            mode="decimal"
-            minFractionDigits={2}
-            maxFractionDigits={2}
-            disabled={readOnly}
-            required
-          />
-        </div>
-      </div>
+          {/* Fila 5: Montos */}
+          <div style={{ display: "flex", gap: 20, marginBottom: 20 }}>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="montoInvertido"
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              >
+                Monto Invertido *
+              </label>
+              <InputNumber
+                id="montoInvertido"
+                value={formData.montoInvertido}
+                onValueChange={(e) => handleChange("montoInvertido", e.value)}
+                mode="currency"
+                currency="PEN"
+                locale="es-PE"
+                minFractionDigits={2}
+                disabled={readOnly}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="valorActual"
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              >
+                Valor Actual
+              </label>
+              <InputNumber
+                id="valorActual"
+                value={formData.valorActual}
+                onValueChange={(e) => handleChange("valorActual", e.value)}
+                mode="currency"
+                currency="PEN"
+                locale="es-PE"
+                minFractionDigits={2}
+                disabled={readOnly}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="rendimientoAcumulado"
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              >
+                Rendimiento Acumulado
+              </label>
+              <InputNumber
+                id="rendimientoAcumulado"
+                value={formData.rendimientoAcumulado}
+                onValueChange={(e) => handleChange("rendimientoAcumulado", e.value)}
+                mode="currency"
+                currency="PEN"
+                locale="es-PE"
+                minFractionDigits={2}
+                disabled={readOnly}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+          </div>
 
-      {/* FILA 6: Tasa y Renovación */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="tasaRendimiento" style={{ fontWeight: "bold" }}>
-            Tasa de Rendimiento (%)
-          </label>
-          <InputNumber
-            id="tasaRendimiento"
-            value={formData.tasaRendimiento}
-            onValueChange={(e) => handleChange("tasaRendimiento", e.value)}
-            mode="decimal"
-            minFractionDigits={2}
-            maxFractionDigits={4}
-            disabled={readOnly}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="renovacionAutomatica" style={{ fontWeight: "bold" }}>
-            Renovación Automática *
-          </label>
-          <Dropdown
-            id="renovacionAutomatica"
-            value={formData.renovacionAutomatica}
-            options={enums.opcionesRenovacion}
-            onChange={(e) => handleChange("renovacionAutomatica", e.value)}
-            placeholder="Seleccionar opción"
-            disabled={readOnly}
-            required
-          />
-        </div>
-      </div>
+          {/* Fila 6: Tasa Rendimiento */}
+          <div style={{ display: "flex", gap: 20, marginBottom: 20 }}>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="tasaRendimiento"
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              >
+                Tasa de Rendimiento (%)
+              </label>
+              <InputNumber
+                id="tasaRendimiento"
+                value={formData.tasaRendimiento}
+                onValueChange={(e) => handleChange("tasaRendimiento", e.value)}
+                minFractionDigits={2}
+                maxFractionDigits={4}
+                disabled={readOnly}
+                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              />
+            </div>
+          </div>
 
-      {/* FILA 7: Observaciones */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="observaciones" style={{ fontWeight: "bold" }}>
-            Observaciones
-          </label>
-          <InputTextarea
-            id="observaciones"
-            value={formData.observaciones}
-            onChange={(e) => handleChange("observaciones", e.target.value.toUpperCase())}
-            placeholder="Observaciones adicionales"
-            disabled={readOnly}
-            rows={3}
-          />
-        </div>
-      </div>
+          {/* Fila 7: Observaciones */}
+          <div style={{ display: "flex", gap: 20, marginBottom: 20 }}>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="observaciones"
+                style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              >
+                Observaciones
+              </label>
+              <InputTextarea
+                id="observaciones"
+                value={formData.observaciones}
+                onChange={(e) => handleChange("observaciones", e.target.value.toUpperCase())}
+                placeholder="Observaciones adicionales"
+                disabled={readOnly}
+                rows={3}
+              />
+            </div>
+          </div>
+        </TabPanel>
+
+        {/* Tab de Movimientos */}
+        {isEdit && defaultValues?.id && (
+          <TabPanel header="Movimientos" leftIcon="pi pi-arrows-h">
+            <MovimientoInversionCard
+              inversionFinancieraId={defaultValues.id}
+              readOnly={readOnly}
+            />
+          </TabPanel>
+        )}
+      </TabView>
 
       {/* Botones */}
       <div

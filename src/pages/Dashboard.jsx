@@ -160,13 +160,14 @@ export default function Dashboard() {
       titulo: "FINANZAS",
       descripcion: "Tesorería Avanzada: Préstamos, Créditos e Inversiones",
       icono: "pi-wallet",
-      modulos: 3,
+      modulos: 4,
       color: "#8E44AD",
       size: "medium",
       submenu: [
         { label: "Préstamo Bancario", key: "prestamoBancario", icon: "pi-briefcase" },
         { label: "Línea de Crédito", key: "lineaCredito", icon: "pi-credit-card" },
-        { label: "Inversión Financiera", key: "inversionFinanciera", icon: "pi-chart-pie" }
+        { label: "Inversión Financiera", key: "inversionFinanciera", icon: "pi-chart-pie" },
+        { label: "Reporte Líneas Disponibles", key: "reporteLineasDisponibles", icon: "pi-chart-bar" }
       ]
     },
     {

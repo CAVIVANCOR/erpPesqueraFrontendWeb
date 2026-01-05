@@ -25,13 +25,15 @@ function getAuthHeader() {
  * Si no existe 'razonSocial', usa 'nombre'.
  * Esto garantiza coherencia y compatibilidad visual en todos los formularios del ERP Megui.
  */
-export const getEmpresas = async () => {
+export const getAllEmpresas = async () => {
   const res = await axios.get(API_URL, { headers: getAuthHeader() });
   // Soporta tanto { empresas: [...] } como un array directo
   const lista = Array.isArray(res.data) ? res.data : (res.data.empresas || []);
   // Devuelve los datos exactamente como vienen del backend, sin alias ni mapeos adicionales
   return lista;
 };
+
+export const getEmpresas = getAllEmpresas;
 
 /**
  * Obtiene una empresa por ID.

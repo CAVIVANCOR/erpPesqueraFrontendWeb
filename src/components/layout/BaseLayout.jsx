@@ -112,6 +112,7 @@ import AsientoContable from '../../pages/contabilidad/AsientoContable';
 import PrestamoBancario from '../../pages/tesoreria/PrestamoBancario';
 import LineaCredito from '../../pages/tesoreria/LineaCredito';
 import InversionFinanciera from '../../pages/tesoreria/InversionFinanciera';
+import ReporteLineasDisponibles from '../../pages/tesoreria/ReporteLineasDisponibles';
 
 /**
  * BaseLayout - Layout principal con gestión de módulos
@@ -235,6 +236,7 @@ export default function BaseLayout({ children, onLogout }) {
     prestamoBancario: { label: "Préstamo Bancario", componente: <PrestamoBancario ruta="prestamoBancario" /> },
     lineaCredito: { label: "Línea de Crédito", componente: <LineaCredito ruta="lineaCredito" /> },
     inversionFinanciera: { label: "Inversión Financiera", componente: <InversionFinanciera ruta="inversionFinanciera" /> },
+    reporteLineasDisponibles: { label: "Reporte Líneas Disponibles", componente: <ReporteLineasDisponibles ruta="reporteLineasDisponibles" /> },
   };
 
   /**

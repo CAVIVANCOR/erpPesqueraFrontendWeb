@@ -397,56 +397,65 @@ export default function OrdenCompraForm({
       </TabView>
 
       {/* BOTONES DE ACCIÓN */}
-      <div className="flex justify-content-end gap-2 mt-4">
-        <Button
-          label="Cancelar"
-          icon="pi pi-times"
-          className="p-button-secondary"
-          onClick={onCancel}
-          disabled={loading}
-        />
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: 18,
+        }}
+      >
+        {/* Botones izquierda: Aprobar, Anular */}
+        <div style={{ display: "flex", gap: 8 }}>
+          {/* PENDIENTE: Mostrar Aprobar y Anular */}
+          {estaPendiente && isEdit && (
+            <>
+              <Button
+                label="Aprobar"
+                icon="pi pi-check"
+                className="p-button-success"
+                onClick={handleAprobarClick}
+                disabled={readOnly || loading || !permisos.puedeEditar}
+                tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para aprobar" : ""}
+              />
+              <Button
+                label="Anular"
+                icon="pi pi-ban"
+                className="p-button-danger"
+                onClick={handleAnularClick}
+                disabled={readOnly || loading || !permisos.puedeEliminar}
+                tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEliminar ? "No tiene permisos para anular" : ""}
+              />
+            </>
+          )}
 
-        {estaPendiente && (
-          <>
-            <Button
-              label="Guardar"
-              icon="pi pi-save"
-              className="p-button-primary"
-              onClick={handleSubmit}
-              disabled={readOnly || loading || !permisos.puedeEditar}
-              tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""}
-            />
+          {/* Tags de estado cuando está aprobado o anulado */}
+          {estaAprobado && (
+            <Tag value="APROBADO" severity="success" icon="pi pi-check-circle" />
+          )}
 
-            {isEdit && (
-              <>
-                <Button
-                  label="Aprobar"
-                  icon="pi pi-check"
-                  className="p-button-success"
-                  onClick={handleAprobarClick}
-                  disabled={readOnly || loading || !permisos.puedeEditar}
-                  tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para aprobar" : ""}
-                />
-                <Button
-                  label="Anular"
-                  icon="pi pi-ban"
-                  className="p-button-danger"
-                  onClick={handleAnularClick}
-                  disabled={readOnly || loading || !permisos.puedeEliminar}
-                  tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEliminar ? "No tiene permisos para anular" : ""}
-                />
-              </>
-            )}
-          </>
-        )}
+          {estaAnulado && (
+            <Tag value="ANULADO" severity="danger" icon="pi pi-times-circle" />
+          )}
+        </div>
 
-        {estaAprobado && (
-          <Tag value="APROBADO" severity="success" icon="pi pi-check-circle" />
-        )}
-
-        {estaAnulado && (
-          <Tag value="ANULADO" severity="danger" icon="pi pi-times-circle" />
-        )}
+        {/* Botones derecha: Guardar y Cancelar */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button
+            label="Cancelar"
+            icon="pi pi-times"
+            className="p-button-secondary"
+            onClick={onCancel}
+            disabled={loading}
+          />
+          <Button
+            label="Guardar"
+            icon="pi pi-save"
+            onClick={handleSubmit}
+            disabled={readOnly || loading || !puedeEditar}
+            tooltip={readOnly ? "Modo solo lectura" : !puedeEditar ? "No se puede editar" : ""}
+          />
+        </div>
       </div>
     </div>
   );

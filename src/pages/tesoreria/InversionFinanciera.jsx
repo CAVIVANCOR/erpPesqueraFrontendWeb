@@ -1,47 +1,136 @@
 // src/pages/tesoreria/InversionFinanciera.jsx
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
+import { Dropdown } from "primereact/dropdown";
+import { Calendar } from "primereact/calendar";
 import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
 import {
   getInversionFinanciera,
   deleteInversionFinanciera,
+  createInversionFinanciera,
+  updateInversionFinanciera,
   getInversionFinancieraById,
 } from "../../api/tesoreria/inversionFinanciera";
+import { getEmpresas } from "../../api/empresa";
+import { getAllBancos } from "../../api/banco";
+import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
 import InversionFinancieraForm from "../../components/tesoreria/InversionFinancieraForm";
 import { usePermissions } from "../../hooks/usePermissions";
+import { getResponsiveFontSize } from "../../utils/utils";
 
-export default function InversionFinanciera() {
-  const [inversiones, setInversiones] = useState([]);
-  const [loading, setLoading] = useState(false);
+export default function InversionFinanciera({ ruta }) {
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
+  const toast = useRef(null);
+
+  // Estados para el Dialog
   const [dialogVisible, setDialogVisible] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [selectedInversion, setSelectedInversion] = useState(null);
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [empresaFija, setEmpresaFija] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
-  const toast = useRef(null);
 
-  const { canCreate, canEdit, canDelete } = usePermissions("INVERSION_FINANCIERA");
+  // Estados para la lista
+  const [inversiones, setInversiones] = useState([]);
+  const [inversionesFiltradas, setInversionesFiltradas] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
+  const [bancos, setBancos] = useState([]);
+  const [estados, setEstados] = useState([]);
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [bancoSeleccionado, setBancoSeleccionado] = useState(null);
+  const [tipoInversionSeleccionado, setTipoInversionSeleccionado] = useState(null);
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
+  const [fechaInicio, setFechaInicio] = useState(null);
+  const [fechaFin, setFechaFin] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [globalFilter, setGlobalFilter] = useState("");
+
+  const tiposInversion = [
+    { label: "Depósito a Plazo Fijo", value: "DEPOSITO_PLAZO_FIJO" },
+    { label: "Cuenta de Ahorros", value: "CUENTA_AHORROS" },
+    { label: "Fondo Mutuo", value: "FONDO_MUTUO" },
+    { label: "Bonos", value: "BONOS" },
+    { label: "Acciones", value: "ACCIONES" },
+    { label: "Certificado de Depósito", value: "CERTIFICADO_DEPOSITO" }
+  ];
 
   useEffect(() => {
-    cargarInversiones();
+    cargarDatos();
   }, []);
 
-  const cargarInversiones = async () => {
+  // Filtrar inversiones por múltiples criterios
+  useEffect(() => {
+    let filtradas = [...inversiones];
+
+    if (empresaSeleccionada) {
+      filtradas = filtradas.filter(
+        (inv) => Number(inv.empresaId) === Number(empresaSeleccionada)
+      );
+    }
+
+    if (bancoSeleccionado) {
+      filtradas = filtradas.filter(
+        (inv) => Number(inv.bancoId) === Number(bancoSeleccionado)
+      );
+    }
+
+    if (tipoInversionSeleccionado) {
+      filtradas = filtradas.filter(
+        (inv) => inv.tipoInversion === tipoInversionSeleccionado
+      );
+    }
+
+    if (estadoSeleccionado) {
+      filtradas = filtradas.filter(
+        (inv) => Number(inv.estadoId) === Number(estadoSeleccionado)
+      );
+    }
+
+    if (fechaInicio) {
+      filtradas = filtradas.filter(
+        (inv) => new Date(inv.fechaInicio) >= new Date(fechaInicio)
+      );
+    }
+
+    if (fechaFin) {
+      filtradas = filtradas.filter(
+        (inv) => new Date(inv.fechaInicio) <= new Date(fechaFin)
+      );
+    }
+
+    setInversionesFiltradas(filtradas);
+  }, [empresaSeleccionada, bancoSeleccionado, tipoInversionSeleccionado, estadoSeleccionado, fechaInicio, fechaFin, inversiones]);
+
+  const cargarDatos = async () => {
     setLoading(true);
     try {
-      const data = await getInversionFinanciera();
-      setInversiones(data);
+      const [inversionesData, empresasData, bancosData, estadosData] = await Promise.all([
+        getInversionFinanciera(),
+        getEmpresas(),
+        getAllBancos(),
+        getEstadosMultiFuncionPorTipoProviene(23)
+      ]);
+      setInversiones(inversionesData);
+      setEmpresas(empresasData);
+      setBancos(bancosData);
+      setEstados(estadosData);
     } catch (error) {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar inversiones financieras",
+        detail: "Error al cargar datos",
         life: 3000,
       });
     } finally {
@@ -51,12 +140,14 @@ export default function InversionFinanciera() {
 
   const openNew = () => {
     setSelectedInversion(null);
+    setEmpresaFija(empresaSeleccionada);
     setIsEdit(false);
     setDialogVisible(true);
   };
 
   const openEdit = (inversion) => {
     setSelectedInversion(inversion);
+    setEmpresaFija(null);
     setIsEdit(true);
     setDialogVisible(true);
   };
@@ -64,29 +155,39 @@ export default function InversionFinanciera() {
   const hideDialog = () => {
     setDialogVisible(false);
     setSelectedInversion(null);
+    setEmpresaFija(null);
     setIsEdit(false);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (data) => {
     setFormLoading(true);
     try {
-      await cargarInversiones();
+      if (isEdit) {
+        await updateInversionFinanciera(selectedInversion.id, data);
+        toast.current.show({
+          severity: "success",
+          summary: "Actualizado",
+          detail: "Inversión financiera actualizada correctamente",
+          life: 3000,
+        });
+      } else {
+        await createInversionFinanciera(data);
+        toast.current.show({
+          severity: "success",
+          summary: "Creado",
+          detail: "Inversión financiera creada correctamente",
+          life: 3000,
+        });
+      }
+      
+      await cargarDatos();
       hideDialog();
-      toast.current.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: isEdit
-          ? "Inversión financiera actualizada correctamente"
-          : "Inversión financiera creada correctamente",
-        life: 3000,
-      });
     } catch (error) {
+      const errorMsg = error.response?.data?.mensaje || error.response?.data?.error || error.response?.data?.message || "No se pudo guardar";
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: isEdit
-          ? "Error al actualizar inversión financiera"
-          : "Error al crear inversión financiera",
+        detail: errorMsg,
         life: 3000,
       });
     } finally {
@@ -108,7 +209,7 @@ export default function InversionFinanciera() {
   const handleDelete = async (id) => {
     try {
       await deleteInversionFinanciera(id);
-      await cargarInversiones();
+      await cargarDatos();
       toast.current.show({
         severity: "success",
         summary: "Éxito",
@@ -125,37 +226,214 @@ export default function InversionFinanciera() {
     }
   };
 
+  const limpiarFiltros = () => {
+    setEmpresaSeleccionada(null);
+    setBancoSeleccionado(null);
+    setTipoInversionSeleccionado(null);
+    setEstadoSeleccionado(null);
+    setFechaInicio(null);
+    setFechaFin(null);
+    setGlobalFilter("");
+  };
+
   const header = (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: "10px",
-      }}
-    >
-      <h2 style={{ margin: 0 }}>Inversiones Financieras</h2>
-      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-        <span className="p-input-icon-left">
-          <i className="pi pi-search" />
-          <InputText
-            type="search"
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            placeholder="Buscar..."
-            style={{ width: "300px" }}
+    <div>
+      <div
+        style={{
+          alignItems: "end",
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+          marginBottom: 15
+        }}
+      >
+        <div style={{ flex: 2 }}>
+          <h3 style={{ margin: 0 }}>Inversiones Financieras</h3>
+          <small style={{ color: "#666", fontWeight: "normal" }}>
+            Total de registros: {inversionesFiltradas.length}
+          </small>
+        </div>
+        <div style={{ flex: 2 }}>
+          <label htmlFor="empresaFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+            Empresa *
+          </label>
+          <Dropdown
+            id="empresaFiltro"
+            value={empresaSeleccionada}
+            options={empresas.map((e) => ({
+              label: e.razonSocial,
+              value: Number(e.id),
+            }))}
+            onChange={(e) => setEmpresaSeleccionada(e.value)}
+            placeholder="Seleccionar empresa para filtrar"
+            optionLabel="label"
+            optionValue="value"
+            showClear
+            disabled={loading}
+            style={{ width: "100%" }}
           />
-        </span>
-        {canCreate && (
+        </div>
+        <div style={{ flex: 1 }}>
           <Button
             label="Nueva Inversión"
             icon="pi pi-plus"
-            onClick={openNew}
+            className="p-button-success"
             severity="success"
             raised
+            onClick={openNew}
+            disabled={!permisos.puedeCrear || loading || !empresaSeleccionada}
+            tooltip={
+              !permisos.puedeCrear
+                ? "No tiene permisos para crear"
+                : !empresaSeleccionada
+                ? "Seleccione una empresa primero"
+                : "Nueva Inversión Financiera"
+            }
+            style={{ width: "100%" }}
           />
-        )}
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            icon="pi pi-refresh"
+            className="p-button-outlined p-button-info"
+            onClick={async () => {
+              await cargarDatos();
+              toast.current.show({
+                severity: "success",
+                summary: "Actualizado",
+                detail: "Datos actualizados correctamente",
+                life: 3000
+              });
+            }}
+            loading={loading}
+            tooltip="Actualizar datos"
+            tooltipOptions={{ position: "top" }}
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            label="Limpiar"
+            icon="pi pi-filter-slash"
+            className="p-button-secondary"
+            outlined
+            onClick={limpiarFiltros}
+            disabled={loading}
+            style={{ width: "100%" }}
+          />
+        </div>
+      </div>
+      <div
+        style={{
+          alignItems: "end",
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+          marginBottom: 15
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label htmlFor="bancoFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+            Banco
+          </label>
+          <Dropdown
+            id="bancoFiltro"
+            value={bancoSeleccionado}
+            options={bancos.map((b) => ({
+              label: b.nombre,
+              value: Number(b.id),
+            }))}
+            onChange={(e) => setBancoSeleccionado(e.value)}
+            placeholder="Todos"
+            optionLabel="label"
+            optionValue="value"
+            showClear
+            disabled={loading}
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="tipoInversionFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+            Tipo Inversión
+          </label>
+          <Dropdown
+            id="tipoInversionFiltro"
+            value={tipoInversionSeleccionado}
+            options={tiposInversion}
+            onChange={(e) => setTipoInversionSeleccionado(e.value)}
+            placeholder="Todos"
+            optionLabel="label"
+            optionValue="value"
+            showClear
+            disabled={loading}
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="estadoFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+            Estado
+          </label>
+          <Dropdown
+            id="estadoFiltro"
+            value={estadoSeleccionado}
+            options={estados.map((e) => ({
+              label: e.descripcion || e.estado,
+              value: Number(e.id),
+            }))}
+            onChange={(e) => setEstadoSeleccionado(e.value)}
+            placeholder="Todos"
+            optionLabel="label"
+            optionValue="value"
+            showClear
+            disabled={loading}
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="fechaInicioFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+            Fecha Inicio Desde
+          </label>
+          <Calendar
+            id="fechaInicioFiltro"
+            value={fechaInicio}
+            onChange={(e) => setFechaInicio(e.value)}
+            placeholder="Desde"
+            showIcon
+            dateFormat="dd/mm/yy"
+            disabled={loading}
+            showButtonBar
+            style={{ width: "100%" }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="fechaFinFiltro" style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}>
+            Fecha Inicio Hasta
+          </label>
+          <Calendar
+            id="fechaFinFiltro"
+            value={fechaFin}
+            onChange={(e) => setFechaFin(e.value)}
+            placeholder="Hasta"
+            showIcon
+            dateFormat="dd/mm/yy"
+            disabled={loading}
+            showButtonBar
+            style={{ width: "100%" }}
+          />
+        </div>
+      </div>
+      <div style={{ marginTop: 10 }}>
+        <span className="p-input-icon-left" style={{ width: "100%" }}>
+          <i className="pi pi-search" />
+          <input
+            type="search"
+            className="p-inputtext p-component"
+            placeholder="Buscar..."
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            style={{ width: "100%" }}
+          />
+        </span>
       </div>
     </div>
   );
@@ -199,7 +477,8 @@ export default function InversionFinanciera() {
   };
 
   const tasaBodyTemplate = (rowData) => {
-    return `${rowData.tasaRendimiento?.toFixed(2) || 0}%`;
+    const tasa = Number(rowData.tasaRendimiento);
+    return `${isNaN(tasa) ? 0 : tasa.toFixed(2)}%`;
   };
 
   const periodicidadBodyTemplate = (rowData) => {
@@ -244,30 +523,30 @@ export default function InversionFinanciera() {
 
   const actionBodyTemplate = (rowData) => {
     return (
-      <div style={{ display: "flex", gap: "5px" }}>
-        {canEdit && (
-          <Button
-            icon="pi pi-pencil"
-            rounded
-            outlined
-            severity="info"
-            onClick={() => openEdit(rowData)}
-            tooltip="Editar"
-            tooltipOptions={{ position: "top" }}
-          />
-        )}
-        {canDelete && (
-          <Button
-            icon="pi pi-trash"
-            rounded
-            outlined
-            severity="danger"
-            onClick={() => confirmDelete(rowData)}
-            tooltip="Eliminar"
-            tooltipOptions={{ position: "top" }}
-          />
-        )}
-      </div>
+      <>
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-button-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            openEdit(rowData);
+          }}
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+          aria-label={permisos.puedeEditar ? "Editar" : "Ver"}
+        />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger p-button-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            confirmDelete(rowData);
+          }}
+          aria-label="Eliminar"
+          tooltip="Eliminar"
+          disabled={!permisos.puedeEliminar}
+        />
+      </>
     );
   };
 
@@ -277,7 +556,7 @@ export default function InversionFinanciera() {
       <ConfirmDialog />
 
       <DataTable
-        value={inversiones}
+        value={inversionesFiltradas}
         loading={loading}
         header={header}
         globalFilter={globalFilter}
@@ -285,19 +564,26 @@ export default function InversionFinanciera() {
         paginator
         rows={10}
         rowsPerPageOptions={[5, 10, 25, 50]}
-        tableStyle={{ minWidth: "60rem" }}
-        sortMode="multiple"
-        removableSort
-        stripedRows
-        showGridlines
+        className="datatable-responsive"
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} inversiones"
+        sortField="numeroInversion"
+        sortOrder={-1}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => openEdit(e.data)
+            : undefined
+        }
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
       >
         <Column
           field="numeroInversion"
           header="Número Inversión"
           sortable
-          filter
-          filterPlaceholder="Buscar por número"
-          style={{ minWidth: "150px" }}
         />
         <Column
           header="Empresa"
@@ -389,10 +675,9 @@ export default function InversionFinanciera() {
           style={{ minWidth: "140px" }}
         />
         <Column
-          header="Acciones"
           body={actionBodyTemplate}
-          exportable={false}
-          style={{ minWidth: "120px", textAlign: "center" }}
+          header="Acciones"
+          style={{ width: 130, textAlign: "center" }}
         />
       </DataTable>
 
@@ -407,6 +692,7 @@ export default function InversionFinanciera() {
         <InversionFinancieraForm
           isEdit={isEdit}
           defaultValues={selectedInversion}
+          empresaFija={empresaFija}
           onSubmit={handleSubmit}
           onCancel={hideDialog}
           loading={formLoading}
