@@ -18,6 +18,7 @@ import { TabView, TabPanel } from "primereact/tabview";
 import {
   createPrestamoBancario,
   updatePrestamoBancario,
+  recalcularCuotasPrestamo
 } from "../../api/tesoreria/prestamoBancarios";
 import { getEmpresas } from "../../api/empresa";
 import { getBancos } from "../../api/banco";
@@ -277,7 +278,11 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         fechaExpiracion: defaultValues?.fechaExpiracion
           ? new Date(defaultValues.fechaExpiracion)
           : null,
-        tipoPrestamo: defaultValues?.tipoPrestamo || "CAPITAL_TRABAJO",
+        tipoPrestamoId: defaultValues?.tipoPrestamoId
+          ? Number(defaultValues.tipoPrestamoId)
+          : null,
+        refNroProformaVentaExportacion:
+          defaultValues?.refNroProformaVentaExportacion || "",
         montoAprobado: defaultValues?.montoAprobado || 0,
         montoDesembolsado: defaultValues?.montoDesembolsado || 0,
         monedaId: defaultValues?.monedaId
@@ -331,53 +336,120 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
     setFormData: (data) => setFormData(data),
   }));
 
-  const handleSubmit = async () => {
-    try {
-      const dataToSend = {
-        ...formData,
-        fechaContrato: formData.fechaContrato?.toISOString
-          ? formData.fechaContrato.toISOString()
-          : formData.fechaContrato,
-        fechaDesembolso: formData.fechaDesembolso?.toISOString
-          ? formData.fechaDesembolso.toISOString()
-          : formData.fechaDesembolso,
-        fechaVencimiento: formData.fechaVencimiento?.toISOString
-          ? formData.fechaVencimiento.toISOString()
-          : formData.fechaVencimiento,
-        fechaEmision: formData.fechaEmision?.toISOString
-          ? formData.fechaEmision.toISOString()
-          : formData.fechaEmision,
-        fechaExpiracion: formData.fechaExpiracion?.toISOString
-          ? formData.fechaExpiracion.toISOString()
-          : formData.fechaExpiracion,
-        urlDocumentoPDF: urlDocumentoPDF || null,
-        urlDocAdicionalPDF: urlDocAdicionalPDF || null,
-      };
+ const handleSubmit = async () => {
+  try {
+    const dataToSend = {
+      empresaId: formData.empresaId,
+      bancoId: formData.bancoId,
+      lineaCreditoId: formData.lineaCreditoId,
+      cuentaCorrienteId: formData.cuentaCorrienteId,
+      numeroPrestamo: formData.numeroPrestamo,
+      numeroContrato: formData.numeroContrato,
+      fechaContrato: formData.fechaContrato?.toISOString
+        ? formData.fechaContrato.toISOString()
+        : formData.fechaContrato,
+      fechaDesembolso: formData.fechaDesembolso?.toISOString
+        ? formData.fechaDesembolso.toISOString()
+        : formData.fechaDesembolso,
+      fechaVencimiento: formData.fechaVencimiento?.toISOString
+        ? formData.fechaVencimiento.toISOString()
+        : formData.fechaVencimiento,
+      fechaEmision: formData.fechaEmision?.toISOString
+        ? formData.fechaEmision.toISOString()
+        : formData.fechaEmision,
+      fechaExpiracion: formData.fechaExpiracion?.toISOString
+        ? formData.fechaExpiracion.toISOString()
+        : formData.fechaExpiracion,
+      montoAprobado: formData.montoAprobado,
+      montoDesembolsado: formData.montoDesembolsado,
+      monedaId: formData.monedaId,
+      tasaInteresAnual: formData.tasaInteresAnual,
+      tasaInteresEfectiva: formData.tasaInteresEfectiva,
+      tasaMoratoria: formData.tasaMoratoria,
+      comisionInicial: formData.comisionInicial,
+      comisionMantenimiento: formData.comisionMantenimiento,
+      seguroDesgravamen: formData.seguroDesgravamen,
+      tipoAmortizacion: formData.tipoAmortizacion,
+      plazoMeses: formData.plazoMeses,
+      numeroCuotas: formData.numeroCuotas,
+      frecuenciaPago: formData.frecuenciaPago,
+      numeroDias: formData.numeroDias,
+      diaPago: formData.diaPago,
+      periodoGracia: formData.periodoGracia,
+      tipoGarantia: formData.tipoGarantia,
+      valorGarantia: formData.valorGarantia,
+      numeroGarantia: formData.numeroGarantia,
+      numeroCartaCredito: formData.numeroCartaCredito,
+      beneficiario: formData.beneficiario,
+      saldoCapital: formData.saldoCapital,
+      saldoInteres: formData.saldoInteres,
+      capitalPagado: formData.capitalPagado,
+      interesPagado: formData.interesPagado,
+      estadoId: formData.estadoId,
+      destinoFondos: formData.destinoFondos,
+      descripcionGarantia: formData.descripcionGarantia,
+      observaciones: formData.observaciones,
+      esRefinanciamiento: formData.esRefinanciamiento,
+      prestamoRefinanciadoId: formData.prestamoRefinanciadoId,
+      esRevolvente: formData.esRevolvente,
+      permitePagoParcial: formData.permitePagoParcial,
+      tipoPrestamoId: formData.tipoPrestamoId,
+      refNroProformaVentaExportacion: formData.refNroProformaVentaExportacion,
+      urlDocumentoPDF: urlDocumentoPDF || null,
+      urlDocAdicionalPDF: urlDocAdicionalPDF || null,
+    };
 
-      let resultado;
-      if (isEdit) {
-        resultado = await updatePrestamoBancario(defaultValues.id, dataToSend);
-      } else {
-        resultado = await createPrestamoBancario(dataToSend);
+    let resultado;
+    if (isEdit) {
+      // Actualizar cabecera del préstamo
+      resultado = await updatePrestamoBancario(defaultValues.id, dataToSend);
+      
+      // Recalcular cuotas después de actualizar la cabecera
+      try {
+        const recalculoResultado = await recalcularCuotasPrestamo(defaultValues.id);
+        
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: `Préstamo actualizado. ${recalculoResultado.mensaje}. Cuotas recalculadas: ${recalculoResultado.cuotasRecalculadas}`,
+          life: 5000,
+        });
+      } catch (recalculoError) {
+        // Si falla el recálculo, mostrar advertencia pero continuar
+        toast.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "Préstamo actualizado pero hubo un error al recalcular las cuotas: " + 
+                  (recalculoError.response?.data?.mensaje || recalculoError.message),
+          life: 5000,
+        });
       }
-
-      onSubmit(resultado);
-    } catch (error) {
-      const mensajeError =
-        error.response?.data?.mensaje ||
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        error.message ||
-        "Error al guardar préstamo bancario";
-
+    } else {
+      resultado = await createPrestamoBancario(dataToSend);
+      
       toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: mensajeError,
-        life: 5000,
+        severity: "success",
+        summary: "Éxito",
+        detail: "Préstamo creado correctamente",
+        life: 3000,
       });
     }
-  };
+
+    onSubmit(resultado);
+  } catch (error) {
+    const mensajeError =
+      error.response?.data?.mensaje ||
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      "Error al guardar el préstamo";
+    toast.current?.show({
+      severity: "error",
+      summary: "Error",
+      detail: mensajeError,
+      life: 5000,
+    });
+  }
+};
 
   const monedaSeleccionada = useMemo(() => {
     return monedas.find((m) => Number(m.id) === Number(formData.monedaId));

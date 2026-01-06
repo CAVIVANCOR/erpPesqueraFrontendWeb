@@ -1,5 +1,5 @@
 // src/components/tesoreria/CuotaPrestamoList.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -60,6 +60,17 @@ export default function CuotaPrestamoList({
       setLoading(false);
     }
   };
+
+  // Calcular totales
+  const totales = useMemo(() => {
+    return {
+      montoCapital: cuotas.reduce((sum, c) => sum + parseFloat(c.montoCapital || 0), 0),
+      montoInteres: cuotas.reduce((sum, c) => sum + parseFloat(c.montoInteres || 0), 0),
+      montoComision: cuotas.reduce((sum, c) => sum + parseFloat(c.montoComision || 0), 0),
+      montoSeguro: cuotas.reduce((sum, c) => sum + parseFloat(c.montoSeguro || 0), 0),
+      montoTotal: cuotas.reduce((sum, c) => sum + parseFloat(c.montoTotal || 0), 0),
+    };
+  }, [cuotas]);
 
   const onGlobalFilterChange = (e) => {
     const value = e.target.value;
@@ -303,12 +314,20 @@ export default function CuotaPrestamoList({
     );
   };
 
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat("es-PE", {
+      style: "decimal",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value || 0);
+  };
+
   return (
     <div>
       <Toast ref={toast} />
       <ConfirmDialog />
       <div className="card">
-        <Toolbar className="mb-4" />
         <DataTable
           value={cuotas}
           loading={loading}
@@ -360,42 +379,68 @@ export default function CuotaPrestamoList({
             field="numeroCuota"
             header="N° Cuota"
             sortable
-            style={{ minWidth: "8rem" }}
+            style={{ minWidth: "8rem", textAlign:"center" }}
+            footer="TOTALES:"
+            footerStyle={{ textAlign: "right", fontWeight: "bold" }}
           />
           <Column
             field="fechaVencimiento"
             header="Vencimiento"
             body={(rowData) => fechaBodyTemplate(rowData, "fechaVencimiento")}
             sortable
-            style={{ minWidth: "6rem" }}
+            style={{ minWidth: "6rem", textAlign:"center" }}
           />
           <Column
             field="saldoCapitalAntes"
             header="Saldo Capital Antes"
             body={(rowData) => montoBodyTemplate(rowData, "saldoCapitalAntes")}
             sortable
-            style={{ minWidth: "8rem" }}
+            style={{ minWidth: "8rem", textAlign:"right" }}
           />
           <Column
             field="montoCapital"
             header="Monto Capital"
             body={(rowData) => montoBodyTemplate(rowData, "montoCapital")}
             sortable
-            style={{ minWidth: "8rem" }}
+            style={{ minWidth: "8rem", textAlign:"right" }}
+            footer={formatCurrency(totales.montoCapital)}
+            footerStyle={{ textAlign: "right", fontWeight: "bold", backgroundColor: "#f0f0f0" }}
           />
           <Column
             field="montoInteres"
             header="Monto Interés"
             body={(rowData) => montoBodyTemplate(rowData, "montoInteres")}
             sortable
-            style={{ minWidth: "6rem" }}
+            style={{ minWidth: "6rem", textAlign:"right" }}
+            footer={formatCurrency(totales.montoInteres)}
+            footerStyle={{ textAlign: "right", fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+          />
+          <Column
+            field="montoComision"
+            header="Monto Comisión"
+            body={(rowData) => montoBodyTemplate(rowData, "montoComision")}
+            sortable
+            style={{ minWidth: "6rem", textAlign:"right" }}
+            footer={formatCurrency(totales.montoComision)}
+            footerStyle={{ textAlign: "right", fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+          />
+          <Column
+            field="montoSeguro"
+            header="Monto Seguro"
+            body={(rowData) => montoBodyTemplate(rowData, "montoSeguro")}
+            sortable
+            style={{ minWidth: "6rem", textAlign:"right" }}
+            footer={formatCurrency(totales.montoSeguro)}
+            footerStyle={{ textAlign: "right", fontWeight: "bold", backgroundColor: "#f0f0f0" }}
           />
           <Column
             field="montoTotal"
             header="Monto Total"
             body={(rowData) => montoBodyTemplate(rowData, "montoTotal")}
             sortable
-            style={{ minWidth: "8rem" }}
+            style={{ minWidth: "8rem", textAlign:"right" }}
+            footer={formatCurrency(totales.montoTotal)}
+            footerStyle={{ textAlign: "right", fontWeight: "bold", backgroundColor: "#f0f0f0" }}
           />
           <Column
             field="saldoCapitalDespues"
@@ -404,7 +449,7 @@ export default function CuotaPrestamoList({
               montoBodyTemplate(rowData, "saldoCapitalDespues")
             }
             sortable
-            style={{ minWidth: "8rem" }}
+            style={{ minWidth: "8rem", textAlign:"right" }}
           />
           <Column
             field="estadoPago"

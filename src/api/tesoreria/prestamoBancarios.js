@@ -54,3 +54,7 @@ export async function getCronogramaPrestamo(id) {
   return res.data;
 }
 
+export async function recalcularCuotasPrestamo(id) {
+  const res = await axios.post(`${API_URL}/${id}/recalcular-cuotas`, {}, { headers: getAuthHeaders() });
+  return res.data;
+}
