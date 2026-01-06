@@ -24,6 +24,7 @@ import { getEstadosMultiFuncion } from "../../api/estadoMultiFuncion";
 import { getAllCuentaCorriente } from "../../api/cuentaCorriente";
 import { getMonedas } from "../../api/moneda";
 import { getEnumsTesoreria } from "../../api/tesoreria/enumsTesoreria";
+import { getTipoPrestamo } from "../../api/tesoreria/tipoPrestamo";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import { getResponsiveFontSize } from "../../utils/utils";
@@ -45,8 +46,8 @@ export default function PrestamoBancario({ ruta }) {
   const [estados, setEstados] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [monedas, setMonedas] = useState([]);
+  const [tiposPrestamo, setTiposPrestamo] = useState([]);
   const [enums, setEnums] = useState({
-    tiposPrestamo: [],
     tiposAmortizacion: [],
     frecuenciasPago: [],
     tiposGarantia: [],
@@ -64,15 +65,11 @@ export default function PrestamoBancario({ ruta }) {
   // Estados para filtros
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [bancoSeleccionado, setBancoSeleccionado] = useState(null);
-  const [lineaCreditoSeleccionada, setLineaCreditoSeleccionada] =
-    useState(null);
-  const [tipoPrestamoSeleccionado, setTipoPrestamoSeleccionado] =
-    useState(null);
-  const [tipoAmortizacionSeleccionado, setTipoAmortizacionSeleccionado] =
-    useState(null);
+  const [lineaCreditoSeleccionada, setLineaCreditoSeleccionada] = useState(null);
+  const [tipoPrestamoSeleccionado, setTipoPrestamoSeleccionado] = useState(null);
+  const [tipoAmortizacionSeleccionado, setTipoAmortizacionSeleccionado] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
-  const [cuentaCorrienteSeleccionada, setCuentaCorrienteSeleccionada] =
-    useState(null);
+  const [cuentaCorrienteSeleccionada, setCuentaCorrienteSeleccionada] = useState(null);
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
   const [fechaContratoInicio, setFechaContratoInicio] = useState(null);
   const [fechaContratoFin, setFechaContratoFin] = useState(null);
@@ -85,65 +82,54 @@ export default function PrestamoBancario({ ruta }) {
   useEffect(() => {
     let filtrados = items;
 
-    // Filtro por empresa
     if (empresaSeleccionada) {
       filtrados = filtrados.filter(
         (item) => Number(item.empresaId) === Number(empresaSeleccionada)
       );
     }
 
-    // Filtro por banco
     if (bancoSeleccionado) {
       filtrados = filtrados.filter(
         (item) => Number(item.bancoId) === Number(bancoSeleccionado)
       );
     }
 
-    // Filtro por línea de crédito
     if (lineaCreditoSeleccionada) {
       filtrados = filtrados.filter(
-        (item) =>
-          Number(item.lineaCreditoId) === Number(lineaCreditoSeleccionada)
+        (item) => Number(item.lineaCreditoId) === Number(lineaCreditoSeleccionada)
       );
     }
 
-    // Filtro por tipo de préstamo
     if (tipoPrestamoSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => item.tipoPrestamo === tipoPrestamoSeleccionado
+        (item) => Number(item.tipoPrestamoId) === Number(tipoPrestamoSeleccionado)
       );
     }
 
-    // Filtro por tipo de amortización
     if (tipoAmortizacionSeleccionado) {
       filtrados = filtrados.filter(
         (item) => item.tipoAmortizacion === tipoAmortizacionSeleccionado
       );
     }
 
-    // Filtro por estado
     if (estadoSeleccionado) {
       filtrados = filtrados.filter(
         (item) => Number(item.estadoId) === Number(estadoSeleccionado)
       );
     }
 
-    // Filtro por cuenta corriente
     if (cuentaCorrienteSeleccionada) {
       filtrados = filtrados.filter(
-        (item) =>
-          Number(item.cuentaCorrienteId) === Number(cuentaCorrienteSeleccionada)
+        (item) => Number(item.cuentaCorrienteId) === Number(cuentaCorrienteSeleccionada)
       );
     }
 
-    // Filtro por moneda
     if (monedaSeleccionada) {
       filtrados = filtrados.filter(
         (item) => Number(item.monedaId) === Number(monedaSeleccionada)
       );
     }
 
-    // Filtro por rango de fechas de contrato
     if (fechaContratoInicio) {
       filtrados = filtrados.filter((item) => {
         const fechaContrato = new Date(item.fechaContrato);
@@ -189,6 +175,7 @@ export default function PrestamoBancario({ ruta }) {
         cuentasData,
         monedasData,
         enumsData,
+        tiposPrestamoData,
       ] = await Promise.all([
         getPrestamoBancario(),
         getEmpresas(),
@@ -198,6 +185,7 @@ export default function PrestamoBancario({ ruta }) {
         getAllCuentaCorriente(),
         getMonedas(),
         getEnumsTesoreria(),
+        getTipoPrestamo(),
       ]);
 
       setItems(prestamosData);
@@ -205,7 +193,6 @@ export default function PrestamoBancario({ ruta }) {
       setBancos(bancosData);
       setLineasCredito(lineasData);
 
-      // Filtrar estados para préstamos bancarios (tipoProvieneDeId = 23)
       const estadosFiltrados = estadosData.filter(
         (e) => Number(e.tipoProvieneDeId) === 23 && !e.cesado
       );
@@ -214,6 +201,7 @@ export default function PrestamoBancario({ ruta }) {
       setCuentasCorrientes(cuentasData);
       setMonedas(monedasData);
       setEnums(enumsData);
+      setTiposPrestamo(tiposPrestamoData);
     } catch (err) {
       toast.current?.show({
         severity: "error",
@@ -298,9 +286,7 @@ export default function PrestamoBancario({ ruta }) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail:
-          err.response?.data?.message ||
-          "No se pudo eliminar el préstamo bancario.",
+        detail: err.response?.data?.message || "No se pudo eliminar el préstamo bancario.",
         life: 3000,
       });
     } finally {
@@ -336,15 +322,12 @@ export default function PrestamoBancario({ ruta }) {
       });
 
       if (esEdicion) {
-        // Recargar el préstamo actualizado
         const prestamoActualizado = await getPrestamoBancarioById(selected.id);
         setSelected(prestamoActualizado);
       } else {
-        // Cargar el préstamo recién creado con todas sus relaciones
         const prestamoCompleto = await getPrestamoBancarioById(resultado.id);
         setSelected(prestamoCompleto);
         setIsEdit(true);
-        // NO cerrar el dialog, mantenerlo abierto en modo edición
       }
 
       await cargarDatos();
@@ -384,13 +367,10 @@ export default function PrestamoBancario({ ruta }) {
   };
 
   const tipoPrestamoTemplate = (rowData) => {
-    const tipoEnum = enums.tiposPrestamo.find(
-      (t) => t.value === rowData.tipoPrestamo
-    );
     return (
       <Tag
-        value={tipoEnum?.label || rowData.tipoPrestamo || "N/A"}
-        severity={tipoEnum?.severity || "info"}
+        value={rowData.tipoPrestamo?.descripcion || "N/A"}
+        severity={rowData.tipoPrestamo?.severityColor || "info"}
       />
     );
   };
@@ -443,12 +423,8 @@ export default function PrestamoBancario({ ruta }) {
         onHide={() => setConfirmState({ visible: false, row: null })}
         message={
           <span style={{ color: "#b71c1c", fontWeight: 600 }}>
-            ¿Está seguro que desea{" "}
-            <span style={{ color: "#b71c1c" }}>eliminar</span> el préstamo{" "}
-            <b>
-              {confirmState.row ? `${confirmState.row.numeroPrestamo}` : ""}
-            </b>
-            ?<br />
+            ¿Está seguro que desea <span style={{ color: "#b71c1c" }}>eliminar</span> el préstamo{" "}
+            <b>{confirmState.row ? `${confirmState.row.numeroPrestamo}` : ""}</b>?<br />
             <span style={{ fontWeight: 400, color: "#b71c1c" }}>
               Esta acción no se puede deshacer.
             </span>
@@ -480,9 +456,7 @@ export default function PrestamoBancario({ ruta }) {
         selection={selected}
         onSelectionChange={(e) => setSelected(e.value)}
         onRowClick={
-          permisos.puedeVer || permisos.puedeEditar
-            ? (e) => onEdit(e.data)
-            : undefined
+          permisos.puedeVer || permisos.puedeEditar ? (e) => onEdit(e.data) : undefined
         }
         globalFilter={globalFilter}
         globalFilterFields={[
@@ -494,8 +468,7 @@ export default function PrestamoBancario({ ruta }) {
         ]}
         emptyMessage="No se encontraron registros que coincidan con la búsqueda."
         style={{
-          cursor:
-            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          cursor: permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
           fontSize: getResponsiveFontSize(),
         }}
         header={
@@ -543,8 +516,7 @@ export default function PrestamoBancario({ ruta }) {
                     toast.current?.show({
                       severity: "success",
                       summary: "Actualizado",
-                      detail:
-                        "Datos actualizados correctamente desde el servidor",
+                      detail: "Datos actualizados correctamente desde el servidor",
                       life: 3000,
                     });
                   }}
@@ -578,11 +550,7 @@ export default function PrestamoBancario({ ruta }) {
               <div style={{ flex: 1 }}>
                 <label
                   htmlFor="empresaFiltro"
-                  style={{
-                    fontWeight: "bold",
-                    display: "block",
-                    marginBottom: 5,
-                  }}
+                  style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
                 >
                   Empresa *
                 </label>
@@ -605,11 +573,7 @@ export default function PrestamoBancario({ ruta }) {
               <div style={{ flex: 1 }}>
                 <label
                   htmlFor="bancoFiltro"
-                  style={{
-                    fontWeight: "bold",
-                    display: "block",
-                    marginBottom: 5,
-                  }}
+                  style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
                 >
                   Banco
                 </label>
@@ -632,11 +596,7 @@ export default function PrestamoBancario({ ruta }) {
               <div style={{ flex: 1 }}>
                 <label
                   htmlFor="lineaCreditoFiltro"
-                  style={{
-                    fontWeight: "bold",
-                    display: "block",
-                    marginBottom: 5,
-                  }}
+                  style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
                 >
                   Línea Crédito
                 </label>
@@ -659,18 +619,17 @@ export default function PrestamoBancario({ ruta }) {
               <div style={{ flex: 1 }}>
                 <label
                   htmlFor="tipoPrestamoFiltro"
-                  style={{
-                    fontWeight: "bold",
-                    display: "block",
-                    marginBottom: 5,
-                  }}
+                  style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
                 >
                   Tipo Préstamo
                 </label>
                 <Dropdown
                   id="tipoPrestamoFiltro"
                   value={tipoPrestamoSeleccionado}
-                  options={enums.tiposPrestamo}
+                  options={tiposPrestamo.map((t) => ({
+                    label: t.descripcion,
+                    value: Number(t.id),
+                  }))}
                   onChange={(e) => setTipoPrestamoSeleccionado(e.value)}
                   placeholder="Todos"
                   optionLabel="label"
@@ -678,6 +637,7 @@ export default function PrestamoBancario({ ruta }) {
                   showClear
                   disabled={loading}
                   style={{ width: "100%" }}
+                  filter
                 />
               </div>
             </div>
@@ -695,11 +655,7 @@ export default function PrestamoBancario({ ruta }) {
               <div style={{ flex: 1 }}>
                 <label
                   htmlFor="tipoAmortizacionFiltro"
-                  style={{
-                    fontWeight: "bold",
-                    display: "block",
-                    marginBottom: 5,
-                  }}
+                  style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
                 >
                   Tipo Amortización
                 </label>
@@ -719,11 +675,7 @@ export default function PrestamoBancario({ ruta }) {
               <div style={{ flex: 1 }}>
                 <label
                   htmlFor="estadoFiltro"
-                  style={{
-                    fontWeight: "bold",
-                    display: "block",
-                    marginBottom: 5,
-                  }}
+                  style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
                 >
                   Estado
                 </label>
@@ -746,11 +698,7 @@ export default function PrestamoBancario({ ruta }) {
               <div style={{ flex: 1 }}>
                 <label
                   htmlFor="cuentaCorrienteFiltro"
-                  style={{
-                    fontWeight: "bold",
-                    display: "block",
-                    marginBottom: 5,
-                  }}
+                  style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
                 >
                   Cuenta Corriente
                 </label>
@@ -773,11 +721,7 @@ export default function PrestamoBancario({ ruta }) {
               <div style={{ flex: 1 }}>
                 <label
                   htmlFor="monedaFiltro"
-                  style={{
-                    fontWeight: "bold",
-                    display: "block",
-                    marginBottom: 5,
-                  }}
+                  style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
                 >
                   Moneda
                 </label>
@@ -811,11 +755,7 @@ export default function PrestamoBancario({ ruta }) {
               <div style={{ flex: 1 }}>
                 <label
                   htmlFor="fechaContratoInicio"
-                  style={{
-                    fontWeight: "bold",
-                    display: "block",
-                    marginBottom: 5,
-                  }}
+                  style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
                 >
                   Fecha Contrato Desde
                 </label>
@@ -833,11 +773,7 @@ export default function PrestamoBancario({ ruta }) {
               <div style={{ flex: 1 }}>
                 <label
                   htmlFor="fechaContratoFin"
-                  style={{
-                    fontWeight: "bold",
-                    display: "block",
-                    marginBottom: 5,
-                  }}
+                  style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
                 >
                   Fecha Contrato Hasta
                 </label>
@@ -855,11 +791,7 @@ export default function PrestamoBancario({ ruta }) {
               <div style={{ flex: 2 }}>
                 <label
                   htmlFor="globalFilter"
-                  style={{
-                    fontWeight: "bold",
-                    display: "block",
-                    marginBottom: 5,
-                  }}
+                  style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
                 >
                   Búsqueda Global
                 </label>
@@ -878,24 +810,9 @@ export default function PrestamoBancario({ ruta }) {
         }
       >
         <Column field="id" header="ID" sortable style={{ width: 80 }} />
-        <Column
-          field="numeroPrestamo"
-          header="Número"
-          sortable
-          style={{ width: 150 }}
-        />
-        <Column
-          field="empresa.razonSocial"
-          header="Empresa"
-          sortable
-          style={{ width: 200 }}
-        />
-        <Column
-          field="banco.nombre"
-          header="Banco"
-          sortable
-          style={{ width: 150 }}
-        />
+        <Column field="numeroPrestamo" header="Número" sortable style={{ width: 150 }} />
+        <Column field="empresa.razonSocial" header="Empresa" sortable style={{ width: 200 }} />
+        <Column field="banco.nombre" header="Banco" sortable style={{ width: 150 }} />
         <Column
           field="moneda.codigoSunat"
           header="Moneda"
@@ -917,9 +834,8 @@ export default function PrestamoBancario({ ruta }) {
           style={{ width: 150 }}
           body={(rowData) => rowData.cuentaCorriente?.numeroCuenta || "N/A"}
         />
-
         <Column
-          field="tipoPrestamo"
+          field="tipoPrestamo.descripcion"
           header="Tipo"
           body={tipoPrestamoTemplate}
           style={{ width: 150 }}
@@ -953,35 +869,25 @@ export default function PrestamoBancario({ ruta }) {
           style={{ width: 150 }}
           sortable
         />
-        <Column
-          body={actionBodyTemplate}
-          header="Acciones"
-          style={{ width: 120 }}
-        />
+        <Column header="Acciones" body={actionBodyTemplate} style={{ width: 120 }} />
       </DataTable>
+
       <Dialog
-        header={
-          isEdit
-            ? permisos.puedeEditar
-              ? "Editar Préstamo Bancario"
-              : "Ver Préstamo Bancario"
-            : "Nuevo Préstamo Bancario"
-        }
         visible={showDialog}
-        style={{ width: "1400px" }}
+        onHide={onCancel}
+        header={isEdit ? "Editar Préstamo Bancario" : "Nuevo Préstamo Bancario"}
+      style={{ width: "1300px" }}
         modal
         maximizable
         maximized={true}
-        onHide={() => setShowDialog(false)}
       >
         <PrestamoBancarioForm
           isEdit={isEdit}
-          defaultValues={selected || {}}
+          defaultValues={selected}
           empresaFija={empresaSeleccionada}
           onSubmit={onSubmit}
-          onCancel={() => setShowDialog(false)}
+          onCancel={onCancel}
           loading={loading}
-          readOnly={!permisos.puedeEditar && isEdit}
         />
       </Dialog>
     </div>

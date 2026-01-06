@@ -448,6 +448,11 @@ export const getMenuConfig = (abrirModulo) => ({
     type: "dropdown",
     items: [
       {
+        label: "Tipos de Préstamo",
+        icon: "pi pi-tags",
+        action: () => abrirModulo("tipoPrestamo", "Tipos de Préstamo")
+      },
+      {
         label: "Préstamo Bancario",
         icon: "pi pi-briefcase",
         action: () => abrirModulo("prestamoBancario", "Préstamo Bancario")
@@ -461,6 +466,11 @@ export const getMenuConfig = (abrirModulo) => ({
         label: "Inversión Financiera",
         icon: "pi pi-chart-pie",
         action: () => abrirModulo("inversionFinanciera", "Inversión Financiera")
+      },
+      {
+        label: "Reporte Líneas Disponibles",
+        icon: "pi pi-chart-bar",
+        action: () => abrirModulo("reporteLineasDisponibles", "Reporte Líneas Disponibles")
       }
     ]
   },

@@ -110,6 +110,7 @@ import PlanCuentasContable from '../../pages/contabilidad/PlanCuentasContable';
 import PeriodoContable from '../../pages/contabilidad/PeriodoContable';
 import AsientoContable from '../../pages/contabilidad/AsientoContable';
 import PrestamoBancario from '../../pages/tesoreria/PrestamoBancario';
+import TipoPrestamo from '../../pages/tesoreria/TipoPrestamo';
 import LineaCredito from '../../pages/tesoreria/LineaCredito';
 import InversionFinanciera from '../../pages/tesoreria/InversionFinanciera';
 import ReporteLineasDisponibles from '../../pages/tesoreria/ReporteLineasDisponibles';
@@ -233,6 +234,7 @@ export default function BaseLayout({ children, onLogout }) {
     planCuentasContable: { label: "Plan de Cuentas Contable", componente: <PlanCuentasContable ruta="planCuentasContable" /> },
     periodoContable: { label: "Períodos Contables", componente: <PeriodoContable ruta="periodoContable" /> },
     asientoContable: { label: "Asientos Contables", componente: <AsientoContable ruta="asientoContable" /> },
+    tipoPrestamo: { label: "Tipos de Préstamo", componente: <TipoPrestamo ruta="tipoPrestamo" /> },
     prestamoBancario: { label: "Préstamo Bancario", componente: <PrestamoBancario ruta="prestamoBancario" /> },
     lineaCredito: { label: "Línea de Crédito", componente: <LineaCredito ruta="lineaCredito" /> },
     inversionFinanciera: { label: "Inversión Financiera", componente: <InversionFinanciera ruta="inversionFinanciera" /> },

@@ -15,7 +15,6 @@ import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
 import { Toast } from "primereact/toast";
 import { TabView, TabPanel } from "primereact/tabview";
-import { Checkbox } from "primereact/checkbox";
 import {
   createPrestamoBancario,
   updatePrestamoBancario,
@@ -34,7 +33,7 @@ import DesembolsoPrestamoCard from "./DesembolsoPrestamoCard";
 import GarantiaPrestamoCard from "./GarantiaPrestamoCard";
 import DocPrestamoPrincipal from "./DocPrestamoPrincipal";
 import DocPrestamoAdicional from "./DocPrestamoAdicional";
-import { redirect } from "react-router-dom";
+import { getTipoPrestamoActivos } from "../../api/tesoreria/tipoPrestamo";
 
 const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   {
@@ -86,7 +85,11 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
     fechaExpiracion: defaultValues?.fechaExpiracion
       ? new Date(defaultValues.fechaExpiracion)
       : null,
-    tipoPrestamo: defaultValues?.tipoPrestamo || "CAPITAL_TRABAJO",
+    tipoPrestamoId: defaultValues?.tipoPrestamoId
+      ? Number(defaultValues.tipoPrestamoId)
+      : null,
+    refNroProformaVentaExportacion:
+      defaultValues?.refNroProformaVentaExportacion || "",
     montoAprobado: defaultValues?.montoAprobado || 0,
     montoDesembolsado: defaultValues?.montoDesembolsado || 0,
     monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
@@ -130,8 +133,8 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   const [monedas, setMonedas] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [estados, setEstados] = useState([]);
+  const [tiposPrestamo, setTiposPrestamo] = useState([]);
   const [enums, setEnums] = useState({
-    tiposPrestamo: [],
     tiposAmortizacion: [],
     frecuenciasPago: [],
     tiposGarantia: [],
@@ -161,6 +164,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         estadosData,
         enumsData,
         prestamosData,
+        tiposPrestamoData,
       ] = await Promise.all([
         getEmpresas(),
         getBancos(),
@@ -169,8 +173,8 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         getEstadosMultiFuncionPorTipoProviene(21),
         getEnumsTesoreria(),
         getAllPrestamoBancario(),
+        getTipoPrestamoActivos(),
       ]);
-
       setEmpresas(empresasData);
       setBancos(bancosData);
       setMonedas(monedasData);
@@ -178,6 +182,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       setEstados(estadosData);
       setEnums(enumsData);
       setPrestamos(prestamosData);
+      setTiposPrestamo(tiposPrestamoData);
     } catch (error) {
     } finally {
       setCargandoDatos(false);
@@ -198,7 +203,9 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       const prestamosFiltrados = response.filter(
         (p) =>
           Number(p.empresaId) === Number(formData.empresaId) &&
-          (Number(p.estadoId) === 81 || Number(p.estadoId) === 83 || Number(p.estadoId) === 84)
+          (Number(p.estadoId) === 81 ||
+            Number(p.estadoId) === 83 ||
+            Number(p.estadoId) === 84)
       );
       setPrestamosParaRefinanciar(prestamosFiltrados);
     } catch (error) {
@@ -225,7 +232,11 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         [field]: value,
       };
 
-      if (field === "empresaId" || field === "bancoId" || field === "monedaId") {
+      if (
+        field === "empresaId" ||
+        field === "bancoId" ||
+        field === "monedaId"
+      ) {
         newData.lineaCreditoId = null;
         newData.cuentaCorrienteId = null;
       }
@@ -413,13 +424,25 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         }`,
         value: Number(c.id),
       }));
-  }, [cuentasCorrientes, formData.empresaId, formData.bancoId, formData.monedaId]);
+  }, [
+    cuentasCorrientes,
+    formData.empresaId,
+    formData.bancoId,
+    formData.monedaId,
+  ]);
 
   const estadosOptions = estados.map((e) => ({
     ...e,
     id: Number(e.id),
     label: e.descripcion,
     value: Number(e.id),
+  }));
+
+  const tiposPrestamoOptions = tiposPrestamo.map((t) => ({
+    ...t,
+    id: Number(t.id),
+    label: t.descripcion,
+    value: Number(t.id),
   }));
 
   const lineasCreditoOptions = useMemo(() => {
@@ -441,7 +464,9 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       .map((p) => ({
         ...p,
         id: Number(p.id),
-        label: `${p.numeroPrestamo} - ${p.banco?.nombre || ""} - ${p.moneda?.codigoSunat || ""} ${Number(p.saldoCapital || 0).toFixed(2)}`,
+        label: `${p.numeroPrestamo} - ${p.banco?.nombre || ""} - ${
+          p.moneda?.codigoSunat || ""
+        } ${Number(p.saldoCapital || 0).toFixed(2)}`,
         value: Number(p.id),
       }));
   }, [prestamosParaRefinanciar, defaultValues?.id]);
@@ -653,13 +678,15 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 Tipo de Préstamo *
               </label>
               <Dropdown
-                id="tipoPrestamo"
-                value={formData.tipoPrestamo}
-                options={enums.tiposPrestamo}
-                onChange={(e) => handleChange("tipoPrestamo", e.value)}
+                id="tipoPrestamoId"
+                value={formData.tipoPrestamoId}
+                options={tiposPrestamoOptions}
+                onChange={(e) => handleChange("tipoPrestamoId", e.value)}
                 placeholder="Seleccione tipo"
                 disabled={readOnly}
                 style={{ width: "100%" }}
+                filter
+                showClear
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -1157,6 +1184,28 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
             </div>
             <div style={{ flex: 1 }}>
               <label
+                htmlFor="refNroProformaVentaExportacion"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
+                N° Proforma Venta Exportacion
+              </label>
+              <InputText
+                id="refNroProformaVentaExportacion"
+                value={formData.refNroProformaVentaExportacion}
+                onChange={(e) =>
+                  handleChange("refNroProformaVentaExportacion", e.target.value)
+                }
+                placeholder="Ej: PF-EXP-2024-001"
+                disabled={readOnly}
+                style={{ width: "100%", textTransform: "uppercase" }}
+                maxLength={100}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
                 htmlFor="fechaEmision"
                 style={{
                   fontWeight: "bold",
@@ -1218,10 +1267,18 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               </label>
               <Button
                 id="esRevolvente"
-                label={formData.esRevolvente ? "SÍ REVOLVENTE" : "NO REVOLVENTE"}
-                icon={formData.esRevolvente ? "pi pi-check-circle" : "pi pi-times-circle"}
+                label={
+                  formData.esRevolvente ? "SÍ REVOLVENTE" : "NO REVOLVENTE"
+                }
+                icon={
+                  formData.esRevolvente
+                    ? "pi pi-check-circle"
+                    : "pi pi-times-circle"
+                }
                 severity={formData.esRevolvente ? "success" : "secondary"}
-                onClick={() => handleChange("esRevolvente", !formData.esRevolvente)}
+                onClick={() =>
+                  handleChange("esRevolvente", !formData.esRevolvente)
+                }
                 disabled={readOnly}
                 outlined
                 style={{ width: "100%", fontSize: getResponsiveFontSize() }}
@@ -1239,10 +1296,23 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               </label>
               <Button
                 id="permitePagoParcial"
-                label={formData.permitePagoParcial ? "PERMITE PARCIAL" : "NO PERMITE PARCIAL"}
-                icon={formData.permitePagoParcial ? "pi pi-check-circle" : "pi pi-times-circle"}
+                label={
+                  formData.permitePagoParcial
+                    ? "PERMITE PARCIAL"
+                    : "NO PERMITE PARCIAL"
+                }
+                icon={
+                  formData.permitePagoParcial
+                    ? "pi pi-check-circle"
+                    : "pi pi-times-circle"
+                }
                 severity={formData.permitePagoParcial ? "info" : "secondary"}
-                onClick={() => handleChange("permitePagoParcial", !formData.permitePagoParcial)}
+                onClick={() =>
+                  handleChange(
+                    "permitePagoParcial",
+                    !formData.permitePagoParcial
+                  )
+                }
                 disabled={readOnly}
                 outlined
                 style={{ width: "100%", fontSize: getResponsiveFontSize() }}
@@ -1260,10 +1330,23 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               </label>
               <Button
                 id="esRefinanciamiento"
-                label={formData.esRefinanciamiento ? "ES REFINANCIAMIENTO" : "NO ES REFINANCIAMIENTO"}
-                icon={formData.esRefinanciamiento ? "pi pi-refresh" : "pi pi-times-circle"}
+                label={
+                  formData.esRefinanciamiento
+                    ? "ES REFINANCIAMIENTO"
+                    : "NO ES REFINANCIAMIENTO"
+                }
+                icon={
+                  formData.esRefinanciamiento
+                    ? "pi pi-refresh"
+                    : "pi pi-times-circle"
+                }
                 severity={formData.esRefinanciamiento ? "warning" : "secondary"}
-                onClick={() => handleChange("esRefinanciamiento", !formData.esRefinanciamiento)}
+                onClick={() =>
+                  handleChange(
+                    "esRefinanciamiento",
+                    !formData.esRefinanciamiento
+                  )
+                }
                 disabled={readOnly}
                 outlined
                 style={{ width: "100%", fontSize: getResponsiveFontSize() }}

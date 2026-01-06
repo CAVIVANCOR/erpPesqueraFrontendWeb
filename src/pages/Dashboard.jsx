@@ -20,43 +20,93 @@ export default function Dashboard() {
     {
       id: "accesoInstalaciones",
       titulo: "ACCESO INSTALACIONES",
-      descripcion: "Control de accesos, movimientos y seguridad de instalaciones",
+      descripcion:
+        "Control de accesos, movimientos y seguridad de instalaciones",
       icono: "pi-shield",
       modulos: 6,
       color: "#5DADE2",
       size: "medium",
       submenu: [
-        { label: "Movimientos Acceso", key: "accesoInstalacion", icon: "pi-sign-in" },
-        { label: "Tipos de Movimiento", key: "tipoMovimientoAcceso", icon: "pi-arrows-h" },
+        {
+          label: "Movimientos Acceso",
+          key: "accesoInstalacion",
+          icon: "pi-sign-in",
+        },
+        {
+          label: "Tipos de Movimiento",
+          key: "tipoMovimientoAcceso",
+          icon: "pi-arrows-h",
+        },
         { label: "Tipo Equipos", key: "tipoEquipo", icon: "pi-desktop" },
         { label: "Tipos de Persona", key: "tipoPersona", icon: "pi-users" },
-        { label: "Motivos de Acceso", key: "motivoAcceso", icon: "pi-question-circle" },
-        { label: "Tipos de Acceso", key: "tipoAccesoInstalacion", icon: "pi-key" }
-      ]
+        {
+          label: "Motivos de Acceso",
+          key: "motivoAcceso",
+          icon: "pi-question-circle",
+        },
+        {
+          label: "Tipos de Acceso",
+          key: "tipoAccesoInstalacion",
+          icon: "pi-key",
+        },
+      ],
     },
     {
       id: "pesca",
       titulo: "PESCA",
-      descripcion: "Control de capturas, embarcaciones y documentación pesquera",
+      descripcion:
+        "Control de capturas, embarcaciones y documentación pesquera",
       icono: "pi-compass",
       modulos: 13,
       color: "#2874A6",
       size: "large",
       submenu: [
-        { label: "Pesca Industrial", key: "temporadaPesca", icon: "pi-chart-line" },
-        { label: "Pesca de Consumo", key: "novedadPescaConsumo", icon: "pi-shopping-bag" },
-        { label: "Katana Tripulación", key: "katanaTripulacion", icon: "pi-users" },
+        {
+          label: "Pesca Industrial",
+          key: "temporadaPesca",
+          icon: "pi-chart-line",
+        },
+        {
+          label: "Pesca de Consumo",
+          key: "novedadPescaConsumo",
+          icon: "pi-shopping-bag",
+        },
+        {
+          label: "Katana Tripulación",
+          key: "katanaTripulacion",
+          icon: "pi-users",
+        },
         { label: "Especies", key: "especie", icon: "pi-star" },
-        { label: "Detalle Cuotas Pesca", key: "detCuotaPesca", icon: "pi-percentage" },
-        { label: "Acciones Previas", key: "accionesPreviasFaena", icon: "pi-list" },
+        {
+          label: "Detalle Cuotas Pesca",
+          key: "detCuotaPesca",
+          icon: "pi-percentage",
+        },
+        {
+          label: "Acciones Previas",
+          key: "accionesPreviasFaena",
+          icon: "pi-list",
+        },
         { label: "Embarcaciones", key: "embarcacion", icon: "pi-compass" },
         { label: "Tipo Embarcación", key: "tipoEmbarcacion", icon: "pi-tag" },
         { label: "Boliche de Red", key: "bolicheRed", icon: "pi-circle" },
-        { label: "Documentación Pesca", key: "documentoPesca", icon: "pi-file" },
-        { label: "Documentación Embarcación", key: "documentacionEmbarcacion", icon: "pi-file-edit" },
-        { label: "Documentación Personal", key: "documentacionPersonal", icon: "pi-id-card" },
-        { label: "Puerto de Pesca", key: "puertoPesca", icon: "pi-map-marker" }
-      ]
+        {
+          label: "Documentación Pesca",
+          key: "documentoPesca",
+          icon: "pi-file",
+        },
+        {
+          label: "Documentación Embarcación",
+          key: "documentacionEmbarcacion",
+          icon: "pi-file-edit",
+        },
+        {
+          label: "Documentación Personal",
+          key: "documentacionPersonal",
+          icon: "pi-id-card",
+        },
+        { label: "Puerto de Pesca", key: "puertoPesca", icon: "pi-map-marker" },
+      ],
     },
     {
       id: "compras",
@@ -67,14 +117,34 @@ export default function Dashboard() {
       color: "#1E8449",
       size: "large",
       submenu: [
-        { label: "Requerimiento Compra", key: "requerimientoCompra", icon: "pi-file-edit" },
-        { label: "Orden de Compra", key: "ordenCompra", icon: "pi-shopping-cart" },
+        {
+          label: "Requerimiento Compra",
+          key: "requerimientoCompra",
+          icon: "pi-file-edit",
+        },
+        {
+          label: "Orden de Compra",
+          key: "ordenCompra",
+          icon: "pi-shopping-cart",
+        },
         { label: "Tipo Producto", key: "tipoProducto", icon: "pi-tag" },
-        { label: "Tipo Estado Producto", key: "tipoEstadoProducto", icon: "pi-circle" },
-        { label: "Destino Producto", key: "destinoProducto", icon: "pi-map-marker" },
+        {
+          label: "Tipo Estado Producto",
+          key: "tipoEstadoProducto",
+          icon: "pi-circle",
+        },
+        {
+          label: "Destino Producto",
+          key: "destinoProducto",
+          icon: "pi-map-marker",
+        },
         { label: "Forma de Pago", key: "formaPago", icon: "pi-credit-card" },
-        { label: "Modo Despacho/Recepción", key: "modoDespachoRecepcion", icon: "pi-truck" }
-      ]
+        {
+          label: "Modo Despacho/Recepción",
+          key: "modoDespachoRecepcion",
+          icon: "pi-truck",
+        },
+      ],
     },
     {
       id: "ventas",
@@ -85,15 +155,35 @@ export default function Dashboard() {
       color: "#5DADE2",
       size: "large",
       submenu: [
-        { label: "Cotización Ventas", key: "cotizacionVentas", icon: "pi-file-edit" },
+        {
+          label: "Cotización Ventas",
+          key: "cotizacionVentas",
+          icon: "pi-file-edit",
+        },
         { label: "Pre-Factura", key: "preFactura", icon: "pi-file" },
-        { label: "Contratos de Servicios", key: "contratoServicio", icon: "pi-briefcase" },
+        {
+          label: "Contratos de Servicios",
+          key: "contratoServicio",
+          icon: "pi-briefcase",
+        },
         { label: "Incoterms", key: "incoterm", icon: "pi-globe" },
-        { label: "Documentos Requeridos Ventas", key: "docRequeridaVentas", icon: "pi-file-check" },
-        { label: "Requisitos Doc. por País", key: "requisitoDocPorPais", icon: "pi-flag" },
+        {
+          label: "Documentos Requeridos Ventas",
+          key: "docRequeridaVentas",
+          icon: "pi-file-check",
+        },
+        {
+          label: "Requisitos Doc. por País",
+          key: "requisitoDocPorPais",
+          icon: "pi-flag",
+        },
         { label: "Tipo Contenedor", key: "tipoContenedor", icon: "pi-box" },
-        { label: "Formas Transacción", key: "formaTransaccion", icon: "pi-credit-card" }
-      ]
+        {
+          label: "Formas Transacción",
+          key: "formaTransaccion",
+          icon: "pi-credit-card",
+        },
+      ],
     },
     {
       id: "inventarios",
@@ -104,19 +194,47 @@ export default function Dashboard() {
       color: "#2874A6",
       size: "medium",
       submenu: [
-        { label: "Movimientos Almacén", key: "movimientoAlmacen", icon: "pi-arrows-h" },
-        { label: "Kardex Almacén", key: "kardexAlmacen", icon: "pi-chart-line" },
-        { label: "Saldos Productos-Cliente", key: "saldosProductoCliente", icon: "pi-chart-bar" },
-        { label: "Saldos Productos-Cliente Variables", key: "saldosDetProductoCliente", icon: "pi-list" },
-        { label: "Conceptos Movimientos", key: "conceptoMovAlmacen", icon: "pi-tags" },
+        {
+          label: "Movimientos Almacén",
+          key: "movimientoAlmacen",
+          icon: "pi-arrows-h",
+        },
+        {
+          label: "Kardex Almacén",
+          key: "kardexAlmacen",
+          icon: "pi-chart-line",
+        },
+        {
+          label: "Saldos Productos-Cliente",
+          key: "saldosProductoCliente",
+          icon: "pi-chart-bar",
+        },
+        {
+          label: "Saldos Productos-Cliente Variables",
+          key: "saldosDetProductoCliente",
+          icon: "pi-list",
+        },
+        {
+          label: "Conceptos Movimientos",
+          key: "conceptoMovAlmacen",
+          icon: "pi-tags",
+        },
         { label: "Tipos de Documento", key: "tipoDocumento", icon: "pi-file" },
         { label: "Tipos de Concepto", key: "tipoConcepto", icon: "pi-tag" },
-        { label: "Tipos de Movimiento", key: "tipoMovimientoAlmacen", icon: "pi-arrows-h" },
+        {
+          label: "Tipos de Movimiento",
+          key: "tipoMovimientoAlmacen",
+          icon: "pi-arrows-h",
+        },
         { label: "Tipos de Almacén", key: "tipoAlmacen", icon: "pi-building" },
-        { label: "Centros de Almacén", key: "centrosAlmacen", icon: "pi-sitemap" },
+        {
+          label: "Centros de Almacén",
+          key: "centrosAlmacen",
+          icon: "pi-sitemap",
+        },
         { label: "Almacenes", key: "almacen", icon: "pi-warehouse" },
-        { label: "Series de Documento", key: "serieDoc", icon: "pi-hashtag" }
-      ]
+        { label: "Series de Documento", key: "serieDoc", icon: "pi-hashtag" },
+      ],
     },
     {
       id: "mantenimiento",
@@ -127,48 +245,118 @@ export default function Dashboard() {
       color: "#1E8449",
       size: "small",
       submenu: [
-        { label: "Órdenes de Trabajo", key: "oTMantenimiento", icon: "pi-file-edit" },
-        { label: "Tipo de Mantenimiento", key: "tipoMantenimiento", icon: "pi-tag" },
-        { label: "Motivo Origino OT", key: "motivoOriginoOT", icon: "pi-question-circle" }
-      ]
+        {
+          label: "Órdenes de Trabajo",
+          key: "oTMantenimiento",
+          icon: "pi-file-edit",
+        },
+        {
+          label: "Tipo de Mantenimiento",
+          key: "tipoMantenimiento",
+          icon: "pi-tag",
+        },
+        {
+          label: "Motivo Origino OT",
+          key: "motivoOriginoOT",
+          icon: "pi-question-circle",
+        },
+      ],
     },
     {
       id: "flujoCaja",
       titulo: "FLUJO DE CAJA",
-      descripcion: "Control financiero, cuentas corrientes y asientos contables",
+      descripcion:
+        "Control financiero, cuentas corrientes y asientos contables",
       icono: "pi-wallet",
       modulos: 12,
       color: "#5DADE2",
       size: "medium",
       submenu: [
-        { label: "Movimientos de Caja", key: "movimientoCaja", icon: "pi-money-bill" },
-        { label: "Cuenta Corriente", key: "cuentaCorriente", icon: "pi-credit-card" },
-        { label: "Saldo Cuenta Corriente", key: "saldoCuentaCorriente", icon: "pi-chart-line" },
-        { label: "Configuración Cuenta Contable", key: "configuracionCuentaContable", icon: "pi-cog" },
-        { label: "Asientos Contables", key: "asientoContableInterfaz", icon: "pi-book" },
-        { label: "Tipos Movimiento Entregas a Rendir", key: "tipoMovEntregaRendir", icon: "pi-tag" },
+        {
+          label: "Movimientos de Caja",
+          key: "movimientoCaja",
+          icon: "pi-money-bill",
+        },
+        {
+          label: "Cuenta Corriente",
+          key: "cuentaCorriente",
+          icon: "pi-credit-card",
+        },
+        {
+          label: "Saldo Cuenta Corriente",
+          key: "saldoCuentaCorriente",
+          icon: "pi-chart-line",
+        },
+        {
+          label: "Configuración Cuenta Contable",
+          key: "configuracionCuentaContable",
+          icon: "pi-cog",
+        },
+        {
+          label: "Asientos Contables",
+          key: "asientoContableInterfaz",
+          icon: "pi-book",
+        },
+        {
+          label: "Tipos Movimiento Entregas a Rendir",
+          key: "tipoMovEntregaRendir",
+          icon: "pi-tag",
+        },
         { label: "Centros de Costo", key: "centroCosto", icon: "pi-sitemap" },
-        { label: "Categorías Centro Costo", key: "categoriaCCosto", icon: "pi-tags" },
-        { label: "Empresa por Centro Costo", key: "empresaCentroCosto", icon: "pi-building" },
-        { label: "Tipo Cuenta Corriente", key: "tipoCuentaCorriente", icon: "pi-tag" },
-        { label: "Tipo Referencia", key: "tipoReferenciaMovimientoCaja", icon: "pi-hashtag" },
-        { label: "Bancos", key: "banco", icon: "pi-building-columns" }
-      ]
+        {
+          label: "Categorías Centro Costo",
+          key: "categoriaCCosto",
+          icon: "pi-tags",
+        },
+        {
+          label: "Empresa por Centro Costo",
+          key: "empresaCentroCosto",
+          icon: "pi-building",
+        },
+        {
+          label: "Tipo Cuenta Corriente",
+          key: "tipoCuentaCorriente",
+          icon: "pi-tag",
+        },
+        {
+          label: "Tipo Referencia",
+          key: "tipoReferenciaMovimientoCaja",
+          icon: "pi-hashtag",
+        },
+        { label: "Bancos", key: "banco", icon: "pi-building-columns" },
+      ],
     },
     {
       id: "finanzas",
       titulo: "FINANZAS",
       descripcion: "Tesorería Avanzada: Préstamos, Créditos e Inversiones",
       icono: "pi-wallet",
-      modulos: 4,
+      modulos: 5,
       color: "#8E44AD",
       size: "medium",
       submenu: [
-        { label: "Préstamo Bancario", key: "prestamoBancario", icon: "pi-briefcase" },
-        { label: "Línea de Crédito", key: "lineaCredito", icon: "pi-credit-card" },
-        { label: "Inversión Financiera", key: "inversionFinanciera", icon: "pi-chart-pie" },
-        { label: "Reporte Líneas Disponibles", key: "reporteLineasDisponibles", icon: "pi-chart-bar" }
-      ]
+        { label: "Tipos de Préstamo", key: "tipoPrestamo", icon: "pi-tags" },
+        {
+          label: "Préstamo Bancario",
+          key: "prestamoBancario",
+          icon: "pi-briefcase",
+        },
+        {
+          label: "Línea de Crédito",
+          key: "lineaCredito",
+          icon: "pi-credit-card",
+        },
+        {
+          label: "Inversión Financiera",
+          key: "inversionFinanciera",
+          icon: "pi-chart-pie",
+        },
+        {
+          label: "Reporte Líneas Disponibles",
+          key: "reporteLineasDisponibles",
+          icon: "pi-chart-bar",
+        },
+      ],
     },
     {
       id: "contabilidad",
@@ -180,20 +368,48 @@ export default function Dashboard() {
       size: "large",
       submenu: [
         { label: "Plan Contable", key: "planCuentasContable", icon: "pi-list" },
-        { label: "Período Contable", key: "periodoContable", icon: "pi-calendar" },
+        {
+          label: "Período Contable",
+          key: "periodoContable",
+          icon: "pi-calendar",
+        },
         { label: "Asiento Contable", key: "asientoContable", icon: "pi-book" },
-        { label: "Tipo Afectación IGV", key: "tipoAfectacionIGV", icon: "pi-percentage" },
-        { label: "Comprobante Electrónico", key: "comprobanteElectronico", icon: "pi-file-pdf" },
-        { label: "Cuenta Por Cobrar", key: "cuentaPorCobrar", icon: "pi-money-bill" },
-        { label: "Cuenta Por Pagar", key: "cuentaPorPagar", icon: "pi-credit-card" },
+        {
+          label: "Tipo Afectación IGV",
+          key: "tipoAfectacionIGV",
+          icon: "pi-percentage",
+        },
+        {
+          label: "Comprobante Electrónico",
+          key: "comprobanteElectronico",
+          icon: "pi-file-pdf",
+        },
+        {
+          label: "Cuenta Por Cobrar",
+          key: "cuentaPorCobrar",
+          icon: "pi-money-bill",
+        },
+        {
+          label: "Cuenta Por Pagar",
+          key: "cuentaPorPagar",
+          icon: "pi-credit-card",
+        },
         { label: "Pagos", key: "pago", icon: "pi-dollar" },
-        { label: "Flujo de Caja Financiero", key: "flujoCaja", icon: "pi-chart-line" },
-        { label: "Conciliación Bancaria", key: "conciliacionBancaria", icon: "pi-check-square" },
+        {
+          label: "Flujo de Caja Financiero",
+          key: "flujoCaja",
+          icon: "pi-chart-line",
+        },
+        {
+          label: "Conciliación Bancaria",
+          key: "conciliacionBancaria",
+          icon: "pi-check-square",
+        },
         { label: "Letras de Cambio", key: "letraCambio", icon: "pi-file-edit" },
         { label: "Retenciones", key: "retencion", icon: "pi-minus-circle" },
         { label: "Percepciones", key: "percepcion", icon: "pi-plus-circle" },
-        { label: "Presupuestos", key: "presupuesto", icon: "pi-chart-bar" }
-      ]
+        { label: "Presupuestos", key: "presupuesto", icon: "pi-chart-bar" },
+      ],
     },
     {
       id: "maestros",
@@ -206,19 +422,51 @@ export default function Dashboard() {
       submenu: [
         { label: "Empresas", key: "empresas", icon: "pi-building" },
         { label: "Sedes Empresa", key: "sedesEmpresa", icon: "pi-map-marker" },
-        { label: "Áreas Físicas Sede", key: "areasFisicasSede", icon: "pi-th-large" },
+        {
+          label: "Áreas Físicas Sede",
+          key: "areasFisicasSede",
+          icon: "pi-th-large",
+        },
         { label: "Personal", key: "personal", icon: "pi-users" },
-        { label: "Cargos Personal", key: "cargosPersonal", icon: "pi-briefcase" },
+        {
+          label: "Cargos Personal",
+          key: "cargosPersonal",
+          icon: "pi-briefcase",
+        },
         { label: "Tipo Contrato", key: "tipoContrato", icon: "pi-file" },
-        { label: "Aprobadores", key: "parametroAprobador", icon: "pi-check-circle" },
-        { label: "Tipos Documento Identidad", key: "tiposDocIdentidad", icon: "pi-id-card" },
-        { label: "Entidad Comercial", key: "entidadComercial", icon: "pi-briefcase" },
+        {
+          label: "Aprobadores",
+          key: "parametroAprobador",
+          icon: "pi-check-circle",
+        },
+        {
+          label: "Tipos Documento Identidad",
+          key: "tiposDocIdentidad",
+          icon: "pi-id-card",
+        },
+        {
+          label: "Entidad Comercial",
+          key: "entidadComercial",
+          icon: "pi-briefcase",
+        },
         { label: "Tipo Entidad", key: "tipoEntidad", icon: "pi-tag" },
-        { label: "Agrupaciones Entidad", key: "agrupacionEntidad", icon: "pi-sitemap" },
+        {
+          label: "Agrupaciones Entidad",
+          key: "agrupacionEntidad",
+          icon: "pi-sitemap",
+        },
         { label: "Productos y Servicios", key: "producto", icon: "pi-box" },
         { label: "Familia Producto", key: "familiaProducto", icon: "pi-tags" },
-        { label: "Subfamilia Producto", key: "subfamiliaProducto", icon: "pi-tag" },
-        { label: "Tipo Almacenamiento", key: "tipoAlmacenamiento", icon: "pi-warehouse" },
+        {
+          label: "Subfamilia Producto",
+          key: "subfamiliaProducto",
+          icon: "pi-tag",
+        },
+        {
+          label: "Tipo Almacenamiento",
+          key: "tipoAlmacenamiento",
+          icon: "pi-warehouse",
+        },
         { label: "Marca", key: "marca", icon: "pi-bookmark" },
         { label: "Unidad Medida", key: "unidadMedida", icon: "pi-chart-bar" },
         { label: "Tipo Material", key: "tipoMaterial", icon: "pi-box" },
@@ -230,30 +478,48 @@ export default function Dashboard() {
         { label: "Ubigeo", key: "ubigeo", icon: "pi-map" },
         { label: "Activos", key: "activo", icon: "pi-server" },
         { label: "Tipo Activo", key: "tipoActivo", icon: "pi-tag" },
-        { label: "Detalle Permiso Activo", key: "detallePermisoActivo", icon: "pi-lock" },
-        { label: "Permiso Autorización", key: "permisoAutorizacion", icon: "pi-shield" },
-        { label: "Estado Multi Función", key: "estadoMultiFuncion", icon: "pi-circle" },
-        { label: "Tipo Proviene De", key: "tipoProvieneDe", icon: "pi-arrow-right" },
-        { label: "Monedas", key: "monedas", icon: "pi-dollar" }
-      ]
-    }
+        {
+          label: "Detalle Permiso Activo",
+          key: "detallePermisoActivo",
+          icon: "pi-lock",
+        },
+        {
+          label: "Permiso Autorización",
+          key: "permisoAutorizacion",
+          icon: "pi-shield",
+        },
+        {
+          label: "Estado Multi Función",
+          key: "estadoMultiFuncion",
+          icon: "pi-circle",
+        },
+        {
+          label: "Tipo Proviene De",
+          key: "tipoProvieneDe",
+          icon: "pi-arrow-right",
+        },
+        { label: "Monedas", key: "monedas", icon: "pi-dollar" },
+      ],
+    },
   ];
 
   // Filtrar módulos por búsqueda
-  const filteredModulos = (reorderedModulos || modulosConfigBase).filter((modulo) => {
-    if (!searchQuery.trim()) return true;
-    
-    const query = searchQuery.toLowerCase();
-    
-    // Buscar en título, descripción y submódulos
-    const matchTitle = modulo.titulo.toLowerCase().includes(query);
-    const matchDescription = modulo.descripcion.toLowerCase().includes(query);
-    const matchSubmenu = modulo.submenu?.some((item) => 
-      item.label.toLowerCase().includes(query)
-    );
-    
-    return matchTitle || matchDescription || matchSubmenu;
-  });
+  const filteredModulos = (reorderedModulos || modulosConfigBase).filter(
+    (modulo) => {
+      if (!searchQuery.trim()) return true;
+
+      const query = searchQuery.toLowerCase();
+
+      // Buscar en título, descripción y submódulos
+      const matchTitle = modulo.titulo.toLowerCase().includes(query);
+      const matchDescription = modulo.descripcion.toLowerCase().includes(query);
+      const matchSubmenu = modulo.submenu?.some((item) =>
+        item.label.toLowerCase().includes(query)
+      );
+
+      return matchTitle || matchDescription || matchSubmenu;
+    }
+  );
 
   // Usar módulos filtrados
   const modulosConfig = filteredModulos;
@@ -282,24 +548,26 @@ export default function Dashboard() {
       setReorderedModulos(null);
     } else {
       // Reordenar: mover el módulo seleccionado al inicio
-      const selectedIndex = modulosConfigBase.findIndex(m => m.id === moduloId);
+      const selectedIndex = modulosConfigBase.findIndex(
+        (m) => m.id === moduloId
+      );
       const selectedModule = modulosConfigBase[selectedIndex];
-      const otherModules = modulosConfigBase.filter(m => m.id !== moduloId);
-      
+      const otherModules = modulosConfigBase.filter((m) => m.id !== moduloId);
+
       // Crear nuevo array con el módulo seleccionado al inicio
       const newOrder = [selectedModule, ...otherModules];
       setReorderedModulos(newOrder);
-      
+
       // Scroll hacia arriba
       setTimeout(() => {
         if (containerRef.current) {
-          containerRef.current.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start' 
+          containerRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
           });
         }
       }, 50);
-      
+
       // Expandir después del reordenamiento
       setTimeout(() => {
         setExpandedCard(moduloId);
@@ -459,7 +727,11 @@ export default function Dashboard() {
           >
             {filteredModulos.length > 0 ? (
               <span>
-                Se encontraron <strong style={{ color: "#5DADE2" }}>{filteredModulos.length}</strong> módulos
+                Se encontraron{" "}
+                <strong style={{ color: "#5DADE2" }}>
+                  {filteredModulos.length}
+                </strong>{" "}
+                módulos
               </span>
             ) : (
               <span style={{ color: "#ef4444" }}>
@@ -486,10 +758,15 @@ export default function Dashboard() {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ 
-                  layout: { duration: 0.3, type: "spring", stiffness: 300, damping: 30 },
+                transition={{
+                  layout: {
+                    duration: 0.3,
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 30,
+                  },
                   opacity: { duration: 0.2 },
-                  scale: { duration: 0.2 }
+                  scale: { duration: 0.2 },
                 }}
                 style={{
                   gridColumn:
@@ -506,7 +783,9 @@ export default function Dashboard() {
                 {/* Card principal */}
                 <motion.div
                   layout
-                  onMouseEnter={() => !expandedCard && setHoveredCard(modulo.id)}
+                  onMouseEnter={() =>
+                    !expandedCard && setHoveredCard(modulo.id)
+                  }
                   onMouseLeave={() => setHoveredCard(null)}
                   onClick={() => handleCardClick(modulo.id)}
                   whileHover={!expandedCard ? { y: -8, scale: 1.02 } : {}}
@@ -524,7 +803,12 @@ export default function Dashboard() {
                     }`,
                     borderRadius: "24px",
                     padding: "32px",
-                    minHeight: expandedCard === modulo.id ? "auto" : modulo.size === "large" ? "280px" : "220px",
+                    minHeight:
+                      expandedCard === modulo.id
+                        ? "auto"
+                        : modulo.size === "large"
+                        ? "280px"
+                        : "220px",
                     display: "flex",
                     flexDirection: "column",
                     position: "relative",
@@ -539,7 +823,8 @@ export default function Dashboard() {
                 >
                   {/* Glow effect en hover */}
                   <AnimatePresence>
-                    {(hoveredCard === modulo.id || expandedCard === modulo.id) && (
+                    {(hoveredCard === modulo.id ||
+                      expandedCard === modulo.id) && (
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -557,7 +842,15 @@ export default function Dashboard() {
                   </AnimatePresence>
 
                   {/* Header de la card */}
-                  <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "flex-start", gap: "20px" }}>
+                  <div
+                    style={{
+                      position: "relative",
+                      zIndex: 1,
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "20px",
+                    }}
+                  >
                     {/* Icono */}
                     <motion.div
                       animate={
@@ -629,9 +922,19 @@ export default function Dashboard() {
                         <i className="pi pi-box" style={{ fontSize: "14px" }} />
                         <span>{modulo.modulos} módulos</span>
                         <motion.i
-                          className={`pi ${expandedCard === modulo.id ? "pi-chevron-up" : "pi-chevron-down"}`}
-                          style={{ fontSize: "14px", marginLeft: "auto", color: modulo.color }}
-                          animate={{ rotate: expandedCard === modulo.id ? 180 : 0 }}
+                          className={`pi ${
+                            expandedCard === modulo.id
+                              ? "pi-chevron-up"
+                              : "pi-chevron-down"
+                          }`}
+                          style={{
+                            fontSize: "14px",
+                            marginLeft: "auto",
+                            color: modulo.color,
+                          }}
+                          animate={{
+                            rotate: expandedCard === modulo.id ? 180 : 0,
+                          }}
                           transition={{ duration: 0.3 }}
                         />
                       </div>
@@ -657,7 +960,8 @@ export default function Dashboard() {
                         <div
                           style={{
                             display: "grid",
-                            gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+                            gridTemplateColumns:
+                              "repeat(auto-fill, minmax(250px, 1fr))",
                             gap: "12px",
                           }}
                         >
@@ -666,12 +970,15 @@ export default function Dashboard() {
                               key={item.key}
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.3 + (idx * 0.03) }}
+                              transition={{ delay: 0.3 + idx * 0.03 }}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleSubmenuClick(item.key, item.label);
                               }}
-                              whileHover={{ x: 4, backgroundColor: "rgba(15, 23, 42, 0.8)" }}
+                              whileHover={{
+                                x: 4,
+                                backgroundColor: "rgba(15, 23, 42, 0.8)",
+                              }}
                               style={{
                                 padding: "12px 16px",
                                 background: "rgba(15, 23, 42, 0.4)",
@@ -687,7 +994,13 @@ export default function Dashboard() {
                                 transition: "all 0.2s ease",
                               }}
                             >
-                              <i className={`pi ${item.icon}`} style={{ color: modulo.color, fontSize: "16px" }} />
+                              <i
+                                className={`pi ${item.icon}`}
+                                style={{
+                                  color: modulo.color,
+                                  fontSize: "16px",
+                                }}
+                              />
                               <span>{item.label}</span>
                             </motion.button>
                           ))}
@@ -727,7 +1040,9 @@ export default function Dashboard() {
             >
               128
             </div>
-            <div style={{ fontSize: "0.9rem", color: "#64748b", marginTop: "4px" }}>
+            <div
+              style={{ fontSize: "0.9rem", color: "#64748b", marginTop: "4px" }}
+            >
               Módulos CRUD
             </div>
           </div>
@@ -743,7 +1058,9 @@ export default function Dashboard() {
             >
               8
             </div>
-            <div style={{ fontSize: "0.9rem", color: "#64748b", marginTop: "4px" }}>
+            <div
+              style={{ fontSize: "0.9rem", color: "#64748b", marginTop: "4px" }}
+            >
               Procesos Principales
             </div>
           </div>
@@ -759,7 +1076,9 @@ export default function Dashboard() {
             >
               100%
             </div>
-            <div style={{ fontSize: "0.9rem", color: "#64748b", marginTop: "4px" }}>
+            <div
+              style={{ fontSize: "0.9rem", color: "#64748b", marginTop: "4px" }}
+            >
               Operativo
             </div>
           </div>

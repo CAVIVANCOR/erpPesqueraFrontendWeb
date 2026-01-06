@@ -15,7 +15,6 @@ export default function CronogramaImportTable({ visible, onHide, onImport, prest
 
   useEffect(() => {
     if (visible) {
-      // Inicializar con una fila vacía de ejemplo
       setCuotas([crearCuotaVacia(1)]);
     }
   }, [visible]);
@@ -36,7 +35,6 @@ export default function CronogramaImportTable({ visible, onHide, onImport, prest
   const parsearFecha = (texto) => {
     if (!texto) return null;
     
-    // Formatos: DD/MM/YYYY, DD-MM-YYYY
     const regex = /(\d{2})[/-](\d{2})[/-](\d{4})/;
     const match = texto.match(regex);
     
@@ -51,7 +49,6 @@ export default function CronogramaImportTable({ visible, onHide, onImport, prest
   const limpiarNumero = (texto) => {
     if (!texto) return 0;
     
-    // Remover espacios, comas y convertir a número
     const limpio = String(texto).replace(/[,\s]/g, '');
     const numero = parseFloat(limpio);
     
@@ -67,14 +64,11 @@ export default function CronogramaImportTable({ visible, onHide, onImport, prest
     const cuotasParseadas = [];
     
     lineas.forEach((linea, index) => {
-      // Dividir por tabulaciones o múltiples espacios
       const columnas = linea.split(/\t+|\s{2,}/).filter(col => col.trim());
       
       if (columnas.length >= 4) {
-        // Intentar parsear como: Nro, Fecha, Saldo, Amortización, Interés, ..., Total
         const numeroCuota = parseInt(columnas[0]);
         
-        // Validar que la primera columna sea un número (número de cuota)
         if (!isNaN(numeroCuota) && numeroCuota > 0 && numeroCuota <= 100) {
           let idx = 1;
           const fechaVencimiento = parsearFecha(columnas[idx]);
@@ -83,7 +77,6 @@ export default function CronogramaImportTable({ visible, onHide, onImport, prest
             idx++;
           }
           
-          // Extraer números de las columnas restantes
           const numeros = [];
           for (let i = idx; i < columnas.length; i++) {
             const num = limpiarNumero(columnas[i]);
@@ -149,7 +142,6 @@ export default function CronogramaImportTable({ visible, onHide, onImport, prest
       const numero = parseFloat(newValue);
       rowData[field] = isNaN(numero) ? 0 : numero;
       
-      // Recalcular saldoCapitalDespues si cambian saldoCapitalAntes o montoCapital
       if (field === 'saldoCapitalAntes' || field === 'montoCapital') {
         rowData.saldoCapitalDespues = rowData.saldoCapitalAntes - rowData.montoCapital;
       }
@@ -195,7 +187,6 @@ export default function CronogramaImportTable({ visible, onHide, onImport, prest
       return;
     }
 
-    // Validar que todas las cuotas tengan datos mínimos
     const cuotasValidas = cuotas.filter(c => 
       c.numeroCuota > 0 && 
       c.fechaVencimiento && 
