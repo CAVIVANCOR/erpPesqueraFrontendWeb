@@ -187,3 +187,34 @@ export async function getSeriesDoc(empresaId, tipoDocumentoId) {
     throw error;
   }
 }
+/**
+ * Genera una Factura Electrónica desde una PreFactura
+ * @param {number} id - ID de la pre-factura
+ * @param {Object} datos - Datos para la generación (serieDocFinalId, tipoDocumentoFinalId)
+ * @returns {Promise<Object>} Comprobante electrónico generado
+ */
+export async function generarFacturaDesdePreFactura(id, datos) {
+  try {
+    const response = await axios.post(`${API_URL}/${id}/generar-factura`, datos, { headers: getAuthHeaders() });
+    return response.data;
+  } catch (error) {
+    console.error("Error al generar factura desde pre-factura:", error);
+    throw error;
+  }
+}
+
+/**
+ * Genera una Boleta Electrónica desde una PreFactura
+ * @param {number} id - ID de la pre-factura
+ * @param {Object} datos - Datos para la generación (serieDocFinalId, tipoDocumentoFinalId)
+ * @returns {Promise<Object>} Comprobante electrónico generado
+ */
+export async function generarBoletaDesdePreFactura(id, datos) {
+  try {
+    const response = await axios.post(`${API_URL}/${id}/generar-boleta`, datos, { headers: getAuthHeaders() });
+    return response.data;
+  } catch (error) {
+    console.error("Error al generar boleta desde pre-factura:", error);
+    throw error;
+  }
+}

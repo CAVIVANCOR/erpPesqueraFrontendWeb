@@ -162,6 +162,11 @@ export default function Dashboard() {
         },
         { label: "Pre-Factura", key: "preFactura", icon: "pi-file" },
         {
+          label: "Comprobantes Electrónicos SUNAT",
+          key: "comprobanteElectronico",
+          icon: "pi-send",
+        },
+        {
           label: "Contratos de Servicios",
           key: "contratoServicio",
           icon: "pi-briefcase",
@@ -363,7 +368,7 @@ export default function Dashboard() {
       titulo: "CONTABILIDAD",
       descripcion: "Plan Contable, Asientos, Períodos y Reportes Financieros",
       icono: "pi-calculator",
-      modulos: 14,
+      modulos: 13,
       color: "#E74C3C",
       size: "large",
       submenu: [
@@ -378,11 +383,6 @@ export default function Dashboard() {
           label: "Tipo Afectación IGV",
           key: "tipoAfectacionIGV",
           icon: "pi-percentage",
-        },
-        {
-          label: "Comprobante Electrónico",
-          key: "comprobanteElectronico",
-          icon: "pi-file-pdf",
         },
         {
           label: "Cuenta Por Cobrar",

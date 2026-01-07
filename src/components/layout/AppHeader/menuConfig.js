@@ -208,6 +208,11 @@ export const getMenuConfig = (abrirModulo) => ({
                 action: () => abrirModulo("preFactura", "Pre-Factura")
               },
               {
+                label: "Comprobantes Electrónicos SUNAT",
+                icon: "pi pi-send",
+                action: () => abrirModulo("comprobanteElectronico", "Comprobantes Electrónicos SUNAT")
+              },
+              {
                 label: "Contratos de Servicios",
                 icon: "pi pi-file-contract",
                 action: () => abrirModulo("contratoServicio", "Contratos de Servicios")
@@ -503,11 +508,6 @@ export const getMenuConfig = (abrirModulo) => ({
         label: "Tipo Afectación IGV",
         icon: "pi pi-percentage",
         action: () => abrirModulo("tipoAfectacionIGV", "Tipo Afectación IGV")
-      },
-      {
-        label: "Comprobante Electrónico",
-        icon: "pi pi-file-pdf",
-        action: () => abrirModulo("comprobanteElectronico", "Comprobante Electrónico")
       },
       {
         label: "Cuenta Por Cobrar",

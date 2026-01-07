@@ -7,6 +7,7 @@ import DatosGeneralesPreFacturaCard from "./DatosGeneralesPreFacturaCard";
 import VerImpresionPreFacturaPDF from "./VerImpresionPreFacturaPDF";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
 import { getSeriesDoc } from "../../api/preFactura";
+import BotonesGeneracionComprobante from "./BotonesGeneracionComprobante";
 
 const PreFacturaForm = ({
   isEdit,
@@ -45,7 +46,9 @@ const PreFacturaForm = ({
   const [seriesDoc, setSeriesDoc] = useState([]);
   const [detalles, setDetalles] = useState(defaultValues?.detalles || []);
   const [estadosPreFacturas, setEstadosPreFacturas] = useState([]);
-  const [detallesCount, setDetallesCount] = useState(defaultValues?.detalles?.length || 0);
+  const [detallesCount, setDetallesCount] = useState(
+    defaultValues?.detalles?.length || 0
+  );
   const [totales, setTotales] = useState({ subtotal: 0, igv: 0, total: 0 });
 
   const responsablesVentas = personalOptions;
@@ -54,48 +57,102 @@ const PreFacturaForm = ({
 
   const [formData, setFormData] = useState({
     id: defaultValues?.id || null,
-    empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : (empresaFija ? Number(empresaFija) : 1),
-    tipoDocumentoId: defaultValues?.tipoDocumentoId ? Number(defaultValues.tipoDocumentoId) : 19,
-    serieDocId: defaultValues?.serieDocId ? Number(defaultValues.serieDocId) : null,
+    empresaId: defaultValues?.empresaId
+      ? Number(defaultValues.empresaId)
+      : empresaFija
+      ? Number(empresaFija)
+      : 1,
+    tipoDocumentoId: defaultValues?.tipoDocumentoId
+      ? Number(defaultValues.tipoDocumentoId)
+      : 19,
+    serieDocId: defaultValues?.serieDocId
+      ? Number(defaultValues.serieDocId)
+      : null,
     numSerieDoc: defaultValues?.numSerieDoc || "",
     numCorreDoc: defaultValues?.numCorreDoc || "",
     numeroDocumento: defaultValues?.numeroDocumento || "",
-    fechaDocumento: defaultValues?.fechaDocumento ? new Date(defaultValues.fechaDocumento) : new Date(),
-    fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
-    cotizacionVentasOrigenId: defaultValues?.cotizacionVentasOrigenId ? Number(defaultValues.cotizacionVentasOrigenId) : null,
+    fechaDocumento: defaultValues?.fechaDocumento
+      ? new Date(defaultValues.fechaDocumento)
+      : new Date(),
+    fechaVencimiento: defaultValues?.fechaVencimiento
+      ? new Date(defaultValues.fechaVencimiento)
+      : null,
+    cotizacionVentasOrigenId: defaultValues?.cotizacionVentasOrigenId
+      ? Number(defaultValues.cotizacionVentasOrigenId)
+      : null,
     ordenCompraCliente: defaultValues?.ordenCompraCliente || "",
-    movSalidaAlmacenId: defaultValues?.movSalidaAlmacenId ? Number(defaultValues.movSalidaAlmacenId) : null,
-    clienteId: defaultValues?.clienteId ? Number(defaultValues.clienteId) : null,
+    movSalidaAlmacenId: defaultValues?.movSalidaAlmacenId
+      ? Number(defaultValues.movSalidaAlmacenId)
+      : null,
+    clienteId: defaultValues?.clienteId
+      ? Number(defaultValues.clienteId)
+      : null,
     estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 45,
-    formaPagoId: defaultValues?.formaPagoId ? Number(defaultValues.formaPagoId) : null,
+    formaPagoId: defaultValues?.formaPagoId
+      ? Number(defaultValues.formaPagoId)
+      : null,
     bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
     monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : 1,
     tipoCambio: defaultValues?.tipoCambio || 3.75,
-    esExportacion: defaultValues?.esExportacion !== undefined ? defaultValues.esExportacion : false,
-    paisDestinoId: defaultValues?.paisDestinoId ? Number(defaultValues.paisDestinoId) : null,
-    incotermId: defaultValues?.incotermId ? Number(defaultValues.incotermId) : null,
-    puertoCargaId: defaultValues?.puertoCargaId ? Number(defaultValues.puertoCargaId) : null,
-    puertoDescargaId: defaultValues?.puertoDescargaId ? Number(defaultValues.puertoDescargaId) : null,
-    agenteAduanaId: defaultValues?.agenteAduanaId ? Number(defaultValues.agenteAduanaId) : null,
+    esExportacion:
+      defaultValues?.esExportacion !== undefined
+        ? defaultValues.esExportacion
+        : false,
+    paisDestinoId: defaultValues?.paisDestinoId
+      ? Number(defaultValues.paisDestinoId)
+      : null,
+    incotermId: defaultValues?.incotermId
+      ? Number(defaultValues.incotermId)
+      : null,
+    puertoCargaId: defaultValues?.puertoCargaId
+      ? Number(defaultValues.puertoCargaId)
+      : null,
+    puertoDescargaId: defaultValues?.puertoDescargaId
+      ? Number(defaultValues.puertoDescargaId)
+      : null,
+    agenteAduanaId: defaultValues?.agenteAduanaId
+      ? Number(defaultValues.agenteAduanaId)
+      : null,
     numeroBuque: defaultValues?.numeroBuque || "",
     numeroBL: defaultValues?.numeroBL || "",
     numContenedor: defaultValues?.numContenedor || "",
-    tipoContenedorId: defaultValues?.tipoContenedorId ? Number(defaultValues.tipoContenedorId) : null,
-    exoneradoIgv: defaultValues?.exoneradoIgv !== undefined ? defaultValues.exoneradoIgv : false,
+    tipoContenedorId: defaultValues?.tipoContenedorId
+      ? Number(defaultValues.tipoContenedorId)
+      : null,
+    exoneradoIgv:
+      defaultValues?.exoneradoIgv !== undefined
+        ? defaultValues.exoneradoIgv
+        : false,
     porcentajeIgv: defaultValues?.porcentajeIgv || null,
     factorExportacion: defaultValues?.factorExportacion || null,
     factorExportacionReal: defaultValues?.factorExportacionReal || null,
     observaciones: defaultValues?.observaciones || "",
     urlPreFacturaPdf: defaultValues?.urlPreFacturaPdf || null,
-    fechaTransfErpContable: defaultValues?.fechaTransfErpContable ? new Date(defaultValues.fechaTransfErpContable) : null,
+    fechaTransfErpContable: defaultValues?.fechaTransfErpContable
+      ? new Date(defaultValues.fechaTransfErpContable)
+      : null,
     numIdTransfErpContable: defaultValues?.numIdTransfErpContable || "",
-    personaRespTransfErpContable: defaultValues?.personaRespTransfErpContable ? Number(defaultValues.personaRespTransfErpContable) : null,
-    centroCostoId: defaultValues?.centroCostoId ? Number(defaultValues.centroCostoId) : null,
-    dirEntregaId: defaultValues?.dirEntregaId ? Number(defaultValues.dirEntregaId) : null,
-    dirFiscalId: defaultValues?.dirFiscalId ? Number(defaultValues.dirFiscalId) : null,
-    contratoServicioId: defaultValues?.contratoServicioId ? Number(defaultValues.contratoServicioId) : null,
-    creadoPor: defaultValues?.creadoPor ? Number(defaultValues.creadoPor) : null,
-    actualizadoPor: defaultValues?.actualizadoPor ? Number(defaultValues.actualizadoPor) : null,
+    personaRespTransfErpContable: defaultValues?.personaRespTransfErpContable
+      ? Number(defaultValues.personaRespTransfErpContable)
+      : null,
+    centroCostoId: defaultValues?.centroCostoId
+      ? Number(defaultValues.centroCostoId)
+      : null,
+    dirEntregaId: defaultValues?.dirEntregaId
+      ? Number(defaultValues.dirEntregaId)
+      : null,
+    dirFiscalId: defaultValues?.dirFiscalId
+      ? Number(defaultValues.dirFiscalId)
+      : null,
+    contratoServicioId: defaultValues?.contratoServicioId
+      ? Number(defaultValues.contratoServicioId)
+      : null,
+    creadoPor: defaultValues?.creadoPor
+      ? Number(defaultValues.creadoPor)
+      : null,
+    actualizadoPor: defaultValues?.actualizadoPor
+      ? Number(defaultValues.actualizadoPor)
+      : null,
   });
 
   const handleChange = (field, value) => {
@@ -106,8 +163,13 @@ const PreFacturaForm = ({
 
   useEffect(() => {
     if (empresaId && empresas && empresas.length > 0 && !isEdit) {
-      const empresaSeleccionada = empresas.find((e) => Number(e.id) === Number(empresaId));
-      if (empresaSeleccionada && empresaSeleccionada.porcentajeIgv !== undefined) {
+      const empresaSeleccionada = empresas.find(
+        (e) => Number(e.id) === Number(empresaId)
+      );
+      if (
+        empresaSeleccionada &&
+        empresaSeleccionada.porcentajeIgv !== undefined
+      ) {
         handleChange("porcentajeIgv", empresaSeleccionada.porcentajeIgv);
       }
     }
@@ -115,11 +177,16 @@ const PreFacturaForm = ({
 
   useEffect(() => {
     if (formData.empresaId && empresas && empresas.length > 0 && !isEdit) {
-      const empresaSeleccionada = empresas.find((e) => Number(e.id) === Number(formData.empresaId));
+      const empresaSeleccionada = empresas.find(
+        (e) => Number(e.id) === Number(formData.empresaId)
+      );
       if (formData.exoneradoIgv) {
         handleChange("porcentajeIgv", 0);
       } else {
-        if (empresaSeleccionada && empresaSeleccionada.porcentajeIgv !== undefined) {
+        if (
+          empresaSeleccionada &&
+          empresaSeleccionada.porcentajeIgv !== undefined
+        ) {
           handleChange("porcentajeIgv", empresaSeleccionada.porcentajeIgv);
         }
       }
@@ -132,7 +199,10 @@ const PreFacturaForm = ({
       const serie = seriesDoc.find((s) => Number(s.id) === Number(serieId));
       if (serie) {
         const proximoCorrelativo = Number(serie.correlativo) + 1;
-        const numSerie = String(serie.serie).padStart(serie.numCerosIzqSerie, "0");
+        const numSerie = String(serie.serie).padStart(
+          serie.numCerosIzqSerie,
+          "0"
+        );
         setFormData((prev) => ({
           ...prev,
           serieDocId: Number(serieId),
@@ -142,7 +212,12 @@ const PreFacturaForm = ({
         }));
       }
     } else {
-      setFormData((prev) => ({ ...prev, numSerieDoc: "", numCorreDoc: "", numeroDocumento: "" }));
+      setFormData((prev) => ({
+        ...prev,
+        numSerieDoc: "",
+        numCorreDoc: "",
+        numeroDocumento: "",
+      }));
     }
   };
 
@@ -201,7 +276,13 @@ const PreFacturaForm = ({
     };
 
     calcularTotales();
-  }, [detalles, formData.monedaId, formData.tipoCambio, formData.porcentajeIgv, formData.exoneradoIgv]);
+  }, [
+    detalles,
+    formData.monedaId,
+    formData.tipoCambio,
+    formData.porcentajeIgv,
+    formData.exoneradoIgv,
+  ]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -246,9 +327,18 @@ const PreFacturaForm = ({
 
   return (
     <div className="pre-factura-form">
-      <Toast ref={toast} position="top-center" appendTo={document.body} style={{ zIndex: 99999 }} />
+      <Toast
+        ref={toast}
+        position="top-center"
+        appendTo={document.body}
+        style={{ zIndex: 99999 }}
+      />
       <form onSubmit={handleSubmit}>
-        <TabView activeIndex={activeCard} onTabChange={handleTabChange} className="p-mb-4">
+        <TabView
+          activeIndex={activeCard}
+          onTabChange={handleTabChange}
+          className="p-mb-4"
+        >
           <TabPanel header="Datos Generales" leftIcon="pi pi-building">
             <DatosGeneralesPreFacturaCard
               formData={formData}
@@ -289,22 +379,68 @@ const PreFacturaForm = ({
               subtotal={totales.subtotal}
               totalIGV={totales.igv}
               total={totales.total}
-              monedasOptions={monedas.map(m => ({ value: m.id, codigoSunat: m.codigoSunat || 'PEN' }))}
+              monedasOptions={monedas.map((m) => ({
+                value: m.id,
+                codigoSunat: m.codigoSunat || "PEN",
+              }))}
               readOnly={readOnly}
             />
           </TabPanel>
           <TabPanel header="PDF Pre-Factura" leftIcon="pi pi-file-pdf">
-            <VerImpresionPreFacturaPDF 
-              preFacturaId={formData.id} 
-              datosPreFactura={formData} 
+            <VerImpresionPreFacturaPDF
+              preFacturaId={formData.id}
+              datosPreFactura={formData}
               detalles={detalles}
               toast={toast}
             />
           </TabPanel>
+          <TabPanel header="Facturación Electrónica" leftIcon="pi pi-send">
+            <div className="p-4">
+              <h3 className="text-lg font-bold mb-3">
+                Generar Comprobante Electrónico
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Desde esta PreFactura puede generar una Factura o Boleta
+                Electrónica que será enviada a SUNAT.
+              </p>
+              <BotonesGeneracionComprobante
+                preFacturaId={formData.id}
+                empresaId={formData.empresaId}
+                facturado={formData.facturado}
+                toast={toast}
+                onComprobanteGenerado={(resultado) => {
+                  // Actualizar estado de facturado
+                  handleChange("facturado", true);
+                  handleChange("fechaFacturacion", new Date());
+                }}
+              />
+            </div>
+          </TabPanel>
         </TabView>
         <div className="flex justify-content-end gap-2 mt-4">
-          <Button type="button" label="Cancelar" icon="pi pi-times" className="p-button-secondary" onClick={handleCancel} disabled={loading || loadingProp} />
-          <Button type="submit" label={defaultValues ? "Actualizar" : "Guardar"} icon="pi pi-save" className="p-button-primary" loading={loading || loadingProp} disabled={readOnly || !permisos.puedeEditar} tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""} />
+          <Button
+            type="button"
+            label="Cancelar"
+            icon="pi pi-times"
+            className="p-button-secondary"
+            onClick={handleCancel}
+            disabled={loading || loadingProp}
+          />
+          <Button
+            type="submit"
+            label={defaultValues ? "Actualizar" : "Guardar"}
+            icon="pi pi-save"
+            className="p-button-primary"
+            loading={loading || loadingProp}
+            disabled={readOnly || !permisos.puedeEditar}
+            tooltip={
+              readOnly
+                ? "Modo solo lectura"
+                : !permisos.puedeEditar
+                ? "No tiene permisos para editar"
+                : ""
+            }
+          />
         </div>
       </form>
     </div>

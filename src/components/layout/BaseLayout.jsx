@@ -114,7 +114,7 @@ import TipoPrestamo from '../../pages/tesoreria/TipoPrestamo';
 import LineaCredito from '../../pages/tesoreria/LineaCredito';
 import InversionFinanciera from '../../pages/tesoreria/InversionFinanciera';
 import ReporteLineasDisponibles from '../../pages/tesoreria/ReporteLineasDisponibles';
-
+import ComprobanteElectronico from '../../pages/ComprobanteElectronico'
 /**
  * BaseLayout - Layout principal con gestión de módulos
  * 
@@ -161,6 +161,7 @@ export default function BaseLayout({ children, onLogout }) {
     modoDespachoRecepcion: { label: "Modo Despacho/Recepción", componente: <ModoDespachoRecepcion ruta="modoDespachoRecepcion" /> },
     cotizacionVentas: { label: "Cotización Ventas", componente: <CotizacionVentas ruta="cotizacionVentas" /> },
     preFactura: { label: "Pre-Factura", componente: <PreFactura ruta="preFactura" /> },
+    comprobanteElectronico: {label:"Comprobante Electronico SUNAT", componente:<ComprobanteElectronico ruta="comprobanteElectronico"/>},
     contratoServicio: { label: "Contratos de Servicios", componente: <ContratoServicio ruta="contratoServicio" /> },
     incoterm: { label: "Incoterms", componente: <Incoterm ruta="incoterm" /> },
     docRequeridaVentas: { label: "Documentos Requeridos Ventas", componente: <DocRequeridaVentas ruta="docRequeridaVentas" /> },
