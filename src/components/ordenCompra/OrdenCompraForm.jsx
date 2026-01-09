@@ -6,6 +6,7 @@ import { Tag } from "primereact/tag";
 import DatosGeneralesTab from "./DatosGeneralesTab";
 import VerImpresionOrdenCompraPDF from "./VerImpresionOrdenCompraPDF";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 
 export default function OrdenCompraForm({
   isEdit,
@@ -27,6 +28,7 @@ export default function OrdenCompraForm({
   onAprobar,
   onAnular,
   onGenerarDesdeRequerimiento,
+  onIrAlOrigen,
   loading,
   toast,
   permisos = {},
@@ -68,6 +70,7 @@ export default function OrdenCompraForm({
   const [activeTab, setActiveTab] = useState(0);
   const [detallesCount, setDetallesCount] = useState(0);
   const [totales, setTotales] = useState({ subtotal: 0, igv: 0, total: 0 });
+  const [fechaDocumentoInicial, setFechaDocumentoInicial] = useState(null);
 
   // Filtrar proveedores por empresaId
   useEffect(() => {
@@ -126,6 +129,59 @@ export default function OrdenCompraForm({
       }
     }
   }, [isEdit, usuario?.personalId, toast]);
+
+  // Guardar fecha inicial para evitar carga automática en mount
+  useEffect(() => {
+    if (fechaDocumento && fechaDocumentoInicial === null) {
+      setFechaDocumentoInicial(fechaDocumento);
+    }
+  }, [fechaDocumento, fechaDocumentoInicial]);
+
+  // Cargar tipo de cambio SUNAT solo cuando el usuario modifica manualmente fechaDocumento
+  useEffect(() => {
+    const cargarTipoCambio = async () => {
+      // No ejecutar si no hay fecha o si es la carga inicial
+      if (!fechaDocumento || fechaDocumentoInicial === null) return;
+      
+      // Comparar fechas por valor (ISO string) en lugar de por referencia
+      const fechaActualISO = new Date(fechaDocumento).toISOString();
+      const fechaInicialISO = new Date(fechaDocumentoInicial).toISOString();
+      
+      // No ejecutar si la fecha no ha cambiado realmente
+      if (fechaActualISO === fechaInicialISO) return;
+
+      try {
+        // Convertir fecha a formato YYYY-MM-DD
+        const fecha = new Date(fechaDocumento);
+        const fechaISO = fecha.toISOString().split('T')[0];
+
+        // Consultar tipo de cambio SUNAT
+        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
+        
+        // Para COMPRAS usamos sell_price (precio de venta del dólar)
+        if (tipoCambioData && tipoCambioData.sell_price) {
+          const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
+          setTipoCambio(tipoCambioVenta.toFixed(3));
+          
+          // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
+          setFechaDocumentoInicial(fechaDocumento);
+          
+          toast?.current?.show({
+            severity: "success",
+            summary: "Tipo de Cambio Actualizado",
+            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioVenta.toFixed(3)} por USD`,
+            life: 3000,
+          });
+        }
+      } catch (error) {
+        console.error("Error al cargar tipo de cambio SUNAT:", error);
+        // No mostrar error al usuario, solo log en consola
+        // El usuario puede ingresar el tipo de cambio manualmente si falla
+      }
+    };
+
+    cargarTipoCambio();
+  }, [fechaDocumento, fechaDocumentoInicial]);
 
   // Recalcular totales cuando cambien los detalles, porcentaje IGV o estado IGV
   useEffect(() => {
@@ -381,6 +437,8 @@ export default function OrdenCompraForm({
             total={totales.total}
             monedaOrden={defaultValues?.moneda}
             readOnly={readOnly}
+            permisos={permisos}
+            onIrAlOrigen={onIrAlOrigen}
           />
         </TabPanel>
 
@@ -402,31 +460,38 @@ export default function OrdenCompraForm({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginTop: 18,
         }}
       >
         {/* Botones izquierda: Aprobar, Anular */}
         <div style={{ display: "flex", gap: 8 }}>
-          {/* PENDIENTE: Mostrar Aprobar y Anular */}
-          {estaPendiente && isEdit && (
-            <>
-              <Button
-                label="Aprobar"
-                icon="pi pi-check"
-                className="p-button-success"
-                onClick={handleAprobarClick}
-                disabled={readOnly || loading || !permisos.puedeEditar}
-                tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para aprobar" : ""}
-              />
-              <Button
-                label="Anular"
-                icon="pi pi-ban"
-                className="p-button-danger"
-                onClick={handleAnularClick}
-                disabled={readOnly || loading || !permisos.puedeEliminar}
-                tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEliminar ? "No tiene permisos para anular" : ""}
-              />
-            </>
+          {/* Botón Aprobar: siempre visible en edición, deshabilitado si ya está aprobado o anulado */}
+          {isEdit && (
+            <Button
+              label="Aprobar"
+              icon="pi pi-check"
+              className="p-button-success"
+              onClick={handleAprobarClick}
+              disabled={readOnly || loading || !permisos.puedeEditar || estaAprobado || estaAnulado}
+              tooltip={
+                estaAprobado ? "La orden ya está aprobada" :
+                estaAnulado ? "No se puede aprobar una orden anulada" :
+                readOnly ? "Modo solo lectura" : 
+                !permisos.puedeEditar ? "No tiene permisos para aprobar" : 
+                "Aprobar orden de compra"
+              }
+            />
+          )}
+          
+          {/* Botón Anular: solo visible si está pendiente o aprobado */}
+          {isEdit && (estaPendiente || estaAprobado) && (
+            <Button
+              label="Anular"
+              icon="pi pi-ban"
+              className="p-button-danger"
+              onClick={handleAnularClick}
+              disabled={readOnly || loading || !permisos.puedeEliminar}
+              tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEliminar ? "No tiene permisos para anular" : "Anular orden de compra"}
+            />
           )}
 
           {/* Tags de estado cuando está aprobado o anulado */}
@@ -440,7 +505,7 @@ export default function OrdenCompraForm({
         </div>
 
         {/* Botones derecha: Guardar y Cancelar */}
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 10 }}>
           <Button
             label="Cancelar"
             icon="pi pi-times"

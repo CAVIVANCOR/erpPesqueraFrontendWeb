@@ -198,6 +198,9 @@ const OTMantenimientoForm = ({
     if (!formData.motivoOriginoId) camposFaltantes.push("Motivo de Origen");
     if (!formData.estadoId) camposFaltantes.push("Estado");
     if (!formData.monedaId) camposFaltantes.push("Moneda");
+    if (!formData.responsableId || Number(formData.responsableId) <= 0) {
+      camposFaltantes.push("Responsable (necesario para Entrega a Rendir)");
+    }
 
     if (camposFaltantes.length > 0) {
       toast?.current?.show({

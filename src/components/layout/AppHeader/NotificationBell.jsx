@@ -61,37 +61,23 @@ export default function NotificationBell() {
       const esModerador = notificacion.metadata?.esModerador === true || notificacion.metadata?.rol === 'MODERADOR';
       const salaId = notificacion.metadata.salaId;
 
-      console.log('🎥 Procesando notificación de videoconferencia:', {
-        esModerador,
-        salaId,
-        notificacionId: notificacion.id
-      });
-
       if (esModerador) {
-        console.log('👨‍💼 Usuario es MODERADOR - Abriendo Jitsi directamente');
-        
         // Patrón simple que funciona en Videoconferencia.jsx
         const jitsiUrl = `https://meet.megui.com.pe/${salaId}`;
-        console.log('🌐 Abriendo Jitsi:', jitsiUrl);
         window.open(jitsiUrl, '_blank', 'noopener,noreferrer');
         
         // Marcar como leída
         if (!notificacion.leida) {
-          console.log('✉️ Marcando notificación como leída');
           await marcarLeida(notificacion.id);
         }
 
-      } else {
-        console.log('👤 Usuario es PARTICIPANTE - Abriendo Jitsi directamente');
-        
+      } else {        
         // Mismo patrón simple para participantes
         const jitsiUrl = `https://meet.megui.com.pe/${salaId}`;
-        console.log('🌐 Abriendo Jitsi:', jitsiUrl);
         window.open(jitsiUrl, '_blank', 'noopener,noreferrer');
         
         // Marcar como leída
         if (!notificacion.leida) {
-          console.log('✉️ Marcando notificación como leída');
           await marcarLeida(notificacion.id);
         }
       }

@@ -241,7 +241,6 @@ export default function EntregaARendirMovAlmacenCard({
         detail: "Entrega a rendir creada correctamente",
         life: 3000,
       });
-      verificarYCargarEntrega();
     } catch (error) {
       console.error("Error al crear entrega automática:", error);
       toast.current?.show({

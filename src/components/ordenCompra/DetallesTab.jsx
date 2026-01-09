@@ -3,12 +3,15 @@ import React, { useState, useEffect } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
+import { confirmDialog } from "primereact/confirmdialog";
 import { InputNumber } from "primereact/inputnumber";
 import DetalleDialog from "./DetalleDialog";
 import {
   getDetallesOrdenCompra,
   eliminarDetalleOrdenCompra,
 } from "../../api/detalleOrdenCompra";
+import { getResponsiveFontSize, formatearFecha } from "../../utils/utils";
+
 
 export default function DetallesTab({
   ordenCompraId,
@@ -23,6 +26,9 @@ export default function DetallesTab({
   monedas = [],
   monedaId = null,
   readOnly = false,
+  permisos = {},
+  empresaId,
+  empresas = [],
 }) {
   const [detalles, setDetalles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -30,9 +36,11 @@ export default function DetallesTab({
   const [editingDetalle, setEditingDetalle] = useState(null);
 
   // Construir datosGenerales con la moneda seleccionada
-  const monedaSeleccionada = monedas.find(m => Number(m.id) === Number(monedaId));
+  const monedaSeleccionada = monedas.find(
+    (m) => Number(m.id) === Number(monedaId)
+  );
   const datosGenerales = {
-    moneda: monedaSeleccionada
+    moneda: monedaSeleccionada,
   };
 
   useEffect(() => {
@@ -68,24 +76,32 @@ export default function DetallesTab({
     setShowDialog(true);
   };
 
-  const handleDelete = async (detalle) => {
-    if (!window.confirm("¿Está seguro de eliminar este detalle?")) return;
-
-    try {
-      await eliminarDetalleOrdenCompra(detalle.id);
-      toast.current.show({
-        severity: "success",
-        summary: "Eliminado",
-        detail: "Detalle eliminado correctamente",
-      });
-      cargarDetalles();
-    } catch (err) {
-      toast.current.show({
-        severity: "error",
-        summary: "Error",
-        detail: err.response?.data?.error || "No se pudo eliminar el detalle",
-      });
-    }
+  const handleDelete = (detalle) => {
+    confirmDialog({
+      message: `¿Está seguro de eliminar el detalle del producto "${detalle.producto?.descripcionArmada || 'este producto'}"?`,
+      header: 'Confirmar Eliminación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Sí, eliminar',
+      rejectLabel: 'Cancelar',
+      acceptClassName: 'p-button-danger',
+      accept: async () => {
+        try {
+          await eliminarDetalleOrdenCompra(detalle.id);
+          toast.current.show({
+            severity: "success",
+            summary: "Eliminado",
+            detail: "Detalle eliminado correctamente",
+          });
+          cargarDetalles();
+        } catch (err) {
+          toast.current.show({
+            severity: "error",
+            summary: "Error",
+            detail: err.response?.data?.error || "No se pudo eliminar el detalle",
+          });
+        }
+      }
+    });
   };
 
   const handleSaveSuccess = () => {
@@ -93,14 +109,33 @@ export default function DetallesTab({
     cargarDetalles();
   };
 
+  const cantidadTemplate = (rowData) => {
+    return rowData.cantidad
+      ? Number(rowData.cantidad).toLocaleString("es-PE", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
+      : "";
+  };
+
   const precioTemplate = (rowData) => {
+    const codigoMoneda = getCodigoMoneda();
     return rowData.precioUnitario
-      ? `S/ ${Number(rowData.precioUnitario).toFixed(2)}`
+      ? `${codigoMoneda} ${Number(rowData.precioUnitario).toLocaleString("es-PE", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`
       : "";
   };
 
   const subtotalTemplate = (rowData) => {
-    return rowData.subtotal ? `S/ ${Number(rowData.subtotal).toFixed(2)}` : "";
+    const codigoMoneda = getCodigoMoneda();
+    return rowData.subtotal
+      ? `${codigoMoneda} ${Number(rowData.subtotal).toLocaleString("es-PE", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`
+      : "";
   };
 
   const accionesTemplate = (rowData) => (
@@ -172,7 +207,9 @@ export default function DetallesTab({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={{ fontWeight: "bold" }}>IGV ({porcentajeIGV || 0}%)</label>
+          <label style={{ fontWeight: "bold" }}>
+            IGV ({porcentajeIGV || 0}%)
+          </label>
           <InputNumber
             value={totalIGV || 0}
             mode="currency"
@@ -189,7 +226,9 @@ export default function DetallesTab({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={{ fontWeight: "bold", color: "#2196F3" }}>Precio Compra Total</label>
+          <label style={{ fontWeight: "bold", color: "#2196F3" }}>
+            Precio Compra Total
+          </label>
           <InputNumber
             value={total || 0}
             mode="currency"
@@ -209,28 +248,56 @@ export default function DetallesTab({
       </div>
 
       <DataTable
+        key={`detalle-table-${monedaId || 'default'}`}
         value={detalles}
         loading={loading}
         emptyMessage="No hay detalles agregados"
+        paginator
+        rows={10}
+        rowsPerPageOptions={[10, 15, 20, 40]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} órdenes"
+        size="small"
+        showGridlines
+        stripedRows
+        sortField="id"
+        sortOrder={-1}
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => handleEdit(e.data)
+            : undefined
+        }
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
       >
         <Column field="producto.descripcionArmada" header="Producto" />
-        <Column field="cantidad" header="Cantidad" style={{ width: "100px" }} />
+        <Column
+          field="cantidad"
+          header="Cantidad"
+          body={cantidadTemplate}
+          style={{ width: "100px", textAlign: "right" }}
+          bodyStyle={{ textAlign: "right" }}
+        />
         <Column
           field="producto.unidadMedida.nombre"
           header="Unidad"
-          style={{ width: "100px" }}
         />
         <Column
           field="precioUnitario"
           header="Precio Unit."
           body={precioTemplate}
-          style={{ width: "120px" }}
+          style={{ width: "140px", textAlign: "right" }}
+          bodyStyle={{ textAlign: "right" }}
         />
         <Column
           field="subtotal"
           header="Subtotal"
           body={subtotalTemplate}
-          style={{ width: "120px" }}
+          style={{ width: "140px", textAlign: "right" }}
+          bodyStyle={{ textAlign: "right" }}
         />
         <Column
           header="Acciones"
@@ -245,7 +312,10 @@ export default function DetallesTab({
         detalle={editingDetalle}
         ordenCompraId={ordenCompraId}
         productos={productos}
+        empresaId={empresaId}
         datosGenerales={datosGenerales}
+        empresas={empresas}
+        puedeEditarDetalles={puedeEditar}
         onSaveSuccess={handleSaveSuccess}
         toast={toast}
       />

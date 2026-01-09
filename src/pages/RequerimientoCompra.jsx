@@ -400,6 +400,13 @@ export default function RequerimientoCompra({ ruta }) {
         life: 3000,
       });
 
+      // Recargar el requerimiento actualizado para reflejar el nuevo estado
+      const { getRequerimientoCompraPorId } = await import(
+        "../api/requerimientoCompra"
+      );
+      const requerimientoActualizado = await getRequerimientoCompraPorId(id);
+      setEditing(requerimientoActualizado);
+
       // setShowDialog(false); // No cerrar el diálogo para que el usuario pueda seguir viendo el requerimiento
       cargarDatos();
     } catch (err) {
@@ -760,13 +767,14 @@ export default function RequerimientoCompra({ ruta }) {
           </div>
         }
       >
-        <Column field="id" header="ID" style={{ width: 80 }} />
+        <Column field="id" header="ID" style={{ width: 80 }} sortable/>
+                <Column field="empresaId" header="Empresa" body={empresaNombre} sortable/>
         <Column field="numeroDocumento" header="Nº Documento" />
-        <Column field="empresaId" header="Empresa" body={empresaNombre} />
         <Column
           field="fechaDocumento"
           header="Fecha"
           body={(rowData) => fechaTemplate(rowData, "fechaDocumento")}
+          sortable
         />
         <Column field="proveedorId" header="Proveedor" body={proveedorNombre} />
         <Column field="esConCotizacion" header="Tipo" body={tipoTemplate} />
@@ -784,10 +792,11 @@ export default function RequerimientoCompra({ ruta }) {
             : "Nuevo Requerimiento de Compra"
         }
         visible={showDialog}
-        style={{ width: "1350px", maxWidth: "95vw" }}
+        style={{ width: "1300px"}}
         onHide={() => setShowDialog(false)}
         modal
         maximizable
+        maximized={true}
       >
         <RequerimientoCompraForm
           isEdit={!!editing}

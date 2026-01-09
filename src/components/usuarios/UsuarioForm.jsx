@@ -494,7 +494,6 @@ export default function UsuarioForm({
                   // Forzar validación manual para ver errores
                   handleSubmit(
                     (data) => {
-                      console.log('✅ VALIDACIÓN EXITOSA:', data);
                       handleFormSubmit(data);
                     },
                     (errors) => {

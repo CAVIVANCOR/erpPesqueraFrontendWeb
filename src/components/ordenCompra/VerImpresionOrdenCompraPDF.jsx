@@ -61,6 +61,9 @@ const VerImpresionOrdenCompraPDF = ({
     setGenerando(true);
 
     try {
+      console.log('🔍 [VerImpresionOrdenCompraPDF] datosOrdenCompra recibidos:', datosOrdenCompra);
+      console.log('🔍 [VerImpresionOrdenCompraPDF] personalOptions:', personalOptions);
+      
       // Obtener empresa de la orden
       const empresa = datosOrdenCompra.empresa;
 
@@ -70,29 +73,44 @@ const VerImpresionOrdenCompraPDF = ({
       // Construir objetos solicitante y aprobadoPor desde personalOptions
       const ordenConPersonal = { ...datosOrdenCompra };
       
+      console.log('🔍 [VerImpresionOrdenCompraPDF] solicitanteId:', datosOrdenCompra.solicitanteId);
+      console.log('🔍 [VerImpresionOrdenCompraPDF] solicitante existente:', datosOrdenCompra.solicitante);
+      
       if (datosOrdenCompra.solicitanteId && !datosOrdenCompra.solicitante) {
         const solicitante = personalOptions.find(
           (p) => Number(p.id || p.value) === Number(datosOrdenCompra.solicitanteId)
         );
+        console.log('🔍 [VerImpresionOrdenCompraPDF] solicitante encontrado:', solicitante);
         if (solicitante) {
           ordenConPersonal.solicitante = {
             nombreCompleto: solicitante.nombreCompleto || solicitante.label,
             numeroDocumento: solicitante.numeroDocumento,
+            cargo: solicitante.cargo,
           };
         }
       }
+      
+      console.log('🔍 [VerImpresionOrdenCompraPDF] aprobadoPorId:', datosOrdenCompra.aprobadoPorId);
+      console.log('🔍 [VerImpresionOrdenCompraPDF] aprobadoPor existente:', datosOrdenCompra.aprobadoPor);
       
       if (datosOrdenCompra.aprobadoPorId && !datosOrdenCompra.aprobadoPor) {
         const aprobadoPor = personalOptions.find(
           (p) => Number(p.id || p.value) === Number(datosOrdenCompra.aprobadoPorId)
         );
+        console.log('🔍 [VerImpresionOrdenCompraPDF] aprobadoPor encontrado:', aprobadoPor);
         if (aprobadoPor) {
           ordenConPersonal.aprobadoPor = {
             nombreCompleto: aprobadoPor.nombreCompleto || aprobadoPor.label,
             numeroDocumento: aprobadoPor.numeroDocumento,
+            cargo: aprobadoPor.cargo,
           };
         }
       }
+      
+      console.log('🔍 [VerImpresionOrdenCompraPDF] ordenConPersonal.solicitante:', ordenConPersonal.solicitante);
+      console.log('🔍 [VerImpresionOrdenCompraPDF] ordenConPersonal.aprobadoPor:', ordenConPersonal.aprobadoPor);
+      console.log('🔍 [VerImpresionOrdenCompraPDF] ordenConPersonal.centroCosto:', ordenConPersonal.centroCosto);
+      console.log('🔍 [VerImpresionOrdenCompraPDF] ordenConPersonal.proveedor:', ordenConPersonal.proveedor);
 
       // Generar y subir el PDF
       const resultado = await generarYSubirPDFOrdenCompra(

@@ -7,6 +7,7 @@ import DatosGeneralesContratoCard from "./DatosGeneralesContratoCard";
 import ContratoServicioPdfCard from "./ContratoServicioPdfCard";
 import EntregaARendirContratoCard from "./EntregaARendirContratoCard";
 import { getSeriesDoc } from "../../api/contratoServicio";
+import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 
 const ContratoServicioForm = ({
   contrato = null,
@@ -42,6 +43,7 @@ const ContratoServicioForm = ({
   const [countEntregasRendir, setCountEntregasRendir] = useState(0);
   const [detallesCount, setDetallesCount] = useState(contrato?.detallesServicios?.length || 0);
   const [totales, setTotales] = useState({ subtotal: 0, total: 0 });
+  const [fechaCelebracionInicial, setFechaCelebracionInicial] = useState(null);
 
   const [formData, setFormData] = useState({
     id: contrato?.id || null,
@@ -127,6 +129,59 @@ const ContratoServicioForm = ({
   useEffect(() => {
     setFormData((prev) => ({ ...prev, urlContratoPdf: urlContratoPdf }));
   }, [urlContratoPdf]);
+
+  // Guardar fecha inicial para evitar carga automática en mount
+  useEffect(() => {
+    if (formData.fechaCelebracion && fechaCelebracionInicial === null) {
+      setFechaCelebracionInicial(formData.fechaCelebracion);
+    }
+  }, [formData.fechaCelebracion, fechaCelebracionInicial]);
+
+  // Cargar tipo de cambio SUNAT solo cuando el usuario modifica manualmente fechaCelebracion
+  useEffect(() => {
+    const cargarTipoCambio = async () => {
+      // No ejecutar si no hay fecha o si es la carga inicial
+      if (!formData.fechaCelebracion || fechaCelebracionInicial === null) return;
+      
+      // Comparar fechas por valor (ISO string) en lugar de por referencia
+      const fechaActualISO = new Date(formData.fechaCelebracion).toISOString();
+      const fechaInicialISO = new Date(fechaCelebracionInicial).toISOString();
+      
+      // No ejecutar si la fecha no ha cambiado realmente
+      if (fechaActualISO === fechaInicialISO) return;
+
+      try {
+        // Convertir fecha a formato YYYY-MM-DD
+        const fecha = new Date(formData.fechaCelebracion);
+        const fechaISO = fecha.toISOString().split('T')[0];
+
+        // Consultar tipo de cambio SUNAT
+        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
+        
+        // Para COMPRAS DE SERVICIOS usamos sell_price (precio de venta del dólar)
+        if (tipoCambioData && tipoCambioData.sell_price) {
+          const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
+          handleChange("tipoCambio", tipoCambioVenta.toFixed(3));
+          
+          // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
+          setFechaCelebracionInicial(formData.fechaCelebracion);
+          
+          toast?.current?.show({
+            severity: "success",
+            summary: "Tipo de Cambio Actualizado",
+            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioVenta.toFixed(3)} por USD`,
+            life: 3000,
+          });
+        }
+      } catch (error) {
+        console.error("Error al cargar tipo de cambio SUNAT:", error);
+        // No mostrar error al usuario, solo log en consola
+        // El usuario puede ingresar el tipo de cambio manualmente si falla
+      }
+    };
+
+    cargarTipoCambio();
+  }, [formData.fechaCelebracion, fechaCelebracionInicial]);
 
   // Recalcular totales cuando cambien los detalles
   useEffect(() => {

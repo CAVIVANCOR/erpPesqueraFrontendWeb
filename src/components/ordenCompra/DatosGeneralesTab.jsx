@@ -5,10 +5,10 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { InputTextarea } from "primereact/inputtextarea";
 import { InputNumber } from "primereact/inputnumber";
-import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
 import DetallesTab from "./DetallesTab";
+import { getResponsiveFontSize } from "../../utils/utils";
 
 export default function DatosGeneralesTab({
   formData,
@@ -38,6 +38,8 @@ export default function DatosGeneralesTab({
   // Objeto moneda de la orden (viene de la relación)
   monedaOrden = null,
   readOnly = false,
+  permisos = {},
+  onIrAlOrigen,
 }) {
   // Helper para obtener código de moneda (ISO)
   const getCodigoMoneda = () => {
@@ -46,7 +48,9 @@ export default function DatosGeneralesTab({
       return monedaOrden.codigoSunat;
     }
     // Prioridad 2: Buscar en el array de opciones (fallback)
-    const moneda = monedas.find((m) => Number(m.id) === Number(formData.monedaId));
+    const moneda = monedas.find(
+      (m) => Number(m.id) === Number(formData.monedaId)
+    );
     return moneda?.codigoSunat || "PEN";
   };
   return (
@@ -55,17 +59,17 @@ export default function DatosGeneralesTab({
         style={{
           alignItems: "end",
           display: "flex",
-          gap: 10,
+          gap: 5,
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
         <div style={{ flex: 1.5 }}>
           {/* EMPRESA */}
-          <label htmlFor="empresaId">Empresa*</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="empresaId">Empresa*</label>
           <Dropdown
             id="empresaId"
             value={formData.empresaId}
-            style={{fontWeight:"bold", textTransform:"uppercase"}}
+            style={{ fontWeight: "bold", textTransform: "uppercase" }}
             options={empresas.map((e) => ({
               label: e.razonSocial,
               value: Number(e.id),
@@ -77,7 +81,7 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 0.7 }}>
           {/* FECHA DOCUMENTO */}
-          <label htmlFor="fechaDocumento">Fecha Documento*</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="fechaDocumento">Fecha Documento*</label>
           <Calendar
             id="fechaDocumento"
             value={formData.fechaDocumento}
@@ -90,10 +94,12 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 1 }}>
           {/* TIPO DOCUMENTO - Siempre ID 17: ORDEN DE COMPRA */}
-          <label htmlFor="tipoDocumentoId">Tipo Documento*</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="tipoDocumentoId">Tipo Documento*</label>
           <Dropdown
             id="tipoDocumentoId"
-            value={formData.tipoDocumentoId ? Number(formData.tipoDocumentoId) : null}
+            value={
+              formData.tipoDocumentoId ? Number(formData.tipoDocumentoId) : null
+            }
             options={tiposDocumentoOptions}
             onChange={(e) => onChange("tipoDocumentoId", e.value)}
             optionLabel="label"
@@ -109,7 +115,7 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 1 }}>
           {/* NÚMERO DOCUMENTO */}
-          <label htmlFor="numeroDocumento">Número de Documento</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="numeroDocumento">Número de Documento</label>
           <InputText
             id="numeroDocumento"
             value={formData.numeroDocumento || ""}
@@ -122,7 +128,7 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 0.5 }}>
           {/* ESTADO */}
-          <label htmlFor="estadoId">Estado*</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="estadoId">Estado*</label>
           <Dropdown
             id="estadoId"
             value={formData.estadoId ? Number(formData.estadoId) : null}
@@ -150,7 +156,7 @@ export default function DatosGeneralesTab({
       >
         <div style={{ flex: 1 }}>
           {/* SERIE DOCUMENTO */}
-          <label htmlFor="serieDocId">Serie de Documento*</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="serieDocId">Serie de Documento*</label>
           <Dropdown
             id="serieDocId"
             value={formData.serieDocId ? Number(formData.serieDocId) : null}
@@ -159,7 +165,12 @@ export default function DatosGeneralesTab({
             optionLabel="label"
             optionValue="value"
             placeholder="Seleccionar serie"
-            disabled={!puedeEditar || readOnly || !formData.tipoDocumentoId || !!formData.serieDocId}
+            disabled={
+              !puedeEditar ||
+              readOnly ||
+              !formData.tipoDocumentoId ||
+              !!formData.serieDocId
+            }
             required
             style={{
               fontWeight: "bold",
@@ -167,9 +178,9 @@ export default function DatosGeneralesTab({
             }}
           />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 0.25 }}>
           {/* NÚMERO SERIE DOC */}
-          <label htmlFor="numSerieDoc">Número Serie Doc.</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="numSerieDoc">Serie Doc.</label>
           <InputText
             id="numSerieDoc"
             value={formData.numSerieDoc || ""}
@@ -181,9 +192,9 @@ export default function DatosGeneralesTab({
             }}
           />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 0.5 }}>
           {/* NÚMERO CORRELATIVO */}
-          <label htmlFor="numCorreDoc">Número Correlativo</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="numCorreDoc">Número Correlativo</label>
           <InputText
             id="numCorreDoc"
             value={formData.numCorreDoc || ""}
@@ -197,10 +208,12 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 2 }}>
           {/* SOLICITANTE */}
-          <label htmlFor="solicitanteId">Solicitante</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="solicitanteId">Solicitante</label>
           <Dropdown
             id="solicitanteId"
-            value={formData.solicitanteId ? Number(formData.solicitanteId) : null}
+            value={
+              formData.solicitanteId ? Number(formData.solicitanteId) : null
+            }
             options={personalOptions.map((p) => ({
               label: p.nombreCompleto,
               value: Number(p.id),
@@ -212,7 +225,29 @@ export default function DatosGeneralesTab({
             filter
             disabled={!puedeEditar || readOnly}
             showClear
-            style={{fontWeight:"bold", textTransform:"uppercase"}}
+            style={{ fontWeight: "bold", textTransform: "uppercase" }}
+          />
+        </div>
+        <div style={{ flex: 1.5 }}>
+          {/* APROBADO POR */}
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="aprobadoPorId">Aprobado Por</label>
+          <Dropdown
+            id="aprobadoPorId"
+            value={
+              formData.aprobadoPorId ? Number(formData.aprobadoPorId) : null
+            }
+            options={personalOptions.map((p) => ({
+              label: p.nombreCompleto,
+              value: Number(p.id),
+            }))}
+            onChange={(e) => onChange("aprobadoPorId", e.value)}
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccionar aprobador"
+            filter
+            disabled
+            showClear
+            style={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
       </div>
@@ -221,13 +256,13 @@ export default function DatosGeneralesTab({
         style={{
           alignItems: "end",
           display: "flex",
-          gap: 10,
+          gap: 5,
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
         <div style={{ flex: 1.5 }}>
           {/* PROVEEDOR */}
-          <label htmlFor="proveedorId">Proveedor*</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="proveedorId">Proveedor*</label>
           <Dropdown
             id="proveedorId"
             value={formData.proveedorId ? Number(formData.proveedorId) : null}
@@ -241,13 +276,13 @@ export default function DatosGeneralesTab({
             placeholder="Seleccionar proveedor"
             filter
             disabled={!puedeEditar || readOnly}
-            style={{fontWeight:"bold", textTransform:"uppercase"}}
+            style={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
 
         <div style={{ flex: 1.5 }}>
           {/* FORMA DE PAGO */}
-          <label htmlFor="formaPagoId">Forma de Pago</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="formaPagoId">Forma de Pago</label>
           <Dropdown
             id="formaPagoId"
             value={formData.formaPagoId ? Number(formData.formaPagoId) : null}
@@ -261,13 +296,13 @@ export default function DatosGeneralesTab({
             placeholder="Seleccionar forma de pago"
             disabled={!puedeEditar || readOnly}
             showClear
-            style={{fontWeight:"bold", textTransform:"uppercase"}}
+            style={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
 
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 0.5 }}>
           {/* FECHA ENTREGA */}
-          <label htmlFor="fechaEntrega">Fecha Entrega</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="fechaEntrega">Fecha Entrega</label>
           <Calendar
             id="fechaEntrega"
             value={formData.fechaEntrega}
@@ -275,13 +310,13 @@ export default function DatosGeneralesTab({
             dateFormat="dd/mm/yy"
             showIcon
             disabled={!puedeEditar || readOnly}
-            inputStyle={{fontWeight:"bold", textTransform:"uppercase"}}
+            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
 
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 0.5 }}>
           {/* FECHA RECEPCIÓN */}
-          <label htmlFor="fechaRecepcion">Fecha Recepción</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="fechaRecepcion">Fecha Recepción</label>
           <Calendar
             id="fechaRecepcion"
             value={formData.fechaRecepcion}
@@ -289,7 +324,18 @@ export default function DatosGeneralesTab({
             dateFormat="dd/mm/yy"
             showIcon
             disabled={!puedeEditar || readOnly}
-            inputStyle={{fontWeight:"bold", textTransform:"uppercase"}}
+            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+          />
+        </div>
+        <div style={{ flex: 1.5 }}>
+          {/* OBSERVACIONES */}
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="observaciones">Observaciones</label>
+          <InputText
+            id="observaciones"
+            value={formData.observaciones}
+            onChange={(e) => onChange("observaciones", e.target.value)}
+            disabled={!puedeEditar || readOnly}
+            style={{ color: "red", fontStyle: "italic", fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
       </div>
@@ -298,34 +344,37 @@ export default function DatosGeneralesTab({
         style={{
           alignItems: "end",
           display: "flex",
-          gap: 10,
+          gap: 5,
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
-        <div style={{ flex: 1 }}>
-          {/* APROBADO POR */}
-          <label htmlFor="aprobadoPorId">Aprobado Por</label>
+        <div style={{ flex: 2 }}>
+          {/* CENTRO DE COSTO */}
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="centroCostoId">Centro de Costo</label>
           <Dropdown
-            id="aprobadoPorId"
-            value={formData.aprobadoPorId ? Number(formData.aprobadoPorId) : null}
-            options={personalOptions.map((p) => ({
-              label: p.nombreCompleto,
-              value: Number(p.id),
-            }))}
-            onChange={(e) => onChange("aprobadoPorId", e.value)}
+            id="centroCostoId"
+            value={
+              formData.centroCostoId ? Number(formData.centroCostoId) : null
+            }
+            options={
+              centrosCosto?.map((c) => ({
+                label: `${c.Codigo} - (${c.Nombre})`,
+                value: Number(c.id),
+              })) || []
+            }
+            onChange={(e) => onChange("centroCostoId", e.value)}
             optionLabel="label"
             optionValue="value"
-            placeholder="Seleccionar aprobador"
+            placeholder="Seleccionar centro costo"
             filter
-            disabled
+            disabled={!puedeEditar || readOnly}
             showClear
-            style={{fontWeight:"bold", textTransform:"uppercase"}}
+            style={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
-
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 0.5 }}>
           {/* MONEDA */}
-          <label htmlFor="monedaId">Moneda</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="monedaId">Moneda</label>
           <Dropdown
             id="monedaId"
             value={formData.monedaId ? Number(formData.monedaId) : null}
@@ -341,13 +390,13 @@ export default function DatosGeneralesTab({
             placeholder="Seleccionar moneda"
             disabled={!puedeEditar || readOnly}
             showClear
-            style={{fontWeight:"bold", textTransform:"uppercase"}}
+            style={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
 
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 0.25 }}>
           {/* TIPO CAMBIO */}
-          <label htmlFor="tipoCambio">Tipo de Cambio</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="tipoCambio">T/C</label>
           <InputNumber
             id="tipoCambio"
             value={formData.tipoCambio}
@@ -355,36 +404,13 @@ export default function DatosGeneralesTab({
             minFractionDigits={2}
             maxFractionDigits={4}
             disabled={!puedeEditar || readOnly}
-            inputStyle={{fontWeight:"bold", textTransform:"uppercase"}}
+            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
 
-        <div style={{ flex: 1 }}>
-          {/* CENTRO DE COSTO */}
-          <label htmlFor="centroCostoId">Centro de Costo</label>
-          <Dropdown
-            id="centroCostoId"
-            value={formData.centroCostoId ? Number(formData.centroCostoId) : null}
-            options={
-              centrosCosto?.map((c) => ({
-                label: `${c.Codigo} - (${c.Nombre})`,
-                value: Number(c.id),
-              })) || []
-            }
-            onChange={(e) => onChange("centroCostoId", e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar centro costo"
-            filter
-            disabled={!puedeEditar || readOnly}
-            showClear
-            style={{fontWeight:"bold", textTransform:"uppercase"}}
-          />
-        </div>
-
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 0.5 }}>
           {/* PORCENTAJE IGV */}
-          <label htmlFor="porcentajeIGV">% IGV</label>
+          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="porcentajeIGV">% IGV</label>
           <InputNumber
             id="porcentajeIGV"
             value={formData.porcentajeIGV}
@@ -395,61 +421,73 @@ export default function DatosGeneralesTab({
             minFractionDigits={2}
             maxFractionDigits={2}
             disabled={!puedeEditar || readOnly}
-            inputStyle={{fontWeight:"bold", textTransform:"uppercase"}}
+            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
 
         <div style={{ flex: 1 }}>
-          {/* EXONERADO AL IGV */}
-          <label htmlFor="esExoneradoAlIGV">Exonerado IGV</label>
-          <div className="flex align-items-center" style={{ height: "43px" }}>
-            <Checkbox
-              inputId="esExoneradoAlIGV"
-              checked={formData.esExoneradoAlIGV || false}
-              onChange={(e) => onChange("esExoneradoAlIGV", e.checked)}
-              disabled={!puedeEditar || readOnly}
-            />
-          </div>
-        </div>
-        {/* REQUERIMIENTO ASOCIADO (Solo lectura si existe) */}
-        {formData.requerimientoCompraId && (
-          <div className="col-12">
-            <div className="p-3 bg-green-50 border-round">
-              <div className="flex align-items-center gap-2">
-                <i className="pi pi-link text-green-600"></i>
-                <span className="font-bold">
-                  Generada desde Requerimiento ID:{" "}
-                  {formData.requerimientoCompraId}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-      <div
-        style={{
-          alignItems: "end",
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 4 }}>
-          {/* OBSERVACIONES */}
-          <label htmlFor="observaciones">Observaciones</label>
-          <InputTextarea
-            id="observaciones"
-            value={formData.observaciones}
-            onChange={(e) => onChange("observaciones", e.target.value)}
-            rows={3}
+          {/* ES EXONERADO AL IGV */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="esExoneradoAlIGV"
+          >
+            Estado IGV
+          </label>
+          <Button
+            id="esExoneradoAlIGV"
+            label={
+              formData.esExoneradoAlIGV ? "EXONERADO AL IGV" : "AFECTO AL IGV"
+            }
+            icon={
+              formData.esExoneradoAlIGV
+                ? "pi pi-times-circle"
+                : "pi pi-check-circle"
+            }
+            severity={formData.esExoneradoAlIGV ? "danger" : "success"}
+            onClick={() =>
+              onChange("esExoneradoAlIGV", !formData.esExoneradoAlIGV)
+            }
             disabled={!puedeEditar || readOnly}
+            outlined
+            style={{
+              width: "100%",
+              fontWeight: "bold",
+              justifyContent: "center",
+              color: "#000",
+            }}
           />
         </div>
+        {/* REQUERIMIENTO ASOCIADO - Botón para ir al origen */}
+        {formData.requerimientoCompraId && (
+          <div style={{ flex: 1 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="irAlOrigen"
+            >
+              Origen (Requerimiento Compra)
+            </label>
+            <Button
+              id="irAlOrigen"
+              label={`Ir al Origen ID: ${formData.requerimientoCompraId}`}
+              icon="pi pi-external-link"
+              severity="info"
+              onClick={() =>
+                onIrAlOrigen && onIrAlOrigen(formData.requerimientoCompraId)
+              }
+              outlined
+              style={{
+                width: "100%",
+                fontWeight: "bold",
+                justifyContent: "center",
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* SECCIÓN: DETALLES */}
       {isEdit && (
-        <div style={{ marginTop: 20 }}>
+        <div>
           <DetallesTab
             ordenCompraId={ordenCompraId}
             productos={productos}
@@ -463,6 +501,9 @@ export default function DatosGeneralesTab({
             monedaId={formData.monedaId}
             porcentajeIGV={formData.porcentajeIGV}
             readOnly={readOnly}
+            permisos={permisos}
+            empresaId={formData.empresaId}
+            empresas={empresas}
           />
         </div>
       )}

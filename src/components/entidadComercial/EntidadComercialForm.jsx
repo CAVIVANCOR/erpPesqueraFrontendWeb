@@ -564,14 +564,28 @@ const EntidadComercialForm = ({
       }
     } catch (error) {
       console.error("Error al guardar entidad comercial:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail:
-          error.response?.data?.message ||
-          "Error al guardar la entidad comercial",
-        life: 3000,
-      });
+      
+      // Detectar error 409 (conflicto - entidad duplicada)
+      const status = error.response?.status || error.status;
+      const mensaje = error.response?.data?.message || error.message || "Error al guardar la entidad comercial";
+      
+      if (status === 409) {
+        // Error de conflicto - mostrar toast warning (anaranjado)
+        toast.current?.show({
+          severity: "warn",
+          summary: "Entidad Duplicada",
+          detail: mensaje,
+          life: 5000,
+        });
+      } else {
+        // Otros errores - mostrar toast error (rojo)
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: mensaje,
+          life: 3000,
+        });
+      }
     } finally {
       setLoading(false);
     }

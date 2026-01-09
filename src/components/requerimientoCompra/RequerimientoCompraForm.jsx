@@ -8,6 +8,7 @@ import DetallesTab from "./DetallesTab";
 import CotizacionesCompras from "./CotizacionesCompras";
 import EntregasARendirComprasCard from "./EntregasARendirComprasCard";
 import { getSeriesDocRequerimiento } from "../../api/requerimientoCompra";
+import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
 import { getParametrosAprobadorPorModulo } from "../../api/parametroAprobador";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
@@ -171,6 +172,7 @@ export default function RequerimientoCompraForm({
   const [responsablesCompras, setResponsablesCompras] = useState([]);
   const [responsablesProduccion, setResponsablesProduccion] = useState([]);
   const [responsablesAlmacen, setResponsablesAlmacen] = useState([]);
+  const [fechaDocumentoInicial, setFechaDocumentoInicial] = useState(null);
 
   // Extraer valores individuales para compatibilidad con código existente
   const {
@@ -403,6 +405,59 @@ export default function RequerimientoCompraForm({
     cargarResponsablesAlmacen();
   }, [empresaId]);
 
+  // Guardar fecha inicial para evitar carga automática en mount
+  useEffect(() => {
+    if (fechaDocumento && fechaDocumentoInicial === null) {
+      setFechaDocumentoInicial(fechaDocumento);
+    }
+  }, [fechaDocumento, fechaDocumentoInicial]);
+
+  // Cargar tipo de cambio SUNAT solo cuando el usuario modifica manualmente fechaDocumento
+  useEffect(() => {
+    const cargarTipoCambio = async () => {
+      // No ejecutar si no hay fecha o si es la carga inicial
+      if (!fechaDocumento || fechaDocumentoInicial === null) return;
+      
+      // Comparar fechas por valor (ISO string) en lugar de por referencia
+      const fechaActualISO = new Date(fechaDocumento).toISOString();
+      const fechaInicialISO = new Date(fechaDocumentoInicial).toISOString();
+      
+      // No ejecutar si la fecha no ha cambiado realmente
+      if (fechaActualISO === fechaInicialISO) return;
+
+      try {
+        // Convertir fecha a formato YYYY-MM-DD
+        const fecha = new Date(fechaDocumento);
+        const fechaISO = fecha.toISOString().split('T')[0];
+
+        // Consultar tipo de cambio SUNAT
+        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
+        
+        // Para COMPRAS usamos sell_price (precio de venta del dólar)
+        if (tipoCambioData && tipoCambioData.sell_price) {
+          const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
+          handleChange("tipoCambio", tipoCambioVenta.toFixed(3));
+          
+          // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
+          setFechaDocumentoInicial(fechaDocumento);
+          
+          toast?.current?.show({
+            severity: "success",
+            summary: "Tipo de Cambio Actualizado",
+            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioVenta.toFixed(3)} por USD`,
+            life: 3000,
+          });
+        }
+      } catch (error) {
+        console.error("Error al cargar tipo de cambio SUNAT:", error);
+        // No mostrar error al usuario, solo log en consola
+        // El usuario puede ingresar el tipo de cambio manualmente si falla
+      }
+    };
+
+    cargarTipoCambio();
+  }, [fechaDocumento, fechaDocumentoInicial]);
+
   // Handler para cambio de serie - Calcula y muestra el próximo correlativo
   const handleSerieDocChange = (serieId) => {
     if (serieId) {
@@ -531,6 +586,17 @@ export default function RequerimientoCompraForm({
       return;
     }
 
+    // Validar que supervisorCampoId esté asignado
+    if (!data.supervisorCampoId || Number(data.supervisorCampoId) <= 0) {
+      toast.current.show({
+        severity: "error",
+        summary: "Campo Requerido",
+        detail: "Debe asignar un Supervisor de Campo. Este campo es necesario para crear la Entrega a Rendir.",
+        life: 5000,
+      });
+      return;
+    }
+
     onSubmit(data);
   };
 
@@ -549,6 +615,17 @@ export default function RequerimientoCompraForm({
         severity: "warn",
         summary: "Validación",
         detail: "Debe agregar al menos un detalle antes de aprobar",
+      });
+      return;
+    }
+
+    // Validar que supervisorCampoId esté asignado
+    if (!formData.supervisorCampoId || Number(formData.supervisorCampoId) <= 0) {
+      toast.current.show({
+        severity: "error",
+        summary: "Campo Requerido",
+        detail: "Debe asignar un Supervisor de Campo antes de aprobar el requerimiento. Este campo es necesario para crear la Entrega a Rendir.",
+        life: 5000,
       });
       return;
     }
@@ -706,7 +783,7 @@ export default function RequerimientoCompraForm({
   const monedasOptions = monedas.map((m) => ({
     ...m,
     id: Number(m.id),
-    label: `${m.nombreLargo} (${m.simbolo})`,
+    label: m.codigoSunat,
     value: Number(m.id),
   }));
 
@@ -739,6 +816,7 @@ export default function RequerimientoCompraForm({
             monedasOptions={monedasOptions}
             isEdit={isEdit}
             puedeEditar={puedeEditar}
+            puedeVerDetalles={permisos.puedeVer || puedeEditar}
             puedeEditarDetalles={puedeEditar}
             detallesCount={detallesCount}
             // Props para DetallesTab
@@ -816,31 +894,36 @@ export default function RequerimientoCompraForm({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginTop: 18,
         }}
       >
         {/* Botones izquierda: Aprobar, Anular, Autorizar Compra */}
         <div style={{ display: "flex", gap: 8 }}>
-          {/* PENDIENTE: Mostrar Aprobar y Anular */}
-          {estaPendiente && isEdit && (
-            <>
-              <Button
-                label="Aprobar"
-                icon="pi pi-check"
-                className="p-button-success"
-                onClick={handleAprobarClick}
-                disabled={readOnly || loading || !permisos.puedeEditar}
-                tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para aprobar" : ""}
-              />
-              <Button
-                label="Anular"
-                icon="pi pi-ban"
-                className="p-button-danger"
-                onClick={handleAnularClick}
-                disabled={readOnly || loading || !permisos.puedeEliminar}
-                tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEliminar ? "No tiene permisos para anular" : ""}
-              />
-            </>
+          {/* Mostrar Aprobar siempre en edición, deshabilitado si ya está aprobado */}
+          {isEdit && (
+            <Button
+              label="Aprobar"
+              icon="pi pi-check"
+              className="p-button-success"
+              onClick={handleAprobarClick}
+              disabled={!estaPendiente || readOnly || loading || !permisos.puedeEditar}
+              tooltip={
+                !estaPendiente ? "Ya fue aprobado" :
+                readOnly ? "Modo solo lectura" : 
+                !permisos.puedeEditar ? "No tiene permisos para aprobar" : ""
+              }
+            />
+          )}
+
+          {/* PENDIENTE o APROBADO: Mostrar Anular */}
+          {(estaPendiente || estaAprobado) && isEdit && (
+            <Button
+              label="Anular"
+              icon="pi pi-ban"
+              className="p-button-danger"
+              onClick={handleAnularClick}
+              disabled={readOnly || loading || !permisos.puedeEliminar}
+              tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEliminar ? "No tiene permisos para anular" : ""}
+            />
           )}
 
           {/* APROBADO: Mostrar Autorizar Compra */}

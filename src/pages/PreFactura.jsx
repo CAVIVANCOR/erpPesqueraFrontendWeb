@@ -31,6 +31,9 @@ import { getCentrosCosto } from "../api/centroCosto";
 import { getMonedas } from "../api/moneda";
 import { getIncoterms } from "../api/incoterm";
 import { getTiposContenedor } from "../api/tipoContenedor";
+import { getTiposProducto } from "../api/tipoProducto";
+import { getPersonal } from "../api/personal";
+import { getBancos } from "../api/banco";
 import { usePermissions } from "../hooks/usePermissions";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
@@ -59,6 +62,9 @@ const PreFactura = ({ ruta }) => {
   const [monedas, setMonedas] = useState([]);
   const [incoterms, setIncoterms] = useState([]);
   const [tiposContenedor, setTiposContenedor] = useState([]);
+  const [tiposProducto, setTiposProducto] = useState([]);
+  const [personalOptions, setPersonalOptions] = useState([]);
+  const [bancos, setBancos] = useState([]);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -131,6 +137,9 @@ const PreFactura = ({ ruta }) => {
         monedasData,
         incotermsData,
         tiposContenedorData,
+        tiposProductoData,
+        personalData,
+        bancosData,
       ] = await Promise.all([
         getEmpresas(),
         getTiposDocumento(),
@@ -142,7 +151,11 @@ const PreFactura = ({ ruta }) => {
         getMonedas(),
         getIncoterms(),
         getTiposContenedor(),
+        getTiposProducto(),
+        getPersonal(),
+        getBancos(),
       ]);
+
       setEmpresas(empresasData);
       setTiposDocumento(tiposDocData);
       setClientes(clientesData);
@@ -167,8 +180,10 @@ const PreFactura = ({ ruta }) => {
       setMonedas(monedasData);
       setIncoterms(incotermsData);
       setTiposContenedor(tiposContenedorData);
+      setTiposProducto(tiposProductoData);
+      setPersonalOptions(personalData);
+      setBancos(bancosData);
     } catch (err) {
-      console.error("Error al cargar datos:", err);
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -365,6 +380,92 @@ const PreFactura = ({ ruta }) => {
     setIsEditing(false);
   };
 
+  const handleAprobarPreFactura = async (preFacturaId) => {
+    if (!permisos.puedeEditar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para aprobar pre-facturas.",
+        life: 3000,
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // TODO: Implementar API de aprobación cuando esté disponible
+      // await aprobarPreFactura(preFacturaId);
+      
+      toast.current.show({
+        severity: "info",
+        summary: "Función en desarrollo",
+        detail: "La función de aprobar pre-factura estará disponible próximamente.",
+        life: 3000,
+      });
+      
+      // cargarPreFacturas();
+      // cerrarDialogo();
+    } catch (err) {
+      console.error("Error al aprobar pre-factura:", err);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo aprobar la pre-factura.",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAnularPreFactura = async (preFacturaId) => {
+    if (!permisos.puedeEliminar) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para anular pre-facturas.",
+        life: 3000,
+      });
+      return;
+    }
+
+    confirmDialog({
+      message: "¿Está seguro de anular esta pre-factura?",
+      header: "Confirmar Anulación",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
+      acceptLabel: "Sí, anular",
+      rejectLabel: "Cancelar",
+      accept: async () => {
+        setLoading(true);
+        try {
+          // TODO: Implementar API de anulación cuando esté disponible
+          // await anularPreFactura(preFacturaId);
+          
+          toast.current.show({
+            severity: "info",
+            summary: "Función en desarrollo",
+            detail: "La función de anular pre-factura estará disponible próximamente.",
+            life: 3000,
+          });
+          
+          // cargarPreFacturas();
+          // cerrarDialogo();
+        } catch (err) {
+          console.error("Error al anular pre-factura:", err);
+          toast.current.show({
+            severity: "error",
+            summary: "Error",
+            detail: "No se pudo anular la pre-factura.",
+            life: 3000,
+          });
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
   const confirmarEliminacion = (preFactura) => {
     // Validar permisos de eliminación
     if (!permisos.puedeEliminar) {
@@ -549,15 +650,10 @@ const PreFactura = ({ ruta }) => {
   };
 
   return (
-    <div className="pre-factura-container">
+    <div className="p-fluid">
       <Toast ref={toast} />
       <ConfirmDialog />
-
       <div className="card">
-        <div className="flex justify-content-between align-items-center mb-4">
-          <h2>Pre-Facturas</h2>
-        </div>
-
         <DataTable
           value={preFacturas}
           loading={loading}
@@ -566,8 +662,8 @@ const PreFactura = ({ ruta }) => {
           size="small"
           showGridlines
           stripedRows
-          rows={5}
-          rowsPerPageOptions={[5, 10, 15, 20]}
+          rows={20}
+          rowsPerPageOptions={[20, 40, 80, 160]}
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} pre-facturas"
           sortField="id"
@@ -580,11 +676,7 @@ const PreFactura = ({ ruta }) => {
           onRowClick={
             permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
           }
-          selectionMode="single"
-          className="datatable-responsive"
           emptyMessage="No se encontraron pre-facturas"
-          scrollable
-          scrollHeight="600px"
           header={
             <div>
               <div
@@ -798,13 +890,15 @@ const PreFactura = ({ ruta }) => {
 
       <Dialog
         visible={dialogVisible}
-        style={{ width: "1300px" }}
         header={
           isEditing
             ? `Editar Pre-Factura: ${selectedPreFactura?.codigo || ""}`
             : "Nueva Pre-Factura"
         }
+      style={{ width: "1300px" }}
         modal
+        maximizable
+        maximized={true}
         onHide={cerrarDialogo}
       >
         <PreFacturaForm
@@ -813,6 +907,8 @@ const PreFactura = ({ ruta }) => {
           defaultValues={selectedPreFactura}
           onSubmit={handleGuardarPreFactura}
           onCancel={cerrarDialogo}
+          onAprobar={handleAprobarPreFactura}
+          onAnular={handleAnularPreFactura}
           loading={loading}
           toast={toast}
           permisos={permisos}
@@ -820,11 +916,14 @@ const PreFactura = ({ ruta }) => {
           empresas={empresas}
           tiposDocumento={tiposDocumento}
           clientes={clientes}
+          tiposProducto={tiposProducto}
           formasPago={formasPago}
           productos={productos}
+          personalOptions={personalOptions}
           estadosDoc={estadosDoc}
           centrosCosto={centrosCosto}
           monedas={monedas}
+          bancos={bancos}
           incoterms={incoterms}
           tiposContenedor={tiposContenedor}
           empresaFija={empresaSeleccionada}

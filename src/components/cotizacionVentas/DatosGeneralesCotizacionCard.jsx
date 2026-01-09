@@ -74,7 +74,15 @@ const DatosGeneralesCotizacionCard = ({
   totalIGV = 0,
   total = 0,
   monedasOptions = [],
+  contactosClienteOptions = [],
+  direccionesClienteOptions = [],
 }) => {
+  // Obtener la moneda seleccionada dinámicamente del estado
+  const monedaSeleccionada = monedasOptions.find(
+    (m) => m.value === formData.monedaId
+  );
+  const simboloMoneda = monedaSeleccionada?.simbolo || "S/";
+
   // Cargar todas las entidades comerciales (clientes Y proveedores) cuando cambie la empresa
   useEffect(() => {
     const cargarEntidadesComerciales = async () => {
@@ -487,6 +495,7 @@ const DatosGeneralesCotizacionCard = ({
         <div style={{ flex: 0.5 }}>
           <label>Estado IGV</label>
           <Button
+            type="button"
             label={formData.esExoneradoAlIGV ? "EXONERADO" : "AFECTO"}
             severity={formData.esExoneradoAlIGV ? "danger" : "warning"}
             onClick={() => {
@@ -1019,32 +1028,6 @@ const DatosGeneralesCotizacionCard = ({
               }}
             />
           </div>
-          {/* Botón Aprobar Cotización */}
-          {formData.estadoId !== 42 && permisos.puedeAprobarDocs && (
-            <div style={{ flex: 0.5, display: "flex", alignItems: "flex-end" }}>
-              <Button
-                label="Aprobar Cotización"
-                icon="pi pi-check"
-                severity="success"
-                onClick={handleAprobarCotizacion}
-                loading={loadingAprobar}
-                disabled={disabled || loadingAprobar}
-                style={{ width: "100%", fontWeight: "bold" }}
-              />
-            </div>
-          )}
-          {/* Indicador de estado aprobado */}
-          {formData.estadoId === 42 && (
-            <div style={{ flex: 0.5, display: "flex", alignItems: "flex-end" }}>
-              <Button
-                label="APROBADO"
-                icon="pi pi-check-circle"
-                severity="success"
-                disabled
-                style={{ width: "100%", fontWeight: "bold" }}
-              />
-            </div>
-          )}
         </div>
 
         {/* SECCIÓN: OBSERVACIONES */}

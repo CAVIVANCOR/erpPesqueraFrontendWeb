@@ -13,6 +13,9 @@ import VerImpresionDocumentacionPDF from "./VerImpresionDocumentacionPDF";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
 import { getSeriesDoc } from "../../api/cotizacionVentas";
 import { getDocumentosPorCotizacion } from "../../api/detDocsReqCotizaVentas";
+import { obtenerContactosPorEntidad } from "../../api/contactoEntidad";
+import { obtenerDireccionesPorEntidad } from "../../api/direccionEntidad";
+import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 
 const CotizacionVentasForm = ({
   isEdit,
@@ -79,13 +82,11 @@ const CotizacionVentasForm = ({
   const [estadosCotizaciones, setEstadosCotizaciones] = useState([]);
   const [detallesCount, setDetallesCount] = useState(defaultValues?.detallesProductos?.length || 0);
   const [totales, setTotales] = useState({ subtotal: 0, igv: 0, total: 0 });
-
-  const responsablesVentas = personalOptions;
-  const responsablesAutorizaVenta = personalOptions;
-  const responsablesSupervisorCampo = personalOptions;
-  const responsablesEmbarque = personalOptions;
-  const responsablesProduccion = personalOptions;
-  const responsablesAlmacen = personalOptions;
+  const [contactosCliente, setContactosCliente] = useState([]);
+  const [direccionesCliente, setDireccionesCliente] = useState([]);
+  const [personalFiltrado, setPersonalFiltrado] = useState([]);
+  const [loadingAprobar, setLoadingAprobar] = useState(false);
+  const [fechaDocumentoInicial, setFechaDocumentoInicial] = useState(null);
 
   const [formData, setFormData] = useState({
     id: defaultValues?.id || null,
@@ -158,6 +159,98 @@ const CotizacionVentasForm = ({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const { empresaId, tipoDocumentoId, fechaDocumento } = formData;
+
+  // Guardar fecha inicial para evitar carga automática en mount
+  useEffect(() => {
+    if (fechaDocumento && fechaDocumentoInicial === null) {
+      setFechaDocumentoInicial(fechaDocumento);
+    }
+  }, [fechaDocumento, fechaDocumentoInicial]);
+
+  // Cargar tipo de cambio SUNAT solo cuando el usuario modifica manualmente fechaDocumento
+  useEffect(() => {
+    const cargarTipoCambio = async () => {
+      // No ejecutar si no hay fecha o si es la carga inicial
+      if (!fechaDocumento || fechaDocumentoInicial === null) return;
+      
+      // Comparar fechas por valor (ISO string) en lugar de por referencia
+      const fechaActualISO = new Date(fechaDocumento).toISOString();
+      const fechaInicialISO = new Date(fechaDocumentoInicial).toISOString();
+      
+      // No ejecutar si la fecha no ha cambiado realmente
+      if (fechaActualISO === fechaInicialISO) return;
+
+      try {
+        // Convertir fecha a formato YYYY-MM-DD
+        const fecha = new Date(fechaDocumento);
+        const fechaISO = fecha.toISOString().split('T')[0];
+
+        // Consultar tipo de cambio SUNAT
+        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
+        
+        // Para VENTAS usamos buy_price (precio de compra del dólar)
+        if (tipoCambioData && tipoCambioData.buy_price) {
+          const tipoCambioCompra = parseFloat(tipoCambioData.buy_price);
+          handleChange("tipoCambio", tipoCambioCompra.toFixed(3));
+          
+          // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
+          setFechaDocumentoInicial(fechaDocumento);
+          
+          toast?.current?.show({
+            severity: "success",
+            summary: "Tipo de Cambio Actualizado",
+            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioCompra.toFixed(3)} por USD`,
+            life: 3000,
+          });
+        }
+      } catch (error) {
+        console.error("Error al cargar tipo de cambio SUNAT:", error);
+        // No mostrar error al usuario, solo log en consola
+        // El usuario puede ingresar el tipo de cambio manualmente si falla
+      }
+    };
+
+    cargarTipoCambio();
+  }, [fechaDocumento, fechaDocumentoInicial]);
+
+  // Filtrar personal por empresa
+  useEffect(() => {
+    if (personalOptions && personalOptions.length > 0 && empresaId) {
+      const personalPorEmpresa = personalOptions.filter(
+        (p) => Number(p.empresaId) === Number(empresaId)
+      );
+      setPersonalFiltrado(personalPorEmpresa);
+    } else {
+      setPersonalFiltrado([]);
+    }
+  }, [personalOptions, empresaId]);
+
+  // Personal general (todos los responsables excepto Resp. Ventas)
+  const personalOptionsFormatted = (personalFiltrado || []).map((p) => ({
+    ...p,
+    id: Number(p.id),
+    label: `${p.nombres} ${p.apellidos}`,
+    value: Number(p.id),
+  }));
+
+  // Personal vendedor (solo para Resp. Ventas - filtrado por esVendedor=true)
+  const personalVendedorOptions = (personalFiltrado || [])
+    .filter((p) => p.esVendedor === true)
+    .map((p) => ({
+      ...p,
+      id: Number(p.id),
+      label: `${p.nombres} ${p.apellidos}`,
+      value: Number(p.id),
+    }));
+
+  const responsablesVentas = personalVendedorOptions;
+  const responsablesAutorizaVenta = personalOptionsFormatted;
+  const responsablesSupervisorCampo = personalOptionsFormatted;
+  const responsablesEmbarque = personalOptionsFormatted;
+  const responsablesProduccion = personalOptionsFormatted;
+  const responsablesAlmacen = personalOptionsFormatted;
+
   const handleDocumentosGenerados = async () => {
     // Recargar documentos desde la API
     if (defaultValues?.id) {
@@ -202,8 +295,6 @@ const CotizacionVentasForm = ({
       }
     }
   };
-
-  const { empresaId, tipoDocumentoId } = formData;
 
   const tiposEstadoProductoOptions = tiposEstadoProducto.map((t) => ({
     ...t,
@@ -277,6 +368,30 @@ const CotizacionVentasForm = ({
   useEffect(() => {
     setClientes(clientesProp);
   }, [clientesProp]);
+
+  // Cargar contactos y direcciones del cliente cuando cambie clienteId
+  useEffect(() => {
+    const cargarContactosYDirecciones = async () => {
+      if (formData.clienteId) {
+        try {
+          const contactos = await obtenerContactosPorEntidad(formData.clienteId);
+          setContactosCliente(contactos || []);
+
+          const direcciones = await obtenerDireccionesPorEntidad(formData.clienteId);
+          setDireccionesCliente(direcciones || []);
+        } catch (err) {
+          console.error("Error al cargar contactos/direcciones del cliente:", err);
+          setContactosCliente([]);
+          setDireccionesCliente([]);
+        }
+      } else {
+        setContactosCliente([]);
+        setDireccionesCliente([]);
+      }
+    };
+
+    cargarContactosYDirecciones();
+  }, [formData.clienteId]);
 
   useEffect(() => {
     const cargarSeriesDoc = async () => {
@@ -359,6 +474,9 @@ const CotizacionVentasForm = ({
     if (!formData.formaPagoId) camposFaltantes.push("Forma de Pago");
     if (!formData.monedaId) camposFaltantes.push("Moneda");
     if (!formData.estadoId) camposFaltantes.push("Estado");
+    if (!formData.respVentasId || Number(formData.respVentasId) <= 0) {
+      camposFaltantes.push("Responsable de Ventas (necesario para Entrega a Rendir)");
+    }
 
     // Validaciones condicionales para exportación
     if (formData.esExportacion) {
@@ -420,6 +538,40 @@ const CotizacionVentasForm = ({
     if (onCancel) onCancel();
   };
 
+  // Función para aprobar cotización
+  const handleAprobarCotizacion = async () => {
+    if (!defaultValues?.id) {
+      toast?.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe guardar la cotización antes de aprobarla",
+        life: 3000,
+      });
+      return;
+    }
+
+    setLoadingAprobar(true);
+    try {
+      // TODO: Implementar API de aprobación cuando esté disponible
+      toast?.current?.show({
+        severity: "info",
+        summary: "Función en desarrollo",
+        detail: "La función de aprobar cotización estará disponible próximamente.",
+        life: 3000,
+      });
+    } catch (err) {
+      console.error("Error al aprobar cotización:", err);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo aprobar la cotización.",
+        life: 3000,
+      });
+    } finally {
+      setLoadingAprobar(false);
+    }
+  };
+
   const handleTabChange = (e) => {
     setActiveCard(e.index);
   };
@@ -436,6 +588,22 @@ const CotizacionVentasForm = ({
     id: Number(s.id),
     label: `${s.serie} (Correlativo: ${Number(s.correlativo)})`,
     value: Number(s.id),
+  }));
+
+  // Opciones de contactos del cliente
+  const contactosClienteOptions = (contactosCliente || []).map((c) => ({
+    ...c,
+    id: Number(c.id),
+    label: `${c.nombres} ${c.compras ? ` - COMPRAS` : ""}${c.finanzas ? ` - FINANZAS` : ""}${c.logistica ? ` - LOGISTICA` : ""}${c.ventas ? ` - VENTAS` : ""}`,
+    value: Number(c.id),
+  }));
+
+  // Opciones de direcciones del cliente
+  const direccionesClienteOptions = (direccionesCliente || []).map((d) => ({
+    ...d,
+    id: Number(d.id),
+    label: d.direccion || `${d.calle || ""} ${d.numero || ""}`.trim(),
+    value: Number(d.id),
   }));
 
   return (
@@ -488,7 +656,9 @@ const CotizacionVentasForm = ({
               subtotal={totales.subtotal}
               totalIGV={totales.igv}
               total={totales.total}
-              monedasOptions={monedas.map(m => ({ value: m.id, codigoSunat: m.codigoSunat || 'PEN' }))}
+              monedasOptions={monedas.map(m => ({ value: m.id, codigoSunat: m.codigoSunat || 'PEN', simbolo: m.simbolo }))}
+              contactosClienteOptions={contactosClienteOptions}
+              direccionesClienteOptions={direccionesClienteOptions}
               readOnly={readOnly}
             />
           </TabPanel>
@@ -554,6 +724,28 @@ const CotizacionVentasForm = ({
         <div className="flex justify-content-end gap-2 mt-4">
           <Button type="button" label="Cancelar" icon="pi pi-times" className="p-button-secondary" onClick={handleCancel} disabled={loading || loadingProp} />
           <Button type="submit" label={defaultValues ? "Actualizar" : "Guardar"} icon="pi pi-save" className="p-button-primary" loading={loading || loadingProp} disabled={readOnly || !permisos.puedeEditar} tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""} />
+          {/* Botón Aprobar Cotización */}
+          {formData.estadoId !== 42 && permisos.puedeAprobarDocs && defaultValues?.id && (
+            <Button
+              type="button"
+              label="Aprobar Cotización"
+              icon="pi pi-check"
+              className="p-button-success"
+              onClick={handleAprobarCotizacion}
+              loading={loadingAprobar}
+              disabled={loading || loadingProp || loadingAprobar}
+            />
+          )}
+          {/* Indicador de estado aprobado */}
+          {formData.estadoId === 42 && (
+            <Button
+              type="button"
+              label="APROBADO"
+              icon="pi pi-check-circle"
+              className="p-button-success"
+              disabled
+            />
+          )}
         </div>
       </form>
     </div>

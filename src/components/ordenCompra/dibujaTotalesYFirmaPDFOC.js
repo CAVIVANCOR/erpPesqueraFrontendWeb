@@ -37,45 +37,46 @@ export function dibujaTotalesYFirmaPDFOC({
     : subtotalGeneral * (Number(ordenCompra.porcentajeIGV) / 100 || 0.18);
   const total = subtotalGeneral + igv;
 
-  // Subtotal
-  page.drawText("Subtotal:", {
-    x: totalesX,
-    y: yPosition,
-    size: 9,
-    font: fontBold,
-  });
-  const subtotalText = `S/ ${formatearNumero(subtotalGeneral)}`;
-  const subtotalWidth = fontNormal.widthOfTextAtSize(subtotalText, 9);
-  page.drawText(subtotalText, {
-    x: totalesX + totalesWidth - subtotalWidth - 10,
-    y: yPosition,
-    size: 9,
-    font: fontNormal,
-  });
+  // LÓGICA CONDICIONAL: Si está exonerado, NO mostrar Subtotal ni IGV, solo Total
+  if (!ordenCompra.esExoneradoAlIGV) {
+    // Subtotal (solo si NO está exonerado)
+    page.drawText("Subtotal:", {
+      x: totalesX,
+      y: yPosition,
+      size: 9,
+      font: fontBold,
+    });
+    const subtotalText = `S/ ${formatearNumero(subtotalGeneral)}`;
+    const subtotalWidth = fontNormal.widthOfTextAtSize(subtotalText, 9);
+    page.drawText(subtotalText, {
+      x: totalesX + totalesWidth - subtotalWidth - 10,
+      y: yPosition,
+      size: 9,
+      font: fontNormal,
+    });
 
-  yPosition -= totalesLineHeight;
+    yPosition -= totalesLineHeight;
 
-  // IGV
-  const igvLabel = ordenCompra.esExoneradoAlIGV 
-    ? "IGV (Exonerado):" 
-    : `IGV (${ordenCompra.porcentajeIGV || 18}%):`;
-  
-  page.drawText(igvLabel, {
-    x: totalesX,
-    y: yPosition,
-    size: 9,
-    font: fontBold,
-  });
-  const igvText = `S/ ${formatearNumero(igv)}`;
-  const igvWidth = fontNormal.widthOfTextAtSize(igvText, 9);
-  page.drawText(igvText, {
-    x: totalesX + totalesWidth - igvWidth - 10,
-    y: yPosition,
-    size: 9,
-    font: fontNormal,
-  });
+    // IGV (solo si NO está exonerado)
+    const igvLabel = `IGV (${ordenCompra.porcentajeIGV || 18}%):`;
+    
+    page.drawText(igvLabel, {
+      x: totalesX,
+      y: yPosition,
+      size: 9,
+      font: fontBold,
+    });
+    const igvText = `S/ ${formatearNumero(igv)}`;
+    const igvWidth = fontNormal.widthOfTextAtSize(igvText, 9);
+    page.drawText(igvText, {
+      x: totalesX + totalesWidth - igvWidth - 10,
+      y: yPosition,
+      size: 9,
+      font: fontNormal,
+    });
 
-  yPosition -= totalesLineHeight + 5;
+    yPosition -= totalesLineHeight + 5;
+  }
 
   // Total con fondo
   page.drawRectangle({
@@ -187,9 +188,10 @@ export function dibujaTotalesYFirmaPDFOC({
       font: fontNormal,
     });
 
-    // Etiqueta "Aprobado Por"
+    // Cargo del aprobador
     yFirma -= 10;
-    page.drawText("Aprobado Por", {
+    const cargoAprobador = ordenCompra.aprobadoPor.cargo?.descripcion || "Aprobado Por";
+    page.drawText(cargoAprobador, {
       x: firmaDerX,
       y: yFirma,
       size: 7,

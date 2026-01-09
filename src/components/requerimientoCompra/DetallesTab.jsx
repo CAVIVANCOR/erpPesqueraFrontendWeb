@@ -102,18 +102,33 @@ export default function DetallesTab({
     cargarDetalles();
   };
 
+  const cantidadTemplate = (rowData) => {
+    return rowData.cantidad
+      ? Number(rowData.cantidad).toLocaleString("es-PE", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
+      : "";
+  };
+
   const costoTemplate = (rowData) => {
+    const codigoMoneda = getCodigoMoneda();
     return rowData.costoUnitario
-      ? `S/ ${formatearNumero(rowData.costoUnitario)}`
+      ? `${codigoMoneda} ${Number(rowData.costoUnitario).toLocaleString("es-PE", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`
       : "";
   };
 
   const subtotalTemplate = (rowData) => {
-    return rowData.subtotal ? `S/ ${formatearNumero(rowData.subtotal)}` : "";
-  };
-
-  const cantidadTemplate = (rowData) => {
-    return <span style={{ fontWeight: "bold" }}>{rowData.cantidad}</span>;
+    const codigoMoneda = getCodigoMoneda();
+    return rowData.subtotal
+      ? `${codigoMoneda} ${Number(rowData.subtotal).toLocaleString("es-PE", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`
+      : "";
   };
 
   const productoTemplate = (rowData) => {
@@ -133,20 +148,14 @@ export default function DetallesTab({
       <Button
         icon={puedeEditarDetalles ? "pi pi-pencil" : "pi pi-eye"}
         className="p-button-text p-button-sm"
-        onClick={(e) => {
-          e.stopPropagation();
-          handleEdit(rowData);
-        }}
+        onClick={() => handleEdit(rowData)}
         tooltip={puedeEditarDetalles ? "Editar detalle" : "Ver detalle"}
         style={{ padding: "0.25rem" }}
       />
       <Button
         icon="pi pi-trash"
         className="p-button-text p-button-danger p-button-sm"
-        onClick={(e) => {
-          e.stopPropagation();
-          handleDelete(rowData);
-        }}
+        onClick={() => handleDelete(rowData)}
         disabled={!puedeEditarDetalles}
         tooltip={puedeEditarDetalles ? "Eliminar detalle" : "No se puede eliminar en este estado"}
         style={{ padding: "0.25rem" }}
@@ -248,6 +257,7 @@ export default function DetallesTab({
       </div>
 
       <DataTable
+        key={`detalle-table-${monedaId || 'default'}`}
         value={detalles}
         loading={loading}
         emptyMessage="No hay detalles agregados"
@@ -262,8 +272,8 @@ export default function DetallesTab({
         }}
         selectionMode="single"
         paginator
-        rows={5}
-        rowsPerPageOptions={[5, 10, 15, 20]}
+        rows={10}
+        rowsPerPageOptions={[10, 15, 20, 40]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} detalles"
       >
@@ -282,25 +292,28 @@ export default function DetallesTab({
           field="cantidad" 
           header="Cantidad" 
           body={cantidadTemplate}
-          style={{ width: "100px", borderRight: "1px solid #dee2e6", textAlign: "center", fontWeight: "bold" }} 
+          style={{ width: "100px", borderRight: "1px solid #dee2e6", textAlign: "right" }}
+          bodyStyle={{ textAlign: "right" }}
         />
         <Column
           field="producto.unidadMedida.nombre"
           header="Unidad/Empaque"
           body={unidadTemplate}
-          style={{ width: "180px", borderRight: "1px solid #dee2e6", textAlign: "center" }}
+          style={{ borderRight: "1px solid #dee2e6", textAlign: "center" }}
         />
         <Column
           field="costoUnitario"
-          header="Precio Unit. Compra"
+          header="P. Unit. Compra"
           body={costoTemplate}
-          style={{ width: "150px", borderRight: "1px solid #dee2e6", textAlign: "right", fontWeight: "bold" }}
+          style={{ width: "150px", borderRight: "1px solid #dee2e6", textAlign: "right" }}
+          bodyStyle={{ textAlign: "right" }}
         />
         <Column
           field="subtotal"
-          header="Precio Total Compra"
+          header="P. Total Compra"
           body={subtotalTemplate}
-          style={{ width: "150px", borderRight: "1px solid #dee2e6", textAlign: "right", fontWeight: "bold" }}
+          style={{ width: "150px", borderRight: "1px solid #dee2e6", textAlign: "right" }}
+          bodyStyle={{ textAlign: "right" }}
         />
         <Column
           header="Acciones"

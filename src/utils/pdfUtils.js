@@ -599,6 +599,12 @@ export const descargarPdf = async (
       urlCompleta = `${
         import.meta.env.VITE_API_URL
       }/det-movs-entrega-rendir-ot-mantenimiento-pdf/archivo-operacion/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/ordenes-compra/")) {
+      // ✅ NUEVO: Soporte para PDFs de órdenes de compra
+      const rutaArchivo = urlPdf.replace("/uploads/ordenes-compra/", "");
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/orden-compra/archivo/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/movimientos-almacen/")) {
       // ✅ NUEVO: Soporte para PDFs de movimientos de almacén
       const rutaArchivo = urlPdf.replace("/uploads/movimientos-almacen/", "");

@@ -38,7 +38,9 @@ export default function DetalleDialog({
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
 
   // Obtener entidadComercialId de la empresa seleccionada
-  const empresaSeleccionada = empresas?.find((e) => Number(e.id) === Number(empresaId));
+  const empresaSeleccionada = empresas?.find(
+    (e) => Number(e.id) === Number(empresaId)
+  );
   const entidadComercialId = empresaSeleccionada?.entidadComercialId;
 
   // Obtener código de moneda de la cabecera (datosGenerales.moneda)
@@ -54,7 +56,9 @@ export default function DetalleDialog({
         observaciones: detalle.observaciones || "",
       });
       // Buscar el producto seleccionado
-      const producto = productos.find((p) => Number(p.id) === Number(detalle.productoId));
+      const producto = productos.find(
+        (p) => Number(p.id) === Number(detalle.productoId)
+      );
       setProductoSeleccionado(producto || null);
     } else {
       setFormData({
@@ -163,88 +167,60 @@ export default function DetalleDialog({
     >
       <div className="p-fluid">
         {/* Selección de Producto */}
-        <div style={{ marginBottom: "16px" }}>
-          <label
-            style={{
-              fontWeight: "bold",
-              display: "block",
-              marginBottom: "8px",
-            }}
+        {productoSeleccionado ? (
+          <Panel
+            header="Producto/Servicio Seleccionado"
+            style={{ marginBottom: "1rem" }}
           >
-            Producto *
-          </label>
-          {productoSeleccionado ? (
-            <Panel>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  {/* Descripción Armada en grande */}
-                  <div
-                    style={{
-                      fontWeight: "bold",
-                      color: "#1976d2",
-                      fontSize: "1.4em",
-                      marginBottom: "12px",
-                      lineHeight: "1.3",
-                    }}
-                  >
-                    {productoSeleccionado.descripcionArmada ||
-                      productoSeleccionado.nombre}
-                  </div>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 4 }}>
+                {/* Descripción Armada en grande */}
+                <div
+                  style={{
+                    fontWeight: "bold",
+                    color: "#1976d2",
+                    fontSize: "1.4em",
+                    lineHeight: "1.3",
+                  }}
+                >
+                  {productoSeleccionado.descripcionArmada}
+                </div>
 
-                  {/* Unidad de Empaque */}
-                  <div
-                    style={{
-                      fontSize: "1em",
-                      color: "#333",
-                      marginBottom: "6px",
-                      fontWeight: "500",
-                    }}
-                  >
-                    <strong>Unidad:</strong>{" "}
-                    {productoSeleccionado.unidadMedida?.nombre || "-"}
-                  </div>
-
+                {/* Unidad de Empaque */}
+                <div>
+                  <strong>Unidad:</strong>{" "}
+                  {productoSeleccionado.unidadMedida?.nombre || "-"}
                   {/* Factor de Conversión */}
                   {productoSeleccionado.unidadMedida?.factorConversion && (
-                    <div
-                      style={{
-                        fontSize: "1em",
-                        color: "#333",
-                        fontWeight: "500",
-                      }}
-                    >
+                    <div>
                       <strong>Factor Conv.:</strong>{" "}
                       {productoSeleccionado.unidadMedida.factorConversion}
                     </div>
                   )}
                 </div>
               </div>
-              <div
-                style={{
-                  display: "flex",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <Button
-                    type="button"
-                    label="Cambiar"
-                    icon="pi pi-sync"
-                    className="p-button-primary"
-                    severity="primary"
-                    raised
-                    onClick={() => setShowProductoSelector(true)}
-                    disabled={saving || !puedeEditarDetalles}
-                  />
-                </div>
+              <div style={{ flex: 1 }}>
+                <Button
+                  type="button"
+                  label="Cambiar"
+                  icon="pi pi-sync"
+                  className="p-button-primary"
+                  severity="primary"
+                  raised
+                  onClick={() => setShowProductoSelector(true)}
+                  disabled={saving || !puedeEditarDetalles}
+                />
               </div>
-            </Panel>
-          ) : (
+            </div>
+          </Panel>
+        ) : (
+          <Panel header="Seleccionar Producto" style={{ marginBottom: "1rem" }}>
             <Button
               type="button"
               label="Seleccionar Producto"
@@ -255,8 +231,8 @@ export default function DetalleDialog({
               onClick={() => setShowProductoSelector(true)}
               disabled={saving || !puedeEditarDetalles}
             />
-          )}
-        </div>
+          </Panel>
+        )}
 
         <ProductoSelectorDialog
           visible={showProductoSelector}
@@ -267,9 +243,6 @@ export default function DetalleDialog({
           clienteId={entidadComercialId} // Usar entidadComercialId calculado
           esCustodia={false} // Requerimiento de compra siempre es mercadería propia
         />
-
-        <Divider />
-
         {/* Primera fila: Cantidad y Unidad */}
         <div
           style={{
@@ -354,7 +327,7 @@ export default function DetalleDialog({
             id="observaciones"
             value={formData.observaciones}
             onChange={(e) => handleChange("observaciones", e.target.value)}
-            rows={3}
+            rows={2}
             disabled={saving}
           />
         </div>

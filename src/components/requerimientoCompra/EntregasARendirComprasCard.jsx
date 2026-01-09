@@ -204,7 +204,8 @@ export default function EntregasARendirComprasCard({
    * Crear entrega a rendir automáticamente
    */
   const crearEntregaAutomatica = async () => {
-    // Validar que supervisorCampoId sea mayor a cero
+    
+    // Validar que supervisorCampoId esté asignado
     if (
       !requerimientoCompra.supervisorCampoId ||
       Number(requerimientoCompra.supervisorCampoId) <= 0
@@ -213,7 +214,7 @@ export default function EntregasARendirComprasCard({
         severity: "error",
         summary: "Error",
         detail:
-          "El requerimiento debe tener un Supervisor de Campo asignado para crear una entrega a rendir",
+          "El requerimiento debe tener un Supervisor de Campo asignado. Por favor, edite el requerimiento y asigne un Supervisor de Campo antes de crear la entrega a rendir.",
         life: 5000,
       });
       return;
@@ -260,9 +261,9 @@ export default function EntregasARendirComprasCard({
         detail: "Entrega a rendir creada correctamente",
         life: 3000,
       });
-      verificarYCargarEntrega();
     } catch (error) {
-      console.error("Error al crear entrega automática:", error);
+      console.error('❌ [EntregaARendir] Error al crear entrega automática:', error);
+      console.error('❌ [EntregaARendir] Detalles del error:', error.response?.data);
       toast.current?.show({
         severity: "error",
         summary: "Error",

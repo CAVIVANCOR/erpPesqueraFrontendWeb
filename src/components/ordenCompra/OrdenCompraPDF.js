@@ -72,11 +72,17 @@ export async function generarYSubirPDFOrdenCompra(
  * @param {Object} empresa - Datos de la empresa
  * @returns {Promise<Uint8Array>} - Bytes del PDF generado
  */
-async function generarPDFOrdenCompra(
+export async function generarPDFOrdenCompra(
   ordenCompra,
   detalles,
   empresa
 ) {
+  console.log('📄 [OrdenCompraPDF] ordenCompra recibida:', ordenCompra);
+  console.log('📄 [OrdenCompraPDF] ordenCompra.solicitante:', ordenCompra.solicitante);
+  console.log('📄 [OrdenCompraPDF] ordenCompra.aprobadoPor:', ordenCompra.aprobadoPor);
+  console.log('📄 [OrdenCompraPDF] ordenCompra.centroCosto:', ordenCompra.centroCosto);
+  console.log('📄 [OrdenCompraPDF] ordenCompra.proveedor:', ordenCompra.proveedor);
+  
   // Funciones de formateo
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
@@ -101,35 +107,31 @@ async function generarPDFOrdenCompra(
   let yPosition = height - 50;
   const margin = 50;
   const lineHeight = 13;
-
   // Preparar datos de la orden para el encabezado
   const datosIzquierda = [
     ["Fecha Documento:", formatearFecha(ordenCompra.fechaDocumento)],
     ["Fecha Entrega:", formatearFecha(ordenCompra.fechaEntrega)],
-    ["Fecha Recepción:", formatearFecha(ordenCompra.fechaRecepcion)],
     ["Centro de Costo:", ordenCompra.centroCosto?.nombre || "-"],
   ];
 
   const datosDerecha = [
     ["Forma de Pago:", ordenCompra.formaPago?.nombre || "-"],
-    [
-      "Moneda:",
-      ordenCompra.moneda?.nombre || "SOLES",
-    ],
+    ["Moneda:", ordenCompra.moneda?.codigoSunat || "-"],
     [
       "Tipo de Cambio:",
       ordenCompra.tipoCambio
-        ? `S/ ${Number(ordenCompra.tipoCambio).toFixed(3)}`
+        ? `S/ ${Number(ordenCompra.tipoCambio).toFixed(4)}`
         : "-",
     ],
     [
       "% IGV:",
       ordenCompra.porcentajeIGV
         ? `${Number(ordenCompra.porcentajeIGV).toFixed(2)}%`
-        : "18.00%",
+        : "0.00%",
     ],
   ];
-
+  console.log('📄 [OrdenCompraPDF] datosIzquierda:', datosIzquierda);
+  console.log('📄 [OrdenCompraPDF] datosDerecha:', datosDerecha);
   // DIBUJAR ENCABEZADO COMPLETO usando función modular
   yPosition = await dibujaEncabezadoPDFOC({
     pag: page,

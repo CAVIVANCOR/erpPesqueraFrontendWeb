@@ -968,6 +968,8 @@ const clienteTemplate = (rowData) => {
             : "Nueva Cotización de Ventas"
         }
         modal
+        maximized={true}
+        maximizable
         onHide={cerrarDialogo}
       >
         <CotizacionVentasForm

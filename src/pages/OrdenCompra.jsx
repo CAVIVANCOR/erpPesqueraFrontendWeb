@@ -11,6 +11,7 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { Tag } from "primereact/tag";
 import OrdenCompraForm from "../components/ordenCompra/OrdenCompraForm";
+import RequerimientoCompraForm from "../components/requerimientoCompra/RequerimientoCompraForm";
 import {
   getOrdenesCompra,
   crearOrdenCompra,
@@ -31,6 +32,10 @@ import { getMonedas } from "../api/moneda";
 import { getCentrosCosto } from "../api/centroCosto";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getSeriesDoc } from "../api/serieDoc";
+import { getTiposProducto } from "../api/tipoProducto";
+import { getAllTipoEstadoProducto } from "../api/tipoEstadoProducto";
+import { getAllDestinoProducto } from "../api/destinoProducto";
+import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
@@ -57,10 +62,16 @@ export default function OrdenCompra({ ruta }) {
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [seriesDoc, setSeriesDoc] = useState([]);
+  const [tiposProducto, setTiposProducto] = useState([]);
+  const [tiposEstadoProducto, setTiposEstadoProducto] = useState([]);
+  const [destinosProducto, setDestinosProducto] = useState([]);
+  const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showRequerimientoDialog, setShowRequerimientoDialog] = useState(false);
+  const [requerimientoOrigen, setRequerimientoOrigen] = useState(null);
   const [toDelete, setToDelete] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
@@ -156,6 +167,10 @@ export default function OrdenCompra({ ruta }) {
         centrosCostoData,
         tiposDocumentoData,
         seriesDocData,
+        tiposProductoData,
+        tiposEstadoProductoData,
+        destinosProductoData,
+        tiposMovimientoData,
       ] = await Promise.all([
         getOrdenesCompra(),
         getEmpresas(),
@@ -169,6 +184,10 @@ export default function OrdenCompra({ ruta }) {
         getCentrosCosto(),
         getTiposDocumento(),
         getSeriesDoc(),
+        getTiposProducto(),
+        getAllTipoEstadoProducto(),
+        getAllDestinoProducto(),
+        getAllTipoMovEntregaRendir(),
       ]);
 
       setEmpresas(empresasData);
@@ -179,6 +198,10 @@ export default function OrdenCompra({ ruta }) {
       setCentrosCosto(centrosCostoData);
       setTiposDocumento(tiposDocumentoData);
       setSeriesDoc(seriesDocData);
+      setTiposProducto(tiposProductoData);
+      setTiposEstadoProducto(tiposEstadoProductoData);
+      setDestinosProducto(destinosProductoData);
+      setTiposMovimiento(tiposMovimientoData);
 
       const personalConNombres = personalData.map((p) => ({
         ...p,
@@ -216,9 +239,22 @@ export default function OrdenCompra({ ruta }) {
     setLoading(false);
   };
 
-  const handleEdit = (rowData) => {
-    setEditing(rowData);
-    setShowDialog(true);
+  const handleEdit = async (rowData) => {
+    try {
+      // Cargar la orden completa con todos los campos y relaciones
+      const { getOrdenCompraPorId } = await import("../api/ordenCompra");
+      const ordenCompleta = await getOrdenCompraPorId(rowData.id);
+
+      setEditing(ordenCompleta);
+      setShowDialog(true);
+    } catch (error) {
+      console.error("Error al cargar orden:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo cargar la orden para edición",
+      });
+    }
   };
 
   const handleDelete = (rowData) => {
@@ -284,15 +320,14 @@ export default function OrdenCompra({ ruta }) {
 
     setLoading(true);
     try {
-
       if (esEdicion) {
         await actualizarOrdenCompra(editing.id, data);
-        
+
         // Recargar la orden actualizada con subtotales recalculados
         const { getOrdenCompraPorId } = await import("../api/ordenCompra");
         const ordenActualizada = await getOrdenCompraPorId(editing.id);
         setEditing(ordenActualizada);
-        
+
         toast.current.show({
           severity: "success",
           summary: "Actualizado",
@@ -343,7 +378,7 @@ export default function OrdenCompra({ ruta }) {
   const handleAprobar = async (id) => {
     setLoading(true);
     try {
-      await aprobarOrdenCompra(id);
+      const ordenAprobada = await aprobarOrdenCompra(id);
 
       toast.current.show({
         severity: "success",
@@ -352,13 +387,22 @@ export default function OrdenCompra({ ruta }) {
         life: 3000,
       });
 
-      setShowDialog(false);
+      // Recargar la orden completa con todas las relaciones para actualizar el formulario
+      const { getOrdenCompraPorId } = await import("../api/ordenCompra");
+      const ordenActualizada = await getOrdenCompraPorId(id);
+      
+      // Actualizar el estado del formulario con la orden aprobada
+      setEditing(ordenActualizada);
+      
+      // Recargar la lista de órdenes
       cargarDatos();
     } catch (err) {
+      console.error("Error al aprobar:", err);
       const errorMsg =
-        err.response?.data?.error ||
         err.response?.data?.message ||
-        "No se pudo aprobar.";
+        err.response?.data?.error ||
+        err.message ||
+        "No se pudo aprobar la orden.";
       toast.current.show({
         severity: "error",
         summary: "Error al Aprobar",
@@ -396,6 +440,29 @@ export default function OrdenCompra({ ruta }) {
       });
     }
     setLoading(false);
+  };
+
+  const handleIrAlOrigen = async (requerimientoId) => {
+    try {
+      // Cargar el requerimiento completo con todos los campos
+      const { getRequerimientoCompraPorId } = await import(
+        "../api/requerimientoCompra"
+      );
+      const requerimientoCompleto = await getRequerimientoCompraPorId(
+        requerimientoId
+      );
+
+      setRequerimientoOrigen(requerimientoCompleto);
+      setShowRequerimientoDialog(true);
+    } catch (error) {
+      console.error("Error al cargar requerimiento origen:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar el requerimiento origen",
+        life: 3000,
+      });
+    }
   };
 
   const handleGenerarDesdeRequerimiento = async (requerimientoId) => {
@@ -456,8 +523,29 @@ export default function OrdenCompra({ ruta }) {
     return formatearFecha(rowData[field], "");
   };
 
+  const monedaTemplate = (rowData) => {
+    return rowData.moneda?.codigoSunat || "";
+  };
+
+  const tipoCambioTemplate = (rowData) => {
+    return rowData.tipoCambio
+      ? Number(rowData.tipoCambio).toLocaleString("es-PE", {
+          minimumFractionDigits: 4,
+          maximumFractionDigits: 4,
+        })
+      : "";
+  };
+
+  const igvTemplate = (rowData) => {
+    return rowData.esExoneradoAlIGV ? (
+      <Tag value="EXONERADO" severity="danger" />
+    ) : (
+      <Tag value="AFECTO" severity="success" />
+    );
+  };
+
   const actionBody = (rowData) => (
-    <>
+    <div style={{ display: "flex", flexDirection: "row", gap: "4px", justifyContent: "center", alignItems: "center" }}>
       <Button
         icon="pi pi-pencil"
         className="p-button-text p-button-sm"
@@ -465,6 +553,7 @@ export default function OrdenCompra({ ruta }) {
         disabled={!permisos.puedeVer && !permisos.puedeEditar}
         tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
         aria-label={permisos.puedeEditar ? "Editar" : "Ver"}
+        style={{ padding: "0.25rem" }}
       />
       <Button
         icon="pi pi-trash"
@@ -473,13 +562,15 @@ export default function OrdenCompra({ ruta }) {
         aria-label="Eliminar"
         tooltip="Eliminar"
         disabled={!permisos.puedeEliminar}
+        style={{ padding: "0.25rem" }}
       />
-    </>
+    </div>
   );
 
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
+      <ConfirmDialog />
       <ConfirmDialog
         visible={showConfirm}
         onHide={() => setShowConfirm(false)}
@@ -555,7 +646,8 @@ export default function OrdenCompra({ ruta }) {
                     toast.current?.show({
                       severity: "success",
                       summary: "Actualizado",
-                      detail: "Datos actualizados correctamente desde el servidor",
+                      detail:
+                        "Datos actualizados correctamente desde el servidor",
                       life: 3000,
                     });
                   }}
@@ -655,30 +747,61 @@ export default function OrdenCompra({ ruta }) {
           </div>
         }
       >
-        <Column field="id" header="ID" style={{ width: 80 }} />
+        <Column field="id" header="ID" style={{ width: 80 }} sortable />
         <Column field="empresaId" header="Empresa" body={empresaNombre} />
         <Column
-          field="requerimientoCompraId"
-          header="Requerimiento"
-          body={requerimientoTemplate}
-          style={{ width: 140}}
+          field="numeroDocumento"
+          header="N° Documento"
+          style={{ width: 140, textAlign: "center" }}
+          sortable
         />
         <Column
           field="fechaDocumento"
-          header="F. Documento"
+          header="Fecha Documento"
           body={(rowData) => fechaTemplate(rowData, "fechaDocumento")}
+          style={{ width: 110, textAlign: "center" }}
+          sortable
         />
-        <Column field="proveedorId" header="Proveedor" body={proveedorNombre} />
+        <Column
+          field="proveedorId"
+          header="Proveedor"
+          body={proveedorNombre}
+          sortable
+        />
+
+        <Column
+          field="monedaId"
+          header="Moneda"
+          body={monedaTemplate}
+          style={{ width: 80, textAlign: "center" }}
+          sortable
+        />
+        <Column
+          field="tipoCambio"
+          header="T/C"
+          body={tipoCambioTemplate}
+          style={{ width: 90, textAlign: "right" }}
+          bodyStyle={{ textAlign: "right" }}
+          sortable
+        />
         <Column
           field="estadoId"
           header="Estado"
           body={estadoTemplate}
           style={{ width: 150, textAlign: "center" }}
+          sortable
+        />
+        <Column
+          field="esExoneradoAlIGV"
+          header="IGV"
+          body={igvTemplate}
+          style={{ width: 110, textAlign: "center" }}
+          sortable
         />
         <Column
           body={actionBody}
           header="Acciones"
-          style={{ width: 130, textAlign: "center" }}
+          style={{ width: 100, textAlign: "center" }}
         />
       </DataTable>
       <Dialog
@@ -686,10 +809,11 @@ export default function OrdenCompra({ ruta }) {
           editing?.id ? "Editar Orden de Compra" : "Nueva Orden de Compra"
         }
         visible={showDialog}
-        style={{ width: "1350px", maxWidth: "95vw" }}
+        style={{ width: "1300px" }}
         onHide={() => setShowDialog(false)}
         modal
         maximizable
+        maximized={true}
       >
         <OrdenCompraForm
           isEdit={!!editing}
@@ -711,10 +835,48 @@ export default function OrdenCompra({ ruta }) {
           onAprobar={handleAprobar}
           onAnular={handleAnular}
           onGenerarDesdeRequerimiento={handleGenerarDesdeRequerimiento}
+          onIrAlOrigen={handleIrAlOrigen}
           loading={loading}
           toast={toast}
           permisos={permisos}
           readOnly={!!editing && !!editing.id && !permisos.puedeEditar}
+        />
+      </Dialog>
+
+      {/* Diálogo para ver el Requerimiento de Compra origen */}
+      <Dialog
+        header="Requerimiento de Compra Origen"
+        visible={showRequerimientoDialog}
+        style={{ width: "1300px" }}
+        onHide={() => setShowRequerimientoDialog(false)}
+        modal
+        maximizable
+        maximized={true}
+      >
+        <RequerimientoCompraForm
+          isEdit={true}
+          defaultValues={requerimientoOrigen || {}}
+          empresas={empresas}
+          tiposDocumento={tiposDocumento}
+          proveedores={proveedores}
+          tiposProducto={tiposProducto}
+          tiposEstadoProducto={tiposEstadoProducto}
+          destinosProducto={destinosProducto}
+          formasPago={formasPago}
+          productos={productos}
+          personalOptions={personalOptions}
+          centrosCosto={centrosCosto}
+          tiposMovimiento={tiposMovimiento}
+          monedas={monedas}
+          onSubmit={() => {}}
+          onCancel={() => setShowRequerimientoDialog(false)}
+          onAprobar={() => {}}
+          onAnular={() => {}}
+          onAutorizarCompra={() => {}}
+          loading={false}
+          toast={toast}
+          permisos={{ puedeVer: true, puedeEditar: false }}
+          readOnly={true}
         />
       </Dialog>
     </div>

@@ -33,6 +33,12 @@ export async function dibujaEncabezadoPDFOC({
   fontBold,
   fontNormal,
 }) {
+  console.log(' [dibujaEncabezadoPDFOC] ordenCompra:', ordenCompra);
+  console.log(' [dibujaEncabezadoPDFOC] ordenCompra.proveedor:', ordenCompra.proveedor);
+  console.log(' [dibujaEncabezadoPDFOC] ordenCompra.centroCosto:', ordenCompra.centroCosto);
+  console.log(' [dibujaEncabezadoPDFOC] datosIzquierda:', datosIzquierda);
+  console.log(' [dibujaEncabezadoPDFOC] datosDerecha:', datosDerecha);
+  
   let yPos = height - 50;
 
   // Cargar logo si existe
@@ -179,7 +185,7 @@ export async function dibujaEncabezadoPDFOC({
     yInicial -
     Math.max(datosIzquierda.length, datosDerecha.length) * lineHeight;
 
-  // Proveedor (siempre se muestra en orden de compra)
+  // Proveedor (mostrar nombre completo)
   if (ordenCompra.proveedor) {
     pag.drawText("Proveedor:", {
       x: margin,
@@ -187,41 +193,26 @@ export async function dibujaEncabezadoPDFOC({
       size: 9,
       font: fontBold,
     });
-    pag.drawText(ordenCompra.proveedor?.razonSocial || "-", {
+    const proveedorTexto = ordenCompra.proveedor?.razonSocial || "-";
+    pag.drawText(proveedorTexto, {
       x: margin + 120,
       y: yPos,
       size: 9,
       font: fontNormal,
     });
     yPos -= lineHeight;
-
-    // RUC del proveedor
-    if (ordenCompra.proveedor?.ruc) {
-      pag.drawText("RUC Proveedor:", {
-        x: margin,
-        y: yPos,
-        size: 9,
-        font: fontBold,
-      });
-      pag.drawText(ordenCompra.proveedor.ruc, {
-        x: margin + 120,
-        y: yPos,
-        size: 9,
-        font: fontNormal,
-      });
-      yPos -= lineHeight;
-    }
   }
 
-  // Solicitante
-  if (ordenCompra.solicitante) {
-    pag.drawText("Solicitante:", {
+  // Tipo de documento y número del proveedor (formato: RUC: número o DNI: número)
+  if (ordenCompra.proveedor?.numeroDocumento) {
+    const tipoDocLabel = ordenCompra.proveedor.tipoDocumento?.codigo || "DOC";
+    pag.drawText(`${tipoDocLabel}:`, {
       x: margin,
       y: yPos,
       size: 9,
       font: fontBold,
     });
-    pag.drawText(ordenCompra.solicitante.nombreCompleto || "-", {
+    pag.drawText(ordenCompra.proveedor.numeroDocumento, {
       x: margin + 120,
       y: yPos,
       size: 9,
@@ -230,21 +221,51 @@ export async function dibujaEncabezadoPDFOC({
     yPos -= lineHeight;
   }
 
-  // Observaciones
+  // Lugar de Entrega (si existe en observaciones)
   if (ordenCompra.observaciones) {
-    pag.drawText("Observaciones:", {
+    pag.drawText("Lugar de Entrega:", {
       x: margin,
       y: yPos,
       size: 9,
       font: fontBold,
     });
-    pag.drawText(ordenCompra.observaciones, {
-      x: margin + 120,
-      y: yPos,
-      size: 9,
-      font: fontNormal,
+    
+    // Limitar el texto a un ancho máximo
+    const maxWidth = width - margin * 2 - 120;
+    const observacionesTexto = ordenCompra.observaciones;
+    const words = observacionesTexto.split(' ');
+    let currentLine = '';
+    let yObs = yPos;
+    
+    words.forEach((word, idx) => {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const testWidth = fontNormal.widthOfTextAtSize(testLine, 9);
+      
+      if (testWidth > maxWidth && currentLine) {
+        pag.drawText(currentLine, {
+          x: margin + 120,
+          y: yObs,
+          size: 9,
+          font: fontNormal,
+        });
+        currentLine = word;
+        yObs -= lineHeight;
+      } else {
+        currentLine = testLine;
+      }
+      
+      if (idx === words.length - 1 && currentLine) {
+        pag.drawText(currentLine, {
+          x: margin + 120,
+          y: yObs,
+          size: 9,
+          font: fontNormal,
+        });
+        yObs -= lineHeight;
+      }
     });
-    yPos -= lineHeight;
+    
+    yPos = yObs;
   }
 
   return yPos;

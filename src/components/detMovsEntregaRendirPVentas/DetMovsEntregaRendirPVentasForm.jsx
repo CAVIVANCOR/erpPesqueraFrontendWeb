@@ -14,6 +14,7 @@ import { getAllEntregaARendirPVentas } from '../../api/entregaARendirPVentas';
 import { getPersonal } from '../../api/personal';
 import { getTiposMovEntregaRendir } from '../../api/tipoMovEntregaRendir';
 import { getCentrosCosto } from '../../api/centroCosto';
+import { consultarTipoCambioSunat } from '../../api/consultaExterna';
 
 /**
  * Componente DetMovsEntregaRendirPVentasForm
@@ -21,7 +22,7 @@ import { getCentrosCosto } from '../../api/centroCosto';
  * Incluye validaciones y relaciones con entregas según patrón ERP Megui
  */
 const DetMovsEntregaRendirPVentasForm = ({ movimiento, onSave, onCancel }) => {
-  const { control, handleSubmit, formState: { errors }, reset } = useForm({
+  const { control, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm({
     defaultValues: {
       entregaARendirPVentasId: null,
       responsableId: null,
@@ -29,6 +30,8 @@ const DetMovsEntregaRendirPVentasForm = ({ movimiento, onSave, onCancel }) => {
       tipoMovimientoId: null,
       centroCostoId: null,
       monto: 0,
+      monedaId: 2,
+      tipoCambio: 0,
       descripcion: ''
     }
   });
@@ -38,6 +41,7 @@ const DetMovsEntregaRendirPVentasForm = ({ movimiento, onSave, onCancel }) => {
   const [responsables, setResponsables] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [centrosCosto, setCentrosCosto] = useState([]);
+  const [fechaMovimientoInicial, setFechaMovimientoInicial] = useState(null);
   const toast = useRef(null);
 
   useEffect(() => {
@@ -54,10 +58,66 @@ const DetMovsEntregaRendirPVentasForm = ({ movimiento, onSave, onCancel }) => {
         tipoMovimientoId: movimiento.tipoMovimientoId ? Number(movimiento.tipoMovimientoId) : null,
         centroCostoId: movimiento.centroCostoId ? Number(movimiento.centroCostoId) : null,
         monto: Number(movimiento.monto) || 0,
+        monedaId: movimiento.monedaId ? Number(movimiento.monedaId) : 2,
+        tipoCambio: Number(movimiento.tipoCambio) || 0,
         descripcion: movimiento.descripcion || ''
       });
     }
   }, [movimiento, reset]);
+
+  // Observar cambios en fechaMovimiento
+  const fechaMovimiento = watch('fechaMovimiento');
+
+  // Guardar fecha inicial para evitar carga automática en mount
+  useEffect(() => {
+    if (fechaMovimiento && fechaMovimientoInicial === null) {
+      setFechaMovimientoInicial(fechaMovimiento);
+    }
+  }, [fechaMovimiento, fechaMovimientoInicial]);
+
+  // Cargar tipo de cambio SUNAT solo cuando el usuario modifica manualmente fechaMovimiento
+  useEffect(() => {
+    const cargarTipoCambio = async () => {
+      // No ejecutar si no hay fecha o si es la carga inicial
+      if (!fechaMovimiento || fechaMovimientoInicial === null) return;
+      
+      // No ejecutar si la fecha no ha cambiado realmente
+      const fechaActualISO = new Date(fechaMovimiento).toISOString();
+      const fechaInicialISO = new Date(fechaMovimientoInicial).toISOString();
+      if (fechaActualISO === fechaInicialISO) return;
+
+      try {
+        // Convertir fecha a formato YYYY-MM-DD
+        const fecha = new Date(fechaMovimiento);
+        const fechaISO = fecha.toISOString().split('T')[0];
+
+        // Consultar tipo de cambio SUNAT
+        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
+        
+        // Para VENTAS usamos buy_price (precio de compra del dólar)
+        if (tipoCambioData && tipoCambioData.buy_price) {
+          const tipoCambioCompra = parseFloat(tipoCambioData.buy_price);
+          setValue('tipoCambio', tipoCambioCompra);
+          
+          // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
+          setFechaMovimientoInicial(fechaMovimiento);
+          
+          toast?.current?.show({
+            severity: 'success',
+            summary: 'Tipo de Cambio Actualizado',
+            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioCompra.toFixed(3)} por USD`,
+            life: 3000,
+          });
+        }
+      } catch (error) {
+        console.error('Error al cargar tipo de cambio SUNAT:', error);
+        // No mostrar error al usuario, solo log en consola
+        // El usuario puede ingresar el tipo de cambio manualmente si falla
+      }
+    };
+
+    cargarTipoCambio();
+  }, [fechaMovimiento, fechaMovimientoInicial, setValue]);
 
   const cargarDatos = async () => {
     try {
@@ -137,6 +197,8 @@ const DetMovsEntregaRendirPVentasForm = ({ movimiento, onSave, onCancel }) => {
         tipoMovimientoId: Number(data.tipoMovimientoId),
         centroCostoId: Number(data.centroCostoId),
         monto: Number(data.monto),
+        monedaId: Number(data.monedaId),
+        tipoCambio: Number(data.tipoCambio) || null,
         descripcion: data.descripcion?.trim() || null
       };
 
@@ -314,7 +376,7 @@ const DetMovsEntregaRendirPVentasForm = ({ movimiento, onSave, onCancel }) => {
             )}
           </div>
 
-          <div className="col-12 md:col-6">
+          <div className="col-12 md:col-4">
             <label htmlFor="monto" className="block text-900 font-medium mb-2">
               Monto (S/) *
             </label>
@@ -344,6 +406,29 @@ const DetMovsEntregaRendirPVentasForm = ({ movimiento, onSave, onCancel }) => {
             {errors.monto && (
               <small className="p-error">{errors.monto.message}</small>
             )}
+          </div>
+
+          <div className="col-12 md:col-4">
+            <label htmlFor="tipoCambio" className="block text-900 font-medium mb-2">
+              Tipo de Cambio (S/ por USD)
+            </label>
+            <Controller
+              name="tipoCambio"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  id="tipoCambio"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  placeholder="Tipo de cambio"
+                  className="w-full"
+                  minFractionDigits={3}
+                  maxFractionDigits={6}
+                  min={0}
+                />
+              )}
+            />
+            <small className="text-500">Se carga automáticamente desde SUNAT</small>
           </div>
 
           <div className="col-12">

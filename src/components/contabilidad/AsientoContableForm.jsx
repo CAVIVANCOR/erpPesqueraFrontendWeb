@@ -18,6 +18,7 @@ import {
 } from "../../api/contabilidad/asientoContable";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../../utils/utils";
+import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 
 export default function AsientoContableForm({
   isEdit = false,
@@ -77,6 +78,7 @@ export default function AsientoContableForm({
     haber: 0,
   });
   const [guardando, setGuardando] = useState(false);
+  const [fechaAsientoInicial, setFechaAsientoInicial] = useState(null);
 
   useEffect(() => {
     cargarPlanCuentas();
@@ -91,6 +93,60 @@ export default function AsientoContableForm({
   useEffect(() => {
     calcularTotales();
   }, [detalles]);
+
+  // Guardar fecha inicial para evitar carga automática en mount
+  useEffect(() => {
+    if (formData.fechaAsiento && fechaAsientoInicial === null) {
+      setFechaAsientoInicial(formData.fechaAsiento);
+    }
+  }, [formData.fechaAsiento, fechaAsientoInicial]);
+
+  // Cargar tipo de cambio SUNAT solo cuando el usuario modifica manualmente fechaAsiento
+  useEffect(() => {
+    const cargarTipoCambio = async () => {
+      // No ejecutar si no hay fecha o si es la carga inicial
+      if (!formData.fechaAsiento || fechaAsientoInicial === null) return;
+      
+      // Comparar fechas por valor (ISO string) en lugar de por referencia
+      const fechaActualISO = new Date(formData.fechaAsiento).toISOString();
+      const fechaInicialISO = new Date(fechaAsientoInicial).toISOString();
+      
+      // No ejecutar si la fecha no ha cambiado realmente
+      if (fechaActualISO === fechaInicialISO) return;
+
+      try {
+        // Convertir fecha a formato YYYY-MM-DD
+        const fecha = new Date(formData.fechaAsiento);
+        const fechaISO = fecha.toISOString().split('T')[0];
+
+        // Consultar tipo de cambio SUNAT
+        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
+        
+        // Para CONTABILIDAD usamos buy_price (tipo de cambio de compra)
+        // Es el estándar contable para valorizar activos/pasivos en moneda extranjera
+        if (tipoCambioData && tipoCambioData.buy_price) {
+          const tipoCambioCompra = parseFloat(tipoCambioData.buy_price);
+          handleChange("tipoCambio", tipoCambioCompra.toFixed(4));
+          
+          // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
+          setFechaAsientoInicial(formData.fechaAsiento);
+          
+          toast?.current?.show({
+            severity: "success",
+            summary: "Tipo de Cambio Actualizado",
+            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioCompra.toFixed(4)} por USD`,
+            life: 3000,
+          });
+        }
+      } catch (error) {
+        console.error("Error al cargar tipo de cambio SUNAT:", error);
+        // No mostrar error al usuario, solo log en consola
+        // El usuario puede ingresar el tipo de cambio manualmente si falla
+      }
+    };
+
+    cargarTipoCambio();
+  }, [formData.fechaAsiento, fechaAsientoInicial]);
 
   const cargarPlanCuentas = async () => {
     try {
