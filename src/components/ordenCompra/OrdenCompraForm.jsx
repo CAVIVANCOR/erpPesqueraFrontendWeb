@@ -38,35 +38,75 @@ export default function OrdenCompraForm({
   readOnly = false,
 }) {
   const { usuario } = useAuthStore();
-  
-  const [empresaId, setEmpresaId] = useState(defaultValues?.empresaId || empresaFija || null);
-  const [tipoDocumentoId, setTipoDocumentoId] = useState(defaultValues?.tipoDocumentoId || 17);
-  const [serieDocId, setSerieDocId] = useState(defaultValues?.serieDocId || null);
-  const [numSerieDoc, setNumSerieDoc] = useState(defaultValues?.numSerieDoc || "");
-  const [numCorreDoc, setNumCorreDoc] = useState(defaultValues?.numCorreDoc || "");
-  const [numeroDocumento, setNumeroDocumento] = useState(defaultValues?.numeroDocumento || "");
-  const [fechaDocumento, setFechaDocumento] = useState(
-    defaultValues?.fechaDocumento ? new Date(defaultValues.fechaDocumento) : new Date()
+
+  const [empresaId, setEmpresaId] = useState(
+    defaultValues?.empresaId || empresaFija || null
   );
-  const [requerimientoCompraId, setRequerimientoCompraId] = useState(defaultValues?.requerimientoCompraId || null);
-  const [proveedorId, setProveedorId] = useState(defaultValues?.proveedorId || null);
-  const [formaPagoId, setFormaPagoId] = useState(defaultValues?.formaPagoId || null);
+  const [tipoDocumentoId, setTipoDocumentoId] = useState(
+    defaultValues?.tipoDocumentoId || 17
+  );
+  const [serieDocId, setSerieDocId] = useState(
+    defaultValues?.serieDocId || null
+  );
+  const [numSerieDoc, setNumSerieDoc] = useState(
+    defaultValues?.numSerieDoc || ""
+  );
+  const [numCorreDoc, setNumCorreDoc] = useState(
+    defaultValues?.numCorreDoc || ""
+  );
+  const [numeroDocumento, setNumeroDocumento] = useState(
+    defaultValues?.numeroDocumento || ""
+  );
+  const [fechaDocumento, setFechaDocumento] = useState(
+    defaultValues?.fechaDocumento
+      ? new Date(defaultValues.fechaDocumento)
+      : new Date()
+  );
+  const [requerimientoCompraId, setRequerimientoCompraId] = useState(
+    defaultValues?.requerimientoCompraId || null
+  );
+  const [proveedorId, setProveedorId] = useState(
+    defaultValues?.proveedorId || null
+  );
+  const [formaPagoId, setFormaPagoId] = useState(
+    defaultValues?.formaPagoId || null
+  );
   const [monedaId, setMonedaId] = useState(defaultValues?.monedaId || null);
-  const [tipoCambio, setTipoCambio] = useState(defaultValues?.tipoCambio || null);
+  const [tipoCambio, setTipoCambio] = useState(
+    defaultValues?.tipoCambio || null
+  );
   const [fechaEntrega, setFechaEntrega] = useState(
     defaultValues?.fechaEntrega ? new Date(defaultValues.fechaEntrega) : null
   );
   const [fechaRecepcion, setFechaRecepcion] = useState(
-    defaultValues?.fechaRecepcion ? new Date(defaultValues.fechaRecepcion) : null
+    defaultValues?.fechaRecepcion
+      ? new Date(defaultValues.fechaRecepcion)
+      : null
   );
-  const [solicitanteId, setSolicitanteId] = useState(defaultValues?.solicitanteId || null);
-  const [aprobadoPorId, setAprobadoPorId] = useState(defaultValues?.aprobadoPorId || null);
-  const [estadoId, setEstadoId] = useState(defaultValues?.estadoId ? Number(defaultValues.estadoId) : null);
-  const [centroCostoId, setCentroCostoId] = useState(defaultValues?.centroCostoId || null);
-  const [movIngresoAlmacenId, setMovIngresoAlmacenId] = useState(defaultValues?.movIngresoAlmacenId || null);
-  const [observaciones, setObservaciones] = useState(defaultValues?.observaciones || "");
-  const [porcentajeIGV, setPorcentajeIGV] = useState(defaultValues?.porcentajeIGV || null);
-  const [esExoneradoAlIGV, setEsExoneradoAlIGV] = useState(defaultValues?.esExoneradoAlIGV || false);
+  const [solicitanteId, setSolicitanteId] = useState(
+    defaultValues?.solicitanteId || null
+  );
+  const [aprobadoPorId, setAprobadoPorId] = useState(
+    defaultValues?.aprobadoPorId || null
+  );
+  const [estadoId, setEstadoId] = useState(
+    defaultValues?.estadoId ? Number(defaultValues.estadoId) : null
+  );
+  const [centroCostoId, setCentroCostoId] = useState(
+    defaultValues?.centroCostoId || null
+  );
+  const [movIngresoAlmacenId, setMovIngresoAlmacenId] = useState(
+    defaultValues?.movIngresoAlmacenId || null
+  );
+  const [observaciones, setObservaciones] = useState(
+    defaultValues?.observaciones || ""
+  );
+  const [porcentajeIGV, setPorcentajeIGV] = useState(
+    defaultValues?.porcentajeIGV || null
+  );
+  const [esExoneradoAlIGV, setEsExoneradoAlIGV] = useState(
+    defaultValues?.esExoneradoAlIGV || false
+  );
 
   const [proveedoresFiltrados, setProveedoresFiltrados] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
@@ -88,25 +128,69 @@ export default function OrdenCompraForm({
 
   useEffect(() => {
     if (defaultValues && Object.keys(defaultValues).length > 0) {
-      setEmpresaId(defaultValues.empresaId ? Number(defaultValues.empresaId) : (empresaFija ? Number(empresaFija) : null));
-      setTipoDocumentoId(defaultValues.tipoDocumentoId ? Number(defaultValues.tipoDocumentoId) : 17);
-      setSerieDocId(defaultValues.serieDocId ? Number(defaultValues.serieDocId) : null);
+      setEmpresaId(
+        defaultValues.empresaId
+          ? Number(defaultValues.empresaId)
+          : empresaFija
+          ? Number(empresaFija)
+          : null
+      );
+      setTipoDocumentoId(
+        defaultValues.tipoDocumentoId
+          ? Number(defaultValues.tipoDocumentoId)
+          : 17
+      );
+      setSerieDocId(
+        defaultValues.serieDocId ? Number(defaultValues.serieDocId) : null
+      );
       setNumSerieDoc(defaultValues.numSerieDoc || "");
       setNumCorreDoc(defaultValues.numCorreDoc || "");
       setNumeroDocumento(defaultValues.numeroDocumento || "");
-      setFechaDocumento(defaultValues.fechaDocumento ? new Date(defaultValues.fechaDocumento) : new Date());
-      setRequerimientoCompraId(defaultValues.requerimientoCompraId ? Number(defaultValues.requerimientoCompraId) : null);
-      setProveedorId(defaultValues.proveedorId ? Number(defaultValues.proveedorId) : null);
-      setFormaPagoId(defaultValues.formaPagoId ? Number(defaultValues.formaPagoId) : null);
-      setMonedaId(defaultValues.monedaId ? Number(defaultValues.monedaId) : null);
+      setFechaDocumento(
+        defaultValues.fechaDocumento
+          ? new Date(defaultValues.fechaDocumento)
+          : new Date()
+      );
+      setRequerimientoCompraId(
+        defaultValues.requerimientoCompraId
+          ? Number(defaultValues.requerimientoCompraId)
+          : null
+      );
+      setProveedorId(
+        defaultValues.proveedorId ? Number(defaultValues.proveedorId) : null
+      );
+      setFormaPagoId(
+        defaultValues.formaPagoId ? Number(defaultValues.formaPagoId) : null
+      );
+      setMonedaId(
+        defaultValues.monedaId ? Number(defaultValues.monedaId) : null
+      );
       setTipoCambio(defaultValues.tipoCambio || null);
-      setFechaEntrega(defaultValues.fechaEntrega ? new Date(defaultValues.fechaEntrega) : null);
-      setFechaRecepcion(defaultValues.fechaRecepcion ? new Date(defaultValues.fechaRecepcion) : null);
-      setSolicitanteId(defaultValues.solicitanteId ? Number(defaultValues.solicitanteId) : null);
-      setAprobadoPorId(defaultValues.aprobadoPorId ? Number(defaultValues.aprobadoPorId) : null);
-      setEstadoId(defaultValues.estadoId ? Number(defaultValues.estadoId) : null);
-      setCentroCostoId(defaultValues.centroCostoId ? Number(defaultValues.centroCostoId) : null);
-      setMovIngresoAlmacenId(defaultValues.movIngresoAlmacenId ? Number(defaultValues.movIngresoAlmacenId) : null);
+      setFechaEntrega(
+        defaultValues.fechaEntrega ? new Date(defaultValues.fechaEntrega) : null
+      );
+      setFechaRecepcion(
+        defaultValues.fechaRecepcion
+          ? new Date(defaultValues.fechaRecepcion)
+          : null
+      );
+      setSolicitanteId(
+        defaultValues.solicitanteId ? Number(defaultValues.solicitanteId) : null
+      );
+      setAprobadoPorId(
+        defaultValues.aprobadoPorId ? Number(defaultValues.aprobadoPorId) : null
+      );
+      setEstadoId(
+        defaultValues.estadoId ? Number(defaultValues.estadoId) : null
+      );
+      setCentroCostoId(
+        defaultValues.centroCostoId ? Number(defaultValues.centroCostoId) : null
+      );
+      setMovIngresoAlmacenId(
+        defaultValues.movIngresoAlmacenId
+          ? Number(defaultValues.movIngresoAlmacenId)
+          : null
+      );
       setObservaciones(defaultValues.observaciones || "");
       setPorcentajeIGV(defaultValues.porcentajeIGV || null);
       setEsExoneradoAlIGV(defaultValues.esExoneradoAlIGV || false);
@@ -122,7 +206,8 @@ export default function OrdenCompraForm({
           toast.current.show({
             severity: "info",
             summary: "Solicitante Asignado",
-            detail: "Se ha asignado automáticamente como solicitante de la orden",
+            detail:
+              "Se ha asignado automáticamente como solicitante de la orden",
             life: 3000,
           });
         }, 500);
@@ -139,26 +224,30 @@ export default function OrdenCompraForm({
   useEffect(() => {
     const cargarTipoCambio = async () => {
       if (!fechaDocumento || fechaDocumentoInicial === null) return;
-      
+
       const fechaActualISO = new Date(fechaDocumento).toISOString();
       const fechaInicialISO = new Date(fechaDocumentoInicial).toISOString();
-      
+
       if (fechaActualISO === fechaInicialISO) return;
 
       try {
         const fecha = new Date(fechaDocumento);
-        const fechaISO = fecha.toISOString().split('T')[0];
-        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
-        
+        const fechaISO = fecha.toISOString().split("T")[0];
+        const tipoCambioData = await consultarTipoCambioSunat({
+          date: fechaISO,
+        });
+
         if (tipoCambioData && tipoCambioData.sell_price) {
           const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
           setTipoCambio(tipoCambioVenta.toFixed(3));
           setFechaDocumentoInicial(fechaDocumento);
-          
+
           toast?.current?.show({
             severity: "success",
             summary: "Tipo de Cambio Actualizado",
-            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioVenta.toFixed(3)} por USD`,
+            detail: `Tipo de cambio SUNAT: S/ ${tipoCambioVenta.toFixed(
+              3
+            )} por USD`,
             life: 3000,
           });
         }
@@ -175,7 +264,9 @@ export default function OrdenCompraForm({
       if (!defaultValues?.id || !isEdit) return;
 
       try {
-        const { getDetallesOrdenCompra } = await import("../../api/detalleOrdenCompra");
+        const { getDetallesOrdenCompra } = await import(
+          "../../api/detalleOrdenCompra"
+        );
         const detalles = await getDetallesOrdenCompra(defaultValues.id);
 
         const subtotalCalc = detalles.reduce(
@@ -194,7 +285,13 @@ export default function OrdenCompraForm({
     };
 
     calcularTotales();
-  }, [detallesCount, porcentajeIGV, esExoneradoAlIGV, isEdit, defaultValues?.id]);
+  }, [
+    detallesCount,
+    porcentajeIGV,
+    esExoneradoAlIGV,
+    isEdit,
+    defaultValues?.id,
+  ]);
 
   const handleSerieChange = (serieId) => {
     if (serieId) {
@@ -202,7 +299,10 @@ export default function OrdenCompraForm({
       if (serie) {
         const correlativoActual = Number(serie.correlativo);
         const proximoCorrelativo = correlativoActual + 1;
-        const numSerie = String(serie.serie).padStart(serie.numCerosIzqSerie, "0");
+        const numSerie = String(serie.serie).padStart(
+          serie.numCerosIzqSerie,
+          "0"
+        );
 
         setSerieDocId(serieId);
         setNumSerieDoc(numSerie);
@@ -242,7 +342,7 @@ export default function OrdenCompraForm({
       porcentajeIGV: setPorcentajeIGV,
       esExoneradoAlIGV: setEsExoneradoAlIGV,
     };
-    
+
     const setter = setters[field];
     if (setter) {
       setter(value);
@@ -258,7 +358,9 @@ export default function OrdenCompraForm({
       numCorreDoc,
       numeroDocumento,
       fechaDocumento,
-      requerimientoCompraId: requerimientoCompraId ? Number(requerimientoCompraId) : null,
+      requerimientoCompraId: requerimientoCompraId
+        ? Number(requerimientoCompraId)
+        : null,
       proveedorId: proveedorId ? Number(proveedorId) : null,
       formaPagoId: formaPagoId ? Number(formaPagoId) : null,
       monedaId: monedaId ? Number(monedaId) : null,
@@ -269,7 +371,9 @@ export default function OrdenCompraForm({
       aprobadoPorId: aprobadoPorId ? Number(aprobadoPorId) : null,
       estadoId: estadoId ? Number(estadoId) : null,
       centroCostoId: centroCostoId ? Number(centroCostoId) : null,
-      movIngresoAlmacenId: movIngresoAlmacenId ? Number(movIngresoAlmacenId) : null,
+      movIngresoAlmacenId: movIngresoAlmacenId
+        ? Number(movIngresoAlmacenId)
+        : null,
       observaciones,
       porcentajeIGV,
       esExoneradoAlIGV,
@@ -311,9 +415,10 @@ export default function OrdenCompraForm({
 
   const handleAnularClick = () => {
     if (!defaultValues?.id) return;
-    
+
     confirmDialog({
-      message: "¿Está seguro de anular esta orden de compra? Esta acción eliminará el movimiento de almacén y el kardex asociado si existen.",
+      message:
+        "¿Está seguro de anular esta orden de compra? Esta acción eliminará el movimiento de almacén y el kardex asociado si existen.",
       header: "Confirmar Anulación",
       icon: "pi pi-exclamation-triangle",
       acceptLabel: "Sí, anular",
@@ -327,7 +432,7 @@ export default function OrdenCompraForm({
 
   const handleGenerarKardexClick = () => {
     if (!defaultValues?.id) return;
-    
+
     if (detallesCount === 0) {
       toast.current.show({
         severity: "warn",
@@ -336,9 +441,10 @@ export default function OrdenCompraForm({
       });
       return;
     }
-    
+
     confirmDialog({
-      message: "¿Está seguro de generar el kardex para esta orden de compra? Se creará el movimiento de ingreso a almacén y se actualizarán los saldos de stock.",
+      message:
+        "¿Está seguro de generar el kardex para esta orden de compra? Se creará el movimiento de ingreso a almacén y se actualizarán los saldos de stock.",
       header: "Confirmar Generación de Kardex",
       icon: "pi pi-info-circle",
       acceptLabel: "Sí, generar",
@@ -413,7 +519,10 @@ export default function OrdenCompraForm({
 
   return (
     <div className="p-fluid">
-      <TabView activeIndex={activeTab} onTabChange={(e) => setActiveTab(e.index)}>
+      <TabView
+        activeIndex={activeTab}
+        onTabChange={(e) => setActiveTab(e.index)}
+      >
         <TabPanel header="Datos Generales" leftIcon="pi pi-file">
           <DatosGeneralesTab
             formData={formData}
@@ -445,9 +554,11 @@ export default function OrdenCompraForm({
           />
         </TabPanel>
 
-        <TabPanel 
-          header={`Datos Adicionales ${datosAdicionalesCount > 0 ? `(${datosAdicionalesCount})` : ''}`} 
-          leftIcon="pi pi-paperclip" 
+        <TabPanel
+          header={`Datos Adicionales ${
+            datosAdicionalesCount > 0 ? `(${datosAdicionalesCount})` : ""
+          }`}
+          leftIcon="pi pi-paperclip"
           disabled={!isEdit}
         >
           <DatosAdicionalesTab
@@ -461,7 +572,11 @@ export default function OrdenCompraForm({
           />
         </TabPanel>
 
-        <TabPanel header="Impresión PDF" leftIcon="pi pi-file-pdf" disabled={!isEdit}>
+        <TabPanel
+          header="Impresión PDF"
+          leftIcon="pi pi-file-pdf"
+          disabled={!isEdit}
+        >
           <VerImpresionOrdenCompraPDF
             ordenCompraId={defaultValues?.id}
             datosOrdenCompra={defaultValues}
@@ -475,78 +590,98 @@ export default function OrdenCompraForm({
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginTop: "1rem",
+          justifyContent: "flex-end",
+          gap: 8,
+          marginTop: 18,
         }}
       >
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ flex: 1 }}>
           {isEdit && (
             <Button
               label="Aprobar"
               icon="pi pi-check"
               className="p-button-success"
               onClick={handleAprobarClick}
-              disabled={readOnly || loading || !permisos.puedeEditar || estaAprobado || estaAnulado || kardexGenerado}
+              disabled={
+                readOnly ||
+                loading ||
+                !permisos.puedeEditar ||
+                estaAprobado ||
+                estaAnulado ||
+                kardexGenerado
+              }
               tooltip={
-                estaAprobado ? "La orden ya está aprobada" :
-                kardexGenerado ? "La orden ya tiene kardex generado" :
-                estaAnulado ? "No se puede aprobar una orden anulada" :
-                readOnly ? "Modo solo lectura" : 
-                !permisos.puedeEditar ? "No tiene permisos para aprobar" : 
-                "Aprobar orden de compra"
+                estaAprobado
+                  ? "La orden ya está aprobada"
+                  : kardexGenerado
+                  ? "La orden ya tiene kardex generado"
+                  : estaAnulado
+                  ? "No se puede aprobar una orden anulada"
+                  : readOnly
+                  ? "Modo solo lectura"
+                  : !permisos.puedeEditar
+                  ? "No tiene permisos para aprobar"
+                  : "Aprobar orden de compra"
               }
             />
           )}
-          
+        </div>
+        <div style={{ flex: 1 }}>
           {isEdit && (
             <Button
               label="Generar Kardex"
               icon="pi pi-database"
               className="p-button-info"
               onClick={handleGenerarKardexClick}
-              disabled={readOnly || loading || !permisos.puedeEditar || !estaAprobado || kardexGenerado || estaAnulado}
+              disabled={
+                readOnly ||
+                loading ||
+                !permisos.puedeEditar ||
+                !estaAprobado ||
+                kardexGenerado ||
+                estaAnulado
+              }
               tooltip={
-                !estaAprobado ? "Solo se puede generar kardex en órdenes aprobadas" :
-                kardexGenerado ? "El kardex ya fue generado" :
-                estaAnulado ? "No se puede generar kardex en orden anulada" :
-                readOnly ? "Modo solo lectura" :
-                !permisos.puedeEditar ? "No tiene permisos para generar kardex" :
-                "Generar movimiento de almacén y kardex"
+                !estaAprobado
+                  ? "Solo se puede generar kardex en órdenes aprobadas"
+                  : kardexGenerado
+                  ? "El kardex ya fue generado"
+                  : estaAnulado
+                  ? "No se puede generar kardex en orden anulada"
+                  : readOnly
+                  ? "Modo solo lectura"
+                  : !permisos.puedeEditar
+                  ? "No tiene permisos para generar kardex"
+                  : "Generar movimiento de almacén y kardex"
               }
             />
           )}
-
+        </div>
+        <div style={{ flex: 1 }}>
           {isEdit && (
             <Button
               label="Anular"
               icon="pi pi-ban"
               className="p-button-danger"
               onClick={handleAnularClick}
-              disabled={readOnly || loading || !permisos.puedeEliminar || estaAnulado}
+              disabled={
+                readOnly || loading || !permisos.puedeEliminar || estaAnulado
+              }
               tooltip={
-                estaAnulado ? "La orden ya está anulada" :
-                readOnly ? "Modo solo lectura" : 
-                !permisos.puedeEliminar ? "No tiene permisos para anular" : 
-                "Anular orden de compra"
+                estaAnulado
+                  ? "La orden ya está anulada"
+                  : readOnly
+                  ? "Modo solo lectura"
+                  : !permisos.puedeEliminar
+                  ? "No tiene permisos para anular"
+                  : "Anular orden de compra"
               }
             />
           )}
-
-          {estaAprobado && (
-            <Tag value="APROBADO" severity="success" icon="pi pi-check-circle" />
-          )}
-
-          {kardexGenerado && (
-            <Tag value="KARDEX GENERADO" severity="info" icon="pi pi-database" />
-          )}
-
-          {estaAnulado && (
-            <Tag value="ANULADO" severity="danger" icon="pi pi-times-circle" />
-          )}
         </div>
 
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ flex: 1 }}></div>
+        <div style={{ flex: 1 }}>
           <Button
             label="Cancelar"
             icon="pi pi-times"
@@ -554,12 +689,20 @@ export default function OrdenCompraForm({
             onClick={onCancel}
             disabled={loading}
           />
+        </div>
+        <div style={{ flex: 1 }}>
           <Button
             label="Guardar"
             icon="pi pi-save"
             onClick={handleSubmit}
             disabled={readOnly || loading || !puedeEditar}
-            tooltip={readOnly ? "Modo solo lectura" : !puedeEditar ? "No se puede editar" : ""}
+            tooltip={
+              readOnly
+                ? "Modo solo lectura"
+                : !puedeEditar
+                ? "No se puede editar"
+                : ""
+            }
           />
         </div>
       </div>

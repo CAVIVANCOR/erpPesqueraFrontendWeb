@@ -9,6 +9,7 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Checkbox } from "primereact/checkbox";
 import { confirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
+import { Message } from "primereact/message";
 import {
   getDatosAdicionalesOrdenCompra,
   crearDatoAdicional,
@@ -16,6 +17,9 @@ import {
   eliminarDatoAdicional,
 } from "../../api/detDatosAdicionalesOrdenCompra";
 import { getResponsiveFontSize } from "../../utils/utils";
+import DocumentoCapture from "../shared/DocumentoCapture";
+import PDFViewer from "../shared/PDFViewer";
+import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
 
 export default function DatosAdicionalesTab({
   ordenCompraId,
@@ -30,6 +34,7 @@ export default function DatosAdicionalesTab({
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editingDato, setEditingDato] = useState(null);
+  const [mostrarCaptura, setMostrarCaptura] = useState(false);
 
   const [formData, setFormData] = useState({
     nombreDato: "",
@@ -188,6 +193,29 @@ export default function DatosAdicionalesTab({
     }
   };
 
+  // Función para ver PDF
+  const handleVerPDF = (urlDocumento) => {
+    if (urlDocumento) {
+      abrirPdfEnNuevaPestana(
+        urlDocumento,
+        toast,
+        "No hay documento disponible"
+      );
+    }
+  };
+
+  // Función para manejar documento subido
+  const handleDocumentoSubido = (urlDocumento) => {
+    setFormData({ ...formData, urlDocumento });
+    setMostrarCaptura(false);
+    toast.current?.show({
+      severity: "success",
+      summary: "Documento Subido",
+      detail: "El documento se ha subido correctamente",
+      life: 3000,
+    });
+  };
+
   const tipoTemplate = (rowData) => {
     return rowData.esDocumento ? (
       <Tag value="Documento" severity="info" icon="pi pi-file" />
@@ -207,15 +235,15 @@ export default function DatosAdicionalesTab({
   const valorTemplate = (rowData) => {
     if (rowData.esDocumento) {
       return (
-        <a
-          href={rowData.urlDocumento}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-500 hover:underline"
-        >
-          <i className="pi pi-external-link mr-1"></i>
-          Ver documento
-        </a>
+        <div className="flex gap-2 align-items-center">
+          <Button
+            icon="pi pi-eye"
+            className="p-button-text p-button-sm p-button-success"
+            onClick={() => handleVerPDF(rowData.urlDocumento)}
+            tooltip="Ver documento"
+          />
+          <span className="text-sm text-500">{rowData.urlDocumento}</span>
+        </div>
       );
     }
     return rowData.valorDato || "-";
@@ -342,12 +370,13 @@ export default function DatosAdicionalesTab({
 
       <Dialog
         visible={showDialog}
-        style={{ width: "600px" }}
+        style={{ width: "1300px" }}
         header={editingDato ? "Editar Dato Adicional" : "Nuevo Dato Adicional"}
         modal
         className="p-fluid"
         footer={dialogFooter}
         onHide={() => setShowDialog(false)}
+        maximizable
       >
         <div className="field">
           <label htmlFor="nombreDato">
@@ -407,23 +436,93 @@ export default function DatosAdicionalesTab({
         ) : (
           <div className="field">
             <label htmlFor="urlDocumento">
-              URL del Documento <span style={{ color: "red" }}>*</span>
+              Documento Adjunto <span style={{ color: "red" }}>*</span>
             </label>
-            <InputText
-              id="urlDocumento"
-              value={formData.urlDocumento}
-              onChange={(e) =>
-                setFormData({ ...formData, urlDocumento: e.target.value })
-              }
-              placeholder="Ej: /uploads/ordenes-compra/1234/guia_remision.pdf"
-              disabled={!puedeEditar}
-            />
-            <small className="p-text-secondary">
-              Ruta relativa o URL completa del documento adjunto
-            </small>
+            
+            {/* Mensaje informativo */}
+            <div style={{ marginBottom: "1rem" }}>
+              <Message
+                severity="info"
+                text="Capture o suba el documento adjunto usando el botón de abajo."
+              />
+            </div>
+
+            {/* URL del documento con botones */}
+            <div
+              style={{
+                display: "flex",
+                gap: "0.5rem",
+                alignItems: "flex-end",
+                marginBottom: "1rem",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <InputText
+                  id="urlDocumento"
+                  value={formData.urlDocumento}
+                  placeholder="URL del documento adjunto"
+                  style={{ fontWeight: "bold" }}
+                  readOnly
+                  disabled={!puedeEditar}
+                />
+              </div>
+
+              {/* Botones de acción */}
+              <div style={{ flex: 0.5 }}>
+                <Button
+                  type="button"
+                  label="Capturar/Subir"
+                  icon="pi pi-camera"
+                  className="p-button-info"
+                  size="small"
+                  onClick={() => setMostrarCaptura(true)}
+                  disabled={!puedeEditar}
+                />
+              </div>
+              <div style={{ flex: 0.5 }}>
+                {formData.urlDocumento && (
+                  <Button
+                    type="button"
+                    label="Ver PDF"
+                    icon="pi pi-eye"
+                    className="p-button-success"
+                    size="small"
+                    onClick={() => handleVerPDF(formData.urlDocumento)}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Visor de PDF */}
+            {formData.urlDocumento && (
+              <div style={{ marginTop: "1rem" }}>
+                <PDFViewer urlDocumento={formData.urlDocumento} />
+              </div>
+            )}
+
+            {/* Mensaje si no hay documento */}
+            {!formData.urlDocumento && (
+              <div style={{ marginTop: "1rem" }}>
+                <Message
+                  severity="warn"
+                  text="No hay documento adjunto. Use el botón 'Capturar/Subir' para agregar uno."
+                />
+              </div>
+            )}
           </div>
         )}
       </Dialog>
+
+      {/* Modal de captura de documento */}
+      <DocumentoCapture
+        visible={mostrarCaptura}
+        onHide={() => setMostrarCaptura(false)}
+        onDocumentoSubido={handleDocumentoSubido}
+        endpoint="/api/det-datos-adicionales-orden-compra/upload-documento"
+        titulo="Capturar Documento Adjunto"
+        toast={toast}
+        extraData={{ detDatosAdicionalesOrdenCompraId: editingDato?.id }}
+      />
     </div>
   );
 }

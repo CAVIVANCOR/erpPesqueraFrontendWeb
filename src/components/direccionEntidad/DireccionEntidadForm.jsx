@@ -1,5 +1,6 @@
 // src/components/direccionEntidad/DireccionEntidadForm.jsx
 // Formulario profesional para DireccionEntidad. Cumple la regla transversal ERP Megui.
+// NUEVOS CAMPOS: conceptoAlmacenCompraId, conceptoAlmacenVentaId, esAlmacenExterno, condicionesRecepcionAlmacen, condicionesEntregaAlmacen
 import React from 'react';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -7,7 +8,16 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
 
-export default function DireccionEntidadForm({ isEdit, defaultValues, entidades, onSubmit, onCancel, loading, readOnly = false }) {
+export default function DireccionEntidadForm({ 
+  isEdit, 
+  defaultValues, 
+  entidades, 
+  conceptosAlmacen = [],
+  onSubmit, 
+  onCancel, 
+  loading, 
+  readOnly = false 
+}) {
   const [entidadComercialId, setEntidadComercialId] = React.useState(defaultValues.entidadComercialId || null);
   const [direccion, setDireccion] = React.useState(defaultValues.direccion || '');
   const [direccionArmada, setDireccionArmada] = React.useState(defaultValues.direccionArmada || '');
@@ -18,6 +28,11 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
   const [telefono, setTelefono] = React.useState(defaultValues.telefono || '');
   const [correo, setCorreo] = React.useState(defaultValues.correo || '');
   const [activo, setActivo] = React.useState(defaultValues.activo !== undefined ? defaultValues.activo : true);
+  const [conceptoAlmacenCompraId, setConceptoAlmacenCompraId] = React.useState(defaultValues.conceptoAlmacenCompraId || null);
+  const [conceptoAlmacenVentaId, setConceptoAlmacenVentaId] = React.useState(defaultValues.conceptoAlmacenVentaId || null);
+  const [esAlmacenExterno, setEsAlmacenExterno] = React.useState(defaultValues.esAlmacenExterno || false);
+  const [condicionesRecepcionAlmacen, setCondicionesRecepcionAlmacen] = React.useState(defaultValues.condicionesRecepcionAlmacen || '');
+  const [condicionesEntregaAlmacen, setCondicionesEntregaAlmacen] = React.useState(defaultValues.condicionesEntregaAlmacen || '');
 
   React.useEffect(() => {
     setEntidadComercialId(defaultValues.entidadComercialId ? Number(defaultValues.entidadComercialId) : null);
@@ -30,6 +45,11 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
     setTelefono(defaultValues.telefono || '');
     setCorreo(defaultValues.correo || '');
     setActivo(defaultValues.activo !== undefined ? defaultValues.activo : true);
+    setConceptoAlmacenCompraId(defaultValues.conceptoAlmacenCompraId ? Number(defaultValues.conceptoAlmacenCompraId) : null);
+    setConceptoAlmacenVentaId(defaultValues.conceptoAlmacenVentaId ? Number(defaultValues.conceptoAlmacenVentaId) : null);
+    setEsAlmacenExterno(defaultValues.esAlmacenExterno || false);
+    setCondicionesRecepcionAlmacen(defaultValues.condicionesRecepcionAlmacen || '');
+    setCondicionesEntregaAlmacen(defaultValues.condicionesEntregaAlmacen || '');
   }, [defaultValues]);
 
   const handleSubmit = (e) => {
@@ -44,16 +64,25 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
       referencia,
       telefono,
       correo,
-      activo
+      activo,
+      conceptoAlmacenCompraId: conceptoAlmacenCompraId ? Number(conceptoAlmacenCompraId) : null,
+      conceptoAlmacenVentaId: conceptoAlmacenVentaId ? Number(conceptoAlmacenVentaId) : null,
+      esAlmacenExterno,
+      condicionesRecepcionAlmacen: condicionesRecepcionAlmacen || null,
+      condicionesEntregaAlmacen: condicionesEntregaAlmacen || null
     });
   };
 
-  // Normalizar opciones para el dropdown de entidades
   const entidadesOptions = entidades.map(e => ({ 
     ...e, 
     id: Number(e.id),
     label: e.razonSocial,
     value: Number(e.id)
+  }));
+
+  const conceptosOptions = conceptosAlmacen.map(c => ({
+    label: c.nombre,
+    value: Number(c.id)
   }));
 
   return (
@@ -148,9 +177,68 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
             />
           </div>
         </div>
+
+        {/* NUEVOS CAMPOS */}
+        <div className="p-col-12 p-md-6">
+          <div className="p-field">
+            <label htmlFor="conceptoAlmacenCompraId">Concepto Almacén para Compras</label>
+            <Dropdown
+              id="conceptoAlmacenCompraId"
+              value={conceptoAlmacenCompraId ? Number(conceptoAlmacenCompraId) : null}
+              options={conceptosOptions}
+              onChange={e => setConceptoAlmacenCompraId(e.value)}
+              placeholder="Seleccionar concepto"
+              disabled={loading || readOnly}
+              showClear
+              filter
+            />
+          </div>
+        </div>
+        <div className="p-col-12 p-md-6">
+          <div className="p-field">
+            <label htmlFor="conceptoAlmacenVentaId">Concepto Almacén para Ventas</label>
+            <Dropdown
+              id="conceptoAlmacenVentaId"
+              value={conceptoAlmacenVentaId ? Number(conceptoAlmacenVentaId) : null}
+              options={conceptosOptions}
+              onChange={e => setConceptoAlmacenVentaId(e.value)}
+              placeholder="Seleccionar concepto"
+              disabled={loading || readOnly}
+              showClear
+              filter
+            />
+          </div>
+        </div>
+        <div className="p-col-12">
+          <div className="p-field">
+            <label htmlFor="condicionesRecepcionAlmacen">Condiciones de Recepción en Almacén</label>
+            <InputTextarea 
+              id="condicionesRecepcionAlmacen" 
+              value={condicionesRecepcionAlmacen} 
+              onChange={e => setCondicionesRecepcionAlmacen(e.target.value)} 
+              rows={3} 
+              disabled={loading || readOnly}
+              placeholder="Ej: Horario de recepción, requisitos de documentación, etc."
+            />
+          </div>
+        </div>
+        <div className="p-col-12">
+          <div className="p-field">
+            <label htmlFor="condicionesEntregaAlmacen">Condiciones de Entrega desde Almacén</label>
+            <InputTextarea 
+              id="condicionesEntregaAlmacen" 
+              value={condicionesEntregaAlmacen} 
+              onChange={e => setCondicionesEntregaAlmacen(e.target.value)} 
+              rows={3} 
+              disabled={loading || readOnly}
+              placeholder="Ej: Horario de despacho, condiciones de transporte, etc."
+            />
+          </div>
+        </div>
+
         <div className="p-col-12">
           <div className="p-grid">
-            <div className="p-col-12 p-md-4">
+            <div className="p-col-12 p-md-3">
               <div className="p-field-checkbox">
                 <Checkbox 
                   id="fiscal" 
@@ -161,7 +249,7 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
                 <label htmlFor="fiscal">Dirección Fiscal</label>
               </div>
             </div>
-            <div className="p-col-12 p-md-4">
+            <div className="p-col-12 p-md-3">
               <div className="p-field-checkbox">
                 <Checkbox 
                   id="almacenPrincipal" 
@@ -172,7 +260,18 @@ export default function DireccionEntidadForm({ isEdit, defaultValues, entidades,
                 <label htmlFor="almacenPrincipal">Almacén Principal</label>
               </div>
             </div>
-            <div className="p-col-12 p-md-4">
+            <div className="p-col-12 p-md-3">
+              <div className="p-field-checkbox">
+                <Checkbox 
+                  id="esAlmacenExterno" 
+                  checked={esAlmacenExterno} 
+                  onChange={e => setEsAlmacenExterno(e.checked)} 
+                  disabled={loading || readOnly} 
+                />
+                <label htmlFor="esAlmacenExterno">Almacén Externo</label>
+              </div>
+            </div>
+            <div className="p-col-12 p-md-3">
               <div className="p-field-checkbox">
                 <Checkbox 
                   id="activo" 

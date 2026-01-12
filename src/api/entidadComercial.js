@@ -99,6 +99,24 @@ export async function getClientesPorEmpresa(empresaId) {
 }
 
 /**
+ * Obtiene plantas industriales filtradas (tipoEntidadId=18)
+ * @returns {Promise<Array>} Lista de plantas industriales activas con estructura para dropdown
+ */
+export async function getPlantasIndustriales() {
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  const plantasFiltradas = res.data.filter(entidad => 
+    Number(entidad.tipoEntidadId) === 18 &&
+    entidad.estado === true
+  );
+  
+  return plantasFiltradas.map(planta => ({
+    ...planta,
+    label: planta.razonSocial || planta.nombreComercial,
+    value: Number(planta.id)
+  }));
+}
+
+/**
  * Clona una EntidadComercial y sus tablas relacionadas a todas las demás empresas del grupo
  * @param {number} id - ID de la entidad comercial a clonar
  * @returns {Promise<Object>} Resumen de operaciones realizadas

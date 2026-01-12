@@ -1,6 +1,7 @@
 /**
  * Formulario para gestión de Tipos de Producto
  * Adaptado al modelo backend: nombre (único), descripcion, activo, paraCompras, paraVentas
+ * NUEVOS CAMPOS: especificacionesCompra, especificacionesVenta, validezOfertaCompra, validezOfertaVenta
  */
 
 import React, { useState, useEffect } from "react";
@@ -35,6 +36,30 @@ const esquemaValidacion = yup.object().shape({
   activo: yup.boolean().default(true),
   paraCompras: yup.boolean().default(false),
   paraVentas: yup.boolean().default(false),
+  especificacionesCompra: yup
+    .string()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  especificacionesVenta: yup
+    .string()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  validezOfertaCompra: yup
+    .string()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
+  validezOfertaVenta: yup
+    .string()
+    .nullable()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : value;
+    }),
 });
 
 const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
@@ -58,10 +83,13 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
       activo: true,
       paraCompras: false,
       paraVentas: false,
+      especificacionesCompra: "",
+      especificacionesVenta: "",
+      validezOfertaCompra: "",
+      validezOfertaVenta: "",
     },
   });
 
-  // Cargar subfamilias al montar el componente
   useEffect(() => {
     cargarSubfamilias();
   }, []);
@@ -86,6 +114,10 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
       setValue("activo", tipoProducto.activo !== undefined ? tipoProducto.activo : true);
       setValue("paraCompras", tipoProducto.paraCompras || false);
       setValue("paraVentas", tipoProducto.paraVentas || false);
+      setValue("especificacionesCompra", tipoProducto.especificacionesCompra || "");
+      setValue("especificacionesVenta", tipoProducto.especificacionesVenta || "");
+      setValue("validezOfertaCompra", tipoProducto.validezOfertaCompra || "");
+      setValue("validezOfertaVenta", tipoProducto.validezOfertaVenta || "");
     } else {
       reset({
         nombre: "",
@@ -94,6 +126,10 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
         activo: true,
         paraCompras: false,
         paraVentas: false,
+        especificacionesCompra: "",
+        especificacionesVenta: "",
+        validezOfertaCompra: "",
+        validezOfertaVenta: "",
       });
     }
   }, [tipoProducto, setValue, reset]);
@@ -108,6 +144,10 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
         activo: data.activo,
         paraCompras: data.paraCompras,
         paraVentas: data.paraVentas,
+        especificacionesCompra: data.especificacionesCompra?.trim() || null,
+        especificacionesVenta: data.especificacionesVenta?.trim() || null,
+        validezOfertaCompra: data.validezOfertaCompra?.trim() || null,
+        validezOfertaVenta: data.validezOfertaVenta?.trim() || null,
       };
       
       onGuardar(datosNormalizados);
@@ -197,13 +237,109 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
                 {...field}
                 placeholder="Descripción detallada del tipo de producto (opcional)"
                 className={getFieldClass("descripcion")}
-                rows={4}
+                rows={3}
                 autoResize
               />
             )}
           />
           {errors.descripcion && (
             <small className="p-error p-d-block">{errors.descripcion.message}</small>
+          )}
+        </div>
+
+        {/* Campo Especificaciones Compra */}
+        <div className="p-col-12 p-field">
+          <label htmlFor="especificacionesCompra" className="p-d-block">
+            Especificaciones para Compras
+          </label>
+          <Controller
+            name="especificacionesCompra"
+            control={control}
+            render={({ field }) => (
+              <InputTextarea
+                id="especificacionesCompra"
+                {...field}
+                placeholder="Especificaciones técnicas o condiciones para compras (opcional)"
+                className={getFieldClass("especificacionesCompra")}
+                rows={3}
+                autoResize
+              />
+            )}
+          />
+          {errors.especificacionesCompra && (
+            <small className="p-error p-d-block">{errors.especificacionesCompra.message}</small>
+          )}
+        </div>
+
+        {/* Campo Especificaciones Venta */}
+        <div className="p-col-12 p-field">
+          <label htmlFor="especificacionesVenta" className="p-d-block">
+            Especificaciones para Ventas
+          </label>
+          <Controller
+            name="especificacionesVenta"
+            control={control}
+            render={({ field }) => (
+              <InputTextarea
+                id="especificacionesVenta"
+                {...field}
+                placeholder="Especificaciones técnicas o condiciones para ventas (opcional)"
+                className={getFieldClass("especificacionesVenta")}
+                rows={3}
+                autoResize
+              />
+            )}
+          />
+          {errors.especificacionesVenta && (
+            <small className="p-error p-d-block">{errors.especificacionesVenta.message}</small>
+          )}
+        </div>
+
+        {/* Campo Validez Oferta Compra */}
+        <div className="p-col-12 p-field">
+          <label htmlFor="validezOfertaCompra" className="p-d-block">
+            Validez de Oferta para Compras
+          </label>
+          <Controller
+            name="validezOfertaCompra"
+            control={control}
+            render={({ field }) => (
+              <InputTextarea
+                id="validezOfertaCompra"
+                {...field}
+                placeholder="Ej: Oferta válida por 30 días calendario (opcional)"
+                className={getFieldClass("validezOfertaCompra")}
+                rows={2}
+                autoResize
+              />
+            )}
+          />
+          {errors.validezOfertaCompra && (
+            <small className="p-error p-d-block">{errors.validezOfertaCompra.message}</small>
+          )}
+        </div>
+
+        {/* Campo Validez Oferta Venta */}
+        <div className="p-col-12 p-field">
+          <label htmlFor="validezOfertaVenta" className="p-d-block">
+            Validez de Oferta para Ventas
+          </label>
+          <Controller
+            name="validezOfertaVenta"
+            control={control}
+            render={({ field }) => (
+              <InputTextarea
+                id="validezOfertaVenta"
+                {...field}
+                placeholder="Ej: Oferta válida por 15 días hábiles (opcional)"
+                className={getFieldClass("validezOfertaVenta")}
+                rows={2}
+                autoResize
+              />
+            )}
+          />
+          {errors.validezOfertaVenta && (
+            <small className="p-error p-d-block">{errors.validezOfertaVenta.message}</small>
           )}
         </div>
 

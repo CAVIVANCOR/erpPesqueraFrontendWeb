@@ -4,9 +4,11 @@
  * Componente CRUD para gestionar direcciones de una entidad comercial.
  * Sigue el patrón profesional ERP Megui con control de roles y feedback visual.
  * Patrón basado exactamente en TipoEquipo.jsx para máxima consistencia.
+ * ACTUALIZADO: Incluye campos conceptoAlmacenCompraId, conceptoAlmacenVentaId, esAlmacenExterno, condicionesRecepcionAlmacen, condicionesEntregaAlmacen
+ * NUEVA FUNCIONALIDAD: Importar direcciones desde plantas industriales (tipoEntidadId=18)
  *
  * @author ERP Megui
- * @version 1.0.0
+ * @version 1.2.0
  */
 
 import React, {
@@ -22,9 +24,11 @@ import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
+import { Dropdown } from "primereact/dropdown";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
+import { Panel } from "primereact/panel";
 import AuditInfo from "../shared/AuditInfo";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -34,7 +38,7 @@ import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../../utils/utils";
 import { ButtonGroup } from "primereact/buttongroup";
 import { ToggleButton } from "primereact/togglebutton";
-import UbigeoSelector from "./UbigeoSelector"; // Importar componente UbigeoSelector
+import UbigeoSelector from "./UbigeoSelector";
 import {
   crearDireccionEntidad,
   actualizarDireccionEntidad,
@@ -44,6 +48,8 @@ import {
 import { getUbigeos } from "../../api/ubigeo";
 import { getDepartamentos } from "../../api/departamento";
 import { getProvincias } from "../../api/provincia";
+import { getConceptosMovAlmacen } from "../../api/conceptoMovAlmacen";
+import { getPlantasIndustriales } from "../../api/entidadComercial";
 
 // Esquema de validación para direcciones
 const esquemaValidacionDireccion = yup.object().shape({
@@ -63,6 +69,11 @@ const esquemaValidacionDireccion = yup.object().shape({
     .max(100, "Máximo 100 caracteres")
     .nullable(),
   activo: yup.boolean(),
+  conceptoAlmacenCompraId: yup.number().nullable(),
+  conceptoAlmacenVentaId: yup.number().nullable(),
+  esAlmacenExterno: yup.boolean(),
+  condicionesRecepcionAlmacen: yup.string().nullable(),
+  condicionesEntregaAlmacen: yup.string().nullable(),
 });
 
 /**
@@ -83,7 +94,14 @@ const DetalleDireccionesEntidad = forwardRef(
     const [ubigeoModalVisible, setUbigeoModalVisible] = useState(false);
     const [ubigeoTextoSeleccionado, setUbigeoTextoSeleccionado] = useState(
       "Seleccione un ubigeo"
-    ); // Estado global para texto del ubigeo
+    );
+    const [conceptosAlmacen, setConceptosAlmacen] = useState([]);
+
+    // Estados para importar direcciones desde plantas industriales
+    const [plantasIndustriales, setPlantasIndustriales] = useState([]);
+    const [plantaSeleccionada, setPlantaSeleccionada] = useState(null);
+    const [direccionesPlanta, setDireccionesPlanta] = useState([]);
+    const [direccionPlantaSeleccionada, setDireccionPlantaSeleccionada] = useState(null);
 
     // Referencias
     const toast = useRef(null);
@@ -110,6 +128,11 @@ const DetalleDireccionesEntidad = forwardRef(
         telefono: "",
         correo: "",
         activo: true,
+        conceptoAlmacenCompraId: null,
+        conceptoAlmacenVentaId: null,
+        esAlmacenExterno: false,
+        condicionesRecepcionAlmacen: "",
+        condicionesEntregaAlmacen: "",
       },
     });
 
@@ -133,14 +156,134 @@ const DetalleDireccionesEntidad = forwardRef(
       }
     };
 
+    // Función para cargar conceptos de almacén
+    const cargarConceptosAlmacen = async () => {
+      try {
+        const response = await getConceptosMovAlmacen();
+        setConceptosAlmacen(response || []);
+      } catch (error) {
+        console.error("Error al cargar conceptos de almacén:", error);
+      }
+    };
+
+    // Función para cargar plantas industriales
+    const cargarPlantasIndustriales = async () => {
+      try {
+        const response = await getPlantasIndustriales();
+        setPlantasIndustriales(response || []);
+      } catch (error) {
+        console.error("Error al cargar plantas industriales:", error);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al cargar plantas industriales",
+          life: 3000,
+        });
+      }
+    };
+
+    // Función para cargar direcciones de la planta seleccionada
+    const cargarDireccionesPlanta = async (plantaId) => {
+      if (!plantaId) {
+        setDireccionesPlanta([]);
+        setDireccionPlantaSeleccionada(null);
+        return;
+      }
+
+      try {
+        const response = await obtenerDireccionesPorEntidad(plantaId);
+        setDireccionesPlanta(response || []);
+        setDireccionPlantaSeleccionada(null);
+      } catch (error) {
+        console.error("Error al cargar direcciones de la planta:", error);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al cargar direcciones de la planta",
+          life: 3000,
+        });
+      }
+    };
+
+    // Función para importar dirección seleccionada al formulario
+    const importarDireccion = async () => {
+      if (!direccionPlantaSeleccionada) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "Debe seleccionar una dirección para importar",
+          life: 3000,
+        });
+        return;
+      }
+
+      try {
+        const direccion = direccionesPlanta.find(
+          (d) => Number(d.id) === Number(direccionPlantaSeleccionada)
+        );
+
+        if (!direccion) {
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: "Dirección no encontrada",
+            life: 3000,
+          });
+          return;
+        }
+
+        // Cargar todos los datos de la dirección en el formulario
+        setValue("direccion", direccion.direccion || "");
+        setValue("direccionArmada", direccion.direccionArmada || "");
+        setValue("ubigeoId", Number(direccion.ubigeoId));
+        setValue("referencia", direccion.referencia || "");
+        setValue("telefono", direccion.telefono || "");
+        setValue("correo", direccion.correo || "");
+        setValue("conceptoAlmacenCompraId", direccion.conceptoAlmacenCompraId ? Number(direccion.conceptoAlmacenCompraId) : null);
+        setValue("conceptoAlmacenVentaId", direccion.conceptoAlmacenVentaId ? Number(direccion.conceptoAlmacenVentaId) : null);
+        setValue("esAlmacenExterno", Boolean(direccion.esAlmacenExterno));
+        setValue("condicionesRecepcionAlmacen", direccion.condicionesRecepcionAlmacen || "");
+        setValue("condicionesEntregaAlmacen", direccion.condicionesEntregaAlmacen || "");
+
+        // Actualizar texto del ubigeo
+        if (direccion.ubigeo) {
+          setUbigeoTextoSeleccionado(
+            `${direccion.ubigeo.codigo} - ${direccion.ubigeo.nombreDistrito || "N/A"}`
+          );
+        }
+
+        // Limpiar selección de ayuda
+        setPlantaSeleccionada(null);
+        setDireccionesPlanta([]);
+        setDireccionPlantaSeleccionada(null);
+
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Dirección importada correctamente. Revise y guarde los cambios.",
+          life: 4000,
+        });
+      } catch (error) {
+        console.error("Error al importar dirección:", error);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al importar la dirección",
+          life: 3000,
+        });
+      }
+    };
+
     // Exponer función recargar mediante ref
     useImperativeHandle(ref, () => ({
       recargar: cargarDirecciones,
     }));
 
-    // Cargar direcciones al montar el componente o cambiar entidadComercialId
+    // Cargar direcciones, conceptos y plantas al montar el componente
     useEffect(() => {
       cargarDirecciones();
+      cargarConceptosAlmacen();
+      cargarPlantasIndustriales();
     }, [entidadComercialId]);
 
     /**
@@ -149,6 +292,10 @@ const DetalleDireccionesEntidad = forwardRef(
     const abrirDialogoNuevo = () => {
       setDireccionSeleccionada(null);
       reset();
+      setUbigeoTextoSeleccionado("Seleccione un ubigeo");
+      setPlantaSeleccionada(null);
+      setDireccionesPlanta([]);
+      setDireccionPlantaSeleccionada(null);
       setDialogVisible(true);
     };
 
@@ -167,6 +314,11 @@ const DetalleDireccionesEntidad = forwardRef(
       setValue("telefono", direccion.telefono || "");
       setValue("correo", direccion.correo || "");
       setValue("activo", Boolean(direccion.activo));
+      setValue("conceptoAlmacenCompraId", direccion.conceptoAlmacenCompraId ? Number(direccion.conceptoAlmacenCompraId) : null);
+      setValue("conceptoAlmacenVentaId", direccion.conceptoAlmacenVentaId ? Number(direccion.conceptoAlmacenVentaId) : null);
+      setValue("esAlmacenExterno", Boolean(direccion.esAlmacenExterno));
+      setValue("condicionesRecepcionAlmacen", direccion.condicionesRecepcionAlmacen || "");
+      setValue("condicionesEntregaAlmacen", direccion.condicionesEntregaAlmacen || "");
 
       // Establecer texto del ubigeo para edición
       if (direccion.ubigeo) {
@@ -179,6 +331,11 @@ const DetalleDireccionesEntidad = forwardRef(
         setUbigeoTextoSeleccionado("Seleccione un ubigeo");
       }
 
+      // Limpiar ayuda de importación
+      setPlantaSeleccionada(null);
+      setDireccionesPlanta([]);
+      setDireccionPlantaSeleccionada(null);
+
       setDialogVisible(true);
     };
 
@@ -188,6 +345,9 @@ const DetalleDireccionesEntidad = forwardRef(
     const cerrarDialogo = () => {
       setDialogVisible(false);
       setDireccionSeleccionada(null);
+      setPlantaSeleccionada(null);
+      setDireccionesPlanta([]);
+      setDireccionPlantaSeleccionada(null);
     };
 
     /**
@@ -206,10 +366,8 @@ const DetalleDireccionesEntidad = forwardRef(
       try {
         setLoading(true);
 
-        // Recargar datos desde la API
         await eliminarDireccionEntidad(direccionAEliminar.id);
 
-        // Recargar datos desde la API
         await cargarDirecciones();
 
         toast.current?.show({
@@ -241,7 +399,6 @@ const DetalleDireccionesEntidad = forwardRef(
      */
     const construirDireccionArmada = async (direccion, ubigeoId) => {
       try {
-        // 1. Obtener datos del ubigeo
         const ubigeos = await getUbigeos();
         const ubigeoEncontrado = ubigeos.find(
           (u) => Number(u.id) === Number(ubigeoId)
@@ -249,10 +406,9 @@ const DetalleDireccionesEntidad = forwardRef(
 
         if (!ubigeoEncontrado) {
           console.warn("⚠️ [FRONTEND] Ubigeo no encontrado:", ubigeoId);
-          return direccion; // Retornar solo la dirección base
+          return direccion;
         }
 
-        // 2. Obtener departamento y provincia
         const departamentos = await getDepartamentos();
         const provincias = await getProvincias();
 
@@ -263,7 +419,6 @@ const DetalleDireccionesEntidad = forwardRef(
           (p) => Number(p.id) === Number(ubigeoEncontrado.provinciaId)
         );
 
-        // 3. Construir direccionArmada
         const direccionArmada = [
           direccion,
           ubigeoEncontrado.nombreDistrito || "",
@@ -278,7 +433,7 @@ const DetalleDireccionesEntidad = forwardRef(
           "❌ [FRONTEND] Error construyendo direccionArmada:",
           error
         );
-        return direccion; // Fallback: retornar solo la dirección base
+        return direccion;
       }
     };
 
@@ -287,7 +442,6 @@ const DetalleDireccionesEntidad = forwardRef(
      */
     const onGuardarExitoso = () => {
       cerrarDialogo();
-      // Recargar datos desde la API
       cargarDirecciones();
     };
 
@@ -302,12 +456,11 @@ const DetalleDireccionesEntidad = forwardRef(
       try {
         setLoading(true);
 
-        // Construir direccionArmada automáticamente
         const direccionArmada = await construirDireccionArmada(
           data.direccion?.trim().toUpperCase(),
           data.ubigeoId
         );
-        // Normalizar datos
+
         const direccionNormalizada = {
           entidadComercialId: Number(entidadComercialId),
           direccion: data.direccion?.trim().toUpperCase(),
@@ -319,22 +472,23 @@ const DetalleDireccionesEntidad = forwardRef(
           telefono: data.telefono?.trim().toUpperCase() || null,
           correo: data.correo?.trim().toLowerCase() || null,
           activo: Boolean(data.activo),
+          conceptoAlmacenCompraId: data.conceptoAlmacenCompraId ? Number(data.conceptoAlmacenCompraId) : null,
+          conceptoAlmacenVentaId: data.conceptoAlmacenVentaId ? Number(data.conceptoAlmacenVentaId) : null,
+          esAlmacenExterno: Boolean(data.esAlmacenExterno),
+          condicionesRecepcionAlmacen: data.condicionesRecepcionAlmacen?.trim() || null,
+          condicionesEntregaAlmacen: data.condicionesEntregaAlmacen?.trim() || null,
         };
 
         let resultado;
         const esEdicion = direccionSeleccionada && direccionSeleccionada.id;
 
         if (esEdicion) {
-          // Actualizar dirección existente
-          // Agregar campos de auditoría para actualización
           const datosActualizacion = {
             ...direccionNormalizada,
-            // Si fechaCreacion o creadoPor son null/vacíos, asignarlos ahora
             fechaCreacion: direccionSeleccionada.fechaCreacion || new Date(),
             creadoPor:
               direccionSeleccionada.creadoPor ||
               (usuario?.personalId ? Number(usuario.personalId) : null),
-            // Siempre actualizar estos campos
             fechaActualizacion: new Date(),
             actualizadoPor: usuario?.personalId
               ? Number(usuario.personalId)
@@ -353,8 +507,6 @@ const DetalleDireccionesEntidad = forwardRef(
             life: 3000,
           });
         } else {
-          // Crear nueva dirección
-          // Agregar campos de auditoría para creación
           const datosCreacion = {
             ...direccionNormalizada,
             fechaCreacion: new Date(),
@@ -474,6 +626,22 @@ const DetalleDireccionesEntidad = forwardRef(
       </div>
     );
 
+    // Preparar opciones para los Dropdowns
+    const conceptosOptions = conceptosAlmacen.map((c) => ({
+      label: c.descripcionArmada,
+      value: Number(c.id),
+    }));
+
+    const plantasOptions = plantasIndustriales.map((p) => ({
+      label: p.label,
+      value: p.value,
+    }));
+
+    const direccionesPlantaOptions = direccionesPlanta.map((d) => ({
+      label: `${d.direccion} - ${d.ubigeo?.nombreDistrito || ""}`,
+      value: Number(d.id),
+    }));
+
     return (
       <div className="p-4">
         <Toast ref={toast} />
@@ -560,6 +728,72 @@ const DetalleDireccionesEntidad = forwardRef(
           modal
         >
           <form className="p-fluid">
+            {/* PANEL DE AYUDA: IMPORTAR DESDE PLANTAS INDUSTRIALES */}
+            <Panel 
+              header="🏭 Ayuda: Importar Dirección desde Planta Industrial" 
+              toggleable 
+              collapsed={true}
+              className="mb-3"
+              style={{ backgroundColor: "#f8f9fa" }}
+            >
+              <div className="formgrid grid">
+                <div className="field col-12 md:col-6">
+                  <label htmlFor="plantaIndustrial">1. Seleccionar Planta Industrial</label>
+                  <Dropdown
+                    id="plantaIndustrial"
+                    value={plantaSeleccionada}
+                    options={plantasOptions}
+                    onChange={(e) => {
+                      setPlantaSeleccionada(e.value);
+                      cargarDireccionesPlanta(e.value);
+                    }}
+                    placeholder="Seleccione una planta"
+                    filter
+                    showClear
+                    disabled={readOnly || loading}
+                    style={{ fontWeight: "bold" }}
+                  />
+                  <small className="p-text-secondary">
+                    Filtra empresas con tipoEntidadId=18 (Plantas Industriales)
+                  </small>
+                </div>
+
+                <div className="field col-12 md:col-6">
+                  <label htmlFor="direccionPlanta">2. Seleccionar Dirección de la Planta</label>
+                  <Dropdown
+                    id="direccionPlanta"
+                    value={direccionPlantaSeleccionada}
+                    options={direccionesPlantaOptions}
+                    onChange={(e) => setDireccionPlantaSeleccionada(e.value)}
+                    placeholder="Seleccione una dirección"
+                    filter
+                    showClear
+                    disabled={!plantaSeleccionada || readOnly || loading}
+                    style={{ fontWeight: "bold" }}
+                  />
+                  <small className="p-text-secondary">
+                    Direcciones disponibles de la planta seleccionada
+                  </small>
+                </div>
+
+                <div className="field col-12">
+                  <Button
+                    label="Importar Dirección Seleccionada"
+                    icon="pi pi-download"
+                    type="button"
+                    onClick={importarDireccion}
+                    disabled={!direccionPlantaSeleccionada || readOnly || loading}
+                    className="p-button-info"
+                    severity="info"
+                    raised
+                  />
+                  <small className="p-text-secondary">
+                    Al importar, todos los datos de la dirección seleccionada se cargarán en el formulario actual
+                  </small>
+                </div>
+              </div>
+            </Panel>
+
             <div className="formgrid grid">
               <div className="field col-12">
                 <label htmlFor="direccion">Dirección *</label>
@@ -608,13 +842,7 @@ const DetalleDireccionesEntidad = forwardRef(
                 <div className="p-inputgroup">
                   <InputText
                     id="ubigeoId"
-                    value={
-                      direccionSeleccionada?.ubigeo
-                        ? `${direccionSeleccionada.ubigeo.codigo} - ${
-                            direccionSeleccionada.ubigeo.nombreDistrito || "N/A"
-                          }`
-                        : ubigeoTextoSeleccionado
-                    }
+                    value={ubigeoTextoSeleccionado}
                     className={getFieldClass("ubigeoId")}
                     disabled={readOnly || loading}
                     style={{ fontWeight: "bold" }}
@@ -651,58 +879,138 @@ const DetalleDireccionesEntidad = forwardRef(
                 />
                 {getFormErrorMessage("referencia")}
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="telefono">Teléfono</label>
-                  <Controller
-                    name="telefono"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="telefono"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.value)}
-                        className={getFieldClass("telefono")}
-                        maxLength={20}
-                        style={{
-                          fontWeight: "bold",
-                          textTransform: "uppercase",
-                        }}
-                        disabled={readOnly || loading}
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("telefono")}
-                </div>
 
-                <div style={{ flex: 1 }}>
-                  <label htmlFor="correo">Correo</label>
-                  <Controller
-                    name="correo"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="correo"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.value)}
-                        className={getFieldClass("correo")}
-                        maxLength={100}
-                        style={{
-                          fontWeight: "bold",
-                          textTransform: "uppercase",
-                        }}
-                        disabled={readOnly || loading}
-                      />
-                    )}
-                  />
-                  {getFormErrorMessage("correo")}
-                </div>
+              <div className="field col-12 md:col-6">
+                <label htmlFor="telefono">Teléfono</label>
+                <Controller
+                  name="telefono"
+                  control={control}
+                  render={({ field }) => (
+                    <InputText
+                      id="telefono"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      className={getFieldClass("telefono")}
+                      maxLength={20}
+                      style={{
+                        fontWeight: "bold",
+                        textTransform: "uppercase",
+                      }}
+                      disabled={readOnly || loading}
+                    />
+                  )}
+                />
+                {getFormErrorMessage("telefono")}
+              </div>
+
+              <div className="field col-12 md:col-6">
+                <label htmlFor="correo">Correo</label>
+                <Controller
+                  name="correo"
+                  control={control}
+                  render={({ field }) => (
+                    <InputText
+                      id="correo"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      className={getFieldClass("correo")}
+                      maxLength={100}
+                      style={{
+                        fontWeight: "bold",
+                        textTransform: "uppercase",
+                      }}
+                      disabled={readOnly || loading}
+                    />
+                  )}
+                />
+                {getFormErrorMessage("correo")}
+              </div>
+
+              {/* NUEVOS CAMPOS */}
+              <div className="field col-12 md:col-6">
+                <label htmlFor="conceptoAlmacenCompraId">Concepto Almacén para Compras</label>
+                <Controller
+                  name="conceptoAlmacenCompraId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="conceptoAlmacenCompraId"
+                      value={field.value}
+                      options={conceptosOptions}
+                      onChange={(e) => field.onChange(e.value)}
+                      placeholder="Seleccionar concepto"
+                      className={getFieldClass("conceptoAlmacenCompraId")}
+                      disabled={readOnly || loading}
+                      showClear
+                      filter
+                      style={{ fontWeight: "bold" }}
+                    />
+                  )}
+                />
+                {getFormErrorMessage("conceptoAlmacenCompraId")}
+              </div>
+
+              <div className="field col-12 md:col-6">
+                <label htmlFor="conceptoAlmacenVentaId">Concepto Almacén para Ventas</label>
+                <Controller
+                  name="conceptoAlmacenVentaId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="conceptoAlmacenVentaId"
+                      value={field.value}
+                      options={conceptosOptions}
+                      onChange={(e) => field.onChange(e.value)}
+                      placeholder="Seleccionar concepto"
+                      className={getFieldClass("conceptoAlmacenVentaId")}
+                      disabled={readOnly || loading}
+                      showClear
+                      filter
+                      style={{ fontWeight: "bold" }}
+                    />
+                  )}
+                />
+                {getFormErrorMessage("conceptoAlmacenVentaId")}
+              </div>
+
+              <div className="field col-12">
+                <label htmlFor="condicionesRecepcionAlmacen">Condiciones de Recepción en Almacén</label>
+                <Controller
+                  name="condicionesRecepcionAlmacen"
+                  control={control}
+                  render={({ field }) => (
+                    <InputTextarea
+                      id="condicionesRecepcionAlmacen"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      rows={3}
+                      className={getFieldClass("condicionesRecepcionAlmacen")}
+                      placeholder="Ej: Horario de recepción, requisitos de documentación, etc."
+                      disabled={readOnly || loading}
+                    />
+                  )}
+                />
+                {getFormErrorMessage("condicionesRecepcionAlmacen")}
+              </div>
+
+              <div className="field col-12">
+                <label htmlFor="condicionesEntregaAlmacen">Condiciones de Entrega desde Almacén</label>
+                <Controller
+                  name="condicionesEntregaAlmacen"
+                  control={control}
+                  render={({ field }) => (
+                    <InputTextarea
+                      id="condicionesEntregaAlmacen"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      rows={3}
+                      className={getFieldClass("condicionesEntregaAlmacen")}
+                      placeholder="Ej: Horario de despacho, condiciones de transporte, etc."
+                      disabled={readOnly || loading}
+                    />
+                  )}
+                />
+                {getFormErrorMessage("condicionesEntregaAlmacen")}
               </div>
 
               <div
@@ -768,6 +1076,23 @@ const DetalleDireccionesEntidad = forwardRef(
                       />
                     )}
                   />
+                  <Controller
+                    name="esAlmacenExterno"
+                    control={control}
+                    render={({ field }) => (
+                      <ToggleButton
+                        id="esAlmacenExterno"
+                        onLabel="ALMACEN EXTERNO"
+                        offLabel="ALMACEN EXTERNO"
+                        onIcon="pi pi-check"
+                        offIcon="pi pi-times"
+                        checked={field.value}
+                        onChange={(e) => field.onChange(e.value)}
+                        className={`${getFieldClass("esAlmacenExterno")}`}
+                        disabled={readOnly || loading}
+                      />
+                    )}
+                  />
                 </ButtonGroup>
               </div>
             </div>
@@ -782,7 +1107,6 @@ const DetalleDireccionesEntidad = forwardRef(
                 marginTop: 10,
               }}
             >
-              {/* Información de Auditoría */}
               <AuditInfo data={direccionSeleccionada} />
               <div style={{ flex: 1 }}>
                 <Button
@@ -804,10 +1128,8 @@ const DetalleDireccionesEntidad = forwardRef(
                   type="button"
                   loading={loading}
                   onClick={async () => {
-                    // Validar formulario manualmente
                     const isValid = await trigger();
                     if (isValid) {
-                      // Obtener datos del formulario y guardar
                       const formData = getValues();
                       await onSubmitDireccion(formData);
                     }
@@ -823,7 +1145,7 @@ const DetalleDireccionesEntidad = forwardRef(
             </div>
           </form>
         </Dialog>
-        {/* Modal de selección de Ubigeo */}
+
         <Dialog
           header={`Seleccionar Ubigeo ${
             direccionSeleccionada?.ubigeo
@@ -837,9 +1159,7 @@ const DetalleDireccionesEntidad = forwardRef(
         >
           <UbigeoSelector
             onUbigeoSelect={(ubigeo) => {
-              // Actualizar el campo ubigeoId con el ID seleccionado
               setValue("ubigeoId", ubigeo.id);
-              // Actualizar la dirección seleccionada para mostrar la info
               if (direccionSeleccionada) {
                 setDireccionSeleccionada({
                   ...direccionSeleccionada,
@@ -847,13 +1167,10 @@ const DetalleDireccionesEntidad = forwardRef(
                   ubigeo: ubigeo,
                 });
               }
-              // Actualizar texto seleccionado
               setUbigeoTextoSeleccionado(
                 `${ubigeo.codigo} - ${ubigeo.nombreDistrito}`
               );
-              // Cerrar modal
               setUbigeoModalVisible(false);
-              // Mostrar confirmación
               toast.current?.show({
                 severity: "success",
                 summary: "Éxito",
@@ -864,6 +1181,7 @@ const DetalleDireccionesEntidad = forwardRef(
             onCancel={() => setUbigeoModalVisible(false)}
           />
         </Dialog>
+
         <ConfirmDialog
           visible={confirmVisible}
           onHide={() => setConfirmVisible(false)}

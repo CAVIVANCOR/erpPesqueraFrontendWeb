@@ -10,6 +10,7 @@ import { Dialog } from "primereact/dialog";
 import DireccionEntidadForm from "../components/direccionEntidad/DireccionEntidadForm";
 import { getDireccionesEntidad, crearDireccionEntidad, actualizarDireccionEntidad, eliminarDireccionEntidad } from "../api/direccionEntidad";
 import { getEntidadesComerciales } from "../api/entidadComercial";
+import { getConceptosMovAlmacen } from "../api/conceptoMovAlmacen";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 
@@ -32,6 +33,7 @@ export default function DireccionEntidad({ ruta }) {
   const [items, setItems] = useState([]);
   const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
   const [entidades, setEntidades] = useState([]);
+  const [conceptosAlmacen, setConceptosAlmacen] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -46,12 +48,14 @@ export default function DireccionEntidad({ ruta }) {
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const [direccionesData, entidadesData] = await Promise.all([
+      const [direccionesData, entidadesData, conceptosData] = await Promise.all([
         getDireccionesEntidad(),
-        getEntidadesComerciales()
+        getEntidadesComerciales(),
+        getConceptosMovAlmacen()
       ]);
       setItems(direccionesData);
       setEntidades(entidadesData);
+      setConceptosAlmacen(conceptosData);
     } catch (err) {
       toast.current.show({ severity: "error", summary: "Error", detail: "No se pudo cargar los datos." });
     }
@@ -152,6 +156,7 @@ export default function DireccionEntidad({ ruta }) {
           isEdit={!!editing}
           defaultValues={editing || {}}
           entidades={entidades}
+          conceptosAlmacen={conceptosAlmacen}
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}

@@ -196,6 +196,19 @@ const PDFViewer = ({ urlDocumento, altura = "600px" }) => {
           urlCompleta = `${
             import.meta.env.VITE_API_URL
           }/orden-compra/archivo/${rutaArchivo}`;
+
+        } else if (
+          urlDocumento.startsWith("/uploads/datos-adicionales-orden-compra/")
+        ) {
+          // Soporte para documentos adjuntos de datos adicionales de OC
+          const rutaArchivo = urlDocumento.replace(
+            "/uploads/datos-adicionales-orden-compra/",
+            ""
+          );
+          urlCompleta = `${
+            import.meta.env.VITE_API_URL
+          }/det-datos-adicionales-orden-compra/archivo/${rutaArchivo}`;
+
         } else if (urlDocumento.startsWith("/uploads/movimientos-almacen/")) {
           // ✅ NUEVO: Soporte para PDFs de movimientos de almacén
           const rutaArchivo = urlDocumento.replace(
