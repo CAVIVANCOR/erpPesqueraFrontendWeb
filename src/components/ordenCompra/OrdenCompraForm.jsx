@@ -3,7 +3,9 @@ import React, { useState, useEffect } from "react";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Button } from "primereact/button";
 import { Tag } from "primereact/tag";
+import { confirmDialog } from "primereact/confirmdialog";
 import DatosGeneralesTab from "./DatosGeneralesTab";
+import DatosAdicionalesTab from "./DatosAdicionalesTab";
 import VerImpresionOrdenCompraPDF from "./VerImpresionOrdenCompraPDF";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
@@ -27,6 +29,7 @@ export default function OrdenCompraForm({
   onCancel,
   onAprobar,
   onAnular,
+  onGenerarKardex,
   onGenerarDesdeRequerimiento,
   onIrAlOrigen,
   loading,
@@ -36,9 +39,8 @@ export default function OrdenCompraForm({
 }) {
   const { usuario } = useAuthStore();
   
-  // Estados individuales para cada campo (patrón MovimientoAlmacenForm)
   const [empresaId, setEmpresaId] = useState(defaultValues?.empresaId || empresaFija || null);
-  const [tipoDocumentoId, setTipoDocumentoId] = useState(defaultValues?.tipoDocumentoId || 17); // ORDEN DE COMPRA
+  const [tipoDocumentoId, setTipoDocumentoId] = useState(defaultValues?.tipoDocumentoId || 17);
   const [serieDocId, setSerieDocId] = useState(defaultValues?.serieDocId || null);
   const [numSerieDoc, setNumSerieDoc] = useState(defaultValues?.numSerieDoc || "");
   const [numCorreDoc, setNumCorreDoc] = useState(defaultValues?.numCorreDoc || "");
@@ -69,10 +71,10 @@ export default function OrdenCompraForm({
   const [proveedoresFiltrados, setProveedoresFiltrados] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
   const [detallesCount, setDetallesCount] = useState(0);
+  const [datosAdicionalesCount, setDatosAdicionalesCount] = useState(0);
   const [totales, setTotales] = useState({ subtotal: 0, igv: 0, total: 0 });
   const [fechaDocumentoInicial, setFechaDocumentoInicial] = useState(null);
 
-  // Filtrar proveedores por empresaId
   useEffect(() => {
     if (proveedores && proveedores.length > 0 && empresaId) {
       const proveedoresPorEmpresa = proveedores.filter(
@@ -84,7 +86,6 @@ export default function OrdenCompraForm({
     }
   }, [proveedores, empresaId]);
 
-  // Actualizar estados cuando cambien los defaultValues (patrón MovimientoAlmacenForm)
   useEffect(() => {
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       setEmpresaId(defaultValues.empresaId ? Number(defaultValues.empresaId) : (empresaFija ? Number(empresaFija) : null));
@@ -112,7 +113,6 @@ export default function OrdenCompraForm({
     }
   }, [defaultValues, empresaFija]);
 
-  // Asignar automáticamente el solicitante basado en el usuario logueado (solo al crear)
   useEffect(() => {
     if (!isEdit && usuario?.personalId && !solicitanteId) {
       setSolicitanteId(Number(usuario.personalId));
@@ -130,40 +130,29 @@ export default function OrdenCompraForm({
     }
   }, [isEdit, usuario?.personalId, toast]);
 
-  // Guardar fecha inicial para evitar carga automática en mount
   useEffect(() => {
     if (fechaDocumento && fechaDocumentoInicial === null) {
       setFechaDocumentoInicial(fechaDocumento);
     }
   }, [fechaDocumento, fechaDocumentoInicial]);
 
-  // Cargar tipo de cambio SUNAT solo cuando el usuario modifica manualmente fechaDocumento
   useEffect(() => {
     const cargarTipoCambio = async () => {
-      // No ejecutar si no hay fecha o si es la carga inicial
       if (!fechaDocumento || fechaDocumentoInicial === null) return;
       
-      // Comparar fechas por valor (ISO string) en lugar de por referencia
       const fechaActualISO = new Date(fechaDocumento).toISOString();
       const fechaInicialISO = new Date(fechaDocumentoInicial).toISOString();
       
-      // No ejecutar si la fecha no ha cambiado realmente
       if (fechaActualISO === fechaInicialISO) return;
 
       try {
-        // Convertir fecha a formato YYYY-MM-DD
         const fecha = new Date(fechaDocumento);
         const fechaISO = fecha.toISOString().split('T')[0];
-
-        // Consultar tipo de cambio SUNAT
         const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
         
-        // Para COMPRAS usamos sell_price (precio de venta del dólar)
         if (tipoCambioData && tipoCambioData.sell_price) {
           const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
           setTipoCambio(tipoCambioVenta.toFixed(3));
-          
-          // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
           setFechaDocumentoInicial(fechaDocumento);
           
           toast?.current?.show({
@@ -175,23 +164,18 @@ export default function OrdenCompraForm({
         }
       } catch (error) {
         console.error("Error al cargar tipo de cambio SUNAT:", error);
-        // No mostrar error al usuario, solo log en consola
-        // El usuario puede ingresar el tipo de cambio manualmente si falla
       }
     };
 
     cargarTipoCambio();
   }, [fechaDocumento, fechaDocumentoInicial]);
 
-  // Recalcular totales cuando cambien los detalles, porcentaje IGV o estado IGV
   useEffect(() => {
     const calcularTotales = async () => {
       if (!defaultValues?.id || !isEdit) return;
 
       try {
-        const { getDetallesOrdenCompra } = await import(
-          "../../api/detalleOrdenCompra"
-        );
+        const { getDetallesOrdenCompra } = await import("../../api/detalleOrdenCompra");
         const detalles = await getDetallesOrdenCompra(defaultValues.id);
 
         const subtotalCalc = detalles.reduce(
@@ -210,26 +194,15 @@ export default function OrdenCompraForm({
     };
 
     calcularTotales();
-  }, [
-    detallesCount,
-    porcentajeIGV,
-    esExoneradoAlIGV,
-    isEdit,
-    defaultValues?.id,
-  ]);
+  }, [detallesCount, porcentajeIGV, esExoneradoAlIGV, isEdit, defaultValues?.id]);
 
-  // Handler para cambio de serie - Calcula y muestra el próximo correlativo
   const handleSerieChange = (serieId) => {
     if (serieId) {
       const serie = seriesDoc.find((s) => Number(s.id) === Number(serieId));
       if (serie) {
-        // Mostrar formato de referencia (no el número real)
         const correlativoActual = Number(serie.correlativo);
         const proximoCorrelativo = correlativoActual + 1;
-        const numSerie = String(serie.serie).padStart(
-          serie.numCerosIzqSerie,
-          "0"
-        );
+        const numSerie = String(serie.serie).padStart(serie.numCerosIzqSerie, "0");
 
         setSerieDocId(serieId);
         setNumSerieDoc(numSerie);
@@ -244,7 +217,6 @@ export default function OrdenCompraForm({
     }
   };
 
-  // Handler genérico para cambios de campos
   const handleChange = (field, value) => {
     const setters = {
       empresaId: setEmpresaId,
@@ -278,7 +250,6 @@ export default function OrdenCompraForm({
   };
 
   const handleSubmit = () => {
-    // Construir el objeto con todos los estados individuales
     const data = {
       empresaId: empresaId ? Number(empresaId) : null,
       tipoDocumentoId: tipoDocumentoId ? Number(tipoDocumentoId) : null,
@@ -340,17 +311,51 @@ export default function OrdenCompraForm({
 
   const handleAnularClick = () => {
     if (!defaultValues?.id) return;
-    onAnular(defaultValues.id);
+    
+    confirmDialog({
+      message: "¿Está seguro de anular esta orden de compra? Esta acción eliminará el movimiento de almacén y el kardex asociado si existen.",
+      header: "Confirmar Anulación",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Sí, anular",
+      rejectLabel: "Cancelar",
+      acceptClassName: "p-button-danger",
+      accept: () => {
+        onAnular(defaultValues.id);
+      },
+    });
+  };
+
+  const handleGenerarKardexClick = () => {
+    if (!defaultValues?.id) return;
+    
+    if (detallesCount === 0) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Validación",
+        detail: "Debe agregar al menos un detalle antes de generar el kardex",
+      });
+      return;
+    }
+    
+    confirmDialog({
+      message: "¿Está seguro de generar el kardex para esta orden de compra? Se creará el movimiento de ingreso a almacén y se actualizarán los saldos de stock.",
+      header: "Confirmar Generación de Kardex",
+      icon: "pi pi-info-circle",
+      acceptLabel: "Sí, generar",
+      rejectLabel: "Cancelar",
+      acceptClassName: "p-button-success",
+      accept: () => {
+        onGenerarKardex(defaultValues.id);
+      },
+    });
   };
 
   const handlePdfGenerated = (urlPdf) => {
-    // Actualizar defaultValues con la nueva URL del PDF
     if (defaultValues) {
       defaultValues.urlOrdenCompraPdf = urlPdf;
     }
   };
 
-  // Objeto formData para pasar a componentes hijos
   const formData = {
     empresaId,
     tipoDocumentoId,
@@ -376,13 +381,12 @@ export default function OrdenCompraForm({
     esExoneradoAlIGV,
   };
 
-  // Estados del documento
-  const estaAprobado = estadoId === 33;
-  const estaAnulado = estadoId === 40;
-  const estaPendiente = estadoId === 38 || !estadoId;
+  const estaPendiente = Number(estadoId) === 38 || !estadoId;
+  const estaAprobado = Number(estadoId) === 39;
+  const estaAnulado = Number(estadoId) === 40;
+  const kardexGenerado = Number(estadoId) === 50;
   const puedeEditar = estaPendiente && !loading;
 
-  // Preparar options para dropdowns siguiendo patrón RequerimientoCompraForm
   const tiposDocumentoOptions = (tiposDocumento || []).map((t) => ({
     ...t,
     id: Number(t.id),
@@ -410,7 +414,6 @@ export default function OrdenCompraForm({
   return (
     <div className="p-fluid">
       <TabView activeIndex={activeTab} onTabChange={(e) => setActiveTab(e.index)}>
-        {/* TAB 1: DATOS GENERALES */}
         <TabPanel header="Datos Generales" leftIcon="pi pi-file">
           <DatosGeneralesTab
             formData={formData}
@@ -442,7 +445,22 @@ export default function OrdenCompraForm({
           />
         </TabPanel>
 
-        {/* TAB 2: IMPRESIÓN PDF */}
+        <TabPanel 
+          header={`Datos Adicionales ${datosAdicionalesCount > 0 ? `(${datosAdicionalesCount})` : ''}`} 
+          leftIcon="pi pi-paperclip" 
+          disabled={!isEdit}
+        >
+          <DatosAdicionalesTab
+            ordenCompraId={defaultValues?.id}
+            puedeEditar={puedeEditar}
+            toast={toast}
+            onCountChange={setDatosAdicionalesCount}
+            readOnly={readOnly}
+            permisos={permisos}
+            estadoId={estadoId}
+          />
+        </TabPanel>
+
         <TabPanel header="Impresión PDF" leftIcon="pi pi-file-pdf" disabled={!isEdit}>
           <VerImpresionOrdenCompraPDF
             ordenCompraId={defaultValues?.id}
@@ -454,26 +472,25 @@ export default function OrdenCompraForm({
         </TabPanel>
       </TabView>
 
-      {/* BOTONES DE ACCIÓN */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          marginTop: "1rem",
         }}
       >
-        {/* Botones izquierda: Aprobar, Anular */}
-        <div style={{ display: "flex", gap: 8 }}>
-          {/* Botón Aprobar: siempre visible en edición, deshabilitado si ya está aprobado o anulado */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {isEdit && (
             <Button
               label="Aprobar"
               icon="pi pi-check"
               className="p-button-success"
               onClick={handleAprobarClick}
-              disabled={readOnly || loading || !permisos.puedeEditar || estaAprobado || estaAnulado}
+              disabled={readOnly || loading || !permisos.puedeEditar || estaAprobado || estaAnulado || kardexGenerado}
               tooltip={
                 estaAprobado ? "La orden ya está aprobada" :
+                kardexGenerado ? "La orden ya tiene kardex generado" :
                 estaAnulado ? "No se puede aprobar una orden anulada" :
                 readOnly ? "Modo solo lectura" : 
                 !permisos.puedeEditar ? "No tiene permisos para aprobar" : 
@@ -482,21 +499,46 @@ export default function OrdenCompraForm({
             />
           )}
           
-          {/* Botón Anular: solo visible si está pendiente o aprobado */}
-          {isEdit && (estaPendiente || estaAprobado) && (
+          {isEdit && (
+            <Button
+              label="Generar Kardex"
+              icon="pi pi-database"
+              className="p-button-info"
+              onClick={handleGenerarKardexClick}
+              disabled={readOnly || loading || !permisos.puedeEditar || !estaAprobado || kardexGenerado || estaAnulado}
+              tooltip={
+                !estaAprobado ? "Solo se puede generar kardex en órdenes aprobadas" :
+                kardexGenerado ? "El kardex ya fue generado" :
+                estaAnulado ? "No se puede generar kardex en orden anulada" :
+                readOnly ? "Modo solo lectura" :
+                !permisos.puedeEditar ? "No tiene permisos para generar kardex" :
+                "Generar movimiento de almacén y kardex"
+              }
+            />
+          )}
+
+          {isEdit && (
             <Button
               label="Anular"
               icon="pi pi-ban"
               className="p-button-danger"
               onClick={handleAnularClick}
-              disabled={readOnly || loading || !permisos.puedeEliminar}
-              tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEliminar ? "No tiene permisos para anular" : "Anular orden de compra"}
+              disabled={readOnly || loading || !permisos.puedeEliminar || estaAnulado}
+              tooltip={
+                estaAnulado ? "La orden ya está anulada" :
+                readOnly ? "Modo solo lectura" : 
+                !permisos.puedeEliminar ? "No tiene permisos para anular" : 
+                "Anular orden de compra"
+              }
             />
           )}
 
-          {/* Tags de estado cuando está aprobado o anulado */}
           {estaAprobado && (
             <Tag value="APROBADO" severity="success" icon="pi pi-check-circle" />
+          )}
+
+          {kardexGenerado && (
+            <Tag value="KARDEX GENERADO" severity="info" icon="pi pi-database" />
           )}
 
           {estaAnulado && (
@@ -504,7 +546,6 @@ export default function OrdenCompraForm({
           )}
         </div>
 
-        {/* Botones derecha: Guardar y Cancelar */}
         <div style={{ display: "flex", gap: 10 }}>
           <Button
             label="Cancelar"
