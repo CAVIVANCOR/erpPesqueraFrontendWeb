@@ -71,18 +71,4 @@ export async function cancelarTemporada(id) {
   return res.data;
 }
 
-/**
- * Finaliza una temporada de pesca y genera automáticamente el movimiento de almacén
- * @param {number|string} temporadaId - ID de la temporada de pesca
- * @param {number|string} faenaPescaId - ID de la faena de pesca
- * @returns {Promise<Object>} Respuesta con temporada y movimiento de almacén generado
- */
-export async function finalizarTemporadaConMovimientoAlmacen(temporadaId, faenaPescaId) {
-  const res = await axios.post(
-    `${API_URL}/${temporadaId}/finalizar-con-almacen`,
-    { faenaPescaId },
-    { headers: getAuthHeaders() }
-  );
-  return res.data;
-}
 

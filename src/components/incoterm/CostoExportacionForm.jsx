@@ -56,6 +56,7 @@ const esquemaValidacion = yup.object().shape({
     .number()
     .nullable()
     .transform((value) => (value === "" ? null : value)),
+  variaSegunRuta: yup.boolean().required(),
 });
 
 /**
@@ -96,8 +97,11 @@ const CostoExportacionForm = ({
       valorVentaDefault: null,
       requiereDocumento: false,
       documentoAsociadoId: null,
+      variaSegunRuta: false,
     },
   });
+
+  const variaSegunRuta = watch("variaSegunRuta");
 
   /**
    * Carga los productos de la familia "Gastos Exportación" (familiaId=7)
@@ -158,6 +162,7 @@ const CostoExportacionForm = ({
       setValue("valorVentaDefault", costo.valorVentaDefault);
       setValue("requiereDocumento", costo.requiereDocumento ?? false);
       setValue("documentoAsociadoId", costo.documentoAsociadoId ? Number(costo.documentoAsociadoId) : null);
+      setValue("variaSegunRuta", costo.variaSegunRuta ?? false);
     } else {
       reset({
         productoId: null,
@@ -170,6 +175,7 @@ const CostoExportacionForm = ({
         valorVentaDefault: null,
         requiereDocumento: false,
         documentoAsociadoId: null,
+        variaSegunRuta: false,
       });
     }
   }, [costo, modoEdicion, setValue, reset]);
@@ -192,6 +198,7 @@ const CostoExportacionForm = ({
         valorVentaDefault: data.valorVentaDefault ? Number(data.valorVentaDefault) : null,
         requiereDocumento: Boolean(data.requiereDocumento),
         documentoAsociadoId: data.documentoAsociadoId ? Number(data.documentoAsociadoId) : null,
+        variaSegunRuta: Boolean(data.variaSegunRuta),
       };
 
       if (modoEdicion) {
@@ -352,7 +359,7 @@ const CostoExportacionForm = ({
               fontWeight: "600",
             }}
           >
-            Valores por Defecto
+            Valores por Defecto {variaSegunRuta && "(Solo si no hay tarifa por ruta)"}
           </h4>
 
           {/* Grid: Proveedor, Moneda, Valor */}
@@ -478,7 +485,7 @@ const CostoExportacionForm = ({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
+            gridTemplateColumns: "1fr 1fr 1fr 1fr",
             gap: "1rem",
             marginTop: "2rem",
           }}
@@ -535,6 +542,26 @@ const CostoExportacionForm = ({
                   onClick={() => field.onChange(!field.value)}
                   disabled={isSubmitting}
                   style={{ width: "100%" }}
+                />
+              )}
+            />
+          </div>
+          {/* Varía Según Ruta */}
+          <div className="field">
+            <Controller
+              name="variaSegunRuta"
+              control={control}
+              render={({ field }) => (
+                <Button
+                  type="button"
+                  label={field.value ? "VARÍA POR RUTA" : "TARIFA FIJA"}
+                  className={
+                    field.value ? "p-button-info" : "p-button-secondary"
+                  }
+                  onClick={() => field.onChange(!field.value)}
+                  disabled={isSubmitting}
+                  style={{ width: "100%" }}
+                  icon={field.value ? "pi pi-map-marker" : "pi pi-dollar"}
                 />
               )}
             />

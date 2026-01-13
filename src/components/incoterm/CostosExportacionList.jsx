@@ -17,6 +17,7 @@ import {
   eliminarCostoExportacionPorIncoterm,
 } from "../../api/costoExportacionPorIncoterm";
 import CostoExportacionForm from "./CostoExportacionForm";
+import TarifasPorRutaDialog from "./TarifasPorRutaDialog";
 
 /**
  * Componente CostosExportacionList
@@ -35,6 +36,10 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
     visible: false,
     row: null,
   });
+
+  // Estados para diálogo de tarifas por ruta
+  const [showTarifasDialog, setShowTarifasDialog] = useState(false);
+  const [costoParaTarifas, setCostoParaTarifas] = useState(null);
 
   /**
    * Carga los costos del Incoterm
@@ -152,6 +157,14 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
   };
 
   /**
+   * Abre el diálogo de tarifas por ruta
+   */
+  const abrirTarifasDialog = (costo) => {
+    setCostoParaTarifas(costo);
+    setShowTarifasDialog(true);
+  };
+
+  /**
    * Template para el nombre del producto
    */
   const productoTemplate = (rowData) => {
@@ -166,7 +179,6 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
       </div>
     );
   };
-
 
   /**
    * Template para responsable
@@ -200,6 +212,18 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
       <Badge
         value={rowData.esObligatorio ? "SÍ" : "NO"}
         severity={rowData.esObligatorio ? "success" : "secondary"}
+      />
+    );
+  };
+
+  /**
+   * Template para varía según ruta
+   */
+  const variaSegunRutaTemplate = (rowData) => {
+    return (
+      <Badge
+        value={rowData.variaSegunRuta ? "SÍ" : "NO"}
+        severity={rowData.variaSegunRuta ? "info" : "secondary"}
       />
     );
   };
@@ -255,8 +279,20 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <Button
-          icon="pi pi-pencil"
+          icon="pi pi-map-marker"
           className="p-button-rounded p-button-text p-button-info p-button-sm"
+          tooltip="Gestionar Tarifas por Ruta"
+          tooltipOptions={{ position: "top" }}
+          disabled={!rowData.variaSegunRuta || readOnly}
+          style={{ width: "28px", height: "28px", padding: "0" }}
+          onClick={(e) => {
+            e.stopPropagation();
+            abrirTarifasDialog(rowData);
+          }}
+        />
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-rounded p-button-text p-button-warning p-button-sm"
           tooltip="Editar"
           tooltipOptions={{ position: "top" }}
           disabled={readOnly}
@@ -348,6 +384,7 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
         reject={() => setConfirmState({ visible: false, row: null })}
         style={{ minWidth: 400 }}
       />
+
       <DataTable
         value={costos}
         loading={loading}
@@ -419,6 +456,13 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
           style={{ width: "70px", textAlign: "center", padding: "0.25rem" }}
         />
         <Column
+          field="variaSegunRuta"
+          header="Ruta"
+          body={variaSegunRutaTemplate}
+          sortable
+          style={{ width: "70px", textAlign: "center", padding: "0.25rem" }}
+        />
+        <Column
           field="proveedorDefault.razonSocial"
           header="Proveedor"
           body={proveedorTemplate}
@@ -458,7 +502,7 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
           body={accionesTemplate}
           frozen
           alignFrozen="right"
-          style={{ width: "90px", textAlign: "center", padding: "0.25rem" }}
+          style={{ width: "110px", textAlign: "center", padding: "0.25rem" }}
         />
       </DataTable>
 
@@ -482,6 +526,13 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
           toast={toast}
         />
       </Dialog>
+
+      <TarifasPorRutaDialog
+        visible={showTarifasDialog}
+        onHide={() => setShowTarifasDialog(false)}
+        costoIncoterm={costoParaTarifas}
+        toast={toast}
+      />
     </div>
   );
 };

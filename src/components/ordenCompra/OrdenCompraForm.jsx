@@ -9,6 +9,8 @@ import DatosAdicionalesTab from "./DatosAdicionalesTab";
 import VerImpresionOrdenCompraPDF from "./VerImpresionOrdenCompraPDF";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
+import { obtenerDireccionesPorEntidad } from "../../api/direccionEntidad";
+import { obtenerContactosPorEntidad } from "../../api/contactoEntidad";
 
 export default function OrdenCompraForm({
   isEdit,
@@ -107,6 +109,14 @@ export default function OrdenCompraForm({
   const [esExoneradoAlIGV, setEsExoneradoAlIGV] = useState(
     defaultValues?.esExoneradoAlIGV || false
   );
+  const [direccionRecepcionAlmacenId, setDireccionRecepcionAlmacenId] = useState(
+    defaultValues?.direccionRecepcionAlmacenId || null
+  );
+  const [contactoProveedorId, setContactoProveedorId] = useState(
+    defaultValues?.contactoProveedorId || null
+  );
+  const [direccionesEmpresa, setDireccionesEmpresa] = useState([]);
+  const [contactosProveedor, setContactosProveedor] = useState([]);
 
   const [proveedoresFiltrados, setProveedoresFiltrados] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
@@ -194,6 +204,16 @@ export default function OrdenCompraForm({
       setObservaciones(defaultValues.observaciones || "");
       setPorcentajeIGV(defaultValues.porcentajeIGV || null);
       setEsExoneradoAlIGV(defaultValues.esExoneradoAlIGV || false);
+      setDireccionRecepcionAlmacenId(
+        defaultValues.direccionRecepcionAlmacenId
+          ? Number(defaultValues.direccionRecepcionAlmacenId)
+          : null
+      );
+      setContactoProveedorId(
+        defaultValues.contactoProveedorId
+          ? Number(defaultValues.contactoProveedorId)
+          : null
+      );
     }
   }, [defaultValues, empresaFija]);
 
@@ -293,6 +313,47 @@ export default function OrdenCompraForm({
     defaultValues?.id,
   ]);
 
+  useEffect(() => {
+    const cargarDireccionesEmpresa = async () => {
+      if (empresaId) {
+        try {
+          const empresa = empresas.find((e) => Number(e.id) === Number(empresaId));
+          if (empresa && empresa.entidadComercialId) {
+            const direcciones = await obtenerDireccionesPorEntidad(
+              Number(empresa.entidadComercialId)
+            );
+            setDireccionesEmpresa(direcciones || []);
+          }
+        } catch (error) {
+          console.error("Error al cargar direcciones de empresa:", error);
+          setDireccionesEmpresa([]);
+        }
+      } else {
+        setDireccionesEmpresa([]);
+      }
+    };
+
+    cargarDireccionesEmpresa();
+  }, [empresaId, empresas]);
+
+  useEffect(() => {
+    const cargarContactosProveedor = async () => {
+      if (proveedorId) {
+        try {
+          const contactos = await obtenerContactosPorEntidad(Number(proveedorId));
+          setContactosProveedor(contactos || []);
+        } catch (error) {
+          console.error("Error al cargar contactos de proveedor:", error);
+          setContactosProveedor([]);
+        }
+      } else {
+        setContactosProveedor([]);
+      }
+    };
+
+    cargarContactosProveedor();
+  }, [proveedorId]);
+
   const handleSerieChange = (serieId) => {
     if (serieId) {
       const serie = seriesDoc.find((s) => Number(s.id) === Number(serieId));
@@ -377,6 +438,10 @@ export default function OrdenCompraForm({
       observaciones,
       porcentajeIGV,
       esExoneradoAlIGV,
+      direccionRecepcionAlmacenId: direccionRecepcionAlmacenId
+        ? Number(direccionRecepcionAlmacenId)
+        : null,
+      contactoProveedorId: contactoProveedorId ? Number(contactoProveedorId) : null,
     };
 
     if (!data.empresaId || !data.proveedorId) {
@@ -551,6 +616,12 @@ export default function OrdenCompraForm({
             readOnly={readOnly}
             permisos={permisos}
             onIrAlOrigen={onIrAlOrigen}
+            direccionRecepcionAlmacenId={direccionRecepcionAlmacenId}
+            onDireccionRecepcionChange={setDireccionRecepcionAlmacenId}
+            direccionesEmpresa={direccionesEmpresa}
+            contactoProveedorId={contactoProveedorId}
+            onContactoProveedorChange={setContactoProveedorId}
+            contactosProveedor={contactosProveedor}
           />
         </TabPanel>
 
