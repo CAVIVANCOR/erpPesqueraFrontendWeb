@@ -25,9 +25,6 @@ import { getEntidadesComerciales } from "../../api/entidadComercial";
 import { getMonedas } from "../../api/moneda";
 import AuditInfo from "../shared/AuditInfo";
 
-/**
- * Esquema de validación YUP
- */
 const esquemaValidacion = yup.object().shape({
   puertoOrigenId: yup
     .number()
@@ -58,15 +55,14 @@ const esquemaValidacion = yup.object().shape({
     .required("El valor de venta es obligatorio")
     .positive("El valor debe ser mayor a cero")
     .typeError("Debe ingresar un valor válido"),
-  fechaVigenciaDesde: yup.date().required("La fecha de vigencia es obligatoria"),
+  fechaVigenciaDesde: yup
+    .date()
+    .required("La fecha de vigencia es obligatoria"),
   fechaVigenciaHasta: yup.date().nullable(),
   activo: yup.boolean().required(),
   observaciones: yup.string().nullable(),
 });
 
-/**
- * Componente TarifaRutaForm
- */
 const TarifaRutaForm = ({
   tarifa,
   costoIncotermId,
@@ -81,7 +77,6 @@ const TarifaRutaForm = ({
   const [monedas, setMonedas] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Configuración de React Hook Form
   const {
     control,
     handleSubmit,
@@ -105,22 +100,20 @@ const TarifaRutaForm = ({
     },
   });
 
-  /**
-   * Carga los datos necesarios para el formulario
-   */
   const cargarDatos = async () => {
     try {
       setLoading(true);
-      const [dataPaises, dataPuertos, dataProveedores, dataMonedas] = await Promise.all([
-        getPaises(),
-        getPuertosPesca(),
-        getEntidadesComerciales(),
-        getMonedas(),
-      ]);
+      const [dataPaises, dataPuertos, dataProveedores, dataMonedas] =
+        await Promise.all([
+          getPaises(),
+          getPuertosPesca(),
+          getEntidadesComerciales(),
+          getMonedas(),
+        ]);
 
       setPaises(dataPaises.filter((p) => p.activo));
       setPuertos(dataPuertos.filter((p) => p.activo));
-      setProveedores(dataProveedores.filter((p) => p.activo));
+      setProveedores(dataProveedores.filter((p) => p.estado && p.esProveedor));
       setMonedas(dataMonedas.filter((m) => m.activo));
     } catch (error) {
       console.error("Error al cargar datos:", error);
@@ -134,22 +127,37 @@ const TarifaRutaForm = ({
     }
   };
 
-  /**
-   * Efecto para cargar datos y setear valores en modo edición
-   */
   useEffect(() => {
     cargarDatos();
 
     if (modoEdicion && tarifa) {
-      setValue("puertoOrigenId", tarifa.puertoOrigenId ? Number(tarifa.puertoOrigenId) : null);
-      setValue("puertoDestinoId", tarifa.puertoDestinoId ? Number(tarifa.puertoDestinoId) : null);
-      setValue("paisOrigenId", tarifa.paisOrigenId ? Number(tarifa.paisOrigenId) : null);
-      setValue("paisDestinoId", tarifa.paisDestinoId ? Number(tarifa.paisDestinoId) : null);
-      setValue("proveedorId", tarifa.proveedorId ? Number(tarifa.proveedorId) : null);
+      setValue(
+        "puertoOrigenId",
+        tarifa.puertoOrigenId ? Number(tarifa.puertoOrigenId) : null
+      );
+      setValue(
+        "puertoDestinoId",
+        tarifa.puertoDestinoId ? Number(tarifa.puertoDestinoId) : null
+      );
+      setValue(
+        "paisOrigenId",
+        tarifa.paisOrigenId ? Number(tarifa.paisOrigenId) : null
+      );
+      setValue(
+        "paisDestinoId",
+        tarifa.paisDestinoId ? Number(tarifa.paisDestinoId) : null
+      );
+      setValue(
+        "proveedorId",
+        tarifa.proveedorId ? Number(tarifa.proveedorId) : null
+      );
       setValue("monedaId", Number(tarifa.monedaId));
       setValue("valorVenta", Number(tarifa.valorVenta));
       setValue("fechaVigenciaDesde", new Date(tarifa.fechaVigenciaDesde));
-      setValue("fechaVigenciaHasta", tarifa.fechaVigenciaHasta ? new Date(tarifa.fechaVigenciaHasta) : null);
+      setValue(
+        "fechaVigenciaHasta",
+        tarifa.fechaVigenciaHasta ? new Date(tarifa.fechaVigenciaHasta) : null
+      );
       setValue("activo", tarifa.activo);
       setValue("observaciones", tarifa.observaciones);
     } else {
@@ -169,16 +177,16 @@ const TarifaRutaForm = ({
     }
   }, [tarifa, modoEdicion, setValue, reset]);
 
-  /**
-   * Maneja el envío del formulario
-   */
   const onSubmit = async (data) => {
     try {
-      // Normalización de datos
       const datosNormalizados = {
         costoIncotermId: Number(costoIncotermId),
-        puertoOrigenId: data.puertoOrigenId ? Number(data.puertoOrigenId) : null,
-        puertoDestinoId: data.puertoDestinoId ? Number(data.puertoDestinoId) : null,
+        puertoOrigenId: data.puertoOrigenId
+          ? Number(data.puertoOrigenId)
+          : null,
+        puertoDestinoId: data.puertoDestinoId
+          ? Number(data.puertoDestinoId)
+          : null,
         paisOrigenId: data.paisOrigenId ? Number(data.paisOrigenId) : null,
         paisDestinoId: data.paisDestinoId ? Number(data.paisDestinoId) : null,
         proveedorId: data.proveedorId ? Number(data.proveedorId) : null,
@@ -191,7 +199,10 @@ const TarifaRutaForm = ({
       };
 
       if (modoEdicion) {
-        await actualizarTarifaCostoExportacionRuta(tarifa.id, datosNormalizados);
+        await actualizarTarifaCostoExportacionRuta(
+          tarifa.id,
+          datosNormalizados
+        );
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -213,7 +224,9 @@ const TarifaRutaForm = ({
       let mensajeError = "Error al guardar la tarifa por ruta";
 
       if (error.response?.status === 400) {
-        mensajeError = error.response?.data?.message || "Datos inválidos. Verifique la información ingresada";
+        mensajeError =
+          error.response?.data?.message ||
+          "Datos inválidos. Verifique la información ingresada";
       } else if (error.response?.status === 500) {
         mensajeError = "Error interno del servidor. Intente nuevamente";
       }
@@ -226,16 +239,18 @@ const TarifaRutaForm = ({
     }
   };
 
-  /**
-   * Obtiene la clase CSS para campos con error
-   */
   const getFormErrorClass = (fieldName) =>
     classNames({ "p-invalid": errors[fieldName] });
 
   return (
     <div className="p-fluid">
-      <form onSubmit={handleSubmit(onSubmit)}>
-        {/* SECCIÓN: RUTA */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleSubmit(onSubmit)(e);
+        }}
+      >
         <div style={{ marginBottom: "1rem" }}>
           <h4
             style={{
@@ -256,7 +271,6 @@ const TarifaRutaForm = ({
               marginBottom: "1rem",
             }}
           >
-            {/* País Origen */}
             <div>
               <label htmlFor="paisOrigenId" className="font-bold">
                 País Origen
@@ -283,7 +297,6 @@ const TarifaRutaForm = ({
               />
             </div>
 
-            {/* Puerto Origen */}
             <div>
               <label htmlFor="puertoOrigenId" className="font-bold">
                 Puerto Origen
@@ -310,7 +323,6 @@ const TarifaRutaForm = ({
               />
             </div>
 
-            {/* País Destino */}
             <div>
               <label htmlFor="paisDestinoId" className="font-bold">
                 País Destino
@@ -337,7 +349,6 @@ const TarifaRutaForm = ({
               />
             </div>
 
-            {/* Puerto Destino */}
             <div>
               <label htmlFor="puertoDestinoId" className="font-bold">
                 Puerto Destino
@@ -366,7 +377,6 @@ const TarifaRutaForm = ({
           </div>
         </div>
 
-        {/* SECCIÓN: TARIFA */}
         <div style={{ marginBottom: "1rem" }}>
           <h4
             style={{
@@ -387,7 +397,6 @@ const TarifaRutaForm = ({
               marginBottom: "1rem",
             }}
           >
-            {/* Proveedor */}
             <div>
               <label htmlFor="proveedorId" className="font-bold">
                 Proveedor
@@ -414,7 +423,6 @@ const TarifaRutaForm = ({
               />
             </div>
 
-            {/* Moneda */}
             <div>
               <label htmlFor="monedaId" className="font-bold">
                 Moneda *
@@ -445,7 +453,6 @@ const TarifaRutaForm = ({
               )}
             </div>
 
-            {/* Valor Venta */}
             <div>
               <label htmlFor="valorVenta" className="font-bold">
                 Valor Venta *
@@ -475,7 +482,6 @@ const TarifaRutaForm = ({
           </div>
         </div>
 
-        {/* SECCIÓN: VIGENCIA */}
         <div style={{ marginBottom: "1rem" }}>
           <h4
             style={{
@@ -496,7 +502,6 @@ const TarifaRutaForm = ({
               marginBottom: "1rem",
             }}
           >
-            {/* Fecha Vigencia Desde */}
             <div>
               <label htmlFor="fechaVigenciaDesde" className="font-bold">
                 Vigente Desde *
@@ -518,11 +523,12 @@ const TarifaRutaForm = ({
                 )}
               />
               {errors.fechaVigenciaDesde && (
-                <small className="p-error">{errors.fechaVigenciaDesde.message}</small>
+                <small className="p-error">
+                  {errors.fechaVigenciaDesde.message}
+                </small>
               )}
             </div>
 
-            {/* Fecha Vigencia Hasta */}
             <div>
               <label htmlFor="fechaVigenciaHasta" className="font-bold">
                 Vigente Hasta
@@ -543,14 +549,19 @@ const TarifaRutaForm = ({
                   />
                 )}
               />
-              <small style={{ display: "block", marginTop: "0.25rem", color: "#6c757d" }}>
+              <small
+                style={{
+                  display: "block",
+                  marginTop: "0.25rem",
+                  color: "#6c757d",
+                }}
+              >
                 Dejar vacío para vigencia indefinida
               </small>
             </div>
           </div>
         </div>
 
-        {/* Observaciones */}
         <div style={{ marginBottom: "1rem" }}>
           <label htmlFor="observaciones" className="font-bold">
             Observaciones
@@ -572,7 +583,6 @@ const TarifaRutaForm = ({
           />
         </div>
 
-        {/* Estado Activo */}
         <div style={{ marginBottom: "1rem" }}>
           <Controller
             name="activo"
@@ -590,7 +600,6 @@ const TarifaRutaForm = ({
           />
         </div>
 
-        {/* Botones de acción e Información de Auditoría */}
         <div
           style={{
             display: "flex",
@@ -599,12 +608,10 @@ const TarifaRutaForm = ({
             marginTop: 18,
           }}
         >
-          {/* INFORMACIÓN DE AUDITORÍA */}
           <div style={{ flex: 3 }}>
             {modoEdicion && <AuditInfo data={tarifa} />}
           </div>
 
-          {/* BOTONES */}
           <div style={{ flex: 1 }}>
             <Button
               type="button"

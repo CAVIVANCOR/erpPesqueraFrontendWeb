@@ -19,14 +19,9 @@ import {
 import CostoExportacionForm from "./CostoExportacionForm";
 import TarifasPorRutaDialog from "./TarifasPorRutaDialog";
 
-/**
- * Componente CostosExportacionList
- * Lista y gestiona los costos de exportación asociados a un Incoterm
- */
 const CostosExportacionList = ({ incotermId, readOnly = false }) => {
   const toast = useRef(null);
 
-  // Estados
   const [costos, setCostos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogoVisible, setDialogoVisible] = useState(false);
@@ -37,13 +32,9 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
     row: null,
   });
 
-  // Estados para diálogo de tarifas por ruta
   const [showTarifasDialog, setShowTarifasDialog] = useState(false);
   const [costoParaTarifas, setCostoParaTarifas] = useState(null);
 
-  /**
-   * Carga los costos del Incoterm
-   */
   const cargarCostos = async () => {
     if (!incotermId) return;
 
@@ -51,7 +42,6 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
       setLoading(true);
       const data = await getCostosExportacionPorIncotermPorIncoterm(incotermId);
 
-      // Normalizar IDs
       const costosNormalizados = data.map((costo) => ({
         ...costo,
         id: Number(costo.id),
@@ -72,18 +62,12 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
     }
   };
 
-  /**
-   * Efecto para cargar costos al montar o cambiar incotermId
-   */
   useEffect(() => {
     if (incotermId) {
       cargarCostos();
     }
   }, [incotermId]);
 
-  /**
-   * Abre el diálogo para crear nuevo costo
-   */
   const abrirDialogoNuevo = () => {
     if (readOnly || !incotermId) return;
     setCostoSeleccionado(null);
@@ -91,9 +75,6 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
     setDialogoVisible(true);
   };
 
-  /**
-   * Abre el diálogo para editar costo
-   */
   const editarCosto = (costo) => {
     if (readOnly) return;
     setCostoSeleccionado(costo);
@@ -101,34 +82,22 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
     setDialogoVisible(true);
   };
 
-  /**
-   * Cierra el diálogo
-   */
   const cerrarDialogo = () => {
     setDialogoVisible(false);
     setModoEdicion(false);
     setCostoSeleccionado(null);
   };
 
-  /**
-   * Maneja el guardado exitoso
-   */
   const onGuardar = async () => {
     cerrarDialogo();
     await cargarCostos();
   };
 
-  /**
-   * Confirma la eliminación de un costo
-   */
   const confirmarEliminacion = (costo) => {
     if (readOnly) return;
     setConfirmState({ visible: true, row: costo });
   };
 
-  /**
-   * Maneja la confirmación de eliminación
-   */
   const handleConfirmDelete = async () => {
     if (!confirmState.row) return;
 
@@ -156,17 +125,16 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
     }
   };
 
-  /**
-   * Abre el diálogo de tarifas por ruta
-   */
   const abrirTarifasDialog = (costo) => {
     setCostoParaTarifas(costo);
     setShowTarifasDialog(true);
   };
 
-  /**
-   * Template para el nombre del producto
-   */
+  const cerrarTarifasDialog = () => {
+    setShowTarifasDialog(false);
+    setCostoParaTarifas(null);
+  };
+
   const productoTemplate = (rowData) => {
     const producto = rowData.producto || {};
     const descripcionArmada = producto.descripcionArmada?.trim();
@@ -174,15 +142,14 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
     return (
       <div>
         <div style={{ fontWeight: "bold" }}>
-          {descripcionArmada && descripcionArmada.length > 0 ? descripcionArmada : "S/D"}
+          {descripcionArmada && descripcionArmada.length > 0
+            ? descripcionArmada
+            : "S/D"}
         </div>
       </div>
     );
   };
 
-  /**
-   * Template para responsable
-   */
   const responsableTemplate = (rowData) => {
     return (
       <Badge
@@ -192,9 +159,6 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
     );
   };
 
-  /**
-   * Template para activo
-   */
   const activoTemplate = (rowData) => {
     return (
       <Badge
@@ -204,9 +168,6 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
     );
   };
 
-  /**
-   * Template para obligatorio
-   */
   const obligatorioTemplate = (rowData) => {
     return (
       <Badge
@@ -216,9 +177,6 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
     );
   };
 
-  /**
-   * Template para varía según ruta
-   */
   const variaSegunRutaTemplate = (rowData) => {
     return (
       <Badge
@@ -228,32 +186,20 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
     );
   };
 
-  /**
-   * Template para proveedor default
-   */
   const proveedorTemplate = (rowData) => {
     return rowData.proveedorDefault?.razonSocial || "-";
   };
 
-  /**
-   * Template para moneda default
-   */
   const monedaTemplate = (rowData) => {
     return rowData.monedaDefault?.codigoSunat || "-";
   };
 
-  /**
-   * Template para valor default
-   */
   const valorTemplate = (rowData) => {
     if (!rowData.valorVentaDefault) return "-";
     const moneda = rowData.monedaDefault?.codigoSunat || "";
     return `${moneda} ${Number(rowData.valorVentaDefault).toFixed(2)}`;
   };
 
-  /**
-   * Template para requiere documento
-   */
   const requiereDocumentoTemplate = (rowData) => {
     return (
       <Badge
@@ -263,22 +209,20 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
     );
   };
 
-  /**
-   * Template para acciones
-   */
   const accionesTemplate = (rowData) => {
     return (
-      <div 
-        style={{ 
-          display: "flex", 
-          flexDirection: "row", 
-          gap: "0.25rem", 
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          gap: "0.25rem",
           justifyContent: "center",
-          alignItems: "center"
-        }} 
+          alignItems: "center",
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <Button
+          type="button"
           icon="pi pi-map-marker"
           className="p-button-rounded p-button-text p-button-info p-button-sm"
           tooltip="Gestionar Tarifas por Ruta"
@@ -291,6 +235,7 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
           }}
         />
         <Button
+          type="button"
           icon="pi pi-pencil"
           className="p-button-rounded p-button-text p-button-warning p-button-sm"
           tooltip="Editar"
@@ -303,6 +248,7 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
           }}
         />
         <Button
+          type="button"
           icon="pi pi-trash"
           className="p-button-rounded p-button-text p-button-danger p-button-sm"
           tooltip="Eliminar"
@@ -318,7 +264,6 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
     );
   };
 
-  // Si no hay incotermId, mostrar mensaje
   if (!incotermId) {
     return (
       <div
@@ -508,7 +453,7 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
 
       <Dialog
         visible={dialogoVisible}
-        style={{ width: "1000px" }}
+        style={{ width: "1200px" }}
         header={
           modoEdicion
             ? "Editar Costo de Exportación"
@@ -523,13 +468,14 @@ const CostosExportacionList = ({ incotermId, readOnly = false }) => {
           incotermId={incotermId}
           onSave={onGuardar}
           onCancel={cerrarDialogo}
+          onGestionarTarifas={abrirTarifasDialog}
           toast={toast}
         />
       </Dialog>
 
       <TarifasPorRutaDialog
         visible={showTarifasDialog}
-        onHide={() => setShowTarifasDialog(false)}
+        onHide={cerrarTarifasDialog}
         costoIncoterm={costoParaTarifas}
         toast={toast}
       />

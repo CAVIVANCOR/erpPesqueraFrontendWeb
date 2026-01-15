@@ -508,6 +508,12 @@ export default function TipoPrestamo({ ruta }) {
         }}
       >
         <Column
+          field="id"
+          header="ID"
+          sortable
+          style={{ minWidth: "70px" }}
+        />
+        <Column
           field="descripcion"
           header="DESCRIPCIÓN"
           body={descripcionTemplate}

@@ -23,9 +23,6 @@ import { getMonedas } from "../../api/moneda";
 import { getDocRequeridaVentas } from "../../api/docRequeridaVentas";
 import AuditInfo from "../shared/AuditInfo";
 
-/**
- * Esquema de validación YUP
- */
 const esquemaValidacion = yup.object().shape({
   productoId: yup
     .number()
@@ -59,14 +56,12 @@ const esquemaValidacion = yup.object().shape({
   variaSegunRuta: yup.boolean().required(),
 });
 
-/**
- * Componente CostoExportacionForm
- */
 const CostoExportacionForm = ({
   costo,
   incotermId,
   onSave,
   onCancel,
+  onGestionarTarifas,
   toast,
 }) => {
   const modoEdicion = Boolean(costo?.id);
@@ -76,7 +71,6 @@ const CostoExportacionForm = ({
   const [documentos, setDocumentos] = useState([]);
   const [loadingProductos, setLoadingProductos] = useState(false);
 
-  // Configuración de React Hook Form
   const {
     control,
     handleSubmit,
@@ -103,9 +97,6 @@ const CostoExportacionForm = ({
 
   const variaSegunRuta = watch("variaSegunRuta");
 
-  /**
-   * Carga los productos de la familia "Gastos Exportación" (familiaId=7)
-   */
   const cargarProductos = async () => {
     try {
       setLoadingProductos(true);
@@ -116,21 +107,17 @@ const CostoExportacionForm = ({
         getDocRequeridaVentas(),
       ]);
 
-      // Filtrar solo productos de familia "Gastos Exportación" (id=7)
       const productosGastosExportacion = dataProductos.filter(
         (p) => Number(p.familiaId) === 7
       );
       setProductos(productosGastosExportacion);
 
-      // Filtrar solo proveedores activos
-      const proveedoresActivos = dataProveedores.filter((p) => p.activo);
+      const proveedoresActivos = dataProveedores.filter((p) => p.estado && p.esProveedor);
       setProveedores(proveedoresActivos);
 
-      // Filtrar solo monedas activas
       const monedasActivas = dataMonedas.filter((m) => m.activo);
       setMonedas(monedasActivas);
 
-      // Filtrar solo documentos activos
       const documentosActivos = dataDocumentos.filter((d) => d.activo);
       setDocumentos(documentosActivos);
     } catch (error) {
@@ -145,13 +132,12 @@ const CostoExportacionForm = ({
     }
   };
 
-  /**
-   * Efecto para cargar productos y datos en modo edición
-   */
   useEffect(() => {
     cargarProductos();
+  }, []);
 
-    if (modoEdicion && costo) {
+  useEffect(() => {
+    if (modoEdicion && costo && proveedores.length > 0) {
       setValue("productoId", Number(costo.productoId));
       setValue("esResponsabilidadVendedor", costo.esResponsabilidadVendedor);
       setValue("activo", costo.activo);
@@ -163,7 +149,7 @@ const CostoExportacionForm = ({
       setValue("requiereDocumento", costo.requiereDocumento ?? false);
       setValue("documentoAsociadoId", costo.documentoAsociadoId ? Number(costo.documentoAsociadoId) : null);
       setValue("variaSegunRuta", costo.variaSegunRuta ?? false);
-    } else {
+    } else if (!modoEdicion) {
       reset({
         productoId: null,
         esResponsabilidadVendedor: true,
@@ -178,14 +164,10 @@ const CostoExportacionForm = ({
         variaSegunRuta: false,
       });
     }
-  }, [costo, modoEdicion, setValue, reset]);
+  }, [costo, modoEdicion, proveedores, setValue, reset]);
 
-  /**
-   * Maneja el envío del formulario
-   */
   const onSubmit = async (data) => {
     try {
-      // Normalización de datos
       const datosNormalizados = {
         incotermId: Number(incotermId),
         productoId: Number(data.productoId),
@@ -242,15 +224,18 @@ const CostoExportacionForm = ({
     }
   };
 
-  /**
-   * Obtiene la clase CSS para campos con error
-   */
   const getFormErrorClass = (fieldName) =>
     classNames({ "p-invalid": errors[fieldName] });
 
   return (
     <div className="p-fluid">
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form 
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleSubmit(onSubmit)(e);
+        }}
+      >
         <div
           style={{
             display: "flex",
@@ -259,7 +244,6 @@ const CostoExportacionForm = ({
             marginTop: "1rem",
           }}
         >
-          {/* Producto */}
           <div style={{ flex: 1 }}>
             <label htmlFor="productoId" className="font-bold">
               Producto/Costo de Exportación *
@@ -278,7 +262,7 @@ const CostoExportacionForm = ({
                   onChange={(e) => field.onChange(e.value)}
                   placeholder="Seleccione un producto"
                   className={getFormErrorClass("productoId")}
-                  disabled={isSubmitting || loadingProductos}
+                  disabled={isSubmitting || loadingProductos || modoEdicion}
                   filter
                   showClear
                   emptyMessage="No hay productos de gastos de exportación disponibles"
@@ -300,7 +284,6 @@ const CostoExportacionForm = ({
             marginTop: "1rem",
           }}
         >
-          {/* Responsable */}
           <div style={{ flex: 1 }}>
             <label htmlFor="esResponsabilidadVendedor" className="font-bold">
               Responsable del Costo *
@@ -349,7 +332,6 @@ const CostoExportacionForm = ({
           </div>
         </div>
 
-        {/* SECCIÓN: VALORES POR DEFECTO */}
         <div style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
           <h4
             style={{
@@ -362,17 +344,14 @@ const CostoExportacionForm = ({
             Valores por Defecto {variaSegunRuta && "(Solo si no hay tarifa por ruta)"}
           </h4>
 
-          {/* Grid: Proveedor, Moneda, Valor */}
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              gap: "1rem",
-              marginBottom: "1rem",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
-            {/* Proveedor Default */}
-            <div>
+            <div style={{ flex: 2.5 }}>
               <label htmlFor="proveedorDefaultId" className="font-bold">
                 Proveedor
               </label>
@@ -391,15 +370,15 @@ const CostoExportacionForm = ({
                     placeholder="Seleccionar proveedor"
                     filter
                     showClear
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || loadingProductos}
+                    emptyMessage="No hay proveedores disponibles"
                     style={{ fontWeight: "bold" }}
                   />
                 )}
               />
             </div>
 
-            {/* Moneda Default */}
-            <div>
+            <div style={{ flex: 1 }}>
               <label htmlFor="monedaDefaultId" className="font-bold">
                 Moneda 
               </label>
@@ -411,7 +390,7 @@ const CostoExportacionForm = ({
                     id="monedaDefaultId"
                     value={field.value}
                     options={monedas.map((m) => ({
-                      label: `${m.codigoSunat} - ${m.nombreLargo}`,
+                      label: m.codigoSunat,
                       value: Number(m.id),
                     }))}
                     onChange={(e) => field.onChange(e.value)}
@@ -425,8 +404,7 @@ const CostoExportacionForm = ({
               />
             </div>
 
-            {/* Valor Venta Default */}
-            <div>
+            <div style={{ flex: 1 }}>
               <label htmlFor="valorVentaDefault" className="font-bold">
                 Valor Venta
               </label>
@@ -451,7 +429,6 @@ const CostoExportacionForm = ({
           </div>
         </div>
 
-        {/* SECCIÓN: DOCUMENTO ASOCIADO */}
         <div style={{ marginBottom: "1rem" }}>
           <label htmlFor="documentoAsociadoId" className="font-bold">
             Documento Asociado
@@ -481,7 +458,6 @@ const CostoExportacionForm = ({
           </small>
         </div>
 
-        {/* Orden y Obligatorio */}
         <div
           style={{
             display: "grid",
@@ -508,7 +484,6 @@ const CostoExportacionForm = ({
               )}
             />
           </div>
-          {/* Estado Activo */}
           <div className="field">
             <Controller
               name="activo"
@@ -527,7 +502,6 @@ const CostoExportacionForm = ({
               )}
             />
           </div>
-          {/* Requiere Documento */}
           <div className="field">
             <Controller
               name="requiereDocumento"
@@ -546,29 +520,41 @@ const CostoExportacionForm = ({
               )}
             />
           </div>
-          {/* Varía Según Ruta */}
           <div className="field">
-            <Controller
-              name="variaSegunRuta"
-              control={control}
-              render={({ field }) => (
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <Controller
+                name="variaSegunRuta"
+                control={control}
+                render={({ field }) => (
+                  <Button
+                    type="button"
+                    label={field.value ? "VARÍA POR RUTA" : "TARIFA FIJA"}
+                    className={
+                      field.value ? "p-button-info" : "p-button-secondary"
+                    }
+                    onClick={() => field.onChange(!field.value)}
+                    disabled={isSubmitting}
+                    style={{ flex: 1 }}
+                    icon={field.value ? "pi pi-map-marker" : "pi pi-dollar"}
+                  />
+                )}
+              />
+              {variaSegunRuta && modoEdicion && onGestionarTarifas && (
                 <Button
                   type="button"
-                  label={field.value ? "VARÍA POR RUTA" : "TARIFA FIJA"}
-                  className={
-                    field.value ? "p-button-info" : "p-button-secondary"
-                  }
-                  onClick={() => field.onChange(!field.value)}
+                  label="Gestionar Tarifas"
+                  icon="pi pi-list"
+                  className="p-button-success"
+                  onClick={() => onGestionarTarifas(costo)}
                   disabled={isSubmitting}
-                  style={{ width: "100%" }}
-                  icon={field.value ? "pi pi-map-marker" : "pi pi-dollar"}
+                  tooltip="Gestionar tarifas por ruta"
+                  tooltipOptions={{ position: "top" }}
                 />
               )}
-            />
+            </div>
           </div>
         </div>
 
-        {/* Botones de acción e Información de Auditoría */}
         <div
           style={{
             display: "flex",
@@ -577,12 +563,10 @@ const CostoExportacionForm = ({
             marginTop: 18,
           }}
         >
-          {/* INFORMACIÓN DE AUDITORÍA */}
           <div style={{ flex: 3 }}>
             {modoEdicion && <AuditInfo data={costo} />}
           </div>
 
-          {/* BOTONES */}
           <div style={{ flex: 1 }}>
             <Button
               type="button"

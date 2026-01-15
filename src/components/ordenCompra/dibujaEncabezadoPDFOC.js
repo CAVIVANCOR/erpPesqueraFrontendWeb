@@ -1,16 +1,17 @@
 // src/components/ordenCompra/dibujaEncabezadoPDFOC.js
-// Función para dibujar encabezado completo de la Orden de Compra
+// Función para dibujar encabezado completo de la Orden de Compra - VERSIÓN MEJORADA CON 3 COLUMNAS
 import { rgb } from "pdf-lib";
 
 /**
- * Dibuja el encabezado completo del documento en una página
+ * Dibuja el encabezado completo del documento en una página con 3 columnas
  * @param {Object} params - Parámetros
  * @param {Page} params.pag - Página donde dibujar
  * @param {PDFDocument} params.pdfDoc - Documento PDF
  * @param {Object} params.empresa - Datos de la empresa
  * @param {Object} params.ordenCompra - Datos de la orden de compra
- * @param {Array} params.datosIzquierda - Datos columna izquierda
- * @param {Array} params.datosDerecha - Datos columna derecha
+ * @param {Array} params.datosColumna1 - Datos primera columna
+ * @param {Array} params.datosColumna2 - Datos segunda columna
+ * @param {Array} params.datosColumna3 - Datos tercera columna (datos adicionales)
  * @param {number} params.width - Ancho de página
  * @param {number} params.height - Alto de página
  * @param {number} params.margin - Margen
@@ -24,8 +25,9 @@ export async function dibujaEncabezadoPDFOC({
   pdfDoc,
   empresa,
   ordenCompra,
-  datosIzquierda,
-  datosDerecha,
+  datosColumna1,
+  datosColumna2,
+  datosColumna3,
   width,
   height,
   margin,
@@ -33,12 +35,6 @@ export async function dibujaEncabezadoPDFOC({
   fontBold,
   fontNormal,
 }) {
-  console.log(' [dibujaEncabezadoPDFOC] ordenCompra:', ordenCompra);
-  console.log(' [dibujaEncabezadoPDFOC] ordenCompra.proveedor:', ordenCompra.proveedor);
-  console.log(' [dibujaEncabezadoPDFOC] ordenCompra.centroCosto:', ordenCompra.centroCosto);
-  console.log(' [dibujaEncabezadoPDFOC] datosIzquierda:', datosIzquierda);
-  console.log(' [dibujaEncabezadoPDFOC] datosDerecha:', datosDerecha);
-  
   let yPos = height - 50;
 
   // Cargar logo si existe
@@ -140,133 +136,109 @@ export async function dibujaEncabezadoPDFOC({
     color: rgb(0, 0, 0),
   });
 
-  // Datos de la orden en dos columnas
+  // ========================================
+  // DATOS EN 3 COLUMNAS COMPACTAS
+  // ========================================
   yPos -= 12;
   const yInicial = yPos;
-  const columnaDerechaX = width / 2 + 50;
+  
+  // Calcular anchos de columnas (más compactos)
+  const anchoDisponible = width - (margin * 2);
+  const anchoColumna = anchoDisponible / 3;
+  
+  const columna1X = margin;
+  const columna2X = margin + anchoColumna;
+  const columna3X = margin + (anchoColumna * 2);
+  
+  const anchoLabel = 70; // Ancho más compacto para juntar label y data
 
-  // Dibujar columna izquierda
-  datosIzquierda.forEach(([label, value]) => {
+  // ========================================
+  // COLUMNA 1: Datos principales
+  // ========================================
+  let yCol1 = yInicial;
+  datosColumna1.forEach(([label, value]) => {
     pag.drawText(label, {
-      x: margin,
-      y: yPos,
+      x: columna1X,
+      y: yCol1,
       size: 9,
       font: fontBold,
     });
     pag.drawText(String(value), {
-      x: margin + 120,
-      y: yPos,
+      x: columna1X + anchoLabel,
+      y: yCol1,
       size: 9,
       font: fontNormal,
     });
-    yPos -= lineHeight;
+    yCol1 -= lineHeight;
   });
 
-  // Dibujar columna derecha
-  yPos = yInicial;
-  datosDerecha.forEach(([label, value]) => {
+  // ========================================
+  // COLUMNA 2: Datos financieros
+  // ========================================
+  let yCol2 = yInicial;
+  datosColumna2.forEach(([label, value]) => {
     pag.drawText(label, {
-      x: columnaDerechaX,
-      y: yPos,
+      x: columna2X,
+      y: yCol2,
       size: 9,
       font: fontBold,
     });
     pag.drawText(String(value), {
-      x: columnaDerechaX + 120,
-      y: yPos,
+      x: columna2X + anchoLabel,
+      y: yCol2,
       size: 9,
       font: fontNormal,
     });
-    yPos -= lineHeight;
+    yCol2 -= lineHeight;
   });
 
-  // Ajustar yPos al final de las columnas
-  yPos =
-    yInicial -
-    Math.max(datosIzquierda.length, datosDerecha.length) * lineHeight;
-
-  // Proveedor (mostrar nombre completo)
-  if (ordenCompra.proveedor) {
-    pag.drawText("Proveedor:", {
-      x: margin,
-      y: yPos,
-      size: 9,
-      font: fontBold,
-    });
-    const proveedorTexto = ordenCompra.proveedor?.razonSocial || "-";
-    pag.drawText(proveedorTexto, {
-      x: margin + 120,
-      y: yPos,
-      size: 9,
-      font: fontNormal,
-    });
-    yPos -= lineHeight;
-  }
-
-  // Tipo de documento y número del proveedor (formato: RUC: número o DNI: número)
-  if (ordenCompra.proveedor?.numeroDocumento) {
-    const tipoDocLabel = ordenCompra.proveedor.tipoDocumento?.codigo || "DOC";
-    pag.drawText(`${tipoDocLabel}:`, {
-      x: margin,
-      y: yPos,
-      size: 9,
-      font: fontBold,
-    });
-    pag.drawText(ordenCompra.proveedor.numeroDocumento, {
-      x: margin + 120,
-      y: yPos,
-      size: 9,
-      font: fontNormal,
-    });
-    yPos -= lineHeight;
-  }
-
-  // Lugar de Entrega (si existe en observaciones)
-  if (ordenCompra.observaciones) {
-    pag.drawText("Lugar de Entrega:", {
-      x: margin,
-      y: yPos,
-      size: 9,
-      font: fontBold,
-    });
-    
-    // Limitar el texto a un ancho máximo
-    const maxWidth = width - margin * 2 - 120;
-    const observacionesTexto = ordenCompra.observaciones;
-    const words = observacionesTexto.split(' ');
-    let currentLine = '';
-    let yObs = yPos;
-    
-    words.forEach((word, idx) => {
-      const testLine = currentLine ? `${currentLine} ${word}` : word;
-      const testWidth = fontNormal.widthOfTextAtSize(testLine, 9);
+  // ========================================
+  // COLUMNA 3: Datos adicionales dinámicos
+  // ========================================
+  let yCol3 = yInicial;
+  if (datosColumna3 && datosColumna3.length > 0) {
+    datosColumna3.forEach(([label, value]) => {
+      // Limitar ancho del label
+      const maxLabelWidth = anchoLabel - 5;
+      let labelTexto = label;
+      let labelWidth = fontBold.widthOfTextAtSize(labelTexto, 9);
       
-      if (testWidth > maxWidth && currentLine) {
-        pag.drawText(currentLine, {
-          x: margin + 120,
-          y: yObs,
-          size: 9,
-          font: fontNormal,
-        });
-        currentLine = word;
-        yObs -= lineHeight;
-      } else {
-        currentLine = testLine;
+      // Truncar label si es muy largo
+      while (labelWidth > maxLabelWidth && labelTexto.length > 3) {
+        labelTexto = labelTexto.substring(0, labelTexto.length - 4) + "...";
+        labelWidth = fontBold.widthOfTextAtSize(labelTexto, 9);
       }
       
-      if (idx === words.length - 1 && currentLine) {
-        pag.drawText(currentLine, {
-          x: margin + 120,
-          y: yObs,
-          size: 9,
-          font: fontNormal,
-        });
-        yObs -= lineHeight;
+      pag.drawText(labelTexto, {
+        x: columna3X,
+        y: yCol3,
+        size: 9,
+        font: fontBold,
+      });
+      
+      // Limitar ancho del value
+      const maxValueWidth = anchoColumna - anchoLabel - 10;
+      let valueTexto = String(value);
+      let valueWidth = fontNormal.widthOfTextAtSize(valueTexto, 9);
+      
+      // Truncar value si es muy largo
+      while (valueWidth > maxValueWidth && valueTexto.length > 3) {
+        valueTexto = valueTexto.substring(0, valueTexto.length - 4) + "...";
+        valueWidth = fontNormal.widthOfTextAtSize(valueTexto, 9);
       }
+      
+      pag.drawText(valueTexto, {
+        x: columna3X + anchoLabel,
+        y: yCol3,
+        size: 9,
+        font: fontNormal,
+      });
+      yCol3 -= lineHeight;
     });
-    
-    yPos = yObs;
   }
+
+  // Ajustar yPos al final de la columna más larga
+  yPos = Math.min(yCol1, yCol2, yCol3);
 
   return yPos;
 }

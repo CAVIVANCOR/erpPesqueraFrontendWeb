@@ -114,11 +114,13 @@ const TarifasPorRutaDialog = ({
 
   /**
    * Maneja el guardado exitoso del formulario
+   * IMPORTANTE: Solo cierra el formulario, NO el diálogo principal
    */
   const handleSaveForm = () => {
     setShowForm(false);
     setTarifaSeleccionada(null);
     cargarTarifas();
+    // NO llamar a onHide() aquí - eso cerraría el diálogo principal
   };
 
   /**
@@ -182,15 +184,11 @@ const TarifasPorRutaDialog = ({
   const estadoTemplate = (rowData) => {
     return (
       <span
-        style={{
-          padding: "0.25rem 0.5rem",
-          borderRadius: "4px",
-          fontWeight: "bold",
-          backgroundColor: rowData.activo ? "#d4edda" : "#f8d7da",
-          color: rowData.activo ? "#155724" : "#721c24",
-        }}
+        className={`p-badge ${
+          rowData.activo ? "p-badge-success" : "p-badge-danger"
+        }`}
       >
-        {rowData.activo ? "ACTIVO" : "INACTIVO"}
+        {rowData.activo ? "Activo" : "Inactivo"}
       </span>
     );
   };
@@ -200,151 +198,155 @@ const TarifasPorRutaDialog = ({
    */
   const accionesTemplate = (rowData) => {
     return (
-      <div style={{ display: "flex", gap: "0.5rem" }}>
+      <div style={{ display: "flex", gap: "0.25rem", justifyContent: "center" }}>
         <Button
+          type="button"
           icon="pi pi-pencil"
-          className="p-button-rounded p-button-warning"
-          onClick={() => handleEditarTarifa(rowData)}
+          className="p-button-rounded p-button-text p-button-warning p-button-sm"
           tooltip="Editar"
           tooltipOptions={{ position: "top" }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEditarTarifa(rowData);
+          }}
         />
         <Button
+          type="button"
           icon="pi pi-trash"
-          className="p-button-rounded p-button-danger"
-          onClick={() => handleEliminarTarifa(rowData)}
+          className="p-button-rounded p-button-text p-button-danger p-button-sm"
           tooltip="Eliminar"
           tooltipOptions={{ position: "top" }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEliminarTarifa(rowData);
+          }}
         />
       </div>
     );
   };
 
   /**
-   * Header del diálogo
+   * Maneja el cierre del diálogo principal
    */
-  const dialogHeader = (
-    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-      <i className="pi pi-map-marker" style={{ fontSize: "1.5rem" }}></i>
-      <span>
-        Tarifas por Ruta -{" "}
-        {costoIncoterm?.producto?.descripcionArmada || "Costo"}
-      </span>
-    </div>
-  );
-
-  /**
-   * Footer del diálogo
-   */
-  const dialogFooter = (
-    <div>
-      <Button
-        label="Cerrar"
-        icon="pi pi-times"
-        onClick={onHide}
-        className="p-button-secondary"
-      />
-    </div>
-  );
+  const handleHideDialog = () => {
+    setShowForm(false);
+    setTarifaSeleccionada(null);
+    onHide();
+  };
 
   return (
     <>
       <ConfirmDialog />
       <Dialog
         visible={visible}
-        onHide={onHide}
-        header={dialogHeader}
-        footer={!showForm ? dialogFooter : null}
-        style={{ width: "90vw" }}
-        maximizable
+        style={{ width: "90vw", maxWidth: "1200px" }}
+        header={
+          <div>
+            <h3 style={{ margin: 0 }}>Tarifas por Ruta</h3>
+            <small style={{ color: "#6c757d" }}>
+              {costoIncoterm?.producto?.descripcionArmada || "Costo de Exportación"}
+            </small>
+          </div>
+        }
         modal
+        className="p-fluid"
+        onHide={handleHideDialog}
+        maximizable
+        closable={!showForm}
+        closeOnEscape={!showForm}
       >
         {!showForm ? (
           <div>
-            {/* Toolbar */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "1rem",
-                padding: "1rem",
-                backgroundColor: "#f8f9fa",
-                borderRadius: "4px",
-              }}
-            >
-              <div>
-                <h3 style={{ margin: 0, color: "#495057" }}>
-                  Tarifas Configuradas
-                </h3>
-                <small style={{ color: "#6c757d" }}>
-                  {tarifas.length} tarifa(s) registrada(s)
-                </small>
-              </div>
-              <Button
-                label="Nueva Tarifa"
-                icon="pi pi-plus"
-                className="p-button-success"
-                onClick={handleNuevaTarifa}
-              />
-            </div>
-
             {/* Tabla de Tarifas */}
             <DataTable
               value={tarifas}
               loading={loading}
-              emptyMessage="No hay tarifas configuradas"
+              dataKey="id"
+              size="small"
+              showGridlines
+              stripedRows
               paginator
               rows={10}
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              stripedRows
-              responsiveLayout="scroll"
+              rowsPerPageOptions={[10, 25, 50]}
+              emptyMessage="No hay tarifas configuradas para este costo"
+              header={
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <h4 style={{ margin: 0 }}>Lista de Tarifas</h4>
+                  <Button
+                    type="button"
+                    label="Nueva Tarifa"
+                    icon="pi pi-plus"
+                    className="p-button-success"
+                    onClick={handleNuevaTarifa}
+                  />
+                </div>
+              }
             >
               <Column
-                field="id"
-                header="ID"
-                style={{ width: "80px" }}
-                sortable
-              />
-              <Column
+                field="puertoOrigen.nombre"
                 header="Origen"
                 body={rutaOrigenTemplate}
                 sortable
                 style={{ minWidth: "200px" }}
               />
               <Column
+                field="puertoDestino.nombre"
                 header="Destino"
                 body={rutaDestinoTemplate}
                 sortable
                 style={{ minWidth: "200px" }}
               />
               <Column
+                field="proveedor.razonSocial"
                 header="Proveedor"
                 body={proveedorTemplate}
                 sortable
                 style={{ minWidth: "200px" }}
               />
               <Column
+                field="moneda.codigoSunat"
                 header="Tarifa"
                 body={tarifaTemplate}
                 sortable
-                style={{ minWidth: "120px" }}
+                style={{ width: "120px", textAlign: "right" }}
               />
               <Column
+                field="fechaVigenciaDesde"
                 header="Vigencia"
                 body={vigenciaTemplate}
-                style={{ minWidth: "200px" }}
+                sortable
+                style={{ width: "200px" }}
               />
               <Column
+                field="activo"
                 header="Estado"
                 body={estadoTemplate}
-                style={{ width: "120px" }}
+                sortable
+                style={{ width: "100px", textAlign: "center" }}
               />
               <Column
                 header="Acciones"
                 body={accionesTemplate}
-                style={{ width: "150px" }}
+                style={{ width: "100px", textAlign: "center" }}
               />
             </DataTable>
+
+            {/* Botón Cerrar */}
+            <div style={{ marginTop: "1rem", textAlign: "right" }}>
+              <Button
+                type="button"
+                label="Cerrar"
+                icon="pi pi-times"
+                className="p-button-secondary"
+                onClick={handleHideDialog}
+              />
+            </div>
           </div>
         ) : (
           <div>
@@ -354,7 +356,7 @@ const TarifasPorRutaDialog = ({
               costoIncotermId={costoIncoterm?.id}
               onSave={handleSaveForm}
               onCancel={handleCancelForm}
-              toast={toastRef}
+              toast={toast}
             />
           </div>
         )}

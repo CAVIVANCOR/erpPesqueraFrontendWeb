@@ -15,7 +15,9 @@ export async function getOrdenesCompra() {
 }
 
 export async function getOrdenCompraPorId(id) {
-  const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  const res = await axios.get(`${API_URL}/${id}`, {
+    headers: getAuthHeaders(),
+  });
   return res.data;
 }
 
@@ -25,33 +27,57 @@ export async function crearOrdenCompra(data) {
 }
 
 export async function actualizarOrdenCompra(id, data) {
-  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
+  const res = await axios.put(`${API_URL}/${id}`, data, {
+    headers: getAuthHeaders(),
+  });
   return res.data;
 }
 
 export async function eliminarOrdenCompra(id) {
-  const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+  const res = await axios.delete(`${API_URL}/${id}`, {
+    headers: getAuthHeaders(),
+  });
   return res.data;
 }
 
 export async function aprobarOrdenCompra(id) {
-  const res = await axios.post(`${API_URL}/${id}/aprobar`, {}, { headers: getAuthHeaders() });
+  const res = await axios.post(
+    `${API_URL}/${id}/aprobar`,
+    {},
+    { headers: getAuthHeaders() }
+  );
   return res.data;
 }
 
 export async function anularOrdenCompra(id) {
-  const res = await axios.post(`${API_URL}/${id}/anular`, {}, { headers: getAuthHeaders() });
+  const res = await axios.post(
+    `${API_URL}/${id}/anular`,
+    {},
+    { headers: getAuthHeaders() }
+  );
   return res.data;
 }
 
 export async function generarMovimientoAlmacen(id, data) {
-  const res = await axios.post(`${API_URL}/${id}/generar-movimiento`, data, { headers: getAuthHeaders() });
+  const res = await axios.post(`${API_URL}/${id}/generar-movimiento`, data, {
+    headers: getAuthHeaders(),
+  });
   return res.data;
 }
 
 export async function generarOrdenDesdeRequerimiento(requerimientoCompraId) {
-  const res = await axios.post(`${API_URL}/generar-desde-requerimiento`, 
-    { requerimientoCompraId }, 
+  const res = await axios.post(
+    `${API_URL}/generar-desde-requerimiento`,
+    { requerimientoCompraId },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
+
+export async function regenerarKardexOrdenCompra(id) {
+  const res = await axios.post(
+    `${API_URL}/${id}/regenerar-kardex`,
+    {},
     { headers: getAuthHeaders() }
   );
   return res.data;

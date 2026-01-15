@@ -58,6 +58,14 @@ export async function anularMovimientoAlmacen(id, empresaId) {
 }
 
 /**
+ * Reactiva un documento de almacén (cambia estado a PENDIENTE).
+ */
+export async function reactivarDocumentoAlmacen(id) {
+  const res = await axios.post(`${API_URL}/${id}/reactivar`, {}, { headers: getAuthHeaders() });
+  return res.data;
+}
+
+/**
  * Consulta el stock disponible de un producto.
  */
 export async function consultarStockDisponible(empresaId, almacenId, productoId, clienteId, esCustodia) {

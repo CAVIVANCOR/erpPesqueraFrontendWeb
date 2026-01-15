@@ -11,6 +11,8 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { Tag } from "primereact/tag";
 import MovimientoAlmacenForm from "../components/movimientoAlmacen/MovimientoAlmacenForm";
+import OrdenCompraForm from "../components/ordenCompra/OrdenCompraForm";
+import PreFacturaForm from "../components/preFactura/PreFacturaForm";
 import ConsultaStockForm from "../components/common/ConsultaStockForm";
 import {
   getMovimientosAlmacen,
@@ -20,6 +22,7 @@ import {
   eliminarMovimientoAlmacen,
   cerrarMovimientoAlmacen,
   anularMovimientoAlmacen,
+  reactivarDocumentoAlmacen,
 } from "../api/movimientoAlmacen";
 import { generarKardex } from "../api/generarKardex";
 import { getEmpresas } from "../api/empresa";
@@ -32,6 +35,9 @@ import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { getCentrosCosto } from "../api/centroCosto";
 import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { getMonedas } from "../api/moneda";
+import { getFormasPago } from "../api/formaPago";
+import { getRequerimientosCompra } from "../api/requerimientoCompra";
+import { getSeriesDoc } from "../api/serieDoc";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
@@ -66,6 +72,9 @@ export default function MovimientoAlmacen({ ruta }) {
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [monedas, setMonedas] = useState([]);
+  const [formasPago, setFormasPago] = useState([]);
+  const [requerimientos, setRequerimientos] = useState([]);
+  const [seriesDoc, setSeriesDoc] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -88,6 +97,10 @@ export default function MovimientoAlmacen({ ruta }) {
   const [showConsultaStock, setShowConsultaStock] = useState(false);
   const [showKardexResult, setShowKardexResult] = useState(false);
   const [kardexResultData, setKardexResultData] = useState(null);
+  const [showOrdenCompraDialog, setShowOrdenCompraDialog] = useState(false);
+  const [ordenCompraOrigen, setOrdenCompraOrigen] = useState(null);
+  const [showPreFacturaDialog, setShowPreFacturaDialog] = useState(false);
+  const [preFacturaDestino, setPreFacturaDestino] = useState(null);
   const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
@@ -235,6 +248,9 @@ export default function MovimientoAlmacen({ ruta }) {
         centrosCostoData,
         tiposMovimientoData,
         monedasData,
+        formasPagoData,
+        requerimientosData,
+        seriesDocData,
       ] = await Promise.all([
         getMovimientosAlmacen(),
         getEmpresas(),
@@ -247,6 +263,9 @@ export default function MovimientoAlmacen({ ruta }) {
         getCentrosCosto(),
         getAllTipoMovEntregaRendir(),
         getMonedas(),
+        getFormasPago(),
+        getRequerimientosCompra(),
+        getSeriesDoc(),
       ]);
       setItems(movimientosData);
       setEmpresas(empresasData);
@@ -278,6 +297,11 @@ export default function MovimientoAlmacen({ ruta }) {
       setCentrosCosto(centrosCostoData);
       setTiposMovimiento(tiposMovimientoData);
       setMonedas(monedasData);
+      
+      // Establecer datos para OrdenCompraForm
+      setFormasPago(formasPagoData);
+      setRequerimientos(requerimientosData);
+      setSeriesDoc(seriesDocData);
     } catch (err) {
       toast.current.show({
         severity: "error",
@@ -392,10 +416,10 @@ export default function MovimientoAlmacen({ ruta }) {
       cargarDatos();
     } catch (err) {
       console.error("Error en handleFormSubmit:", err);
-      const errorMsg = err.response?.data?.error || err.response?.data?.message || "No se pudo guardar.";
+      const errorMsg = err.response?.data?.mensaje || err.response?.data?.message || err.response?.data?.error || err.message || "No se pudo guardar el movimiento.";
       toast.current.show({
         severity: "error",
-        summary: "Error",
+        summary: "Error al Guardar",
         detail: errorMsg,
       });
     } finally {
@@ -440,14 +464,10 @@ export default function MovimientoAlmacen({ ruta }) {
       // Recargar la lista
       cargarDatos();
     } catch (err) {
-      const errorMsg =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        "No se pudo cerrar el documento.";
+      const errorMsg = err.response?.data?.mensaje || err.response?.data?.message || err.response?.data?.error || err.message || "No se pudo cerrar el movimiento.";
       toast.current.show({
         severity: "error",
-        summary: "Error al Cerrar",
+        summary: "Error al Cerrar Documento",
         detail: errorMsg,
         life: 5000
       });
@@ -466,12 +486,7 @@ export default function MovimientoAlmacen({ ruta }) {
       cargarDatos();
 
     } catch (err) {
-      const errorMsg =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        "No se pudo generar el kardex.";
-      
+      const errorMsg = err.response?.data?.mensaje || err.response?.data?.message || err.response?.data?.error || err.message || "No se pudo generar el kardex.";
       toast.current.show({
         severity: "error",
         summary: "Error al Generar Kardex",
@@ -508,18 +523,90 @@ export default function MovimientoAlmacen({ ruta }) {
       cargarDatos();
     } catch (err) {
       const errorMsg =
-        err.response?.data?.error ||
+        err.response?.data?.mensaje ||
         err.response?.data?.message ||
+        err.response?.data?.error ||
         err.message ||
         "No se pudo anular el movimiento.";
       toast.current.show({
         severity: "error",
-        summary: "Error al Anular",
+        summary: "Error al Anular Documento",
         detail: errorMsg,
         life: 5000
       });
     }
     setLoading(false);
+  };
+
+  const handleReactivar = async (id) => {
+    setLoading(true);
+    try {
+      const resultado = await reactivarDocumentoAlmacen(id);
+      
+      toast.current.show({
+        severity: "success",
+        summary: "Documento Reactivado",
+        detail: "El documento se reactivó exitosamente. Ahora puede editarlo.",
+        life: 3000
+      });
+      
+      // Recargar el documento actual para actualizar el estado en el formulario
+      const movimientoActualizado = await getMovimientoAlmacenPorId(id);
+      setEditing(movimientoActualizado);
+      
+      // Recargar la lista
+      cargarDatos();
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.mensaje ||
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "No se pudo reactivar el documento.";
+      toast.current.show({
+        severity: "error",
+        summary: "Error al Reactivar Documento",
+        detail: errorMsg,
+        life: 5000
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleIrAOrdenCompra = async (ordenCompraId) => {
+    try {
+      const { getOrdenCompraPorId } = await import("../api/ordenCompra");
+      const ordenCompraCompleta = await getOrdenCompraPorId(ordenCompraId);
+
+      setOrdenCompraOrigen(ordenCompraCompleta);
+      setShowOrdenCompraDialog(true);
+    } catch (error) {
+      console.error("Error al cargar orden de compra:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar la orden de compra",
+        life: 3000,
+      });
+    }
+  };
+
+  const handleIrAPreFactura = async (pedidoVentaId) => {
+    try {
+      const { getPreFacturaPorId } = await import("../api/preFactura");
+      const preFacturaCompleta = await getPreFacturaPorId(pedidoVentaId);
+
+      setPreFacturaDestino(preFacturaCompleta);
+      setShowPreFacturaDialog(true);
+    } catch (error) {
+      console.error("Error al cargar pre-factura:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar la pre-factura",
+        life: 3000,
+      });
+    }
   };
 
   const empresaNombre = (rowData) => {
@@ -946,10 +1033,11 @@ export default function MovimientoAlmacen({ ruta }) {
             : "Nuevo Movimiento de Almacén"
         }
         visible={showDialog}
-        style={{ width: "1350px", maxWidth: "95vw" }}
+        style={{ width: "1300px" }}
         onHide={() => setShowDialog(false)}
         modal
         maximizable
+        maximized={true}
       >
         <MovimientoAlmacenForm
           isEdit={!!editing}
@@ -970,7 +1058,10 @@ export default function MovimientoAlmacen({ ruta }) {
           onCancel={() => setShowDialog(false)}
           onCerrar={handleCerrar}
           onAnular={handleAnular}
+          onReactivar={handleReactivar}
           onGenerarKardex={handleGenerarKardex}
+          onIrAOrdenCompra={handleIrAOrdenCompra}
+          onIrAPreFactura={handleIrAPreFactura}
           loading={loading}
           toast={toast}
           permisos={permisos}
@@ -1229,6 +1320,77 @@ export default function MovimientoAlmacen({ ruta }) {
             </div>
           </div>
         )}
+      </Dialog>
+
+      {/* Diálogo de Orden de Compra (Origen) */}
+      <Dialog
+        header="Orden de Compra (Origen)"
+        visible={showOrdenCompraDialog}
+        style={{ width: "1300px" }}
+        onHide={() => setShowOrdenCompraDialog(false)}
+        modal
+        maximizable
+        maximized={true}
+      >
+        <OrdenCompraForm
+          isEdit={true}
+          defaultValues={ordenCompraOrigen || {}}
+          empresas={empresas}
+          tiposDocumento={tiposDocumento}
+          proveedores={entidadesComerciales}
+          formasPago={formasPago}
+          productos={productos}
+          personalOptions={personalOptions}
+          centrosCosto={centrosCosto}
+          tiposMovimiento={tiposMovimiento}
+          monedas={monedas}
+          requerimientos={requerimientos}
+          seriesDoc={seriesDoc}
+          onSubmit={() => {}}
+          onCancel={() => setShowOrdenCompraDialog(false)}
+          onAprobar={() => {}}
+          onAnular={() => {}}
+          onGenerarKardex={() => {}}
+          loading={false}
+          toast={toast}
+          permisos={{ puedeVer: true, puedeEditar: false }}
+          readOnly={true}
+        />
+      </Dialog>
+
+      {/* Diálogo de PreFactura (Destino) */}
+      <Dialog
+        header="PreFactura (Destino)"
+        visible={showPreFacturaDialog}
+        style={{ width: "1300px" }}
+        onHide={() => setShowPreFacturaDialog(false)}
+        modal
+        maximizable
+        maximized={true}
+      >
+        <PreFacturaForm
+          isEdit={true}
+          defaultValues={preFacturaDestino || {}}
+          empresas={empresas}
+          tiposDocumento={tiposDocumento}
+          clientes={entidadesComerciales}
+          formasPago={formasPago}
+          productos={productos}
+          personalOptions={personalOptions}
+          centrosCosto={centrosCosto}
+          tiposMovimiento={tiposMovimiento}
+          monedas={monedas}
+          seriesDoc={seriesDoc}
+          onSubmit={() => {}}
+          onCancel={() => setShowPreFacturaDialog(false)}
+          onAprobar={() => {}}
+          onAnular={() => {}}
+          onGenerarKardex={() => {}}
+          loading={false}
+          toast={toast}
+          permisos={{ puedeVer: true, puedeEditar: false }}
+          readOnly={true}
+        />
       </Dialog>
     </div>
   );

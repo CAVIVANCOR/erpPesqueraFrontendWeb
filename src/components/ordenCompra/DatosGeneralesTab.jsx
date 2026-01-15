@@ -40,6 +40,7 @@ export default function DatosGeneralesTab({
   readOnly = false,
   permisos = {},
   onIrAlOrigen,
+  onIrAMovimientoAlmacen,
   // ⭐ NUEVOS CAMPOS
   direccionRecepcionAlmacenId,
   onDireccionRecepcionChange,
@@ -516,7 +517,7 @@ export default function DatosGeneralesTab({
           />
         </div>
 
-        <div style={{ flex: 0.5 }}>
+        <div style={{ flex: 0.25 }}>
           {/* MONEDA */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -543,7 +544,7 @@ export default function DatosGeneralesTab({
           />
         </div>
 
-        <div style={{ flex: 0.3 }}>
+        <div style={{ flex: 0.25 }}>
           {/* TIPO CAMBIO */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -562,7 +563,7 @@ export default function DatosGeneralesTab({
           />
         </div>
 
-        <div style={{ flex: 0.35 }}>
+        <div style={{ flex: 0.30 }}>
           {/* PORCENTAJE IGV */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -584,7 +585,7 @@ export default function DatosGeneralesTab({
           />
         </div>
 
-        <div style={{ flex: 0.5 }}>
+        <div style={{ flex: 0.3 }}>
           {/* ES EXONERADO AL IGV */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -630,6 +631,33 @@ export default function DatosGeneralesTab({
               severity="info"
               onClick={() =>
                 onIrAlOrigen && onIrAlOrigen(formData.requerimientoCompraId)
+              }
+              outlined
+              style={{
+                width: "100%",
+                fontWeight: "bold",
+                justifyContent: "center",
+              }}
+            />
+          </div>
+        )}
+
+        {/* MOVIMIENTO DE ALMACÉN GENERADO */}
+        {formData.movIngresoAlmacenId && (
+          <div style={{ flex: 0.75 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="movAlmacen"
+            >
+              Movimiento de Almacén (Kardex)
+            </label>
+            <Button
+              id="movAlmacen"
+              label={`ID: ${formData.movIngresoAlmacenId}`}
+              icon="pi pi-box"
+              severity="success"
+              onClick={() =>
+                onIrAMovimientoAlmacen && onIrAMovimientoAlmacen(formData.movIngresoAlmacenId)
               }
               outlined
               style={{

@@ -755,6 +755,8 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 options={tiposPrestamoOptions}
                 onChange={(e) => handleChange("tipoPrestamoId", e.value)}
                 placeholder="Seleccione tipo"
+                optionLabel="label"
+                optionValue="value"
                 disabled={readOnly}
                 style={{ width: "100%" }}
                 filter

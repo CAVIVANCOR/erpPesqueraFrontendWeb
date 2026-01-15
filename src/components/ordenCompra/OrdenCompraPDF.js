@@ -104,17 +104,28 @@ export async function generarPDFOrdenCompra(
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontNormal = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-  let yPosition = height - 50;
+    let yPosition = height - 50;
   const margin = 50;
   const lineHeight = 13;
-  // Preparar datos de la orden para el encabezado
-  const datosIzquierda = [
+  
+  // ========================================
+  // PREPARAR DATOS PARA 3 COLUMNAS
+  // ========================================
+  
+  // COLUMNA 1: Datos principales (sin espacios en blanco)
+  const datosColumna1 = [
     ["Fecha Documento:", formatearFecha(ordenCompra.fechaDocumento)],
     ["Fecha Entrega:", formatearFecha(ordenCompra.fechaEntrega)],
     ["Centro de Costo:", ordenCompra.centroCosto?.nombre || "-"],
+    ["Proveedor:", ordenCompra.proveedor?.razonSocial || "-"],
+    [
+      ordenCompra.proveedor?.tipoDocumento?.codigo || "DOC:",
+      ordenCompra.proveedor?.numeroDocumento || "-"
+    ],
   ];
 
-  const datosDerecha = [
+  // COLUMNA 2: Datos financieros
+  const datosColumna2 = [
     ["Forma de Pago:", ordenCompra.formaPago?.nombre || "-"],
     ["Moneda:", ordenCompra.moneda?.codigoSunat || "-"],
     [
@@ -130,16 +141,48 @@ export async function generarPDFOrdenCompra(
         : "0.00%",
     ],
   ];
-  console.log('📄 [OrdenCompraPDF] datosIzquierda:', datosIzquierda);
-  console.log('📄 [OrdenCompraPDF] datosDerecha:', datosDerecha);
-  // DIBUJAR ENCABEZADO COMPLETO usando función modular
+
+  // COLUMNA 3: Datos adicionales dinámicos
+  const datosColumna3 = [];
+  console.log('🔍 [OrdenCompraPDF] ordenCompra.datosAdicionales:', ordenCompra.datosAdicionales);
+  
+  if (ordenCompra.datosAdicionales && ordenCompra.datosAdicionales.length > 0) {
+    ordenCompra.datosAdicionales.forEach((dato) => {
+      console.log('🔍 [OrdenCompraPDF] Procesando dato adicional:', {
+        nombreDato: dato.nombreDato,
+        esDocumento: dato.esDocumento,
+        imprimirEnOC: dato.imprimirEnOC,
+        urlDocumento: dato.urlDocumento,
+        valorDato: dato.valorDato
+      });
+      
+      // Construir label
+      let label = dato.nombreDato;
+      if (dato.esDocumento) {
+        label += " (Adjunto)";
+      }
+      label += ":";
+      
+      // Obtener value
+      const value = dato.valorDato || "-";
+      
+      datosColumna3.push([label, value]);
+    });
+  }
+
+  console.log('📄 [OrdenCompraPDF] datosColumna1:', datosColumna1);
+  console.log('📄 [OrdenCompraPDF] datosColumna2:', datosColumna2);
+  console.log('📄 [OrdenCompraPDF] datosColumna3:', datosColumna3);
+  
+  // DIBUJAR ENCABEZADO COMPLETO usando función modular con 3 columnas
   yPosition = await dibujaEncabezadoPDFOC({
     pag: page,
     pdfDoc,
     empresa,
     ordenCompra,
-    datosIzquierda,
-    datosDerecha,
+    datosColumna1,
+    datosColumna2,
+    datosColumna3,
     width,
     height,
     margin,
@@ -173,8 +216,9 @@ export async function generarPDFOrdenCompra(
         pdfDoc,
         empresa,
         ordenCompra,
-        datosIzquierda,
-        datosDerecha,
+        datosColumna1,
+        datosColumna2,
+        datosColumna3,
         width,
         height,
         margin,
@@ -447,7 +491,118 @@ export async function generarPDFOrdenCompra(
     );
   });
 
-  // Generar bytes del PDF
-  const pdfBytes = await pdfDoc.save();
-  return pdfBytes;
+  // ========================================
+  // AGREGAR DOCUMENTOS ADJUNTOS COMO PÁGINAS ADICIONALES
+  // ========================================
+  console.log('🔍 [OrdenCompraPDF] Iniciando proceso de adjuntar documentos...');
+  console.log('🔍 [OrdenCompraPDF] ordenCompra.datosAdicionales:', ordenCompra.datosAdicionales);
+  
+  if (ordenCompra.datosAdicionales && ordenCompra.datosAdicionales.length > 0) {
+    console.log(`🔍 [OrdenCompraPDF] Total de datos adicionales: ${ordenCompra.datosAdicionales.length}`);
+    
+    for (const dato of ordenCompra.datosAdicionales) {
+      console.log('🔍 [OrdenCompraPDF] Evaluando dato:', {
+        nombreDato: dato.nombreDato,
+        esDocumento: dato.esDocumento,
+        urlDocumento: dato.urlDocumento,
+        imprimirEnOC: dato.imprimirEnOC
+      });
+      
+      if (dato.esDocumento && dato.urlDocumento) {
+        console.log(`✅ [OrdenCompraPDF] Dato ES documento y TIENE URL: ${dato.nombreDato}`);
+        try {
+          // Construir URL siguiendo el patrón de pdfUtils.js
+          const rutaArchivo = dato.urlDocumento.replace("/uploads/datos-adicionales-orden-compra/", "");
+          const docUrl = `${import.meta.env.VITE_API_URL}/det-datos-adicionales-orden-compra/archivo/${rutaArchivo}`;
+          console.log(`📎 [OrdenCompraPDF] Cargando documento adjunto: ${docUrl}`);
+          
+          // Obtener token de autenticación
+          const token = useAuthStore.getState().token;
+          
+          // Descargar el documento con autenticación
+          const docResponse = await fetch(docUrl, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (docResponse.ok) {
+            const docBytes = await docResponse.arrayBuffer();
+            
+            // Verificar si es un PDF
+            if (dato.urlDocumento.toLowerCase().endsWith('.pdf')) {
+              // Cargar el PDF adjunto
+              const adjuntoPdf = await PDFDocument.load(docBytes);
+              
+              // Copiar todas las páginas del PDF adjunto al documento principal
+              const copiedPages = await pdfDoc.copyPages(adjuntoPdf, adjuntoPdf.getPageIndices());
+              copiedPages.forEach((copiedPage) => {
+                pdfDoc.addPage(copiedPage);
+                pages.push(copiedPage);
+              });
+              
+              console.log(`✅ [OrdenCompraPDF] PDF adjunto agregado: ${dato.nombreDato} (${copiedPages.length} páginas)`);
+            } else {
+              // Si es una imagen, agregarla como nueva página
+              let adjuntoImage;
+              const extension = dato.urlDocumento.toLowerCase();
+              
+              if (extension.endsWith('.png')) {
+                adjuntoImage = await pdfDoc.embedPng(docBytes);
+              } else if (extension.endsWith('.jpg') || extension.endsWith('.jpeg')) {
+                adjuntoImage = await pdfDoc.embedJpg(docBytes);
+              }
+              
+              if (adjuntoImage) {
+                // Crear nueva página para la imagen
+                const imagePage = pdfDoc.addPage([841.89, 595.28]); // A4 horizontal
+                pages.push(imagePage);
+                
+                const { width: pageWidth, height: pageHeight } = imagePage.getSize();
+                const imageDims = adjuntoImage.size();
+                
+                // Calcular dimensiones para ajustar la imagen a la página
+                const maxWidth = pageWidth - (margin * 2);
+                const maxHeight = pageHeight - (margin * 2);
+                const aspectRatio = imageDims.width / imageDims.height;
+                
+                let finalWidth = maxWidth;
+                let finalHeight = maxWidth / aspectRatio;
+                
+                if (finalHeight > maxHeight) {
+                  finalHeight = maxHeight;
+                  finalWidth = maxHeight * aspectRatio;
+                }
+                
+                // Centrar la imagen
+                const x = (pageWidth - finalWidth) / 2;
+                const y = (pageHeight - finalHeight) / 2;
+                
+                imagePage.drawImage(adjuntoImage, {
+                  x,
+                  y,
+                  width: finalWidth,
+                  height: finalHeight,
+                });
+                
+                // Agregar título de la imagen
+                imagePage.drawText(`Adjunto: ${dato.nombreDato}`, {
+                  x: margin,
+                  y: pageHeight - margin,
+                  size: 12,
+                  font: fontBold,
+                });
+                
+                console.log(`✅ [OrdenCompraPDF] Imagen adjunta agregada: ${dato.nombreDato}`);
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`❌ [OrdenCompraPDF] Error al cargar documento adjunto ${dato.nombreDato}:`, error);
+          // Continuar con los demás documentos aunque uno falle
+        }
+      }
+    }
+  }
+
+  return await pdfDoc.save();
 }

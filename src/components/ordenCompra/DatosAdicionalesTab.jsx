@@ -44,11 +44,9 @@ export default function DatosAdicionalesTab({
     urlDocumento: "",
   });
 
-  // Verificar si la orden está aprobada (39), con kardex generado (50) o anulada (40)
-  const estaAprobada = Number(estadoId) === 39;
-  const kardexGenerado = Number(estadoId) === 50;
-  const estaAnulada = Number(estadoId) === 40;
-  const noSePuedeEditar = estaAprobada || kardexGenerado || estaAnulada;
+  // ⭐ CAMBIO: Datos adicionales siempre editables (pueden surgir a último momento)
+  // Ya no se restringe por estado de la orden
+  const noSePuedeEditar = false;
 
   useEffect(() => {
     if (ordenCompraId) {
@@ -255,23 +253,15 @@ export default function DatosAdicionalesTab({
         icon="pi pi-pencil"
         className="p-button-text p-button-sm"
         onClick={() => handleEdit(rowData)}
-        disabled={!puedeEditar || noSePuedeEditar}
-        tooltip={
-          noSePuedeEditar 
-            ? "No se puede editar una orden aprobada, con kardex generado o anulada" 
-            : ""
-        }
+        disabled={!puedeEditar}
+        tooltip="Editar dato adicional"
       />
       <Button
         icon="pi pi-trash"
         className="p-button-text p-button-danger p-button-sm"
         onClick={() => handleDelete(rowData)}
-        disabled={!puedeEditar || noSePuedeEditar}
-        tooltip={
-          noSePuedeEditar 
-            ? "No se puede eliminar de una orden aprobada, con kardex generado o anulada" 
-            : ""
-        }
+        disabled={!puedeEditar}
+        tooltip="Eliminar dato adicional"
       />
     </div>
   );
@@ -289,7 +279,7 @@ export default function DatosAdicionalesTab({
         icon="pi pi-check"
         className="p-button-success"
         onClick={handleSave}
-        disabled={!puedeEditar || noSePuedeEditar}
+        disabled={!puedeEditar}
       />
     </div>
   );
@@ -309,12 +299,8 @@ export default function DatosAdicionalesTab({
           icon="pi pi-plus"
           className="p-button-success"
           onClick={handleAdd}
-          disabled={!puedeEditar || noSePuedeEditar}
-          tooltip={
-            noSePuedeEditar 
-              ? "No se pueden agregar datos a una orden aprobada, con kardex generado o anulada" 
-              : ""
-          }
+          disabled={!puedeEditar}
+          tooltip="Agregar nuevo dato adicional"
         />
       </div>
 
@@ -393,28 +379,63 @@ export default function DatosAdicionalesTab({
           />
         </div>
 
-        <div className="field-checkbox">
-          <Checkbox
-            inputId="esDocumento"
-            checked={formData.esDocumento}
-            onChange={(e) =>
-              setFormData({ ...formData, esDocumento: e.checked })
-            }
-            disabled={!puedeEditar}
-          />
-          <label htmlFor="esDocumento">Es un documento adjunto</label>
-        </div>
+        <div
+          style={{
+            alignItems: "end",
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {/* ES DOCUMENTO */}
+          <div style={{ flex: 1 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="esDocumento"
+            >
+              Tipo de Dato
+            </label>
+            <Button
+              label={formData.esDocumento ? "DOCUMENTO ADJUNTO" : "DATO DE TEXTO"}
+              icon={formData.esDocumento ? "pi pi-file" : "pi pi-info-circle"}
+              severity={formData.esDocumento ? "info" : "success"}
+              onClick={() =>
+                setFormData({ ...formData, esDocumento: !formData.esDocumento })
+              }
+              disabled={!puedeEditar}
+              outlined
+              style={{
+                width: "100%",
+                fontWeight: "bold",
+                justifyContent: "center",
+              }}
+            />
+          </div>
 
-        <div className="field-checkbox">
-          <Checkbox
-            inputId="imprimirEnOC"
-            checked={formData.imprimirEnOC}
-            onChange={(e) =>
-              setFormData({ ...formData, imprimirEnOC: e.checked })
-            }
-            disabled={!puedeEditar}
-          />
-          <label htmlFor="imprimirEnOC">Imprimir en la Orden de Compra</label>
+          {/* IMPRIMIR EN OC */}
+          <div style={{ flex: 1 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="imprimirEnOC"
+            >
+              Imprimir en OC
+            </label>
+            <Button
+              label={formData.imprimirEnOC ? "SÍ IMPRIMIR" : "NO IMPRIMIR"}
+              icon={formData.imprimirEnOC ? "pi pi-check" : "pi pi-times"}
+              severity={formData.imprimirEnOC ? "success" : "danger"}
+              onClick={() =>
+                setFormData({ ...formData, imprimirEnOC: !formData.imprimirEnOC })
+              }
+              disabled={!puedeEditar}
+              outlined
+              style={{
+                width: "100%",
+                fontWeight: "bold",
+                justifyContent: "center",
+              }}
+            />
+          </div>
         </div>
 
         {!formData.esDocumento ? (
@@ -438,15 +459,6 @@ export default function DatosAdicionalesTab({
             <label htmlFor="urlDocumento">
               Documento Adjunto <span style={{ color: "red" }}>*</span>
             </label>
-            
-            {/* Mensaje informativo */}
-            <div style={{ marginBottom: "1rem" }}>
-              <Message
-                severity="info"
-                text="Capture o suba el documento adjunto usando el botón de abajo."
-              />
-            </div>
-
             {/* URL del documento con botones */}
             <div
               style={{

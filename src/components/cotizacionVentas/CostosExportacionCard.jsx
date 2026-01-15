@@ -67,7 +67,7 @@ const CostosExportacionCard = ({
   // Cargar costos desde el backend
   const cargarCostos = useCallback(async () => {
     if (!cotizacionId) return;
-    
+
     setLoading(true);
     try {
       const data = await getCostosExportacionPorCotizacion(cotizacionId);
@@ -120,7 +120,7 @@ const CostosExportacionCard = ({
   const calcularFactorExportacion = useCallback(() => {
     const costosActuales = costosRef.current;
     const detallesActuales = detallesRef.current;
-    
+
     const totalCostos = costosActuales.reduce(
       (sum, costo) => sum + (Number(costo.montoEstimadoMonedaBase) || 0),
       0
@@ -205,22 +205,22 @@ const CostosExportacionCard = ({
         editingCosto.monedaId,
         editingCosto.tipoCambioAplicado
       );
-
       const datosGuardar = {
-        ...editingCosto,
-        cotizacionVentasId: cotizacionId,
+        montoEstimado: Number(editingCosto.montoEstimado),
         montoEstimadoMonedaBase: montoEnMonedaBase,
-        productoId: Number(editingCosto.productoId),
         monedaId: Number(editingCosto.monedaId),
+        tipoCambioAplicado: Number(editingCosto.tipoCambioAplicado || 1),
         proveedorId: editingCosto.proveedorId
           ? Number(editingCosto.proveedorId)
           : null,
-        montoEstimado: Number(editingCosto.montoEstimado),
-        tipoCambioAplicado: Number(editingCosto.tipoCambioAplicado || 1),
+        aplicaSegunIncoterm: editingCosto.aplicaSegunIncoterm || false,
+        esObligatorio: editingCosto.esObligatorio || false,
+        requiereDocumento: editingCosto.requiereDocumento || false,
         orden: Number(editingCosto.orden || 1),
       };
 
       if (editingCosto.id) {
+        // ACTUALIZACIÓN: Incluye monedaId y proveedorId (actualizables)
         await actualizarCostoExportacionCotizacion(
           editingCosto.id,
           datosGuardar
@@ -231,6 +231,10 @@ const CostosExportacionCard = ({
           detail: "Costo actualizado correctamente",
         });
       } else {
+        // CREACIÓN: Incluir cotizacionVentasId y productoId
+        datosGuardar.cotizacionVentasId = cotizacionId;
+        datosGuardar.productoId = Number(editingCosto.productoId);
+
         await crearCostoExportacionCotizacion(datosGuardar);
         toast?.current?.show({
           severity: "success",
@@ -437,7 +441,7 @@ const CostosExportacionCard = ({
   }));
 
   const monedasOptionsFormatted = monedasOptions.map((m) => ({
-    label: `${m.codigoSunat} - ${m.nombre}`,
+    label: m.codigoSunat,
     value: Number(m.value || m.id),
   }));
 
@@ -464,7 +468,9 @@ const CostosExportacionCard = ({
             label="Cargar según Incoterm"
             icon="pi pi-download"
             onClick={handleCargarCostosIncoterm}
-            disabled={!puedeEditar || readOnly || !cotizacionId || cargandoCostos}
+            disabled={
+              !puedeEditar || readOnly || !cotizacionId || cargandoCostos
+            }
             loading={cargandoCostos}
             className="p-button-info"
             tooltip="Carga automáticamente los costos configurados para el Incoterm seleccionado"
@@ -492,8 +498,8 @@ const CostosExportacionCard = ({
         onRowClick={(e) => handleEditar(e.data)}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         paginator
-        rows={5}
-        rowsPerPageOptions={[5, 10, 15, 25]}
+        rows={15}
+        rowsPerPageOptions={[15, 30, 40, 50]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} costos"
         emptyMessage="No hay costos de exportación agregados"

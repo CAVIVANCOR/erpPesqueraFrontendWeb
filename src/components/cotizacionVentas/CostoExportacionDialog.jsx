@@ -80,28 +80,14 @@ const CostoExportacionDialog = ({
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
         {/* SECCIÓN 1: DATOS BÁSICOS */}
-        <div>
-          <h4
-            style={{
-              margin: "0 0 1rem 0",
-              color: "#495057",
-              fontSize: "1rem",
-              fontWeight: "600",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-            }}
-          >
-            <i className="pi pi-list" style={{ fontSize: "1rem" }} />
-            Datos Básicos
-          </h4>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "2fr 2fr 1fr",
-              gap: "1rem",
-            }}
-          >
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <div style={{ flex: 1 }}>
             {/* Producto */}
             <div>
               <label
@@ -121,58 +107,64 @@ const CostoExportacionDialog = ({
                 onChange={(e) => onCampoChange("productoId", e.value)}
                 placeholder="Seleccionar producto"
                 filter
-                style={{ width: "100%" }}
-              />
-            </div>
-
-            {/* Proveedor */}
-            <div>
-              <label
-                htmlFor="proveedorId"
-                style={{
-                  fontWeight: "bold",
-                  display: "block",
-                  marginBottom: "0.5rem",
-                }}
-              >
-                Proveedor
-              </label>
-              <Dropdown
-                id="proveedorId"
-                value={costo.proveedorId}
-                options={proveedoresOptions}
-                onChange={(e) => onCampoChange("proveedorId", e.value)}
-                placeholder="Seleccionar proveedor"
-                filter
-                showClear
-                style={{ width: "100%" }}
-              />
-            </div>
-
-            {/* Orden */}
-            <div>
-              <label
-                htmlFor="orden"
-                style={{
-                  fontWeight: "bold",
-                  display: "block",
-                  marginBottom: "0.5rem",
-                }}
-              >
-                Orden
-              </label>
-              <InputNumber
-                id="orden"
-                value={costo.orden}
-                onValueChange={(e) => onCampoChange("orden", e.value)}
-                min={1}
+                disabled={!!costo.id}
                 style={{ width: "100%" }}
               />
             </div>
           </div>
         </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          {/* Proveedor */}
+          <div style={{ flex: 1 }}>
+            <label
+              htmlFor="proveedorId"
+              style={{
+                fontWeight: "bold",
+                display: "block",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Proveedor
+            </label>
+            <Dropdown
+              id="proveedorId"
+              value={costo.proveedorId}
+              options={proveedoresOptions}
+              onChange={(e) => onCampoChange("proveedorId", e.value)}
+              placeholder="Seleccionar proveedor"
+              filter
+              showClear
+              style={{ width: "100%" }}
+            />
+          </div>
 
-        <Divider />
+          {/* Orden */}
+          <div style={{ flex: 1 }}>
+            <label
+              htmlFor="orden"
+              style={{
+                fontWeight: "bold",
+                display: "block",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Orden
+            </label>
+            <InputNumber
+              id="orden"
+              value={costo.orden}
+              onValueChange={(e) => onCampoChange("orden", e.value)}
+              min={1}
+              style={{ width: "100%" }}
+            />
+          </div>
+        </div>
 
         {/* SECCIÓN 2: MONTO ESTIMADO */}
         <div>
@@ -287,7 +279,6 @@ const CostoExportacionDialog = ({
           )}
         </div>
 
-        <Divider />
 
         {/* SECCIÓN 3: MONTO REAL (solo si existe o es edición) */}
         {costo.id && (
@@ -449,7 +440,11 @@ const CostoExportacionDialog = ({
           >
             {/* Checkboxes */}
             <div
-              style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.75rem",
+              }}
             >
               <div
                 style={{
@@ -573,7 +568,6 @@ const CostoExportacionDialog = ({
         {/* Información de auditoría (solo en modo edición) */}
         {costo.id && (costo.fechaCreacion || costo.fechaActualizacion) && (
           <>
-            <Divider />
             <div
               style={{
                 fontSize: "0.85rem",

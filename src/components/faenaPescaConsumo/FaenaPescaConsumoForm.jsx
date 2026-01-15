@@ -538,19 +538,18 @@ export default function FaenaPescaConsumoForm({
           disabled={!currentFaenaData?.id}
         />
         <Button
-          icon="pi pi-info-circle"
-          tooltip="Datos Generales y Detalle de Calas"
-          label="Generales y Calas"
+          icon="pi pi-calculator"
+          tooltip="Tripulantes"
+          label="Tripulantes"
           tooltipOptions={{ position: "bottom" }}
           className={
-            activeCard === "datos-generales"
-              ? "p-button-info"
-              : "p-button-outlined"
+            activeCard === "tripulantes" ? "p-button-info" : "p-button-outlined"
           }
-          onClick={() => handleNavigateToCard("datos-generales")}
+          onClick={() => handleNavigateToCard("tripulantes")}
           type="button"
           size="small"
           style={{ width: "100%", height: "100%" }}
+          disabled={!currentFaenaData?.id}
         />
       </div>
       <div
@@ -603,6 +602,21 @@ export default function FaenaPescaConsumoForm({
         }}
       >
         <Button
+          icon="pi pi-info-circle"
+          tooltip="Datos Generales y Detalle de Calas"
+          label="Generales y Calas"
+          tooltipOptions={{ position: "bottom" }}
+          className={
+            activeCard === "datos-generales"
+              ? "p-button-info"
+              : "p-button-outlined"
+          }
+          onClick={() => handleNavigateToCard("datos-generales")}
+          type="button"
+          size="small"
+          style={{ width: "100%", height: "100%" }}
+        />
+        <Button
           icon="pi pi-download"
           tooltip="Descarga de Faena"
           label="Descarga Faena"
@@ -611,20 +625,6 @@ export default function FaenaPescaConsumoForm({
             activeCard === "descarga" ? "p-button-info" : "p-button-outlined"
           }
           onClick={() => handleNavigateToCard("descarga")}
-          type="button"
-          size="small"
-          style={{ width: "100%", height: "100%" }}
-          disabled={!currentFaenaData?.id}
-        />
-        <Button
-          icon="pi pi-calculator"
-          tooltip="Tripulantes"
-          label="Tripulantes"
-          tooltipOptions={{ position: "bottom" }}
-          className={
-            activeCard === "tripulantes" ? "p-button-info" : "p-button-outlined"
-          }
-          onClick={() => handleNavigateToCard("tripulantes")}
           type="button"
           size="small"
           style={{ width: "100%", height: "100%" }}

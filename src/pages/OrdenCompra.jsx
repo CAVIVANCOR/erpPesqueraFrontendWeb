@@ -10,8 +10,10 @@ import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { Tag } from "primereact/tag";
+import { confirmDialog } from "primereact/confirmdialog";
 import OrdenCompraForm from "../components/ordenCompra/OrdenCompraForm";
 import RequerimientoCompraForm from "../components/requerimientoCompra/RequerimientoCompraForm";
+import MovimientoAlmacenForm from "../components/movimientoAlmacen/MovimientoAlmacenForm";
 import {
   getOrdenesCompra,
   crearOrdenCompra,
@@ -20,6 +22,8 @@ import {
   aprobarOrdenCompra,
   anularOrdenCompra,
   generarOrdenDesdeRequerimiento,
+  generarMovimientoAlmacen,
+  regenerarKardexOrdenCompra,
 } from "../api/ordenCompra";
 import { getEmpresas } from "../api/empresa";
 import { getEntidadesComerciales } from "../api/entidadComercial";
@@ -32,6 +36,7 @@ import { getMonedas } from "../api/moneda";
 import { getCentrosCosto } from "../api/centroCosto";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getSeriesDoc } from "../api/serieDoc";
+import { getConceptosMovAlmacen } from "../api/conceptoMovAlmacen";
 import { getTiposProducto } from "../api/tipoProducto";
 import { getAllTipoEstadoProducto } from "../api/tipoEstadoProducto";
 import { getAllDestinoProducto } from "../api/destinoProducto";
@@ -44,7 +49,6 @@ export default function OrdenCompra({ ruta }) {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
 
-  // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
@@ -66,12 +70,17 @@ export default function OrdenCompra({ ruta }) {
   const [tiposEstadoProducto, setTiposEstadoProducto] = useState([]);
   const [destinosProducto, setDestinosProducto] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
+  const [conceptosMovAlmacen, setConceptosMovAlmacen] = useState([]);
+  const [estadosMercaderia, setEstadosMercaderia] = useState([]);
+  const [estadosCalidad, setEstadosCalidad] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showRequerimientoDialog, setShowRequerimientoDialog] = useState(false);
   const [requerimientoOrigen, setRequerimientoOrigen] = useState(null);
+  const [showMovimientoAlmacenDialog, setShowMovimientoAlmacenDialog] = useState(false);
+  const [movimientoAlmacenOrigen, setMovimientoAlmacenOrigen] = useState(null);
   const [toDelete, setToDelete] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
@@ -85,25 +94,21 @@ export default function OrdenCompra({ ruta }) {
     cargarDatos();
   }, []);
 
-  // Filtrar items cuando cambien los filtros
   useEffect(() => {
     let filtrados = items;
 
-    // Filtro por empresa
     if (empresaSeleccionada) {
       filtrados = filtrados.filter(
         (item) => Number(item.empresaId) === Number(empresaSeleccionada)
       );
     }
 
-    // Filtro por proveedor
     if (proveedorSeleccionado) {
       filtrados = filtrados.filter(
         (item) => Number(item.proveedorId) === Number(proveedorSeleccionado)
       );
     }
 
-    // Filtro por rango de fechas
     if (fechaInicio) {
       filtrados = filtrados.filter((item) => {
         const fechaDoc = new Date(item.fechaDocumento);
@@ -122,7 +127,6 @@ export default function OrdenCompra({ ruta }) {
       });
     }
 
-    // Filtro por estado
     if (estadoSeleccionado) {
       filtrados = filtrados.filter(
         (item) => Number(item.estadoId) === Number(estadoSeleccionado)
@@ -139,7 +143,6 @@ export default function OrdenCompra({ ruta }) {
     items,
   ]);
 
-  // Extraer proveedores únicos de las órdenes
   useEffect(() => {
     const proveedoresMap = new Map();
     items.forEach((item) => {
@@ -171,6 +174,7 @@ export default function OrdenCompra({ ruta }) {
         tiposEstadoProductoData,
         destinosProductoData,
         tiposMovimientoData,
+        conceptosMovAlmacenData,
       ] = await Promise.all([
         getOrdenesCompra(),
         getEmpresas(),
@@ -188,6 +192,7 @@ export default function OrdenCompra({ ruta }) {
         getAllTipoEstadoProducto(),
         getAllDestinoProducto(),
         getAllTipoMovEntregaRendir(),
+        getConceptosMovAlmacen(),
       ]);
 
       setEmpresas(empresasData);
@@ -202,6 +207,7 @@ export default function OrdenCompra({ ruta }) {
       setTiposEstadoProducto(tiposEstadoProductoData);
       setDestinosProducto(destinosProductoData);
       setTiposMovimiento(tiposMovimientoData);
+      setConceptosMovAlmacen(conceptosMovAlmacenData);
 
       const personalConNombres = personalData.map((p) => ({
         ...p,
@@ -209,13 +215,21 @@ export default function OrdenCompra({ ruta }) {
       }));
       setPersonalOptions(personalConNombres);
 
-      // Filtrar estados de documentos de ORDEN DE COMPRA (tipoProvieneDeId = 12)
       const estadosDocFiltrados = estadosData.filter(
         (e) => Number(e.tipoProvieneDeId) === 12 && !e.cesado
       );
       setEstadosDoc(estadosDocFiltrados);
 
-      // Normalizar órdenes agregando estadoDoc manualmente
+      const estadosMercaderiaFiltrados = estadosData.filter(
+        (e) => Number(e.tipoProvieneDeId) === 2 && !e.cesado
+      );
+      setEstadosMercaderia(estadosMercaderiaFiltrados);
+
+      const estadosCalidadFiltrados = estadosData.filter(
+        (e) => Number(e.tipoProvieneDeId) === 10 && !e.cesado
+      );
+      setEstadosCalidad(estadosCalidadFiltrados);
+
       const ordenesNormalizadas = ordenesData.map((orden) => ({
         ...orden,
         estadoDoc: estadosDocFiltrados.find(
@@ -224,7 +238,6 @@ export default function OrdenCompra({ ruta }) {
       }));
       setItems(ordenesNormalizadas);
 
-      // Filtrar solo requerimientos aprobados
       const requerimientosAprobados = requerimientosData.filter(
         (r) => r.estadoDocId === 33
       );
@@ -241,7 +254,6 @@ export default function OrdenCompra({ ruta }) {
 
   const handleEdit = async (rowData) => {
     try {
-      // Cargar la orden completa con todos los campos y relaciones
       const { getOrdenCompraPorId } = await import("../api/ordenCompra");
       const ordenCompleta = await getOrdenCompraPorId(rowData.id);
 
@@ -258,7 +270,6 @@ export default function OrdenCompra({ ruta }) {
   };
 
   const handleDelete = (rowData) => {
-    // Validar permisos de eliminación
     if (!permisos.puedeEliminar) {
       toast.current.show({
         severity: "warn",
@@ -298,7 +309,6 @@ export default function OrdenCompra({ ruta }) {
   const handleFormSubmit = async (data) => {
     const esEdicion = editing && editing.id;
 
-    // Validar permisos antes de guardar
     if (esEdicion && !permisos.puedeEditar) {
       toast.current.show({
         severity: "warn",
@@ -323,7 +333,6 @@ export default function OrdenCompra({ ruta }) {
       if (esEdicion) {
         await actualizarOrdenCompra(editing.id, data);
 
-        // Recargar la orden actualizada con subtotales recalculados
         const { getOrdenCompraPorId } = await import("../api/ordenCompra");
         const ordenActualizada = await getOrdenCompraPorId(editing.id);
         setEditing(ordenActualizada);
@@ -387,14 +396,11 @@ export default function OrdenCompra({ ruta }) {
         life: 3000,
       });
 
-      // Recargar la orden completa con todas las relaciones para actualizar el formulario
       const { getOrdenCompraPorId } = await import("../api/ordenCompra");
       const ordenActualizada = await getOrdenCompraPorId(id);
       
-      // Actualizar el estado del formulario con la orden aprobada
       setEditing(ordenActualizada);
       
-      // Recargar la lista de órdenes
       cargarDatos();
     } catch (err) {
       console.error("Error al aprobar:", err);
@@ -444,7 +450,6 @@ export default function OrdenCompra({ ruta }) {
 
   const handleIrAlOrigen = async (requerimientoId) => {
     try {
-      // Cargar el requerimiento completo con todos los campos
       const { getRequerimientoCompraPorId } = await import(
         "../api/requerimientoCompra"
       );
@@ -465,6 +470,26 @@ export default function OrdenCompra({ ruta }) {
     }
   };
 
+  const handleIrAMovimientoAlmacen = async (movimientoId) => {
+    try {
+      const { getMovimientoAlmacenPorId } = await import(
+        "../api/movimientoAlmacen"
+      );
+      const movimientoCompleto = await getMovimientoAlmacenPorId(movimientoId);
+
+      setMovimientoAlmacenOrigen(movimientoCompleto);
+      setShowMovimientoAlmacenDialog(true);
+    } catch (error) {
+      console.error("Error al cargar movimiento de almacén:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar el movimiento de almacén",
+        life: 3000,
+      });
+    }
+  };
+
   const handleGenerarDesdeRequerimiento = async (requerimientoId) => {
     setLoading(true);
     try {
@@ -477,7 +502,6 @@ export default function OrdenCompra({ ruta }) {
       });
       cargarDatos();
 
-      // Abrir la orden recién creada
       const { getOrdenCompraPorId } = await import("../api/ordenCompra");
       const ordenCompleta = await getOrdenCompraPorId(resultado.id);
       setEditing(ordenCompleta);
@@ -490,6 +514,109 @@ export default function OrdenCompra({ ruta }) {
       });
     }
     setLoading(false);
+  };
+
+  const handleGenerarKardex = async (id) => {
+    try {
+      const ordenActual = items.find((item) => Number(item.id) === Number(id));
+
+      if (!ordenActual) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se encontró la orden de compra",
+        });
+        return;
+      }
+
+      // ✅ SI YA TIENE KARDEX, PREGUNTAR SI DESEA REGENERAR
+      if (ordenActual.movIngresoAlmacenId) {
+        confirmDialog({
+          message:
+            "Esta orden ya tiene un kardex generado. ¿Desea regenerarlo? Esto eliminará el movimiento de almacén actual, recalculará todos los saldos y creará un nuevo movimiento con los datos actuales de la orden.",
+          header: "Regenerar Kardex",
+          icon: "pi pi-exclamation-triangle",
+          acceptLabel: "Sí, regenerar",
+          rejectLabel: "Cancelar",
+          acceptClassName: "p-button-warning",
+          accept: async () => {
+            try {
+              setLoading(true);
+              await regenerarKardexOrdenCompra(id);
+
+              toast.current.show({
+                severity: "success",
+                summary: "Éxito",
+                detail: "Kardex regenerado correctamente",
+              });
+
+              const { getOrdenCompraPorId } = await import("../api/ordenCompra");
+              const ordenActualizada = await getOrdenCompraPorId(id);
+              setEditing(ordenActualizada);
+
+              await cargarDatos();
+            } catch (error) {
+              console.error("Error al regenerar kardex:", error);
+              toast.current.show({
+                severity: "error",
+                summary: "Error",
+                detail:
+                  error.response?.data?.message ||
+                  "Error al regenerar el kardex",
+              });
+            } finally {
+              setLoading(false);
+            }
+          },
+        });
+      } else {
+        // ✅ NO TIENE KARDEX, GENERAR NUEVO
+        confirmDialog({
+          message:
+            "¿Está seguro de generar el kardex para esta orden de compra? Se creará el movimiento de ingreso a almacén y se actualizarán los saldos de stock.",
+          header: "Confirmar Generación de Kardex",
+          icon: "pi pi-info-circle",
+          acceptLabel: "Sí, generar",
+          rejectLabel: "Cancelar",
+          acceptClassName: "p-button-success",
+          accept: async () => {
+            try {
+              setLoading(true);
+              await generarMovimientoAlmacen(id, {});
+
+              toast.current.show({
+                severity: "success",
+                summary: "Éxito",
+                detail: "Kardex generado correctamente",
+              });
+
+              const { getOrdenCompraPorId } = await import("../api/ordenCompra");
+              const ordenActualizada = await getOrdenCompraPorId(id);
+              setEditing(ordenActualizada);
+
+              await cargarDatos();
+            } catch (error) {
+              console.error("Error al generar kardex:", error);
+              toast.current.show({
+                severity: "error",
+                summary: "Error",
+                detail:
+                  error.response?.data?.message || "Error al generar el kardex",
+              });
+            } finally {
+              setLoading(false);
+            }
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error en handleGenerarKardex:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al procesar la solicitud",
+      });
+    }
   };
 
   const empresaNombre = (rowData) => {
@@ -834,8 +961,10 @@ export default function OrdenCompra({ ruta }) {
           onCancel={() => setShowDialog(false)}
           onAprobar={handleAprobar}
           onAnular={handleAnular}
+          onGenerarKardex={handleGenerarKardex}
           onGenerarDesdeRequerimiento={handleGenerarDesdeRequerimiento}
           onIrAlOrigen={handleIrAlOrigen}
+          onIrAMovimientoAlmacen={handleIrAMovimientoAlmacen}
           loading={loading}
           toast={toast}
           permisos={permisos}
@@ -843,7 +972,6 @@ export default function OrdenCompra({ ruta }) {
         />
       </Dialog>
 
-      {/* Diálogo para ver el Requerimiento de Compra origen */}
       <Dialog
         header="Requerimiento de Compra Origen"
         visible={showRequerimientoDialog}
@@ -873,6 +1001,42 @@ export default function OrdenCompra({ ruta }) {
           onAprobar={() => {}}
           onAnular={() => {}}
           onAutorizarCompra={() => {}}
+          loading={false}
+          toast={toast}
+          permisos={{ puedeVer: true, puedeEditar: false }}
+          readOnly={true}
+        />
+      </Dialog>
+
+      <Dialog
+        header="Movimiento de Almacén (Kardex)"
+        visible={showMovimientoAlmacenDialog}
+        style={{ width: "1300px" }}
+        onHide={() => setShowMovimientoAlmacenDialog(false)}
+        modal
+        maximizable
+        maximized={true}
+      >
+        <MovimientoAlmacenForm
+          isEdit={true}
+          defaultValues={movimientoAlmacenOrigen || {}}
+          empresas={empresas}
+          tiposDocumento={tiposDocumento}
+          entidadesComerciales={proveedores}
+          conceptosMovAlmacen={conceptosMovAlmacen}
+          productos={productos}
+          personalOptions={personalOptions}
+          estadosMercaderia={estadosMercaderia}
+          estadosCalidad={estadosCalidad}
+          empresaFija={empresaSeleccionada}
+          centrosCosto={centrosCosto}
+          tiposMovimiento={tiposMovimiento}
+          monedas={monedas}
+          onSubmit={() => {}}
+          onCancel={() => setShowMovimientoAlmacenDialog(false)}
+          onCerrar={() => {}}
+          onAnular={() => {}}
+          onGenerarKardex={() => {}}
           loading={false}
           toast={toast}
           permisos={{ puedeVer: true, puedeEditar: false }}

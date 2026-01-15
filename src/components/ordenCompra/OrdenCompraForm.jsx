@@ -34,6 +34,7 @@ export default function OrdenCompraForm({
   onGenerarKardex,
   onGenerarDesdeRequerimiento,
   onIrAlOrigen,
+  onIrAMovimientoAlmacen,
   loading,
   toast,
   permisos = {},
@@ -507,18 +508,9 @@ export default function OrdenCompraForm({
       return;
     }
 
-    confirmDialog({
-      message:
-        "¿Está seguro de generar el kardex para esta orden de compra? Se creará el movimiento de ingreso a almacén y se actualizarán los saldos de stock.",
-      header: "Confirmar Generación de Kardex",
-      icon: "pi pi-info-circle",
-      acceptLabel: "Sí, generar",
-      rejectLabel: "Cancelar",
-      acceptClassName: "p-button-success",
-      accept: () => {
-        onGenerarKardex(defaultValues.id);
-      },
-    });
+    // La lógica de confirmación ahora está en el padre (OrdenCompra.jsx)
+    // que detecta si existe kardex y muestra el diálogo apropiado
+    onGenerarKardex(defaultValues.id);
   };
 
   const handlePdfGenerated = (urlPdf) => {
@@ -557,6 +549,9 @@ export default function OrdenCompraForm({
   const estaAnulado = Number(estadoId) === 40;
   const kardexGenerado = Number(estadoId) === 50;
   const puedeEditar = estaPendiente && !loading;
+  
+  // ⭐ Datos adicionales siempre editables (pueden surgir a último momento)
+  const puedeEditarDatosAdicionales = !loading;
 
   const tiposDocumentoOptions = (tiposDocumento || []).map((t) => ({
     ...t,
@@ -616,6 +611,7 @@ export default function OrdenCompraForm({
             readOnly={readOnly}
             permisos={permisos}
             onIrAlOrigen={onIrAlOrigen}
+            onIrAMovimientoAlmacen={onIrAMovimientoAlmacen}
             direccionRecepcionAlmacenId={direccionRecepcionAlmacenId}
             onDireccionRecepcionChange={setDireccionRecepcionAlmacenId}
             direccionesEmpresa={direccionesEmpresa}
@@ -634,7 +630,7 @@ export default function OrdenCompraForm({
         >
           <DatosAdicionalesTab
             ordenCompraId={defaultValues?.id}
-            puedeEditar={puedeEditar}
+            puedeEditar={puedeEditarDatosAdicionales}
             toast={toast}
             onCountChange={setDatosAdicionalesCount}
             readOnly={readOnly}
@@ -708,17 +704,16 @@ export default function OrdenCompraForm({
                 readOnly ||
                 loading ||
                 !permisos.puedeEditar ||
-                !estaAprobado ||
-                kardexGenerado ||
+                (!estaAprobado && !kardexGenerado) ||
                 estaAnulado
               }
               tooltip={
-                !estaAprobado
+                !estaAprobado && !kardexGenerado
                   ? "Solo se puede generar kardex en órdenes aprobadas"
-                  : kardexGenerado
-                  ? "El kardex ya fue generado"
                   : estaAnulado
                   ? "No se puede generar kardex en orden anulada"
+                  : kardexGenerado
+                  ? "Regenerar kardex (eliminar y crear nuevo movimiento)"
                   : readOnly
                   ? "Modo solo lectura"
                   : !permisos.puedeEditar

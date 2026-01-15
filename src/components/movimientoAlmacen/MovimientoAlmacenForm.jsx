@@ -6,15 +6,10 @@ import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
-import { Checkbox } from "primereact/checkbox";
-import { InputNumber } from "primereact/inputnumber";
 import { Panel } from "primereact/panel";
-import { Divider } from "primereact/divider";
-import { Tag } from "primereact/tag";
 import { Dialog } from "primereact/dialog";
 import { confirmDialog } from "primereact/confirmdialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
-import { Message } from "primereact/message";
 import { TabView, TabPanel } from "primereact/tabview";
 import DetalleMovimientoList from "./DetalleMovimientoList";
 import DetalleMovimientoForm from "./DetalleMovimientoForm";
@@ -22,7 +17,10 @@ import KardexProductoDialog from "./KardexProductoDialog";
 import VerImpresionMovimientoPDF from "./VerImpresionMovimientoPDF";
 import VerImpresionMovimientoConCostosPDF from "./VerImpresionMovimientoConCostosPDF";
 import EntregaARendirMovAlmacenCard from "./EntregaARendirMovAlmacenCard";
-import { getSeriesDoc, getMovimientoAlmacenPorId } from "../../api/movimientoAlmacen";
+import {
+  getSeriesDoc,
+  getMovimientoAlmacenPorId,
+} from "../../api/movimientoAlmacen";
 import { getAlmacenById } from "../../api/almacen";
 import { getDireccionesEntidad } from "../../api/direccionEntidad";
 import { getVehiculosEntidad } from "../../api/vehiculoEntidad";
@@ -59,13 +57,16 @@ export default function MovimientoAlmacenForm({
   onCancel,
   onCerrar,
   onAnular,
+  onReactivar,
   onGenerarKardex,
+  onIrAOrdenCompra,
+  onIrAPreFactura,
   loading,
   toast, // Toast ref pasado desde el componente padre
   permisos = {}, // Permisos del usuario
   readOnly = false, // Modo solo lectura
 }) {
-    // Estados de la cabecera - Conforme al modelo MovimientoAlmacen
+  // Estados de la cabecera - Conforme al modelo MovimientoAlmacen
   const [empresaId, setEmpresaId] = useState(defaultValues.empresaId || null);
   const [tipoDocumentoId, setTipoDocumentoId] = useState(
     defaultValues.tipoDocumentoId || null
@@ -164,10 +165,12 @@ export default function MovimientoAlmacenForm({
   // Usuario logueado
   const usuarioLogueado = useAuthStore((state) => state.user);
 
-  // Verificar si el documento está cerrado (estadoDocAlmacenId = 31)
+  // Verificar si el documento está cerrado o con kardex generado (estadoDocAlmacenId = 31 o 33)
   const documentoCerrado =
     defaultValues?.estadoDocAlmacenId === 31 ||
-    defaultValues?.estadoDocAlmacenId === "31";
+    defaultValues?.estadoDocAlmacenId === "31" ||
+    defaultValues?.estadoDocAlmacenId === 33 ||
+    defaultValues?.estadoDocAlmacenId === "33";
 
   // Estados para detalles
   const [detalles, setDetalles] = useState(defaultValues.detalles || []);
@@ -204,7 +207,7 @@ export default function MovimientoAlmacenForm({
   }, [isEdit, defaultValues?.id]);
 
   // Estados para series de documentos
-    const [seriesDoc, setSeriesDoc] = useState([]);
+  const [seriesDoc, setSeriesDoc] = useState([]);
 
   useEffect(() => {
     // Si hay empresaFija, usarla; sino usar defaultValues.empresaId
@@ -621,7 +624,7 @@ export default function MovimientoAlmacenForm({
     }
     cargarPersonalResponsable();
   }, [empresaId]);
-  
+
   // Mostrar información de referencia cuando se seleccione una serie
   // El número real se generará al guardar
   const handleSerieDocChange = (serieId) => {
@@ -734,7 +737,7 @@ export default function MovimientoAlmacenForm({
     label: `${s.serie} (Correlativo: ${s.correlativo})`,
     value: Number(s.id),
   }));
-  
+
   return (
     <form onSubmit={handleSubmit} className="p-fluid">
       {/* TABVIEW PRINCIPAL */}
@@ -759,7 +762,13 @@ export default function MovimientoAlmacenForm({
                 optionLabel="label"
                 optionValue="value"
                 placeholder="Seleccionar empresa"
-                disabled={readOnly || loading || !!empresaFija || isEdit || detalles.length > 0}
+                disabled={
+                  readOnly ||
+                  loading ||
+                  !!empresaFija ||
+                  isEdit ||
+                  detalles.length > 0
+                }
                 required
                 style={{
                   fontWeight: "bold",
@@ -767,7 +776,7 @@ export default function MovimientoAlmacenForm({
                 }}
               />
             </div>
-            <div style={{ flex: 1.5 }}>
+            <div style={{ flex: 1.25 }}>
               <label htmlFor="fechaDocumento">Fecha Documento*</label>
               <Calendar
                 id="fechaDocumento"
@@ -783,7 +792,7 @@ export default function MovimientoAlmacenForm({
                 }}
               />
             </div>
-            <div style={{ flex: 2 }}>
+            <div style={{ flex: 1 }}>
               <label htmlFor="tipoDocumentoId">Tipo de Documento*</label>
               <Dropdown
                 id="tipoDocumentoId"
@@ -801,164 +810,8 @@ export default function MovimientoAlmacenForm({
                 }}
               />
             </div>
-            <div style={{ flex: 1.5 }}>
-              <label htmlFor="numeroDocumento">Número de Documento</label>
-              <InputText
-                id="numeroDocumento"
-                value={numeroDocumento}
-                disabled
-                style={{
-                  fontWeight: "bold",
-                  textTransform: "uppercase",
-                  backgroundColor: "#f0f0f0",
-                }}
-              />
-            </div>
-                   </div>
-          <div
-            style={{
-              alignItems: "end",
-              display: "flex",
-              gap: 10,
-              marginTop: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 4 }}>
-              <label htmlFor="conceptoMovAlmacenId">Concepto Movimiento*</label>
-              <Dropdown
-                id="conceptoMovAlmacenId"
-                value={conceptoMovAlmacenId ? Number(conceptoMovAlmacenId) : null}
-                options={conceptosMovAlmacenOptions}
-                onChange={(e) => setConceptoMovAlmacenId(e.value)}
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Seleccionar concepto"
-                disabled={readOnly || loading || detalles.length > 0}
-                required
-                style={{
-                  fontWeight: "bold",
-                  textTransform: "uppercase",
-                }}
-              />
-            </div>
-            <div style={{ flex: 0.5 }}>
-              <label htmlFor="esCustodia">Mercaderia</label>
-              <Button
-                type="button"
-                id="esCustodia"
-                label={esCustodia ? "CUSTODIA" : "PROPIA"}
-                className={esCustodia ? "p-button-danger" : "p-button-success"}
-                style={{
-                  fontWeight: "bold",
-                  width: "100%",
-                  cursor: "not-allowed",
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Información de Almacenes del Concepto */}
-          {((almacenOrigenInfo && almacenOrigenInfo.nombre) ||
-            (almacenDestinoInfo && almacenDestinoInfo.nombre)) && (
-            <div>
-              <div
-                style={{
-                  alignItems: "end",
-                  display: "flex",
-                  gap: 10,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                  marginTop: 10,
-                }}
-              >
-                {almacenOrigenInfo && almacenOrigenInfo.nombre && (
-                  <div style={{ flex: 4 }}>
-                    <label style={{ fontWeight: "bold", color: "#1976d2" }}>
-                      Almacen Origen
-                    </label>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <InputText
-                        value={almacenOrigenInfo.nombre}
-                        disabled
-                        style={{
-                          backgroundColor: "#e3f2fd",
-                          fontWeight: "bold",
-                          color: "#0d47a1",
-                          textTransform: "uppercase",
-                          flex: 1,
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-                {almacenOrigenInfo && almacenOrigenInfo.nombre && (
-                  <div style={{ flex: 0.5 }}>
-                    <label>Kardex</label>
-                    <Button
-                      type="button"
-                      label={llevaKardexOrigen ? "SI" : "NO"}
-                      className={
-                        llevaKardexOrigen
-                          ? "p-button-success"
-                          : "p-button-secondary"
-                      }
-                      disabled
-                      style={{ fontWeight: "bold" }}
-                    />
-                  </div>
-                )}
-                {almacenDestinoInfo && almacenDestinoInfo.nombre && (
-                  <div style={{ flex: 4 }}>
-                    <label style={{ fontWeight: "bold", color: "#388e3c" }}>
-                      Almacen Destino
-                    </label>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <InputText
-                        value={almacenDestinoInfo.nombre}
-                        disabled
-                        style={{
-                          backgroundColor: "#e8f5e9",
-                          fontWeight: "bold",
-                          color: "#1b5e20",
-                          textTransform: "uppercase",
-                          flex: 1,
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-                {almacenDestinoInfo && almacenDestinoInfo.nombre && (
-                  <div style={{ flex: 0.5 }}>
-                    <label>Kardex</label>
-                    <Button
-                      type="button"
-                      label={llevaKardexDestino ? "SI" : "NO"}
-                      className={
-                        llevaKardexDestino
-                          ? "p-button-success"
-                          : "p-button-secondary"
-                      }
-                      disabled
-                      style={{
-                        fontWeight: "bold",
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          <div
-            style={{
-              alignItems: "end",
-              display: "flex",
-              gap: 10,
-              marginTop: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 2 }}>
-              <label htmlFor="serieDocId">Serie de Documento*</label>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="serieDocId">Serie Documento*</label>
               <Dropdown
                 id="serieDocId"
                 value={serieDocId ? Number(serieDocId) : null}
@@ -980,8 +833,8 @@ export default function MovimientoAlmacenForm({
                 }}
               />
             </div>
-            <div style={{ flex: 2 }}>
-              <label htmlFor="numSerieDoc">Número Serie Doc.</label>
+            <div style={{ flex: 0.5 }}>
+              <label htmlFor="numSerieDoc">N° Serie</label>
               <InputText
                 id="numSerieDoc"
                 value={numSerieDoc}
@@ -994,13 +847,26 @@ export default function MovimientoAlmacenForm({
                 }}
               />
             </div>
-            <div style={{ flex: 2 }}>
-              <label htmlFor="numCorreDoc">Número Correlativo Doc.</label>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="numCorreDoc">N° Correlativo</label>
               <InputText
                 id="numCorreDoc"
                 value={numCorreDoc}
                 disabled
                 maxLength={40}
+                style={{
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                  backgroundColor: "#f0f0f0",
+                }}
+              />
+            </div>
+            <div style={{ flex: 1.5 }}>
+              <label htmlFor="numeroDocumento">Número de Documento</label>
+              <InputText
+                id="numeroDocumento"
+                value={numeroDocumento}
+                disabled
                 style={{
                   fontWeight: "bold",
                   textTransform: "uppercase",
@@ -1053,7 +919,199 @@ export default function MovimientoAlmacenForm({
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
-            <div style={{ flex: 2 }}>
+            <div style={{ flex: 4 }}>
+              <label htmlFor="conceptoMovAlmacenId">Concepto Movimiento*</label>
+              <Dropdown
+                id="conceptoMovAlmacenId"
+                value={
+                  conceptoMovAlmacenId ? Number(conceptoMovAlmacenId) : null
+                }
+                options={conceptosMovAlmacenOptions}
+                onChange={(e) => setConceptoMovAlmacenId(e.value)}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccionar concepto"
+                disabled={readOnly || loading || detalles.length > 0}
+                required
+                style={{
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                }}
+              />
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <label htmlFor="esCustodia">Mercaderia</label>
+              <Button
+                type="button"
+                id="esCustodia"
+                label={esCustodia ? "CUSTODIA" : "PROPIA"}
+                className={esCustodia ? "p-button-danger" : "p-button-success"}
+                style={{
+                  fontWeight: "bold",
+                  width: "100%",
+                  cursor: "not-allowed",
+                }}
+              />
+            </div>
+            {(ordenCompraId || pedidoVentaId) && (
+              <>
+                {ordenCompraId && (
+                  <div style={{ flex: 0.5 }}>
+                    <label
+                      htmlFor="ordenCompra"
+                    >
+                      O/C (Origen)
+                    </label>
+                    <Button
+                      type="button"
+                      id="ordenCompra"
+                      label={`ID: ${ordenCompraId}`}
+                      icon="pi pi-shopping-cart"
+                      severity="info"
+                      onClick={() =>
+                        onIrAOrdenCompra && onIrAOrdenCompra(ordenCompraId)
+                      }
+                      outlined
+                      style={{
+                        width: "100%",
+                        fontWeight: "bold",
+                        justifyContent: "center",
+                      }}
+                    />
+                  </div>
+                )}
+                {pedidoVentaId && (
+                  <div style={{ flex: 0.5 }}>
+                    <label htmlFor="preFactura">
+                      PreFactura (Destino)
+                    </label>
+                    <Button
+                      type="button"
+                      id="preFactura"
+                      label={`ID: ${pedidoVentaId}`}
+                      icon="pi pi-file-edit"
+                      severity="success"
+                      onClick={() =>
+                        onIrAPreFactura && onIrAPreFactura(pedidoVentaId)
+                      }
+                      outlined
+                      style={{
+                        width: "100%",
+                        fontWeight: "bold",
+                        justifyContent: "center",
+                      }}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Información de Almacenes del Concepto */}
+          {((almacenOrigenInfo && almacenOrigenInfo.nombre) ||
+            (almacenDestinoInfo && almacenDestinoInfo.nombre)) && (
+            <div>
+              <div
+                style={{
+                  alignItems: "end",
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  marginTop: 10,
+                }}
+              >
+                {almacenOrigenInfo && almacenOrigenInfo.nombre && (
+                  <div style={{ flex: 4 }}>
+                    <label style={{ fontWeight: "bold", color: "#1976d2" }}>
+                      Almacen Origen
+                    </label>
+                    <div
+                      style={{ display: "flex", gap: 8, alignItems: "center" }}
+                    >
+                      <InputText
+                        value={almacenOrigenInfo.nombre}
+                        disabled
+                        style={{
+                          backgroundColor: "#e3f2fd",
+                          fontWeight: "bold",
+                          color: "#0d47a1",
+                          textTransform: "uppercase",
+                          flex: 1,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {almacenOrigenInfo && almacenOrigenInfo.nombre && (
+                  <div style={{ flex: 0.5 }}>
+                    <label>Kardex</label>
+                    <Button
+                      type="button"
+                      label={llevaKardexOrigen ? "SI" : "NO"}
+                      className={
+                        llevaKardexOrigen
+                          ? "p-button-success"
+                          : "p-button-secondary"
+                      }
+                      disabled
+                      style={{ fontWeight: "bold" }}
+                    />
+                  </div>
+                )}
+                {almacenDestinoInfo && almacenDestinoInfo.nombre && (
+                  <div style={{ flex: 4 }}>
+                    <label style={{ fontWeight: "bold", color: "#388e3c" }}>
+                      Almacen Destino
+                    </label>
+                    <div
+                      style={{ display: "flex", gap: 8, alignItems: "center" }}
+                    >
+                      <InputText
+                        value={almacenDestinoInfo.nombre}
+                        disabled
+                        style={{
+                          backgroundColor: "#e8f5e9",
+                          fontWeight: "bold",
+                          color: "#1b5e20",
+                          textTransform: "uppercase",
+                          flex: 1,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {almacenDestinoInfo && almacenDestinoInfo.nombre && (
+                  <div style={{ flex: 0.5 }}>
+                    <label>Kardex</label>
+                    <Button
+                      type="button"
+                      label={llevaKardexDestino ? "SI" : "NO"}
+                      className={
+                        llevaKardexDestino
+                          ? "p-button-success"
+                          : "p-button-secondary"
+                      }
+                      disabled
+                      style={{
+                        fontWeight: "bold",
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              marginTop: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
               <label htmlFor="entidadComercialId">Entidad Comercial</label>
               <Dropdown
                 id="entidadComercialId"
@@ -1068,6 +1126,56 @@ export default function MovimientoAlmacenForm({
                   fontWeight: "bold",
                   textTransform: "uppercase",
                 }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="dirOrigenId">Dirección Origen</label>
+              <Dropdown
+                id="dirOrigenId"
+                value={dirOrigenId ? Number(dirOrigenId) : null}
+                options={(direccionesOrigen || []).map((d) => ({
+                  label:
+                    d.direccionArmada ||
+                    d.direccion ||
+                    d.descripcion ||
+                    "Sin dirección",
+                  value: Number(d.id),
+                }))}
+                onChange={(e) => setDirOrigenId(e.value)}
+                placeholder="Seleccionar dirección origen"
+                disabled={
+                  loading ||
+                  !direccionesOrigen ||
+                  direccionesOrigen.length === 0
+                }
+                showClear
+                filter
+                style={{ fontWeight: "bold", textTransform: "uppercase" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="dirDestinoId">Dirección Destino</label>
+              <Dropdown
+                id="dirDestinoId"
+                value={dirDestinoId ? Number(dirDestinoId) : null}
+                options={(direccionesDestino || []).map((d) => ({
+                  label:
+                    d.direccionArmada ||
+                    d.direccion ||
+                    d.descripcion ||
+                    "Sin dirección",
+                  value: Number(d.id),
+                }))}
+                onChange={(e) => setDirDestinoId(e.value)}
+                placeholder="Seleccionar dirección destino"
+                disabled={
+                  loading ||
+                  !direccionesDestino ||
+                  direccionesDestino.length === 0
+                }
+                showClear
+                filter
+                style={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             </div>
           </div>
@@ -1088,10 +1196,13 @@ export default function MovimientoAlmacenForm({
                     gap: "8px",
                   }}
                 >
-                  <i className="pi pi-info-circle" style={{ color: "#856404" }}></i>
+                  <i
+                    className="pi pi-info-circle"
+                    style={{ color: "#856404" }}
+                  ></i>
                   <span style={{ color: "#856404", fontSize: "0.9em" }}>
-                    <strong>Importante:</strong> Primero debes guardar el movimiento
-                    para poder agregar detalles.
+                    <strong>Importante:</strong> Primero debes guardar el
+                    movimiento para poder agregar detalles.
                   </span>
                 </div>
               )}
@@ -1103,12 +1214,16 @@ export default function MovimientoAlmacenForm({
                   setEditingDetalle(null);
                   setShowDetalleDialog(true);
                 }}
-                disabled={loading || !isEdit || (!permisos.puedeCrear && !permisos.puedeEditar)}
+                disabled={
+                  loading ||
+                  !isEdit ||
+                  (!permisos.puedeCrear && !permisos.puedeEditar)
+                }
                 type="button"
                 tooltip={
-                  !isEdit 
-                    ? "Primero debes guardar el movimiento" 
-                    : (!permisos.puedeCrear && !permisos.puedeEditar)
+                  !isEdit
+                    ? "Primero debes guardar el movimiento"
+                    : !permisos.puedeCrear && !permisos.puedeEditar
                     ? "No tiene permisos para agregar detalles"
                     : ""
                 }
@@ -1192,31 +1307,7 @@ export default function MovimientoAlmacenForm({
                 marginTop: 10,
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
-            >
-              <div style={{ flex: 1 }}>
-                <label htmlFor="dirOrigenId">Dirección Origen</label>
-                <Dropdown
-                  id="dirOrigenId"
-                  value={dirOrigenId ? Number(dirOrigenId) : null}
-                  options={(direccionesOrigen || []).map((d) => ({
-                    label:
-                      d.direccionArmada ||
-                      d.direccion ||
-                      d.descripcion ||
-                      "Sin dirección",
-                    value: Number(d.id),
-                  }))}
-                  onChange={(e) => setDirOrigenId(e.value)}
-                  placeholder="Seleccionar dirección origen"
-                  disabled={
-                    loading || !direccionesOrigen || direccionesOrigen.length === 0
-                  }
-                  showClear
-                  filter
-                  style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                />
-              </div>
-            </div>
+            ></div>
             <div
               style={{
                 alignItems: "end",
@@ -1225,33 +1316,7 @@ export default function MovimientoAlmacenForm({
                 marginTop: 10,
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
-            >
-              <div style={{ flex: 1 }}>
-                <label htmlFor="dirDestinoId">Dirección Destino</label>
-                <Dropdown
-                  id="dirDestinoId"
-                  value={dirDestinoId ? Number(dirDestinoId) : null}
-                  options={(direccionesDestino || []).map((d) => ({
-                    label:
-                      d.direccionArmada ||
-                      d.direccion ||
-                      d.descripcion ||
-                      "Sin dirección",
-                    value: Number(d.id),
-                  }))}
-                  onChange={(e) => setDirDestinoId(e.value)}
-                  placeholder="Seleccionar dirección destino"
-                  disabled={
-                    loading ||
-                    !direccionesDestino ||
-                    direccionesDestino.length === 0
-                  }
-                  showClear
-                  filter
-                  style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                />
-              </div>
-            </div>
+            ></div>
             <div
               style={{
                 alignItems: "end",
@@ -1266,7 +1331,9 @@ export default function MovimientoAlmacenForm({
                 <InputText
                   id="numGuiaSunat"
                   value={numGuiaSunat}
-                  onChange={(e) => setNumGuiaSunat(e.target.value.toUpperCase())}
+                  onChange={(e) =>
+                    setNumGuiaSunat(e.target.value.toUpperCase())
+                  }
                   disabled={loading}
                   maxLength={40}
                   style={{ fontWeight: "bold", textTransform: "uppercase" }}
@@ -1281,7 +1348,10 @@ export default function MovimientoAlmacenForm({
                   dateFormat="dd/mm/yy"
                   showIcon
                   disabled={loading}
-                  inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+                  inputStyle={{
+                    fontWeight: "bold",
+                    textTransform: "uppercase",
+                  }}
                 />
               </div>
               <div style={{ flex: 3 }}>
@@ -1289,14 +1359,16 @@ export default function MovimientoAlmacenForm({
                 <InputText
                   id="observaciones"
                   value={observaciones}
-                  onChange={(e) => setObservaciones(e.target.value.toUpperCase())}
+                  onChange={(e) =>
+                    setObservaciones(e.target.value.toUpperCase())
+                  }
                   disabled={loading}
                   rows={1}
                   style={{ fontWeight: "bold", textTransform: "uppercase" }}
                 />
               </div>
             </div>
-            
+
             {/* Campos generados automáticamente - Solo lectura */}
             {(faenaPescaId || embarcacionId || ordenTrabajoId) && (
               <div
@@ -1321,7 +1393,9 @@ export default function MovimientoAlmacenForm({
                 )}
                 {embarcacionId && (
                   <div style={{ flex: 1 }}>
-                    <label htmlFor="embarcacionId">Embarcación (Generado)</label>
+                    <label htmlFor="embarcacionId">
+                      Embarcación (Generado)
+                    </label>
                     <InputText
                       id="embarcacionId"
                       value={`ID: ${embarcacionId}`}
@@ -1332,7 +1406,9 @@ export default function MovimientoAlmacenForm({
                 )}
                 {ordenTrabajoId && (
                   <div style={{ flex: 1 }}>
-                    <label htmlFor="ordenTrabajoId">Orden Trabajo (Generado)</label>
+                    <label htmlFor="ordenTrabajoId">
+                      Orden Trabajo (Generado)
+                    </label>
                     <InputText
                       id="ordenTrabajoId"
                       value={`ID: ${ordenTrabajoId}`}
@@ -1377,7 +1453,9 @@ export default function MovimientoAlmacenForm({
                   id="vehiculoId"
                   value={vehiculoId ? Number(vehiculoId) : null}
                   options={(vehiculosFiltrados || []).map((v) => ({
-                    label: `${v.placa || ""} - ${v.marca || ""} ${v.modelo || ""}`,
+                    label: `${v.placa || ""} - ${v.marca || ""} ${
+                      v.modelo || ""
+                    }`,
                     value: Number(v.id),
                   }))}
                   onChange={(e) => setVehiculoId(e.value)}
@@ -1469,10 +1547,14 @@ export default function MovimientoAlmacenForm({
               }}
             >
               <div style={{ flex: 1 }}>
-                <label htmlFor="personalRespAlmacen">Responsable Almacén*</label>
+                <label htmlFor="personalRespAlmacen">
+                  Responsable Almacén*
+                </label>
                 <Dropdown
                   id="personalRespAlmacen"
-                  value={personalRespAlmacen ? Number(personalRespAlmacen) : null}
+                  value={
+                    personalRespAlmacen ? Number(personalRespAlmacen) : null
+                  }
                   options={personalOptions.map((p) => ({
                     label: p.nombreCompleto || p.nombre,
                     value: Number(p.id),
@@ -1499,39 +1581,8 @@ export default function MovimientoAlmacenForm({
                 marginTop: 10,
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
-            >
-              {(ordenCompraId || pedidoVentaId) && (
-                <>
-                  {ordenCompraId && (
-                    <div style={{ flex: 1 }}>
-                      <label htmlFor="ordenCompraId">
-                        Orden de Compra (Generado)
-                      </label>
-                      <InputText
-                        id="ordenCompraId"
-                        value={`ID: ${ordenCompraId}`}
-                        disabled
-                        style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
-                      />
-                    </div>
-                  )}
-                  {pedidoVentaId && (
-                    <div style={{ flex: 1 }}>
-                      <label htmlFor="pedidoVentaId">
-                        Pedido de Venta (Generado)
-                      </label>
-                      <InputText
-                        id="pedidoVentaId"
-                        value={`ID: ${pedidoVentaId}`}
-                        disabled
-                        style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-                    </Panel>
+            ></div>
+          </Panel>
 
           {/* Diálogo para agregar/editar detalle */}
           <DetalleMovimientoForm
@@ -1650,18 +1701,8 @@ export default function MovimientoAlmacenForm({
           justifyContent: "flex-end",
         }}
       >
-        <Button
-          type="button"
-          label="Cancelar"
-          onClick={onCancel}
-          disabled={loading}
-          className="p-button-warning"
-          severity="warning"
-          raised
-          size="small"
-          outlined
-        />
-        
+
+
         {/* Botón Cerrar Documento - Solo en edición y si está pendiente */}
         {isEdit && defaultValues?.id && !documentoCerrado && (
           <Button
@@ -1675,53 +1716,109 @@ export default function MovimientoAlmacenForm({
             raised
             size="small"
             outlined
-            tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para cerrar documentos (requiere permiso de Editar)" : "Cerrar el documento (no se podrá editar)"}
+            tooltip={
+              readOnly
+                ? "Modo solo lectura"
+                : !permisos.puedeEditar
+                ? "No tiene permisos para cerrar documentos (requiere permiso de Editar)"
+                : "Cerrar el documento (no se podrá editar)"
+            }
             tooltipOptions={{ position: "top" }}
           />
         )}
-        
+
         {/* Botón Anular Documento - Solo en edición y si está cerrado */}
         {isEdit && defaultValues?.id && documentoCerrado && (
           <Button
             type="button"
             label="Anular Documento"
             icon="pi pi-times-circle"
-            onClick={() => onAnular && onAnular(defaultValues.id, defaultValues.empresaId)}
+            onClick={() =>
+              onAnular && onAnular(defaultValues.id, defaultValues.empresaId)
+            }
             disabled={loading || readOnly || !permisos.puedeEliminar}
             className="p-button-danger"
             severity="danger"
             raised
             size="small"
             outlined
-            tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEliminar ? "No tiene permisos para anular documentos (requiere permiso de Eliminar)" : "Anular el documento y revertir kardex"}
+            tooltip={
+              readOnly
+                ? "Modo solo lectura"
+                : !permisos.puedeEliminar
+                ? "No tiene permisos para anular documentos (requiere permiso de Eliminar)"
+                : "Anular el documento y revertir kardex"
+            }
             tooltipOptions={{ position: "top" }}
           />
         )}
-        
-        {/* Botón Generar Kardex - Solo en edición y si está cerrado */}
-        {isEdit && defaultValues?.id && documentoCerrado && (
+
+        {/* Botón Reactivar Documento - Siempre visible, disabled si está PENDIENTE o no tiene permiso */}
+        {isEdit && defaultValues?.id && (
+          <Button
+            type="button"
+            label="Reactivar Documento"
+            icon="pi pi-replay"
+            onClick={() => onReactivar && onReactivar(defaultValues.id)}
+            disabled={loading || !documentoCerrado || !permisos.puedeReactivarDocs}
+            className="p-button-warning"
+            severity="warning"
+            raised
+            size="small"
+            outlined
+            tooltip={
+              !permisos.puedeReactivarDocs
+                ? "No tiene permisos para reactivar documentos"
+                : !documentoCerrado
+                ? "El documento debe estar cerrado para poder reactivarlo"
+                : "Reactivar el documento para permitir edición"
+            }
+            tooltipOptions={{ position: "top" }}
+          />
+        )}
+
+        {/* Botón Generar Kardex - Siempre visible, disabled solo si está PENDIENTE */}
+        {isEdit && defaultValues?.id && (
           <Button
             type="button"
             label="Generar Kardex"
             icon="pi pi-chart-line"
             onClick={() => onGenerarKardex && onGenerarKardex(defaultValues.id)}
-            disabled={loading || !permisos.puedeCrear}
+            disabled={loading || !documentoCerrado || !permisos.puedeCrear}
             className="p-button-info"
             severity="info"
             raised
             size="small"
             outlined
-            tooltip={!permisos.puedeCrear ? "No tiene permisos para generar kardex (requiere permiso de Crear)" : "Generar registros de kardex"}
+            tooltip={
+              !permisos.puedeCrear
+                ? "No tiene permisos para generar kardex (requiere permiso de Crear)"
+                : !documentoCerrado
+                ? "Debe cerrar el documento antes de generar kardex"
+                : "Generar registros de kardex"
+            }
             tooltipOptions={{ position: "top" }}
           />
         )}
-        
+        <Button
+          type="button"
+          label="Cancelar"
+          onClick={onCancel}
+          disabled={loading}
+          className="p-button-warning"
+          severity="warning"
+          raised
+          size="small"
+          outlined
+        />
         <Button
           type="submit"
           label={isEdit ? "Actualizar" : "Crear"}
           icon="pi pi-save"
           loading={loading}
-          disabled={readOnly || (isEdit ? !permisos.puedeEditar : !permisos.puedeCrear)}
+          disabled={
+            readOnly || (isEdit ? !permisos.puedeEditar : !permisos.puedeCrear)
+          }
           className="p-button-success"
           severity="success"
           raised
@@ -1730,9 +1827,13 @@ export default function MovimientoAlmacenForm({
           tooltip={
             readOnly
               ? "Modo solo lectura"
-              : isEdit 
-              ? (!permisos.puedeEditar ? "No tiene permisos para editar" : "")
-              : (!permisos.puedeCrear ? "No tiene permisos para crear" : "")
+              : isEdit
+              ? !permisos.puedeEditar
+                ? "No tiene permisos para editar"
+                : ""
+              : !permisos.puedeCrear
+              ? "No tiene permisos para crear"
+              : ""
           }
         />
       </div>
@@ -1746,23 +1847,23 @@ export default function MovimientoAlmacenForm({
           // Construir lista de almacenes según flags llevaKardex del concepto (WMS estándar)
           const almacenes = [];
           const concepto = defaultValues.conceptoMovAlmacen;
-          
+
           if (concepto?.llevaKardexOrigen && concepto?.almacenOrigenId) {
             almacenes.push(concepto.almacenOrigenId);
           }
           if (concepto?.llevaKardexDestino && concepto?.almacenDestinoId) {
             almacenes.push(concepto.almacenDestinoId);
           }
-          
+
           // Retornar como string separado por comas para el backend
-          return almacenes.length > 0 ? almacenes.join(',') : null;
+          return almacenes.length > 0 ? almacenes.join(",") : null;
         })()}
         productoId={detalleKardex?.productoId}
         esCustodia={defaultValues.esCustodia}
         clienteId={
-          defaultValues.esCustodia 
-            ? defaultValues.entidadComercialId  // Custodia: cliente del movimiento
-            : null  // Propia: NO filtrar por cliente
+          defaultValues.esCustodia
+            ? defaultValues.entidadComercialId // Custodia: cliente del movimiento
+            : null // Propia: NO filtrar por cliente
         }
         productoNombre={
           detalleKardex?.producto?.descripcionArmada || "Producto"
