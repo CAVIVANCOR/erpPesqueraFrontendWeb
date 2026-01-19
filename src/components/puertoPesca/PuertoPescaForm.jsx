@@ -66,7 +66,7 @@ const esquemaValidacion = yup.object().shape({
   esPuertoOtroPais: yup.boolean().default(false),
 });
 
-const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar, readOnly = false }) => {
+const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar, onError, readOnly = false }) => {
   const [loading, setLoading] = useState(false);
   const esEdicion = !!puertoPesca;
 
@@ -153,7 +153,22 @@ const PuertoPescaForm = ({ puertoPesca, onGuardar, onCancelar, readOnly = false 
       onGuardar();
     } catch (error) {
       console.error("Error al guardar puerto de pesca:", error);
-      // El manejo de errores se realiza en el componente padre
+      // Extraer mensaje de error del backend
+      let mensajeError = "Error al guardar puerto de pesca";
+      
+      if (error.response?.data) {
+        // Intentar obtener el mensaje del error
+        mensajeError = error.response.data.message 
+          || error.response.data.error 
+          || error.response.data.mensaje
+          || (typeof error.response.data === 'string' ? error.response.data : mensajeError);
+      } else if (error.message) {
+        mensajeError = error.message;
+      }
+      
+      if (onError) {
+        onError(mensajeError);
+      }
     } finally {
       setLoading(false);
     }

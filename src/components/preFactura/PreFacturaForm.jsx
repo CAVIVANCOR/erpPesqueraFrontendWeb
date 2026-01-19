@@ -11,6 +11,9 @@ import { obtenerContactosPorEntidad } from "../../api/contactoEntidad";
 import { obtenerDireccionesPorEntidad } from "../../api/direccionEntidad";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
+import { partirPreFactura, facturarPreFacturaNegra } from "../../api/preFactura";
+import { Dialog } from "primereact/dialog";
+import { InputNumber } from "primereact/inputnumber";
 
 export default function PreFacturaForm({
   isEdit,
@@ -822,6 +825,80 @@ export default function PreFacturaForm({
     onAnular(defaultValues.id);
   };
 
+
+  // Handler para partir PreFactura (Caso 2: Mixto Blanco/Negro)
+  const [showPartirDialog, setShowPartirDialog] = useState(false);
+  const [porcentajeNegro, setPorcentajeNegro] = useState(40);
+  const [porcentajeBlanco, setPorcentajeBlanco] = useState(60);
+
+  const handlePartirClick = () => {
+    setShowPartirDialog(true);
+  };
+
+  const handlePartirPreFactura = async () => {
+    if (porcentajeNegro + porcentajeBlanco !== 100) {
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "La suma de porcentajes debe ser 100%",
+        life: 3000,
+      });
+      return;
+    }
+
+    try {
+      const resultado = await partirPreFactura(defaultValues.id, {
+        porcentajeNegro,
+        porcentajeBlanco
+      });
+
+      toast?.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: `PreFactura partida: ${porcentajeNegro}% Negro + ${porcentajeBlanco}% Blanco`,
+        life: 5000,
+      });
+
+      setShowPartirDialog(false);
+      onComprobanteGenerado?.();
+    } catch (error) {
+      console.error("Error al partir PreFactura:", error);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.mensaje || "No se pudo partir la PreFactura",
+        life: 3000,
+      });
+    }
+  };
+
+  // Handler para facturar negra (Caso 1: 100% Negro)
+  const handleFacturarNegraClick = async () => {
+    try {
+      const resultado = await facturarPreFacturaNegra(defaultValues.id);
+
+      toast?.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "CxC Negra (Gerencial) generada exitosamente",
+        life: 5000,
+      });
+
+      onComprobanteGenerado?.();
+    } catch (error) {
+      console.error("Error al facturar negra:", error);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.mensaje || "No se pudo facturar la PreFactura negra",
+        life: 3000,
+      });
+    }
+  };
+
+
+
+
   // Estados del documento
   const estaPendiente = estadoId === 45 || !estadoId;
   const estaAprobada = estadoId === 46;
@@ -1060,7 +1137,7 @@ export default function PreFacturaForm({
           marginTop: 18,
         }}
       >
-        {/* Botones izquierda: Aprobar, Anular */}
+        {/* Botones izquierda: Aprobar, Anular, Partir, Facturar Negra */}
         <div style={{ display: "flex", gap: 8 }}>
           {estaPendiente && isEdit && (
             <>
@@ -1094,6 +1171,30 @@ export default function PreFacturaForm({
               />
             </>
           )}
+
+          {/* Botón Partir PreFactura - Solo visible si está APROBADA */}
+          {estaAprobada && isEdit && (
+            <Button
+              label="Partir PreFactura"
+              icon="pi pi-clone"
+              className="p-button-warning"
+              onClick={handlePartirClick}
+              disabled={readOnly || loading || !permisos.puedeEditar}
+              tooltip="Dividir en Blanca (Formal) y Negra (Gerencial)"
+            />
+          )}
+
+          {/* Botón Facturar Negra - Solo visible si está APROBADA y es GERENCIAL */}
+          {estaAprobada && isEdit && formData.esGerencial && (
+            <Button
+              label="Facturar Negra"
+              icon="pi pi-file"
+              className="p-button-help"
+              onClick={handleFacturarNegraClick}
+              disabled={readOnly || loading || !permisos.puedeEditar}
+              tooltip="Generar CxC Negra (Gerencial) sin comprobante"
+            />
+          )}
         </div>
 
         {/* Botones derecha: Guardar y Cancelar */}
@@ -1120,6 +1221,82 @@ export default function PreFacturaForm({
           />
         </div>
       </div>
+
+ {/* Dialog para Partir PreFactura */}
+      <Dialog
+        visible={showPartirDialog}
+        style={{ width: "450px" }}
+        header="Partir PreFactura (Blanca + Negra)"
+        modal
+        onHide={() => setShowPartirDialog(false)}
+      >
+        <div className="p-fluid">
+          <div className="mb-3">
+            <label htmlFor="porcentajeNegro" className="block mb-2 font-bold">
+              % Negra (Gerencial) ⚫
+            </label>
+            <InputNumber
+              id="porcentajeNegro"
+              value={porcentajeNegro}
+              onValueChange={(e) => {
+                setPorcentajeNegro(e.value);
+                setPorcentajeBlanco(100 - e.value);
+              }}
+              mode="decimal"
+              min={0}
+              max={100}
+              suffix="%"
+              showButtons
+              step={5}
+            />
+          </div>
+          <div className="mb-3">
+            <label htmlFor="porcentajeBlanco" className="block mb-2 font-bold">
+              % Blanca (Formal) ⚪
+            </label>
+            <InputNumber
+              id="porcentajeBlanco"
+              value={porcentajeBlanco}
+              onValueChange={(e) => {
+                setPorcentajeBlanco(e.value);
+                setPorcentajeNegro(100 - e.value);
+              }}
+              mode="decimal"
+              min={0}
+              max={100}
+              suffix="%"
+              showButtons
+              step={5}
+            />
+          </div>
+          <div className="mb-3 p-3" style={{ backgroundColor: "#f8f9fa", borderRadius: "4px" }}>
+            <p className="m-0 text-sm">
+              <strong>Total:</strong> {porcentajeNegro + porcentajeBlanco}%
+            </p>
+            <p className="m-0 text-sm mt-2">
+              <strong>Monto Negra:</strong> S/ {((formData.total || 0) * porcentajeNegro / 100).toFixed(2)}
+            </p>
+            <p className="m-0 text-sm">
+              <strong>Monto Blanca:</strong> S/ {((formData.total || 0) * porcentajeBlanco / 100).toFixed(2)}
+            </p>
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              className="p-button-secondary"
+              onClick={() => setShowPartirDialog(false)}
+            />
+            <Button
+              label="Partir"
+              icon="pi pi-check"
+              className="p-button-warning"
+              onClick={handlePartirPreFactura}
+            />
+          </div>
+        </div>
+      </Dialog>
+
     </div>
   );
 }

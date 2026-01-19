@@ -22,6 +22,7 @@ import { subirLogoEmpresa, propagarMargenes } from "../../api/empresa";
 import { Toast } from "primereact/toast";
 import { useRef } from "react";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 // Esquema de validación profesional con Yup alineado al modelo Empresa de Prisma
 const schema = Yup.object().shape({
@@ -68,6 +69,17 @@ const schema = Yup.object().shape({
   cantDivisoriaCalcComisionMotorista: Yup.number().nullable().min(0, "No puede ser negativo"),
   porcentajeCalcComisionPanguero: Yup.number().nullable().min(0, "No puede ser negativo"),
   monedaCalculosLiqId: Yup.number().nullable(),
+  // Campos Nubefact
+  nubefactUrl: Yup.string()
+    .nullable()
+    .max(255, "La URL no puede exceder 255 caracteres")
+    .test('url-format', 'Debe ser una URL válida (http:// o https://)', function(value) {
+      if (!value) return true;
+      return value.startsWith('http://') || value.startsWith('https://');
+    }),
+  nubefactToken: Yup.string()
+    .nullable()
+    .max(500, "El token no puede exceder 500 caracteres"),
 });
 
 /**
@@ -92,6 +104,10 @@ export default function EmpresaForm({
   loading,
   readOnly = false,
 }) {
+  // Obtener usuario autenticado para verificar permisos
+  const usuario = useAuthStore((state) => state.usuario);
+  const esSuperUsuario = usuario?.esSuperUsuario || false;
+
   // Extrae 'control' para uso con Controller
   const {
     register,
@@ -1191,6 +1207,86 @@ export default function EmpresaForm({
                     {errors.monedaCalculosLiqId.message}
                   </small>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Sección de Nubefact - Facturación Electrónica */}
+          <div
+            style={{
+              marginTop: 16,
+              padding: 16,
+              backgroundColor: "#e3f2fd",
+              borderRadius: 8,
+              border: "2px solid #90caf9",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <i className="pi pi-cloud-upload" style={{ fontSize: "1.5em", color: "#1976d2" }}></i>
+              <h3 style={{ margin: 0, color: "#1976d2" }}>Nubefact - Facturación Electrónica</h3>
+            </div>
+            <small style={{ display: "block", color: "#1565c0", marginBottom: 12 }}>
+              Configuración de credenciales para la integración con Nubefact (OSE - Operador de Servicios Electrónicos).
+            </small>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "end",
+                gap: 24,
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label htmlFor="nubefactUrl">
+                  URL del API de Nubefact {!esSuperUsuario && <span style={{ color: "#e91e63", fontSize: "0.85em" }}>(Solo SuperUsuario)</span>}
+                </label>
+                <InputText
+                  id="nubefactUrl"
+                  {...register("nubefactUrl")}
+                  className={errors.nubefactUrl ? "p-invalid" : ""}
+                  placeholder="https://api.nubefact.com/api/v1"
+                  disabled={readOnly || !esSuperUsuario}
+                  style={{ 
+                    fontWeight: "bold",
+                    backgroundColor: !esSuperUsuario ? "#f5f5f5" : undefined,
+                    cursor: !esSuperUsuario ? "not-allowed" : undefined
+                  }}
+                />
+                {errors.nubefactUrl && (
+                  <small className="p-error">
+                    {errors.nubefactUrl.message}
+                  </small>
+                )}
+                <small style={{ display: "block", color: "#666", marginTop: 4 }}>
+                  {esSuperUsuario ? "Ejemplo: https://api.nubefact.com/api/v1" : "⚠️ Solo el SuperUsuario puede modificar este campo"}
+                </small>
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label htmlFor="nubefactToken">
+                  Token de Autenticación {!esSuperUsuario && <span style={{ color: "#e91e63", fontSize: "0.85em" }}>(Solo SuperUsuario)</span>}
+                </label>
+                <InputText
+                  id="nubefactToken"
+                  {...register("nubefactToken")}
+                  className={errors.nubefactToken ? "p-invalid" : ""}
+                  placeholder="Token de Nubefact"
+                  disabled={readOnly || !esSuperUsuario}
+                  style={{ 
+                    fontWeight: "bold",
+                    backgroundColor: !esSuperUsuario ? "#f5f5f5" : undefined,
+                    cursor: !esSuperUsuario ? "not-allowed" : undefined
+                  }}
+                  type="password"
+                />
+                {errors.nubefactToken && (
+                  <small className="p-error">
+                    {errors.nubefactToken.message}
+                  </small>
+                )}
+                <small style={{ display: "block", color: "#666", marginTop: 4 }}>
+                  {esSuperUsuario ? "Token proporcionado por Nubefact (se oculta por seguridad)" : "⚠️ Solo el SuperUsuario puede modificar este campo"}
+                </small>
               </div>
             </div>
           </div>

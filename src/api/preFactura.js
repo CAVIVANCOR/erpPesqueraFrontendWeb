@@ -209,12 +209,38 @@ export async function generarFacturaDesdePreFactura(id, datos) {
  * @param {Object} datos - Datos para la generación (serieDocFinalId, tipoDocumentoFinalId)
  * @returns {Promise<Object>} Comprobante electrónico generado
  */
-export async function generarBoletaDesdePreFactura(id, datos) {
+export async function generarBoletaDesdePreFactura(preFacturaId, datosBoleta) {
   try {
-    const response = await axios.post(`${API_URL}/${id}/generar-boleta`, datos, { headers: getAuthHeaders() });
+    const response = await axios.post(`${API_URL}/${preFacturaId}/generar-boleta`, datosBoleta, { headers: getAuthHeaders() });
     return response.data;
   } catch (error) {
     console.error("Error al generar boleta desde pre-factura:", error);
+    throw error;
+  }
+}
+
+/**
+ * Partir PreFactura en Blanca y Negra
+ */
+export async function partirPreFactura(preFacturaId, datos) {
+  try {
+    const response = await axios.post(`${API_URL}/${preFacturaId}/partir`, datos, { headers: getAuthHeaders() });
+    return response.data;
+  } catch (error) {
+    console.error("Error al partir pre-factura:", error);
+    throw error;
+  }
+}
+
+/**
+ * Facturar PreFactura Negra (Gerencial)
+ */
+export async function facturarPreFacturaNegra(preFacturaId) {
+  try {
+    const response = await axios.post(`${API_URL}/${preFacturaId}/facturar-negra`, {}, { headers: getAuthHeaders() });
+    return response.data;
+  } catch (error) {
+    console.error("Error al facturar pre-factura negra:", error);
     throw error;
   }
 }

@@ -6,13 +6,20 @@
  * @version 2.0.0 - Refactorización profesional
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
-import { generarDocumentosRequeridos } from "../../api/cotizacionVentas";
-import { formatearNumero, getResponsiveFontSize } from "../../utils/utils";
+import { confirmDialog } from "primereact/confirmdialog";
 import DocumentoRequeridoDialog from "./DocumentoRequeridoDialog";
+import {
+  getDocumentosPorCotizacion,
+  crearDetalleDocReqCotizaVentas,
+  actualizarDetalleDocReqCotizaVentas,
+  eliminarDetalleDocReqCotizaVentas,
+} from "../../api/detDocsReqCotizaVentas";
+import { generarDocumentosRequeridos } from "../../api/cotizacionVentas";
+import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 
 const DocumentosRequeridosCard = ({
   formData,
@@ -33,6 +40,31 @@ const DocumentosRequeridosCard = ({
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingDocumento, setEditingDocumento] = useState(null);
   const [loadingGenerar, setLoadingGenerar] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Función para cargar documentos desde la BD
+  const cargarDocumentos = async () => {
+    if (!cotizacionId) return;
+
+    try {
+      const docs = await getDocumentosPorCotizacion(cotizacionId);
+      setDocumentos(docs);
+
+      // Notificar al componente padre si existe callback
+      if (onDocumentosGenerados) {
+        onDocumentosGenerados();
+      }
+    } catch (error) {
+      console.error("Error al cargar documentos:", error);
+    }
+  };
+
+  // Cargar documentos cuando cambia el cotizacionId
+  useEffect(() => {
+    if (cotizacionId) {
+      cargarDocumentos();
+    }
+  }, [cotizacionId]);
 
   const handleAddDocumento = () => {
     setEditingDocumento({
@@ -59,11 +91,61 @@ const DocumentosRequeridosCard = ({
   };
 
   const handleDeleteDocumento = (index) => {
-    const nuevosDocumentos = documentos.filter((_, i) => i !== index);
-    setDocumentos(nuevosDocumentos);
+    const documento = documentos[index];
+    const nombreDoc =
+      documento.docRequeridaVentas?.nombre ||
+      documento.nombre ||
+      "este documento";
+
+    confirmDialog({
+      message: `¿Está seguro de eliminar "${nombreDoc}"?`,
+      header: "Confirmar Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Sí, eliminar",
+      rejectLabel: "Cancelar",
+      acceptClassName: "p-button-danger",
+      accept: async () => {
+        if (!documento.id) {
+          // Si no tiene ID, solo remover del estado local
+          const nuevosDocumentos = documentos.filter((_, i) => i !== index);
+          setDocumentos(nuevosDocumentos);
+          toast?.current?.show({
+            severity: "success",
+            summary: "Eliminado",
+            detail: "Documento eliminado correctamente",
+            life: 3000,
+          });
+          return;
+        }
+
+        try {
+          // Eliminar de la base de datos
+          await eliminarDetalleDocReqCotizaVentas(documento.id);
+
+          toast?.current?.show({
+            severity: "success",
+            summary: "Eliminado",
+            detail: "Documento eliminado correctamente",
+            life: 3000,
+          });
+
+          // Recargar documentos desde BD
+          await cargarDocumentos();
+        } catch (error) {
+          console.error("Error al eliminar documento:", error);
+          toast?.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail:
+              error.response?.data?.error || "No se pudo eliminar el documento",
+            life: 3000,
+          });
+        }
+      },
+    });
   };
 
-  const handleSaveDocumento = () => {
+  const handleSaveDocumento = async () => {
     if (!editingDocumento.docRequeridaVentasId) {
       toast?.current?.show({
         severity: "warn",
@@ -74,43 +156,110 @@ const DocumentosRequeridosCard = ({
       return;
     }
 
-    // Preparar el documento con la fecha de verificación si está verificado
-    const documentoToSave = {
-      ...editingDocumento,
-      fechaVerificacion: editingDocumento.verificado ? new Date() : null,
-    };
-    delete documentoToSave.index;
-
-    if (editingDocumento.index !== undefined) {
-      // Editar documento existente
-      const nuevosDocumentos = [...documentos];
-      nuevosDocumentos[editingDocumento.index] = documentoToSave;
-      setDocumentos(nuevosDocumentos);
-      
+    if (!cotizacionId) {
       toast?.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "Documento actualizado correctamente",
-        life: 3000,
+        severity: "warn",
+        summary: "Cotización no guardada",
+        detail:
+          "Debe guardar la cotización primero antes de agregar documentos",
+        life: 4000,
       });
-    } else {
-      // Agregar nuevo documento
-      setDocumentos([...documentos, documentoToSave]);
-      
-      toast?.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "Documento agregado correctamente",
-        life: 3000,
-      });
+      return;
     }
-    
-    setShowAddDialog(false);
-    setEditingDocumento(null);
+
+    try {
+      setSaving(true);
+
+      if (editingDocumento.id) {
+        // Actualizar documento existente en BD
+        // Solo enviar campos actualizables (sin IDs de relación)
+        const dataToUpdate = {
+          numeroDocumento: editingDocumento.numeroDocumento?.trim() || null,
+          urlDocumento: editingDocumento.urlDocumento?.trim() || null,
+          fechaEmision: editingDocumento.fechaEmision,
+          fechaVencimiento: editingDocumento.fechaVencimiento,
+          esObligatorio: Boolean(editingDocumento.esObligatorio),
+          verificado: Boolean(editingDocumento.verificado),
+          fechaVerificacion: editingDocumento.verificado
+            ? editingDocumento.fechaVerificacion || new Date()
+            : null,
+          verificadoPorId: editingDocumento.verificadoPorId
+            ? Number(editingDocumento.verificadoPorId)
+            : null,
+          observacionesVerificacion:
+            editingDocumento.observacionesVerificacion?.trim() || null,
+          costoDocumento: editingDocumento.costoDocumento || null,
+          monedaId: editingDocumento.monedaId
+            ? Number(editingDocumento.monedaId)
+            : null,
+        };
+
+        await actualizarDetalleDocReqCotizaVentas(
+          editingDocumento.id,
+          dataToUpdate,
+        );
+        toast?.current?.show({
+          severity: "success",
+          summary: "Actualizado",
+          detail: "Documento actualizado correctamente",
+          life: 3000,
+        });
+      } else {
+        // Crear nuevo documento en BD
+        // Incluir IDs de relación solo en CREATE
+        const dataToCreate = {
+          cotizacionVentasId: Number(cotizacionId),
+          docRequeridaVentasId: Number(editingDocumento.docRequeridaVentasId),
+          numeroDocumento: editingDocumento.numeroDocumento?.trim() || null,
+          urlDocumento: editingDocumento.urlDocumento?.trim() || null,
+          fechaEmision: editingDocumento.fechaEmision,
+          fechaVencimiento: editingDocumento.fechaVencimiento,
+          esObligatorio: Boolean(editingDocumento.esObligatorio),
+          verificado: Boolean(editingDocumento.verificado),
+          fechaVerificacion: editingDocumento.verificado
+            ? editingDocumento.fechaVerificacion || new Date()
+            : null,
+          verificadoPorId: editingDocumento.verificadoPorId
+            ? Number(editingDocumento.verificadoPorId)
+            : null,
+          observacionesVerificacion:
+            editingDocumento.observacionesVerificacion?.trim() || null,
+          costoDocumento: editingDocumento.costoDocumento || null,
+          monedaId: editingDocumento.monedaId
+            ? Number(editingDocumento.monedaId)
+            : null,
+        };
+
+        await crearDetalleDocReqCotizaVentas(dataToCreate);
+        toast?.current?.show({
+          severity: "success",
+          summary: "Creado",
+          detail: "Documento creado correctamente",
+          life: 3000,
+        });
+      }
+
+      // Recargar documentos desde BD
+      await cargarDocumentos();
+
+      setShowAddDialog(false);
+      setEditingDocumento(null);
+    } catch (error) {
+      console.error("Error al guardar documento:", error);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.error || "No se pudo guardar el documento",
+        life: 3000,
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleChangeDocumento = (field, value) => {
-    setEditingDocumento(prev => ({
+    setEditingDocumento((prev) => ({
       ...prev,
       [field]: value,
     }));
@@ -120,7 +269,7 @@ const DocumentosRequeridosCard = ({
     if (!cotizacionId) {
       toast?.current?.show({
         severity: "warn",
-        summary: "Advertencia",
+        summary: "Cotización no guardada",
         detail:
           "Debe guardar la cotización primero antes de generar documentos automáticamente",
         life: 4000,
@@ -131,9 +280,10 @@ const DocumentosRequeridosCard = ({
     if (!formData.esExportacion) {
       toast?.current?.show({
         severity: "warn",
-        summary: "Advertencia",
-        detail: "Esta función solo aplica para cotizaciones de exportación",
-        life: 4000,
+        summary: "No es exportación",
+        detail:
+          "Esta función solo aplica para cotizaciones de exportación. Marque el checkbox 'Es Exportación' en la pestaña Generales.",
+        life: 5000,
       });
       return;
     }
@@ -141,10 +291,10 @@ const DocumentosRequeridosCard = ({
     if (!formData.paisDestinoId || !formData.tipoProductoId) {
       toast?.current?.show({
         severity: "warn",
-        summary: "Advertencia",
+        summary: "Datos incompletos",
         detail:
-          "Debe seleccionar País Destino y Tipo de Producto antes de generar documentos",
-        life: 4000,
+          "Debe seleccionar País Destino y Tipo de Producto en la pestaña Generales antes de generar documentos",
+        life: 5000,
       });
       return;
     }
@@ -191,63 +341,188 @@ const DocumentosRequeridosCard = ({
 
   const verificadoBodyTemplate = (rowData) => {
     return rowData.verificado ? (
-      <i className="pi pi-check-circle" style={{ color: "green", fontSize: "1.2rem" }} />
+      <i
+        className="pi pi-check-circle"
+        style={{ color: "green", fontSize: "1.2rem" }}
+      />
     ) : (
-      <i className="pi pi-times-circle" style={{ color: "gray", fontSize: "1.2rem" }} />
+      <i
+        className="pi pi-times-circle"
+        style={{ color: "gray", fontSize: "1.2rem" }}
+      />
     );
   };
 
   const costoBodyTemplate = (rowData) => {
     if (!rowData.costoDocumento) return "-";
-    const moneda = monedasOptions.find(m => m.value === rowData.monedaId);
-    return `${moneda?.simbolo || ""} ${formatearNumero(rowData.costoDocumento, 2)}`;
+    
+    // Usar moneda del documento, o la moneda de la cotización como fallback
+    const monedaId = rowData.monedaId || formData.monedaId;
+    const moneda = monedasOptions.find((m) => m.value === monedaId);
+    
+    return `${moneda?.simbolo || "S/"} ${formatearNumero(rowData.costoDocumento, 2)}`;
   };
 
   const nombreDocumentoBodyTemplate = (rowData) => {
-    return rowData.docRequeridaVentas?.nombre || rowData.nombre || "-";
+    const nombre =
+      rowData.docRequeridaVentas?.nombre ||
+      rowData.nombre ||
+      rowData.observacionesVerificacion ||
+      "Sin nombre";
+    const esIncompleto = !rowData.numeroDocumento && !rowData.urlDocumento;
+
+    return (
+      <div className="flex align-items-center gap-2">
+        <span>{nombre}</span>
+        {esIncompleto && (
+          <i
+            className="pi pi-exclamation-triangle"
+            style={{ color: "orange", fontSize: "0.9rem" }}
+            title="Documento incompleto - Sin número ni archivo"
+          />
+        )}
+      </div>
+    );
   };
 
   const accionesBodyTemplate = (rowData, { rowIndex }) => {
     return (
-      <div className="flex gap-2">
+      <div className="flex gap-2 justify-content-center">
         <Button
+          type="button"
           icon="pi pi-pencil"
-          className="p-button-rounded p-button-info p-button-text"
-          onClick={() => handleEditDocumento(rowData, rowIndex)}
+          className="p-button-text p-button-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEditDocumento(rowData, rowIndex);
+          }}
           disabled={disabled || readOnly}
+          tooltip="Editar documento"
+          tooltipOptions={{ position: "top" }}
         />
         <Button
+          type="button"
+          icon="pi pi-eye"
+          className="p-button-text p-button-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (rowData.urlDocumento) {
+              window.open(rowData.urlDocumento, "_blank");
+            } else {
+              toast?.current?.show({
+                severity: "warn",
+                summary: "Sin PDF",
+                detail: "Este documento no tiene un archivo PDF cargado",
+                life: 3000,
+              });
+            }
+          }}
+          disabled={!rowData.urlDocumento}
+          tooltip={rowData.urlDocumento ? "Ver PDF" : "Sin PDF cargado"}
+          tooltipOptions={{ position: "top" }}
+        />
+        <Button
+          type="button"
           icon="pi pi-trash"
-          className="p-button-rounded p-button-danger p-button-text"
-          onClick={() => handleDeleteDocumento(rowIndex)}
+          className="p-button-text p-button-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDeleteDocumento(rowIndex);
+          }}
           disabled={disabled || readOnly}
+          tooltip="Eliminar documento"
+          tooltipOptions={{ position: "top" }}
         />
       </div>
     );
   };
 
+  // Determinar tooltip dinámico para el botón Generar Automáticamente
+  const getTooltipGenerarAutomatico = () => {
+    if (!cotizacionId) return "Debe guardar la cotización primero";
+    if (!formData.esExportacion) return "Solo para cotizaciones de exportación";
+    if (!formData.paisDestinoId || !formData.tipoProductoId)
+      return "Falta País Destino o Tipo de Producto";
+    if (readOnly) return "Modo solo lectura";
+    return "Genera documentos según país, tipo de producto e incoterm";
+  };
+
+  // Verificar si hay documentos incompletos
+  const documentosIncompletos = documentos.filter(
+    (doc) => !doc.numeroDocumento && !doc.urlDocumento,
+  );
+  const hayDocumentosIncompletos = documentosIncompletos.length > 0;
+
   return (
     <div className="card">
-      <div className="flex justify-content-between align-items-center mb-3">
-        <h3>Documentos Requeridos</h3>
-        <div className="flex gap-2">
+      <div
+        style={{
+          display: "flex",
+          gap: 5,
+          alignItems: "center",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+          marginBottom: "0.5rem",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <h3>Documentos Requeridos</h3>
+        </div>
+        <div style={{ flex: 1 }}>
           <Button
             label="Generar Automáticamente"
             icon="pi pi-bolt"
-            className="p-button-success"
+            severity="success"
             onClick={handleGenerarDocumentosAutomaticos}
-            disabled={disabled || readOnly || loadingGenerar || !cotizacionId}
+            disabled={
+              readOnly ||
+              loadingGenerar ||
+              !cotizacionId ||
+              !formData.esExportacion ||
+              !formData.paisDestinoId ||
+              !formData.tipoProductoId
+            }
             loading={loadingGenerar}
-            tooltip="Genera documentos según país, tipo de producto e incoterm"
+            tooltip={getTooltipGenerarAutomatico()}
             tooltipOptions={{ position: "top" }}
           />
+        </div>
+        <div style={{ flex: 1 }}>
           <Button
             label="Agregar Manual"
             icon="pi pi-plus"
             onClick={handleAddDocumento}
             disabled={disabled || readOnly}
+            tooltip={
+              readOnly ? "Modo solo lectura" : "Agregar documento manualmente"
+            }
+            tooltipOptions={{ position: "top" }}
           />
         </div>
+        {hayDocumentosIncompletos && (
+          <div style={{ flex: 3 }}>
+            <div className="flex align-items-center gap-2">
+              <div>
+                <strong style={{ color: "#856404" }}>
+                  Documentos incompletos detectados (
+                  {documentosIncompletos.length})
+                </strong>
+                <p
+                  style={{
+                    margin: "4px 0 0 0",
+                    color: "#856404",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  Hay documentos sin número ni archivo. Puede eliminarlos usando
+                  el botón{" "}
+                  <i className="pi pi-trash" style={{ fontSize: "0.8rem" }} />y
+                  luego usar "Generar Automáticamente" para crear documentos
+                  completos según el país y tipo de producto.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <DataTable
@@ -256,16 +531,27 @@ const DocumentosRequeridosCard = ({
         showGridlines
         stripedRows
         selectionMode="single"
-        onRowClick={(e) => handleEditDocumento(e.data)}
-        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        onRowClick={(e) => {
+          if (!disabled && !readOnly) {
+            const index = documentos.findIndex((doc) => doc === e.data);
+            handleEditDocumento(e.data, index);
+          }
+        }}
+        style={{
+          cursor: disabled || readOnly ? "default" : "pointer",
+          fontSize: getResponsiveFontSize(),
+        }}
         paginator
-        rows={5}
-        rowsPerPageOptions={[5, 10, 15, 25]}
+        rows={10}
+        rowsPerPageOptions={[10, 20, 40, 50]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} documentos"
         emptyMessage="No hay documentos agregados"
       >
+        <Column field="id" header="ID" style={{ minWidth: "100px" }} sortable />
         <Column
+          field="docRequeridaVentas.nombre"
+          sortField="docRequeridaVentas.nombre"
           header="Documento"
           body={nombreDocumentoBodyTemplate}
           style={{ minWidth: "200px" }}
@@ -290,6 +576,8 @@ const DocumentosRequeridosCard = ({
           sortable
         />
         <Column
+          field="costoDocumento"
+          sortField="costoDocumento"
           header="Costo"
           body={costoBodyTemplate}
           style={{ minWidth: "120px", textAlign: "right" }}
@@ -301,7 +589,13 @@ const DocumentosRequeridosCard = ({
           style={{ minWidth: "200px" }}
           sortable
         />
-        <Column body={accionesBodyTemplate} style={{ minWidth: "100px" }} />
+        <Column
+          header="Acciones"
+          body={accionesBodyTemplate}
+          style={{ minWidth: "160px", textAlign: "center" }}
+          frozen
+          alignFrozen="right"
+        />
       </DataTable>
 
       {/* Diálogo para agregar/editar documento */}
@@ -316,7 +610,8 @@ const DocumentosRequeridosCard = ({
         onChange={handleChangeDocumento}
         monedasOptions={monedasOptions}
         docRequeridaVentasOptions={docRequeridaVentasOptions}
-        saving={false}
+        saving={saving}
+        toast={toast}
       />
     </div>
   );

@@ -190,12 +190,24 @@ export const abrirPdfEnNuevaPestana = async (
       urlCompleta = `${
         import.meta.env.VITE_API_URL
       }/orden-compra/archivo/${rutaArchivo}`;
-          } else if (urlPdf.startsWith("/uploads/datos-adicionales-orden-compra/")) {
+    } else if (urlPdf.startsWith("/uploads/cotizaciones-ventas/")) {
+      // ✅ NUEVO: Soporte para PDFs de cotizaciones de ventas
+      const rutaArchivo = urlPdf.replace("/uploads/cotizaciones-ventas/", "");
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/cotizacion-ventas/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/datos-adicionales-orden-compra/")) {
       // ✅ NUEVO: Soporte para documentos adjuntos de datos adicionales de OC
       const rutaArchivo = urlPdf.replace("/uploads/datos-adicionales-orden-compra/", "");
       urlCompleta = `${
         import.meta.env.VITE_API_URL
       }/det-datos-adicionales-orden-compra/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/documentos-requeridos-ventas/")) {
+      // ✅ NUEVO: Soporte para documentos requeridos de cotización de ventas
+      const rutaArchivo = urlPdf.replace("/uploads/documentos-requeridos-ventas/", "");
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/det-docs-req-cotiza-ventas/archivo/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/movimientos-almacen/")) {
       // ✅ NUEVO: Soporte para PDFs de movimientos de almacén
       const rutaArchivo = urlPdf.replace("/uploads/movimientos-almacen/", "");
@@ -611,12 +623,24 @@ export const descargarPdf = async (
       urlCompleta = `${
         import.meta.env.VITE_API_URL
       }/orden-compra/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/cotizaciones-ventas/")) {
+      // ✅ NUEVO: Soporte para PDFs de cotizaciones de ventas
+      const rutaArchivo = urlPdf.replace("/uploads/cotizaciones-ventas/", "");
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/cotizacion-ventas/archivo/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/datos-adicionales-orden-compra/")) {
       // ✅ NUEVO: Soporte para documentos adjuntos de datos adicionales de OC
       const rutaArchivo = urlPdf.replace("/uploads/datos-adicionales-orden-compra/", "");
       urlCompleta = `${
         import.meta.env.VITE_API_URL
       }/det-datos-adicionales-orden-compra/archivo/${rutaArchivo}`;
+    } else if (urlPdf.startsWith("/uploads/documentos-requeridos-ventas/")) {
+      // ✅ NUEVO: Soporte para documentos requeridos de cotización de ventas
+      const rutaArchivo = urlPdf.replace("/uploads/documentos-requeridos-ventas/", "");
+      urlCompleta = `${
+        import.meta.env.VITE_API_URL
+      }/det-docs-req-cotiza-ventas/archivo/${rutaArchivo}`;
     } else if (urlPdf.startsWith("/uploads/movimientos-almacen/")) {
       // ✅ NUEVO: Soporte para PDFs de movimientos de almacén
       const rutaArchivo = urlPdf.replace("/uploads/movimientos-almacen/", "");

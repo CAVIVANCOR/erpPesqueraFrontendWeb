@@ -116,6 +116,21 @@ export default function OrdenCompraForm({
   const [contactoProveedorId, setContactoProveedorId] = useState(
     defaultValues?.contactoProveedorId || null
   );
+  const [facturado, setFacturado] = useState(
+    defaultValues?.facturado || false
+  );
+  const [fechaFacturacion, setFechaFacturacion] = useState(
+    defaultValues?.fechaFacturacion ? new Date(defaultValues.fechaFacturacion) : null
+  );
+  const [esGerencial, setEsGerencial] = useState(
+    defaultValues?.esGerencial || false
+  );
+  const [ordenCompraOrigenId, setOrdenCompraOrigenId] = useState(
+    defaultValues?.ordenCompraOrigenId || null
+  );
+  const [esParticionada, setEsParticionada] = useState(
+    defaultValues?.esParticionada || false
+  );
   const [direccionesEmpresa, setDireccionesEmpresa] = useState([]);
   const [contactosProveedor, setContactosProveedor] = useState([]);
 
@@ -215,6 +230,15 @@ export default function OrdenCompraForm({
           ? Number(defaultValues.contactoProveedorId)
           : null
       );
+      setFacturado(defaultValues.facturado || false);
+      setFechaFacturacion(
+        defaultValues.fechaFacturacion ? new Date(defaultValues.fechaFacturacion) : null
+      );
+      setEsGerencial(defaultValues.esGerencial || false);
+      setOrdenCompraOrigenId(
+        defaultValues.ordenCompraOrigenId ? Number(defaultValues.ordenCompraOrigenId) : null
+      );
+      setEsParticionada(defaultValues.esParticionada || false);
     }
   }, [defaultValues, empresaFija]);
 
@@ -403,6 +427,11 @@ export default function OrdenCompraForm({
       observaciones: setObservaciones,
       porcentajeIGV: setPorcentajeIGV,
       esExoneradoAlIGV: setEsExoneradoAlIGV,
+      facturado: setFacturado,
+      fechaFacturacion: setFechaFacturacion,
+      esGerencial: setEsGerencial,
+      ordenCompraOrigenId: setOrdenCompraOrigenId,
+      esParticionada: setEsParticionada,
     };
 
     const setter = setters[field];
@@ -443,6 +472,11 @@ export default function OrdenCompraForm({
         ? Number(direccionRecepcionAlmacenId)
         : null,
       contactoProveedorId: contactoProveedorId ? Number(contactoProveedorId) : null,
+      facturado: facturado || false,
+      fechaFacturacion: fechaFacturacion,
+      esGerencial: esGerencial || false,
+      ordenCompraOrigenId: ordenCompraOrigenId ? Number(ordenCompraOrigenId) : null,
+      esParticionada: esParticionada || false,
     };
 
     if (!data.empresaId || !data.proveedorId) {
@@ -547,7 +581,9 @@ export default function OrdenCompraForm({
   const estaPendiente = Number(estadoId) === 38 || !estadoId;
   const estaAprobado = Number(estadoId) === 39;
   const estaAnulado = Number(estadoId) === 40;
-  const kardexGenerado = Number(estadoId) === 50;
+  const estaParticionada = Number(estadoId) === 50;
+  // ✅ Kardex generado se determina por la existencia de movIngresoAlmacenId, NO por el estado
+  const kardexGenerado = !!movIngresoAlmacenId;
   const puedeEditar = estaPendiente && !loading;
   
   // ⭐ Datos adicionales siempre editables (pueden surgir a último momento)
@@ -618,6 +654,16 @@ export default function OrdenCompraForm({
             contactoProveedorId={contactoProveedorId}
             onContactoProveedorChange={setContactoProveedorId}
             contactosProveedor={contactosProveedor}
+            facturado={facturado}
+            onFacturadoChange={setFacturado}
+            fechaFacturacion={fechaFacturacion}
+            onFechaFacturacionChange={setFechaFacturacion}
+            esGerencial={esGerencial}
+            onEsGerencialChange={setEsGerencial}
+            ordenCompraOrigenId={ordenCompraOrigenId}
+            onOrdenCompraOrigenIdChange={setOrdenCompraOrigenId}
+            esParticionada={esParticionada}
+            onEsParticionadaChange={setEsParticionada}
           />
         </TabPanel>
 

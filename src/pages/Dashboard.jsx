@@ -331,15 +331,35 @@ export default function Dashboard() {
         { label: "Bancos", key: "banco", icon: "pi-building-columns" },
       ],
     },
-    {
+       {
       id: "finanzas",
       titulo: "FINANZAS",
       descripcion: "Tesorería Avanzada: Préstamos, Créditos e Inversiones",
       icono: "pi-wallet",
-      modulos: 5,
+      modulos: 10,
       color: "#8E44AD",
       size: "medium",
       submenu: [
+        {
+          label: "Cuenta Por Cobrar",
+          key: "cuentaPorCobrar",
+          icon: "pi-money-bill",
+        },
+        {
+          label: "Cuenta Por Pagar",
+          key: "cuentaPorPagar",
+          icon: "pi-credit-card",
+        },
+        {
+          label: "Pagos Cuentas por Pagar",
+          key: "pagoCuentaPorPagar",
+          icon: "pi-shopping-cart",
+        },
+        {
+          label: "Pagos Cuentas Por Cobrar",
+          key: "pagoCuentaPorCobrar",
+          icon: "pi-shopping-cart",
+        },
         { label: "Tipos de Préstamo", key: "tipoPrestamo", icon: "pi-tags" },
         {
           label: "Préstamo Bancario",
@@ -368,7 +388,7 @@ export default function Dashboard() {
       titulo: "CONTABILIDAD",
       descripcion: "Plan Contable, Asientos, Períodos y Reportes Financieros",
       icono: "pi-calculator",
-      modulos: 13,
+      modulos: 10,
       color: "#E74C3C",
       size: "large",
       submenu: [
@@ -384,17 +404,6 @@ export default function Dashboard() {
           key: "tipoAfectacionIGV",
           icon: "pi-percentage",
         },
-        {
-          label: "Cuenta Por Cobrar",
-          key: "cuentaPorCobrar",
-          icon: "pi-money-bill",
-        },
-        {
-          label: "Cuenta Por Pagar",
-          key: "cuentaPorPagar",
-          icon: "pi-credit-card",
-        },
-        { label: "Pagos", key: "pago", icon: "pi-dollar" },
         {
           label: "Flujo de Caja Financiero",
           key: "flujoCaja",

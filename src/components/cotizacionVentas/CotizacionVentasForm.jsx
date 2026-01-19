@@ -4,12 +4,10 @@ import { TabView, TabPanel } from "primereact/tabview";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import DatosGeneralesCotizacionCard from "./DatosGeneralesCotizacionCard";
-import DetCotizacionVentasCard from "./DetCotizacionVentasCard";
 import CostosExportacionCard from "./CostosExportacionCard";
 import DocumentosRequeridosCard from "./DocumentosRequeridosCard";
 import EntregaARendirCard from "./EntregaARendirCard";
 import VerImpresionCotizacionVentasPDF from "./VerImpresionCotizacionVentasPDF";
-import VerImpresionDocumentacionPDF from "./VerImpresionDocumentacionPDF";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
 import { getSeriesDoc } from "../../api/cotizacionVentas";
 import { getDocumentosPorCotizacion } from "../../api/detDocsReqCotizaVentas";
@@ -58,13 +56,15 @@ const CotizacionVentasForm = ({
 
   const [clientes, setClientes] = useState(clientesProp);
   const [seriesDoc, setSeriesDoc] = useState([]);
-  const [detalles, setDetalles] = useState(defaultValues?.detallesProductos || []);
+  const [detalles, setDetalles] = useState(
+    defaultValues?.detallesProductos || [],
+  );
   const [costos, setCostos] = useState(defaultValues?.costosExportacion || []);
   const [documentos, setDocumentos] = useState(
-    defaultValues?.documentosRequeridos?.map(doc => ({
+    defaultValues?.documentosRequeridos?.map((doc) => ({
       id: doc.id,
       docRequeridaVentasId: doc.docRequeridaVentasId,
-      nombre: doc.docRequeridaVentas?.nombre || 'Sin nombre',
+      nombre: doc.docRequeridaVentas?.nombre || "Sin nombre",
       esObligatorio: doc.esObligatorio,
       numeroDocumento: doc.numeroDocumento,
       fechaEmision: doc.fechaEmision,
@@ -73,14 +73,16 @@ const CotizacionVentasForm = ({
       verificado: doc.verificado,
       fechaVerificacion: doc.fechaVerificacion,
       verificadoPorId: doc.verificadoPorId,
-      observacionesVerificacion: doc.observacionesVerificacion || '',
+      observacionesVerificacion: doc.observacionesVerificacion || "",
       costoDocumento: doc.costoDocumento,
       monedaId: doc.monedaId,
-      docRequeridaVentas: doc.docRequeridaVentas
-    })) || []
+      docRequeridaVentas: doc.docRequeridaVentas,
+    })) || [],
   );
   const [estadosCotizaciones, setEstadosCotizaciones] = useState([]);
-  const [detallesCount, setDetallesCount] = useState(defaultValues?.detallesProductos?.length || 0);
+  const [detallesCount, setDetallesCount] = useState(
+    defaultValues?.detallesProductos?.length || 0,
+  );
   const [totales, setTotales] = useState({ subtotal: 0, igv: 0, total: 0 });
   const [contactosCliente, setContactosCliente] = useState([]);
   const [direccionesCliente, setDireccionesCliente] = useState([]);
@@ -90,69 +92,158 @@ const CotizacionVentasForm = ({
 
   const [formData, setFormData] = useState({
     id: defaultValues?.id || null,
-    empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : (empresaFija ? Number(empresaFija) : 1),
-    tipoDocumentoId: defaultValues?.tipoDocumentoId ? Number(defaultValues.tipoDocumentoId) : 18,
-    serieDocId: defaultValues?.serieDocId ? Number(defaultValues.serieDocId) : null,
+    empresaId: defaultValues?.empresaId
+      ? Number(defaultValues.empresaId)
+      : empresaFija
+        ? Number(empresaFija)
+        : 1,
+    tipoDocumentoId: defaultValues?.tipoDocumentoId
+      ? Number(defaultValues.tipoDocumentoId)
+      : 18,
+    serieDocId: defaultValues?.serieDocId
+      ? Number(defaultValues.serieDocId)
+      : null,
     numSerieDoc: defaultValues?.numSerieDoc || "",
     numCorreDoc: defaultValues?.numCorreDoc || "",
     numeroDocumento: defaultValues?.numeroDocumento || "",
-    fechaDocumento: defaultValues?.fechaDocumento ? new Date(defaultValues.fechaDocumento) : new Date(),
-    fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
-    fechaEntregaEstimada: defaultValues?.fechaEntregaEstimada ? new Date(defaultValues.fechaEntregaEstimada) : null,
-    fechaZarpeEstimada: defaultValues?.fechaZarpeEstimada ? new Date(defaultValues.fechaZarpeEstimada) : null,
-    fechaArriboEstimada: defaultValues?.fechaArriboEstimada ? new Date(defaultValues.fechaArriboEstimada) : null,
-    fechaAprobacion: defaultValues?.fechaAprobacion ? new Date(defaultValues.fechaAprobacion) : null,
-    fechaConversionPreFactura: defaultValues?.fechaConversionPreFactura ? new Date(defaultValues.fechaConversionPreFactura) : null,
+    fechaDocumento: defaultValues?.fechaDocumento
+      ? new Date(defaultValues.fechaDocumento)
+      : new Date(),
+    fechaVencimiento: defaultValues?.fechaVencimiento
+      ? new Date(defaultValues.fechaVencimiento)
+      : null,
+    fechaEntregaEstimada: defaultValues?.fechaEntregaEstimada
+      ? new Date(defaultValues.fechaEntregaEstimada)
+      : null,
+    fechaZarpeEstimada: defaultValues?.fechaZarpeEstimada
+      ? new Date(defaultValues.fechaZarpeEstimada)
+      : null,
+    fechaArriboEstimada: defaultValues?.fechaArriboEstimada
+      ? new Date(defaultValues.fechaArriboEstimada)
+      : null,
+    fechaAprobacion: defaultValues?.fechaAprobacion
+      ? new Date(defaultValues.fechaAprobacion)
+      : null,
+    fechaConversionPreFactura: defaultValues?.fechaConversionPreFactura
+      ? new Date(defaultValues.fechaConversionPreFactura)
+      : null,
     diasTransito: defaultValues?.diasTransito || null,
-    clienteId: defaultValues?.clienteId ? Number(defaultValues.clienteId) : null,
-    contactoClienteId: defaultValues?.contactoClienteId ? Number(defaultValues.contactoClienteId) : null,
-    dirEntregaId: defaultValues?.dirEntregaId ? Number(defaultValues.dirEntregaId) : null,
-    dirFiscalId: defaultValues?.dirFiscalId ? Number(defaultValues.dirFiscalId) : null,
+    clienteId: defaultValues?.clienteId
+      ? Number(defaultValues.clienteId)
+      : null,
+    contactoClienteId: defaultValues?.contactoClienteId
+      ? Number(defaultValues.contactoClienteId)
+      : null,
+    dirEntregaId: defaultValues?.dirEntregaId
+      ? Number(defaultValues.dirEntregaId)
+      : null,
+    dirFiscalId: defaultValues?.dirFiscalId
+      ? Number(defaultValues.dirFiscalId)
+      : null,
     estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 41,
-    respVentasId: defaultValues?.respVentasId ? Number(defaultValues.respVentasId) : null,
-    autorizaVentaId: defaultValues?.autorizaVentaId ? Number(defaultValues.autorizaVentaId) : null,
-    supervisorVentaCampoId: defaultValues?.supervisorVentaCampoId ? Number(defaultValues.supervisorVentaCampoId) : null,
-    respEmbarqueId: defaultValues?.respEmbarqueId ? Number(defaultValues.respEmbarqueId) : null,
-    respProduccionId: defaultValues?.respProduccionId ? Number(defaultValues.respProduccionId) : null,
-    respAlmacenId: defaultValues?.respAlmacenId ? Number(defaultValues.respAlmacenId) : null,
-    tipoProductoId: defaultValues?.tipoProductoId ? Number(defaultValues.tipoProductoId) : null,
-    formaPagoId: defaultValues?.formaPagoId ? Number(defaultValues.formaPagoId) : null,
+    respVentasId: defaultValues?.respVentasId
+      ? Number(defaultValues.respVentasId)
+      : null,
+    autorizaVentaId: defaultValues?.autorizaVentaId
+      ? Number(defaultValues.autorizaVentaId)
+      : null,
+    supervisorVentaCampoId: defaultValues?.supervisorVentaCampoId
+      ? Number(defaultValues.supervisorVentaCampoId)
+      : null,
+    respEmbarqueId: defaultValues?.respEmbarqueId
+      ? Number(defaultValues.respEmbarqueId)
+      : null,
+    respProduccionId: defaultValues?.respProduccionId
+      ? Number(defaultValues.respProduccionId)
+      : null,
+    respAlmacenId: defaultValues?.respAlmacenId
+      ? Number(defaultValues.respAlmacenId)
+      : null,
+    tipoProductoId: defaultValues?.tipoProductoId
+      ? Number(defaultValues.tipoProductoId)
+      : null,
+    formaPagoId: defaultValues?.formaPagoId
+      ? Number(defaultValues.formaPagoId)
+      : null,
     bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
     monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : 1,
     tipoCambio: defaultValues?.tipoCambio || 3.75,
-    esExportacion: defaultValues?.esExportacion !== undefined ? defaultValues.esExportacion : false,
-    paisDestinoId: defaultValues?.paisDestinoId ? Number(defaultValues.paisDestinoId) : null,
-    incotermsId: defaultValues?.incotermsId ? Number(defaultValues.incotermsId) : null,
-    puertoCargaId: defaultValues?.puertoCargaId ? Number(defaultValues.puertoCargaId) : null,
-    puertoDescargaId: defaultValues?.puertoDescargaId ? Number(defaultValues.puertoDescargaId) : null,
-    agenteAduanasId: defaultValues?.agenteAduanasId ? Number(defaultValues.agenteAduanasId) : null,
-    operadorLogisticoId: defaultValues?.operadorLogisticoId ? Number(defaultValues.operadorLogisticoId) : null,
-    navieraId: defaultValues?.navieraId ? Number(defaultValues.navieraId) : null,
-    tipoContenedorId: defaultValues?.tipoContenedorId ? Number(defaultValues.tipoContenedorId) : null,
+    esExportacion:
+      defaultValues?.esExportacion !== undefined
+        ? defaultValues.esExportacion
+        : false,
+    paisDestinoId: defaultValues?.paisDestinoId
+      ? Number(defaultValues.paisDestinoId)
+      : null,
+    incotermsId: defaultValues?.incotermsId
+      ? Number(defaultValues.incotermsId)
+      : null,
+    puertoCargaId: defaultValues?.puertoCargaId
+      ? Number(defaultValues.puertoCargaId)
+      : null,
+    puertoDescargaId: defaultValues?.puertoDescargaId
+      ? Number(defaultValues.puertoDescargaId)
+      : null,
+    agenteAduanasId: defaultValues?.agenteAduanasId
+      ? Number(defaultValues.agenteAduanasId)
+      : null,
+    operadorLogisticoId: defaultValues?.operadorLogisticoId
+      ? Number(defaultValues.operadorLogisticoId)
+      : null,
+    navieraId: defaultValues?.navieraId
+      ? Number(defaultValues.navieraId)
+      : null,
+    tipoContenedorId: defaultValues?.tipoContenedorId
+      ? Number(defaultValues.tipoContenedorId)
+      : null,
     cantidadContenedores: defaultValues?.cantidadContenedores || null,
     pesoMaximoContenedor: defaultValues?.pesoMaximoContenedor || null,
     porcentajeIGV: defaultValues?.porcentajeIGV || null,
-    esExoneradoAlIGV: defaultValues?.esExoneradoAlIGV !== undefined ? defaultValues.esExoneradoAlIGV : false,
+    esExoneradoAlIGV:
+      defaultValues?.esExoneradoAlIGV !== undefined
+        ? defaultValues.esExoneradoAlIGV
+        : false,
     metodoCalculoFactor: defaultValues?.metodoCalculoFactor || "PORCENTUAL",
     factorExportacion: defaultValues?.factorExportacion || 1.0,
     margenUtilidadPorcentaje: defaultValues?.margenUtilidadPorcentaje || null,
     montoAdelantadoCliente: defaultValues?.montoAdelantadoCliente || null,
     porcentajeAdelanto: defaultValues?.porcentajeAdelanto || null,
     motivoRechazo: defaultValues?.motivoRechazo || null,
-    aprobadoPorId: defaultValues?.aprobadoPorId ? Number(defaultValues.aprobadoPorId) : null,
-    prefacturaVentaId: defaultValues?.prefacturaVentaId ? Number(defaultValues.prefacturaVentaId) : null,
-    usuarioConversionId: defaultValues?.usuarioConversionId ? Number(defaultValues.usuarioConversionId) : null,
-    destinoProductoId: defaultValues?.destinoProductoId ? Number(defaultValues.destinoProductoId) : null,
-    formaTransaccionId: defaultValues?.formaTransaccionId ? Number(defaultValues.formaTransaccionId) : null,
-    modoDespachoRecepcionId: defaultValues?.modoDespachoRecepcionId ? Number(defaultValues.modoDespachoRecepcionId) : null,
-    tipoEstadoProductoId: defaultValues?.tipoEstadoProductoId ? Number(defaultValues.tipoEstadoProductoId) : null,
+    aprobadoPorId: defaultValues?.aprobadoPorId
+      ? Number(defaultValues.aprobadoPorId)
+      : null,
+    prefacturaVentaId: defaultValues?.prefacturaVentaId
+      ? Number(defaultValues.prefacturaVentaId)
+      : null,
+    usuarioConversionId: defaultValues?.usuarioConversionId
+      ? Number(defaultValues.usuarioConversionId)
+      : null,
+    destinoProductoId: defaultValues?.destinoProductoId
+      ? Number(defaultValues.destinoProductoId)
+      : null,
+    formaTransaccionId: defaultValues?.formaTransaccionId
+      ? Number(defaultValues.formaTransaccionId)
+      : null,
+    modoDespachoRecepcionId: defaultValues?.modoDespachoRecepcionId
+      ? Number(defaultValues.modoDespachoRecepcionId)
+      : null,
+    tipoEstadoProductoId: defaultValues?.tipoEstadoProductoId
+      ? Number(defaultValues.tipoEstadoProductoId)
+      : null,
     observaciones: defaultValues?.observaciones || "",
     observacionesInternas: defaultValues?.observacionesInternas || "",
     urlCotizacionPdf: defaultValues?.urlCotizacionPdf || null,
-    urlDocumentacionRequeridaPdf: defaultValues?.urlDocumentacionRequeridaPdf || null,
-    centroCostoId: defaultValues?.centroCostoId ? Number(defaultValues.centroCostoId) : null,
-    creadoPor: defaultValues?.creadoPor ? Number(defaultValues.creadoPor) : null,
-    actualizadoPor: defaultValues?.actualizadoPor ? Number(defaultValues.actualizadoPor) : null,
+    urlDocumentacionRequeridaPdf:
+      defaultValues?.urlDocumentacionRequeridaPdf || null,
+    centroCostoId: defaultValues?.centroCostoId
+      ? Number(defaultValues.centroCostoId)
+      : null,
+    creadoPor: defaultValues?.creadoPor
+      ? Number(defaultValues.creadoPor)
+      : null,
+    actualizadoPor: defaultValues?.actualizadoPor
+      ? Number(defaultValues.actualizadoPor)
+      : null,
   });
 
   const handleChange = (field, value) => {
@@ -173,30 +264,32 @@ const CotizacionVentasForm = ({
     const cargarTipoCambio = async () => {
       // No ejecutar si no hay fecha o si es la carga inicial
       if (!fechaDocumento || fechaDocumentoInicial === null) return;
-      
+
       // Comparar fechas por valor (ISO string) en lugar de por referencia
       const fechaActualISO = new Date(fechaDocumento).toISOString();
       const fechaInicialISO = new Date(fechaDocumentoInicial).toISOString();
-      
+
       // No ejecutar si la fecha no ha cambiado realmente
       if (fechaActualISO === fechaInicialISO) return;
 
       try {
         // Convertir fecha a formato YYYY-MM-DD
         const fecha = new Date(fechaDocumento);
-        const fechaISO = fecha.toISOString().split('T')[0];
+        const fechaISO = fecha.toISOString().split("T")[0];
 
         // Consultar tipo de cambio SUNAT
-        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
-        
+        const tipoCambioData = await consultarTipoCambioSunat({
+          date: fechaISO,
+        });
+
         // Para VENTAS usamos buy_price (precio de compra del dólar)
         if (tipoCambioData && tipoCambioData.buy_price) {
           const tipoCambioCompra = parseFloat(tipoCambioData.buy_price);
           handleChange("tipoCambio", tipoCambioCompra.toFixed(3));
-          
+
           // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
           setFechaDocumentoInicial(fechaDocumento);
-          
+
           toast?.current?.show({
             severity: "success",
             summary: "Tipo de Cambio Actualizado",
@@ -218,7 +311,7 @@ const CotizacionVentasForm = ({
   useEffect(() => {
     if (personalOptions && personalOptions.length > 0 && empresaId) {
       const personalPorEmpresa = personalOptions.filter(
-        (p) => Number(p.empresaId) === Number(empresaId)
+        (p) => Number(p.empresaId) === Number(empresaId),
       );
       setPersonalFiltrado(personalPorEmpresa);
     } else {
@@ -255,13 +348,15 @@ const CotizacionVentasForm = ({
     // Recargar documentos desde la API
     if (defaultValues?.id) {
       try {
-        const documentosActualizados = await getDocumentosPorCotizacion(defaultValues.id);
-        
+        const documentosActualizados = await getDocumentosPorCotizacion(
+          defaultValues.id,
+        );
+
         // Transformar los documentos al formato esperado por el componente
-        const documentosFormateados = documentosActualizados.map(doc => ({
+        const documentosFormateados = documentosActualizados.map((doc) => ({
           id: doc.id,
           docRequeridaVentasId: doc.docRequeridaVentasId,
-          nombre: doc.docRequeridaVentas?.nombre || 'Sin nombre',
+          nombre: doc.docRequeridaVentas?.nombre || "Sin nombre",
           esObligatorio: doc.esObligatorio,
           numeroDocumento: doc.numeroDocumento,
           fechaEmision: doc.fechaEmision,
@@ -270,27 +365,20 @@ const CotizacionVentasForm = ({
           verificado: doc.verificado,
           fechaVerificacion: doc.fechaVerificacion,
           verificadoPorId: doc.verificadoPorId,
-          observacionesVerificacion: doc.observacionesVerificacion || '',
+          observacionesVerificacion: doc.observacionesVerificacion || "",
           costoDocumento: doc.costoDocumento,
           monedaId: doc.monedaId,
-          docRequeridaVentas: doc.docRequeridaVentas
+          docRequeridaVentas: doc.docRequeridaVentas,
         }));
-        
+
         setDocumentos(documentosFormateados);
-        
-        toast?.current?.show({
-          severity: 'info',
-          summary: 'Documentos Actualizados',
-          detail: `Se cargaron ${documentosFormateados.length} documentos`,
-          life: 3000
-        });
       } catch (error) {
-        console.error('Error al recargar documentos:', error);
+        console.error("Error al recargar documentos:", error);
         toast?.current?.show({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'No se pudieron recargar los documentos',
-          life: 3000
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudieron recargar los documentos",
+          life: 3000,
         });
       }
     }
@@ -312,8 +400,13 @@ const CotizacionVentasForm = ({
 
   useEffect(() => {
     if (empresaId && empresas && empresas.length > 0 && !isEdit) {
-      const empresaSeleccionada = empresas.find((e) => Number(e.id) === Number(empresaId));
-      if (empresaSeleccionada && empresaSeleccionada.porcentajeIgv !== undefined) {
+      const empresaSeleccionada = empresas.find(
+        (e) => Number(e.id) === Number(empresaId),
+      );
+      if (
+        empresaSeleccionada &&
+        empresaSeleccionada.porcentajeIgv !== undefined
+      ) {
         handleChange("porcentajeIGV", empresaSeleccionada.porcentajeIgv);
       }
     }
@@ -321,11 +414,16 @@ const CotizacionVentasForm = ({
 
   useEffect(() => {
     if (formData.empresaId && empresas && empresas.length > 0 && !isEdit) {
-      const empresaSeleccionada = empresas.find((e) => Number(e.id) === Number(formData.empresaId));
+      const empresaSeleccionada = empresas.find(
+        (e) => Number(e.id) === Number(formData.empresaId),
+      );
       if (formData.esExoneradoAlIGV) {
         handleChange("porcentajeIGV", 0);
       } else {
-        if (empresaSeleccionada && empresaSeleccionada.porcentajeIgv !== undefined) {
+        if (
+          empresaSeleccionada &&
+          empresaSeleccionada.porcentajeIgv !== undefined
+        ) {
           handleChange("porcentajeIGV", empresaSeleccionada.porcentajeIgv);
         }
       }
@@ -338,7 +436,10 @@ const CotizacionVentasForm = ({
       const serie = seriesDoc.find((s) => Number(s.id) === Number(serieId));
       if (serie) {
         const proximoCorrelativo = Number(serie.correlativo) + 1;
-        const numSerie = String(serie.serie).padStart(serie.numCerosIzqSerie, "0");
+        const numSerie = String(serie.serie).padStart(
+          serie.numCerosIzqSerie,
+          "0",
+        );
         setFormData((prev) => ({
           ...prev,
           serieDocId: Number(serieId),
@@ -348,7 +449,12 @@ const CotizacionVentasForm = ({
         }));
       }
     } else {
-      setFormData((prev) => ({ ...prev, numSerieDoc: "", numCorreDoc: "", numeroDocumento: "" }));
+      setFormData((prev) => ({
+        ...prev,
+        numSerieDoc: "",
+        numCorreDoc: "",
+        numeroDocumento: "",
+      }));
     }
   };
 
@@ -374,13 +480,20 @@ const CotizacionVentasForm = ({
     const cargarContactosYDirecciones = async () => {
       if (formData.clienteId) {
         try {
-          const contactos = await obtenerContactosPorEntidad(formData.clienteId);
+          const contactos = await obtenerContactosPorEntidad(
+            formData.clienteId,
+          );
           setContactosCliente(contactos || []);
 
-          const direcciones = await obtenerDireccionesPorEntidad(formData.clienteId);
+          const direcciones = await obtenerDireccionesPorEntidad(
+            formData.clienteId,
+          );
           setDireccionesCliente(direcciones || []);
         } catch (err) {
-          console.error("Error al cargar contactos/direcciones del cliente:", err);
+          console.error(
+            "Error al cargar contactos/direcciones del cliente:",
+            err,
+          );
           setContactosCliente([]);
           setDireccionesCliente([]);
         }
@@ -419,26 +532,24 @@ const CotizacionVentasForm = ({
       }
 
       try {
-        const { getDetallesCotizacionVentas } = await import(
-          "../../api/detalleCotizacionVentas"
+        const { getDetallesCotizacionVentas } =
+          await import("../../api/detalleCotizacionVentas");
+        const detallesData = await getDetallesCotizacionVentas(
+          defaultValues.id,
         );
-        const detallesData = await getDetallesCotizacionVentas(defaultValues.id);
 
         // Calcular subtotal sumando cantidad * precioUnitarioFinal de cada detalle
-        const subtotalCalc = detallesData.reduce(
-          (sum, det) => {
-            const cantidad = Number(det.cantidad) || 0;
-            const precioFinal = Number(det.precioUnitarioFinal) || 0;
-            return sum + (cantidad * precioFinal);
-          },
-          0
-        );
-        
+        const subtotalCalc = detallesData.reduce((sum, det) => {
+          const cantidad = Number(det.cantidad) || 0;
+          const precioFinal = Number(det.precioUnitarioFinal) || 0;
+          return sum + cantidad * precioFinal;
+        }, 0);
+
         // Calcular IGV (usar valores actuales de formData)
         const igvCalc = formData.esExoneradoAlIGV
           ? 0
           : subtotalCalc * (Number(formData.porcentajeIGV) / 100);
-        
+
         // Calcular total
         const totalCalc = subtotalCalc + igvCalc;
 
@@ -468,14 +579,17 @@ const CotizacionVentasForm = ({
     if (!formData.tipoDocumentoId) camposFaltantes.push("Tipo de Documento");
     if (!formData.serieDocId) camposFaltantes.push("Serie de Documento");
     if (!formData.fechaDocumento) camposFaltantes.push("Fecha de Documento");
-    if (!formData.fechaVencimiento) camposFaltantes.push("Fecha de Vencimiento");
+    if (!formData.fechaVencimiento)
+      camposFaltantes.push("Fecha de Vencimiento");
     if (!formData.clienteId) camposFaltantes.push("Cliente");
     if (!formData.tipoProductoId) camposFaltantes.push("Tipo de Producto");
     if (!formData.formaPagoId) camposFaltantes.push("Forma de Pago");
     if (!formData.monedaId) camposFaltantes.push("Moneda");
     if (!formData.estadoId) camposFaltantes.push("Estado");
     if (!formData.respVentasId || Number(formData.respVentasId) <= 0) {
-      camposFaltantes.push("Responsable de Ventas (necesario para Entrega a Rendir)");
+      camposFaltantes.push(
+        "Responsable de Ventas (necesario para Entrega a Rendir)",
+      );
     }
 
     // Validaciones condicionales para exportación
@@ -498,8 +612,10 @@ const CotizacionVentasForm = ({
         summary: "Campos Obligatorios Faltantes",
         detail: (
           <div>
-            <p style={{ marginBottom: '8px', fontWeight: 'bold' }}>Por favor complete los siguientes campos:</p>
-            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+            <p style={{ marginBottom: "8px", fontWeight: "bold" }}>
+              Por favor complete los siguientes campos:
+            </p>
+            <ul style={{ margin: 0, paddingLeft: "20px" }}>
               {camposFaltantes.map((campo, index) => (
                 <li key={index}>{campo}</li>
               ))}
@@ -524,7 +640,8 @@ const CotizacionVentasForm = ({
         fechaZarpeEstimada: formData.fechaZarpeEstimada?.toISOString(),
         fechaArriboEstimada: formData.fechaArriboEstimada?.toISOString(),
         fechaAprobacion: formData.fechaAprobacion?.toISOString(),
-        fechaConversionPreFactura: formData.fechaConversionPreFactura?.toISOString(),
+        fechaConversionPreFactura:
+          formData.fechaConversionPreFactura?.toISOString(),
       };
       await onSubmit(dataToSubmit);
     } catch (error) {
@@ -556,7 +673,8 @@ const CotizacionVentasForm = ({
       toast?.current?.show({
         severity: "info",
         summary: "Función en desarrollo",
-        detail: "La función de aprobar cotización estará disponible próximamente.",
+        detail:
+          "La función de aprobar cotización estará disponible próximamente.",
         life: 3000,
       });
     } catch (err) {
@@ -608,9 +726,18 @@ const CotizacionVentasForm = ({
 
   return (
     <div className="cotizacion-ventas-form">
-      <Toast ref={toast} position="top-center" appendTo={document.body} style={{ zIndex: 99999 }} />
+      <Toast
+        ref={toast}
+        position="top-center"
+        appendTo={document.body}
+        style={{ zIndex: 99999 }}
+      />
       <form onSubmit={handleSubmit}>
-        <TabView activeIndex={activeCard} onTabChange={handleTabChange} className="p-mb-4">
+        <TabView
+          activeIndex={activeCard}
+          onTabChange={handleTabChange}
+          className="p-mb-4"
+        >
           <TabPanel header="Generales" leftIcon="pi pi-building">
             <DatosGeneralesCotizacionCard
               formData={formData}
@@ -656,7 +783,11 @@ const CotizacionVentasForm = ({
               subtotal={totales.subtotal}
               totalIGV={totales.igv}
               total={totales.total}
-              monedasOptions={monedas.map(m => ({ value: m.id, codigoSunat: m.codigoSunat || 'PEN', simbolo: m.simbolo }))}
+              monedasOptions={monedas.map((m) => ({
+                value: m.id,
+                codigoSunat: m.codigoSunat || "PEN",
+                simbolo: m.simbolo,
+              }))}
               contactosClienteOptions={contactosClienteOptions}
               direccionesClienteOptions={direccionesClienteOptions}
               readOnly={readOnly}
@@ -671,7 +802,9 @@ const CotizacionVentasForm = ({
               proveedores={clientes}
               puedeEditar={permisos?.puedeEditar && !loading && !loadingProp}
               toast={toast}
-              onFactorCalculado={(factor) => handleChange("factorExportacion", factor)}
+              onFactorCalculado={(factor) =>
+                handleChange("factorExportacion", factor)
+              }
               detalles={detalles}
               readOnly={readOnly}
             />
@@ -686,16 +819,20 @@ const CotizacionVentasForm = ({
               cotizacionId={defaultValues?.id || null}
               toast={toast}
               onDocumentosGenerados={handleDocumentosGenerados}
-              monedasOptions={monedas.map(m => ({ 
-                value: m.id, 
+              monedasOptions={monedas.map((m) => ({
+                value: m.id,
                 label: `${m.simbolo}`,
-                simbolo: m.simbolo 
+                simbolo: m.simbolo,
               }))}
               docRequeridaVentasOptions={docRequeridaVentasOptions}
               readOnly={readOnly}
             />
           </TabPanel>
-          <TabPanel header="Entrega a Rendir" leftIcon="pi pi-money-bill" disabled={!isEdit}>
+          <TabPanel
+            header="Entrega a Rendir"
+            leftIcon="pi pi-money-bill"
+            disabled={!isEdit}
+          >
             <EntregaARendirCard
               cotizacionVentas={formData}
               personal={personalOptions}
@@ -710,32 +847,52 @@ const CotizacionVentasForm = ({
             />
           </TabPanel>
           <TabPanel header="PDF Cotización" leftIcon="pi pi-file-pdf">
-            <VerImpresionCotizacionVentasPDF 
-              cotizacionId={formData.id} 
-              datosCotizacion={formData} 
+            <VerImpresionCotizacionVentasPDF
+              cotizacionId={formData.id}
+              datosCotizacion={formData}
               detalles={detalles}
               toast={toast}
             />
           </TabPanel>
-          <TabPanel header="PDF Documentación" leftIcon="pi pi-file-pdf">
-            <VerImpresionDocumentacionPDF formData={formData} documentos={documentos} />
-          </TabPanel>
         </TabView>
         <div className="flex justify-content-end gap-2 mt-4">
-          <Button type="button" label="Cancelar" icon="pi pi-times" className="p-button-secondary" onClick={handleCancel} disabled={loading || loadingProp} />
-          <Button type="submit" label={defaultValues ? "Actualizar" : "Guardar"} icon="pi pi-save" className="p-button-primary" loading={loading || loadingProp} disabled={readOnly || !permisos.puedeEditar} tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""} />
+          <Button
+            type="button"
+            label="Cancelar"
+            icon="pi pi-times"
+            className="p-button-secondary"
+            onClick={handleCancel}
+            disabled={loading || loadingProp}
+          />
+          <Button
+            type="submit"
+            label={defaultValues ? "Actualizar" : "Guardar"}
+            icon="pi pi-save"
+            className="p-button-primary"
+            loading={loading || loadingProp}
+            disabled={readOnly || !permisos.puedeEditar}
+            tooltip={
+              readOnly
+                ? "Modo solo lectura"
+                : !permisos.puedeEditar
+                  ? "No tiene permisos para editar"
+                  : ""
+            }
+          />
           {/* Botón Aprobar Cotización */}
-          {formData.estadoId !== 42 && permisos.puedeAprobarDocs && defaultValues?.id && (
-            <Button
-              type="button"
-              label="Aprobar Cotización"
-              icon="pi pi-check"
-              className="p-button-success"
-              onClick={handleAprobarCotizacion}
-              loading={loadingAprobar}
-              disabled={loading || loadingProp || loadingAprobar}
-            />
-          )}
+          {formData.estadoId !== 42 &&
+            permisos.puedeAprobarDocs &&
+            defaultValues?.id && (
+              <Button
+                type="button"
+                label="Aprobar Cotización"
+                icon="pi pi-check"
+                className="p-button-success"
+                onClick={handleAprobarCotizacion}
+                loading={loadingAprobar}
+                disabled={loading || loadingProp || loadingAprobar}
+              />
+            )}
           {/* Indicador de estado aprobado */}
           {formData.estadoId === 42 && (
             <Button

@@ -128,6 +128,9 @@ export default function Empresas({ ruta }) {
         cantDivisoriaCalcComisionMotorista: data.cantDivisoriaCalcComisionMotorista,
         porcentajeCalcComisionPanguero: data.porcentajeCalcComisionPanguero,
         monedaCalculosLiqId: data.monedaCalculosLiqId,
+        // Campos Nubefact
+        nubefactUrl: data.nubefactUrl,
+        nubefactToken: data.nubefactToken,
       };
       
       if (modoEdicion && empresaEdit) {

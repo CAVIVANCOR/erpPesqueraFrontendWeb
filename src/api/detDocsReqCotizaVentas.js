@@ -70,24 +70,16 @@ export const getDetalleDocReqPorId = async (id) => {
  */
 export const crearDetalleDocReqCotizaVentas = async (detalleDoc) => {
   try {
-    // Normalización de datos antes del envío
-    const datosNormalizados = {
+    // Enviar datos sin agregar campos inexistentes
+    // Solo normalizar fechas si existen
+    const datosLimpios = {
       ...detalleDoc,
-      cotizacionVentaId: Number(detalleDoc.cotizacionVentaId),
-      tipoDocumentoId: Number(detalleDoc.tipoDocumentoId),
-      obligatorio: Boolean(detalleDoc.obligatorio),
-      entregado: Boolean(detalleDoc.entregado),
-      validado: Boolean(detalleDoc.validado),
+      fechaEmision: detalleDoc.fechaEmision ? new Date(detalleDoc.fechaEmision).toISOString() : null,
       fechaVencimiento: detalleDoc.fechaVencimiento ? new Date(detalleDoc.fechaVencimiento).toISOString() : null,
-      fechaEntrega: detalleDoc.fechaEntrega ? new Date(detalleDoc.fechaEntrega).toISOString() : null,
-      fechaValidacion: detalleDoc.fechaValidacion ? new Date(detalleDoc.fechaValidacion).toISOString() : null,
-      observaciones: detalleDoc.observaciones?.trim() || null,
-      urlArchivo: detalleDoc.urlArchivo?.trim() || null,
-      validadoPorId: detalleDoc.validadoPorId ? Number(detalleDoc.validadoPorId) : null,
-      numeroDocumento: detalleDoc.numeroDocumento?.trim() || null
+      fechaVerificacion: detalleDoc.fechaVerificacion ? new Date(detalleDoc.fechaVerificacion).toISOString() : null,
     };
 
-    const response = await axios.post(API_URL, datosNormalizados, getAuthHeaders());
+    const response = await axios.post(API_URL, datosLimpios, getAuthHeaders());
     return response.data;
   } catch (error) {
     console.error('Error al crear detalle de documento requerido:', error);
@@ -103,24 +95,16 @@ export const crearDetalleDocReqCotizaVentas = async (detalleDoc) => {
  */
 export const actualizarDetalleDocReqCotizaVentas = async (id, detalleDoc) => {
   try {
-    // Normalización de datos antes del envío
-    const datosNormalizados = {
+    // Enviar datos sin agregar campos inexistentes
+    // Solo normalizar fechas si existen
+    const datosLimpios = {
       ...detalleDoc,
-      cotizacionVentaId: Number(detalleDoc.cotizacionVentaId),
-      tipoDocumentoId: Number(detalleDoc.tipoDocumentoId),
-      obligatorio: Boolean(detalleDoc.obligatorio),
-      entregado: Boolean(detalleDoc.entregado),
-      validado: Boolean(detalleDoc.validado),
+      fechaEmision: detalleDoc.fechaEmision ? new Date(detalleDoc.fechaEmision).toISOString() : null,
       fechaVencimiento: detalleDoc.fechaVencimiento ? new Date(detalleDoc.fechaVencimiento).toISOString() : null,
-      fechaEntrega: detalleDoc.fechaEntrega ? new Date(detalleDoc.fechaEntrega).toISOString() : null,
-      fechaValidacion: detalleDoc.fechaValidacion ? new Date(detalleDoc.fechaValidacion).toISOString() : null,
-      observaciones: detalleDoc.observaciones?.trim() || null,
-      urlArchivo: detalleDoc.urlArchivo?.trim() || null,
-      validadoPorId: detalleDoc.validadoPorId ? Number(detalleDoc.validadoPorId) : null,
-      numeroDocumento: detalleDoc.numeroDocumento?.trim() || null
+      fechaVerificacion: detalleDoc.fechaVerificacion ? new Date(detalleDoc.fechaVerificacion).toISOString() : null,
     };
 
-    const response = await axios.put(`${API_URL}/${id}`, datosNormalizados, getAuthHeaders());
+    const response = await axios.put(`${API_URL}/${id}`, datosLimpios, getAuthHeaders());
     return response.data;
   } catch (error) {
     console.error(`Error al actualizar detalle de documento requerido ${id}:`, error);

@@ -71,7 +71,9 @@ const CostosExportacionCard = ({
     setLoading(true);
     try {
       const data = await getCostosExportacionPorCotizacion(cotizacionId);
-      setCostos(data);
+      // Ordenar por campo orden automáticamente
+      const costosOrdenados = data.sort((a, b) => Number(a.orden || 0) - Number(b.orden || 0));
+      setCostos(costosOrdenados);
     } catch (error) {
       console.error("Error al cargar costos:", error);
       toast?.current?.show({
@@ -104,12 +106,12 @@ const CostosExportacionCard = ({
   useEffect(() => {
     const totalCostos = costos.reduce(
       (sum, costo) => sum + (Number(costo.montoEstimadoMonedaBase) || 0),
-      0
+      0,
     );
 
     const pesoTotal = detalles.reduce(
       (sum, detalle) => sum + (Number(detalle.pesoNeto) || 0),
-      0
+      0,
     );
 
     const factor = pesoTotal > 0 ? totalCostos / pesoTotal : 1;
@@ -123,12 +125,12 @@ const CostosExportacionCard = ({
 
     const totalCostos = costosActuales.reduce(
       (sum, costo) => sum + (Number(costo.montoEstimadoMonedaBase) || 0),
-      0
+      0,
     );
 
     const pesoTotal = detallesActuales.reduce(
       (sum, detalle) => sum + (Number(detalle.pesoNeto) || 0),
-      0
+      0,
     );
 
     const factor = pesoTotal > 0 ? totalCostos / pesoTotal : 1;
@@ -203,19 +205,42 @@ const CostosExportacionCard = ({
       const montoEnMonedaBase = convertirAMonedaBase(
         editingCosto.montoEstimado,
         editingCosto.monedaId,
-        editingCosto.tipoCambioAplicado
+        editingCosto.tipoCambioAplicado,
       );
       const datosGuardar = {
+        // CAMPOS ESTIMADOS (obligatorios)
         montoEstimado: Number(editingCosto.montoEstimado),
         montoEstimadoMonedaBase: montoEnMonedaBase,
         monedaId: Number(editingCosto.monedaId),
         tipoCambioAplicado: Number(editingCosto.tipoCambioAplicado || 1),
+
+        // CAMPOS REALES (opcionales - solo si existen)
+        montoReal: editingCosto.montoReal
+          ? Number(editingCosto.montoReal)
+          : null,
+        montoRealMonedaBase: editingCosto.montoRealMonedaBase
+          ? Number(editingCosto.montoRealMonedaBase)
+          : null,
+        variacionMonto: editingCosto.variacionMonto
+          ? Number(editingCosto.variacionMonto)
+          : null,
+        variacionPorcentaje: editingCosto.variacionPorcentaje
+          ? Number(editingCosto.variacionPorcentaje)
+          : null,
+        movimientoEntregaRendirId: editingCosto.movimientoEntregaRendirId
+          ? Number(editingCosto.movimientoEntregaRendirId)
+          : null,
+
+        // CONFIGURACIÓN
         proveedorId: editingCosto.proveedorId
           ? Number(editingCosto.proveedorId)
           : null,
-        aplicaSegunIncoterm: editingCosto.aplicaSegunIncoterm || false,
-        esObligatorio: editingCosto.esObligatorio || false,
-        requiereDocumento: editingCosto.requiereDocumento || false,
+        aplicaSegunIncoterm: Boolean(editingCosto.aplicaSegunIncoterm),
+        esObligatorio: Boolean(editingCosto.esObligatorio),
+        requiereDocumento: Boolean(editingCosto.requiereDocumento),
+        documentoAsociadoId: editingCosto.documentoAsociadoId
+          ? Number(editingCosto.documentoAsociadoId)
+          : null,
         orden: Number(editingCosto.orden || 1),
       };
 
@@ -223,7 +248,7 @@ const CostosExportacionCard = ({
         // ACTUALIZACIÓN: Incluye monedaId y proveedorId (actualizables)
         await actualizarCostoExportacionCotizacion(
           editingCosto.id,
-          datosGuardar
+          datosGuardar,
         );
         toast?.current?.show({
           severity: "success",
@@ -405,16 +430,24 @@ const CostosExportacionCard = ({
   const accionesTemplate = (rowData) => (
     <div style={{ display: "flex", gap: "0.5rem" }}>
       <Button
+        type="button"
         icon="pi pi-pencil"
         className="p-button-text p-button-sm"
-        onClick={() => handleEditar(rowData)}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleEditar(rowData);
+        }}
         disabled={!puedeEditar || readOnly}
         tooltip="Editar"
       />
       <Button
+        type="button"
         icon="pi pi-trash"
         className="p-button-text p-button-danger p-button-sm"
-        onClick={() => handleEliminar(rowData)}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleEliminar(rowData);
+        }}
         disabled={!puedeEditar || readOnly}
         tooltip="Eliminar"
       />
@@ -425,14 +458,14 @@ const CostosExportacionCard = ({
   const calcularTotalEstimado = () => {
     return costos.reduce(
       (sum, costo) => sum + (Number(costo.montoEstimadoMonedaBase) || 0),
-      0
+      0,
     );
   };
 
   const familiaGastosExportacionId = 7;
   // Filtrar productos de familia 7
   const productosGastosExportacion = productos.filter(
-    (p) => Number(p.familiaId) === Number(familiaGastosExportacionId)
+    (p) => Number(p.familiaId) === Number(familiaGastosExportacionId),
   );
 
   const productosOptions = productosGastosExportacion.map((p) => ({
@@ -498,28 +531,39 @@ const CostosExportacionCard = ({
         onRowClick={(e) => handleEditar(e.data)}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         paginator
-        rows={15}
-        rowsPerPageOptions={[15, 30, 40, 50]}
+        rows={10}
+        rowsPerPageOptions={[10, 20, 40, 50]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} costos"
         emptyMessage="No hay costos de exportación agregados"
+        sortField="orden"
+        sortOrder={1}
       >
         <Column
           field="orden"
-          header="#"
-          style={{ width: "60px", textAlign: "center" }}
+          header="N° Orden"
+          style={{ minWidth: "1rem" }}
+          sortable
+        />
+        <Column
+          field="id"
+          header="ID"
+          style={{ minWidth: "1.5rem" }}
+          sortable
         />
         <Column
           field="producto.subfamilia.nombre"
           header="Subfamilia"
           body={subfamiliaTemplate}
           style={{ minWidth: "120px" }}
+          sortable
         />
         <Column
           field="producto.nombre"
           header="Producto"
           body={productoNombreTemplate}
           style={{ minWidth: "250px" }}
+          sortable
         />
 
         <Column
@@ -527,24 +571,28 @@ const CostosExportacionCard = ({
           header="Monto Estimado"
           body={montoEstimadoTemplate}
           style={{ minWidth: "120px", textAlign: "right" }}
+          sortable
         />
         <Column
           field="montoEstimadoMonedaBase"
           header="Monto en USD"
           body={montoMonedaBaseTemplate}
           style={{ minWidth: "120px", textAlign: "right" }}
+          sortable
         />
         <Column
           field="aplicaSegunIncoterm"
           header="Aplica Incoterm"
           body={incotermTemplate}
           style={{ minWidth: "120px", textAlign: "center" }}
+          sortable
         />
         <Column
           field="proveedor.razonSocial"
           header="Proveedor"
           body={proveedorTemplate}
           style={{ minWidth: "150px" }}
+          sortable
         />
         <Column
           header="Acciones"

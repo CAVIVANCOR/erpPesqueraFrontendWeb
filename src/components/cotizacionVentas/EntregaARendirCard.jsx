@@ -514,23 +514,7 @@ export default function EntregaARendirCard({
   }
 
   if (!entregaARendir) {
-    return (
-      <Card className="mt-3">
-        <Message
-          severity="warn"
-          text="No existe una entrega a rendir para esta cotización"
-        />
-        <div style={{ marginTop: "1rem", textAlign: "center" }}>
-          <Button
-            label="Crear Entrega a Rendir"
-            icon="pi pi-plus"
-            className="p-button-success"
-            onClick={crearEntregaAutomatica}
-            loading={loadingEntrega}
-          />
-        </div>
-      </Card>
-    );
+    return null;
   }
 
   return (

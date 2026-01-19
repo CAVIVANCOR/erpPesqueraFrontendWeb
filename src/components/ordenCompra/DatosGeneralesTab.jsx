@@ -48,6 +48,17 @@ export default function DatosGeneralesTab({
   contactoProveedorId,
   onContactoProveedorChange,
   contactosProveedor = [],
+  // ⭐ CAMPOS DE FACTURACIÓN
+  facturado,
+  onFacturadoChange,
+  fechaFacturacion,
+  onFechaFacturacionChange,
+  esGerencial,
+  onEsGerencialChange,
+  ordenCompraOrigenId,
+  onOrdenCompraOrigenIdChange,
+  esParticionada,
+  onEsParticionadaChange,
 }) {
   // Helper para obtener código de moneda (ISO)
   const getCodigoMoneda = () => {
@@ -475,6 +486,112 @@ export default function DatosGeneralesTab({
               fontStyle: "italic",
               fontWeight: "bold",
               textTransform: "uppercase",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* ⭐ SECCIÓN: CAMPOS DE FACTURACIÓN */}
+      <div
+        style={{
+          alignItems: "end",
+          display: "flex",
+          gap: 5,
+          marginTop: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 0.5 }}>
+          {/* FACTURADO */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="facturado"
+          >
+            Facturado
+          </label>
+          <Button
+            id="facturado"
+            label={facturado ? "SÍ" : "NO"}
+            icon={facturado ? "pi pi-check-circle" : "pi pi-times-circle"}
+            severity={facturado ? "success" : "danger"}
+            onClick={() => onFacturadoChange && onFacturadoChange(!facturado)}
+            disabled={!puedeEditar || readOnly}
+            outlined
+            style={{
+              width: "100%",
+              fontWeight: "bold",
+              justifyContent: "center",
+              color: "#000",
+            }}
+          />
+        </div>
+
+        <div style={{ flex: 0.75 }}>
+          {/* FECHA FACTURACIÓN */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="fechaFacturacion"
+          >
+            Fecha Facturación
+          </label>
+          <Calendar
+            id="fechaFacturacion"
+            value={fechaFacturacion}
+            onChange={(e) => onFechaFacturacionChange && onFechaFacturacionChange(e.value)}
+            dateFormat="dd/mm/yy"
+            showIcon
+            disabled={!puedeEditar || readOnly}
+            showButtonBar
+            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+          />
+        </div>
+
+        <div style={{ flex: 0.5 }}>
+          {/* ES GERENCIAL */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="esGerencial"
+          >
+            Es Gerencial
+          </label>
+          <Button
+            id="esGerencial"
+            label={esGerencial ? "SÍ" : "NO"}
+            icon={esGerencial ? "pi pi-check-circle" : "pi pi-times-circle"}
+            severity={esGerencial ? "success" : "danger"}
+            onClick={() => onEsGerencialChange && onEsGerencialChange(!esGerencial)}
+            disabled={!puedeEditar || readOnly}
+            outlined
+            style={{
+              width: "100%",
+              fontWeight: "bold",
+              justifyContent: "center",
+              color: "#000",
+            }}
+          />
+        </div>
+
+        <div style={{ flex: 0.5 }}>
+          {/* ES PARTICIONADA */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="esParticionada"
+          >
+            Es Particionada
+          </label>
+          <Button
+            id="esParticionada"
+            label={esParticionada ? "SÍ" : "NO"}
+            icon={esParticionada ? "pi pi-check-circle" : "pi pi-times-circle"}
+            severity={esParticionada ? "info" : "secondary"}
+            onClick={() => onEsParticionadaChange && onEsParticionadaChange(!esParticionada)}
+            disabled={!puedeEditar || readOnly}
+            outlined
+            style={{
+              width: "100%",
+              fontWeight: "bold",
+              justifyContent: "center",
+              color: "#000",
             }}
           />
         </div>

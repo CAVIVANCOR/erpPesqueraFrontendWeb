@@ -453,6 +453,21 @@ export const getMenuConfig = (abrirModulo) => ({
     type: "dropdown",
     items: [
       {
+        label: "Cuenta Por Cobrar",
+        icon: "pi pi-money-bill",
+        action: () => abrirModulo("cuentaPorCobrar", "Cuenta Por Cobrar")
+      },
+      {
+        label: "Cuenta Por Pagar",
+        icon: "pi pi-credit-card",
+        action: () => abrirModulo("cuentaPorPagar", "Cuenta Por Pagar")
+      },
+      {
+        label: "Pagos",
+        icon: "pi pi-dollar",
+        action: () => abrirModulo("pago", "Pagos")
+      },
+      {
         label: "Tipos de Préstamo",
         icon: "pi pi-tags",
         action: () => abrirModulo("tipoPrestamo", "Tipos de Préstamo")
@@ -508,21 +523,6 @@ export const getMenuConfig = (abrirModulo) => ({
         label: "Tipo Afectación IGV",
         icon: "pi pi-percentage",
         action: () => abrirModulo("tipoAfectacionIGV", "Tipo Afectación IGV")
-      },
-      {
-        label: "Cuenta Por Cobrar",
-        icon: "pi pi-money-bill",
-        action: () => abrirModulo("cuentaPorCobrar", "Cuenta Por Cobrar")
-      },
-      {
-        label: "Cuenta Por Pagar",
-        icon: "pi pi-credit-card",
-        action: () => abrirModulo("cuentaPorPagar", "Cuenta Por Pagar")
-      },
-      {
-        label: "Pagos",
-        icon: "pi pi-dollar",
-        action: () => abrirModulo("pago", "Pagos")
       },
       {
         label: "Flujo de Caja Financiero",

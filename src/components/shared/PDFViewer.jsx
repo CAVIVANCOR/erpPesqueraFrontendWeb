@@ -209,6 +209,18 @@ const PDFViewer = ({ urlDocumento, altura = "600px" }) => {
             import.meta.env.VITE_API_URL
           }/det-datos-adicionales-orden-compra/archivo/${rutaArchivo}`;
 
+        } else if (
+          urlDocumento.startsWith("/uploads/documentos-requeridos-ventas/")
+        ) {
+          // Soporte para documentos requeridos de cotización de ventas
+          const rutaArchivo = urlDocumento.replace(
+            "/uploads/documentos-requeridos-ventas/",
+            ""
+          );
+          urlCompleta = `${
+            import.meta.env.VITE_API_URL
+          }/det-docs-req-cotiza-ventas/archivo/${rutaArchivo}`;
+
         } else if (urlDocumento.startsWith("/uploads/movimientos-almacen/")) {
           // ✅ NUEVO: Soporte para PDFs de movimientos de almacén
           const rutaArchivo = urlDocumento.replace(

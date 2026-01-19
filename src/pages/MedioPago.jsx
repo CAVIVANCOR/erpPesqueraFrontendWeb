@@ -1,18 +1,3 @@
-/**
- * Pantalla CRUD para gestión de Puertos de Pesca
- *
- * Características implementadas:
- * - Edición profesional por clic en fila (abre modal de edición)
- * - Botón eliminar visible solo para superusuario/admin (usuario?.esSuperUsuario || usuario?.esAdmin)
- * - Confirmación de borrado con ConfirmDialog visual rojo y mensajes claros
- * - Feedback visual con Toast para éxito/error
- * - Búsqueda global por zona, nombre, provincia, departamento
- * - Cumple regla transversal ERP Megui completa
- *
- * @author ERP Megui
- * @version 1.0.0
- */
-
 import React, { useState, useEffect, useRef } from "react";
 import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
@@ -23,46 +8,44 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
-import { getPuertosPesca, eliminarPuertoPesca } from "../api/puertoPesca";
+import { getMediosPago, deleteMedioPago } from "../api/medioPago";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
-import PuertoPescaForm from "../components/puertoPesca/PuertoPescaForm";
+import MedioPagoForm from "../components/medioPago/MedioPagoForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
-const PuertoPesca = ({ ruta }) => {
-  // Obtener usuario autenticado para control de permisos
+const MedioPago = ({ ruta }) => {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
 
-  // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
 
-  const [puertosPesca, setPuertosPesca] = useState([]);
+  const [mediosPago, setMediosPago] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
-  const [puertoPescaSeleccionado, setPuertoPescaSeleccionado] = useState(null);
+  const [medioPagoSeleccionado, setMedioPagoSeleccionado] = useState(null);
   const [confirmVisible, setConfirmVisible] = useState(false);
-  const [puertoPescaAEliminar, setPuertoPescaAEliminar] = useState(null);
+  const [medioPagoAEliminar, setMedioPagoAEliminar] = useState(null);
   const toast = useRef(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const [isEdit, setIsEdit] = useState(false);
 
   useEffect(() => {
-    cargarPuertosPesca();
+    cargarMediosPago();
   }, []);
 
-  const cargarPuertosPesca = async () => {
+  const cargarMediosPago = async () => {
     try {
       setLoading(true);
-      const data = await getPuertosPesca();
-      setPuertosPesca(data);
+      const data = await getMediosPago();
+      setMediosPago(data);
     } catch (error) {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar puertos de pesca",
+        detail: "Error al cargar medios de pago",
         life: 3000,
       });
     } finally {
@@ -71,25 +54,24 @@ const PuertoPesca = ({ ruta }) => {
   };
 
   const abrirDialogoNuevo = () => {
-    setPuertoPescaSeleccionado(null);
+    setMedioPagoSeleccionado(null);
     setIsEdit(false);
     setDialogVisible(true);
   };
 
-  const abrirDialogoEdicion = (puertoPesca) => {
-    setPuertoPescaSeleccionado(puertoPesca);
+  const abrirDialogoEdicion = (medioPago) => {
+    setMedioPagoSeleccionado(medioPago);
     setIsEdit(true);
     setDialogVisible(true);
   };
 
   const cerrarDialogo = () => {
     setDialogVisible(false);
-    setPuertoPescaSeleccionado(null);
+    setMedioPagoSeleccionado(null);
     setIsEdit(false);
   };
 
   const onGuardarExitoso = () => {
-    // Validar permisos antes de guardar
     if (isEdit && !permisos.puedeEditar) {
       return;
     }
@@ -97,14 +79,14 @@ const PuertoPesca = ({ ruta }) => {
       return;
     }
 
-    cargarPuertosPesca();
+    cargarMediosPago();
     cerrarDialogo();
     toast.current.show({
       severity: "success",
       summary: "Éxito",
-      detail: puertoPescaSeleccionado
-        ? "Puerto de pesca actualizado correctamente"
-        : "Puerto de pesca creado correctamente",
+      detail: medioPagoSeleccionado
+        ? "Medio de pago actualizado correctamente"
+        : "Medio de pago creado correctamente",
       life: 3000,
     });
   };
@@ -118,33 +100,33 @@ const PuertoPesca = ({ ruta }) => {
     });
   };
 
-  const confirmarEliminacion = (puertoPesca) => {
-    setPuertoPescaAEliminar(puertoPesca);
+  const confirmarEliminacion = (medioPago) => {
+    setMedioPagoAEliminar(medioPago);
     setConfirmVisible(true);
   };
 
   const eliminar = async () => {
     try {
-      await eliminarPuertoPesca(puertoPescaAEliminar.id);
-      setPuertosPesca(
-        puertosPesca.filter((p) => Number(p.id) !== Number(puertoPescaAEliminar.id))
+      await deleteMedioPago(medioPagoAEliminar.id);
+      setMediosPago(
+        mediosPago.filter((m) => Number(m.id) !== Number(medioPagoAEliminar.id))
       );
       toast.current.show({
         severity: "success",
         summary: "Éxito",
-        detail: "Puerto de pesca eliminado correctamente",
+        detail: "Medio de pago eliminado correctamente",
         life: 3000,
       });
     } catch (error) {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al eliminar puerto de pesca",
+        detail: "Error al eliminar medio de pago",
         life: 3000,
       });
     } finally {
       setConfirmVisible(false);
-      setPuertoPescaAEliminar(null);
+      setMedioPagoAEliminar(null);
     }
   };
 
@@ -157,12 +139,20 @@ const PuertoPesca = ({ ruta }) => {
     );
   };
 
-  const paisTemplate = (rowData) => {
+  const requiereBancoTemplate = (rowData) => {
     return (
       <Tag
-        value={rowData.esPuertoOtroPais ? "Extranjero" : "Nacional"}
-        severity={rowData.esPuertoOtroPais ? "info" : "warning"}
-        icon={rowData.esPuertoOtroPais ? "pi pi-globe" : "pi pi-flag"}
+        value={rowData.requiereBanco ? "Sí" : "No"}
+        severity={rowData.requiereBanco ? "info" : "secondary"}
+      />
+    );
+  };
+
+  const requiereNumOperacionTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.requiereNumOperacion ? "Sí" : "No"}
+        severity={rowData.requiereNumOperacion ? "info" : "secondary"}
       />
     );
   };
@@ -203,7 +193,7 @@ const PuertoPesca = ({ ruta }) => {
     <div className="p-4">
       <Toast ref={toast} />
       <DataTable
-        value={puertosPesca}
+        value={mediosPago}
         loading={loading}
         paginator
         rows={10}
@@ -215,18 +205,18 @@ const PuertoPesca = ({ ruta }) => {
         }
         selectionMode="single"
         className="p-datatable-hover cursor-pointer"
-        emptyMessage="No se encontraron puertos de pesca"
+        emptyMessage="No se encontraron medios de pago"
         globalFilter={globalFilter}
-        globalFilterFields={['zona', 'nombre', 'provincia', 'departamento']}
+        globalFilterFields={['codigo', 'nombre']}
         header={
           <div className="flex align-items-center gap-2">
-            <h2>Gestión de Puertos de Pesca</h2>
+            <h2>Gestión de Medios de Pago</h2>
             <Button
               label="Nuevo"
               icon="pi pi-plus"
               size="small"
               raised
-              tooltip="Nuevo Puerto de Pesca"
+              tooltip="Nuevo Medio de Pago"
               outlined
               className="p-button-success"
               onClick={abrirDialogoNuevo}
@@ -236,7 +226,7 @@ const PuertoPesca = ({ ruta }) => {
               <InputText
                 value={globalFilter}
                 onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Buscar puertos de pesca..."
+                placeholder="Buscar medios de pago..."
                 style={{ width: "300px" }}
               />
             </span>
@@ -250,14 +240,11 @@ const PuertoPesca = ({ ruta }) => {
         }}
       >
         <Column field="id" header="ID" sortable />
-        <Column field="zona" header="Zona" sortable />
+        <Column field="codigo" header="Código" sortable />
         <Column field="nombre" header="Nombre" sortable />
-        <Column field="provincia" header="Provincia" sortable />
-        <Column field="departamento" header="Departamento" sortable />
-        <Column field="latitud" header="Latitud" sortable />
-        <Column field="longitud" header="Longitud" sortable />
+        <Column field="requiereBanco" header="Requiere Banco" body={requiereBancoTemplate} sortable />
+        <Column field="requiereNumOperacion" header="Requiere N° Operación" body={requiereNumOperacionTemplate} sortable />
         <Column field="activo" header="Estado" body={estadoTemplate} sortable />
-        <Column field="esPuertoOtroPais" header="Tipo" body={paisTemplate} sortable />
         <Column
           body={accionesTemplate}
           header="Acciones"
@@ -269,17 +256,17 @@ const PuertoPesca = ({ ruta }) => {
         header={
           isEdit
             ? permisos.puedeEditar
-              ? "Editar Puerto de Pesca"
-              : "Ver Puerto de Pesca"
-            : "Nuevo Puerto de Pesca"
+              ? "Editar Medio de Pago"
+              : "Ver Medio de Pago"
+            : "Nuevo Medio de Pago"
         }
         visible={dialogVisible}
         onHide={cerrarDialogo}
         style={{ width: "600px" }}
         modal
       >
-        <PuertoPescaForm
-          puertoPesca={puertoPescaSeleccionado}
+        <MedioPagoForm
+          medioPago={medioPagoSeleccionado}
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
           onError={onError}
@@ -290,7 +277,7 @@ const PuertoPesca = ({ ruta }) => {
       <ConfirmDialog
         visible={confirmVisible}
         onHide={() => setConfirmVisible(false)}
-        message={`¿Está seguro de eliminar el puerto de pesca "${puertoPescaAEliminar?.nombre}"?`}
+        message={`¿Está seguro de eliminar el medio de pago "${medioPagoAEliminar?.nombre}"?`}
         header="Confirmar Eliminación"
         icon="pi pi-exclamation-triangle"
         accept={eliminar}
@@ -303,4 +290,4 @@ const PuertoPesca = ({ ruta }) => {
   );
 };
 
-export default PuertoPesca;
+export default MedioPago;
