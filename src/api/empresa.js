@@ -104,3 +104,13 @@ export const subirLogoEmpresa = async (empresaId, file) => {
   });
   return res.data;
 };
+
+/**
+ * Obtiene los parámetros de liquidación de pesca de una empresa.
+ * @param {number|string} empresaId - ID de la empresa
+ * @returns {Promise<Object>} Parámetros de liquidación
+ */
+export const getParametrosLiquidacion = async (empresaId) => {
+  const res = await axios.get(`${API_URL}/${empresaId}/parametros-liquidacion`, { headers: getAuthHeader() });
+  return res.data;
+};

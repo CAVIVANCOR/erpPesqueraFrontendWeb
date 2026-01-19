@@ -72,3 +72,7 @@ export async function cancelarTemporada(id) {
 }
 
 
+export async function calcularLiquidaciones(id) {
+  const res = await axios.post(`${API_URL}/${id}/calcular-liquidaciones`, {}, { headers: getAuthHeaders() });
+  return res.data;
+}

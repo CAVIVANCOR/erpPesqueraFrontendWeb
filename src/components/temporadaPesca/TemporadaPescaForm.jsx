@@ -363,6 +363,29 @@ const TemporadaPescaForm = ({
         : null,
       fechaActualizacion: new Date().toISOString(),
       toneladasCapturadasTemporada: data.toneladasCapturadasTemporada || null,
+
+          // Campos de liquidación - Parámetros de comisiones
+    porcentajeBaseLiqPesca: data.porcentajeBaseLiqPesca ? Number(data.porcentajeBaseLiqPesca) : null,
+    porcentajeComisionPatron: data.porcentajeComisionPatron ? Number(data.porcentajeComisionPatron) : null,
+    cantPersonalCalcComisionMotorista: data.cantPersonalCalcComisionMotorista ? Number(data.cantPersonalCalcComisionMotorista) : null,
+    cantDivisoriaCalcComisionMotorista: data.cantDivisoriaCalcComisionMotorista ? Number(data.cantDivisoriaCalcComisionMotorista) : null,
+    porcentajeCalcComisionPanguero: data.porcentajeCalcComisionPanguero ? Number(data.porcentajeCalcComisionPanguero) : null,
+      
+    // Campos de liquidación - Liquidaciones Estimadas
+    liqTripulantesPescaEstimado: data.liqTripulantesPescaEstimado ? Number(data.liqTripulantesPescaEstimado) : null,
+    liqComisionPatronEstimado: data.liqComisionPatronEstimado ? Number(data.liqComisionPatronEstimado) : null,
+    liqComisionMotoristaEstimado: data.liqComisionMotoristaEstimado ? Number(data.liqComisionMotoristaEstimado) : null,
+    liqComisionPangueroEstimado: data.liqComisionPangueroEstimado ? Number(data.liqComisionPangueroEstimado) : null,
+    liqTotalPescaEstimada: data.liqTotalPescaEstimada ? Number(data.liqTotalPescaEstimada) : null,
+    liqComisionAlquilerCuota: data.liqComisionAlquilerCuota ? Number(data.liqComisionAlquilerCuota) : null,
+      
+    // Campos de liquidación - Liquidaciones Reales
+    liqTripulantesPescaReal: data.liqTripulantesPescaReal ? Number(data.liqTripulantesPescaReal) : null,
+    liqComisionPatronReal: data.liqComisionPatronReal ? Number(data.liqComisionPatronReal) : null,
+    liqComisionMotoristaReal: data.liqComisionMotoristaReal ? Number(data.liqComisionMotoristaReal) : null,
+    liqComisionPangueroReal: data.liqComisionPangueroReal ? Number(data.liqComisionPangueroReal) : null,
+    liqTotalPescaReal: data.liqTotalPescaReal ? Number(data.liqTotalPescaReal) : null,
+    
     };
 
     // Solo incluir ID si existe y no es null (para edición)
