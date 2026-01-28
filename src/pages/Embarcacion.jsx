@@ -38,6 +38,9 @@ const Embarcacion = ({ ruta }) => {
   const [embarcacionSeleccionada, setEmbarcacionSeleccionada] = useState(null);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [embarcacionAEliminar, setEmbarcacionAEliminar] = useState(null);
+  const [activos, setActivos] = useState([]);                    // ⬅️ AGREGAR ESTA LÍNEA
+const [tiposEmbarcacion, setTiposEmbarcacion] = useState([]);  // ⬅️ AGREGAR ESTA LÍNEA
+const [estadosActivo, setEstadosActivo] = useState([]);        // ⬅️ AGREGAR ESTA LÍNEA
   const toast = useRef(null);
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);

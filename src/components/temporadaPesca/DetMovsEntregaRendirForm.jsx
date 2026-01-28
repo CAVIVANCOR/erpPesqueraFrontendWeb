@@ -20,9 +20,6 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Message } from "primereact/message";
 import { Toast } from "primereact/toast";
 import { classNames } from "primereact/utils";
-import DocumentoCapture from "../shared/DocumentoCapture";
-import PDFViewer from "../shared/PDFViewer";
-import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import {
   crearDetMovsEntregaRendir,
@@ -40,10 +37,10 @@ const DetMovsEntregaRendirForm = ({
   personal = [],
   centrosCosto = [],
   tiposMovimiento = [],
-  entidadesComerciales = [], // Nueva prop
-  monedas = [], // ← AGREGAR ESTA LÍNEA
+  entidadesComerciales = [],
+  monedas = [],
   tiposDocumento = [],
-  productos = [], // Nueva prop para productos (gastos)
+  productos = [],
   onGuardadoExitoso,
   onCancelar,
 }) => {
@@ -51,16 +48,10 @@ const DetMovsEntregaRendirForm = ({
   const isEditing = !!movimiento;
   const { usuario } = useAuthStore();
 
-  // Estados para módulos del sistema
   const [modulosPescaIndustrial, setModulosPescaIndustrial] = useState(null);
-
-  // Estados para navegación de cards
-  const [cardActiva, setCardActiva] = useState("datos"); // "datos" | "pdf" | "pdfOperacion"
-
-  // Estado para filtro de familia de productos
+  const [cardActiva, setCardActiva] = useState("datos");
   const [familiaFiltroId, setFamiliaFiltroId] = useState(null);
 
-  // Configuración del formulario con react-hook-form
   const {
     control,
     handleSubmit,
@@ -77,42 +68,42 @@ const DetMovsEntregaRendirForm = ({
       tipoMovimientoId: "",
       centroCostoId: "",
       monto: 0,
-      monedaId: "", // ← AGREGAR ESTA LÍNEA
+      monedaId: "",
       descripcion: "",
-      entidadComercialId: "", // Nuevo campo
+      entidadComercialId: "",
       urlComprobanteMovimiento: "",
       validadoTesoreria: false,
       fechaValidacionTesoreria: null,
       operacionSinFactura: false,
       fechaOperacionMovCaja: null,
       operacionMovCajaId: null,
-      moduloOrigenMovCajaId: 2, // Valor automático para "PESCA INDUSTRIAL"
+      moduloOrigenMovCajaId: 2,
       urlComprobanteOperacionMovCaja: "",
       tipoDocumentoId: "",
       numeroSerieComprobante: "",
       numeroCorrelativoComprobante: "",
-      productoId: "", // Nuevo campo para producto (gasto)
+      productoId: "",
       formaParteCalculoLiquidacionTripulantes: false,
       formaParteCalculoEntregaARendir: false,
     },
   });
 
-  // Observar cambios en urlComprobanteMovimiento
   const urlComprobanteMovimiento = watch("urlComprobanteMovimiento");
-
-  // Observar cambios en validadoTesoreria
   const validadoTesoreria = watch("validadoTesoreria");
-
-  // Observar cambios en los nuevos campos
   const operacionSinFactura = watch("operacionSinFactura");
-  const formaParteCalculoLiquidacionTripulantes = watch("formaParteCalculoLiquidacionTripulantes");
-  const formaParteCalculoEntregaARendir = watch("formaParteCalculoEntregaARendir");
+  const formaParteCalculoLiquidacionTripulantes = watch(
+    "formaParteCalculoLiquidacionTripulantes",
+  );
+  const formaParteCalculoEntregaARendir = watch(
+    "formaParteCalculoEntregaARendir",
+  );
   const fechaOperacionMovCaja = watch("fechaOperacionMovCaja");
   const operacionMovCajaId = watch("operacionMovCajaId");
   const moduloOrigenMovCajaId = watch("moduloOrigenMovCajaId");
-  const urlComprobanteOperacionMovCaja = watch("urlComprobanteOperacionMovCaja");
+  const urlComprobanteOperacionMovCaja = watch(
+    "urlComprobanteOperacionMovCaja",
+  );
 
-  // Cargar datos del registro en edición
   useEffect(() => {
     if (isEditing && movimiento) {
       reset({
@@ -130,11 +121,11 @@ const DetMovsEntregaRendirForm = ({
           ? Number(movimiento.centroCostoId)
           : null,
         monto: Number(movimiento.monto) || 0,
-        monedaId: movimiento.monedaId ? Number(movimiento.monedaId) : null, // ← AGREGAR ESTA LÍNEA
+        monedaId: movimiento.monedaId ? Number(movimiento.monedaId) : null,
         descripcion: movimiento.descripcion || "",
         entidadComercialId: movimiento.entidadComercialId
           ? Number(movimiento.entidadComercialId)
-          : null, // Nuevo campo
+          : null,
         urlComprobanteMovimiento: movimiento.urlComprobanteMovimiento || "",
         validadoTesoreria: movimiento.validadoTesoreria ?? false,
         fechaValidacionTesoreria: movimiento.fechaValidacionTesoreria || null,
@@ -148,25 +139,30 @@ const DetMovsEntregaRendirForm = ({
         moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId
           ? Number(movimiento.moduloOrigenMovCajaId)
           : 2,
-        urlComprobanteOperacionMovCaja: movimiento.urlComprobanteOperacionMovCaja || "",
-        tipoDocumentoId: movimiento.tipoDocumentoId ? Number(movimiento.tipoDocumentoId) : null,
+        urlComprobanteOperacionMovCaja:
+          movimiento.urlComprobanteOperacionMovCaja || "",
+        tipoDocumentoId: movimiento.tipoDocumentoId
+          ? Number(movimiento.tipoDocumentoId)
+          : null,
         numeroSerieComprobante: movimiento.numeroSerieComprobante || "",
-        numeroCorrelativoComprobante: movimiento.numeroCorrelativoComprobante || "",
-        productoId: movimiento.productoId ? Number(movimiento.productoId) : null,
-        formaParteCalculoLiquidacionTripulantes: movimiento.formaParteCalculoLiquidacionTripulantes ?? false,
-        formaParteCalculoEntregaARendir: movimiento.formaParteCalculoEntregaARendir ?? false,
+        numeroCorrelativoComprobante:
+          movimiento.numeroCorrelativoComprobante || "",
+        productoId: movimiento.productoId
+          ? Number(movimiento.productoId)
+          : null,
+        formaParteCalculoLiquidacionTripulantes:
+          movimiento.formaParteCalculoLiquidacionTripulantes ?? false,
+        formaParteCalculoEntregaARendir:
+          movimiento.formaParteCalculoEntregaARendir ?? false,
       });
     } else {
-      // Para nuevo registro, establecer entregaARendirId y asignar responsable automáticamente
       setValue("entregaARendirId", Number(entregaARendirId));
       setValue("fechaMovimiento", new Date());
-      setValue("moduloOrigenMovCajaId", 2); // Establecer valor por defecto para PESCA INDUSTRIAL
+      setValue("moduloOrigenMovCajaId", 2);
 
-      // Asignar automáticamente el responsable basado en el usuario logueado
       if (usuario?.personalId) {
         setValue("responsableId", Number(usuario.personalId));
 
-        // Mostrar toast informativo después de un breve delay
         setTimeout(() => {
           toast.current?.show({
             severity: "info",
@@ -180,17 +176,15 @@ const DetMovsEntregaRendirForm = ({
     }
   }, [movimiento, isEditing, entregaARendirId, reset, setValue, usuario]);
 
-  // Cargar módulo "PESCA INDUSTRIAL" al montar el componente
   useEffect(() => {
     const cargarModuloPescaIndustrial = async () => {
       try {
         const modulos = await getModulos();
         const moduloPesca = modulos.find(
-          (m) => m.nombre === "PESCA INDUSTRIAL"
+          (m) => m.nombre === "PESCA INDUSTRIAL",
         );
         if (moduloPesca) {
           setModulosPescaIndustrial(moduloPesca);
-          // Solo establecer el valor si no estamos editando
           if (!isEditing) {
             setValue("moduloOrigenMovCajaId", Number(moduloPesca.id));
           }
@@ -209,8 +203,6 @@ const DetMovsEntregaRendirForm = ({
     cargarModuloPescaIndustrial();
   }, [setValue, isEditing]);
 
-
-  // Preparar opciones para dropdowns aplicando regla Number()
   const personalOptions = personal.map((p) => ({
     label: p.nombreCompleto || `${p.nombres} ${p.apellidos}`,
     value: Number(p.id),
@@ -228,31 +220,31 @@ const DetMovsEntregaRendirForm = ({
 
   const monedaOptions = (monedas || []).map((m) => ({
     label: `${m.simbolo}`,
-    value: Number(m.id), // Esto convierte el string a número
+    value: Number(m.id),
   }));
 
-  
   const tipoDocumentoOptions = tiposDocumento
     .filter((td) => td.esParaCompras === true || td.esParaVentas === true)
     .map((td) => ({
-      label: td.activo === false ? `${td.descripcion} (INACTIVO)` : td.descripcion,
+      label:
+        td.activo === false ? `${td.descripcion} (INACTIVO)` : td.descripcion,
       value: Number(td.id),
     }));
 
-  // IDs de familias permitidas para gastos
   const familiasGastosIds = [2, 3, 4, 6, 7];
 
-  // Filtrar productos por familias de gastos
-  const productosGastos = (productos || []).filter((p) => 
-    familiasGastosIds.includes(Number(p.familiaId))
+  const productosGastos = (productos || []).filter((p) =>
+    familiasGastosIds.includes(Number(p.familiaId)),
   );
 
-  // Obtener familias únicas de los productos filtrados usando un Map para evitar duplicados
   const familiasMap = new Map();
-  productosGastos.forEach(p => {
+  productosGastos.forEach((p) => {
     if (p.familia && p.familia.id && p.familia.nombre) {
       const familiaId = Number(p.familia.id);
-      if (familiasGastosIds.includes(familiaId) && !familiasMap.has(familiaId)) {
+      if (
+        familiasGastosIds.includes(familiaId) &&
+        !familiasMap.has(familiaId)
+      ) {
         familiasMap.set(familiaId, {
           label: p.familia.nombre,
           value: familiaId,
@@ -260,23 +252,22 @@ const DetMovsEntregaRendirForm = ({
       }
     }
   });
-  
-  const familiasUnicas = Array.from(familiasMap.values())
-    .sort((a, b) => a.label.localeCompare(b.label));
 
-  // Filtrar productos por familia seleccionada
+  const familiasUnicas = Array.from(familiasMap.values()).sort((a, b) =>
+    a.label.localeCompare(b.label),
+  );
+
   const productosFiltrados = familiaFiltroId
-    ? productosGastos.filter(p => Number(p.familiaId) === Number(familiaFiltroId))
+    ? productosGastos.filter(
+        (p) => Number(p.familiaId) === Number(familiaFiltroId),
+      )
     : productosGastos;
 
-  // Opciones de productos para el dropdown
   const productoOptions = productosFiltrados.map((p) => ({
     label: p.descripcionArmada || p.descripcionBase || p.codigo,
     value: Number(p.id),
   }));
-  
 
-  // Función para manejar el toggle de operacionSinFactura
   const handleToggleOperacionSinFactura = () => {
     const valorActual = getValues("operacionSinFactura");
     setValue("operacionSinFactura", !valorActual);
@@ -291,7 +282,6 @@ const DetMovsEntregaRendirForm = ({
     });
   };
 
-  // Función para manejar el toggle de formaParteCalculoLiquidacionTripulantes
   const handleToggleCalculoLiquidacion = () => {
     const valorActual = getValues("formaParteCalculoLiquidacionTripulantes");
     setValue("formaParteCalculoLiquidacionTripulantes", !valorActual);
@@ -306,7 +296,6 @@ const DetMovsEntregaRendirForm = ({
     });
   };
 
-  // Función para manejar el toggle de formaParteCalculoEntregaARendir
   const handleToggleCalculoEntrega = () => {
     const valorActual = getValues("formaParteCalculoEntregaARendir");
     setValue("formaParteCalculoEntregaARendir", !valorActual);
@@ -321,13 +310,11 @@ const DetMovsEntregaRendirForm = ({
     });
   };
 
-  // Función para manejar el envío del formulario
   const onSubmit = async (data, event) => {
     event?.preventDefault();
     event?.stopPropagation();
 
     try {
-      // Validaciones de negocio
       if (!data.monto || data.monto <= 0) {
         toast.current?.show({
           severity: "error",
@@ -338,7 +325,6 @@ const DetMovsEntregaRendirForm = ({
         return;
       }
 
-      // Normalizar datos aplicando regla Number() para IDs
       const datosNormalizados = {
         entregaARendirId: Number(data.entregaARendirId),
         responsableId: data.responsableId ? Number(data.responsableId) : null,
@@ -347,14 +333,15 @@ const DetMovsEntregaRendirForm = ({
           : null,
         centroCostoId: data.centroCostoId ? Number(data.centroCostoId) : null,
         monto: Number(data.monto),
-        monedaId: data.monedaId ? Number(data.monedaId) : null, // ← AGREGAR ESTA LÍNEA
+        monedaId: data.monedaId ? Number(data.monedaId) : null,
         fechaMovimiento: data.fechaMovimiento,
         descripcion: data.descripcion ? data.descripcion.toUpperCase() : null,
         entidadComercialId: data.entidadComercialId
           ? Number(data.entidadComercialId)
-          : null, // ← AGREGAR ESTA LÍNEA
+          : null,
         urlComprobanteMovimiento: data.urlComprobanteMovimiento?.trim() || null,
-        urlComprobanteOperacionMovCaja: data.urlComprobanteOperacionMovCaja?.trim() || null,
+        urlComprobanteOperacionMovCaja:
+          data.urlComprobanteOperacionMovCaja?.trim() || null,
         validadoTesoreria: data.validadoTesoreria,
         fechaValidacionTesoreria: data.fechaValidacionTesoreria,
         operacionSinFactura: data.operacionSinFactura,
@@ -365,11 +352,15 @@ const DetMovsEntregaRendirForm = ({
         moduloOrigenMovCajaId: data.moduloOrigenMovCajaId
           ? Number(data.moduloOrigenMovCajaId)
           : null,
-        tipoDocumentoId: data.tipoDocumentoId ? Number(data.tipoDocumentoId) : null,
+        tipoDocumentoId: data.tipoDocumentoId
+          ? Number(data.tipoDocumentoId)
+          : null,
         numeroSerieComprobante: data.numeroSerieComprobante?.trim() || null,
-        numeroCorrelativoComprobante: data.numeroCorrelativoComprobante?.trim() || null,
+        numeroCorrelativoComprobante:
+          data.numeroCorrelativoComprobante?.trim() || null,
         productoId: data.productoId ? Number(data.productoId) : null,
-        formaParteCalculoLiquidacionTripulantes: data.formaParteCalculoLiquidacionTripulantes,
+        formaParteCalculoLiquidacionTripulantes:
+          data.formaParteCalculoLiquidacionTripulantes,
         formaParteCalculoEntregaARendir: data.formaParteCalculoEntregaARendir,
         actualizadoEn: new Date(),
       };
@@ -378,7 +369,6 @@ const DetMovsEntregaRendirForm = ({
         datosNormalizados.creadoEn = new Date();
       }
 
-      // Pasar los datos al componente padre para que maneje la operación
       onGuardadoExitoso?.(datosNormalizados);
     } catch (error) {
       console.error("Error al procesar datos:", error);
@@ -391,13 +381,11 @@ const DetMovsEntregaRendirForm = ({
     }
   };
 
-  // Verificar si el formulario debe estar deshabilitado
   const formularioDeshabilitado = getValues("validadoTesoreria");
 
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
-      {/* Card de Datos Generales */}
       {cardActiva === "datos" && (
         <Card
           title="Datos Generales del Movimiento"
@@ -431,7 +419,6 @@ const DetMovsEntregaRendirForm = ({
                 />
               </div>
               <div style={{ flex: 1 }}>
-                {/* Fecha del Movimiento */}
                 <label
                   htmlFor="fechaMovimiento"
                   className="block text-900 font-medium mb-2"
@@ -470,7 +457,6 @@ const DetMovsEntregaRendirForm = ({
               </div>
 
               <div style={{ flex: 2 }}>
-                {/* Responsable */}
                 <label
                   htmlFor="responsableId"
                   className="block text-900 font-medium mb-2"
@@ -508,7 +494,6 @@ const DetMovsEntregaRendirForm = ({
                 )}
               </div>
               <div style={{ flex: 2 }}>
-                {/* Tipo de Movimiento */}
                 <label
                   htmlFor="tipoMovimientoId"
                   className="block text-900 font-medium mb-2"
@@ -547,7 +532,6 @@ const DetMovsEntregaRendirForm = ({
               </div>
             </div>
 
-            {/* Entidad Comercial y Producto (Gasto) */}
             <div
               style={{
                 display: "flex",
@@ -557,7 +541,6 @@ const DetMovsEntregaRendirForm = ({
               }}
             >
               <div style={{ flex: 2 }}>
-                {/* Entidad Comercial */}
                 <div className="p-field">
                   <label htmlFor="entidadComercialId">
                     Entidad Comercial <span className="text-red-500">*</span>
@@ -593,8 +576,10 @@ const DetMovsEntregaRendirForm = ({
                 </div>
               </div>
               <div style={{ flex: 1 }}>
-                {/* Filtro de Familia */}
-                <label htmlFor="familiaFiltro" className="block text-900 font-medium mb-2">
+                <label
+                  htmlFor="familiaFiltro"
+                  className="block text-900 font-medium mb-2"
+                >
                   Filtrar Gastos por Familia
                 </label>
                 <Dropdown
@@ -612,8 +597,10 @@ const DetMovsEntregaRendirForm = ({
                 />
               </div>
               <div style={{ flex: 2 }}>
-                {/* Producto (Gasto) */}
-                <label htmlFor="productoId" className="block text-900 font-medium mb-2">
+                <label
+                  htmlFor="productoId"
+                  className="block text-900 font-medium mb-2"
+                >
                   Gasto
                 </label>
                 <Controller
@@ -653,7 +640,6 @@ const DetMovsEntregaRendirForm = ({
               }}
             >
               <div style={{ flex: 2 }}>
-                {/* Centro de Costo */}
                 <label
                   htmlFor="centroCostoId"
                   className="block text-900 font-medium mb-2"
@@ -692,7 +678,6 @@ const DetMovsEntregaRendirForm = ({
               </div>
 
               <div style={{ flex: 3 }}>
-                {/* Descripción */}
                 <label
                   htmlFor="descripcion"
                   className="block text-900 font-medium mb-2"
@@ -727,7 +712,6 @@ const DetMovsEntregaRendirForm = ({
                 )}
               </div>
               <div style={{ flex: 1 }}>
-                {/* Moneda */}
                 <label
                   htmlFor="monedaId"
                   className="block text-900 font-medium mb-2"
@@ -762,7 +746,6 @@ const DetMovsEntregaRendirForm = ({
                 )}
               </div>
               <div style={{ flex: 1 }}>
-                {/* Monto */}
                 <label
                   htmlFor="monto"
                   className="block text-900 font-medium mb-2"
@@ -800,10 +783,8 @@ const DetMovsEntregaRendirForm = ({
                   <Message severity="error" text={errors.monto.message} />
                 )}
               </div>
-              
             </div>
 
-            {/* Sección de Comprobante PDF */}
             <div
               style={{
                 display: "flex",
@@ -884,13 +865,17 @@ const DetMovsEntregaRendirForm = ({
                   disabled={formularioDeshabilitado}
                 />
               </div>
-                            <div style={{ flex: 1 }}>
+              <div style={{ flex: 1 }}>
                 <label className="block text-900 font-medium mb-2">
                   Liquidación Tripulantes
                 </label>
                 <Button
                   type="button"
-                  label={formaParteCalculoLiquidacionTripulantes ? "INCLUIDO" : "EXCLUIDO"}
+                  label={
+                    formaParteCalculoLiquidacionTripulantes
+                      ? "INCLUIDO"
+                      : "EXCLUIDO"
+                  }
                   icon={
                     formaParteCalculoLiquidacionTripulantes
                       ? "pi pi-check-circle"
@@ -913,7 +898,9 @@ const DetMovsEntregaRendirForm = ({
                 </label>
                 <Button
                   type="button"
-                  label={formaParteCalculoEntregaARendir ? "INCLUIDO" : "EXCLUIDO"}
+                  label={
+                    formaParteCalculoEntregaARendir ? "INCLUIDO" : "EXCLUIDO"
+                  }
                   icon={
                     formaParteCalculoEntregaARendir
                       ? "pi pi-check-circle"
@@ -932,7 +919,6 @@ const DetMovsEntregaRendirForm = ({
               </div>
             </div>
 
-            {/* Tipo y Número de Documento (solo si NO es sin factura) */}
             {!operacionSinFactura && (
               <div
                 style={{
@@ -1020,9 +1006,6 @@ const DetMovsEntregaRendirForm = ({
               </div>
             )}
 
-            {/* Sección de Validación de Tesorería */}
-
-            {/* Sección Movimiento de Caja */}
             <div
               style={{
                 display: "flex",
@@ -1096,7 +1079,7 @@ const DetMovsEntregaRendirForm = ({
                   value={
                     movimiento?.actualizadoEn
                       ? new Date(movimiento.actualizadoEn).toLocaleString(
-                          "es-PE"
+                          "es-PE",
                         )
                       : ""
                   }
@@ -1109,31 +1092,31 @@ const DetMovsEntregaRendirForm = ({
         </Card>
       )}
 
-      {/* Card de PDF */}
       {cardActiva === "pdf" && (
         <PdfDetMovEntregaRendirCard
           control={control}
           errors={errors}
-          urlComprobanteMovimiento={urlComprobanteMovimiento}
-          toast={toast}
           setValue={setValue}
-          movimiento={movimiento} // Agregar esta línea
+          watch={watch}
+          getValues={getValues}
+          defaultValues={getValues()}
+          detMovId={movimiento?.id}
+          readOnly={false}
         />
       )}
 
-      {/* Card de PDF Comprobante Operación MovCaja */}
       {cardActiva === "pdfOperacion" && (
         <PdfComprobanteOperacionDetMovCard
           control={control}
           errors={errors}
-          urlComprobanteOperacionMovCaja={urlComprobanteOperacionMovCaja}
-          toast={toast}
           setValue={setValue}
-          movimiento={movimiento}
+          watch={watch}
+          getValues={getValues}
+          defaultValues={getValues()}
+          detMovId={movimiento?.id}
+          readOnly={false}
         />
       )}
-      {/* Botones de Cards */}
-
       <div
         style={{
           display: "flex",
@@ -1141,11 +1124,10 @@ const DetMovsEntregaRendirForm = ({
           marginBottom: "0.5rem",
           alignItems: "center",
           marginTop: "0.5rem",
-          justifyContent: "space-between", // Agregar esta línea
+          justifyContent: "space-between",
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
-        {/* Grupo de botones de navegación - Izquierda */}
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <Button
             icon="pi pi-file-edit"
@@ -1170,7 +1152,9 @@ const DetMovsEntregaRendirForm = ({
           <Button
             icon="pi pi-receipt"
             className={
-              cardActiva === "pdfOperacion" ? "p-button-primary" : "p-button-outlined"
+              cardActiva === "pdfOperacion"
+                ? "p-button-primary"
+                : "p-button-outlined"
             }
             onClick={() => setCardActiva("pdfOperacion")}
             size="small"
@@ -1179,7 +1163,6 @@ const DetMovsEntregaRendirForm = ({
           />
         </div>
 
-        {/* Grupo de botones de acción - Derecha */}
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <Button
             type="button"

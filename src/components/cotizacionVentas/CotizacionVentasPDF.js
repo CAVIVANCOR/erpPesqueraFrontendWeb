@@ -20,7 +20,7 @@ export async function generarYSubirPDFCotizacionVentas(
   cotizacion,
   detalles,
   empresa,
-  idioma = "en"
+  idioma = "en",
 ) {
   try {
     // 1. Generar el PDF
@@ -28,30 +28,30 @@ export async function generarYSubirPDFCotizacionVentas(
       cotizacion,
       detalles,
       empresa,
-      idioma
+      idioma,
     );
 
     // 2. Crear un blob del PDF
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
 
-    // 3. Crear FormData para subir
+    // 3. Crear FormData - El backend generará el nombre automáticamente
+    const timestamp = Date.now();
     const formData = new FormData();
-    const nombreArchivo = `cotizacion-${cotizacion.id}.pdf`;
-    formData.append("pdf", blob, nombreArchivo);
-    formData.append("cotizacionId", cotizacion.id);
+    formData.append("files", blob, `cotizacion-${cotizacion.id}-${timestamp}.pdf`);
 
-    // 4. Subir al servidor
+    // 4. Crear FormData (igual que Caso 1)
+    formData.append("moduleName", "cotizacion-ventas");
+    formData.append("entityId", cotizacion.id);
+
+    // 5. Subir al servidor usando endpoint estandarizado
     const token = useAuthStore.getState().token;
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/cotizacion-ventas/upload-pdf`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      }
-    );
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/merge`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -60,9 +60,12 @@ export async function generarYSubirPDFCotizacionVentas(
 
     const resultado = await response.json();
 
+    console.log("🔍 [CotizacionVentasPDF] Respuesta del backend:", resultado);
+    console.log("🔍 [CotizacionVentasPDF] URL retornada:", resultado.url);
+
     return {
       success: true,
-      urlPdf: resultado.urlCotizacionVentaPdf || resultado.urlPdf,
+      urlPdf: resultado.url,
     };
   } catch (error) {
     console.error("Error al generar y subir PDF:", error);
@@ -77,7 +80,12 @@ export async function generarYSubirPDFCotizacionVentas(
  * @param {Object} empresa - Datos de la empresa
  * @returns {Promise<Uint8Array>} - Bytes del PDF generado
  */
-async function generarPDFCotizacionVentas(cotizacion, detalles, empresa, idioma = "en") {
+async function generarPDFCotizacionVentas(
+  cotizacion,
+  detalles,
+  empresa,
+  idioma = "en",
+) {
   // Función helper para obtener traducciones
   const t = (key) => getTranslation(idioma, key);
   // Funciones de formateo
@@ -114,12 +122,25 @@ async function generarPDFCotizacionVentas(cotizacion, detalles, empresa, idioma 
     [t("productState"), cotizacion.tipoEstadoProducto?.nombre || "-"],
     [t("productDestination"), cotizacion.destinoProducto?.nombre || "-"],
     [t("paymentMethod"), cotizacion.formaPago?.nombre || "-"],
-    [t("incoterm"), cotizacion.incoterms ? `${cotizacion.incoterms.codigo} - ${cotizacion.incoterms.nombre}` : "-"],
+    [
+      t("incoterm"),
+      cotizacion.incoterms
+        ? `${cotizacion.incoterms.codigo} - ${cotizacion.incoterms.nombre}`
+        : "-",
+    ],
   ];
 
   const datosDerecha = [
-    [t("currency"), cotizacion.moneda?.descripcion || cotizacion.moneda?.nombre || "USD"],
-    [t("exchangeRate"), cotizacion.tipoCambio ? `S/ ${Number(cotizacion.tipoCambio).toFixed(2)}` : "-"],
+    [
+      t("currency"),
+      cotizacion.moneda?.descripcion || cotizacion.moneda?.nombre || "USD",
+    ],
+    [
+      t("exchangeRate"),
+      cotizacion.tipoCambio
+        ? `S/ ${Number(cotizacion.tipoCambio).toFixed(2)}`
+        : "-",
+    ],
     [t("departureDate"), formatearFecha(cotizacion.fechaZarpeEstimada)],
     [t("loadingPort"), cotizacion.puertoCarga?.nombre || "-"],
     [t("arrivalDate"), formatearFecha(cotizacion.fechaArriboEstimada)],
@@ -167,7 +188,11 @@ async function generarPDFCotizacionVentas(cotizacion, detalles, empresa, idioma 
   const tableStartX = margin;
 
   // Función para dibujar encabezado de tabla (reutilizable en nuevas páginas)
-  const dibujarEncabezadoTabla = async (pag, yPos, incluirEncabezadoCompleto = false) => {
+  const dibujarEncabezadoTabla = async (
+    pag,
+    yPos,
+    incluirEncabezadoCompleto = false,
+  ) => {
     // Si es una página nueva (no la primera), dibujar encabezado completo del documento
     if (incluirEncabezadoCompleto) {
       yPos = await dibujaEncabezadoPDFCV({
@@ -262,7 +287,7 @@ async function generarPDFCotizacionVentas(cotizacion, detalles, empresa, idioma 
   let xPos;
   for (let index = 0; index < detalles.length; index++) {
     const detalle = detalles[index];
-    
+
     // Verificar si hay espacio para la fila (umbral de 120px para dejar espacio a totales)
     if (yPosition < 120) {
       // Nueva página si no hay espacio
@@ -294,7 +319,9 @@ async function generarPDFCotizacionVentas(cotizacion, detalles, empresa, idioma 
 
     const rowData = [
       String(detalle.item || index + 1),
-      nombreProducto.length > 50 ? nombreProducto.substring(0, 47) + "..." : nombreProducto,
+      nombreProducto.length > 50
+        ? nombreProducto.substring(0, 47) + "..."
+        : nombreProducto,
       String(Math.round(cantidad)),
       detalle.producto?.unidadMedida?.nombre || "-",
       String(pesoNeto.toFixed(2)),
@@ -314,10 +341,18 @@ async function generarPDFCotizacionVentas(cotizacion, detalles, empresa, idioma 
       // Alinear números a la derecha, texto a la izquierda
       let textX = colX + 3;
       let textY = yPosition;
-      
+
       // Columnas numéricas y fechas: alinear a la derecha
       // i=0: #, i=2: Cant., i=4: Peso Neto, i=6: F.Prod., i=7: F.Venc., i=9: V.V.Unit., i=10: V.V.Total
-      if (i === 0 || i === 2 || i === 4 || i === 6 || i === 7 || i === 9 || i === 10) {
+      if (
+        i === 0 ||
+        i === 2 ||
+        i === 4 ||
+        i === 6 ||
+        i === 7 ||
+        i === 9 ||
+        i === 10
+      ) {
         const textWidth = fontNormal.widthOfTextAtSize(data, 7);
         textX = colX + colWidth - textWidth - 3;
       }
@@ -338,7 +373,7 @@ async function generarPDFCotizacionVentas(cotizacion, detalles, empresa, idioma 
     let lineX = tableStartX;
     const lineStartY = rowY + 13;
     const lineEndY = rowY - rowHeight + 15;
-    
+
     for (let i = 0; i <= colWidths.length; i++) {
       page.drawLine({
         start: { x: lineX, y: lineStartY },
@@ -408,7 +443,7 @@ async function generarPDFCotizacionVentas(cotizacion, detalles, empresa, idioma 
         size: 6,
         font: fontNormal,
         color: rgb(0.5, 0.5, 0.5),
-      }
+      },
     );
   });
 

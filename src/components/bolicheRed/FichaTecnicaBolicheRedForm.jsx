@@ -1,25 +1,15 @@
 /**
- * FichaTecnicaBolicheRedForm.jsx
+ * FichaTecnicaBolicheRedForm.jsx - MIGRADO A PDF V2
  *
  * Componente Card para gestionar la ficha técnica de un boliche red.
- * Permite cargar, visualizar, descargar y abrir PDFs de boliche red.
- * Sigue el patrón profesional ERP Megui con React Hook Form.
+ * Usa el sistema PDF V2 con PDFDocumentManager.
  *
  * @author ERP Megui
- * @version 2.0.0
+ * @version 2.0.0 - Sistema PDF V2
  */
 
-import React, { useState, useRef } from "react";
-import { Card } from "primereact/card";
-import { InputText } from "primereact/inputtext";
-import { Button } from "primereact/button";
-import { FileUpload } from "primereact/fileupload";
-import { Toast } from "primereact/toast";
-import { classNames } from "primereact/utils";
-import { Controller } from "react-hook-form";
-import PDFViewer from "./PDFViewer";
-import { useAuthStore } from "../../shared/stores/useAuthStore";
-import { abrirPdfEnNuevaPestana, descargarPdf } from "../../utils/pdfUtils";
+import React from "react";
+import BolicheRedPDFCard from "./BolicheRedPDFCard";
 
 /**
  * Componente FichaTecnicaBolicheRedForm
@@ -30,6 +20,7 @@ import { abrirPdfEnNuevaPestana, descargarPdf } from "../../utils/pdfUtils";
  * @param {Function} props.watch - Función para observar cambios
  * @param {Function} props.getValues - Función para obtener valores
  * @param {Object} props.defaultValues - Valores por defecto (incluye id del boliche red)
+ * @param {boolean} props.readOnly - Si el formulario es de solo lectura
  */
 export default function FichaTecnicaBolicheRedForm({
   control,
@@ -38,232 +29,17 @@ export default function FichaTecnicaBolicheRedForm({
   watch,
   getValues,
   defaultValues = {},
+  readOnly = false,
 }) {
-  const [subiendoPDF, setSubiendoPDF] = useState(false);
-  const [pdfRefreshKey, setPdfRefreshKey] = useState(0);
-  const toastPDF = useRef(null);
-  const urlBolicheRedPdf = watch("urlBolicheRedPdf");
-  /**
-   * Maneja la subida de archivo PDF de boliche red
-   * Sigue el patrón de FichaTecnicaProductoForm.jsx para upload directo
-   */
-  const handlePDFUpload = async ({ files }) => {
-    const file = files[0];
-    if (!file) return;
-
-    // Validación: solo PDFs
-    if (file.type !== "application/pdf") {
-      toastPDF.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Solo se permiten archivos PDF",
-        life: 4000,
-      });
-      return;
-    }
-
-    // Validación: máximo 10MB
-    if (file.size > 10 * 1024 * 1024) {
-      toastPDF.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "El archivo supera el tamaño máximo de 10MB",
-        life: 4000,
-      });
-      return;
-    }
-
-    // Validación: debe existir ID del boliche red
-    if (!defaultValues.id) {
-      toastPDF.current?.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "Guarda primero el boliche red para poder subir la ficha técnica",
-        life: 4000,
-      });
-      return;
-    }
-
-    setSubiendoPDF(true);
-
-    try {
-      const formData = new FormData();
-      formData.append("fichaTecnica", file);
-      formData.append("bolicheRedId", defaultValues.id);
-
-      // Obtener token JWT desde Zustand siguiendo patrón ERP Megui
-      const token = useAuthStore.getState().token;
-
-      const response = await fetch("/api/ficha-tecnica-boliches/upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("Error al subir la ficha técnica");
-      }
-
-      const resultado = await response.json();
-
-      // Actualizar campo urlBolicheRedPdf
-      setValue("urlBolicheRedPdf", resultado.urlBolicheRedPdf, {
-        shouldValidate: true,
-      });
-
-      // Forzar refresco del PDFViewer
-      setPdfRefreshKey((prevKey) => prevKey + 1);
-
-      toastPDF.current?.show({
-        severity: "success",
-        summary: "Ficha Técnica Subida",
-        detail: "La ficha técnica se subió correctamente",
-        life: 3000,
-      });
-    } catch (error) {
-      toastPDF.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "No se pudo subir la ficha técnica",
-        life: 4000,
-      });
-    } finally {
-      setSubiendoPDF(false);
-    }
-  };
-
   return (
-    <>
-      <Toast ref={toastPDF} />
-      <Card title="Ficha Técnica">
-        <div className="p-fluid formgrid grid">
-          {/* Botón para subir PDF */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 2 }}>
-              <label htmlFor="fichaTecnica" className="font-bold">
-                Solo archivos PDF. Máximo 10MB.
-              </label>
-              <FileUpload
-                name="fichaTecnica"
-                accept="application/pdf"
-                maxFileSize={10 * 1024 * 1024}
-                chooseLabel="Subir Ficha Técnica PDF"
-                uploadLabel="Subir"
-                cancelLabel="Cancelar"
-                customUpload
-                uploadHandler={handlePDFUpload}
-                disabled={!defaultValues.id || subiendoPDF}
-                auto
-                mode="basic"
-                className="p-button-outlined"
-              />
-              {!defaultValues.id && (
-                <small className="p-error p-d-block">
-                  Guarda primero el boliche red para habilitar la subida de ficha
-                  técnica.
-                </small>
-              )}
-            </div>
-            {/* Campo URL Ficha Técnica */}
-            <div style={{ flex: 3 }}>
-              <label htmlFor="urlBolicheRedPdf" className="font-bold">
-                URL Ficha Técnica
-              </label>
-              <Controller
-                name="urlBolicheRedPdf"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <InputText
-                    id="urlBolicheRedPdf"
-                    {...field}
-                    className={classNames({
-                      "p-invalid": fieldState.error,
-                    })}
-                    style={{ fontWeight: "bold", marginBottom: "1rem" }}
-                    placeholder="URL de la ficha técnica (se genera automáticamente al subir PDF)"
-                    readOnly
-                  />
-                )}
-              />
-              {errors.urlBolicheRedPdf && (
-                <small className="p-error">
-                  {errors.urlBolicheRedPdf.message}
-                </small>
-              )}
-            </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                type="button"
-                label="Abrir"
-                icon="pi pi-external-link"
-                className="p-button-outlined p-button-sm"
-                style={{ minWidth: "80px" }}
-                onClick={() => abrirPdfEnNuevaPestana(urlBolicheRedPdf)}
-                tooltip="Abrir ficha técnica en nueva pestaña"
-                tooltipOptions={{ position: "top" }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                type="button"
-                label="Descargar"
-                icon="pi pi-download"
-                className="p-button-outlined p-button-sm"
-                style={{ minWidth: "80px" }}
-                onClick={() => descargarPdf(urlBolicheRedPdf, defaultValues.id)}
-                tooltip="Descargar ficha técnica PDF"
-                tooltipOptions={{ position: "top" }}
-              />
-            </div>
-          </div>
-          {/* Visor de PDF - Siguiendo patrón de DocumentosAdjuntosCard.jsx */}
-          {urlBolicheRedPdf && (
-            <div className="field col-12">
-              <PDFViewer urlDocumento={urlBolicheRedPdf} key={pdfRefreshKey} />
-
-              {/* Botones de acción para el PDF - Copiados de DocumentosAdjuntosCard.jsx */}
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              ></div>
-            </div>
-          )}
-
-          {/* Mensaje cuando no hay ficha técnica */}
-          {!urlBolicheRedPdf && (
-            <div className="field col-12">
-              <div
-                className="text-center p-4"
-                style={{ backgroundColor: "#f8f9fa", borderRadius: "6px" }}
-              >
-                <i
-                  className="pi pi-file-pdf text-gray-400"
-                  style={{ fontSize: "3rem" }}
-                ></i>
-                <p className="text-600 mt-3 mb-2">
-                  No hay ficha técnica cargada
-                </p>
-                <small className="text-500">
-                  Use el botón "Subir Ficha Técnica PDF" para agregar el
-                  documento
-                </small>
-              </div>
-            </div>
-          )}
-        </div>
-      </Card>
-    </>
+    <BolicheRedPDFCard
+      control={control}
+      errors={errors}
+      setValue={setValue}
+      watch={watch}
+      getValues={getValues}
+      defaultValues={defaultValues}
+      readOnly={readOnly}
+    />
   );
 }

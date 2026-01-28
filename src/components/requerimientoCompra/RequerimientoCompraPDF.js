@@ -18,7 +18,7 @@ export async function generarYSubirPDFRequerimientoCompra(
   requerimiento,
   detalles,
   empresa,
-  mostrarProveedor = false
+  mostrarProveedor = false,
 ) {
   try {
     // 1. Generar el PDF
@@ -26,30 +26,26 @@ export async function generarYSubirPDFRequerimientoCompra(
       requerimiento,
       detalles,
       empresa,
-      mostrarProveedor
+      mostrarProveedor,
     );
 
     // 2. Crear un blob del PDF
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
 
-    // 3. Crear FormData para subir
+    // 3. Crear FormData - El backend generará el nombre automáticamente
     const formData = new FormData();
-    const nombreArchivo = `requerimiento-${requerimiento.id}.pdf`;
-    formData.append("pdf", blob, nombreArchivo);
-    formData.append("requerimientoId", requerimiento.id);
-
-    // 4. Subir al servidor
+    formData.append("files", blob, "temp.pdf"); // Nombre temporal, el backend lo reemplazará
+    formData.append("moduleName", "requerimiento-compra");
+    formData.append("entityId", requerimiento.id);
+    // 4. Subir al servidor usando endpoint estandarizado
     const token = useAuthStore.getState().token;
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/requerimiento-compra/upload-pdf`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      }
-    );
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/merge`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -58,9 +54,15 @@ export async function generarYSubirPDFRequerimientoCompra(
 
     const resultado = await response.json();
 
+    console.log(
+      "🔍 [RequerimientoCompraPDF] Respuesta del backend:",
+      resultado,
+    );
+    console.log("🔍 [RequerimientoCompraPDF] URL retornada:", resultado.url);
+
     return {
       success: true,
-      urlPdf: resultado.urlReqCompraPdf || resultado.urlPdf,
+      urlPdf: resultado.url,
     };
   } catch (error) {
     console.error("Error al generar y subir PDF:", error);
@@ -80,7 +82,7 @@ async function generarPDFRequerimientoCompra(
   requerimiento,
   detalles,
   empresa,
-  mostrarProveedor = false
+  mostrarProveedor = false,
 ) {
   // Funciones de formateo
   const formatearFecha = (fecha) => {
@@ -111,14 +113,8 @@ async function generarPDFRequerimientoCompra(
   const datosIzquierda = [
     ["Fecha Documento:", formatearFecha(requerimiento.fechaDocumento)],
     ["Tipo Producto:", requerimiento.tipoProducto?.nombre || "-"],
-    [
-      "Estado Producto:",
-      requerimiento.tipoEstadoProducto?.descripcion || "-",
-    ],
-    [
-      "Destino Producto:",
-      requerimiento.destinoProducto?.descripcion || "-",
-    ],
+    ["Estado Producto:", requerimiento.tipoEstadoProducto?.descripcion || "-"],
+    ["Destino Producto:", requerimiento.destinoProducto?.descripcion || "-"],
   ];
 
   const datosDerecha = [
@@ -172,7 +168,11 @@ async function generarPDFRequerimientoCompra(
   const tableStartX = margin;
 
   // Función para dibujar encabezado de tabla (reutilizable en nuevas páginas)
-  const dibujarEncabezadoTabla = async (pag, yPos, incluirEncabezadoCompleto = false) => {
+  const dibujarEncabezadoTabla = async (
+    pag,
+    yPos,
+    incluirEncabezadoCompleto = false,
+  ) => {
     // Si es una página nueva (no la primera), dibujar encabezado completo del documento
     if (incluirEncabezadoCompleto) {
       yPos = await dibujaEncabezadoPDFRC({
@@ -267,7 +267,7 @@ async function generarPDFRequerimientoCompra(
   let xPos;
   for (let index = 0; index < detalles.length; index++) {
     const detalle = detalles[index];
-    
+
     // Verificar si hay espacio para la fila (umbral de 180px)
     if (yPosition < 180) {
       // Nueva página si no hay espacio
@@ -291,8 +291,10 @@ async function generarPDFRequerimientoCompra(
     // Calcular altura necesaria para la fila (producto + observaciones)
     const observaciones = detalle.observaciones || "";
     const maxCharsPerLine = 60; // Caracteres máximos por línea en la columna de producto
-    const observacionesLines = observaciones ? Math.ceil(observaciones.length / maxCharsPerLine) : 0;
-    const rowHeight = 18 + (observacionesLines * 10); // Altura base + líneas de observaciones + padding
+    const observacionesLines = observaciones
+      ? Math.ceil(observaciones.length / maxCharsPerLine)
+      : 0;
+    const rowHeight = 18 + observacionesLines * 10; // Altura base + líneas de observaciones + padding
 
     const rowData = [
       String(index + 1),
@@ -311,7 +313,7 @@ async function generarPDFRequerimientoCompra(
       // Alinear números a la derecha, texto a la izquierda
       let textX = colX + 3;
       let textY = yPosition;
-      
+
       if (i === 0 || i === 2 || i === 4 || i === 5) {
         // Columnas numéricas: alinear a la derecha
         const textWidth = fontNormal.widthOfTextAtSize(data, 8);
@@ -332,15 +334,15 @@ async function generarPDFRequerimientoCompra(
       let yObs = yPosition - 10;
       const obsX = tableStartX + colWidths[0] + 3; // Posición X de la columna Producto
       const obsMaxWidth = colWidths[1] - 6; // Ancho máximo para observaciones
-      
+
       // Dividir observaciones en líneas
-      const words = observaciones.split(' ');
-      let currentLine = '';
-      
+      const words = observaciones.split(" ");
+      let currentLine = "";
+
       words.forEach((word, idx) => {
         const testLine = currentLine ? `${currentLine} ${word}` : word;
         const testWidth = fontNormal.widthOfTextAtSize(testLine, 7);
-        
+
         if (testWidth > obsMaxWidth && currentLine) {
           // Dibujar línea actual
           page.drawText(currentLine, {
@@ -355,7 +357,7 @@ async function generarPDFRequerimientoCompra(
         } else {
           currentLine = testLine;
         }
-        
+
         // Última palabra
         if (idx === words.length - 1 && currentLine) {
           page.drawText(currentLine, {
@@ -376,7 +378,7 @@ async function generarPDFRequerimientoCompra(
     let lineX = tableStartX;
     const lineStartY = rowY + 13;
     const lineEndY = rowY - rowHeight + 15;
-    
+
     for (let i = 0; i <= colWidths.length; i++) {
       page.drawLine({
         start: { x: lineX, y: lineStartY },
@@ -449,7 +451,7 @@ async function generarPDFRequerimientoCompra(
         size: 6,
         font: fontNormal,
         color: rgb(0.5, 0.5, 0.5),
-      }
+      },
     );
   });
 

@@ -77,7 +77,7 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
   const validadoTesoreria = watch("validadoTesoreria");
   const urlComprobanteMovimiento = watch("urlComprobanteMovimiento");
   const urlComprobanteOperacionMovCaja = watch(
-    "urlComprobanteOperacionMovCaja"
+    "urlComprobanteOperacionMovCaja",
   );
 
   useEffect(() => {
@@ -85,7 +85,7 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
       try {
         const modulos = await getModulos();
         const moduloOT = modulos.find(
-          (m) => m.nombre === "ORDENES DE TRABAJO MANTENIMIENTO"
+          (m) => m.nombre === "ORDENES DE TRABAJO MANTENIMIENTO",
         );
         if (moduloOT) {
           setModulosOTMantenimiento(moduloOT);
@@ -104,7 +104,7 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
     if (isEditing && movimiento) {
       reset({
         entregaARendirOTMantenimientoId: Number(
-          movimiento.entregaARendirOTMantenimientoId
+          movimiento.entregaARendirOTMantenimientoId,
         ),
         responsableId: movimiento.responsableId
           ? Number(movimiento.responsableId)
@@ -154,7 +154,7 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
     } else {
       setValue(
         "entregaARendirOTMantenimientoId",
-        Number(entregaARendirOTMantenimientoId)
+        Number(entregaARendirOTMantenimientoId),
       );
       setValue("fechaMovimiento", new Date());
       if (usuario?.personalId) {
@@ -209,7 +209,7 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
 
   const familiasGastosIds = [2, 3, 4, 6, 7];
   const productosGastos = (productos || []).filter((p) =>
-    familiasGastosIds.includes(Number(p.familiaId))
+    familiasGastosIds.includes(Number(p.familiaId)),
   );
   const familiasMap = new Map();
   productosGastos.forEach((p) => {
@@ -227,11 +227,11 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
     }
   });
   const familiasUnicas = Array.from(familiasMap.values()).sort((a, b) =>
-    a.label.localeCompare(b.label)
+    a.label.localeCompare(b.label),
   );
   const productosFiltrados = familiaFiltroId
     ? productosGastos.filter(
-        (p) => Number(p.familiaId) === Number(familiaFiltroId)
+        (p) => Number(p.familiaId) === Number(familiaFiltroId),
       )
     : productosGastos;
   const productoOptions = productosFiltrados.map((p) => ({
@@ -267,7 +267,7 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
       }
       const datosNormalizados = {
         entregaARendirOTMantenimientoId: Number(
-          data.entregaARendirOTMantenimientoId
+          data.entregaARendirOTMantenimientoId,
         ),
         responsableId: data.responsableId ? Number(data.responsableId) : null,
         tipoMovimientoId: data.tipoMovimientoId
@@ -345,7 +345,7 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
                   value={
                     movimiento?.fechaCreacion
                       ? new Date(movimiento.fechaCreacion).toLocaleString(
-                          "es-PE"
+                          "es-PE",
                         )
                       : new Date().toLocaleString("es-PE")
                   }
@@ -949,7 +949,7 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
                   value={
                     movimiento?.fechaActualizacion
                       ? new Date(movimiento.fechaActualizacion).toLocaleString(
-                          "es-PE"
+                          "es-PE",
                         )
                       : ""
                   }
@@ -965,20 +965,26 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
         <PdfDetMovEntregaRendirOTMantenimientoCard
           control={control}
           errors={errors}
+          setValue={setValue}
+          watch={watch}
+          getValues={getValues}
           urlComprobanteMovimiento={urlComprobanteMovimiento}
           toast={toast}
-          setValue={setValue}
           movimiento={movimiento}
+          detMovimientoId={movimiento?.id}
         />
       )}
       {cardActiva === "pdfOperacion" && (
         <PdfComprobanteOperacionDetMovOTMantenimientoCard
           control={control}
           errors={errors}
+          setValue={setValue}
+          watch={watch}
+          getValues={getValues}
           urlComprobanteOperacionMovCaja={urlComprobanteOperacionMovCaja}
           toast={toast}
-          setValue={setValue}
           movimiento={movimiento}
+          detMovimientoId={movimiento?.id}
         />
       )}
       <div

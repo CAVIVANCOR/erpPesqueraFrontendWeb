@@ -73,7 +73,14 @@ async function generarPDFPreFactura(datosPreFactura, detalles, empresa) {
 
   // 3. Tabla de detalles
   const colWidths = [30, 70, 220, 50, 70, 90];
-  const headers = ["#", "Código", "Descripción", "Cant.", "P. Unit.", "Subtotal"];
+  const headers = [
+    "#",
+    "Código",
+    "Descripción",
+    "Cant.",
+    "P. Unit.",
+    "Subtotal",
+  ];
   const tableWidth = colWidths.reduce((sum, w) => sum + w, 0);
 
   // Encabezado de tabla
@@ -85,7 +92,6 @@ async function generarPDFPreFactura(datosPreFactura, detalles, empresa) {
     color: rgb(0.85, 0.85, 0.85),
   });
 
-  // Línea superior
   page.drawLine({
     start: { x: margin, y: yPosition + 16 },
     end: { x: margin + tableWidth, y: yPosition + 16 },
@@ -97,9 +103,8 @@ async function generarPDFPreFactura(datosPreFactura, detalles, empresa) {
   headers.forEach((header, i) => {
     const colX = xPos;
     const colWidth = colWidths[i];
-    
-    // Alinear números a la derecha
     let textX = colX + 3;
+
     if (i === 0 || i === 3 || i === 4 || i === 5) {
       const textWidth = fontBold.widthOfTextAtSize(header, 9);
       textX = colX + colWidth - textWidth - 3;
@@ -114,7 +119,6 @@ async function generarPDFPreFactura(datosPreFactura, detalles, empresa) {
     xPos += colWidth;
   });
 
-  // Líneas verticales de encabezado
   let lineX = margin;
   for (let i = 0; i <= colWidths.length; i++) {
     page.drawLine({
@@ -128,32 +132,26 @@ async function generarPDFPreFactura(datosPreFactura, detalles, empresa) {
 
   yPosition -= 18;
 
-  // Filas de detalles
+  // Dibujar filas de detalles
   let subtotalTotal = 0;
   detalles.forEach((detalle, index) => {
-    const cantidad = Number(detalle.cantidad) || 0;
-    const precioUnitario = Number(detalle.precioUnitario) || 0;
-    const subtotal = cantidad * precioUnitario;
-    subtotalTotal += subtotal;
+    const rowY = yPosition;
+    xPos = margin;
 
     const rowData = [
       String(index + 1),
-      detalle.producto?.codigo || detalle.producto?.codigoInterno || "",
-      detalle.producto?.nombre || detalle.producto?.descripcion || "",
-      cantidad.toFixed(2),
-      formatearNumero(precioUnitario),
-      formatearNumero(subtotal),
+      detalle.producto?.codigo || "-",
+      detalle.producto?.descripcion || detalle.producto?.nombre || "PRODUCTO",
+      String(detalle.cantidad || 0),
+      `S/ ${formatearNumero(Number(detalle.precioUnitario || 0))}`,
+      `S/ ${formatearNumero(Number(detalle.subtotal || 0))}`,
     ];
-
-    const rowY = yPosition;
-    xPos = margin;
 
     rowData.forEach((data, i) => {
       const colX = xPos;
       const colWidth = colWidths[i];
-
-      // Alinear números a la derecha
       let textX = colX + 3;
+
       if (i === 0 || i === 3 || i === 4 || i === 5) {
         const textWidth = fontNormal.widthOfTextAtSize(data, 8);
         textX = colX + colWidth - textWidth - 3;
@@ -168,7 +166,8 @@ async function generarPDFPreFactura(datosPreFactura, detalles, empresa) {
       xPos += colWidth;
     });
 
-    // Líneas verticales de la fila
+    subtotalTotal += Number(detalle.subtotal) || 0;
+
     lineX = margin;
     const lineStartY = rowY + 13;
     const lineEndY = rowY - 5;
@@ -183,7 +182,6 @@ async function generarPDFPreFactura(datosPreFactura, detalles, empresa) {
       if (i < colWidths.length) lineX += colWidths[i];
     }
 
-    // Línea horizontal inferior de la fila
     page.drawLine({
       start: { x: margin, y: lineEndY },
       end: { x: margin + tableWidth, y: lineEndY },
@@ -196,7 +194,9 @@ async function generarPDFPreFactura(datosPreFactura, detalles, empresa) {
 
   // 4. Calcular totales
   const porcentajeIGV = Number(datosPreFactura.porcentajeIgv) || 0;
-  const igv = datosPreFactura.exoneradoIgv ? 0 : subtotalTotal * (porcentajeIGV / 100);
+  const igv = datosPreFactura.exoneradoIgv
+    ? 0
+    : subtotalTotal * (porcentajeIGV / 100);
   const total = subtotalTotal + igv;
 
   const totales = {
@@ -239,37 +239,33 @@ export async function generarYSubirPDFPreFactura(
   preFacturaId,
   datosPreFactura,
   detalles,
-  usuario
+  usuario,
 ) {
   try {
     // 1. Generar el PDF
     const pdfBytes = await generarPDFPreFactura(
       datosPreFactura,
       detalles,
-      datosPreFactura.empresa
+      datosPreFactura.empresa,
     );
 
     // 2. Crear un blob del PDF
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
 
-    // 3. Crear FormData para subir
+    // 3. Crear FormData - El backend generará el nombre automáticamente
     const formData = new FormData();
-    const nombreArchivo = `prefactura-${preFacturaId}.pdf`;
-    formData.append("pdf", blob, nombreArchivo);
-    formData.append("preFacturaId", preFacturaId);
-
-    // 4. Subir al servidor
+    formData.append("files", blob, "temp.pdf"); // Nombre temporal, el backend lo reemplazará
+    formData.append("moduleName", "pre-factura");
+    formData.append("entityId", preFacturaId);
+    // 4. Subir al servidor usando endpoint estandarizado
     const token = useAuthStore.getState().token;
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/pre-facturas/upload-pdf`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      }
-    );
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/merge`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -278,9 +274,12 @@ export async function generarYSubirPDFPreFactura(
 
     const resultado = await response.json();
 
+    console.log("🔍 [PreFacturaPDF] Respuesta del backend:", resultado);
+    console.log("🔍 [PreFacturaPDF] URL retornada:", resultado.url);
+
     return {
       success: true,
-      url: resultado.urlPreFacturaPdf || resultado.urlPdf,
+      url: resultado.url,
     };
   } catch (error) {
     console.error("Error al generar y subir PDF:", error);

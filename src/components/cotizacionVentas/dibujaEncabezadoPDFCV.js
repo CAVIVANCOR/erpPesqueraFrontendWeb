@@ -41,6 +41,21 @@ export async function dibujaEncabezadoPDFCV({
   const t = (key) => getTranslation(idioma, key);
   let yPos = height - 50;
 
+  // ========================================
+  // DISEÑO DE 2 COLUMNAS EN EL ENCABEZADO
+  // ========================================
+  
+  // COLUMNA 1 (IZQUIERDA): Logo + Datos de la Empresa
+  const columna1X = margin;
+  const columna1Width = (width - margin * 2) * 0.5; // 50% del ancho
+  
+  // COLUMNA 2 (DERECHA): Recuadro PRE-FACTURA
+  const columna2X = margin + columna1Width + 20;
+  const columna2Width = (width - margin * 2) * 0.5 - 20;
+
+  let yPosColumna1 = yPos;
+  let logoHeight = 0;
+
   // Cargar logo si existe
   if (empresa?.logo && empresa?.id) {
     try {
@@ -65,10 +80,11 @@ export async function dibujaEncabezadoPDFCV({
           const aspectRatio = logoDims.width / logoDims.height;
           const finalWidth = maxLogoWidth;
           const finalHeight = maxLogoWidth / aspectRatio;
+          logoHeight = finalHeight;
 
           pag.drawImage(logoImage, {
-            x: margin,
-            y: yPos - finalHeight,
+            x: columna1X,
+            y: yPosColumna1 - finalHeight,
             width: finalWidth,
             height: finalHeight,
           });
@@ -79,62 +95,146 @@ export async function dibujaEncabezadoPDFCV({
     }
   }
 
-  // ENCABEZADO - Datos de la empresa
+  // Ajustar posición DESPUÉS del logo (o desde el inicio si no hay logo)
+  yPosColumna1 -= (logoHeight > 0 ? logoHeight + 10 : 0);
+
+  // Datos de la empresa DEBAJO DEL LOGO
   pag.drawText(empresa?.razonSocial || "EMPRESA", {
-    x: margin + 110,
-    y: yPos,
-    size: 10,
+    x: columna1X,
+    y: yPosColumna1,
+    size: 7,
     font: fontBold,
     color: rgb(0, 0, 0),
   });
 
-  yPos -= lineHeight;
+  yPosColumna1 -= 10;
   pag.drawText(`RUC: ${empresa?.ruc || "-"}`, {
-    x: margin + 110,
-    y: yPos,
-    size: 10,
+    x: columna1X,
+    y: yPosColumna1,
+    size: 6,
     font: fontNormal,
   });
 
-  yPos -= lineHeight;
+  yPosColumna1 -= 10;
   if (empresa?.direccion) {
-    pag.drawText(`${t("address")} ${empresa.direccion}`, {
-      x: margin + 110,
-      y: yPos,
-      size: 8,
+    // Dividir dirección en múltiples líneas si es muy larga
+    const maxDirWidth = columna1Width - 10;
+    const words = empresa.direccion.split(' ');
+    let currentLine = '';
+    
+    words.forEach((word, idx) => {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const testWidth = fontNormal.widthOfTextAtSize(testLine, 6);
+      
+      if (testWidth > maxDirWidth && currentLine) {
+        pag.drawText(currentLine, {
+          x: columna1X,
+          y: yPosColumna1,
+          size: 6,
+          font: fontNormal,
+        });
+        currentLine = word;
+        yPosColumna1 -= 8;
+      } else {
+        currentLine = testLine;
+      }
+      
+      if (idx === words.length - 1 && currentLine) {
+        pag.drawText(currentLine, {
+          x: columna1X,
+          y: yPosColumna1,
+          size: 6,
+          font: fontNormal,
+        });
+        yPosColumna1 -= 10;
+      }
+    });
+  }
+  
+  if (empresa?.telefono) {
+    pag.drawText(`Tel: ${empresa.telefono}`, {
+      x: columna1X,
+      y: yPosColumna1,
+      size: 6,
       font: fontNormal,
     });
-    yPos -= 12;
+    yPosColumna1 -= 10;
   }
 
-  // Título del documento
-  yPos -= 10;
+  // ========================================
+  // COLUMNA 2: RECUADRO PRE-FACTURA
+  // ========================================
+  const recuadroHeight = 80;
+  const recuadroY = yPos - recuadroHeight;
+
+  // Dibujar recuadro
+  pag.drawRectangle({
+    x: columna2X,
+    y: recuadroY,
+    width: columna2Width,
+    height: recuadroHeight,
+    borderColor: rgb(0.2, 0.4, 0.8),
+    borderWidth: 2,
+  });
+
+  // Título PRE-FACTURA
   const titulo = cotizacion.esExportacion
     ? t("exportQuotation")
     : t("salesQuotation");
-  const tituloWidth = titulo.length * 8;
-  const tituloX = (width - tituloWidth) / 2;
+  const tituloSize = 14;
+  const tituloWidth = fontBold.widthOfTextAtSize(titulo, tituloSize);
+  const tituloX = columna2X + (columna2Width - tituloWidth) / 2;
 
   pag.drawText(titulo, {
     x: tituloX,
-    y: yPos,
-    size: 14,
+    y: recuadroY + recuadroHeight - 20,
+    size: tituloSize,
     font: fontBold,
-    color: rgb(0.2, 0.2, 0.2),
+    color: rgb(0.2, 0.4, 0.8),
   });
 
   // Número de documento
-  yPos -= 14;
   const numeroDoc = cotizacion.numeroDocumento || "-";
-  pag.drawText(`${t("documentNumber")} ${numeroDoc}`, {
-    x: width / 2 - 50,
-    y: yPos,
-    size: 12,
+  const numeroSize = 11;
+  const numeroWidth = fontBold.widthOfTextAtSize(numeroDoc, numeroSize);
+  const numeroX = columna2X + (columna2Width - numeroWidth) / 2;
+
+  pag.drawText(numeroDoc, {
+    x: numeroX,
+    y: recuadroY + recuadroHeight - 38,
+    size: numeroSize,
     font: fontBold,
+    color: rgb(0, 0, 0),
   });
 
+  // Datos adicionales del recuadro
+  let yPosRecuadro = recuadroY + recuadroHeight - 52;
+  const datosRecuadro = [
+    [`${t("code")}:`, cotizacion.codigo || "-"],
+    [`${t("date")}:`, cotizacion.fechaDocumento ? new Date(cotizacion.fechaDocumento).toLocaleDateString("es-PE") : "-"],
+    [`${t("expiryDate")}:`, cotizacion.fechaVencimiento ? new Date(cotizacion.fechaVencimiento).toLocaleDateString("es-PE") : "-"],
+  ];
+
+  datosRecuadro.forEach(([label, value]) => {
+    pag.drawText(label, {
+      x: columna2X + 10,
+      y: yPosRecuadro,
+      size: 8,
+      font: fontBold,
+    });
+    pag.drawText(String(value), {
+      x: columna2X + 70,
+      y: yPosRecuadro,
+      size: 8,
+      font: fontNormal,
+    });
+    yPosRecuadro -= 12;
+  });
+
+  // Ajustar yPos para continuar después del encabezado
+  yPos = Math.min(yPosColumna1, recuadroY) - 15;
+
   // Línea separadora
-  yPos -= 8;
   pag.drawLine({
     start: { x: margin, y: yPos },
     end: { x: width - margin, y: yPos },

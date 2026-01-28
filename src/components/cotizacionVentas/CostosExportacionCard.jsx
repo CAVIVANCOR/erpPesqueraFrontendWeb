@@ -63,6 +63,7 @@ const CostosExportacionCard = ({
   const costosRef = useRef(costos);
   const detallesRef = useRef(detalles);
   const isCalculatingRef = useRef(false);
+  const isShowingConfirmRef = useRef(false);
 
   // Cargar costos desde el backend
   const cargarCostos = useCallback(async () => {
@@ -315,6 +316,11 @@ const CostosExportacionCard = ({
 
   // Cargar costos según Incoterm
   const handleCargarCostosIncoterm = () => {
+    // Prevenir doble confirmación
+    if (isShowingConfirmRef.current) {
+      return;
+    }
+
     // Validar que haya un Incoterm seleccionado
     if (!incotermId) {
       toast?.current?.show({
@@ -326,6 +332,8 @@ const CostosExportacionCard = ({
       });
       return;
     }
+
+    isShowingConfirmRef.current = true;
 
     confirmDialog({
       message: (
@@ -385,7 +393,11 @@ const CostosExportacionCard = ({
           });
         } finally {
           setCargandoCostos(false);
+          isShowingConfirmRef.current = false;
         }
+      },
+      reject: () => {
+        isShowingConfirmRef.current = false;
       },
     });
   };

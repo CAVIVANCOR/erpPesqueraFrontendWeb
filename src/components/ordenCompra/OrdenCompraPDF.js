@@ -29,16 +29,15 @@ export async function generarYSubirPDFOrdenCompra(
     // 2. Crear un blob del PDF
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
 
-    // 3. Crear FormData para subir
+// 3. Crear FormData - El backend generará el nombre automáticamente
     const formData = new FormData();
-    const nombreArchivo = `orden-compra-${ordenCompra.id}.pdf`;
-    formData.append("pdf", blob, nombreArchivo);
-    formData.append("ordenCompraId", ordenCompra.id);
-
-    // 4. Subir al servidor
+    formData.append("files", blob, "temp.pdf"); // Nombre temporal, el backend lo reemplazará
+    formData.append("moduleName", "orden-compra");
+    formData.append("entityId", ordenCompra.id);
+    // 4. Subir al servidor usando endpoint estandarizado
     const token = useAuthStore.getState().token;
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/orden-compra/upload-pdf`,
+      `${import.meta.env.VITE_API_URL}/pdf/merge`,
       {
         method: "POST",
         headers: {
@@ -55,9 +54,12 @@ export async function generarYSubirPDFOrdenCompra(
 
     const resultado = await response.json();
 
+    console.log('🔍 [OrdenCompraPDF] Respuesta del backend:', resultado);
+    console.log('🔍 [OrdenCompraPDF] URL retornada:', resultado.url);
+
     return {
       success: true,
-      urlPdf: resultado.urlOrdenCompraPdf || resultado.urlPdf,
+      urlPdf: resultado.url,
     };
   } catch (error) {
     console.error("Error al generar y subir PDF:", error);
@@ -104,32 +106,36 @@ export async function generarPDFOrdenCompra(
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontNormal = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-    let yPosition = height - 50;
-  const margin = 50;
+  let yPosition = height - 50;
+  const margin = 20;
   const lineHeight = 13;
   
   // ========================================
   // PREPARAR DATOS PARA 3 COLUMNAS
   // ========================================
   
-  // COLUMNA 1: Datos principales (sin espacios en blanco)
+  // COLUMNA 1: Datos principales - LABELS ACORTADOS
   const datosColumna1 = [
-    ["Fecha Documento:", formatearFecha(ordenCompra.fechaDocumento)],
-    ["Fecha Entrega:", formatearFecha(ordenCompra.fechaEntrega)],
-    ["Centro de Costo:", ordenCompra.centroCosto?.nombre || "-"],
+    ["F. Dcmto.:", formatearFecha(ordenCompra.fechaDocumento)],
+    ["F. Entrega:", formatearFecha(ordenCompra.fechaEntrega)],
+    ["C.Costo:", ordenCompra.centroCosto?.nombre || "-"],
     ["Proveedor:", ordenCompra.proveedor?.razonSocial || "-"],
     [
       ordenCompra.proveedor?.tipoDocumento?.codigo || "DOC:",
       ordenCompra.proveedor?.numeroDocumento || "-"
     ],
+    [
+      "Entregar en:",
+      ordenCompra.direccionRecepcionAlmacen?.direccion || "-"
+    ],
   ];
 
-  // COLUMNA 2: Datos financieros
+  // COLUMNA 2: Datos financieros - LABELS ACORTADOS
   const datosColumna2 = [
-    ["Forma de Pago:", ordenCompra.formaPago?.nombre || "-"],
+    ["Forma Pago:", ordenCompra.formaPago?.nombre || "-"],
     ["Moneda:", ordenCompra.moneda?.codigoSunat || "-"],
     [
-      "Tipo de Cambio:",
+      "T/C:",
       ordenCompra.tipoCambio
         ? `S/ ${Number(ordenCompra.tipoCambio).toFixed(4)}`
         : "-",
@@ -170,9 +176,6 @@ export async function generarPDFOrdenCompra(
     });
   }
 
-  console.log('📄 [OrdenCompraPDF] datosColumna1:', datosColumna1);
-  console.log('📄 [OrdenCompraPDF] datosColumna2:', datosColumna2);
-  console.log('📄 [OrdenCompraPDF] datosColumna3:', datosColumna3);
   
   // DIBUJAR ENCABEZADO COMPLETO usando función modular con 3 columnas
   yPosition = await dibujaEncabezadoPDFOC({
@@ -194,18 +197,29 @@ export async function generarPDFOrdenCompra(
   // TABLA DE DETALLES
   yPosition -= 8;
 
-  // Encabezados de tabla con anchos ajustados
-  const colWidths = [25, 340, 40, 180, 70, 80];
-  const headers = [
-    "#",
-    "Producto",
-    "Cant.",
-    "Unidad/Empaque",
-    "P. Unitario",
-    "Subtotal",
-  ];
-  const tableWidth = colWidths.reduce((sum, width) => sum + width, 0);
-  const tableStartX = margin;
+// Encabezados de tabla con anchos ajustados dinámicamente
+const anchoDisponibleTabla = width - (margin * 2);
+  
+// Calcular anchos proporcionales basados en el ancho disponible (100% del espacio)
+const colWidths = [
+  anchoDisponibleTabla * 0.035,  // # (3.5%)
+  anchoDisponibleTabla * 0.465,  // Producto (46.5%)
+  anchoDisponibleTabla * 0.055,  // Cant. (5.5%)
+  anchoDisponibleTabla * 0.245,  // Unidad/Empaque (24.5%)
+  anchoDisponibleTabla * 0.095,  // P. Unitario (9.5%)
+  anchoDisponibleTabla * 0.105,  // Subtotal (10.5%)
+];
+  
+const headers = [
+  "#",
+  "Producto",
+  "Cant.",
+  "Unidad/Empaque",
+  "P. Unitario",
+  "Subtotal",
+];
+const tableWidth = colWidths.reduce((sum, width) => sum + width, 0);
+const tableStartX = margin;
 
   // Función para dibujar encabezado de tabla (reutilizable en nuevas páginas)
   const dibujarEncabezadoTabla = async (pag, yPos, incluirEncabezadoCompleto = false) => {
@@ -257,7 +271,7 @@ export async function generarPDFOrdenCompra(
     });
 
     // Dibujar encabezados con alineación
-    let xPos = margin;
+    let xPos = tableStartX;
     headers.forEach((header, i) => {
       const colX = xPos;
       const colWidth = colWidths[i];
@@ -511,9 +525,13 @@ export async function generarPDFOrdenCompra(
       if (dato.esDocumento && dato.urlDocumento) {
         console.log(`✅ [OrdenCompraPDF] Dato ES documento y TIENE URL: ${dato.nombreDato}`);
         try {
-          // Construir URL siguiendo el patrón de pdfUtils.js
-          const rutaArchivo = dato.urlDocumento.replace("/uploads/datos-adicionales-orden-compra/", "");
-          const docUrl = `${import.meta.env.VITE_API_URL}/det-datos-adicionales-orden-compra/archivo/${rutaArchivo}`;
+          // Extraer el nombre del archivo de la URL completa
+          // Ejemplo: /uploads/pdf-system/datos-adicionales-oc/datos-adicionales-oc-merged-1769457901911-su3q0n.pdf
+          // Resultado: datos-adicionales-oc-merged-1769457901911-su3q0n.pdf
+          const fileName = dato.urlDocumento.split('/').pop();
+          
+          // Construir URL usando el endpoint genérico del sistema PDF unificado
+          const docUrl = `${import.meta.env.VITE_API_URL}/pdf/datos-adicionales-oc/${fileName}`;
           console.log(`📎 [OrdenCompraPDF] Cargando documento adjunto: ${docUrl}`);
           
           // Obtener token de autenticación
@@ -525,6 +543,7 @@ export async function generarPDFOrdenCompra(
               Authorization: `Bearer ${token}`,
             },
           });
+          
           if (docResponse.ok) {
             const docBytes = await docResponse.arrayBuffer();
             
@@ -595,6 +614,8 @@ export async function generarPDFOrdenCompra(
                 console.log(`✅ [OrdenCompraPDF] Imagen adjunta agregada: ${dato.nombreDato}`);
               }
             }
+          } else {
+            console.error(`❌ [OrdenCompraPDF] Error HTTP ${docResponse.status} al cargar documento: ${dato.nombreDato}`);
           }
         } catch (error) {
           console.error(`❌ [OrdenCompraPDF] Error al cargar documento adjunto ${dato.nombreDato}:`, error);

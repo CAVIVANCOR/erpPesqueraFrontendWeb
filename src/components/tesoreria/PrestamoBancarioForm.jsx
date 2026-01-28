@@ -7,6 +7,7 @@ import React, {
   useImperativeHandle,
   useMemo,
 } from "react";
+import { useForm, Controller } from "react-hook-form";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
@@ -50,113 +51,114 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
 ) {
   const toast = useRef(null);
   const [activeTabIndex, setActiveTabIndex] = useState(0);
-  const [urlDocumentoPDF, setUrlDocumentoPDF] = useState(
-    defaultValues?.urlDocumentoPDF || ""
-  );
-  const [urlDocAdicionalPDF, setUrlDocAdicionalPDF] = useState(
-    defaultValues?.urlDocAdicionalPDF || ""
-  );
-  const [formData, setFormData] = useState({
-    empresaId: defaultValues?.empresaId
-      ? Number(defaultValues.empresaId)
-      : empresaFija
-      ? Number(empresaFija)
-      : null,
-    bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
-    lineaCreditoId: defaultValues?.lineaCreditoId
-      ? Number(defaultValues.lineaCreditoId)
-      : null,
-    cuentaCorrienteId: defaultValues?.cuentaCorrienteId
-      ? Number(defaultValues.cuentaCorrienteId)
-      : null,
-    numeroPrestamo: defaultValues?.numeroPrestamo || "",
-    numeroContrato: defaultValues?.numeroContrato || "",
-    fechaContrato: defaultValues?.fechaContrato
-      ? new Date(defaultValues.fechaContrato)
-      : null,
-    fechaDesembolso: defaultValues?.fechaDesembolso
-      ? new Date(defaultValues.fechaDesembolso)
-      : null,
-    fechaVencimiento: defaultValues?.fechaVencimiento
-      ? new Date(defaultValues.fechaVencimiento)
-      : null,
-    fechaEmision: defaultValues?.fechaEmision
-      ? new Date(defaultValues.fechaEmision)
-      : null,
-    fechaExpiracion: defaultValues?.fechaExpiracion
-      ? new Date(defaultValues.fechaExpiracion)
-      : null,
-    tipoPrestamoId: defaultValues?.tipoPrestamoId
-      ? Number(defaultValues.tipoPrestamoId)
-      : null,
-    refNroProformaVentaExportacion:
-      defaultValues?.refNroProformaVentaExportacion || "",
-    montoAprobado: defaultValues?.montoAprobado || 0,
-    montoDesembolsado: defaultValues?.montoDesembolsado || 0,
-    monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
-    tasaInteresAnual:
-      defaultValues?.tasaInteresAnual || defaultValues?.tasaInteres || 0,
-    tasaInteresEfectiva: defaultValues?.tasaInteresEfectiva || 0,
-    tasaMoratoria: defaultValues?.tasaMoratoria || 0,
-    comisionInicial: defaultValues?.comisionInicial || 0,
-    comisionMantenimiento: defaultValues?.comisionMantenimiento || 0,
-    seguroDesgravamen: defaultValues?.seguroDesgravamen || 0,
-    tipoAmortizacion: defaultValues?.tipoAmortizacion || "FRANCES",
-    plazoMeses: defaultValues?.plazoMeses || 0,
-    numeroCuotas: defaultValues?.numeroCuotas || 0,
-    frecuenciaPago: defaultValues?.frecuenciaPago || "MENSUAL",
-    numeroDias: defaultValues?.numeroDias || null,
-    diaPago: defaultValues?.diaPago || 1,
-    periodoGracia: defaultValues?.periodoGracia || 0,
-    tipoGarantia: defaultValues?.tipoGarantia || null,
-    valorGarantia: defaultValues?.valorGarantia || 0,
-    numeroGarantia: defaultValues?.numeroGarantia || "",
-    numeroCartaCredito: defaultValues?.numeroCartaCredito || "",
-    beneficiario: defaultValues?.beneficiario || "",
-    saldoCapital: defaultValues?.saldoCapital || 0,
-    saldoInteres: defaultValues?.saldoInteres || 0,
-    capitalPagado: defaultValues?.capitalPagado || 0,
-    interesPagado: defaultValues?.interesPagado || 0,
-    estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 79,
-    destinoFondos: defaultValues?.destinoFondos || "",
-    descripcionGarantia: defaultValues?.descripcionGarantia || "",
-    observaciones: defaultValues?.observaciones || "",
-    esRefinanciamiento: defaultValues?.esRefinanciamiento || false,
-    prestamoRefinanciadoId: defaultValues?.prestamoRefinanciadoId
-      ? Number(defaultValues.prestamoRefinanciadoId)
-      : null,
-    esRevolvente: defaultValues?.esRevolvente || false,
-    permitePagoParcial: defaultValues?.permitePagoParcial || false,
-  });
-
+  const [cargandoDatos, setCargandoDatos] = useState(true);
   const [empresas, setEmpresas] = useState([]);
   const [bancos, setBancos] = useState([]);
   const [monedas, setMonedas] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [estados, setEstados] = useState([]);
-  const [tiposPrestamo, setTiposPrestamo] = useState([]);
   const [enums, setEnums] = useState({
     tiposAmortizacion: [],
     frecuenciasPago: [],
     tiposGarantia: [],
   });
-  const [lineasCredito, setLineasCredito] = useState([]);
   const [prestamos, setPrestamos] = useState([]);
+  const [tiposPrestamo, setTiposPrestamo] = useState([]);
+  const [lineasCredito, setLineasCredito] = useState([]);
   const [prestamosParaRefinanciar, setPrestamosParaRefinanciar] = useState([]);
-  const [cargandoDatos, setCargandoDatos] = useState(true);
+
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    getValues,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      id: defaultValues?.id || null,
+      empresaId: defaultValues?.empresaId || empresaFija || null,
+      bancoId: defaultValues?.bancoId || null,
+      lineaCreditoId: defaultValues?.lineaCreditoId || null,
+      cuentaCorrienteId: defaultValues?.cuentaCorrienteId || null,
+      numeroPrestamo: defaultValues?.numeroPrestamo || "",
+      numeroContrato: defaultValues?.numeroContrato || "",
+      fechaContrato: defaultValues?.fechaContrato ? new Date(defaultValues.fechaContrato) : null,
+      fechaDesembolso: defaultValues?.fechaDesembolso ? new Date(defaultValues.fechaDesembolso) : null,
+      fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
+      fechaEmision: defaultValues?.fechaEmision ? new Date(defaultValues.fechaEmision) : null,
+      fechaExpiracion: defaultValues?.fechaExpiracion ? new Date(defaultValues.fechaExpiracion) : null,
+      montoAprobado: defaultValues?.montoAprobado || 0,
+      montoDesembolsado: defaultValues?.montoDesembolsado || 0,
+      monedaId: defaultValues?.monedaId || null,
+      tasaInteresAnual: defaultValues?.tasaInteresAnual || 0,
+      tasaInteresEfectiva: defaultValues?.tasaInteresEfectiva || 0,
+      tasaMoratoria: defaultValues?.tasaMoratoria || 0,
+      comisionInicial: defaultValues?.comisionInicial || 0,
+      comisionMantenimiento: defaultValues?.comisionMantenimiento || 0,
+      seguroDesgravamen: defaultValues?.seguroDesgravamen || 0,
+      tipoAmortizacion: defaultValues?.tipoAmortizacion || "",
+      plazoMeses: defaultValues?.plazoMeses || 0,
+      numeroCuotas: defaultValues?.numeroCuotas || 0,
+      frecuenciaPago: defaultValues?.frecuenciaPago || "",
+      numeroDias: defaultValues?.numeroDias || 0,
+      diaPago: defaultValues?.diaPago || 1,
+      periodoGracia: defaultValues?.periodoGracia || 0,
+      tipoGarantia: defaultValues?.tipoGarantia || "",
+      valorGarantia: defaultValues?.valorGarantia || 0,
+      numeroGarantia: defaultValues?.numeroGarantia || "",
+      numeroCartaCredito: defaultValues?.numeroCartaCredito || "",
+      beneficiario: defaultValues?.beneficiario || "",
+      saldoCapital: defaultValues?.saldoCapital || 0,
+      saldoInteres: defaultValues?.saldoInteres || 0,
+      capitalPagado: defaultValues?.capitalPagado || 0,
+      interesPagado: defaultValues?.interesPagado || 0,
+      estadoId: defaultValues?.estadoId || null,
+      destinoFondos: defaultValues?.destinoFondos || "",
+      descripcionGarantia: defaultValues?.descripcionGarantia || "",
+      observaciones: defaultValues?.observaciones || "",
+      esRefinanciamiento: defaultValues?.esRefinanciamiento || false,
+      prestamoRefinanciadoId: defaultValues?.prestamoRefinanciadoId || null,
+      esRevolvente: defaultValues?.esRevolvente || false,
+      permitePagoParcial: defaultValues?.permitePagoParcial || false,
+      tipoPrestamoId: defaultValues?.tipoPrestamoId || null,
+      refNroProformaVentaExportacion: defaultValues?.refNroProformaVentaExportacion || "",
+      urlDocumentoPrincipal: defaultValues?.urlDocumentoPDF || "",
+      urlDocumentoAdicional: defaultValues?.urlDocAdicionalPDF || "",
+    },
+  });
+
+  const empresaIdWatch = watch("empresaId");
+  const bancoIdWatch = watch("bancoId");
+  const monedaIdWatch = watch("monedaId");
 
   useEffect(() => {
-    cargarDatos();
+    cargarDatosIniciales();
   }, []);
 
   useEffect(() => {
-    if (formData.empresaId) {
+    if (empresaIdWatch && bancoIdWatch) {
+      cargarLineasCredito();
+    }
+  }, [empresaIdWatch, bancoIdWatch]);
+
+  useEffect(() => {
+    if (empresaIdWatch) {
       cargarPrestamosParaRefinanciar();
     }
-  }, [formData.empresaId]);
+  }, [empresaIdWatch]);
 
-  const cargarDatos = async () => {
+  useEffect(() => {
+    const subscription = watch((value, { name, type }) => {
+      if (name === "urlDocumentoPrincipal" || name === "urlDocumentoAdicional") {
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
+
+  const cargarDatosIniciales = async () => {
     try {
+      setCargandoDatos(true);
       const [
         empresasData,
         bancosData,
@@ -185,25 +187,18 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       setPrestamos(prestamosData);
       setTiposPrestamo(tiposPrestamoData);
     } catch (error) {
+      console.error("Error al cargar datos:", error);
     } finally {
       setCargandoDatos(false);
     }
   };
-
-  useEffect(() => {
-    if (formData.empresaId && formData.bancoId) {
-      cargarLineasCredito();
-    } else {
-      setLineasCredito([]);
-    }
-  }, [formData.empresaId, formData.bancoId]);
-
+  
   const cargarPrestamosParaRefinanciar = async () => {
     try {
       const response = await getAllPrestamoBancario();
       const prestamosFiltrados = response.filter(
         (p) =>
-          Number(p.empresaId) === Number(formData.empresaId) &&
+          Number(p.empresaId) === Number(empresaIdWatch) &&
           (Number(p.estadoId) === 81 ||
             Number(p.estadoId) === 83 ||
             Number(p.estadoId) === 84)
@@ -219,241 +214,150 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       const lineas = await getLineaCreditoVigentes();
       const lineasFiltradas = lineas.filter(
         (linea) =>
-          Number(linea.empresaId) === Number(formData.empresaId) &&
-          Number(linea.bancoId) === Number(formData.bancoId)
+          Number(linea.empresaId) === Number(empresaIdWatch) &&
+          Number(linea.bancoId) === Number(bancoIdWatch)
       );
       setLineasCredito(lineasFiltradas);
-    } catch (error) {}
-  };
-
-  const handleChange = (field, value) => {
-    setFormData((prev) => {
-      const newData = {
-        ...prev,
-        [field]: value,
-      };
-
-      if (
-        field === "empresaId" ||
-        field === "bancoId" ||
-        field === "monedaId"
-      ) {
-        newData.lineaCreditoId = null;
-        newData.cuentaCorrienteId = null;
-      }
-
-      return newData;
-    });
+    } catch (error) {
+      console.error("Error al cargar líneas de crédito:", error);
+    }
   };
 
   useEffect(() => {
-    if (defaultValues && Object.keys(defaultValues).length > 0) {
-      setFormData({
-        empresaId: defaultValues?.empresaId
-          ? Number(defaultValues.empresaId)
-          : empresaFija
-          ? Number(empresaFija)
-          : null,
-        bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
-        lineaCreditoId: defaultValues?.lineaCreditoId
-          ? Number(defaultValues.lineaCreditoId)
-          : null,
-        cuentaCorrienteId: defaultValues?.cuentaCorrienteId
-          ? Number(defaultValues.cuentaCorrienteId)
-          : null,
-        numeroPrestamo: defaultValues?.numeroPrestamo || "",
-        numeroContrato: defaultValues?.numeroContrato || "",
-        fechaContrato: defaultValues?.fechaContrato
-          ? new Date(defaultValues.fechaContrato)
-          : null,
-        fechaDesembolso: defaultValues?.fechaDesembolso
-          ? new Date(defaultValues.fechaDesembolso)
-          : null,
-        fechaVencimiento: defaultValues?.fechaVencimiento
-          ? new Date(defaultValues.fechaVencimiento)
-          : null,
-        fechaEmision: defaultValues?.fechaEmision
-          ? new Date(defaultValues.fechaEmision)
-          : null,
-        fechaExpiracion: defaultValues?.fechaExpiracion
-          ? new Date(defaultValues.fechaExpiracion)
-          : null,
-        tipoPrestamoId: defaultValues?.tipoPrestamoId
-          ? Number(defaultValues.tipoPrestamoId)
-          : null,
-        refNroProformaVentaExportacion:
-          defaultValues?.refNroProformaVentaExportacion || "",
-        montoAprobado: defaultValues?.montoAprobado || 0,
-        montoDesembolsado: defaultValues?.montoDesembolsado || 0,
-        monedaId: defaultValues?.monedaId
-          ? Number(defaultValues.monedaId)
-          : null,
-        tasaInteresAnual:
-          defaultValues?.tasaInteresAnual || defaultValues?.tasaInteres || 0,
-        tasaInteresEfectiva: defaultValues?.tasaInteresEfectiva || 0,
-        tasaMoratoria: defaultValues?.tasaMoratoria || 0,
-        comisionInicial: defaultValues?.comisionInicial || 0,
-        comisionMantenimiento: defaultValues?.comisionMantenimiento || 0,
-        seguroDesgravamen: defaultValues?.seguroDesgravamen || 0,
-        tipoAmortizacion: defaultValues?.tipoAmortizacion || "FRANCES",
-        plazoMeses: defaultValues?.plazoMeses || 0,
-        numeroCuotas: defaultValues?.numeroCuotas || 0,
-        frecuenciaPago: defaultValues?.frecuenciaPago || "MENSUAL",
-        numeroDias: defaultValues?.numeroDias || null,
-        diaPago: defaultValues?.diaPago || 1,
-        periodoGracia: defaultValues?.periodoGracia || 0,
-        tipoGarantia: defaultValues?.tipoGarantia || null,
-        valorGarantia: defaultValues?.valorGarantia || 0,
-        numeroGarantia: defaultValues?.numeroGarantia || "",
-        numeroCartaCredito: defaultValues?.numeroCartaCredito || "",
-        beneficiario: defaultValues?.beneficiario || "",
-        saldoCapital: defaultValues?.saldoCapital || 0,
-        saldoInteres: defaultValues?.saldoInteres || 0,
-        capitalPagado: defaultValues?.capitalPagado || 0,
-        interesPagado: defaultValues?.interesPagado || 0,
-        estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 79,
-        destinoFondos: defaultValues?.destinoFondos || "",
-        descripcionGarantia: defaultValues?.descripcionGarantia || "",
-        observaciones: defaultValues?.observaciones || "",
-        esRefinanciamiento: defaultValues?.esRefinanciamiento || false,
-        prestamoRefinanciadoId: defaultValues?.prestamoRefinanciadoId
-          ? Number(defaultValues.prestamoRefinanciadoId)
-          : null,
-        esRevolvente: defaultValues?.esRevolvente || false,
-        permitePagoParcial: defaultValues?.permitePagoParcial || false,
-      });
-      setUrlDocumentoPDF(defaultValues?.urlDocumentoPDF || "");
-      setUrlDocAdicionalPDF(defaultValues?.urlDocAdicionalPDF || "");
+    const currentEmpresa = getValues("empresaId");
+    const currentBanco = getValues("bancoId");
+    const currentMoneda = getValues("monedaId");
 
-      if (defaultValues?.empresaId && defaultValues?.bancoId) {
-        cargarLineasCredito();
-      }
+    if (empresaIdWatch !== currentEmpresa || bancoIdWatch !== currentBanco || monedaIdWatch !== currentMoneda) {
+      setValue("lineaCreditoId", null);
+      setValue("cuentaCorrienteId", null);
     }
-  }, [defaultValues, empresaFija]);
+  }, [empresaIdWatch, bancoIdWatch, monedaIdWatch, setValue, getValues]);
 
   useImperativeHandle(ref, () => ({
-    getFormData: () => formData,
-    setFormData: (data) => setFormData(data),
+    getFormData: () => getValues(),
+    setFormData: (data) => {
+      Object.keys(data).forEach((key) => {
+        setValue(key, data[key]);
+      });
+    },
   }));
 
- const handleSubmit = async () => {
-  try {
-    const dataToSend = {
-      empresaId: formData.empresaId,
-      bancoId: formData.bancoId,
-      lineaCreditoId: formData.lineaCreditoId,
-      cuentaCorrienteId: formData.cuentaCorrienteId,
-      numeroPrestamo: formData.numeroPrestamo,
-      numeroContrato: formData.numeroContrato,
-      fechaContrato: formData.fechaContrato?.toISOString
-        ? formData.fechaContrato.toISOString()
-        : formData.fechaContrato,
-      fechaDesembolso: formData.fechaDesembolso?.toISOString
-        ? formData.fechaDesembolso.toISOString()
-        : formData.fechaDesembolso,
-      fechaVencimiento: formData.fechaVencimiento?.toISOString
-        ? formData.fechaVencimiento.toISOString()
-        : formData.fechaVencimiento,
-      fechaEmision: formData.fechaEmision?.toISOString
-        ? formData.fechaEmision.toISOString()
-        : formData.fechaEmision,
-      fechaExpiracion: formData.fechaExpiracion?.toISOString
-        ? formData.fechaExpiracion.toISOString()
-        : formData.fechaExpiracion,
-      montoAprobado: formData.montoAprobado,
-      montoDesembolsado: formData.montoDesembolsado,
-      monedaId: formData.monedaId,
-      tasaInteresAnual: formData.tasaInteresAnual,
-      tasaInteresEfectiva: formData.tasaInteresEfectiva,
-      tasaMoratoria: formData.tasaMoratoria,
-      comisionInicial: formData.comisionInicial,
-      comisionMantenimiento: formData.comisionMantenimiento,
-      seguroDesgravamen: formData.seguroDesgravamen,
-      tipoAmortizacion: formData.tipoAmortizacion,
-      plazoMeses: formData.plazoMeses,
-      numeroCuotas: formData.numeroCuotas,
-      frecuenciaPago: formData.frecuenciaPago,
-      numeroDias: formData.numeroDias,
-      diaPago: formData.diaPago,
-      periodoGracia: formData.periodoGracia,
-      tipoGarantia: formData.tipoGarantia,
-      valorGarantia: formData.valorGarantia,
-      numeroGarantia: formData.numeroGarantia,
-      numeroCartaCredito: formData.numeroCartaCredito,
-      beneficiario: formData.beneficiario,
-      saldoCapital: formData.saldoCapital,
-      saldoInteres: formData.saldoInteres,
-      capitalPagado: formData.capitalPagado,
-      interesPagado: formData.interesPagado,
-      estadoId: formData.estadoId,
-      destinoFondos: formData.destinoFondos,
-      descripcionGarantia: formData.descripcionGarantia,
-      observaciones: formData.observaciones,
-      esRefinanciamiento: formData.esRefinanciamiento,
-      prestamoRefinanciadoId: formData.prestamoRefinanciadoId,
-      esRevolvente: formData.esRevolvente,
-      permitePagoParcial: formData.permitePagoParcial,
-      tipoPrestamoId: formData.tipoPrestamoId,
-      refNroProformaVentaExportacion: formData.refNroProformaVentaExportacion,
-      urlDocumentoPDF: urlDocumentoPDF || null,
-      urlDocAdicionalPDF: urlDocAdicionalPDF || null,
-    };
+  const onSubmitForm = async (data) => {
+    try {
+      const dataToSend = {
+        empresaId: data.empresaId,
+        bancoId: data.bancoId,
+        lineaCreditoId: data.lineaCreditoId,
+        cuentaCorrienteId: data.cuentaCorrienteId,
+        numeroPrestamo: data.numeroPrestamo,
+        numeroContrato: data.numeroContrato,
+        fechaContrato: data.fechaContrato?.toISOString
+          ? data.fechaContrato.toISOString()
+          : data.fechaContrato,
+        fechaDesembolso: data.fechaDesembolso?.toISOString
+          ? data.fechaDesembolso.toISOString()
+          : data.fechaDesembolso,
+        fechaVencimiento: data.fechaVencimiento?.toISOString
+          ? data.fechaVencimiento.toISOString()
+          : data.fechaVencimiento,
+        fechaEmision: data.fechaEmision?.toISOString
+          ? data.fechaEmision.toISOString()
+          : data.fechaEmision,
+        fechaExpiracion: data.fechaExpiracion?.toISOString
+          ? data.fechaExpiracion.toISOString()
+          : data.fechaExpiracion,
+        montoAprobado: data.montoAprobado,
+        montoDesembolsado: data.montoDesembolsado,
+        monedaId: data.monedaId,
+        tasaInteresAnual: data.tasaInteresAnual,
+        tasaInteresEfectiva: data.tasaInteresEfectiva,
+        tasaMoratoria: data.tasaMoratoria,
+        comisionInicial: data.comisionInicial,
+        comisionMantenimiento: data.comisionMantenimiento,
+        seguroDesgravamen: data.seguroDesgravamen,
+        tipoAmortizacion: data.tipoAmortizacion,
+        plazoMeses: data.plazoMeses,
+        numeroCuotas: data.numeroCuotas,
+        frecuenciaPago: data.frecuenciaPago,
+        numeroDias: data.numeroDias,
+        diaPago: data.diaPago,
+        periodoGracia: data.periodoGracia,
+        tipoGarantia: data.tipoGarantia,
+        valorGarantia: data.valorGarantia,
+        numeroGarantia: data.numeroGarantia,
+        numeroCartaCredito: data.numeroCartaCredito,
+        beneficiario: data.beneficiario,
+        saldoCapital: data.saldoCapital,
+        saldoInteres: data.saldoInteres,
+        capitalPagado: data.capitalPagado,
+        interesPagado: data.interesPagado,
+        estadoId: data.estadoId,
+        destinoFondos: data.destinoFondos,
+        descripcionGarantia: data.descripcionGarantia,
+        observaciones: data.observaciones,
+        esRefinanciamiento: data.esRefinanciamiento,
+        prestamoRefinanciadoId: data.prestamoRefinanciadoId,
+        esRevolvente: data.esRevolvente,
+        permitePagoParcial: data.permitePagoParcial,
+        tipoPrestamoId: data.tipoPrestamoId,
+        refNroProformaVentaExportacion: data.refNroProformaVentaExportacion,
+        urlDocumentoPDF: data.urlDocumentoPrincipal || null,
+        urlDocAdicionalPDF: data.urlDocumentoAdicional || null,
+      };
 
-    let resultado;
-    if (isEdit) {
-      // Actualizar cabecera del préstamo
-      resultado = await updatePrestamoBancario(defaultValues.id, dataToSend);
-      
-      // Recalcular cuotas después de actualizar la cabecera
-      try {
-        const recalculoResultado = await recalcularCuotasPrestamo(defaultValues.id);
+      let resultado;
+      if (isEdit) {
+        resultado = await updatePrestamoBancario(defaultValues.id, dataToSend);
+        
+        try {
+          const recalculoResultado = await recalcularCuotasPrestamo(defaultValues.id);
+          
+          toast.current?.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: `Préstamo actualizado. ${recalculoResultado.mensaje}. Cuotas recalculadas: ${recalculoResultado.cuotasRecalculadas}`,
+            life: 5000,
+          });
+        } catch (recalculoError) {
+          toast.current?.show({
+            severity: "warn",
+            summary: "Advertencia",
+            detail: "Préstamo actualizado pero hubo un error al recalcular las cuotas: " + 
+                    (recalculoError.response?.data?.mensaje || recalculoError.message),
+            life: 5000,
+          });
+        }
+      } else {
+        resultado = await createPrestamoBancario(dataToSend);
         
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
-          detail: `Préstamo actualizado. ${recalculoResultado.mensaje}. Cuotas recalculadas: ${recalculoResultado.cuotasRecalculadas}`,
-          life: 5000,
-        });
-      } catch (recalculoError) {
-        // Si falla el recálculo, mostrar advertencia pero continuar
-        toast.current?.show({
-          severity: "warn",
-          summary: "Advertencia",
-          detail: "Préstamo actualizado pero hubo un error al recalcular las cuotas: " + 
-                  (recalculoError.response?.data?.mensaje || recalculoError.message),
-          life: 5000,
+          detail: "Préstamo creado correctamente",
+          life: 3000,
         });
       }
-    } else {
-      resultado = await createPrestamoBancario(dataToSend);
-      
+
+      onSubmit(resultado);
+    } catch (error) {
+      const mensajeError =
+        error.response?.data?.mensaje ||
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        "Error al guardar el préstamo";
       toast.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "Préstamo creado correctamente",
-        life: 3000,
+        severity: "error",
+        summary: "Error",
+        detail: mensajeError,
+        life: 5000,
       });
     }
-
-    onSubmit(resultado);
-  } catch (error) {
-    const mensajeError =
-      error.response?.data?.mensaje ||
-      error.response?.data?.message ||
-      error.response?.data?.error ||
-      "Error al guardar el préstamo";
-    toast.current?.show({
-      severity: "error",
-      summary: "Error",
-      detail: mensajeError,
-      life: 5000,
-    });
-  }
-};
+  };
 
   const monedaSeleccionada = useMemo(() => {
-    return monedas.find((m) => Number(m.id) === Number(formData.monedaId));
-  }, [monedas, formData.monedaId]);
+    return monedas.find((m) => Number(m.id) === Number(monedaIdWatch));
+  }, [monedas, monedaIdWatch]);
 
   const empresasOptions = empresas.map((e) => ({
     ...e,
@@ -477,16 +381,16 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   }));
 
   const cuentasCorrientesOptions = useMemo(() => {
-    if (!formData.empresaId || !formData.bancoId || !formData.monedaId) {
+    if (!empresaIdWatch || !bancoIdWatch || !monedaIdWatch) {
       return [];
     }
 
     return cuentasCorrientes
       .filter(
         (c) =>
-          Number(c.empresaId) === Number(formData.empresaId) &&
-          Number(c.bancoId) === Number(formData.bancoId) &&
-          Number(c.monedaId) === Number(formData.monedaId)
+          Number(c.empresaId) === Number(empresaIdWatch) &&
+          Number(c.bancoId) === Number(bancoIdWatch) &&
+          Number(c.monedaId) === Number(monedaIdWatch)
       )
       .map((c) => ({
         ...c,
@@ -496,12 +400,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         }`,
         value: Number(c.id),
       }));
-  }, [
-    cuentasCorrientes,
-    formData.empresaId,
-    formData.bancoId,
-    formData.monedaId,
-  ]);
+  }, [cuentasCorrientes, empresaIdWatch, bancoIdWatch, monedaIdWatch]);
 
   const estadosOptions = estados.map((e) => ({
     ...e,
@@ -555,1145 +454,1067 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         onTabChange={(e) => setActiveTabIndex(e.index)}
       >
         <TabPanel header="Datos Generales" leftIcon="pi pi-info-circle">
-          {/* Fila 1: Empresa, Banco, Línea de Crédito, Estado */}
-          <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
+                    <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="empresaId"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="empresaId" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Empresa *
               </label>
-              <Dropdown
-                id="empresaId"
-                value={formData.empresaId ? Number(formData.empresaId) : null}
-                options={empresasOptions}
-                onChange={(e) => handleChange("empresaId", e.value)}
-                placeholder="Seleccione empresa"
-                filter
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="empresaId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="empresaId"
+                    value={field.value}
+                    options={empresasOptions}
+                    onChange={(e) => field.onChange(e.value)}
+                    placeholder="Seleccione empresa"
+                    filter
+                    disabled={readOnly || empresaFija}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="bancoId"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="bancoId" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Banco *
               </label>
-              <Dropdown
-                id="bancoId"
-                value={formData.bancoId ? Number(formData.bancoId) : null}
-                options={bancosOptions}
-                onChange={(e) => handleChange("bancoId", e.value)}
-                placeholder="Seleccione banco"
-                filter
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="bancoId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="bancoId"
+                    value={field.value}
+                    options={bancosOptions}
+                    onChange={(e) => field.onChange(e.value)}
+                    placeholder="Seleccione banco"
+                    filter
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="monedaId"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="monedaId" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Moneda *
               </label>
-              <Dropdown
-                id="monedaId"
-                value={formData.monedaId ? Number(formData.monedaId) : null}
-                options={monedasOptions}
-                onChange={(e) => handleChange("monedaId", e.value)}
-                placeholder="Seleccione moneda"
-                filter
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="monedaId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="monedaId"
+                    value={field.value}
+                    options={monedasOptions}
+                    onChange={(e) => field.onChange(e.value)}
+                    placeholder="Seleccione moneda"
+                    filter
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="lineaCreditoId"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="lineaCreditoId" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Línea de Crédito
               </label>
-              <Dropdown
-                id="lineaCreditoId"
-                value={formData.lineaCreditoId}
-                options={lineasCreditoOptions}
-                onChange={(e) => handleChange("lineaCreditoId", e.value)}
-                placeholder="Seleccione línea"
-                optionLabel="label"
-                optionValue="value"
-                filter
-                showClear
-                disabled={readOnly || !formData.empresaId || !formData.bancoId}
-                style={{ width: "100%" }}
+              <Controller
+                name="lineaCreditoId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="lineaCreditoId"
+                    value={field.value}
+                    options={lineasCreditoOptions}
+                    onChange={(e) => field.onChange(e.value)}
+                    placeholder="Seleccione línea"
+                    optionLabel="label"
+                    optionValue="value"
+                    filter
+                    showClear
+                    disabled={readOnly || !empresaIdWatch || !bancoIdWatch}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="cuentaCorrienteId"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="cuentaCorrienteId" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Cuenta Corriente
               </label>
-              <Dropdown
-                id="cuentaCorrienteId"
-                value={
-                  formData.cuentaCorrienteId
-                    ? Number(formData.cuentaCorrienteId)
-                    : null
-                }
-                options={cuentasCorrientesOptions}
-                onChange={(e) => handleChange("cuentaCorrienteId", e.value)}
-                placeholder="Seleccione cuenta"
-                filter
-                showClear
-                disabled={readOnly || !formData.empresaId || !formData.bancoId}
-                style={{ width: "100%" }}
+              <Controller
+                name="cuentaCorrienteId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="cuentaCorrienteId"
+                    value={field.value}
+                    options={cuentasCorrientesOptions}
+                    onChange={(e) => field.onChange(e.value)}
+                    placeholder="Seleccione cuenta"
+                    filter
+                    showClear
+                    disabled={readOnly || !empresaIdWatch || !bancoIdWatch}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="estadoId"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="estadoId" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Estado *
               </label>
-              <Dropdown
-                id="estadoId"
-                value={formData.estadoId}
-                options={estadosOptions}
-                onChange={(e) => handleChange("estadoId", e.value)}
-                placeholder="Seleccione estado"
-                optionLabel="label"
-                optionValue="value"
-                filter
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="estadoId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="estadoId"
+                    value={field.value}
+                    options={estadosOptions}
+                    onChange={(e) => field.onChange(e.value)}
+                    placeholder="Seleccione estado"
+                    optionLabel="label"
+                    optionValue="value"
+                    filter
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
           </div>
 
-          {/* Fila 2: Número Préstamo, Número Contrato, Cuenta Corriente,Tipo Préstamo, Tipo Amortización, Fechas Principales */}
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 0.75 }}>
-              <label
-                htmlFor="numeroPrestamo"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="numeroPrestamo" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Número de Préstamo *
               </label>
-              <InputText
-                id="numeroPrestamo"
-                value={formData.numeroPrestamo}
-                onChange={(e) =>
-                  handleChange("numeroPrestamo", e.target.value.toUpperCase())
-                }
-                placeholder="Ej: PRES-2024-001"
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="numeroPrestamo"
+                control={control}
+                render={({ field }) => (
+                  <InputText
+                    id="numeroPrestamo"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    placeholder="Ej: PRES-2024-001"
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 0.75 }}>
-              <label
-                htmlFor="numeroContrato"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="numeroContrato" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Número de Contrato *
               </label>
-              <InputText
-                id="numeroContrato"
-                value={formData.numeroContrato}
-                onChange={(e) =>
-                  handleChange("numeroContrato", e.target.value.toUpperCase())
-                }
-                placeholder="Ej: CONT-2024-001"
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="numeroContrato"
+                control={control}
+                render={({ field }) => (
+                  <InputText
+                    id="numeroContrato"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    placeholder="Ej: CONT-2024-001"
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="tipoPrestamo"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="tipoPrestamo" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Tipo de Préstamo *
               </label>
-              <Dropdown
-                id="tipoPrestamoId"
-                value={formData.tipoPrestamoId}
-                options={tiposPrestamoOptions}
-                onChange={(e) => handleChange("tipoPrestamoId", e.value)}
-                placeholder="Seleccione tipo"
-                optionLabel="label"
-                optionValue="value"
-                disabled={readOnly}
-                style={{ width: "100%" }}
-                filter
-                showClear
+              <Controller
+                name="tipoPrestamoId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="tipoPrestamoId"
+                    value={field.value}
+                    options={tiposPrestamoOptions}
+                    onChange={(e) => field.onChange(e.value)}
+                    placeholder="Seleccione tipo"
+                    optionLabel="label"
+                    optionValue="value"
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                    filter
+                    showClear
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="tipoAmortizacion"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="tipoAmortizacion" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Tipo de Amortización *
               </label>
-              <Dropdown
-                id="tipoAmortizacion"
-                value={formData.tipoAmortizacion}
-                options={enums.tiposAmortizacion}
-                onChange={(e) => handleChange("tipoAmortizacion", e.value)}
-                placeholder="Seleccione tipo"
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="tipoAmortizacion"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="tipoAmortizacion"
+                    value={field.value}
+                    options={enums.tiposAmortizacion}
+                    onChange={(e) => field.onChange(e.value)}
+                    placeholder="Seleccione tipo"
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="fechaContrato"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="fechaContrato" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Fecha de Contrato *
               </label>
-              <Calendar
-                id="fechaContrato"
-                value={formData.fechaContrato}
-                onChange={(e) => handleChange("fechaContrato", e.value)}
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="fechaContrato"
+                control={control}
+                render={({ field }) => (
+                  <Calendar
+                    id="fechaContrato"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.value)}
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="fechaDesembolso"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                  color: "#22940E",
-                }}
-              >
+              <label htmlFor="fechaDesembolso" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize(), color: "#22940E" }}>
                 Fecha de Desembolso *
               </label>
-              <Calendar
-                id="fechaDesembolso"
-                value={formData.fechaDesembolso}
-                onChange={(e) => handleChange("fechaDesembolso", e.value)}
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="fechaDesembolso"
+                control={control}
+                render={({ field }) => (
+                  <Calendar
+                    id="fechaDesembolso"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.value)}
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="fechaVencimiento"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                  color: "#BF001E",
-                }}
-              >
+              <label htmlFor="fechaVencimiento" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize(), color: "#BF001E" }}>
                 Fecha de Vencimiento *
               </label>
-              <Calendar
-                id="fechaVencimiento"
-                value={formData.fechaVencimiento}
-                onChange={(e) => handleChange("fechaVencimiento", e.value)}
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="fechaVencimiento"
+                control={control}
+                render={({ field }) => (
+                  <Calendar
+                    id="fechaVencimiento"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.value)}
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
           </div>
 
-          {/* Fila 3: Montos Principales,Plazo y Cuotas, Días y Período de Gracia */}
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="montoAprobado"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="montoAprobado" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Monto Aprobado *
               </label>
-              <InputNumber
-                id="montoAprobado"
-                value={formData.montoAprobado}
-                onValueChange={(e) => handleChange("montoAprobado", e.value)}
-                mode="currency"
-                currency={monedaSeleccionada?.codigoSunat || "PEN"}
-                locale="es-PE"
-                minFractionDigits={2}
-                disabled={readOnly}
-                style={{ width: "100%" }}
-                inputStyle={{ fontWeight: "bold" }}
+              <Controller
+                name="montoAprobado"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="montoAprobado"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="currency"
+                    currency={monedaSeleccionada?.codigoSunat || "PEN"}
+                    locale="es-PE"
+                    minFractionDigits={2}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="montoDesembolsado"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                  color: "#22940E",
-                }}
-              >
+              <label htmlFor="montoDesembolsado" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Monto Desembolsado *
               </label>
-              <InputNumber
-                id="montoDesembolsado"
-                value={formData.montoDesembolsado}
-                onValueChange={(e) =>
-                  handleChange("montoDesembolsado", e.value)
-                }
-                mode="currency"
-                currency={monedaSeleccionada?.codigoSunat || "PEN"}
-                locale="es-PE"
-                minFractionDigits={2}
-                disabled={readOnly}
-                style={{ width: "100%" }}
-                inputStyle={{ fontWeight: "bold" }}
+              <Controller
+                name="montoDesembolsado"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="montoDesembolsado"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="currency"
+                    currency={monedaSeleccionada?.codigoSunat || "PEN"}
+                    locale="es-PE"
+                    minFractionDigits={2}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
-            <div style={{ flex: 0.25 }}>
-              <label
-                htmlFor="plazoMeses"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+            <div style={{ flex: 0.5 }}>
+              <label htmlFor="plazoMeses" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Plazo (Meses) *
               </label>
-              <InputNumber
-                id="plazoMeses"
-                value={formData.plazoMeses}
-                onValueChange={(e) => handleChange("plazoMeses", e.value)}
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="plazoMeses"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="plazoMeses"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    min={0}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
-            <div style={{ flex: 0.25 }}>
-              <label
-                htmlFor="numeroCuotas"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                N° Cuotas *
+            <div style={{ flex: 0.5 }}>
+              <label htmlFor="numeroCuotas" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                Número de Cuotas *
               </label>
-              <InputNumber
-                id="numeroCuotas"
-                value={formData.numeroCuotas}
-                onValueChange={(e) => handleChange("numeroCuotas", e.value)}
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="numeroCuotas"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="numeroCuotas"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    min={0}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="frecuenciaPago"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+            <div style={{ flex: 0.75 }}>
+              <label htmlFor="frecuenciaPago" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Frecuencia de Pago *
               </label>
-              <Dropdown
-                id="frecuenciaPago"
-                value={formData.frecuenciaPago}
-                options={enums.frecuenciasPago}
-                onChange={(e) => handleChange("frecuenciaPago", e.value)}
-                placeholder="Seleccione frecuencia"
-                disabled={readOnly}
-                style={{ width: "100%" }}
-              />
-            </div>
-            <div style={{ flex: 0.25 }}>
-              <label
-                htmlFor="numeroDias"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                N°Días
-              </label>
-              <InputNumber
-                id="numeroDias"
-                value={formData.numeroDias}
-                onValueChange={(e) => handleChange("numeroDias", e.value)}
-                disabled={readOnly || formData.frecuenciaPago !== "DIAS"}
-                style={{ width: "100%" }}
+              <Controller
+                name="frecuenciaPago"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="frecuenciaPago"
+                    value={field.value}
+                    options={enums.frecuenciasPago}
+                    onChange={(e) => field.onChange(e.value)}
+                    placeholder="Seleccione frecuencia"
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="diaPago"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Día de Pago (1-31)
+              <label htmlFor="numeroDias" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                Número de Días
               </label>
-              <InputNumber
-                id="diaPago"
-                value={formData.diaPago}
-                onValueChange={(e) => handleChange("diaPago", e.value)}
-                min={1}
-                max={31}
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="numeroDias"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="numeroDias"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    min={0}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
-            <div style={{ flex: 0.25 }}>
-              <label
-                htmlFor="periodoGracia"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Periodo Gracia (meses)
+            <div style={{ flex: 0.5 }}>
+              <label htmlFor="diaPago" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                Día de Pago *
               </label>
-              <InputNumber
-                id="periodoGracia"
-                value={formData.periodoGracia}
-                onValueChange={(e) => handleChange("periodoGracia", e.value)}
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="diaPago"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="diaPago"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    min={1}
+                    max={31}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <label htmlFor="periodoGracia" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                Período de Gracia
+              </label>
+              <Controller
+                name="periodoGracia"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="periodoGracia"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    min={0}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
           </div>
-
-          {/* Fila 4: Tasas de Interés, Comisiones y Seguros */}
+          
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
-            <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="tasaInteresAnual"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Interés Anual (%) *
+            <div style={{ flex: 1 }}>
+              <label htmlFor="tasaInteresAnual" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                Tasa de Interés Anual (%) *
               </label>
-              <InputNumber
-                id="tasaInteresAnual"
-                value={formData.tasaInteresAnual}
-                onValueChange={(e) => handleChange("tasaInteresAnual", e.value)}
-                minFractionDigits={2}
-                maxFractionDigits={4}
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="tasaInteresAnual"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="tasaInteresAnual"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={4}
+                    min={0}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
-            <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="tasaInteresEfectiva"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                TEA (%)
+            <div style={{ flex: 1 }}>
+              <label htmlFor="tasaInteresEfectiva" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                Tasa de Interés Efectiva (%)
               </label>
-              <InputNumber
-                id="tasaInteresEfectiva"
-                value={formData.tasaInteresEfectiva}
-                onValueChange={(e) =>
-                  handleChange("tasaInteresEfectiva", e.value)
-                }
-                minFractionDigits={2}
-                maxFractionDigits={4}
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="tasaInteresEfectiva"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="tasaInteresEfectiva"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={4}
+                    min={0}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
-            <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="tasaMoratoria"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="tasaMoratoria" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Tasa Moratoria (%)
               </label>
-              <InputNumber
-                id="tasaMoratoria"
-                value={formData.tasaMoratoria}
-                onValueChange={(e) => handleChange("tasaMoratoria", e.value)}
-                minFractionDigits={2}
-                maxFractionDigits={4}
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="tasaMoratoria"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="tasaMoratoria"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={4}
+                    min={0}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
-            <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="comisionInicial"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+            <div style={{ flex: 1 }}>
+              <label htmlFor="comisionInicial" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Comisión Inicial
               </label>
-              <InputNumber
-                id="comisionInicial"
-                value={formData.comisionInicial}
-                onValueChange={(e) => handleChange("comisionInicial", e.value)}
-                mode="currency"
-                currency={monedaSeleccionada?.codigoSunat || "PEN"}
-                locale="es-PE"
-                minFractionDigits={2}
-                disabled={readOnly}
-                style={{ width: "100%" }}
-              />
-            </div>
-            <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="comisionMantenimiento"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                C. Mantenimiento (mensual)
-              </label>
-              <InputNumber
-                id="comisionMantenimiento"
-                value={formData.comisionMantenimiento}
-                onValueChange={(e) =>
-                  handleChange("comisionMantenimiento", e.value)
-                }
-                mode="currency"
-                currency={monedaSeleccionada?.codigoSunat || "PEN"}
-                locale="es-PE"
-                minFractionDigits={2}
-                disabled={readOnly}
-                style={{ width: "100%" }}
-              />
-            </div>
-            <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="seguroDesgravamen"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Seguro Desgravamen (mensual)
-              </label>
-              <InputNumber
-                id="seguroDesgravamen"
-                value={formData.seguroDesgravamen}
-                onValueChange={(e) =>
-                  handleChange("seguroDesgravamen", e.value)
-                }
-                mode="currency"
-                currency={monedaSeleccionada?.codigoSunat || "PEN"}
-                locale="es-PE"
-                minFractionDigits={2}
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="comisionInicial"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="comisionInicial"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="currency"
+                    currency={monedaSeleccionada?.codigoSunat || "PEN"}
+                    locale="es-PE"
+                    minFractionDigits={2}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="tipoGarantia"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Tipo de Garantía
+              <label htmlFor="comisionMantenimiento" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                Comisión Mantenimiento
               </label>
-              <Dropdown
-                id="tipoGarantia"
-                value={formData.tipoGarantia}
-                options={enums.tiposGarantia}
-                onChange={(e) => handleChange("tipoGarantia", e.value)}
-                placeholder="Seleccione tipo"
-                showClear
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="comisionMantenimiento"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="comisionMantenimiento"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="currency"
+                    currency={monedaSeleccionada?.codigoSunat || "PEN"}
+                    locale="es-PE"
+                    minFractionDigits={2}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
-            <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="valorGarantia"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Valor de Garantía
+            <div style={{ flex: 1 }}>
+              <label htmlFor="seguroDesgravamen" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                Seguro Desgravamen
               </label>
-              <InputNumber
-                id="valorGarantia"
-                value={formData.valorGarantia}
-                onValueChange={(e) => handleChange("valorGarantia", e.value)}
-                mode="currency"
-                currency={monedaSeleccionada?.codigoSunat || "PEN"}
-                locale="es-PE"
-                minFractionDigits={2}
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="seguroDesgravamen"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="seguroDesgravamen"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="currency"
+                    currency={monedaSeleccionada?.codigoSunat || "PEN"}
+                    locale="es-PE"
+                    minFractionDigits={2}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
           </div>
 
-          {/* Fila 5: Garantías, Campos para Garantías/Cartas de Crédito, Fechas para Garantías/Cartas */}
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="beneficiario"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="tipoGarantia" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                Tipo de Garantía
+              </label>
+              <Controller
+                name="tipoGarantia"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="tipoGarantia"
+                    value={field.value}
+                    options={enums.tiposGarantia}
+                    onChange={(e) => field.onChange(e.value)}
+                    placeholder="Seleccione tipo"
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                    showClear
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="valorGarantia" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                Valor de Garantía
+              </label>
+              <Controller
+                name="valorGarantia"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="valorGarantia"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="currency"
+                    currency={monedaSeleccionada?.codigoSunat || "PEN"}
+                    locale="es-PE"
+                    minFractionDigits={2}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="beneficiario" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Beneficiario (para Garantías/Cartas)
               </label>
-              <InputText
-                id="beneficiario"
-                value={formData.beneficiario}
-                onChange={(e) =>
-                  handleChange("beneficiario", e.target.value.toUpperCase())
-                }
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="beneficiario"
+                control={control}
+                render={({ field }) => (
+                  <InputText
+                    id="beneficiario"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="numeroGarantia"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="numeroGarantia" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Número de Garantía
               </label>
-              <InputText
-                id="numeroGarantia"
-                value={formData.numeroGarantia}
-                onChange={(e) =>
-                  handleChange("numeroGarantia", e.target.value.toUpperCase())
-                }
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="numeroGarantia"
+                control={control}
+                render={({ field }) => (
+                  <InputText
+                    id="numeroGarantia"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="numeroCartaCredito"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="numeroCartaCredito" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Número de Carta de Crédito
               </label>
-              <InputText
-                id="numeroCartaCredito"
-                value={formData.numeroCartaCredito}
-                onChange={(e) =>
-                  handleChange(
-                    "numeroCartaCredito",
-                    e.target.value.toUpperCase()
-                  )
-                }
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="numeroCartaCredito"
+                control={control}
+                render={({ field }) => (
+                  <InputText
+                    id="numeroCartaCredito"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="refNroProformaVentaExportacion"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="refNroProformaVentaExportacion" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 N° Proforma Venta Exportacion
               </label>
-              <InputText
-                id="refNroProformaVentaExportacion"
-                value={formData.refNroProformaVentaExportacion}
-                onChange={(e) =>
-                  handleChange("refNroProformaVentaExportacion", e.target.value)
-                }
-                placeholder="Ej: PF-EXP-2024-001"
-                disabled={readOnly}
-                style={{ width: "100%", textTransform: "uppercase" }}
-                maxLength={100}
+              <Controller
+                name="refNroProformaVentaExportacion"
+                control={control}
+                render={({ field }) => (
+                  <InputText
+                    id="refNroProformaVentaExportacion"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    placeholder="Ej: PF-EXP-2024-001"
+                    disabled={readOnly}
+                    style={{ width: "100%", textTransform: "uppercase" }}
+                    maxLength={100}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="fechaEmision"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="fechaEmision" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Fecha de Emisión (Garantías/Cartas)
               </label>
-              <Calendar
-                id="fechaEmision"
-                value={formData.fechaEmision}
-                onChange={(e) => handleChange("fechaEmision", e.value)}
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="fechaEmision"
+                control={control}
+                render={({ field }) => (
+                  <Calendar
+                    id="fechaEmision"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.value)}
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="fechaExpiracion"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="fechaExpiracion" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Fecha de Expiración (Garantías/Cartas)
               </label>
-              <Calendar
-                id="fechaExpiracion"
-                value={formData.fechaExpiracion}
-                onChange={(e) => handleChange("fechaExpiracion", e.value)}
-                dateFormat="dd/mm/yy"
-                showIcon
-                disabled={readOnly}
-                style={{ width: "100%" }}
+              <Controller
+                name="fechaExpiracion"
+                control={control}
+                render={({ field }) => (
+                  <Calendar
+                    id="fechaExpiracion"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.value)}
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
           </div>
 
-          {/* Fila 6: Características Especiales, Refinanciamiento */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "end",
-              gap: 20,
-              marginBottom: 20,
-            }}
-          >
+          <div style={{ display: "flex", alignItems: "end", gap: 20, marginBottom: 20 }}>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="esRevolvente"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="esRevolvente" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Línea Revolvente
               </label>
-              <Button
-                id="esRevolvente"
-                label={
-                  formData.esRevolvente ? "SÍ REVOLVENTE" : "NO REVOLVENTE"
-                }
-                icon={
-                  formData.esRevolvente
-                    ? "pi pi-check-circle"
-                    : "pi pi-times-circle"
-                }
-                severity={formData.esRevolvente ? "success" : "secondary"}
-                onClick={() =>
-                  handleChange("esRevolvente", !formData.esRevolvente)
-                }
-                disabled={readOnly}
-                outlined
-                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              <Controller
+                name="esRevolvente"
+                control={control}
+                render={({ field }) => (
+                  <Button
+                    id="esRevolvente"
+                    label={field.value ? "SÍ REVOLVENTE" : "NO REVOLVENTE"}
+                    icon={field.value ? "pi pi-check-circle" : "pi pi-times-circle"}
+                    severity={field.value ? "success" : "secondary"}
+                    onClick={() => field.onChange(!field.value)}
+                    disabled={readOnly}
+                    outlined
+                    style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="permitePagoParcial"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="permitePagoParcial" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Pago Parcial
               </label>
-              <Button
-                id="permitePagoParcial"
-                label={
-                  formData.permitePagoParcial
-                    ? "PERMITE PARCIAL"
-                    : "NO PERMITE PARCIAL"
-                }
-                icon={
-                  formData.permitePagoParcial
-                    ? "pi pi-check-circle"
-                    : "pi pi-times-circle"
-                }
-                severity={formData.permitePagoParcial ? "info" : "secondary"}
-                onClick={() =>
-                  handleChange(
-                    "permitePagoParcial",
-                    !formData.permitePagoParcial
-                  )
-                }
-                disabled={readOnly}
-                outlined
-                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              <Controller
+                name="permitePagoParcial"
+                control={control}
+                render={({ field }) => (
+                  <Button
+                    id="permitePagoParcial"
+                    label={field.value ? "PERMITE PARCIAL" : "NO PERMITE PARCIAL"}
+                    icon={field.value ? "pi pi-check-circle" : "pi pi-times-circle"}
+                    severity={field.value ? "info" : "secondary"}
+                    onClick={() => field.onChange(!field.value)}
+                    disabled={readOnly}
+                    outlined
+                    style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="esRefinanciamiento"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="esRefinanciamiento" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Refinanciamiento
               </label>
-              <Button
-                id="esRefinanciamiento"
-                label={
-                  formData.esRefinanciamiento
-                    ? "ES REFINANCIAMIENTO"
-                    : "NO ES REFINANCIAMIENTO"
-                }
-                icon={
-                  formData.esRefinanciamiento
-                    ? "pi pi-refresh"
-                    : "pi pi-times-circle"
-                }
-                severity={formData.esRefinanciamiento ? "warning" : "secondary"}
-                onClick={() =>
-                  handleChange(
-                    "esRefinanciamiento",
-                    !formData.esRefinanciamiento
-                  )
-                }
-                disabled={readOnly}
-                outlined
-                style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+              <Controller
+                name="esRefinanciamiento"
+                control={control}
+                render={({ field }) => (
+                  <Button
+                    id="esRefinanciamiento"
+                    label={field.value ? "ES REFINANCIAMIENTO" : "NO ES REFINANCIAMIENTO"}
+                    icon={field.value ? "pi pi-refresh" : "pi pi-times-circle"}
+                    severity={field.value ? "warning" : "secondary"}
+                    onClick={() => field.onChange(!field.value)}
+                    disabled={readOnly}
+                    outlined
+                    style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+                  />
+                )}
               />
             </div>
-            {formData.esRefinanciamiento && (
+            {watch("esRefinanciamiento") && (
               <div style={{ flex: 2 }}>
-                <label
-                  htmlFor="prestamoRefinanciadoId"
-                  style={{
-                    fontWeight: "bold",
-                    fontSize: getResponsiveFontSize(),
-                  }}
-                >
+                <label htmlFor="prestamoRefinanciadoId" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                   Préstamo Refinanciado *
                 </label>
-                <Dropdown
-                  id="prestamoRefinanciadoId"
-                  value={formData.prestamoRefinanciadoId}
-                  options={prestamosRefinanciarOptions}
-                  onChange={(e) =>
-                    handleChange("prestamoRefinanciadoId", e.value)
-                  }
-                  placeholder="Seleccione préstamo a refinanciar"
-                  disabled={readOnly || !formData.empresaId}
-                  style={{ width: "100%", fontSize: getResponsiveFontSize() }}
-                  filter
-                  showClear
-                  emptyMessage="No hay préstamos vigentes o vencidos para refinanciar"
+                <Controller
+                  name="prestamoRefinanciadoId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="prestamoRefinanciadoId"
+                      value={field.value}
+                      options={prestamosRefinanciarOptions}
+                      onChange={(e) => field.onChange(e.value)}
+                      placeholder="Seleccione préstamo a refinanciar"
+                      disabled={readOnly || !empresaIdWatch}
+                      style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+                      filter
+                      showClear
+                      emptyMessage="No hay préstamos vigentes o vencidos para refinanciar"
+                    />
+                  )}
                 />
               </div>
             )}
           </div>
 
-          {/* Fila 7: Destino de Fondos, Descripción Garantía y Observaciones */}
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="destinoFondos"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="destinoFondos" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Destino de Fondos
               </label>
-              <InputTextarea
-                id="destinoFondos"
-                value={formData.destinoFondos}
-                onChange={(e) =>
-                  handleChange("destinoFondos", e.target.value.toUpperCase())
-                }
-                placeholder="Descripción del destino de los fondos del préstamo"
-                disabled={readOnly}
-                rows={2}
-                style={{ width: "100%" }}
+              <Controller
+                name="destinoFondos"
+                control={control}
+                render={({ field }) => (
+                  <InputTextarea
+                    id="destinoFondos"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    placeholder="Descripción del destino de los fondos del préstamo"
+                    disabled={readOnly}
+                    rows={2}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="descripcionGarantia"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="descripcionGarantia" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Descripción de Garantía
               </label>
-              <InputTextarea
-                id="descripcionGarantia"
-                value={formData.descripcionGarantia}
-                onChange={(e) =>
-                  handleChange(
-                    "descripcionGarantia",
-                    e.target.value.toUpperCase()
-                  )
-                }
-                placeholder="Descripción detallada de la garantía"
-                disabled={readOnly}
-                rows={2}
-                style={{ width: "100%" }}
+              <Controller
+                name="descripcionGarantia"
+                control={control}
+                render={({ field }) => (
+                  <InputTextarea
+                    id="descripcionGarantia"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    placeholder="Descripción detallada de la garantía"
+                    disabled={readOnly}
+                    rows={2}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="observaciones"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="observaciones" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Observaciones
               </label>
-              <InputTextarea
-                id="observaciones"
-                value={formData.observaciones}
-                onChange={(e) =>
-                  handleChange("observaciones", e.target.value.toUpperCase())
-                }
-                placeholder="Observaciones adicionales"
-                disabled={readOnly}
-                rows={2}
-                style={{ width: "100%" }}
+              <Controller
+                name="observaciones"
+                control={control}
+                render={({ field }) => (
+                  <InputTextarea
+                    id="observaciones"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    placeholder="Observaciones adicionales"
+                    disabled={readOnly}
+                    rows={2}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
           </div>
 
-          {/* Fila 8: Saldos, Pagos Realizados */}
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="saldoCapital"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="saldoCapital" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Saldo Capital
               </label>
-              <InputNumber
-                id="saldoCapital"
-                value={formData.saldoCapital}
-                onValueChange={(e) => handleChange("saldoCapital", e.value)}
-                mode="currency"
-                currency={monedaSeleccionada?.codigoSunat || "PEN"}
-                locale="es-PE"
-                minFractionDigits={2}
-                disabled={true}
-                style={{ width: "100%" }}
+              <Controller
+                name="saldoCapital"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="saldoCapital"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="currency"
+                    currency={monedaSeleccionada?.codigoSunat || "PEN"}
+                    locale="es-PE"
+                    minFractionDigits={2}
+                    disabled={true}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="saldoInteres"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="saldoInteres" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Saldo Interés
               </label>
-              <InputNumber
-                id="saldoInteres"
-                value={formData.saldoInteres}
-                onValueChange={(e) => handleChange("saldoInteres", e.value)}
-                mode="currency"
-                currency={monedaSeleccionada?.codigoSunat || "PEN"}
-                locale="es-PE"
-                minFractionDigits={2}
-                disabled={true}
-                style={{ width: "100%" }}
+              <Controller
+                name="saldoInteres"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="saldoInteres"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="currency"
+                    currency={monedaSeleccionada?.codigoSunat || "PEN"}
+                    locale="es-PE"
+                    minFractionDigits={2}
+                    disabled={true}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="capitalPagado"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="capitalPagado" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Capital Pagado
               </label>
-              <InputNumber
-                id="capitalPagado"
-                value={formData.capitalPagado}
-                onValueChange={(e) => handleChange("capitalPagado", e.value)}
-                mode="currency"
-                currency={monedaSeleccionada?.codigoSunat || "PEN"}
-                locale="es-PE"
-                minFractionDigits={2}
-                disabled={true}
-                style={{ width: "100%" }}
+              <Controller
+                name="capitalPagado"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="capitalPagado"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="currency"
+                    currency={monedaSeleccionada?.codigoSunat || "PEN"}
+                    locale="es-PE"
+                    minFractionDigits={2}
+                    disabled={true}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="interesPagado"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
+              <label htmlFor="interesPagado" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
                 Interés Pagado
               </label>
-              <InputNumber
-                id="interesPagado"
-                value={formData.interesPagado}
-                onValueChange={(e) => handleChange("interesPagado", e.value)}
-                mode="currency"
-                currency={monedaSeleccionada?.codigoSunat || "PEN"}
-                locale="es-PE"
-                minFractionDigits={2}
-                disabled={true}
-                style={{ width: "100%" }}
+              <Controller
+                name="interesPagado"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="interesPagado"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="currency"
+                    currency={monedaSeleccionada?.codigoSunat || "PEN"}
+                    locale="es-PE"
+                    minFractionDigits={2}
+                    disabled={true}
+                    style={{ width: "100%" }}
+                  />
+                )}
               />
             </div>
           </div>
         </TabPanel>
 
-        {isEdit && defaultValues?.id && (
-          <TabPanel header="Cuotas" leftIcon="pi pi-list">
-            <CuotaPrestamoList
-              prestamoBancarioId={defaultValues.id}
-              readOnly={readOnly}
-            />
-          </TabPanel>
-        )}
+        <TabPanel header="Cuotas" leftIcon="pi pi-list">
+          {isEdit && defaultValues?.id ? (
+            <CuotaPrestamoList prestamoId={defaultValues.id} readOnly={readOnly} />
+          ) : (
+            <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>
+              <i className="pi pi-info-circle" style={{ fontSize: "2em", marginBottom: "10px" }}></i>
+              <p>Las cuotas se generarán automáticamente después de guardar el préstamo.</p>
+            </div>
+          )}
+        </TabPanel>
 
-        {isEdit && defaultValues?.id && (
-          <TabPanel header="Desembolsos" leftIcon="pi pi-money-bill">
-            <DesembolsoPrestamoCard
-              prestamoBancarioId={defaultValues.id}
-              readOnly={readOnly}
-            />
-          </TabPanel>
-        )}
+        <TabPanel header="Desembolsos" leftIcon="pi pi-money-bill">
+          {isEdit && defaultValues?.id ? (
+            <DesembolsoPrestamoCard prestamoId={defaultValues.id} readOnly={readOnly} />
+          ) : (
+            <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>
+              <i className="pi pi-info-circle" style={{ fontSize: "2em", marginBottom: "10px" }}></i>
+              <p>Los desembolsos se podrán registrar después de guardar el préstamo.</p>
+            </div>
+          )}
+        </TabPanel>
 
-        {isEdit && defaultValues?.id && (
-          <TabPanel header="Garantías" leftIcon="pi pi-shield">
-            <GarantiaPrestamoCard
-              prestamoBancarioId={defaultValues.id}
-              readOnly={readOnly}
-            />
-          </TabPanel>
-        )}
+        <TabPanel header="Garantías" leftIcon="pi pi-shield">
+          {isEdit && defaultValues?.id ? (
+            <GarantiaPrestamoCard prestamoId={defaultValues.id} readOnly={readOnly} />
+          ) : (
+            <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>
+              <i className="pi pi-info-circle" style={{ fontSize: "2em", marginBottom: "10px" }}></i>
+              <p>Las garantías se podrán registrar después de guardar el préstamo.</p>
+            </div>
+          )}
+        </TabPanel>
 
-        {isEdit && defaultValues?.id && (
-          <TabPanel header="Documento Principal" leftIcon="pi pi-file-pdf">
-            <DocPrestamoPrincipal
-              prestamoId={defaultValues.id}
-              documentoActual={urlDocumentoPDF}
-              readOnly={readOnly}
-              onDocumentoActualizado={(url) => setUrlDocumentoPDF(url)}
-            />
-          </TabPanel>
-        )}
+        <TabPanel header="Documento Principal" leftIcon="pi pi-file-pdf">
+          <DocPrestamoPrincipal
+            prestamoId={defaultValues?.id}
+            control={control}
+            errors={errors}
+            setValue={setValue}
+            watch={watch}
+            getValues={getValues}
+            defaultValues={defaultValues}
+            readOnly={readOnly}
+          />
+        </TabPanel>
 
-        {isEdit && defaultValues?.id && (
-          <TabPanel header="Documentación Adicional" leftIcon="pi pi-paperclip">
-            <DocPrestamoAdicional
-              prestamoId={defaultValues.id}
-              documentoActual={urlDocAdicionalPDF}
-              readOnly={readOnly}
-              onDocumentoActualizado={(url) => setUrlDocAdicionalPDF(url)}
-            />
-          </TabPanel>
-        )}
+        <TabPanel header="Documento Adicional" leftIcon="pi pi-file-pdf">
+          <DocPrestamoAdicional
+            prestamoId={defaultValues?.id}
+            control={control}
+            errors={errors}
+            setValue={setValue}
+            watch={watch}
+            getValues={getValues}
+            defaultValues={defaultValues}
+            readOnly={readOnly}
+          />
+        </TabPanel>
       </TabView>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 10,
-          marginTop: 20,
-        }}
-      >
-        <Button
-          label="Cancelar"
-          icon="pi pi-times"
-          onClick={onCancel}
-          className="p-button-secondary"
-          disabled={loading}
-        />
-        <Button
-          label={isEdit ? "Actualizar" : "Guardar"}
-          icon="pi pi-check"
-          onClick={handleSubmit}
-          disabled={loading || readOnly}
-          loading={loading}
-        />
-      </div>
+      {!readOnly && (
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
+          <Button
+            label="Cancelar"
+            icon="pi pi-times"
+            severity="secondary"
+            onClick={onCancel}
+            outlined
+          />
+          <Button
+            label={isEdit ? "Actualizar Préstamo" : "Crear Préstamo"}
+            icon="pi pi-save"
+            severity="success"
+            onClick={handleSubmit(onSubmitForm)}
+          />
+        </div>
+      )}
     </div>
   );
 });

@@ -1,362 +1,235 @@
-/**
- * VerImpresionCotizacionVentasPDF.jsx
- *
- * Card para generar y visualizar el PDF de la cotización de ventas.
- * Permite generar, visualizar y descargar PDFs de cotizaciones.
- * Sigue el patrón profesional ERP Megui usando PDFViewer genérico y pdfUtils.
- *
- * @author ERP Megui
- * @version 1.0.0
- */
-
 import React, { useState, useEffect } from "react";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
-import { Message } from "primereact/message";
-import PDFViewer from "../shared/PDFViewer";
-import { abrirPdfEnNuevaPestana, descargarPdf } from "../../utils/pdfUtils";
+import PDFGeneratedUploader from "../pdf/PDFGeneratedUploader";
 import { generarYSubirPDFCotizacionVentas } from "./CotizacionVentasPDF";
+import { actualizarCotizacionVentas } from "../../api/cotizacionVentas";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 
-/**
- * Componente VerImpresionCotizacionVentasPDF
- * @param {Object} props - Props del componente
- * @param {number} props.cotizacionId - ID de la cotización
- * @param {Object} props.datosCotizacion - Datos completos de la cotización
- * @param {Array} props.detalles - Detalles de productos
- * @param {Object} props.toast - Referencia al Toast para mensajes
- * @param {Function} props.onPdfGenerated - Callback cuando se genera el PDF
- */
 const VerImpresionCotizacionVentasPDF = ({
   cotizacionId,
   datosCotizacion = {},
   detalles = [],
   toast,
   onPdfGenerated,
+  onRecargarRegistro,
 }) => {
+  const [idioma, setIdioma] = useState("en");
   const [pdfUrl, setPdfUrl] = useState(null);
-  const [generando, setGenerando] = useState(false);
-  const [pdfKey, setPdfKey] = useState(0);
-  const [idioma, setIdioma] = useState("en"); // "en" o "es", por defecto inglés
 
-  // Sin opciones - el nuevo sistema genera todo automáticamente
-
-  // Cargar URL del PDF si existe en datosCotizacion
   useEffect(() => {
     if (datosCotizacion?.urlCotizacionPdf) {
       setPdfUrl(datosCotizacion.urlCotizacionPdf);
     }
   }, [datosCotizacion?.urlCotizacionPdf]);
 
-  /**
-   * Genera el PDF de la cotización
-   */
-  const handleGenerarPDF = async () => {
+  const generarPdfWrapper = async () => {
     if (!datosCotizacion?.id) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "Debe guardar la cotización antes de generar el PDF",
-        life: 3000,
-      });
-      return;
+      throw new Error("Debe guardar la cotización antes de generar el PDF");
     }
 
     if (detalles.length === 0) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "Debe agregar al menos un producto para generar el PDF",
-        life: 3000,
-      });
-      return;
+      throw new Error("Debe agregar al menos un producto para generar el PDF");
     }
 
-    setGenerando(true);
+    const token = useAuthStore.getState().token;
+    const headers = { Authorization: `Bearer ${token}` };
 
+    let cotizacionCompleta;
     try {
-      const token = useAuthStore.getState().token;
-      const headers = { Authorization: `Bearer ${token}` };
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/cotizaciones-ventas/${datosCotizacion.id}`,
+        { headers }
+      );
+      if (response.ok) {
+        cotizacionCompleta = await response.json();
+      } else {
+        throw new Error("No se pudo cargar la cotización completa");
+      }
+    } catch (error) {
+      console.error("Error cargando cotización completa:", error);
+      throw new Error("No se pudo cargar la cotización completa desde el servidor");
+    }
 
-      // IMPORTANTE: Cargar la cotización completa desde el backend con todas las relaciones
-      let cotizacionCompleta;
+    let empresa = cotizacionCompleta.empresa;
+
+    if (!empresa && datosCotizacion.empresaId) {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/cotizaciones-ventas/${datosCotizacion.id}`,
+          `${import.meta.env.VITE_API_URL}/empresas/${datosCotizacion.empresaId}`,
           { headers }
         );
         if (response.ok) {
-          cotizacionCompleta = await response.json();
-        } else {
-          throw new Error("No se pudo cargar la cotización completa");
+          empresa = await response.json();
         }
       } catch (error) {
-        console.error("Error cargando cotización completa:", error);
-        throw new Error("No se pudo cargar la cotización completa desde el servidor");
+        console.error("Error cargando empresa:", error);
       }
+    }
 
-      // Obtener empresa de la cotización o buscarla por empresaId
-      let empresa = cotizacionCompleta.empresa;
+    if (!empresa) {
+      throw new Error("No se pudo cargar la información de la empresa");
+    }
 
-      // Si no está cargada, intentar obtenerla del API
-      if (!empresa && datosCotizacion.empresaId) {
-        try {
-          const response = await fetch(
-            `${import.meta.env.VITE_API_URL}/empresas/${datosCotizacion.empresaId}`,
-            { headers }
-          );
-          if (response.ok) {
-            empresa = await response.json();
-          }
-        } catch (error) {
-          console.error("Error cargando empresa:", error);
-        }
-      }
+    const promesas = [];
 
-      if (!empresa) {
-        throw new Error("No se pudo cargar la información de la empresa");
-      }
-
-      // Cargar solo los datos que no están en el schema como relaciones
-      const promesas = [];
-
-      if (cotizacionCompleta.puertoCargaId && !cotizacionCompleta.puertoCarga) {
-        promesas.push(
-          fetch(`${import.meta.env.VITE_API_URL}/pesca/puertos-pesca/${cotizacionCompleta.puertoCargaId}`, { headers })
-            .then(r => r.ok ? r.json() : null)
-            .then(data => { if (data) cotizacionCompleta.puertoCarga = data; })
-            .catch(e => console.error("Error cargando puerto carga:", e))
-        );
-      }
-
-      if (cotizacionCompleta.puertoDescargaId && !cotizacionCompleta.puertoDescarga) {
-        promesas.push(
-          fetch(`${import.meta.env.VITE_API_URL}/pesca/puertos-pesca/${cotizacionCompleta.puertoDescargaId}`, { headers })
-            .then(r => r.ok ? r.json() : null)
-            .then(data => { if (data) cotizacionCompleta.puertoDescarga = data; })
-            .catch(e => console.error("Error cargando puerto descarga:", e))
-        );
-      }
-
-      if (cotizacionCompleta.paisDestinoId && !cotizacionCompleta.paisDestino) {
-        promesas.push(
-          fetch(`${import.meta.env.VITE_API_URL}/paises/${cotizacionCompleta.paisDestinoId}`, { headers })
-            .then(r => r.ok ? r.json() : null)
-            .then(data => { if (data) cotizacionCompleta.paisDestino = data; })
-            .catch(e => console.error("Error cargando país destino:", e))
-        );
-      }
-
-      // Cargar personal para firmas (respVentas y autorizaVenta)
-      if (cotizacionCompleta.respVentasId && !cotizacionCompleta.respVentas) {
-        promesas.push(
-          fetch(`${import.meta.env.VITE_API_URL}/personal/${cotizacionCompleta.respVentasId}`, { headers })
-            .then(r => r.ok ? r.json() : null)
-            .then(data => { if (data) cotizacionCompleta.respVentas = data; })
-            .catch(e => console.error("Error cargando resp ventas:", e))
-        );
-      }
-
-      if (cotizacionCompleta.autorizaVentaId && !cotizacionCompleta.autorizaVenta) {
-        promesas.push(
-          fetch(`${import.meta.env.VITE_API_URL}/personal/${cotizacionCompleta.autorizaVentaId}`, { headers })
-            .then(r => r.ok ? r.json() : null)
-            .then(data => { if (data) cotizacionCompleta.autorizaVenta = data; })
-            .catch(e => console.error("Error cargando autoriza venta:", e))
-        );
-      }
-
-      // Esperar a que todas las promesas se resuelvan
-      await Promise.all(promesas);
-
-      // Usar detallesProductos de la cotización completa del backend (tiene todos los datos)
-      const detallesCompletos = cotizacionCompleta.detallesProductos || detalles;
-
-      // Generar y subir el PDF con la cotización completa del backend
-      const resultado = await generarYSubirPDFCotizacionVentas(
-        cotizacionCompleta,
-        detallesCompletos,
-        empresa,
-        idioma
+    if (cotizacionCompleta.puertoCargaId && !cotizacionCompleta.puertoCarga) {
+      promesas.push(
+        fetch(`${import.meta.env.VITE_API_URL}/pesca/puertos-pesca/${cotizacionCompleta.puertoCargaId}`, { headers })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => { if (data) cotizacionCompleta.puertoCarga = data; })
+          .catch(e => console.error("Error cargando puerto carga:", e))
       );
+    }
 
-      if (resultado.success) {
-        const urlPdf = resultado.urlPdf;
-        setPdfUrl(urlPdf);
+    if (cotizacionCompleta.puertoDescargaId && !cotizacionCompleta.puertoDescarga) {
+      promesas.push(
+        fetch(`${import.meta.env.VITE_API_URL}/pesca/puertos-pesca/${cotizacionCompleta.puertoDescargaId}`, { headers })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => { if (data) cotizacionCompleta.puertoDescarga = data; })
+          .catch(e => console.error("Error cargando puerto descarga:", e))
+      );
+    }
 
-        // Actualizar datosCotizacion con la nueva URL
-        if (datosCotizacion && urlPdf) {
-          datosCotizacion.urlCotizacionPdf = urlPdf;
-        }
+    if (cotizacionCompleta.paisDestinoId && !cotizacionCompleta.paisDestino) {
+      promesas.push(
+        fetch(`${import.meta.env.VITE_API_URL}/paises/${cotizacionCompleta.paisDestinoId}`, { headers })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => { if (data) cotizacionCompleta.paisDestino = data; })
+          .catch(e => console.error("Error cargando país destino:", e))
+      );
+    }
 
-        // Notificar al componente padre
+    if (cotizacionCompleta.respVentasId && !cotizacionCompleta.respVentas) {
+      promesas.push(
+        fetch(`${import.meta.env.VITE_API_URL}/personal/${cotizacionCompleta.respVentasId}`, { headers })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => { if (data) cotizacionCompleta.respVentas = data; })
+          .catch(e => console.error("Error cargando resp ventas:", e))
+      );
+    }
+
+    if (cotizacionCompleta.autorizaVentaId && !cotizacionCompleta.autorizaVenta) {
+      promesas.push(
+        fetch(`${import.meta.env.VITE_API_URL}/personal/${cotizacionCompleta.autorizaVentaId}`, { headers })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => { if (data) cotizacionCompleta.autorizaVenta = data; })
+          .catch(e => console.error("Error cargando autoriza venta:", e))
+      );
+    }
+
+    await Promise.all(promesas);
+
+    const detallesCompletos = cotizacionCompleta.detallesProductos || detalles;
+
+    console.log("🔄 [VerImpresionCotizacionVentasPDF] Generando PDF con idioma:", idioma);
+    const resultado = await generarYSubirPDFCotizacionVentas(
+      cotizacionCompleta,
+      detallesCompletos,
+      empresa,
+      idioma
+    );
+
+    console.log("📦 [VerImpresionCotizacionVentasPDF] Resultado de generación:", resultado);
+
+    if (resultado.success && resultado.urlPdf) {
+      try {
+        console.log("💾 [VerImpresionCotizacionVentasPDF] Guardando URL del PDF en BD...");
+        console.log("🆔 [VerImpresionCotizacionVentasPDF] ID de cotización:", datosCotizacion.id);
+        console.log("🔗 [VerImpresionCotizacionVentasPDF] URL a guardar:", resultado.urlPdf);
+        
+        const dataToUpdate = {
+          urlCotizacionPdf: resultado.urlPdf,
+        };
+
+        console.log("📤 [VerImpresionCotizacionVentasPDF] Datos a enviar:", dataToUpdate);
+
+        const respuestaActualizacion = await actualizarCotizacionVentas(datosCotizacion.id, dataToUpdate);
+
+        console.log("✅ [VerImpresionCotizacionVentasPDF] Respuesta de actualización:", respuestaActualizacion);
+        console.log("✅ [VerImpresionCotizacionVentasPDF] Datos guardados correctamente en BD");
+
         if (onPdfGenerated && typeof onPdfGenerated === "function") {
-          onPdfGenerated(urlPdf);
+          console.log("📢 [VerImpresionCotizacionVentasPDF] Llamando onPdfGenerated...");
+          onPdfGenerated(resultado.urlPdf);
         }
 
-        toast.current.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "PDF generado y guardado correctamente",
-          life: 3000,
-        });
-      } else {
-        throw new Error(resultado.error || "Error al generar el PDF");
+        if (onRecargarRegistro && typeof onRecargarRegistro === "function") {
+          console.log("🔄 [VerImpresionCotizacionVentasPDF] Llamando onRecargarRegistro...");
+          await onRecargarRegistro();
+          console.log("✅ [VerImpresionCotizacionVentasPDF] Registro recargado exitosamente");
+        } else {
+          console.warn("⚠️ [VerImpresionCotizacionVentasPDF] onRecargarRegistro NO está definido o no es función");
+        }
+
+        if (toast?.current) {
+          toast.current.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: "PDF generado y guardado correctamente",
+            life: 3000,
+          });
+        }
+      } catch (error) {
+        console.error("❌ [VerImpresionCotizacionVentasPDF] Error al guardar:", error);
+        console.error("❌ Detalles del error:", error.response?.data || error.message);
+        console.error("❌ Stack trace:", error.stack);
+        
+        if (toast?.current) {
+          toast.current.show({
+            severity: "warn",
+            summary: "Advertencia",
+            detail: `PDF generado correctamente pero hubo un error al guardar: ${error.response?.data?.message || error.message}`,
+            life: 5000,
+          });
+        }
       }
-    } catch (error) {
-      console.error("Error al generar PDF:", error);
-      toast.current.show({
-        severity: "error",
-        summary: "Error",
-        detail: error.message || "Error al generar el PDF",
-        life: 3000,
-      });
-    } finally {
-      setGenerando(false);
+    } else {
+      console.error("❌ [VerImpresionCotizacionVentasPDF] No se pudo generar el PDF:", resultado.error);
     }
+
+    return resultado;
   };
 
-  /**
-   * Abre el PDF en una nueva pestaña
-   */
-  const handleVerPDF = () => {
-    if (pdfUrl) {
-      abrirPdfEnNuevaPestana(pdfUrl, toast, "No hay PDF disponible");
-    }
-  };
-
-  /**
-   * Descarga el PDF
-   */
-  const handleDescargarPDF = () => {
-    if (pdfUrl) {
-      const nombreArchivo = `cotizacion-ventas-${
-        datosCotizacion.numeroDocumento || cotizacionId
-      }.pdf`;
-      descargarPdf(pdfUrl, toast, nombreArchivo, "cotizaciones-ventas");
-    }
-  };
+  const customControls = (
+    <>
+      <label htmlFor="idiomaBtn" style={{ display: 'block', marginBottom: '0.5rem' }}>
+        Idioma
+      </label>
+      <Button
+        type="button"
+        id="idiomaBtn"
+        icon={idioma === "en" ? "pi pi-flag" : "pi pi-flag-fill"}
+        label={idioma === "en" ? "English" : "Español"}
+        className={idioma === "en" ? "p-button-info" : "p-button-warning"}
+        onClick={() => setIdioma(idioma === "en" ? "es" : "en")}
+        tooltip={idioma === "en" ? "Cambiar a Español" : "Switch to English"}
+        tooltipOptions={{ position: "top" }}
+        style={{ width: "100%" }}
+      />
+    </>
+  );
 
   return (
     <Card>
-      <div className="p-fluid">
-        {/* Botones y URL */}
-        <div
-          style={{
-            display: "flex",
-            gap: "0.5rem",
-            alignItems: "flex-end",
-            marginBottom: "1rem",
-          }}
-        >
-          {/* Botón de idioma */}
-          <div style={{ flex: 0.5 }}>
-            <label htmlFor="idiomaBtn" style={{ display: "block", marginBottom: "0.5rem" }}>
-              Idioma
-            </label>
-            <Button
-              type="button"
-              id="idiomaBtn"
-              icon={idioma === "en" ? "pi pi-flag" : "pi pi-flag-fill"}
-              label={idioma === "en" ? "English" : "Español"}
-              className={idioma === "en" ? "p-button-info" : "p-button-warning"}
-              onClick={() => setIdioma(idioma === "en" ? "es" : "en")}
-              tooltip={idioma === "en" ? "Cambiar a Español" : "Switch to English"}
-              tooltipOptions={{ position: "top" }}
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          <div style={{ flex: 2 }}>
-            <label htmlFor="urlPdf">
-              URL del PDF (se genera automáticamente)
-            </label>
-            <div className="p-inputgroup">
-              <input
-                id="urlPdf"
-                type="text"
-                className="p-inputtext p-component"
-                value={pdfUrl || ""}
-                readOnly
-                placeholder="No hay PDF generado"
-                style={{
-                  backgroundColor: "#f8f9fa",
-                  cursor: "not-allowed",
-                }}
-              />
-              <Button
-                icon="pi pi-file-pdf"
-                label="Generar PDF"
-                className="p-button-success"
-                onClick={handleGenerarPDF}
-                disabled={!cotizacionId || generando || detalles.length === 0}
-                loading={generando}
-              />
-            </div>
-          </div>
-
-          {/* Botón Ver PDF */}
-          <div style={{ flex: 0.5 }}>
-            {pdfUrl && (
-              <Button
-                type="button"
-                label="Ver PDF"
-                icon="pi pi-eye"
-                className="p-button-info"
-                size="small"
-                onClick={handleVerPDF}
-                tooltip="Abrir PDF en nueva pestaña"
-                tooltipOptions={{ position: "top" }}
-              />
-            )}
-          </div>
-
-          {/* Botón Descargar PDF */}
-          <div style={{ flex: 0.5 }}>
-            {pdfUrl && (
-              <Button
-                type="button"
-                label="Descargar"
-                icon="pi pi-download"
-                className="p-button-secondary"
-                size="small"
-                onClick={handleDescargarPDF}
-                tooltip="Descargar PDF"
-                tooltipOptions={{ position: "top" }}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Visor de PDF */}
-        {pdfUrl && (
-          <div style={{ marginTop: "1rem" }}>
-            <PDFViewer urlDocumento={pdfUrl} altura="800px" key={pdfKey} />
-          </div>
-        )}
-
-        {/* Mensaje cuando no hay PDF */}
-        {!pdfUrl && (
-          <div style={{ marginTop: "1rem" }}>
-            <Message
-              severity="warn"
-              text='No hay PDF generado. Use el botón "Generar PDF" para generar el documento de la cotización de ventas.'
-              style={{ width: "100%" }}
-            />
-          </div>
-        )}
-
-        {/* Mensaje cuando no hay detalles */}
-        {detalles.length === 0 && (
-          <div style={{ marginTop: "1rem" }}>
-            <Message
-              severity="info"
-              text="Debe agregar al menos un producto en el detalle para poder generar el PDF."
-              style={{ width: "100%" }}
-            />
-          </div>
-        )}
-      </div>
+      <PDFGeneratedUploader
+        generatePdfFunction={generarPdfWrapper}
+        pdfData={datosCotizacion}
+        moduleName="cotizacion-ventas"
+        entityId={cotizacionId}
+        fileName={`cotizacion-ventas-${datosCotizacion.numeroDocumento || cotizacionId}.pdf`}
+        buttonLabel="Generar Cotización PDF"
+        buttonIcon="pi pi-file-pdf"
+        buttonClassName="p-button-success"
+        disabled={!cotizacionId || detalles.length === 0}
+        warningMessage={!cotizacionId ? "Debe guardar la cotización antes de generar el PDF" : null}
+        infoMessage={detalles.length === 0 ? "Debe agregar al menos un producto en el detalle para poder generar el PDF." : null}
+        toast={toast}
+        customControls={customControls}
+        viewerHeight="800px"
+        onGenerateComplete={(url) => setPdfUrl(url)}
+        initialPdfUrl={datosCotizacion?.urlCotizacionPdf}
+      />
     </Card>
   );
 };

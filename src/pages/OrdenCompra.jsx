@@ -269,6 +269,23 @@ export default function OrdenCompra({ ruta }) {
     }
   };
 
+  const recargarOrdenActual = async () => {
+    if (!editing?.id) return;
+    
+    try {
+      console.log("🔄 [OrdenCompra] Recargando orden actual desde BD...");
+      const { getOrdenCompraPorId } = await import("../api/ordenCompra");
+      const ordenActualizada = await getOrdenCompraPorId(editing.id);
+      
+      console.log("✅ [OrdenCompra] Orden recargada:", ordenActualizada);
+      console.log("📎 [OrdenCompra] datosAdicionales actualizados:", ordenActualizada.datosAdicionales);
+      
+      setEditing(ordenActualizada);
+    } catch (error) {
+      console.error("❌ [OrdenCompra] Error al recargar orden:", error);
+    }
+  };
+
   const handleDelete = (rowData) => {
     if (!permisos.puedeEliminar) {
       toast.current.show({
@@ -529,7 +546,6 @@ export default function OrdenCompra({ ruta }) {
         return;
       }
 
-      // ✅ SI YA TIENE KARDEX, PREGUNTAR SI DESEA REGENERAR
       if (ordenActual.movIngresoAlmacenId) {
         confirmDialog({
           message:
@@ -570,7 +586,6 @@ export default function OrdenCompra({ ruta }) {
           },
         });
       } else {
-        // ✅ NO TIENE KARDEX, GENERAR NUEVO
         confirmDialog({
           message:
             "¿Está seguro de generar el kardex para esta orden de compra? Se creará el movimiento de ingreso a almacén y se actualizarán los saldos de stock.",
@@ -969,6 +984,7 @@ export default function OrdenCompra({ ruta }) {
           toast={toast}
           permisos={permisos}
           readOnly={!!editing && !!editing.id && !permisos.puedeEditar}
+          onRecargarRegistro={recargarOrdenActual}
         />
       </Dialog>
 

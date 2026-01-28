@@ -2,6 +2,7 @@
 // Formulario profesional para OTMantenimiento siguiendo patrón CotizacionVentasForm
 // Incluye TabView, campos booleanos como botones, validaciones y estilos profesionales
 import React, { useState, useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
@@ -52,16 +53,30 @@ const OTMantenimientoForm = ({
   const [countEntregasRendir, setCountEntregasRendir] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // Agregar react-hook-form SOLO para campos PDF
+  const {
+    control,
+    watch,
+    setValue: setValuePdf,
+    getValues,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      urlFotosAntesPdf: defaultValues?.urlFotosAntesPdf || "",
+      urlFotosDespuesPdf: defaultValues?.urlFotosDespuesPdf || "",
+    },
+  });
+
   const [formData, setFormData] = useState({
     id: defaultValues?.id || null,
     empresaId: defaultValues?.empresaId
       ? Number(defaultValues.empresaId)
       : empresaFija
-      ? Number(empresaFija)
-      : null,
+        ? Number(empresaFija)
+        : null,
     tipoDocumentoId: defaultValues?.tipoDocumentoId
       ? Number(defaultValues.tipoDocumentoId)
-      : tiposDocumento.find(t => Number(t.id) === 21)?.id || null,
+      : tiposDocumento.find((t) => Number(t.id) === 21)?.id || null,
     serieDocId: defaultValues?.serieDocId
       ? Number(defaultValues.serieDocId)
       : null,
@@ -79,12 +94,15 @@ const OTMantenimientoForm = ({
     motivoOriginoId: defaultValues?.motivoOriginoId
       ? Number(defaultValues.motivoOriginoId)
       : null,
-    prioridadAlta: defaultValues?.prioridadAlta !== undefined
-      ? defaultValues.prioridadAlta
-      : false,
-    estadoId: defaultValues?.estadoId 
-      ? Number(defaultValues.estadoId) 
-      : estadosDoc.find(e => e.descripcion === 'PENDIENTE')?.id || estadosDoc[0]?.id || null,
+    prioridadAlta:
+      defaultValues?.prioridadAlta !== undefined
+        ? defaultValues.prioridadAlta
+        : false,
+    estadoId: defaultValues?.estadoId
+      ? Number(defaultValues.estadoId)
+      : estadosDoc.find((e) => e.descripcion === "PENDIENTE")?.id ||
+        estadosDoc[0]?.id ||
+        null,
     fechaProgramada: defaultValues?.fechaProgramada
       ? new Date(defaultValues.fechaProgramada)
       : null,
@@ -92,9 +110,11 @@ const OTMantenimientoForm = ({
       ? new Date(defaultValues.fechaInicio)
       : null,
     fechaFin: defaultValues?.fechaFin ? new Date(defaultValues.fechaFin) : null,
-    monedaId: defaultValues?.monedaId 
-      ? Number(defaultValues.monedaId) 
-      : monedas.find(m => m.codigoSunat === 'PEN')?.id || monedas[0]?.id || null,
+    monedaId: defaultValues?.monedaId
+      ? Number(defaultValues.monedaId)
+      : monedas.find((m) => m.codigoSunat === "PEN")?.id ||
+        monedas[0]?.id ||
+        null,
     solicitanteId: defaultValues?.solicitanteId
       ? Number(defaultValues.solicitanteId)
       : null,
@@ -120,24 +140,25 @@ const OTMantenimientoForm = ({
 
   // Filtrar sedes y activos según empresa seleccionada
   const sedesFiltradas = sedes.filter(
-    (s) => !formData.empresaId || Number(s.empresaId) === Number(formData.empresaId)
+    (s) =>
+      !formData.empresaId || Number(s.empresaId) === Number(formData.empresaId),
   );
 
   const activosFiltrados = activos.filter(
-    (a) => !formData.empresaId || Number(a.empresaId) === Number(formData.empresaId)
+    (a) =>
+      !formData.empresaId || Number(a.empresaId) === Number(formData.empresaId),
   );
 
   const handleChange = (field, value) => {
     // Si cambia la empresa, limpiar sede y activo
-    if (field === 'empresaId') {
-      setFormData((prev) => ({ 
-        ...prev, 
+    if (field === "empresaId") {
+      setFormData((prev) => ({
+        ...prev,
         [field]: value,
         sedeId: null,
-        activoId: null
+        activoId: null,
       }));
-    } 
-    else {
+    } else {
       setFormData((prev) => ({ ...prev, [field]: value }));
     }
   };
@@ -145,7 +166,7 @@ const OTMantenimientoForm = ({
   // Incrementar refreshTrigger cuando cambien defaultValues (orden actualizada)
   useEffect(() => {
     if (defaultValues?.id) {
-      setRefreshTrigger(prev => prev + 1);
+      setRefreshTrigger((prev) => prev + 1);
     }
   }, [defaultValues]);
 
@@ -172,10 +193,16 @@ const OTMantenimientoForm = ({
       const serie = seriesDoc.find((s) => Number(s.id) === Number(serieId));
       if (serie) {
         const proximoCorrelativo = Number(serie.correlativo) + 1;
-        const numSerie = String(serie.serie).padStart(serie.numCerosIzqSerie, "0");
-        const numCorre = String(proximoCorrelativo).padStart(serie.numCerosIzqCorre, "0");
+        const numSerie = String(serie.serie).padStart(
+          serie.numCerosIzqSerie,
+          "0",
+        );
+        const numCorre = String(proximoCorrelativo).padStart(
+          serie.numCerosIzqCorre,
+          "0",
+        );
         const numeroCompleto = `${numSerie}-${numCorre}`;
-        
+
         setFormData((prev) => ({
           ...prev,
           numeroSerie: numSerie,
@@ -231,7 +258,17 @@ const OTMantenimientoForm = ({
 
     setLoading(true);
     try {
-      await onSubmit(formData);
+      // Sincronizar campos PDF de react-hook-form con formData
+      const datosPDF = getValues();
+      const datosCompletos = {
+        ...formData,
+        urlFotosAntesPdf:
+          datosPDF.urlFotosAntesPdf || formData.urlFotosAntesPdf,
+        urlFotosDespuesPdf:
+          datosPDF.urlFotosDespuesPdf || formData.urlFotosDespuesPdf,
+      };
+
+      await onSubmit(datosCompletos);
     } catch (error) {
       console.error("Error al guardar:", error);
     } finally {
@@ -319,7 +356,7 @@ const OTMantenimientoForm = ({
                   id="tipoDocumentoId"
                   value={formData.tipoDocumentoId}
                   options={tiposDocumento
-                    .filter(t => Number(t.id) === 21)
+                    .filter((t) => Number(t.id) === 21)
                     .map((t) => ({
                       label: t.descripcion,
                       value: Number(t.id),
@@ -358,7 +395,7 @@ const OTMantenimientoForm = ({
                   style={{
                     width: "100%",
                     fontWeight: "bold",
-                    textTransform: "uppercase"
+                    textTransform: "uppercase",
                   }}
                 />
               </div>
@@ -736,7 +773,11 @@ const OTMantenimientoForm = ({
           </Panel>
 
           {/* TAREAS OT */}
-          <Panel header="Tareas de la Orden de Trabajo" className="mb-3" style={{ marginTop: "1rem" }}>
+          <Panel
+            header="Tareas de la Orden de Trabajo"
+            className="mb-3"
+            style={{ marginTop: "1rem" }}
+          >
             <DetTareasOTCard
               otMantenimientoId={formData.id}
               estadosTarea={estadosTarea}
@@ -752,8 +793,13 @@ const OTMantenimientoForm = ({
               refreshTrigger={refreshTrigger}
             />
             {!formData.id && (
-              <div style={{ padding: "1rem", textAlign: "center", color: "#666" }}>
-                <i className="pi pi-info-circle" style={{ fontSize: "1.5rem" }}></i>
+              <div
+                style={{ padding: "1rem", textAlign: "center", color: "#666" }}
+              >
+                <i
+                  className="pi pi-info-circle"
+                  style={{ fontSize: "1.5rem" }}
+                ></i>
                 <p style={{ marginTop: "0.5rem" }}>
                   Guarde primero la orden de trabajo para poder agregar tareas.
                 </p>
@@ -764,44 +810,80 @@ const OTMantenimientoForm = ({
 
         {/* TAB 3: DOCUMENTOS PDF */}
         <TabPanel header="Documentos">
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+          >
+            {/* DEBUG: Ver qué IDs tenemos disponibles */}
+            {console.log(
+              "[OTMantenimientoForm - TAB DOCUMENTOS] defaultValues:",
+              defaultValues,
+            )}
+            {console.log(
+              "[OTMantenimientoForm - TAB DOCUMENTOS] defaultValues?.id:",
+              defaultValues?.id,
+            )}
+            {console.log(
+              "[OTMantenimientoForm - TAB DOCUMENTOS] formData.id:",
+              formData.id,
+            )}
+            {console.log(
+              "[OTMantenimientoForm - TAB DOCUMENTOS] isEdit:",
+              isEdit,
+            )}
             <PdfFotosAntesCard
-              otMantenimientoId={formData.id}
-              urlFotosAntesPdf={formData.urlFotosAntesPdf}
-              setUrlFotosAntesPdf={(url) => handleChange("urlFotosAntesPdf", url)}
-              toast={toast}
+              control={control}
+              errors={errors}
+              setValue={setValuePdf}
+              watch={watch}
+              getValues={getValues}
+              defaultValues={defaultValues}
+              otMantenimientoId={defaultValues?.id}
               readOnly={readOnly}
             />
-            
+
             <PdfFotosDespuesCard
-              otMantenimientoId={formData.id}
-              urlFotosDespuesPdf={formData.urlFotosDespuesPdf}
-              setUrlFotosDespuesPdf={(url) => handleChange("urlFotosDespuesPdf", url)}
-              toast={toast}
+              control={control}
+              errors={errors}
+              setValue={setValuePdf}
+              watch={watch}
+              getValues={getValues}
+              defaultValues={defaultValues}
+              otMantenimientoId={defaultValues?.id}
               readOnly={readOnly}
             />
-            
+
             <VerImpresionOTMantenimientoPDF
-              otMantenimientoId={formData.id}
+              otMantenimientoId={defaultValues?.id}
               datosOT={formData}
               tareas={[]} // Se cargará dinámicamente
               toast={toast}
               onPdfGenerated={(url) => handleChange("urlOrdenTrabajoPdf", url)}
             />
           </div>
-          
+
           {!formData.id && (
-            <div style={{ padding: "1rem", textAlign: "center", color: "#666", marginTop: "1rem" }}>
-              <i className="pi pi-info-circle" style={{ fontSize: "1.5rem" }}></i>
+            <div
+              style={{
+                padding: "1rem",
+                textAlign: "center",
+                color: "#666",
+                marginTop: "1rem",
+              }}
+            >
+              <i
+                className="pi pi-info-circle"
+                style={{ fontSize: "1.5rem" }}
+              ></i>
               <p style={{ marginTop: "0.5rem" }}>
-                Guarde primero la orden de trabajo para poder gestionar documentos.
+                Guarde primero la orden de trabajo para poder gestionar
+                documentos.
               </p>
             </div>
           )}
         </TabPanel>
 
         {/* TAB 4: ENTREGAS A RENDIR */}
-        <TabPanel 
+        <TabPanel
           header={`Entrega a Rendir ${countEntregasRendir > 0 ? `(${countEntregasRendir})` : ""}`}
           leftIcon="pi pi-money-bill"
         >
@@ -818,12 +900,18 @@ const OTMantenimientoForm = ({
             readOnly={readOnly}
             permisos={permisos}
           />
-          
+
           {!formData.id && (
-            <div style={{ padding: "1rem", textAlign: "center", color: "#666" }}>
-              <i className="pi pi-info-circle" style={{ fontSize: "1.5rem" }}></i>
+            <div
+              style={{ padding: "1rem", textAlign: "center", color: "#666" }}
+            >
+              <i
+                className="pi pi-info-circle"
+                style={{ fontSize: "1.5rem" }}
+              ></i>
               <p style={{ marginTop: "0.5rem" }}>
-                Guarde primero la orden de trabajo para poder gestionar entregas a rendir.
+                Guarde primero la orden de trabajo para poder gestionar entregas
+                a rendir.
               </p>
             </div>
           )}
@@ -855,7 +943,13 @@ const OTMantenimientoForm = ({
           onClick={handleSubmit}
           loading={loading}
           disabled={readOnly || !permisos.puedeEditar}
-          tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""}
+          tooltip={
+            readOnly
+              ? "Modo solo lectura"
+              : !permisos.puedeEditar
+                ? "No tiene permisos para editar"
+                : ""
+          }
         />
       </div>
     </div>

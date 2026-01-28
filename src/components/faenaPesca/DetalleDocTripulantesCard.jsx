@@ -65,6 +65,18 @@ const DetalleDocTripulantesCard = ({
   const [tripulantesNormalizados, setTripulantesNormalizados] = useState([]);
   const [documentosNormalizados, setDocumentosNormalizados] = useState([]);
 
+  // Estados para el formulario
+  const [formData, setFormData] = useState({
+    documentoId: null,
+    numeroDocumento: "",
+    fechaEmision: null,
+    fechaVencimiento: null,
+    observaciones: "",
+    vigente: true,
+    urlDocTripulantePdf: "",
+  });
+  const [errors, setErrors] = useState({});
+
   useEffect(() => {
     if (faenaPescaId) {
       cargarDocTripulantes();
@@ -106,7 +118,7 @@ const DetalleDocTripulantesCard = ({
     const opcionesTripulanteNuevas = tripulantesUnicos
       .map((tripulanteId) => {
         const tripulanteEncontrado = personal.find(
-          (p) => Number(p.id) === Number(tripulanteId)
+          (p) => Number(p.id) === Number(tripulanteId),
         );
         return {
           label: tripulanteEncontrado
@@ -125,7 +137,7 @@ const DetalleDocTripulantesCard = ({
     const opcionesDocumentoNuevas = documentosUnicos
       .map((documentoId) => {
         const documentoEncontrado = documentosPesca.find(
-          (d) => Number(d.id) === Number(documentoId)
+          (d) => Number(d.id) === Number(documentoId),
         );
         return {
           label: documentoEncontrado
@@ -138,12 +150,35 @@ const DetalleDocTripulantesCard = ({
     setOpcionesDocumento(opcionesDocumentoNuevas);
   };
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleDateChange = (name, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleCheckboxChange = (e) => {
+    const { name, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: checked,
+    }));
+  };
+
   const cargarDocTripulantes = async () => {
     try {
       setLoadingData(true);
       const data = await getDetallesDocTripulantes();
       const documentosFiltrados = data.filter(
-        (doc) => Number(doc.faenaPescaId) === Number(faenaPescaId)
+        (doc) => Number(doc.faenaPescaId) === Number(faenaPescaId),
       );
       setDocTripulantes(documentosFiltrados);
     } catch (error) {
@@ -186,7 +221,7 @@ const DetalleDocTripulantesCard = ({
             Number(p.cargoId) === 22 || // PATRON EMBARCACION
             Number(p.cargoId) === 14) && // MOTORISTA EMBARCACION
           p.cesado === false &&
-          p.paraTemporadaPesca === true
+          p.paraTemporadaPesca === true,
       );
 
       if (tripulantesEmbarcacion.length === 0) {
@@ -209,7 +244,7 @@ const DetalleDocTripulantesCard = ({
       // 4. Filtrar documentos que pertenecen a los tripulantes
       // DocumentacionPersonal.personalId IN (tripulantesIds)
       const documentosTripulantes = todosLosDocumentos.filter((doc) =>
-        tripulantesIds.includes(Number(doc.personalId))
+        tripulantesIds.includes(Number(doc.personalId)),
       );
 
       if (documentosTripulantes.length === 0) {
@@ -225,7 +260,7 @@ const DetalleDocTripulantesCard = ({
       // 5. Obtener documentos existentes en DetalleDocTripulantes para esta faena
       const todosDocTripulantes = await getDetallesDocTripulantes();
       const documentosExistentes = todosDocTripulantes.filter(
-        (d) => Number(d.faenaPescaId) === Number(faenaPescaId)
+        (d) => Number(d.faenaPescaId) === Number(faenaPescaId),
       );
 
       // 6. Crear o actualizar registros
@@ -263,14 +298,14 @@ const DetalleDocTripulantesCard = ({
             (d) =>
               Number(d.faenaPescaId) === Number(faenaPescaId) &&
               Number(d.tripulanteId) === Number(docPersonal.personalId) &&
-              Number(d.documentoId) === Number(docPersonal.documentoPescaId)
+              Number(d.documentoId) === Number(docPersonal.documentoPescaId),
           );
 
           if (documentoExistente) {
             // Si existe: ACTUALIZAR
             await actualizarDetalleDocTripulantes(
               documentoExistente.id,
-              dataToSend
+              dataToSend,
             );
             actualizados++;
           } else {
@@ -323,12 +358,18 @@ const DetalleDocTripulantesCard = ({
     }
   };
 
-  const openNew = () => {
-    setEditingDocTripulante(null);
-    setDocTripulanteDialog(true);
-  };
 
   const editDocTripulante = (docTripulante) => {
+    setFormData({
+      documentoId: docTripulante.documentoId ? Number(docTripulante.documentoId) : null,
+      numeroDocumento: docTripulante.numeroDocumento || "",
+      fechaEmision: docTripulante.fechaEmision ? new Date(docTripulante.fechaEmision) : null,
+      fechaVencimiento: docTripulante.fechaVencimiento ? new Date(docTripulante.fechaVencimiento) : null,
+      observaciones: docTripulante.observaciones || "",
+      vigente: docTripulante.vigente !== undefined ? docTripulante.vigente : true,
+      urlDocTripulantePdf: docTripulante.urlDocTripulantePdf || "",
+    });
+    setErrors({});
     setEditingDocTripulante(docTripulante);
     setDocTripulanteDialog(true);
   };
@@ -552,22 +593,22 @@ const DetalleDocTripulantesCard = ({
               filtroVencidos === null
                 ? "TODOS"
                 : filtroVencidos === true
-                ? "VENCIDOS"
-                : "VIGENTES"
+                  ? "VENCIDOS"
+                  : "VIGENTES"
             }
             icon={
               filtroVencidos === null
                 ? "pi pi-filter"
                 : filtroVencidos === true
-                ? "pi pi-times-circle"
-                : "pi pi-check-circle"
+                  ? "pi pi-times-circle"
+                  : "pi pi-check-circle"
             }
             className={`w-full ${
               filtroVencidos === true
                 ? "p-button-danger"
                 : filtroVencidos === false
-                ? "p-button-success"
-                : "p-button-outlined"
+                  ? "p-button-success"
+                  : "p-button-outlined"
             }`}
             onClick={() => {
               if (filtroVencidos === null) {
@@ -610,9 +651,8 @@ const DetalleDocTripulantesCard = ({
         onSelectionChange={(e) => setSelectedDocTripulante(e.value)}
         dataKey="id"
         paginator
-        rows={20}
-        rowsPerPageOptions={[20, 40, 80]}
-        className="datatable-responsive"
+        rows={40}
+        rowsPerPageOptions={[40, 80, 160]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} documentos"
         globalFilter={globalFilter}
@@ -638,7 +678,7 @@ const DetalleDocTripulantesCard = ({
           header="Tripulante"
           body={(rowData) => {
             const tripulanteEncontrado = personal.find(
-              (p) => Number(p.id) === Number(rowData.tripulanteId)
+              (p) => Number(p.id) === Number(rowData.tripulanteId),
             );
             return (
               <span style={{ fontStyle: "italic" }}>
@@ -656,7 +696,7 @@ const DetalleDocTripulantesCard = ({
           header="Documento"
           body={(rowData) => {
             const documentoPescaEncontrado = documentosPesca.find(
-              (d) => Number(d.id) === Number(rowData.documentoId)
+              (d) => Number(d.id) === Number(rowData.documentoId),
             );
             return (
               <span style={{ fontWeight: "bold" }}>
@@ -753,7 +793,7 @@ const DetalleDocTripulantesCard = ({
                   abrirPdfEnNuevaPestana(
                     rowData.urlDocTripulantePdf,
                     toast,
-                    "No hay PDF disponible"
+                    "No hay PDF disponible",
                   );
                 }}
                 tooltip={
@@ -809,17 +849,14 @@ const DetalleDocTripulantesCard = ({
       >
         {docTripulanteDialog && (
           <DetalleDocTripulantesForm
-            detalle={editingDocTripulante}
-            tripulantes={tripulantesNormalizados}
-            documentos={documentosNormalizados}
-            onGuardadoExitoso={() => {
-              hideDialog();
-              cargarDocTripulantes();
-              if (onDocTripulantesChange) {
-                onDocTripulantesChange();
-              }
-            }}
-            onCancelar={hideDialog}
+            formData={formData}
+            errors={errors}
+            handleInputChange={handleInputChange}
+            handleDateChange={handleDateChange}
+            handleCheckboxChange={handleCheckboxChange}
+            tiposDocumentoOptions={documentosNormalizados}
+            readOnly={false}
+            toast={toast}
           />
         )}
       </Dialog>

@@ -787,12 +787,13 @@ const OTMantenimiento = ({ ruta }) => {
 
       <Dialog
         visible={dialogoVisible}
-        style={{ width: '90vw', maxWidth: '1200px' }}
+        style={{ width: '1300px' }}
         header={isEditing ? `Editar Orden de Trabajo: ${ordenSeleccionada?.codigo || ''}` : 'Nueva Orden de Trabajo'}
         modal
         className="p-fluid"
         onHide={cerrarDialogo}
         maximizable
+        maximized={true}
       >
         <OTMantenimientoForm
           key={refreshKey}

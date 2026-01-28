@@ -184,6 +184,8 @@ export default function AccesoInstalacionForm({
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
+          id: null,  // ⬅️ AGREGAR ESTA LÍNEA
+
       // Campos obligatorios
       sedeId: sedeId ? Number(sedeId) : "", // Precargar desde estado global
       tipoAccesoId: 1, // Valor por defecto (ID=1)
@@ -424,6 +426,7 @@ export default function AccesoInstalacionForm({
     if (item) {
       // Cargar datos del item para edición según modelo Prisma AccesoInstalacion
       const datosEdicion = {
+          id: item.id ? Number(item.id) : null,  // ⬅️ AGREGAR ESTA LÍNEA
         // Campos obligatorios
         sedeId: item.sedeId ? Number(item.sedeId) : "",
         tipoAccesoId: item.tipoAccesoId ? Number(item.tipoAccesoId) : "",

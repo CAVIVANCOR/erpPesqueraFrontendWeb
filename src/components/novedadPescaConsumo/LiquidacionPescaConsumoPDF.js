@@ -20,7 +20,7 @@ import { dibujaTotalesYFirmaPDFLiquidacionPC } from "./dibujaTotalesYFirmaPDFLiq
 export async function generarYSubirPDFLiquidacionPC(
   entregaARendir,
   movimientos,
-  empresa
+  empresa,
 ) {
   try {
     // 1. Cargar los MovimientoCaja relacionados
@@ -35,32 +35,35 @@ export async function generarYSubirPDFLiquidacionPC(
                 headers: {
                   Authorization: `Bearer ${token}`,
                 },
-              }
+              },
             );
             if (response.ok) {
               const movCaja = await response.json();
               return { ...mov, movimientoCaja: movCaja };
             }
           } catch (error) {
-            console.error(`Error cargando MovimientoCaja ${mov.operacionMovCajaId}:`, error);
+            console.error(
+              `Error cargando MovimientoCaja ${mov.operacionMovCajaId}:`,
+              error,
+            );
           }
         }
         return mov;
-      })
+      }),
     );
 
     // 2. Generar el PDF
     const pdfBytes = await generarPDFLiquidacionPC(
       entregaARendir,
       movimientosConCaja,
-      empresa
+      empresa,
     );
 
-    // 3. Crear FormData para subir el archivo
+    // 3. Crear FormData para subir el archivo - El backend generará el nombre automáticamente
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
     const formData = new FormData();
-    const nombreArchivo = `liquidacion_pesca_consumo_${entregaARendir.id}_${Date.now()}.pdf`;
-    formData.append("file", blob, nombreArchivo);
+    formData.append("file", blob, "temp.pdf"); // Nombre temporal, el backend lo reemplazará
+    formData.append("entregaId", entregaARendir.id); // ✅ ID para generar nombre estándar
 
     // 4. Subir el archivo al servidor
     const uploadResponse = await fetch(
@@ -71,7 +74,7 @@ export async function generarYSubirPDFLiquidacionPC(
           Authorization: `Bearer ${token}`,
         },
         body: formData,
-      }
+      },
     );
 
     if (!uploadResponse.ok) {
@@ -101,11 +104,13 @@ export async function generarYSubirPDFLiquidacionPC(
           fechaCreacion: entregaARendir.fechaCreacion,
           fechaActualizacion: new Date(),
         }),
-      }
+      },
     );
 
     if (!updateResponse.ok) {
-      throw new Error("Error al actualizar la entrega a rendir con la URL del PDF");
+      throw new Error(
+        "Error al actualizar la entrega a rendir con la URL del PDF",
+      );
     }
 
     return {
@@ -122,15 +127,13 @@ export async function generarYSubirPDFLiquidacionPC(
 }
 
 async function generarPDFLiquidacionPC(entregaARendir, movimientos, empresa) {
-  // Crear documento PDF con orientación horizontal (A4 landscape)
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([841.89, 595.28]); // A4 horizontal
+  const page = pdfDoc.addPage([841.89, 595.28]);
   const { width, height } = page.getSize();
 
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-  // Dibujar encabezado
   let yPosition = height - 50;
   yPosition = await dibujaEncabezadoPDFLiquidacionPC(
     page,
@@ -140,10 +143,9 @@ async function generarPDFLiquidacionPC(entregaARendir, movimientos, empresa) {
     fontBold,
     fontRegular,
     yPosition,
-    width
+    width,
   );
 
-  // Dibujar tabla de movimientos (reducir espacio)
   yPosition -= 10;
   yPosition = dibujarTablaMovimientos(
     page,
@@ -151,10 +153,9 @@ async function generarPDFLiquidacionPC(entregaARendir, movimientos, empresa) {
     fontBold,
     fontRegular,
     yPosition,
-    width
+    width,
   );
 
-  // Dibujar totales y firma
   yPosition = dibujaTotalesYFirmaPDFLiquidacionPC(
     page,
     entregaARendir,
@@ -162,30 +163,26 @@ async function generarPDFLiquidacionPC(entregaARendir, movimientos, empresa) {
     fontBold,
     fontRegular,
     yPosition,
-    width
+    width,
   );
 
-  // Serializar el PDF
   const pdfBytes = await pdfDoc.save();
   return pdfBytes;
 }
 
-/**
- * Divide texto en máximo 2 líneas usando todo el ancho disponible
- */
 function dividirTextoEnLineas(texto, font, fontSize, maxWidth, maxLineas = 2) {
   if (!texto) return [""];
-  
+
   const palabras = texto.split(" ");
   const lineas = [];
   let lineaActual = "";
-  
+
   for (let i = 0; i < palabras.length; i++) {
     const palabra = palabras[i];
     const separador = lineaActual ? " " : "";
     const pruebaLinea = lineaActual + separador + palabra;
     const anchoLinea = font.widthOfTextAtSize(pruebaLinea, fontSize);
-    
+
     if (anchoLinea <= maxWidth) {
       lineaActual = pruebaLinea;
     } else {
@@ -206,48 +203,52 @@ function dividirTextoEnLineas(texto, font, fontSize, maxWidth, maxLineas = 2) {
       }
     }
   }
-  
+
   if (lineaActual && lineas.length < maxLineas) {
     lineas.push(lineaActual);
   }
-  
+
   return lineas.length > 0 ? lineas : [""];
 }
 
-/**
- * Dibuja la tabla de movimientos en el PDF
- */
 function dibujarTablaMovimientos(
   page,
   movimientos,
   fontBold,
   fontRegular,
   startY,
-  pageWidth
+  pageWidth,
 ) {
   let yPosition = startY;
   const margin = 10;
   const tableWidth = pageWidth - 2 * margin;
   const gridColor = rgb(0.7, 0.7, 0.7);
 
-  // Ordenar movimientos cronológicamente
-  const movimientosOrdenados = [...movimientos].sort((a, b) => 
-    new Date(a.fechaMovimiento) - new Date(b.fechaMovimiento)
+  const movimientosOrdenados = [...movimientos].sort(
+    (a, b) => new Date(a.fechaMovimiento) - new Date(b.fechaMovimiento),
   );
 
-  // Definir columnas perfectamente alineadas
   const colWidths = [75, 75, 105, 115, 115, 115, 60, 65, 65];
   const cols = [];
   let xPos = margin;
-  
+
   colWidths.forEach((width) => {
     cols.push({ x: xPos, width: width });
     xPos += width;
   });
-  
-  const [fechaHora, fechaOper, tipo, ccOrigen, ccDestino, entidad, referencia, ingreso, egreso] = cols;
 
-  // Encabezado de tabla
+  const [
+    fechaHora,
+    fechaOper,
+    tipo,
+    ccOrigen,
+    ccDestino,
+    entidad,
+    referencia,
+    ingreso,
+    egreso,
+  ] = cols;
+
   page.drawRectangle({
     x: margin,
     y: yPosition - 18,
@@ -256,25 +257,32 @@ function dibujarTablaMovimientos(
     color: rgb(0.9, 0.9, 0.9),
   });
 
-  // Dibujar encabezados y líneas verticales
-  const headerTexts = ["Fecha/Hora", "F.Operación", "Tipo Movimiento", "C.C. Origen", "C.C. Destino", "Entidad Com.", "Referencia", "Ingreso", "Egreso"];
-  
+  const headerTexts = [
+    "Fecha/Hora",
+    "F.Operación",
+    "Tipo Movimiento",
+    "C.C. Origen",
+    "C.C. Destino",
+    "Entidad Com.",
+    "Referencia",
+    "Ingreso",
+    "Egreso",
+  ];
+
   cols.forEach((col, i) => {
-    // Línea vertical izquierda de la columna
     page.drawLine({
       start: { x: col.x, y: yPosition },
       end: { x: col.x, y: yPosition - 18 },
       thickness: 0.5,
       color: gridColor,
     });
-    
-    // Texto del encabezado
+
     let xText = col.x + 2;
-    if (i >= 7) { // Ingreso y Egreso alineados a la derecha
+    if (i >= 7) {
       const textWidth = fontBold.widthOfTextAtSize(headerTexts[i], 7);
       xText = col.x + col.width - textWidth - 2;
     }
-    
+
     page.drawText(headerTexts[i], {
       x: xText,
       y: yPosition - 13,
@@ -283,24 +291,21 @@ function dibujarTablaMovimientos(
       color: rgb(0, 0, 0),
     });
   });
-  
-  // Línea vertical final
+
   page.drawLine({
     start: { x: margin + tableWidth, y: yPosition },
     end: { x: margin + tableWidth, y: yPosition - 18 },
     thickness: 0.5,
     color: gridColor,
   });
-  
-  // Línea horizontal superior
+
   page.drawLine({
     start: { x: margin, y: yPosition },
     end: { x: margin + tableWidth, y: yPosition },
     thickness: 0.5,
     color: gridColor,
   });
-  
-  // Línea horizontal inferior del encabezado
+
   page.drawLine({
     start: { x: margin, y: yPosition - 18 },
     end: { x: margin + tableWidth, y: yPosition - 18 },
@@ -310,61 +315,100 @@ function dibujarTablaMovimientos(
 
   yPosition -= 18;
 
-  // Filas de datos
   movimientosOrdenados.forEach((mov, index) => {
     const movCaja = mov.movimientoCaja;
     const fontSize = 6;
     const lineHeight = 7;
-    
-    // Preparar todos los datos (usar nombres diferentes para no sobrescribir variables de columna)
+
     const fechaHoraTexto = formatearFechaHora(mov.fechaMovimiento, "N/A");
-    const fechaOperTexto = mov.fechaOperacionMovCaja ? formatearFechaHora(mov.fechaOperacionMovCaja, "") : "";
+    const fechaOperTexto = mov.fechaOperacionMovCaja
+      ? formatearFechaHora(mov.fechaOperacionMovCaja, "")
+      : "";
     const tipoTexto = mov.tipoMovimiento?.nombre || "N/A";
-    
+
     let ccOrigenTexto = "S/C";
     if (movCaja && movCaja.cuentaCorrienteOrigen) {
       const empresa = movCaja.empresaOrigen?.razonSocial || "";
       const banco = movCaja.cuentaCorrienteOrigen?.banco?.nombre || "";
       const moneda = movCaja.cuentaCorrienteOrigen?.moneda?.codigoSunat || "";
       const cuenta = movCaja.cuentaCorrienteOrigen?.numeroCuenta || "";
-      ccOrigenTexto = [empresa, banco, moneda, cuenta].filter(Boolean).join(" - ");
+      ccOrigenTexto = [empresa, banco, moneda, cuenta]
+        .filter(Boolean)
+        .join(" - ");
     }
-    
+
     let ccDestinoTexto = "S/C";
     if (movCaja && movCaja.cuentaCorrienteDestino) {
       const empresa = movCaja.empresaDestino?.razonSocial || "";
       const banco = movCaja.cuentaCorrienteDestino?.banco?.nombre || "";
       const moneda = movCaja.cuentaCorrienteDestino?.moneda?.codigoSunat || "";
       const cuenta = movCaja.cuentaCorrienteDestino?.numeroCuenta || "";
-      ccDestinoTexto = [empresa, banco, moneda, cuenta].filter(Boolean).join(" - ");
+      ccDestinoTexto = [empresa, banco, moneda, cuenta]
+        .filter(Boolean)
+        .join(" - ");
     }
-    
+
     let entidadTexto = "S/C";
     if (movCaja && movCaja.entidadComercial) {
       const razonSocial = movCaja.entidadComercial?.razonSocial || "";
       const banco = movCaja.ctaCteEntidad?.banco?.nombre || "";
       const moneda = movCaja.ctaCteEntidad?.moneda?.codigoSunat || "";
       const cuenta = movCaja.ctaCteEntidad?.numeroCuenta || "";
-      entidadTexto = [razonSocial, banco, moneda, cuenta].filter(Boolean).join(" - ");
+      entidadTexto = [razonSocial, banco, moneda, cuenta]
+        .filter(Boolean)
+        .join(" - ");
     }
-    
+
     let referenciaTexto = "";
     if (movCaja) {
       const codigo = movCaja.tipoReferencia?.codigo || "";
       const refId = movCaja.referenciaExtId || "";
       referenciaTexto = `${codigo} ${refId}`.trim();
     }
-    
-    // Dividir textos largos en líneas (usar ancho completo menos pequeño margen)
-    const lineasFechaHora = dividirTextoEnLineas(fechaHoraTexto, fontRegular, fontSize, fechaHora.width - 3);
-    const lineasFechaOper = dividirTextoEnLineas(fechaOperTexto, fontRegular, fontSize, fechaOper.width - 3);
-    const lineasTipo = dividirTextoEnLineas(tipoTexto, fontRegular, fontSize, tipo.width - 3);
-    const lineasCCOrigen = dividirTextoEnLineas(ccOrigenTexto, fontRegular, fontSize, ccOrigen.width - 3);
-    const lineasCCDestino = dividirTextoEnLineas(ccDestinoTexto, fontRegular, fontSize, ccDestino.width - 3);
-    const lineasEntidad = dividirTextoEnLineas(entidadTexto, fontRegular, fontSize, entidad.width - 3);
-    const lineasReferencia = dividirTextoEnLineas(referenciaTexto, fontRegular, fontSize, referencia.width - 3);
-    
-    // Calcular altura de fila (máximo 2 líneas)
+
+    const lineasFechaHora = dividirTextoEnLineas(
+      fechaHoraTexto,
+      fontRegular,
+      fontSize,
+      fechaHora.width - 3,
+    );
+    const lineasFechaOper = dividirTextoEnLineas(
+      fechaOperTexto,
+      fontRegular,
+      fontSize,
+      fechaOper.width - 3,
+    );
+    const lineasTipo = dividirTextoEnLineas(
+      tipoTexto,
+      fontRegular,
+      fontSize,
+      tipo.width - 3,
+    );
+    const lineasCCOrigen = dividirTextoEnLineas(
+      ccOrigenTexto,
+      fontRegular,
+      fontSize,
+      ccOrigen.width - 3,
+    );
+    const lineasCCDestino = dividirTextoEnLineas(
+      ccDestinoTexto,
+      fontRegular,
+      fontSize,
+      ccDestino.width - 3,
+    );
+    const lineasEntidad = dividirTextoEnLineas(
+      entidadTexto,
+      fontRegular,
+      fontSize,
+      entidad.width - 3,
+    );
+    const lineasReferencia = dividirTextoEnLineas(
+      referenciaTexto,
+      fontRegular,
+      fontSize,
+      referencia.width - 3,
+    );
+
     const maxLineas = Math.max(
       lineasFechaHora.length,
       lineasFechaOper.length,
@@ -373,11 +417,10 @@ function dibujarTablaMovimientos(
       lineasCCDestino.length,
       lineasEntidad.length,
       lineasReferencia.length,
-      1
+      1,
     );
     const rowHeight = Math.min(maxLineas, 2) * lineHeight + 3;
-    
-    // Alternar color de fondo
+
     if (index % 2 === 0) {
       page.drawRectangle({
         x: margin,
@@ -387,16 +430,14 @@ function dibujarTablaMovimientos(
         color: rgb(0.98, 0.98, 0.98),
       });
     }
-    
-    // Dibujar líneas horizontales (grilla)
+
     page.drawLine({
       start: { x: margin, y: yPosition },
       end: { x: margin + tableWidth, y: yPosition },
       thickness: 0.5,
       color: gridColor,
     });
-    
-    // Dibujar líneas verticales (grilla)
+
     cols.forEach((col) => {
       page.drawLine({
         start: { x: col.x, y: yPosition },
@@ -411,23 +452,29 @@ function dibujarTablaMovimientos(
       thickness: 0.5,
       color: gridColor,
     });
-    
-    // Dibujar textos multilínea
+
     let yOffset = yPosition - 6;
-    const lineasArray = [lineasFechaHora, lineasFechaOper, lineasTipo, lineasCCOrigen, lineasCCDestino, lineasEntidad, lineasReferencia];
-    
+    const lineasArray = [
+      lineasFechaHora,
+      lineasFechaOper,
+      lineasTipo,
+      lineasCCOrigen,
+      lineasCCDestino,
+      lineasEntidad,
+      lineasReferencia,
+    ];
+
     lineasArray.forEach((lineas, colIndex) => {
       lineas.forEach((linea, i) => {
         page.drawText(linea, {
           x: cols[colIndex].x + 2,
-          y: yOffset - (i * lineHeight),
+          y: yOffset - i * lineHeight,
           size: fontSize,
           font: fontRegular,
         });
       });
     });
 
-    // Ingreso/Egreso (alineados a la derecha)
     const esIngreso = mov.tipoMovimiento?.esIngreso === true;
     const monto = formatearNumero(mov.monto || 0);
     const montoWidth = fontRegular.widthOfTextAtSize(monto, 7);
@@ -456,8 +503,7 @@ function dibujarTablaMovimientos(
       return yPosition;
     }
   });
-  
-  // Dibujar línea horizontal final de la tabla
+
   page.drawLine({
     start: { x: margin, y: yPosition },
     end: { x: margin + tableWidth, y: yPosition },

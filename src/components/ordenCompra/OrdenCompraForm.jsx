@@ -39,6 +39,7 @@ export default function OrdenCompraForm({
   toast,
   permisos = {},
   readOnly = false,
+  onRecargarRegistro,
 }) {
   const { usuario } = useAuthStore();
 
@@ -542,8 +543,6 @@ export default function OrdenCompraForm({
       return;
     }
 
-    // La lógica de confirmación ahora está en el padre (OrdenCompra.jsx)
-    // que detecta si existe kardex y muestra el diálogo apropiado
     onGenerarKardex(defaultValues.id);
   };
 
@@ -582,11 +581,8 @@ export default function OrdenCompraForm({
   const estaAprobado = Number(estadoId) === 39;
   const estaAnulado = Number(estadoId) === 40;
   const estaParticionada = Number(estadoId) === 50;
-  // ✅ Kardex generado se determina por la existencia de movIngresoAlmacenId, NO por el estado
   const kardexGenerado = !!movIngresoAlmacenId;
   const puedeEditar = estaPendiente && !loading;
-  
-  // ⭐ Datos adicionales siempre editables (pueden surgir a último momento)
   const puedeEditarDatosAdicionales = !loading;
 
   const tiposDocumentoOptions = (tiposDocumento || []).map((t) => ({
@@ -682,6 +678,7 @@ export default function OrdenCompraForm({
             readOnly={readOnly}
             permisos={permisos}
             estadoId={estadoId}
+            onRecargarRegistro={onRecargarRegistro}
           />
         </TabPanel>
 
@@ -696,6 +693,7 @@ export default function OrdenCompraForm({
             toast={toast}
             personalOptions={personalOptions}
             onPdfGenerated={handlePdfGenerated}
+            onRecargarRegistro={onRecargarRegistro}
           />
         </TabPanel>
       </TabView>

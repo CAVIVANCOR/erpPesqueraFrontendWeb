@@ -35,6 +35,7 @@ export default function RequerimientoCompraForm({
   onAprobar,
   onAnular,
   onAutorizarCompra,
+  onRecargarRegistro, // ✅ AGREGAR ESTA LÍNEA
   loading,
   toast,
   permisos = {},
@@ -45,13 +46,21 @@ export default function RequerimientoCompraForm({
   // Estado único para todos los campos del formulario (patrón eficiente)
   const [formData, setFormData] = useState({
     // Datos básicos
-    empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : (empresaFija ? Number(empresaFija) : null),
-    tipoDocumentoId: defaultValues?.tipoDocumentoId ? Number(defaultValues.tipoDocumentoId) : 16,
-    serieDocId: defaultValues?.serieDocId ? Number(defaultValues.serieDocId) : null,
+    empresaId: defaultValues?.empresaId
+      ? Number(defaultValues.empresaId)
+      : empresaFija
+        ? Number(empresaFija)
+        : null,
+    tipoDocumentoId: defaultValues?.tipoDocumentoId
+      ? Number(defaultValues.tipoDocumentoId)
+      : 16,
+    serieDocId: defaultValues?.serieDocId
+      ? Number(defaultValues.serieDocId)
+      : null,
     numSerieDoc: defaultValues?.numSerieDoc || "",
     numCorreDoc: defaultValues?.numCorreDoc || "",
     numeroDocumento: defaultValues?.numeroDocumento || "",
-    
+
     // Fechas
     fechaDocumento: defaultValues?.fechaDocumento
       ? new Date(defaultValues.fechaDocumento)
@@ -62,56 +71,107 @@ export default function RequerimientoCompraForm({
     fechaAprobacion: defaultValues?.fechaAprobacion
       ? new Date(defaultValues.fechaAprobacion)
       : null,
-      
+
     // Relaciones - CONVERTIDOS A NUMBER PARA DROPDOWNS
-    proveedorId: defaultValues?.proveedorId ? Number(defaultValues.proveedorId) : null,
-    tipoProductoId: defaultValues?.tipoProductoId ? Number(defaultValues.tipoProductoId) : null,
-    tipoEstadoProductoId: defaultValues?.tipoEstadoProductoId ? Number(defaultValues.tipoEstadoProductoId) : null,
-    destinoProductoId: defaultValues?.destinoProductoId ? Number(defaultValues.destinoProductoId) : null,
-    solicitanteId: defaultValues?.solicitanteId ? Number(defaultValues.solicitanteId) : null,
+    proveedorId: defaultValues?.proveedorId
+      ? Number(defaultValues.proveedorId)
+      : null,
+    tipoProductoId: defaultValues?.tipoProductoId
+      ? Number(defaultValues.tipoProductoId)
+      : null,
+    tipoEstadoProductoId: defaultValues?.tipoEstadoProductoId
+      ? Number(defaultValues.tipoEstadoProductoId)
+      : null,
+    destinoProductoId: defaultValues?.destinoProductoId
+      ? Number(defaultValues.destinoProductoId)
+      : null,
+    solicitanteId: defaultValues?.solicitanteId
+      ? Number(defaultValues.solicitanteId)
+      : null,
     estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 34,
-    ordenTrabajoId: defaultValues?.ordenTrabajoId ? Number(defaultValues.ordenTrabajoId) : null,
-    
+    ordenTrabajoId: defaultValues?.ordenTrabajoId
+      ? Number(defaultValues.ordenTrabajoId)
+      : null,
+
     // Comerciales - CONVERTIDOS A NUMBER PARA DROPDOWNS
     esConCotizacion: defaultValues?.esConCotizacion || false,
-    formaPagoId: defaultValues?.formaPagoId ? Number(defaultValues.formaPagoId) : null,
-    monedaId: defaultValues?.moneda?.id ? Number(defaultValues.moneda.id) : (defaultValues?.monedaId ? Number(defaultValues.monedaId) : 1),
+    formaPagoId: defaultValues?.formaPagoId
+      ? Number(defaultValues.formaPagoId)
+      : null,
+    monedaId: defaultValues?.moneda?.id
+      ? Number(defaultValues.moneda.id)
+      : defaultValues?.monedaId
+        ? Number(defaultValues.monedaId)
+        : 1,
     tipoCambio: defaultValues?.tipoCambio || null,
-    centroCostoId: defaultValues?.centroCostoId ? Number(defaultValues.centroCostoId) : 14,
+    centroCostoId: defaultValues?.centroCostoId
+      ? Number(defaultValues.centroCostoId)
+      : 14,
     porcentajeIGV: defaultValues?.porcentajeIGV || null,
     esExoneradoAlIGV: defaultValues?.esExoneradoAlIGV || false,
-    
+
     // Responsables - CONVERTIDOS A NUMBER PARA DROPDOWNS
-    respComprasId: defaultValues?.respComprasId ? Number(defaultValues.respComprasId) : null,
-    respProduccionId: defaultValues?.respProduccionId ? Number(defaultValues.respProduccionId) : null,
-    respAlmacenId: defaultValues?.respAlmacenId ? Number(defaultValues.respAlmacenId) : null,
-    supervisorCampoId: defaultValues?.supervisorCampoId ? Number(defaultValues.supervisorCampoId) : null,
-    aprobadoPorId: defaultValues?.aprobadoPorId ? Number(defaultValues.aprobadoPorId) : null,
-    autorizaCompraId: defaultValues?.autorizaCompraId ? Number(defaultValues.autorizaCompraId) : null,
-    
+    respComprasId: defaultValues?.respComprasId
+      ? Number(defaultValues.respComprasId)
+      : null,
+    respProduccionId: defaultValues?.respProduccionId
+      ? Number(defaultValues.respProduccionId)
+      : null,
+    respAlmacenId: defaultValues?.respAlmacenId
+      ? Number(defaultValues.respAlmacenId)
+      : null,
+    supervisorCampoId: defaultValues?.supervisorCampoId
+      ? Number(defaultValues.supervisorCampoId)
+      : null,
+    aprobadoPorId: defaultValues?.aprobadoPorId
+      ? Number(defaultValues.aprobadoPorId)
+      : null,
+    autorizaCompraId: defaultValues?.autorizaCompraId
+      ? Number(defaultValues.autorizaCompraId)
+      : null,
+
     // Sistema
     urlReqCompraPdf: defaultValues?.urlReqCompraPdf || "",
-    creadoPor: defaultValues?.creadoPor ? Number(defaultValues.creadoPor) : null,
-    actualizadoPor: defaultValues?.actualizadoPor ? Number(defaultValues.actualizadoPor) : null,
+    creadoPor: defaultValues?.creadoPor
+      ? Number(defaultValues.creadoPor)
+      : null,
+    actualizadoPor: defaultValues?.actualizadoPor
+      ? Number(defaultValues.actualizadoPor)
+      : null,
   });
-  
+
   // Handler genérico para cambios en cualquier campo
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   // Actualizar formData cuando cambian los defaultValues (modo edición)
   useEffect(() => {
+    console.log(
+      "🟡 [RequerimientoCompraForm] useEffect detectó cambio en defaultValues",
+    );
+    console.log(
+      "🟡 [RequerimientoCompraForm] defaultValues.urlReqCompraPdf:",
+      defaultValues?.urlReqCompraPdf,
+    );
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       setFormData({
         // Datos básicos
-        empresaId: defaultValues?.empresaId ? Number(defaultValues.empresaId) : (empresaFija ? Number(empresaFija) : null),
-        tipoDocumentoId: defaultValues?.tipoDocumentoId ? Number(defaultValues.tipoDocumentoId) : 16,
-        serieDocId: defaultValues?.serieDocId ? Number(defaultValues.serieDocId) : null,
+        empresaId: defaultValues?.empresaId
+          ? Number(defaultValues.empresaId)
+          : empresaFija
+            ? Number(empresaFija)
+            : null,
+        tipoDocumentoId: defaultValues?.tipoDocumentoId
+          ? Number(defaultValues.tipoDocumentoId)
+          : 16,
+        serieDocId: defaultValues?.serieDocId
+          ? Number(defaultValues.serieDocId)
+          : null,
         numSerieDoc: defaultValues?.numSerieDoc || "",
         numCorreDoc: defaultValues?.numCorreDoc || "",
         numeroDocumento: defaultValues?.numeroDocumento || "",
-        
+
         // Fechas
         fechaDocumento: defaultValues?.fechaDocumento
           ? new Date(defaultValues.fechaDocumento)
@@ -122,40 +182,80 @@ export default function RequerimientoCompraForm({
         fechaAprobacion: defaultValues?.fechaAprobacion
           ? new Date(defaultValues.fechaAprobacion)
           : null,
-          
+
         // Relaciones - CONVERTIDOS A NUMBER PARA DROPDOWNS
-        proveedorId: defaultValues?.proveedorId ? Number(defaultValues.proveedorId) : null,
-        tipoProductoId: defaultValues?.tipoProductoId ? Number(defaultValues.tipoProductoId) : null,
-        tipoEstadoProductoId: defaultValues?.tipoEstadoProductoId ? Number(defaultValues.tipoEstadoProductoId) : null,
-        destinoProductoId: defaultValues?.destinoProductoId ? Number(defaultValues.destinoProductoId) : null,
-        solicitanteId: defaultValues?.solicitanteId ? Number(defaultValues.solicitanteId) : null,
+        proveedorId: defaultValues?.proveedorId
+          ? Number(defaultValues.proveedorId)
+          : null,
+        tipoProductoId: defaultValues?.tipoProductoId
+          ? Number(defaultValues.tipoProductoId)
+          : null,
+        tipoEstadoProductoId: defaultValues?.tipoEstadoProductoId
+          ? Number(defaultValues.tipoEstadoProductoId)
+          : null,
+        destinoProductoId: defaultValues?.destinoProductoId
+          ? Number(defaultValues.destinoProductoId)
+          : null,
+        solicitanteId: defaultValues?.solicitanteId
+          ? Number(defaultValues.solicitanteId)
+          : null,
         estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 34,
-        ordenTrabajoId: defaultValues?.ordenTrabajoId ? Number(defaultValues.ordenTrabajoId) : null,
-        
+        ordenTrabajoId: defaultValues?.ordenTrabajoId
+          ? Number(defaultValues.ordenTrabajoId)
+          : null,
+
         // Comerciales - CONVERTIDOS A NUMBER PARA DROPDOWNS
         esConCotizacion: defaultValues?.esConCotizacion || false,
-        formaPagoId: defaultValues?.formaPagoId ? Number(defaultValues.formaPagoId) : null,
-        monedaId: defaultValues?.moneda?.id ? Number(defaultValues.moneda.id) : (defaultValues?.monedaId ? Number(defaultValues.monedaId) : 1),
+        formaPagoId: defaultValues?.formaPagoId
+          ? Number(defaultValues.formaPagoId)
+          : null,
+        monedaId: defaultValues?.moneda?.id
+          ? Number(defaultValues.moneda.id)
+          : defaultValues?.monedaId
+            ? Number(defaultValues.monedaId)
+            : 1,
         tipoCambio: defaultValues?.tipoCambio || null,
-        centroCostoId: defaultValues?.centroCostoId ? Number(defaultValues.centroCostoId) : 14,
+        centroCostoId: defaultValues?.centroCostoId
+          ? Number(defaultValues.centroCostoId)
+          : 14,
         porcentajeIGV: defaultValues?.porcentajeIGV || null,
         esExoneradoAlIGV: defaultValues?.esExoneradoAlIGV || false,
-        
+
         // Responsables - CONVERTIDOS A NUMBER PARA DROPDOWNS
-        respComprasId: defaultValues?.respComprasId ? Number(defaultValues.respComprasId) : null,
-        respProduccionId: defaultValues?.respProduccionId ? Number(defaultValues.respProduccionId) : null,
-        respAlmacenId: defaultValues?.respAlmacenId ? Number(defaultValues.respAlmacenId) : null,
-        supervisorCampoId: defaultValues?.supervisorCampoId ? Number(defaultValues.supervisorCampoId) : null,
-        aprobadoPorId: defaultValues?.aprobadoPorId ? Number(defaultValues.aprobadoPorId) : null,
-        autorizaCompraId: defaultValues?.autorizaCompraId ? Number(defaultValues.autorizaCompraId) : null,
-        
+        respComprasId: defaultValues?.respComprasId
+          ? Number(defaultValues.respComprasId)
+          : null,
+        respProduccionId: defaultValues?.respProduccionId
+          ? Number(defaultValues.respProduccionId)
+          : null,
+        respAlmacenId: defaultValues?.respAlmacenId
+          ? Number(defaultValues.respAlmacenId)
+          : null,
+        supervisorCampoId: defaultValues?.supervisorCampoId
+          ? Number(defaultValues.supervisorCampoId)
+          : null,
+        aprobadoPorId: defaultValues?.aprobadoPorId
+          ? Number(defaultValues.aprobadoPorId)
+          : null,
+        autorizaCompraId: defaultValues?.autorizaCompraId
+          ? Number(defaultValues.autorizaCompraId)
+          : null,
+
         // Sistema
         urlReqCompraPdf: defaultValues?.urlReqCompraPdf || "",
-        creadoPor: defaultValues?.creadoPor ? Number(defaultValues.creadoPor) : null,
-        actualizadoPor: defaultValues?.actualizadoPor ? Number(defaultValues.actualizadoPor) : null,
+        creadoPor: defaultValues?.creadoPor
+          ? Number(defaultValues.creadoPor)
+          : null,
+        actualizadoPor: defaultValues?.actualizadoPor
+          ? Number(defaultValues.actualizadoPor)
+          : null,
         creadoEn: defaultValues?.creadoEn || null,
         actualizadoEn: defaultValues?.actualizadoEn || null,
       });
+      console.log(
+        "🟡 [RequerimientoCompraForm] formData actualizado con urlReqCompraPdf:",
+        defaultValues?.urlReqCompraPdf,
+      );
     }
   }, [defaultValues, empresaFija]);
 
@@ -214,7 +314,7 @@ export default function RequerimientoCompraForm({
   useEffect(() => {
     if (proveedores && proveedores.length > 0 && empresaId) {
       const proveedoresPorEmpresa = proveedores.filter(
-        (p) => Number(p.empresaId) === Number(empresaId)
+        (p) => Number(p.empresaId) === Number(empresaId),
       );
       setProveedoresFiltrados(proveedoresPorEmpresa);
     } else {
@@ -226,7 +326,7 @@ export default function RequerimientoCompraForm({
   useEffect(() => {
     if (personalOptions && personalOptions.length > 0 && empresaId) {
       const personalPorEmpresa = personalOptions.filter(
-        (p) => Number(p.empresaId) === Number(empresaId)
+        (p) => Number(p.empresaId) === Number(empresaId),
       );
       setPersonalFiltrado(personalPorEmpresa);
     } else {
@@ -238,7 +338,7 @@ export default function RequerimientoCompraForm({
   useEffect(() => {
     if (empresaId && empresas && empresas.length > 0 && !isEdit) {
       const empresaSeleccionada = empresas.find(
-        (e) => Number(e.id) === Number(empresaId)
+        (e) => Number(e.id) === Number(empresaId),
       );
       if (
         empresaSeleccionada &&
@@ -253,7 +353,7 @@ export default function RequerimientoCompraForm({
   useEffect(() => {
     if (empresaId && empresas && empresas.length > 0) {
       const empresaSeleccionada = empresas.find(
-        (e) => Number(e.id) === Number(empresaId)
+        (e) => Number(e.id) === Number(empresaId),
       );
 
       if (esExoneradoAlIGV) {
@@ -308,7 +408,7 @@ export default function RequerimientoCompraForm({
         try {
           const series = await getSeriesDocRequerimiento(
             empresaId,
-            tipoDocumentoId
+            tipoDocumentoId,
           );
           setSeriesDoc(series);
         } catch (err) {
@@ -343,12 +443,15 @@ export default function RequerimientoCompraForm({
         try {
           const responsables = await getParametrosAprobadorPorModulo(
             empresaId,
-            4
+            4,
           );
           setResponsablesCompras(responsables);
           // Asignar automáticamente si solo hay uno
           if (responsables.length === 1 && !respComprasId) {
-            handleChange("respComprasId", Number(responsables[0].personalRespId));
+            handleChange(
+              "respComprasId",
+              Number(responsables[0].personalRespId),
+            );
           }
         } catch (err) {
           console.error("Error al cargar responsables de compras:", err);
@@ -366,12 +469,15 @@ export default function RequerimientoCompraForm({
         try {
           const responsables = await getParametrosAprobadorPorModulo(
             empresaId,
-            13
+            13,
           );
           setResponsablesProduccion(responsables);
           // Asignar automáticamente si solo hay uno
           if (responsables.length === 1 && !respProduccionId) {
-            handleChange("respProduccionId", Number(responsables[0].personalRespId));
+            handleChange(
+              "respProduccionId",
+              Number(responsables[0].personalRespId),
+            );
           }
         } catch (err) {
           console.error("Error al cargar responsables de producción:", err);
@@ -389,12 +495,15 @@ export default function RequerimientoCompraForm({
         try {
           const responsables = await getParametrosAprobadorPorModulo(
             empresaId,
-            6
+            6,
           );
           setResponsablesAlmacen(responsables);
           // Asignar automáticamente si solo hay uno
           if (responsables.length === 1 && !respAlmacenId) {
-            handleChange("respAlmacenId", Number(responsables[0].personalRespId));
+            handleChange(
+              "respAlmacenId",
+              Number(responsables[0].personalRespId),
+            );
           }
         } catch (err) {
           console.error("Error al cargar responsables de almacén:", err);
@@ -417,30 +526,32 @@ export default function RequerimientoCompraForm({
     const cargarTipoCambio = async () => {
       // No ejecutar si no hay fecha o si es la carga inicial
       if (!fechaDocumento || fechaDocumentoInicial === null) return;
-      
+
       // Comparar fechas por valor (ISO string) en lugar de por referencia
       const fechaActualISO = new Date(fechaDocumento).toISOString();
       const fechaInicialISO = new Date(fechaDocumentoInicial).toISOString();
-      
+
       // No ejecutar si la fecha no ha cambiado realmente
       if (fechaActualISO === fechaInicialISO) return;
 
       try {
         // Convertir fecha a formato YYYY-MM-DD
         const fecha = new Date(fechaDocumento);
-        const fechaISO = fecha.toISOString().split('T')[0];
+        const fechaISO = fecha.toISOString().split("T")[0];
 
         // Consultar tipo de cambio SUNAT
-        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
-        
+        const tipoCambioData = await consultarTipoCambioSunat({
+          date: fechaISO,
+        });
+
         // Para COMPRAS usamos sell_price (precio de venta del dólar)
         if (tipoCambioData && tipoCambioData.sell_price) {
           const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
           handleChange("tipoCambio", tipoCambioVenta.toFixed(3));
-          
+
           // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
           setFechaDocumentoInicial(fechaDocumento);
-          
+
           toast?.current?.show({
             severity: "success",
             summary: "Tipo de Cambio Actualizado",
@@ -468,7 +579,7 @@ export default function RequerimientoCompraForm({
         const proximoCorrelativo = correlativoActual + 1;
         const numSerie = String(serie.serie).padStart(
           serie.numCerosIzqSerie,
-          "0"
+          "0",
         );
 
         handleChange("serieDocId", serieId);
@@ -498,14 +609,13 @@ export default function RequerimientoCompraForm({
       if (!defaultValues?.id || !isEdit) return;
 
       try {
-        const { getDetallesReqCompra } = await import(
-          "../../api/detalleReqCompra"
-        );
+        const { getDetallesReqCompra } =
+          await import("../../api/detalleReqCompra");
         const detalles = await getDetallesReqCompra(defaultValues.id);
 
         const subtotalCalc = detalles.reduce(
           (sum, det) => sum + (Number(det.subtotal) || 0),
-          0
+          0,
         );
         const igvCalc = esExoneradoAlIGV
           ? 0
@@ -531,7 +641,9 @@ export default function RequerimientoCompraForm({
     // Usar formData directamente
     const data = {
       empresaId: formData.empresaId ? Number(formData.empresaId) : null,
-      tipoDocumentoId: formData.tipoDocumentoId ? Number(formData.tipoDocumentoId) : null,
+      tipoDocumentoId: formData.tipoDocumentoId
+        ? Number(formData.tipoDocumentoId)
+        : null,
       serieDocId: formData.serieDocId ? Number(formData.serieDocId) : null,
       numSerieDoc: formData.numSerieDoc,
       numCorreDoc: formData.numCorreDoc,
@@ -539,29 +651,53 @@ export default function RequerimientoCompraForm({
       fechaDocumento: formData.fechaDocumento,
       fechaRequerida: formData.fechaRequerida,
       proveedorId: formData.proveedorId ? Number(formData.proveedorId) : null,
-      tipoProductoId: formData.tipoProductoId ? Number(formData.tipoProductoId) : null,
+      tipoProductoId: formData.tipoProductoId
+        ? Number(formData.tipoProductoId)
+        : null,
       tipoEstadoProductoId: formData.tipoEstadoProductoId
         ? Number(formData.tipoEstadoProductoId)
         : null,
-      destinoProductoId: formData.destinoProductoId ? Number(formData.destinoProductoId) : null,
+      destinoProductoId: formData.destinoProductoId
+        ? Number(formData.destinoProductoId)
+        : null,
       esConCotizacion: formData.esConCotizacion,
       formaPagoId: formData.formaPagoId ? Number(formData.formaPagoId) : null,
       monedaId: formData.monedaId ? Number(formData.monedaId) : null,
       tipoCambio: formData.tipoCambio,
-      solicitanteId: formData.solicitanteId ? Number(formData.solicitanteId) : null,
+      solicitanteId: formData.solicitanteId
+        ? Number(formData.solicitanteId)
+        : null,
       estadoId: formData.estadoId ? Number(formData.estadoId) : null,
-      ordenTrabajoId: formData.ordenTrabajoId ? Number(formData.ordenTrabajoId) : null,
+      ordenTrabajoId: formData.ordenTrabajoId
+        ? Number(formData.ordenTrabajoId)
+        : null,
       fechaAprobacion: formData.fechaAprobacion,
-      respComprasId: formData.respComprasId ? Number(formData.respComprasId) : null,
-      respProduccionId: formData.respProduccionId ? Number(formData.respProduccionId) : null,
-      respAlmacenId: formData.respAlmacenId ? Number(formData.respAlmacenId) : null,
-      supervisorCampoId: formData.supervisorCampoId ? Number(formData.supervisorCampoId) : null,
-      aprobadoPorId: formData.aprobadoPorId ? Number(formData.aprobadoPorId) : null,
-      autorizaCompraId: formData.autorizaCompraId ? Number(formData.autorizaCompraId) : null,
-      centroCostoId: formData.centroCostoId ? Number(formData.centroCostoId) : 14,
+      respComprasId: formData.respComprasId
+        ? Number(formData.respComprasId)
+        : null,
+      respProduccionId: formData.respProduccionId
+        ? Number(formData.respProduccionId)
+        : null,
+      respAlmacenId: formData.respAlmacenId
+        ? Number(formData.respAlmacenId)
+        : null,
+      supervisorCampoId: formData.supervisorCampoId
+        ? Number(formData.supervisorCampoId)
+        : null,
+      aprobadoPorId: formData.aprobadoPorId
+        ? Number(formData.aprobadoPorId)
+        : null,
+      autorizaCompraId: formData.autorizaCompraId
+        ? Number(formData.autorizaCompraId)
+        : null,
+      centroCostoId: formData.centroCostoId
+        ? Number(formData.centroCostoId)
+        : 14,
       urlReqCompraPdf: formData.urlReqCompraPdf,
       creadoPor: formData.creadoPor ? Number(formData.creadoPor) : null,
-      actualizadoPor: formData.actualizadoPor ? Number(formData.actualizadoPor) : null,
+      actualizadoPor: formData.actualizadoPor
+        ? Number(formData.actualizadoPor)
+        : null,
       porcentajeIGV: formData.porcentajeIGV,
       esExoneradoAlIGV: formData.esExoneradoAlIGV,
     };
@@ -591,7 +727,8 @@ export default function RequerimientoCompraForm({
       toast.current.show({
         severity: "error",
         summary: "Campo Requerido",
-        detail: "Debe asignar un Supervisor de Campo. Este campo es necesario para crear la Entrega a Rendir.",
+        detail:
+          "Debe asignar un Supervisor de Campo. Este campo es necesario para crear la Entrega a Rendir.",
         life: 5000,
       });
       return;
@@ -620,11 +757,15 @@ export default function RequerimientoCompraForm({
     }
 
     // Validar que supervisorCampoId esté asignado
-    if (!formData.supervisorCampoId || Number(formData.supervisorCampoId) <= 0) {
+    if (
+      !formData.supervisorCampoId ||
+      Number(formData.supervisorCampoId) <= 0
+    ) {
       toast.current.show({
         severity: "error",
         summary: "Campo Requerido",
-        detail: "Debe asignar un Supervisor de Campo antes de aprobar el requerimiento. Este campo es necesario para crear la Entrega a Rendir.",
+        detail:
+          "Debe asignar un Supervisor de Campo antes de aprobar el requerimiento. Este campo es necesario para crear la Entrega a Rendir.",
         life: 5000,
       });
       return;
@@ -852,7 +993,7 @@ export default function RequerimientoCompraForm({
             readOnly={readOnly}
           />
         </TabPanel>
-        
+
         {/* TAB 3: IMPRESION PDF */}
         <TabPanel header="Impresión PDF">
           <VerImpresionRequerimientoCompraPDF
@@ -861,9 +1002,10 @@ export default function RequerimientoCompraForm({
             toast={toast}
             personalOptions={personalOptions}
             onPdfGenerated={handlePdfGenerated}
+            onRecargarRegistro={onRecargarRegistro}
           />
         </TabPanel>
-        
+
         {/* TAB 4: ENTREGAS A RENDIR */}
         <TabPanel
           header={`Entregas a Rendir ${
@@ -905,11 +1047,17 @@ export default function RequerimientoCompraForm({
               icon="pi pi-check"
               className="p-button-success"
               onClick={handleAprobarClick}
-              disabled={!estaPendiente || readOnly || loading || !permisos.puedeEditar}
+              disabled={
+                !estaPendiente || readOnly || loading || !permisos.puedeEditar
+              }
               tooltip={
-                !estaPendiente ? "Ya fue aprobado" :
-                readOnly ? "Modo solo lectura" : 
-                !permisos.puedeEditar ? "No tiene permisos para aprobar" : ""
+                !estaPendiente
+                  ? "Ya fue aprobado"
+                  : readOnly
+                    ? "Modo solo lectura"
+                    : !permisos.puedeEditar
+                      ? "No tiene permisos para aprobar"
+                      : ""
               }
             />
           )}
@@ -922,11 +1070,17 @@ export default function RequerimientoCompraForm({
               className="p-button-danger"
               onClick={handleAnularClick}
               disabled={readOnly || loading || !permisos.puedeEliminar}
-              tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEliminar ? "No tiene permisos para anular" : ""}
+              tooltip={
+                readOnly
+                  ? "Modo solo lectura"
+                  : !permisos.puedeEliminar
+                    ? "No tiene permisos para anular"
+                    : ""
+              }
             />
           )}
 
-          {/* APROBADO: Mostrar Autorizar Compra */}
+                  {/* APROBADO: Mostrar Autorizar Compra */}
           {estaAprobado && isEdit && (
             <Button
               label="Autorizar Compra"
@@ -934,7 +1088,14 @@ export default function RequerimientoCompraForm({
               className="p-button-warning"
               onClick={handleAutorizarCompraClick}
               disabled={readOnly || loading || !permisos.puedeEditar}
-              tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para autorizar" : ""}
+              style={{ whiteSpace: "nowrap", width: "auto", minWidth: "fit-content" }}
+              tooltip={
+                readOnly
+                  ? "Modo solo lectura"
+                  : !permisos.puedeEditar
+                    ? "No tiene permisos para autorizar"
+                    : ""
+              }
             />
           )}
         </div>
@@ -953,7 +1114,13 @@ export default function RequerimientoCompraForm({
             icon="pi pi-save"
             onClick={handleSubmit}
             disabled={readOnly || loading || !puedeEditar}
-            tooltip={readOnly ? "Modo solo lectura" : !puedeEditar ? "No se puede editar" : ""}
+            tooltip={
+              readOnly
+                ? "Modo solo lectura"
+                : !puedeEditar
+                  ? "No se puede editar"
+                  : ""
+            }
           />
         </div>
       </div>

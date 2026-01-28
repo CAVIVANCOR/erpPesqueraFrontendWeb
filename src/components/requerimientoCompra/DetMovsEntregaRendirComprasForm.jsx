@@ -740,15 +740,17 @@ const DetMovsEntregaRendirComprasForm = ({
         </Card>
       )}
 
-      {/* Card de PDF */}
+           {/* Card de PDF */}
       {cardActiva === "pdf" && (
         <PdfDetMovEntregaRendirComprasCard
           control={control}
           errors={errors}
-          urlComprobanteMovimiento={urlComprobanteMovimiento}
-          toast={toast}
           setValue={setValue}
-          movimiento={movimiento}
+          watch={watch}
+          getValues={getValues}
+          defaultValues={{}}
+          detMovId={movimiento?.id}
+          readOnly={formularioDeshabilitado}
         />
       )}
 
@@ -757,10 +759,12 @@ const DetMovsEntregaRendirComprasForm = ({
         <PdfComprobanteOperacionDetMovComprasCard
           control={control}
           errors={errors}
-          urlComprobanteOperacionMovCaja={urlComprobanteOperacionMovCaja}
-          toast={toast}
           setValue={setValue}
-          movimiento={movimiento}
+          watch={watch}
+          getValues={getValues}
+          defaultValues={{}}
+          detMovId={movimiento?.id}
+          readOnly={formularioDeshabilitado}
         />
       )}
 

@@ -112,7 +112,21 @@ export const translations = {
     generated: "Generado:",
     system: "Sistema ERP Megui",
     page: "Página",
-    of: "de"
+    of: "de",
+    
+    // Document Title
+    exportQuotation: "COTIZACIÓN",
+    salesQuotation: "COTIZACIÓN",
+    documentNumber: "No.",
+    
+    // Additional Information Labels
+    containers: "Contenedores:",
+    customsAgent: "Agente Aduanas:",
+    logisticsOperator: "Operador Logístico:",
+    shippingLine: "Naviera:",
+    salesRep: "Rep. Ventas:",
+    observations: "Observaciones:",
+    address: "Dirección:",
   }
 };
 

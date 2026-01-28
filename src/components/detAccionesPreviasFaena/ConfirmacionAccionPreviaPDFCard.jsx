@@ -1,193 +1,157 @@
 // src/components/detAccionesPreviasFaena/ConfirmacionAccionPreviaPDFCard.jsx
-// Card para confirmación PDF de DetAccionesPreviasFaena. Cumple la regla transversal ERP Megui.
 import React, { useState, useEffect } from "react";
 import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
+import { Message } from "primereact/message";
 import { Controller } from "react-hook-form";
-import PDFViewer from "../shared/PDFViewer";
-import DocumentoCapture from "../shared/DocumentoCapture";
-import { abrirPdfEnNuevaPestana, descargarPdf } from "../../utils/pdfUtils";
-import { actualizarDetAccionesPreviasFaena } from "../../api/detAccionesPreviasFaena";
+import { classNames } from "primereact/utils";
+
+import PDFMultiCapture from "../pdf/PDFMultiCapture";
+import PDFViewerV2 from "../pdf/PDFViewerV2";
+import PDFActionButtons from "../pdf/PDFActionButtons";
 
 export default function ConfirmacionAccionPreviaPDFCard({
   control,
-  loading,
+  errors,
   setValue,
   watch,
+  getValues,
+  defaultValues = {},
+  readOnly = false,
   toast,
-  accionPreviaId,
-  faenaPescaId,
-  detAccionesPreviasFaenaId, // ID del registro para actualizar
 }) {
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
-  const urlConfirmaAccionPdf = watch("urlConfirmaAccionPdf");
-  const verificado = watch("verificado");
-  const fechaVerificacion = watch("fechaVerificacion");
+  const [pdfRefreshKey, setPdfRefreshKey] = useState(0);
 
-  // useEffect para actualizar verificación automáticamente cuando se carga PDF
-  useEffect(() => {
-    const actualizarVerificacion = async () => {
+  const pdfUrl = watch("urlConfirmaAccionPdf");
+  const entityId = getValues()?.id || defaultValues?.id;
 
-      // Solo actualizar si:
-      // 1. Hay una URL de PDF válida
-      // 2. Existe el ID del registro
-      // 3. No está ya verificado (para evitar actualizaciones innecesarias)
-      // 4. No está en proceso de carga
-      if (
-        urlConfirmaAccionPdf && 
-        urlConfirmaAccionPdf.trim() !== "" && 
-        detAccionesPreviasFaenaId && 
-        !verificado && 
-        !loading
-      ) {
-        
-        try {
-          const ahora = new Date();
-        
-          // Actualizar en la base de datos
-          const resultado = await actualizarDetAccionesPreviasFaena(detAccionesPreviasFaenaId, {
-            fechaVerificacion: ahora,
-            verificado: true,
-            urlConfirmaAccionPdf: urlConfirmaAccionPdf // Asegurar que la URL se mantiene
-          });
-
-
-          // Actualizar los valores del formulario
-          setValue("fechaVerificacion", ahora);
-          setValue("verificado", true);
-
-
-          // Mostrar mensaje de éxito
-          toast?.show({
-            severity: "success",
-            summary: "Verificación Actualizada",
-            detail: "La verificación de la acción previa se ha completado automáticamente",
-            life: 4000,
-          });
-
-        } catch (error) {
-          console.error('❌ [DEBUG] Error al actualizar verificación:', error);
-          toast?.show({
-            severity: "error",
-            summary: "Error de Verificación",
-            detail: "No se pudo actualizar la verificación automáticamente",
-            life: 4000,
-          });
-        }
-      } else {
-      }
-    };
-
-    actualizarVerificacion();
-  }, [urlConfirmaAccionPdf, detAccionesPreviasFaenaId, verificado, loading, setValue, toast]);
-
-  // Manejar cuando se sube un documento exitosamente
-  const handleDocumentoSubido = (urlDocumento) => {
-    setValue("urlConfirmaAccionPdf", urlDocumento);
+  const handlePdfComplete = (url) => {
+    setValue("urlConfirmaAccionPdf", url, { shouldValidate: true });
+    
+    // Auto-verificación: marcar como verificado al subir PDF
+    setValue("verificado", true, { shouldValidate: true });
+    
+    setPdfRefreshKey((k) => k + 1);
     setMostrarCaptura(false);
-    toast?.show({
+
+    toast?.current?.show({
       severity: "success",
-      summary: "Documento Subido",
-      detail: "El PDF de confirmación se ha subido correctamente",
+      summary: "PDF Subido",
+      detail: "El documento se consolidó y subió correctamente. Acción marcada como verificada.",
       life: 3000,
     });
   };
 
+  const handlePdfError = (error) => {
+    toast?.current?.show({
+      severity: "error",
+      summary: "Error",
+      detail: error?.message || "No se pudo subir el documento",
+      life: 4000,
+    });
+  };
+
+  // Auto-verificación: si se elimina el PDF, desmarcar verificado
+  useEffect(() => {
+    if (!pdfUrl && watch("verificado")) {
+      setValue("verificado", false, { shouldValidate: true });
+    }
+  }, [pdfUrl, setValue, watch]);
+
   return (
     <>
-      <Card className="p-mb-3">
-        <div className="p-grid">
-          {/* Botón para capturar/subir documento */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <Button
-                type="button"
-                label="Capturar Fotos"
-                icon="pi pi-camera"
-                className="p-button-outlined"
-                onClick={() => setMostrarCaptura(true)}
-                disabled={loading}
-                tooltip="Capturar fotos o subir archivos para generar el PDF de confirmación"
-                tooltipOptions={{ position: "left" }}
-              />
-            </div>
-            {/* Campo URL Documento */}
-            <div style={{ flex: 3 }}>
-              <label htmlFor="urlConfirmaAccionPdf">URL Confirmación PDF</label>
-              <Controller
-                name="urlConfirmaAccionPdf"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="urlConfirmaAccionPdf"
-                    {...field}
-                    value={field.value || ""}  // ← Convertir null a ""
-                    placeholder="URL del PDF de confirmación"
-                    className="w-full"
-                    style={{ fontWeight: "bold" }}
-                    readOnly
-                    disabled={loading}
+      <Card
+        title="Confirmación de Acción Previa (PDF)"
+        subTitle="Documento de confirmación de la acción previa realizada"
+        className="mb-4"
+      >
+        <div className="p-fluid formgrid grid">
+          <div className="field col-12">
+            <div
+              style={{
+                display: "flex",
+                gap: "0.5rem",
+                alignItems: "flex-end",
+                marginBottom: "1rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <label htmlFor="urlConfirmaAccionPdf" className="font-bold">
+                  URL del Documento PDF
+                </label>
+                <Controller
+                  name="urlConfirmaAccionPdf"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <InputText
+                      id="urlConfirmaAccionPdf"
+                      {...field}
+                      className={classNames({
+                        "p-invalid": fieldState.error,
+                      })}
+                      style={{ fontWeight: "bold" }}
+                      placeholder="URL del documento de confirmación (se genera automáticamente al subir archivos)"
+                      readOnly
+                    />
+                  )}
+                />
+                {errors.urlConfirmaAccionPdf && (
+                  <small className="p-error">
+                    {errors.urlConfirmaAccionPdf.message}
+                  </small>
+                )}
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <Button
+                  type="button"
+                  label="Capturar/Subir"
+                  icon="pi pi-upload"
+                  onClick={() => setMostrarCaptura(true)}
+                  disabled={readOnly || !entityId}
+                  className="p-button-primary"
+                  tooltip="Subir múltiples archivos (PDF/Imágenes). Se consolidarán automáticamente."
+                  tooltipOptions={{ position: "top" }}
+                />
+              </div>
+
+              <div style={{ flex: 2 }}>
+                {pdfUrl && (
+                  <PDFActionButtons
+                    pdfUrl={pdfUrl}
+                    moduleName="confirmaciones-acciones-previas"
+                    fileName={`confirmacion-accion-previa-${entityId || "sin-id"}.pdf`}
+                    viewButtonLabel="Ver"
+                    downloadButtonLabel="Descargar"
+                    toast={toast}
                   />
                 )}
-              />
+              </div>
             </div>
-            {/* Botones de acción para el PDF */}
-            <div style={{ flex: 1 }}>
-              <Button
-                type="button"
-                label="Abrir"
-                icon="pi pi-external-link"
-                className="p-button-outlined p-button-sm"
-                style={{ minWidth: "80px" }}
-                onClick={() =>
-                  abrirPdfEnNuevaPestana(
-                    urlConfirmaAccionPdf,
-                    toast,
-                    "No hay PDF de confirmación disponible"
-                  )
-                }
-                tooltip="Abrir PDF en nueva pestaña"
-                tooltipOptions={{ position: "top" }}
+
+            {!entityId && (
+              <Message
+                severity="warn"
+                text="Guarda primero el registro para habilitar la subida de documentos."
               />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                type="button"
-                label="Descargar"
-                icon="pi pi-download"
-                className="p-button-outlined p-button-sm"
-                style={{ minWidth: "80px" }}
-                onClick={() =>
-                  descargarPdf(
-                    urlConfirmaAccionPdf,
-                    toast,
-                    `confirmacion-accion-previa-${
-                      accionPreviaId || "sin-id"
-                    }-faena-${faenaPescaId || "sin-faena"}.pdf`,
-                    "confirmaciones-acciones-previas"
-                  )
-                }
-                tooltip="Descargar PDF de confirmación"
-                tooltipOptions={{ position: "top" }}
-              />
-            </div>
+            )}
           </div>
-          {/* Visor de PDF */}
-          {urlConfirmaAccionPdf && (
+
+          {pdfUrl && (
             <div className="field col-12">
-              <PDFViewer urlDocumento={urlConfirmaAccionPdf} />
+              <PDFViewerV2
+                pdfUrl={pdfUrl}
+                moduleName="confirmaciones-acciones-previas"
+                height="600px"
+                key={pdfRefreshKey}
+              />
             </div>
           )}
 
-          {/* Mensaje cuando no hay documento */}
-          {!urlConfirmaAccionPdf && (
+          {!pdfUrl && (
             <div className="field col-12">
               <div
                 className="text-center p-4"
@@ -198,11 +162,12 @@ export default function ConfirmacionAccionPreviaPDFCard({
                   style={{ fontSize: "3rem" }}
                 ></i>
                 <p className="text-600 mt-3 mb-2">
-                  No hay PDF de confirmación cargado
+                  No hay documento de confirmación cargado
                 </p>
                 <small className="text-500">
-                  Use el botón "Capturar/Subir Confirmación PDF" para agregar
-                  fotos o archivos de confirmación de la acción previa
+                  Use el botón "Capturar/Subir" para agregar el documento de
+                  confirmación. Al subir el PDF, la acción se marcará
+                  automáticamente como verificada.
                 </small>
               </div>
             </div>
@@ -210,24 +175,14 @@ export default function ConfirmacionAccionPreviaPDFCard({
         </div>
       </Card>
 
-      {/* Modal de captura de documento */}
-      <DocumentoCapture
+      <PDFMultiCapture
         visible={mostrarCaptura}
         onHide={() => setMostrarCaptura(false)}
-        onDocumentoSubido={handleDocumentoSubido}
-        endpoint="/api/confirmaciones-acciones-previas/upload"
-        datosAdicionales={{
-          accionPreviaId: accionPreviaId || "",
-          faenaPescaId: faenaPescaId || "",
-        }}
-        titulo="Subir Confirmación de Acción Previa"
-        prefijo="confirmacion-accion-previa"
-        identificador={`${accionPreviaId || "sin-id"}-${
-          faenaPescaId || "sin-faena"
-        }`}
-        mensajeInfo={`Acción Previa ID: ${
-          accionPreviaId || "No definido"
-        } - Faena ID: ${faenaPescaId || "No definido"}`}
+        moduleName="confirmaciones-acciones-previas"
+        entityId={entityId}
+        dialogTitle="Subir Confirmación de Acción Previa"
+        onComplete={handlePdfComplete}
+        onError={handlePdfError}
       />
     </>
   );

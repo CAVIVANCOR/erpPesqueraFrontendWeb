@@ -49,6 +49,7 @@ const CotizacionVentasForm = ({
   readOnly = false,
   loading: loadingProp = false,
   toast: toastProp,
+  onRecargarRegistro,
 }) => {
   const [activeCard, setActiveCard] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -244,8 +245,27 @@ const CotizacionVentasForm = ({
     actualizadoPor: defaultValues?.actualizadoPor
       ? Number(defaultValues.actualizadoPor)
       : null,
-  });
+   });
 
+  // Actualizar formData cuando cambian los defaultValues (modo edición)
+  useEffect(() => {
+    console.log(
+      "🟡 [CotizacionVentasForm] useEffect detectó cambio en defaultValues",
+    );
+    console.log(
+      "🟡 [CotizacionVentasForm] defaultValues.urlCotizacionPdf:",
+      defaultValues?.urlCotizacionPdf,
+    );
+    if (defaultValues && Object.keys(defaultValues).length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        urlCotizacionPdf: defaultValues?.urlCotizacionPdf || null,
+      }));
+    }
+  }, [defaultValues]);
+
+
+  
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -852,6 +872,7 @@ const CotizacionVentasForm = ({
               datosCotizacion={formData}
               detalles={detalles}
               toast={toast}
+              onRecargarRegistro={onRecargarRegistro}
             />
           </TabPanel>
         </TabView>

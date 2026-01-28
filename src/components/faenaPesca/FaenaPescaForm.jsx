@@ -160,7 +160,7 @@ export default function FaenaPescaForm({
         // Cargar clientes si hay temporada con empresaId
         if (temporadaData?.empresaId) {
           const clientesData = await getClientesPorEmpresa(
-            temporadaData.empresaId
+            temporadaData.empresaId,
           );
           setClientes(clientesData);
         }
@@ -225,25 +225,25 @@ export default function FaenaPescaForm({
                 "fechaDescarga",
                 faenaActualizada.fechaDescarga
                   ? new Date(faenaActualizada.fechaDescarga)
-                  : null
+                  : null,
               );
               setValue(
                 "puertoDescargaId",
                 faenaActualizada.puertoDescargaId
                   ? Number(faenaActualizada.puertoDescargaId)
-                  : null
+                  : null,
               );
               setValue(
                 "fechaHoraFondeo",
                 faenaActualizada.fechaHoraFondeo
                   ? new Date(faenaActualizada.fechaHoraFondeo)
-                  : null
+                  : null,
               );
               setValue(
                 "puertoFondeoId",
                 faenaActualizada.puertoFondeoId
                   ? Number(faenaActualizada.puertoFondeoId)
-                  : null
+                  : null,
               );
 
               // Actualizar currentFaenaData para forzar re-render completo
@@ -396,7 +396,7 @@ export default function FaenaPescaForm({
           // Llamar al backend para finalizar (solo actualiza estado)
           const resultado = await finalizarFaenaConMovimientoAlmacen(
             defaultValues.id,
-            temporadaData.id
+            temporadaData.id,
           );
 
           toast.current?.show({
@@ -414,7 +414,7 @@ export default function FaenaPescaForm({
           if (defaultValues.id) {
             try {
               const faenaActualizada = await getFaenaPescaPorId(
-                defaultValues.id
+                defaultValues.id,
               );
               reset(faenaActualizada);
             } catch (error) {
@@ -649,7 +649,7 @@ export default function FaenaPescaForm({
         <div className="flex justify-content-center mb-4">
           <Tag
             key={`tag-${isEditMode}-${faenaCreatedSuccessfully}-${watch(
-              "id"
+              "id",
             )}-${watch("descripcion")}-${forceUpdate}`}
             value={(() => {
               const descripcion =
@@ -683,8 +683,8 @@ export default function FaenaPescaForm({
               isEditMode
                 ? "warning"
                 : faenaCreatedSuccessfully
-                ? "success"
-                : "info"
+                  ? "success"
+                  : "info"
             }
             style={{
               fontSize: "1.rem",
@@ -801,9 +801,10 @@ export default function FaenaPescaForm({
             control={control}
             watch={watch}
             errors={errors}
-            loading={loading}
             setValue={setValue}
-            faenaData={currentFaenaData}
+            getValues={getValues}
+            defaultValues={currentFaenaData}
+            readOnly={false}
           />
         )}
       </div>

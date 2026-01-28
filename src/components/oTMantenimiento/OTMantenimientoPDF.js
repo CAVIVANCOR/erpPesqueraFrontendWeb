@@ -20,22 +20,20 @@ export async function generarYSubirPDFOTMantenimiento(ot, tareas, empresa) {
 
     // 3. Crear FormData para subir
     const formData = new FormData();
-    const nombreArchivo = `ot-${ot.id}.pdf`;
-    formData.append("pdf", blob, nombreArchivo);
-    formData.append("otMantenimientoId", ot.id);
+    const nombreArchivo = `ot-mantenimiento-${ot.numeroCompleto || ot.id}.pdf`;
+    formData.append("file", blob, nombreArchivo);
+    formData.append("moduleName", "ot-mantenimiento-documento");
+    formData.append("entityId", ot.id);
 
-    // 4. Subir al servidor
+    // 4. Subir al servidor usando Sistema PDF V2
     const token = useAuthStore.getState().token;
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/ot-mantenimiento/upload-orden-trabajo`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      }
-    );
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/upload`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -108,10 +106,22 @@ async function generarPDFOTMantenimiento(ot, tareas, empresa) {
 
   // DATOS PRINCIPALES
   const datos = [
-    [`Código OT: ${ot.codigo || "-"}`, `Fecha: ${formatearFecha(ot.fechaDocumento)}`],
-    [`Tipo: ${ot.tipoMantenimiento?.nombre || "-"}`, `Prioridad: ${ot.prioridadAlta ? "ALTA" : "Normal"}`],
-    [`Activo: ${ot.activo?.nombre || "-"}`, `Estado: ${ot.estado?.nombre || "-"}`],
-    [`Sede: ${ot.sede?.nombre || "-"}`, `Motivo: ${ot.motivoOrigino?.nombre || "-"}`],
+    [
+      `Código OT: ${ot.codigo || "-"}`,
+      `Fecha: ${formatearFecha(ot.fechaDocumento)}`,
+    ],
+    [
+      `Tipo: ${ot.tipoMantenimiento?.nombre || "-"}`,
+      `Prioridad: ${ot.prioridadAlta ? "ALTA" : "Normal"}`,
+    ],
+    [
+      `Activo: ${ot.activo?.nombre || "-"}`,
+      `Estado: ${ot.estado?.nombre || "-"}`,
+    ],
+    [
+      `Sede: ${ot.sede?.nombre || "-"}`,
+      `Motivo: ${ot.motivoOrigino?.nombre || "-"}`,
+    ],
   ];
 
   datos.forEach(([izq, der]) => {
@@ -188,9 +198,24 @@ async function generarPDFOTMantenimiento(ot, tareas, empresa) {
 
     // Encabezados de tabla
     page.drawText("#", { x: margin, y: yPosition, size: 9, font: fontBold });
-    page.drawText("Descripción", { x: margin + 30, y: yPosition, size: 9, font: fontBold });
-    page.drawText("Responsable", { x: margin + 250, y: yPosition, size: 9, font: fontBold });
-    page.drawText("Estado", { x: margin + 400, y: yPosition, size: 9, font: fontBold });
+    page.drawText("Descripción", {
+      x: margin + 30,
+      y: yPosition,
+      size: 9,
+      font: fontBold,
+    });
+    page.drawText("Responsable", {
+      x: margin + 250,
+      y: yPosition,
+      size: 9,
+      font: fontBold,
+    });
+    page.drawText("Estado", {
+      x: margin + 400,
+      y: yPosition,
+      size: 9,
+      font: fontBold,
+    });
     yPosition -= 15;
 
     // Línea separadora
@@ -208,16 +233,39 @@ async function generarPDFOTMantenimiento(ot, tareas, empresa) {
         yPosition = height - 50;
       }
 
-      page.drawText(`${index + 1}`, { x: margin, y: yPosition, size: 8, font: fontNormal });
-      
+      page.drawText(`${index + 1}`, {
+        x: margin,
+        y: yPosition,
+        size: 8,
+        font: fontNormal,
+      });
+
       const desc = (tarea.descripcion || "").substring(0, 40);
-      page.drawText(desc, { x: margin + 30, y: yPosition, size: 8, font: fontNormal });
-      
-      const resp = tarea.responsable?.nombreCompleto || tarea.contratista?.razonSocial || "-";
-      page.drawText(resp.substring(0, 25), { x: margin + 250, y: yPosition, size: 8, font: fontNormal });
-      
-      page.drawText(tarea.estadoTarea?.nombre || "-", { x: margin + 400, y: yPosition, size: 8, font: fontNormal });
-      
+      page.drawText(desc, {
+        x: margin + 30,
+        y: yPosition,
+        size: 8,
+        font: fontNormal,
+      });
+
+      const resp =
+        tarea.responsable?.nombreCompleto ||
+        tarea.contratista?.razonSocial ||
+        "-";
+      page.drawText(resp.substring(0, 25), {
+        x: margin + 250,
+        y: yPosition,
+        size: 8,
+        font: fontNormal,
+      });
+
+      page.drawText(tarea.estadoTarea?.nombre || "-", {
+        x: margin + 400,
+        y: yPosition,
+        size: 8,
+        font: fontNormal,
+      });
+
       yPosition -= 12;
     });
   }
@@ -230,7 +278,7 @@ async function generarPDFOTMantenimiento(ot, tareas, empresa) {
   }
 
   const firmaY = 100;
-  
+
   // Solicitante
   page.drawLine({
     start: { x: margin, y: firmaY },

@@ -13,9 +13,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
-import { confirmDialog, ConfirmDialog } from "primereact/confirmdialog";
+import { confirmDialog } from "primereact/confirmdialog";
 import { Message } from "primereact/message";
-import { Badge } from "primereact/badge";
 import { Panel } from "primereact/panel";
 import { Divider } from "primereact/divider";
 import { InputText } from "primereact/inputtext";
@@ -752,9 +751,7 @@ export default function EntregaARendirCard({
           </TabPanel>
         </TabView>
       </Panel>
-
       <Toast ref={toast} />
-      <ConfirmDialog />
     </>
   );
 }

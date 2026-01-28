@@ -20,9 +20,6 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Message } from "primereact/message";
 import { Toast } from "primereact/toast";
 import { classNames } from "primereact/utils";
-import DocumentoCapture from "../shared/DocumentoCapture";
-import PDFViewer from "../shared/PDFViewer";
-import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import {
   crearDetMovsEntRendirPescaConsumo,
@@ -1196,15 +1193,17 @@ const DetMovsEntRendirNovedadForm = ({
         </Card>
       )}
 
-      {/* Card de PDF */}
+            {/* Card de PDF */}
       {cardActiva === "pdf" && (
         <PdfDetMovEntRendirNovedadCard
           control={control}
           errors={errors}
-          urlComprobanteMovimiento={urlComprobanteMovimiento}
-          toast={toast}
           setValue={setValue}
-          movimiento={movimiento}
+          watch={watch}
+          getValues={getValues}
+          defaultValues={{}}
+          detMovId={movimiento?.id}
+          readOnly={formularioDeshabilitado}
         />
       )}
 
@@ -1213,10 +1212,12 @@ const DetMovsEntRendirNovedadForm = ({
         <PdfComprobanteOperacionDetMovNovedadCard
           control={control}
           errors={errors}
-          urlComprobanteOperacionMovCaja={urlComprobanteOperacionMovCaja}
-          toast={toast}
           setValue={setValue}
-          movimiento={movimiento}
+          watch={watch}
+          getValues={getValues}
+          defaultValues={{}}
+          detMovId={movimiento?.id}
+          readOnly={formularioDeshabilitado}
         />
       )}
       {/* Botones de Cards */}

@@ -90,14 +90,14 @@ export default function RequerimientoCompra({ ruta }) {
     // Filtro por empresa
     if (empresaSeleccionada) {
       filtrados = filtrados.filter(
-        (item) => Number(item.empresaId) === Number(empresaSeleccionada)
+        (item) => Number(item.empresaId) === Number(empresaSeleccionada),
       );
     }
 
     // Filtro por proveedor
     if (proveedorSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => Number(item.proveedorId) === Number(proveedorSeleccionado)
+        (item) => Number(item.proveedorId) === Number(proveedorSeleccionado),
       );
     }
 
@@ -123,14 +123,14 @@ export default function RequerimientoCompra({ ruta }) {
     // Filtro por tipo (Con Cotización / Compra Directa)
     if (tipoSeleccionado !== null) {
       filtrados = filtrados.filter(
-        (item) => item.esConCotizacion === tipoSeleccionado
+        (item) => item.esConCotizacion === tipoSeleccionado,
       );
     }
 
     // Filtro por estado
     if (estadoSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => Number(item.estadoId) === Number(estadoSeleccionado)
+        (item) => Number(item.estadoId) === Number(estadoSeleccionado),
       );
     }
 
@@ -210,7 +210,7 @@ export default function RequerimientoCompra({ ruta }) {
 
       // Filtrar estados de documentos (tipoProvieneDeId = 11 para REQUERIMIENTO COMPRA)
       const estadosDocFiltrados = estadosData.filter(
-        (e) => Number(e.tipoProvieneDeId) === 11 && !e.cesado
+        (e) => Number(e.tipoProvieneDeId) === 11 && !e.cesado,
       );
       setEstadosDoc(estadosDocFiltrados);
 
@@ -218,7 +218,7 @@ export default function RequerimientoCompra({ ruta }) {
       const requerimientosNormalizados = requerimientosData.map((req) => ({
         ...req,
         estadoDoc: estadosDocFiltrados.find(
-          (e) => Number(e.id) === Number(req.estadoId)
+          (e) => Number(e.id) === Number(req.estadoId),
         ),
       }));
       setItems(requerimientosNormalizados);
@@ -238,11 +238,10 @@ export default function RequerimientoCompra({ ruta }) {
   const handleEdit = async (rowData) => {
     try {
       // Cargar el requerimiento completo con todos los campos
-      const { getRequerimientoCompraPorId } = await import(
-        "../api/requerimientoCompra"
-      );
+      const { getRequerimientoCompraPorId } =
+        await import("../api/requerimientoCompra");
       const requerimientoCompleto = await getRequerimientoCompraPorId(
-        rowData.id
+        rowData.id,
       );
 
       setEditing(requerimientoCompleto);
@@ -255,6 +254,43 @@ export default function RequerimientoCompra({ ruta }) {
         detail: "Error al cargar el requerimiento",
         life: 3000,
       });
+    }
+  };
+
+  /**
+   * Recarga el requerimiento actual desde la BD
+   * Se usa después de guardar el PDF para reflejar el estado actualizado
+   */
+  const recargarRequerimientoActual = async () => {
+    if (!editing?.id) return;
+
+    console.log(
+      "🔵 [RequerimientoCompra] ANTES de recargar - editing.urlReqCompraPdf:",
+      editing.urlReqCompraPdf,
+    );
+
+    try {
+      const { getRequerimientoCompraPorId } =
+        await import("../api/requerimientoCompra");
+      const requerimientoActualizado = await getRequerimientoCompraPorId(
+        editing.id,
+      );
+
+      console.log(
+        "🔵 [RequerimientoCompra] DESPUÉS de consultar BD - requerimientoActualizado.urlReqCompraPdf:",
+        requerimientoActualizado.urlReqCompraPdf,
+      );
+
+      setEditing(requerimientoActualizado);
+
+      console.log(
+        "✅ [RequerimientoCompra] Estado editing actualizado desde BD",
+      );
+    } catch (error) {
+      console.error(
+        "❌ [RequerimientoCompra] Error al recargar requerimiento:",
+        error,
+      );
     }
   };
 
@@ -321,7 +357,6 @@ export default function RequerimientoCompra({ ruta }) {
 
     setLoading(true);
     try {
-
       if (esEdicion) {
         await actualizarRequerimientoCompra(editing.id, data);
         toast.current.show({
@@ -332,11 +367,10 @@ export default function RequerimientoCompra({ ruta }) {
         });
 
         // Recargar el requerimiento actualizado para obtener campos actualizados
-        const { getRequerimientoCompraPorId } = await import(
-          "../api/requerimientoCompra"
-        );
+        const { getRequerimientoCompraPorId } =
+          await import("../api/requerimientoCompra");
         const requerimientoActualizado = await getRequerimientoCompraPorId(
-          editing.id
+          editing.id,
         );
         setEditing(requerimientoActualizado);
       } else {
@@ -349,11 +383,10 @@ export default function RequerimientoCompra({ ruta }) {
         });
 
         // Cargar el requerimiento recién creado
-        const { getRequerimientoCompraPorId } = await import(
-          "../api/requerimientoCompra"
-        );
+        const { getRequerimientoCompraPorId } =
+          await import("../api/requerimientoCompra");
         const requerimientoCompleto = await getRequerimientoCompraPorId(
-          resultado.id
+          resultado.id,
         );
         setEditing(requerimientoCompleto);
       }
@@ -401,9 +434,8 @@ export default function RequerimientoCompra({ ruta }) {
       });
 
       // Recargar el requerimiento actualizado para reflejar el nuevo estado
-      const { getRequerimientoCompraPorId } = await import(
-        "../api/requerimientoCompra"
-      );
+      const { getRequerimientoCompraPorId } =
+        await import("../api/requerimientoCompra");
       const requerimientoActualizado = await getRequerimientoCompraPorId(id);
       setEditing(requerimientoActualizado);
 
@@ -460,7 +492,7 @@ export default function RequerimientoCompra({ ruta }) {
     try {
       const resultado = await autorizarCompraRequerimientoCompra(
         id,
-        usuario?.id
+        usuario?.id,
       );
 
       const cantidadOCs = resultado.ordenesGeneradas?.length || 0;
@@ -629,13 +661,15 @@ export default function RequerimientoCompra({ ruta }) {
                   severity="success"
                   raised
                   onClick={handleAdd}
-                  disabled={!permisos.puedeCrear || loading || !empresaSeleccionada}
+                  disabled={
+                    !permisos.puedeCrear || loading || !empresaSeleccionada
+                  }
                   tooltip={
                     !permisos.puedeCrear
                       ? "No tiene permisos para crear"
                       : !empresaSeleccionada
-                      ? "Seleccione una empresa primero"
-                      : "Nuevo Requerimiento"
+                        ? "Seleccione una empresa primero"
+                        : "Nuevo Requerimiento"
                   }
                 />
               </div>
@@ -648,7 +682,8 @@ export default function RequerimientoCompra({ ruta }) {
                     toast.current?.show({
                       severity: "success",
                       summary: "Actualizado",
-                      detail: "Datos actualizados correctamente desde el servidor",
+                      detail:
+                        "Datos actualizados correctamente desde el servidor",
                       life: 3000,
                     });
                   }}
@@ -767,8 +802,13 @@ export default function RequerimientoCompra({ ruta }) {
           </div>
         }
       >
-        <Column field="id" header="ID" style={{ width: 80 }} sortable/>
-                <Column field="empresaId" header="Empresa" body={empresaNombre} sortable/>
+        <Column field="id" header="ID" style={{ width: 80 }} sortable />
+        <Column
+          field="empresaId"
+          header="Empresa"
+          body={empresaNombre}
+          sortable
+        />
         <Column field="numeroDocumento" header="Nº Documento" />
         <Column
           field="fechaDocumento"
@@ -792,7 +832,7 @@ export default function RequerimientoCompra({ ruta }) {
             : "Nuevo Requerimiento de Compra"
         }
         visible={showDialog}
-        style={{ width: "1300px"}}
+        style={{ width: "1300px" }}
         onHide={() => setShowDialog(false)}
         modal
         maximizable
@@ -820,10 +860,13 @@ export default function RequerimientoCompra({ ruta }) {
           onAprobar={handleAprobar}
           onAnular={handleAnular}
           onAutorizarCompra={handleAutorizarCompra}
+          onRecargarRegistro={recargarRequerimientoActual}
           loading={loading}
           toast={toast}
           permisos={permisos}
-          readOnly={!!editing && !!editing.numeroDocumento && !permisos.puedeEditar}
+          readOnly={
+            !!editing && !!editing.numeroDocumento && !permisos.puedeEditar
+          }
         />
       </Dialog>
     </div>

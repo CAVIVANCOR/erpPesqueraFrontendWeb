@@ -1,6 +1,7 @@
 // src/components/movimientoCaja/MovimientoCajaForm.jsx
 // Formulario profesional para MovimientoCaja con navegación por Cards
 import React, { useRef } from "react";
+import { useForm } from "react-hook-form";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import DatosGeneralesMovimientoCajaCard from "./DatosGeneralesMovimientoCajaCard";
@@ -31,170 +32,199 @@ export default function MovimientoCajaForm({
   readOnly = false,
 }) {
   const toast = useRef(null);
-  
+  // React Hook Form para componentes PDF
+  const {
+    control,
+    setValue,
+    watch,
+    getValues,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      urlComprobanteOperacionMovCaja:
+        defaultValues.urlComprobanteOperacionMovCaja || "",
+      urlDocumentoMovCaja: defaultValues.urlDocumentoMovCaja || "",
+    },
+  });
+
   // Estado para navegación de cards
   const [cardActiva, setCardActiva] = React.useState("datos"); // "datos" | "comprobante" | "documento"
-  
+
   // Estado para filtro de familia de productos
   const [familiaFiltroId, setFamiliaFiltroId] = React.useState(null);
 
   // Estados del formulario
   const [empresaOrigenId, setEmpresaOrigenId] = React.useState(
-    defaultValues.empresaOrigenId ? Number(defaultValues.empresaOrigenId) : ""
+    defaultValues.empresaOrigenId ? Number(defaultValues.empresaOrigenId) : "",
   );
   const [cuentaCorrienteOrigenId, setCuentaCorrienteOrigenId] = React.useState(
     defaultValues.cuentaCorrienteOrigenId
       ? Number(defaultValues.cuentaCorrienteOrigenId)
-      : ""
+      : "",
   );
   const [empresaDestinoId, setEmpresaDestinoId] = React.useState(
-    defaultValues.empresaDestinoId ? Number(defaultValues.empresaDestinoId) : ""
+    defaultValues.empresaDestinoId
+      ? Number(defaultValues.empresaDestinoId)
+      : "",
   );
   const [cuentaCorrienteDestinoId, setCuentaCorrienteDestinoId] =
     React.useState(
       defaultValues.cuentaCorrienteDestinoId
         ? Number(defaultValues.cuentaCorrienteDestinoId)
-        : ""
+        : "",
     );
   const [fecha, setFecha] = React.useState(
-    defaultValues.fecha ? new Date(defaultValues.fecha) : new Date()
+    defaultValues.fecha ? new Date(defaultValues.fecha) : new Date(),
   );
   const [tipoMovimientoId, setTipoMovimientoId] = React.useState(
-    defaultValues.tipoMovimientoId ? Number(defaultValues.tipoMovimientoId) : ""
+    defaultValues.tipoMovimientoId
+      ? Number(defaultValues.tipoMovimientoId)
+      : "",
   );
   const [entidadComercialId, setEntidadComercialId] = React.useState(
     defaultValues.entidadComercialId
       ? Number(defaultValues.entidadComercialId)
-      : ""
+      : "",
   );
   const [monto, setMonto] = React.useState(
-    defaultValues.monto ? Number(defaultValues.monto) : 0
+    defaultValues.monto ? Number(defaultValues.monto) : 0,
   );
   const [monedaId, setMonedaId] = React.useState(
-    defaultValues.monedaId ? Number(defaultValues.monedaId) : ""
+    defaultValues.monedaId ? Number(defaultValues.monedaId) : "",
   );
   const [descripcion, setDescripcion] = React.useState(
-    defaultValues.descripcion || ""
+    defaultValues.descripcion || "",
   );
   const [referenciaExtId, setReferenciaExtId] = React.useState(
-    defaultValues.referenciaExtId || ""
+    defaultValues.referenciaExtId || "",
   );
   const [tipoReferenciaId, setTipoReferenciaId] = React.useState(
-    defaultValues.tipoReferenciaId ? Number(defaultValues.tipoReferenciaId) : ""
+    defaultValues.tipoReferenciaId
+      ? Number(defaultValues.tipoReferenciaId)
+      : "",
   );
   const [usuarioId, setUsuarioId] = React.useState(
-    defaultValues.usuarioId ? Number(defaultValues.usuarioId) : ""
+    defaultValues.usuarioId ? Number(defaultValues.usuarioId) : "",
   );
   const [estadoId, setEstadoId] = React.useState(
-    defaultValues.estadoId ? Number(defaultValues.estadoId) : ""
+    defaultValues.estadoId ? Number(defaultValues.estadoId) : "",
   );
   const [fechaCreacion, setFechaCreacion] = React.useState(
     defaultValues.fechaCreacion
       ? new Date(defaultValues.fechaCreacion)
-      : new Date()
+      : new Date(),
   );
   const [fechaActualizacion, setFechaActualizacion] = React.useState(
     defaultValues.fechaActualizacion
       ? new Date(defaultValues.fechaActualizacion)
-      : new Date()
+      : new Date(),
   );
   const [centroCostoId, setCentroCostoId] = React.useState(
-    defaultValues.centroCostoId ? Number(defaultValues.centroCostoId) : ""
+    defaultValues.centroCostoId ? Number(defaultValues.centroCostoId) : "",
   );
   const [moduloOrigenMotivoOperacionId, setModuloOrigenMotivoOperacionId] =
     React.useState(
       defaultValues.moduloOrigenMovCajaId
         ? Number(defaultValues.moduloOrigenMovCajaId)
         : defaultValues.moduloOrigenMotivoOperacionId
-        ? Number(defaultValues.moduloOrigenMotivoOperacionId)
-        : ""
+          ? Number(defaultValues.moduloOrigenMotivoOperacionId)
+          : "",
     );
   const [origenMotivoOperacionId, setOrigenMotivoOperacionId] = React.useState(
     defaultValues.origenMotivoOperacionId
       ? Number(defaultValues.origenMotivoOperacionId)
-      : ""
+      : "",
   );
   const [fechaMotivoOperacion, setFechaMotivoOperacion] = React.useState(
     defaultValues.fechaMotivoOperacion
       ? new Date(defaultValues.fechaMotivoOperacion)
-      : null
+      : null,
   );
   const [usuarioMotivoOperacionId, setUsuarioMotivoOperacionId] =
     React.useState(
       defaultValues.usuarioMotivoOperacionId
         ? Number(defaultValues.usuarioMotivoOperacionId)
-        : ""
+        : "",
     );
-  const [origenReferenciaIngresoMovCajaId, setOrigenReferenciaIngresoMovCajaId] =
-    React.useState(
-      defaultValues.origenReferenciaIngresoMovCajaId
-        ? Number(defaultValues.origenReferenciaIngresoMovCajaId)
-        : ""
-    );
+  const [
+    origenReferenciaIngresoMovCajaId,
+    setOrigenReferenciaIngresoMovCajaId,
+  ] = React.useState(
+    defaultValues.origenReferenciaIngresoMovCajaId
+      ? Number(defaultValues.origenReferenciaIngresoMovCajaId)
+      : "",
+  );
   const [fechaOperacionMovCaja, setFechaOperacionMovCaja] = React.useState(
     defaultValues.fechaOperacionMovCaja
       ? new Date(defaultValues.fechaOperacionMovCaja)
-      : new Date()
+      : new Date(),
   );
   const [operacionSinFactura, setOperacionSinFactura] = React.useState(
-    defaultValues.operacionSinFactura || false
+    defaultValues.operacionSinFactura || false,
   );
-  const [cuentaDestinoEntidadComercialId, setCuentaDestinoEntidadComercialId] = React.useState(
-    defaultValues.cuentaDestinoEntidadComercialId
-      ? Number(defaultValues.cuentaDestinoEntidadComercialId)
-      : ""
-  );
+  const [cuentaDestinoEntidadComercialId, setCuentaDestinoEntidadComercialId] =
+    React.useState(
+      defaultValues.cuentaDestinoEntidadComercialId
+        ? Number(defaultValues.cuentaDestinoEntidadComercialId)
+        : "",
+    );
   const [productoId, setProductoId] = React.useState(
-    defaultValues.productoId ? Number(defaultValues.productoId) : ""
+    defaultValues.productoId ? Number(defaultValues.productoId) : "",
   );
 
   // NUEVOS ESTADOS PARA PDFs
   const [urlComprobanteOperacionMovCaja, setUrlComprobanteOperacionMovCaja] =
     React.useState(defaultValues.urlComprobanteOperacionMovCaja || "");
   const [urlDocumentoMovCaja, setUrlDocumentoMovCaja] = React.useState(
-    defaultValues.urlDocumentoMovCaja || ""
+    defaultValues.urlDocumentoMovCaja || "",
   );
 
   // NUEVOS ESTADOS PARA WORKFLOW Y CONFIGURACIÓN CONTABLE/FISCAL
   const [generarAsientoContable, setGenerarAsientoContable] = React.useState(
-    defaultValues.generarAsientoContable !== undefined ? defaultValues.generarAsientoContable : true
+    defaultValues.generarAsientoContable !== undefined
+      ? defaultValues.generarAsientoContable
+      : true,
   );
   const [incluirEnReporteFiscal, setIncluirEnReporteFiscal] = React.useState(
-    defaultValues.incluirEnReporteFiscal !== undefined ? defaultValues.incluirEnReporteFiscal : true
+    defaultValues.incluirEnReporteFiscal !== undefined
+      ? defaultValues.incluirEnReporteFiscal
+      : true,
   );
   const [motivoSinFactura, setMotivoSinFactura] = React.useState(
-    defaultValues.motivoSinFactura || ""
+    defaultValues.motivoSinFactura || "",
   );
 
   React.useEffect(() => {
     setEmpresaOrigenId(
-      defaultValues.empresaOrigenId ? Number(defaultValues.empresaOrigenId) : ""
+      defaultValues.empresaOrigenId
+        ? Number(defaultValues.empresaOrigenId)
+        : "",
     );
     setCuentaCorrienteOrigenId(
       defaultValues.cuentaCorrienteOrigenId
         ? Number(defaultValues.cuentaCorrienteOrigenId)
-        : ""
+        : "",
     );
     setEmpresaDestinoId(
       defaultValues.empresaDestinoId
         ? Number(defaultValues.empresaDestinoId)
-        : ""
+        : "",
     );
     setCuentaCorrienteDestinoId(
       defaultValues.cuentaCorrienteDestinoId
         ? Number(defaultValues.cuentaCorrienteDestinoId)
-        : ""
+        : "",
     );
     setFecha(defaultValues.fecha ? new Date(defaultValues.fecha) : new Date());
     setTipoMovimientoId(
       defaultValues.tipoMovimientoId
         ? Number(defaultValues.tipoMovimientoId)
-        : ""
+        : "",
     );
     setEntidadComercialId(
       defaultValues.entidadComercialId
         ? Number(defaultValues.entidadComercialId)
-        : ""
+        : "",
     );
     setMonto(defaultValues.monto ? Number(defaultValues.monto) : 0);
     setMonedaId(defaultValues.monedaId ? Number(defaultValues.monedaId) : "");
@@ -203,63 +233,63 @@ export default function MovimientoCajaForm({
     setTipoReferenciaId(
       defaultValues.tipoReferenciaId
         ? Number(defaultValues.tipoReferenciaId)
-        : ""
+        : "",
     );
     setUsuarioId(
-      defaultValues.usuarioId ? Number(defaultValues.usuarioId) : ""
+      defaultValues.usuarioId ? Number(defaultValues.usuarioId) : "",
     );
     setEstadoId(defaultValues.estadoId ? Number(defaultValues.estadoId) : "");
     setFechaCreacion(
       defaultValues.fechaCreacion
         ? new Date(defaultValues.fechaCreacion)
-        : new Date()
+        : new Date(),
     );
     setFechaActualizacion(
       defaultValues.fechaActualizacion
         ? new Date(defaultValues.fechaActualizacion)
-        : new Date()
+        : new Date(),
     );
     setCentroCostoId(
-      defaultValues.centroCostoId ? Number(defaultValues.centroCostoId) : ""
+      defaultValues.centroCostoId ? Number(defaultValues.centroCostoId) : "",
     );
     setModuloOrigenMotivoOperacionId(
       defaultValues.moduloOrigenMotivoOperacionId
         ? Number(defaultValues.moduloOrigenMotivoOperacionId)
-        : ""
+        : "",
     );
     setOrigenMotivoOperacionId(
       defaultValues.origenMotivoOperacionId
         ? Number(defaultValues.origenMotivoOperacionId)
-        : ""
+        : "",
     );
     setFechaMotivoOperacion(
       defaultValues.fechaMotivoOperacion
         ? new Date(defaultValues.fechaMotivoOperacion)
-        : null
+        : null,
     );
     setUsuarioMotivoOperacionId(
       defaultValues.usuarioMotivoOperacionId
         ? Number(defaultValues.usuarioMotivoOperacionId)
-        : ""
+        : "",
     );
     setOrigenReferenciaIngresoMovCajaId(
       defaultValues.origenReferenciaIngresoMovCajaId
         ? Number(defaultValues.origenReferenciaIngresoMovCajaId)
-        : ""
+        : "",
     );
     setFechaOperacionMovCaja(
       defaultValues.fechaOperacionMovCaja
         ? new Date(defaultValues.fechaOperacionMovCaja)
-        : new Date()
+        : new Date(),
     );
     setOperacionSinFactura(defaultValues.operacionSinFactura || false);
     setCuentaDestinoEntidadComercialId(
       defaultValues.cuentaDestinoEntidadComercialId
         ? Number(defaultValues.cuentaDestinoEntidadComercialId)
-        : ""
+        : "",
     );
     setUrlComprobanteOperacionMovCaja(
-      defaultValues.urlComprobanteOperacionMovCaja || ""
+      defaultValues.urlComprobanteOperacionMovCaja || "",
     );
     setUrlDocumentoMovCaja(defaultValues.urlDocumentoMovCaja || "");
   }, [defaultValues]);
@@ -267,21 +297,21 @@ export default function MovimientoCajaForm({
   const cuentasOrigenFiltradas = React.useMemo(() => {
     if (!empresaOrigenId) return [];
     return cuentasCorrientes.filter(
-      (cuenta) => Number(cuenta.empresaId) === Number(empresaOrigenId)
+      (cuenta) => Number(cuenta.empresaId) === Number(empresaOrigenId),
     );
   }, [cuentasCorrientes, empresaOrigenId]);
 
   const cuentasDestinoFiltradas = React.useMemo(() => {
     if (!empresaDestinoId) return [];
     return cuentasCorrientes.filter(
-      (cuenta) => Number(cuenta.empresaId) === Number(empresaDestinoId)
+      (cuenta) => Number(cuenta.empresaId) === Number(empresaDestinoId),
     );
   }, [cuentasCorrientes, empresaDestinoId]);
 
   React.useEffect(() => {
     if (empresaOrigenId && cuentaCorrienteOrigenId) {
       const cuentaValida = cuentasOrigenFiltradas.find(
-        (cuenta) => Number(cuenta.id) === Number(cuentaCorrienteOrigenId)
+        (cuenta) => Number(cuenta.id) === Number(cuentaCorrienteOrigenId),
       );
       if (!cuentaValida) setCuentaCorrienteOrigenId("");
     }
@@ -290,7 +320,7 @@ export default function MovimientoCajaForm({
   React.useEffect(() => {
     if (empresaDestinoId && cuentaCorrienteDestinoId) {
       const cuentaValida = cuentasDestinoFiltradas.find(
-        (cuenta) => Number(cuenta.id) === Number(cuentaCorrienteDestinoId)
+        (cuenta) => Number(cuenta.id) === Number(cuentaCorrienteDestinoId),
       );
       if (!cuentaValida) setCuentaCorrienteDestinoId("");
     }
@@ -389,14 +419,14 @@ export default function MovimientoCajaForm({
     estadosMultiFuncion.find(
       (e) =>
         Number(e.id) === Number(defaultValues.estadoId) &&
-        e.descripcion?.toUpperCase().includes("PENDIENTE")
+        e.descripcion?.toUpperCase().includes("PENDIENTE"),
     );
   const esValidado =
     isEdit &&
     estadosMultiFuncion.find(
       (e) =>
         Number(e.id) === Number(defaultValues.estadoId) &&
-        e.descripcion?.toUpperCase().includes("VALIDADO")
+        e.descripcion?.toUpperCase().includes("VALIDADO"),
     );
 
   return (
@@ -421,7 +451,9 @@ export default function MovimientoCajaForm({
           entidadComercialId={entidadComercialId}
           setEntidadComercialId={setEntidadComercialId}
           cuentaDestinoEntidadComercialId={cuentaDestinoEntidadComercialId}
-          setCuentaDestinoEntidadComercialId={setCuentaDestinoEntidadComercialId}
+          setCuentaDestinoEntidadComercialId={
+            setCuentaDestinoEntidadComercialId
+          }
           monto={monto}
           setMonto={setMonto}
           monedaId={monedaId}
@@ -474,13 +506,16 @@ export default function MovimientoCajaForm({
           readOnly={readOnly}
         />
       </div>
-
+      
       {/* Card de Comprobante de Operación */}
       <div style={{ display: cardActiva === "comprobante" ? "block" : "none" }}>
         <PdfComprobanteOperacionCard
-          urlComprobanteOperacionMovCaja={urlComprobanteOperacionMovCaja}
-          setUrlComprobanteOperacionMovCaja={setUrlComprobanteOperacionMovCaja}
-          toast={toast}
+          control={control}
+          errors={errors}
+          setValue={setValue}
+          watch={watch}
+          getValues={getValues}
+          defaultValues={{}}
           movimientoId={defaultValues.id}
           readOnly={readOnly}
         />
@@ -489,13 +524,17 @@ export default function MovimientoCajaForm({
       {/* Card de Documento Afecto */}
       <div style={{ display: cardActiva === "documento" ? "block" : "none" }}>
         <PdfDocumentoAfectoOperacionCard
-          urlDocumentoMovCaja={urlDocumentoMovCaja}
-          setUrlDocumentoMovCaja={setUrlDocumentoMovCaja}
-          toast={toast}
+          control={control}
+          errors={errors}
+          setValue={setValue}
+          watch={watch}
+          getValues={getValues}
+          defaultValues={{}}
           movimientoId={defaultValues.id}
           readOnly={readOnly}
         />
       </div>
+
 
       {/* Botones de navegación y acciones */}
       <div
@@ -596,7 +635,13 @@ export default function MovimientoCajaForm({
             loading={loading}
             onClick={handleSubmit}
             disabled={readOnly || !permisos.puedeEditar}
-            tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""}
+            tooltip={
+              readOnly
+                ? "Modo solo lectura"
+                : !permisos.puedeEditar
+                  ? "No tiene permisos para editar"
+                  : ""
+            }
             className="p-button-success"
             severity="success"
             raised

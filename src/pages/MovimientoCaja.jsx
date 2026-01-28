@@ -1084,8 +1084,21 @@ export default function MovimientoCaja({ ruta }) {
         }
       }
 
+           // Buscar la primera cuenta corriente de la empresa origen
+      let cuentaCorrienteOrigenId = null;
+      if (empresaDestinoId) {
+        const cuentasEmpresa = cuentasCorrientes.filter(
+          (cc) => Number(cc.empresaId) === Number(empresaDestinoId)
+        );
+        if (cuentasEmpresa.length > 0) {
+          cuentaCorrienteOrigenId = Number(cuentasEmpresa[0].id);
+        }
+      }
+
       const datosIniciales = {
+        empresaOrigenId: empresaDestinoId ? Number(empresaDestinoId) : null, // CORREGIDO: usar empresa del origen
         empresaDestinoId: empresaDestinoId ? Number(empresaDestinoId) : null,
+        cuentaCorrienteOrigenId: cuentaCorrienteOrigenId, // CORREGIDO: primera cuenta de la empresa
         tipoMovimientoId: movimientoSeleccionado.tipoMovimientoId
           ? Number(movimientoSeleccionado.tipoMovimientoId)
           : null,
@@ -1113,8 +1126,6 @@ export default function MovimientoCaja({ ruta }) {
         productoId: movimientoSeleccionado.productoId
           ? Number(movimientoSeleccionado.productoId)
           : null,
-        empresaOrigenId: null,
-        cuentaCorrienteOrigenId: null,
         cuentaCorrienteDestinoId: null,
         referenciaExtId: null,
         tipoReferenciaId: null,
@@ -1125,7 +1136,7 @@ export default function MovimientoCaja({ ruta }) {
         movimientoAplicado: movimientoSeleccionado,
         tipoOrigen: tipoOrigen,
       };
-
+      
       setSelected(datosIniciales);
       setIsEdit(false);
       setShowDialog(true);
@@ -1696,6 +1707,8 @@ export default function MovimientoCaja({ ruta }) {
         style={{ width: "1300px" }}
         header={isEdit ? "Editar Movimiento Caja" : "Nuevo Movimiento Caja"}
         modal
+        maximizable
+        maximized={true}
         onHide={() => {
           setShowDialog(false);
           setSelected(null);

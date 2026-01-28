@@ -97,9 +97,12 @@ export default function DetAccionesPreviasFaenaForm({
         return (
           <ConfirmacionAccionPreviaPDFCard
             control={control}
+            errors={errors}
             loading={loading}
             setValue={setValue}
             watch={watch}
+            getValues={watch}
+            defaultValues={defaultValues}
             toast={toast}
             accionPreviaId={watch("accionPreviaId")}
             faenaPescaId={watch("faenaPescaId")}

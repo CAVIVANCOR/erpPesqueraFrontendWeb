@@ -1,130 +1,66 @@
-// src/components/oTMantenimiento/PdfFotosAntesCard.jsx
-import React, { useState } from "react";
-import { Card } from "primereact/card";
-import { Button } from "primereact/button";
-import { InputText } from "primereact/inputtext";
-import DocumentoCapture from "../shared/DocumentoCapture";
-import PDFViewer from "../shared/PDFViewer";
-import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
+/**
+ * PdfFotosAntesCard.jsx - WRAPPER para Sistema PDF V2
+ *
+ * Componente wrapper para fotos antes del mantenimiento en OT.
+ * Solo configura y llama al componente genérico PDFDocumentManager.
+ *
+ * @author ERP Megui
+ * @version 2.0.0 - Sistema PDF V2
+ */
 
+import React from "react";
+import PDFDocumentManager from "../pdf/PDFDocumentManager";
+
+/**
+ * Componente PdfFotosAntesCard
+ * Wrapper que configura PDFDocumentManager para fotos antes del mantenimiento
+ *
+ * @param {Object} props - Props del componente
+ * @param {Object} props.control - Control de React Hook Form
+ * @param {Object} props.errors - Errores de validación
+ * @param {Function} props.setValue - Función para setear valores
+ * @param {Function} props.watch - Función para observar cambios
+ * @param {Function} props.getValues - Función para obtener valores
+ * @param {Object} props.defaultValues - Valores por defecto
+ * @param {Boolean} props.readOnly - Modo solo lectura
+ */
 const PdfFotosAntesCard = ({
-  urlFotosAntesPdf,
-  setUrlFotosAntesPdf,
-  toast,
-  otMantenimientoId,
+  otMantenimientoId, // ← DEBE ESTAR AQUÍ
+  control,
+  errors,
+  setValue,
+  watch,
+  getValues,
+  defaultValues = {},
   readOnly = false,
 }) => {
-  const [mostrarCaptura, setMostrarCaptura] = useState(false);
-
-  // Función para ver PDF en nueva pestaña
-  const handleVerPDF = () => {
-    if (urlFotosAntesPdf) {
-      abrirPdfEnNuevaPestana(
-        urlFotosAntesPdf,
-        toast.current,
-        "No hay PDF de fotos antes disponible"
-      );
-    }
-  };
-
-  // Función para manejar documento subido
-  const handleDocumentoSubido = (urlDocumento) => {
-    setUrlFotosAntesPdf(urlDocumento);
-    setMostrarCaptura(false);
-    toast.current?.show({
-      severity: "success",
-      summary: "PDF Subido",
-      detail: "El PDF de fotos antes se ha subido correctamente",
-      life: 3000,
-    });
-  };
-
+  // DEBUG: Ver qué entityId recibimos
+  console.log("[PdfFotosAntesCard] Props recibidas:");
+  console.log("  - otMantenimientoId:", otMantenimientoId);
+  console.log("  - defaultValues:", defaultValues);
+  console.log("  - readOnly:", readOnly);
+  console.log("  - control:", control);
+  console.log("  - watch:", watch);
   return (
-    <Card
+    <PDFDocumentManager
+      moduleName="ot-mantenimiento-fotos-antes"
+      fieldName="urlFotosAntesPdf"
+      entityId={otMantenimientoId} // ← AGREGAR ESTA LÍNEA
       title="📸 Fotos Antes del Mantenimiento"
-      className="mb-4"
-      pt={{
-        header: { className: "pb-0" },
-        content: { className: "pt-2" },
-      }}
-    >
-      <div className="p-fluid">
-        {/* URL del PDF */}
-        <div
-          style={{
-            display: "flex",
-            gap: "0.5rem",
-            alignItems: "flex-end",
-          }}
-        >
-          <div style={{ flex: 2 }}>
-            <label htmlFor="urlFotosAntesPdf">
-              PDF de Fotos Antes
-            </label>
-            <InputText
-              id="urlFotosAntesPdf"
-              value={urlFotosAntesPdf || ""}
-              placeholder="URL del PDF de fotos antes"
-              style={{ fontWeight: "bold" }}
-              readOnly
-            />
-          </div>
-
-          {/* Botones de acción */}
-          <div style={{ flex: 0.5 }}>
-            <div
-              style={{
-                display: "flex",
-                gap: "0.25rem",
-                justifyContent: "flex-end",
-              }}
-            >
-              <Button
-                type="button"
-                label="Capturar/Subir"
-                icon="pi pi-camera"
-                className="p-button-info"
-                size="small"
-                onClick={() => setMostrarCaptura(true)}
-                disabled={readOnly || !otMantenimientoId}
-              />
-            </div>
-          </div>
-          <div style={{ flex: 0.5 }}>
-            {urlFotosAntesPdf && (
-              <Button
-                type="button"
-                label="Ver PDF"
-                icon="pi pi-eye"
-                className="p-button-success"
-                size="small"
-                onClick={handleVerPDF}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Visor de PDF */}
-        {urlFotosAntesPdf && (
-          <div style={{ marginTop: "1rem" }}>
-            <PDFViewer urlDocumento={urlFotosAntesPdf} />
-          </div>
-        )}
-
-        {/* Modal de captura de documento */}
-        <DocumentoCapture
-          visible={mostrarCaptura}
-          onHide={() => setMostrarCaptura(false)}
-          onDocumentoSubido={handleDocumentoSubido}
-          endpoint={`${
-            import.meta.env.VITE_API_URL
-          }/ot-mantenimiento/upload-fotos-antes`}
-          titulo="Capturar/Subir Fotos Antes del Mantenimiento"
-          toast={toast}
-          extraData={{ otMantenimientoId: otMantenimientoId }}
-        />
-      </div>
-    </Card>
+      dialogTitle="Subir Fotos Antes"
+      uploadButtonLabel="Capturar/Subir Fotos"
+      viewButtonLabel="Ver"
+      downloadButtonLabel="Descargar"
+      emptyMessage="No hay fotos antes cargadas"
+      emptyDescription="Use el botón 'Capturar/Subir Fotos' para agregar imágenes del estado inicial. Puede subir múltiples archivos (fotos + documentos) y se consolidarán automáticamente."
+      control={control}
+      errors={errors}
+      setValue={setValue}
+      watch={watch}
+      getValues={getValues}
+      defaultValues={defaultValues}
+      readOnly={readOnly}
+    />
   );
 };
 

@@ -18,9 +18,15 @@ import {
   deleteCotizacionVentas,
   crearCotizacionVentas,
   actualizarCotizacionVentas,
+  getCotizacionVentasPorId,
 } from "../api/cotizacionVentas";
 import CotizacionVentasForm from "../components/cotizacionVentas/CotizacionVentasForm";
-import { getResponsiveFontSize, formatearFecha, formatearNumero, getSeverityColors } from "../utils/utils";
+import {
+  getResponsiveFontSize,
+  formatearFecha,
+  formatearNumero,
+  getSeverityColors,
+} from "../utils/utils";
 import { getEmpresas } from "../api/empresa";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getEntidadesComerciales } from "../api/entidadComercial";
@@ -197,13 +203,13 @@ const CotizacionVentas = ({ ruta }) => {
 
       // Filtrar entidades comerciales por tipo
       const agenteAduanasData = clientesData.filter(
-        (e) => Number(e.tipoEntidadId) === 12
+        (e) => Number(e.tipoEntidadId) === 12,
       );
       const operadoresLogisticosData = clientesData.filter(
-        (e) => Number(e.tipoEntidadId) === 13
+        (e) => Number(e.tipoEntidadId) === 13,
       );
       const navierasData = clientesData.filter(
-        (e) => Number(e.tipoEntidadId) === 14
+        (e) => Number(e.tipoEntidadId) === 14,
       );
       setAgenteAduanas(agenteAduanasData);
       setOperadoresLogisticos(operadoresLogisticosData);
@@ -224,7 +230,7 @@ const CotizacionVentas = ({ ruta }) => {
 
       // Filtrar estados de documentos (tipoProvieneDeId = 13 para COTIZACION VENTA)
       const estadosDocFiltrados = estadosData.filter(
-        (e) => Number(e.tipoProvieneDeId) === 13 && !e.cesado
+        (e) => Number(e.tipoProvieneDeId) === 13 && !e.cesado,
       );
       setEstadosDoc(estadosDocFiltrados);
 
@@ -232,7 +238,7 @@ const CotizacionVentas = ({ ruta }) => {
       const cotizacionesNormalizadas = cotizaciones.map((req) => ({
         ...req,
         estadoDoc: estadosDocFiltrados.find(
-          (e) => Number(e.id) === Number(req.estadoId)
+          (e) => Number(e.id) === Number(req.estadoId),
         ),
       }));
       setItems(cotizacionesNormalizadas);
@@ -265,14 +271,14 @@ const CotizacionVentas = ({ ruta }) => {
     // Filtro por empresa
     if (empresaSeleccionada) {
       filtrados = filtrados.filter(
-        (item) => Number(item.empresaId) === Number(empresaSeleccionada)
+        (item) => Number(item.empresaId) === Number(empresaSeleccionada),
       );
     }
 
     // Filtro por proveedor
     if (clienteSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => Number(item.clienteId) === Number(clienteSeleccionado)
+        (item) => Number(item.clienteId) === Number(clienteSeleccionado),
       );
     }
 
@@ -298,7 +304,7 @@ const CotizacionVentas = ({ ruta }) => {
     // Filtro por estado
     if (estadoSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => Number(item.estadoId) === Number(estadoSeleccionado)
+        (item) => Number(item.estadoId) === Number(estadoSeleccionado),
       );
     }
 
@@ -317,12 +323,11 @@ const CotizacionVentas = ({ ruta }) => {
       // Obtener autorizaVentaId desde ParametroAprobador
       let autorizaVentaId = null;
       if (empresaSeleccionada) {
-        const { getParametrosAprobadorPorModulo } = await import(
-          "../api/parametroAprobador"
-        );
+        const { getParametrosAprobadorPorModulo } =
+          await import("../api/parametroAprobador");
         const parametros = await getParametrosAprobadorPorModulo(
           empresaSeleccionada,
-          5
+          5,
         ); // 5 = VENTAS
 
         // Filtrar por cesado=false y tomar el primero
@@ -331,7 +336,7 @@ const CotizacionVentas = ({ ruta }) => {
           autorizaVentaId = parametroActivo.personalRespId;
         } else {
           console.warn(
-            `[CotizacionVentas] No se encontró ParametroAprobador activo para empresa ${empresaSeleccionada}, módulo VENTAS`
+            `[CotizacionVentas] No se encontró ParametroAprobador activo para empresa ${empresaSeleccionada}, módulo VENTAS`,
           );
         }
       }
@@ -357,6 +362,41 @@ const CotizacionVentas = ({ ruta }) => {
     setSelectedCotizacion(cotizacion);
     setIsEditing(true);
     setDialogVisible(true);
+  };
+
+  const recargarCotizacionActual = async () => {
+    if (!selectedCotizacion?.id) return;
+
+    try {
+      console.log(
+        "🔄 [CotizacionVentas] Recargando cotización actual desde BD...",
+      );
+      const cotizacionActualizada = await getCotizacionVentasPorId(
+        selectedCotizacion.id,
+      );
+
+      console.log(
+        "✅ [CotizacionVentas] Cotización recargada:",
+        cotizacionActualizada,
+      );
+      console.log(
+        "📎 [CotizacionVentas] urlCotizacionPdf actualizada:",
+        cotizacionActualizada.urlCotizacionPdf,
+      );
+
+      setSelectedCotizacion(cotizacionActualizada);
+    } catch (error) {
+      console.error(
+        "❌ [CotizacionVentas] Error al recargar cotización:",
+        error,
+      );
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo recargar la cotización desde el servidor.",
+        life: 3000,
+      });
+    }
   };
 
   const handleGuardarCotizacion = async (datos) => {
@@ -387,7 +427,6 @@ const CotizacionVentas = ({ ruta }) => {
 
     setLoading(true);
     try {
-
       if (esEdicion) {
         await actualizarCotizacionVentas(selectedCotizacion.id, datos);
         toast.current.show({
@@ -397,14 +436,13 @@ const CotizacionVentas = ({ ruta }) => {
         });
 
         // Recargar la cotización actualizada para obtener campos actualizados
-        const { getCotizacionVentasPorId } = await import(
-          "../api/cotizacionVentas"
-        );
+        const { getCotizacionVentasPorId } =
+          await import("../api/cotizacionVentas");
         const cotizacionActualizada = await getCotizacionVentasPorId(
-          selectedCotizacion.id
+          selectedCotizacion.id,
         );
         setSelectedCotizacion(cotizacionActualizada);
-        setRefreshKey(prev => prev + 1); // Forzar re-mount del formulario
+        setRefreshKey((prev) => prev + 1); // Forzar re-mount del formulario
       } else {
         const resultado = await crearCotizacionVentas(datos);
         toast.current.show({
@@ -415,12 +453,11 @@ const CotizacionVentas = ({ ruta }) => {
         });
 
         // Cargar la cotización recién creada
-        const { getCotizacionVentasPorId } = await import(
-          "../api/cotizacionVentas"
-        );
+        const { getCotizacionVentasPorId } =
+          await import("../api/cotizacionVentas");
         const cotizacionCompleta = await getCotizacionVentasPorId(resultado.id);
         setSelectedCotizacion(cotizacionCompleta);
-        setRefreshKey(prev => prev + 1); // Forzar re-mount del formulario
+        setRefreshKey((prev) => prev + 1); // Forzar re-mount del formulario
       }
 
       cargarCotizaciones();
@@ -555,19 +592,19 @@ const CotizacionVentas = ({ ruta }) => {
     );
   };
 
-const clienteTemplate = (rowData) => {
-  if (!rowData.cliente) return "N/A";
+  const clienteTemplate = (rowData) => {
+    if (!rowData.cliente) return "N/A";
 
-  const severity = rowData.estado?.severityColor || "success";
+    const severity = rowData.estado?.severityColor || "success";
 
-  return (
-    <ColorTag 
-      value={rowData.cliente.razonSocial || "Sin nombre"}
-      severity={severity}
-      size="normal"
-    />
-  );
-};
+    return (
+      <ColorTag
+        value={rowData.cliente.razonSocial || "Sin nombre"}
+        severity={severity}
+        size="normal"
+      />
+    );
+  };
 
   const estadoTemplate = (rowData) => {
     if (!rowData.estado) return "N/A";
@@ -774,13 +811,15 @@ const clienteTemplate = (rowData) => {
                     icon="pi pi-plus"
                     onClick={abrirDialogoNuevo}
                     className="p-button-primary"
-                    disabled={!permisos.puedeCrear || loading || !empresaSeleccionada}
+                    disabled={
+                      !permisos.puedeCrear || loading || !empresaSeleccionada
+                    }
                     tooltip={
                       !permisos.puedeCrear
                         ? "No tiene permisos para crear"
                         : !empresaSeleccionada
-                        ? "Seleccione una empresa primero"
-                        : "Nueva Cotización"
+                          ? "Seleccione una empresa primero"
+                          : "Nueva Cotización"
                     }
                   />
                 </div>
@@ -794,7 +833,8 @@ const clienteTemplate = (rowData) => {
                       toast.current?.show({
                         severity: "success",
                         summary: "Actualizado",
-                        detail: "Datos actualizados correctamente desde el servidor",
+                        detail:
+                          "Datos actualizados correctamente desde el servidor",
                         life: 3000,
                       });
                     }}
@@ -973,7 +1013,7 @@ const clienteTemplate = (rowData) => {
         onHide={cerrarDialogo}
       >
         <CotizacionVentasForm
-          key={`${selectedCotizacion?.id || 'new'}-${refreshKey}`}
+          key={`${selectedCotizacion?.id || "new"}-${refreshKey}`}
           isEdit={isEditing}
           defaultValues={selectedCotizacion}
           onSubmit={handleGuardarCotizacion}
@@ -981,7 +1021,11 @@ const clienteTemplate = (rowData) => {
           loading={loading}
           toast={toast}
           permisos={permisos}
-          readOnly={!!selectedCotizacion && !!selectedCotizacion.numeroDocumento && !permisos.puedeEditar}
+          readOnly={
+            !!selectedCotizacion &&
+            !!selectedCotizacion.numeroDocumento &&
+            !permisos.puedeEditar
+          }
           empresas={empresas}
           tiposDocumento={tiposDocumento}
           clientes={clientes}
@@ -1005,12 +1049,13 @@ const clienteTemplate = (rowData) => {
           bancos={bancos}
           formasTransaccion={formasTransaccion}
           modosDespacho={modosDespacho}
-          docRequeridaVentasOptions={docRequeridaVentas.map(d => ({
+          docRequeridaVentasOptions={docRequeridaVentas.map((d) => ({
             value: d.id,
             label: d.nombre,
-            descripcion: d.descripcion
+            descripcion: d.descripcion,
           }))}
           empresaFija={empresaSeleccionada}
+          onRecargarRegistro={recargarCotizacionActual}
         />
       </Dialog>
     </div>

@@ -744,10 +744,12 @@ const DetMovsEntregaRendirVentasForm = ({
         <PdfDetMovEntregaRendirVentasCard
           control={control}
           errors={errors}
-          urlComprobanteMovimiento={urlComprobanteMovimiento}
-          toast={toast}
           setValue={setValue}
-          movimiento={movimiento}
+          watch={watch}
+          getValues={getValues}
+          defaultValues={{}}
+          detMovId={movimiento?.id}
+          readOnly={formularioDeshabilitado}
         />
       )}
 
@@ -756,10 +758,12 @@ const DetMovsEntregaRendirVentasForm = ({
         <PdfComprobanteOperacionDetMovVentasCard
           control={control}
           errors={errors}
-          urlComprobanteOperacionMovCaja={urlComprobanteOperacionMovCaja}
-          toast={toast}
           setValue={setValue}
-          movimiento={movimiento}
+          watch={watch}
+          getValues={getValues}
+          defaultValues={{}}
+          detMovId={movimiento?.id}
+          readOnly={formularioDeshabilitado}
         />
       )}
 

@@ -24,10 +24,11 @@ import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
 import { getTiposEmbarcacion, eliminarTipoEmbarcacion, crearTipoEmbarcacion, actualizarTipoEmbarcacion } from "../api/tipoEmbarcacion";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 import TipoEmbarcacionForm from "../components/tipoEmbarcacion/TipoEmbarcacionForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
-const TipoEmbarcacion = () => {
+const TipoEmbarcacion = ({ ruta }) => {  // ⬅️ AGREGAR { ruta }
   const [tiposEmbarcacion, setTiposEmbarcacion] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -36,8 +37,12 @@ const TipoEmbarcacion = () => {
   const [tipoAEliminar, setTipoAEliminar] = useState(null);
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+    const permisos = usePermissions(ruta);  // ⬅️ AGREGAR ESTA LÍNEA
   const [globalFilter, setGlobalFilter] = useState("");
-
+if (!permisos.tieneAcceso || !permisos.puedeVer) {  // ⬅️ AGREGAR ESTAS 3 LÍNEAS
+  return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+}
+ 
   useEffect(() => {
     cargarTiposEmbarcacion();
   }, []);

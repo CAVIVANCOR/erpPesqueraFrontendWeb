@@ -1,216 +1,124 @@
-/**
- * VerImpresionPreFacturaPDF.jsx
- *
- * Card para generar y visualizar el PDF de la pre-factura.
- * Permite generar, visualizar y descargar PDFs de pre-facturas.
- * Sigue el patrón profesional ERP Megui usando PDFViewer genérico y pdfUtils.
- *
- * @author ERP Megui
- * @version 1.0.0
- */
-
 import React, { useState, useEffect } from "react";
 import { Card } from "primereact/card";
-import { Button } from "primereact/button";
-import { Message } from "primereact/message";
-import PDFViewer from "../shared/PDFViewer";
-import { abrirPdfEnNuevaPestana, descargarPdf } from "../../utils/pdfUtils";
+import PDFGeneratedUploader from "../pdf/PDFGeneratedUploader";
 import { generarYSubirPDFPreFactura } from "./PreFacturaPDF";
+import { actualizarPreFactura } from "../../api/preFactura";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 
-/**
- * Componente VerImpresionPreFacturaPDF
- * @param {Object} props - Props del componente
- * @param {number} props.preFacturaId - ID de la pre-factura
- * @param {Object} props.datosPreFactura - Datos completos de la pre-factura
- * @param {Array} props.detalles - Detalles de productos
- * @param {Object} props.toast - Referencia al Toast para mensajes
- * @param {Function} props.onPdfGenerated - Callback cuando se genera el PDF
- */
 const VerImpresionPreFacturaPDF = ({
   preFacturaId,
   datosPreFactura = {},
   detalles = [],
   toast,
   onPdfGenerated,
+  onRecargarRegistro,
 }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
-  const [generando, setGenerando] = useState(false);
-  const [error, setError] = useState(null);
   const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
     if (datosPreFactura?.urlPreFacturaPdf) {
       setPdfUrl(datosPreFactura.urlPreFacturaPdf);
     }
-  }, [datosPreFactura]);
+  }, [datosPreFactura?.urlPreFacturaPdf]);
 
-  const handleGenerarPDF = async () => {
+  const generarPdfWrapper = async () => {
     if (!preFacturaId) {
-      toast?.current?.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "Debe guardar la pre-factura antes de generar el PDF",
-        life: 3000,
-      });
-      return;
+      throw new Error("Debe guardar la pre-factura antes de generar el PDF");
     }
 
-    setGenerando(true);
-    setError(null);
+    console.log("🔄 [VerImpresionPreFacturaPDF] Generando PDF...");
+    const resultado = await generarYSubirPDFPreFactura(
+      preFacturaId,
+      datosPreFactura,
+      detalles,
+      usuario
+    );
 
-    try {
-      const resultado = await generarYSubirPDFPreFactura(
-        preFacturaId,
-        datosPreFactura,
-        detalles,
-        usuario
-      );
+    if (resultado.success && resultado.url) {
+      try {
+        console.log("💾 [VerImpresionPreFacturaPDF] Guardando URL del PDF en BD...");
+        
+        const dataToUpdate = {
+          urlPreFacturaPdf: resultado.url,
+        };
 
-      if (resultado.success) {
-        setPdfUrl(resultado.url);
-        toast?.current?.show({
-          severity: "success",
-          summary: "PDF Generado",
-          detail: "El PDF de la pre-factura se generó correctamente",
-          life: 3000,
-        });
+        console.log("📤 [VerImpresionPreFacturaPDF] Datos a enviar:", dataToUpdate);
 
-        if (onPdfGenerated) {
+        await actualizarPreFactura(preFacturaId, dataToUpdate);
+
+        console.log("✅ [VerImpresionPreFacturaPDF] Datos guardados correctamente en BD");
+
+        if (onPdfGenerated && typeof onPdfGenerated === "function") {
           onPdfGenerated(resultado.url);
         }
-      } else {
-        throw new Error(resultado.error || "Error al generar PDF");
+
+        if (onRecargarRegistro && typeof onRecargarRegistro === "function") {
+          console.log("🔄 [VerImpresionPreFacturaPDF] Recargando registro desde el servidor...");
+          await onRecargarRegistro();
+          console.log("✅ [VerImpresionPreFacturaPDF] Registro recargado exitosamente");
+        }
+
+        if (toast?.current) {
+          toast.current.show({
+            severity: "success",
+            summary: "Éxito",
+            detail: "PDF generado y guardado correctamente",
+            life: 3000,
+          });
+        }
+      } catch (error) {
+        console.error("❌ [VerImpresionPreFacturaPDF] Error al guardar:", error);
+        console.error("❌ Detalles del error:", error.response?.data || error.message);
+        
+        if (toast?.current) {
+          toast.current.show({
+            severity: "warn",
+            summary: "Advertencia",
+            detail: `PDF generado correctamente pero hubo un error al guardar: ${error.response?.data?.message || error.message}`,
+            life: 5000,
+          });
+        }
       }
-    } catch (err) {
-      console.error("Error al generar PDF:", err);
-      setError(err.message || "Error al generar el PDF");
-      toast?.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: err.message || "Error al generar el PDF",
-        life: 5000,
-      });
-    } finally {
-      setGenerando(false);
     }
-  };
 
-  const handleVerPDF = () => {
-    if (pdfUrl) {
-      abrirPdfEnNuevaPestana(pdfUrl);
-    } else {
-      toast?.current?.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "No hay PDF generado para visualizar",
-        life: 3000,
-      });
-    }
-  };
-
-  const handleDescargarPDF = () => {
-    if (pdfUrl) {
-      const nombreArchivo = `PreFactura_${datosPreFactura.numeroDocumento || preFacturaId}.pdf`;
-      descargarPdf(pdfUrl, nombreArchivo);
-    } else {
-      toast?.current?.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "No hay PDF generado para descargar",
-        life: 3000,
-      });
-    }
+    return {
+      success: resultado.success,
+      urlPdf: resultado.url,
+      error: resultado.error
+    };
   };
 
   const cardHeader = (
     <div className="flex justify-content-between align-items-center">
       <h3 className="m-0">Vista Previa PDF Pre-Factura</h3>
-      <div className="flex gap-2">
-        <Button
-          label="Generar PDF"
-          icon="pi pi-file-pdf"
-          className="p-button-danger"
-          onClick={handleGenerarPDF}
-          loading={generando}
-          disabled={!preFacturaId || generando}
-          tooltip="Generar nuevo PDF"
-          tooltipOptions={{ position: "bottom" }}
-        />
-        <Button
-          label="Ver PDF"
-          icon="pi pi-eye"
-          className="p-button-info"
-          onClick={handleVerPDF}
-          disabled={!pdfUrl || generando}
-          tooltip="Abrir PDF en nueva pestaña"
-          tooltipOptions={{ position: "bottom" }}
-        />
-        <Button
-          label="Descargar"
-          icon="pi pi-download"
-          className="p-button-success"
-          onClick={handleDescargarPDF}
-          disabled={!pdfUrl || generando}
-          tooltip="Descargar PDF"
-          tooltipOptions={{ position: "bottom" }}
-        />
-      </div>
+      {datosPreFactura?.numeroDocumento && (
+        <div className="text-600">
+          <strong>Doc:</strong> {datosPreFactura.numeroDocumento} | 
+          <strong> Código:</strong> {datosPreFactura.codigo}
+        </div>
+      )}
     </div>
   );
 
   return (
     <Card header={cardHeader} className="mt-3">
-      {error && (
-        <Message
-          severity="error"
-          text={error}
-          className="mb-3"
-          style={{ width: "100%" }}
-        />
-      )}
-
-      {!preFacturaId && (
-        <Message
-          severity="info"
-          text="Guarde la pre-factura para poder generar el PDF"
-          className="mb-3"
-          style={{ width: "100%" }}
-        />
-      )}
-
-      {generando && (
-        <div className="flex flex-column align-items-center justify-content-center p-5">
-          <i
-            className="pi pi-spin pi-spinner"
-            style={{ fontSize: "3rem", color: "#007ad9" }}
-          ></i>
-          <p className="mt-3" style={{ color: "#666" }}>
-            Generando PDF de la pre-factura...
-          </p>
-        </div>
-      )}
-
-      {!generando && pdfUrl && (
-        <PDFViewer
-          pdfUrl={pdfUrl}
-          height="600px"
-          titulo={`Pre-Factura ${datosPreFactura.numeroDocumento || preFacturaId}`}
-        />
-      )}
-
-      {!generando && !pdfUrl && preFacturaId && (
-        <div className="flex flex-column align-items-center justify-content-center p-5">
-          <i
-            className="pi pi-file-pdf"
-            style={{ fontSize: "5rem", color: "#e74c3c" }}
-          ></i>
-          <h3 className="mt-3">No hay PDF generado</h3>
-          <p style={{ color: "#666" }}>
-            Haga clic en "Generar PDF" para crear el documento
-          </p>
-        </div>
-      )}
+      <PDFGeneratedUploader
+        generatePdfFunction={generarPdfWrapper}
+        pdfData={datosPreFactura}
+        moduleName="pre-factura"
+        entityId={preFacturaId}
+        fileName={`PreFactura_${datosPreFactura.numeroDocumento || preFacturaId}.pdf`}
+        buttonLabel="Generar PDF Pre-Factura"
+        buttonIcon="pi pi-file-pdf"
+        buttonClassName="p-button-danger"
+        disabled={!preFacturaId}
+        warningMessage={!preFacturaId ? "Guarde la pre-factura para poder generar el PDF" : null}
+        toast={toast}
+        viewerHeight="600px"
+        onGenerateComplete={(url) => setPdfUrl(url)}
+        initialPdfUrl={datosPreFactura?.urlPreFacturaPdf}
+      />
 
       {datosPreFactura?.numeroDocumento && (
         <div className="mt-3 p-3" style={{ backgroundColor: "#f8f9fa", borderRadius: "4px" }}>

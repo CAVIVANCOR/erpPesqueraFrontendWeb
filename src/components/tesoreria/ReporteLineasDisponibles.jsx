@@ -91,7 +91,7 @@ export default function ReporteLineasDisponibles() {
       const empresaData = empresas.find(e => Number(e.id) === Number(empresaSeleccionada));
       const pdfBytes = await generarPDFReporteLineasDisponibles(reporte, empresaData);
       
-      const nombreArchivo = `reporte-lineas-credito-${empresaData?.razonSocial || 'empresa'}-${new Date().toISOString().split('T')[0]}.pdf`;
+  const nombreArchivo = `reporte-lineas-credito-${empresaData?.razonSocial || 'empresa'}.pdf`;
       descargarPDFReporte(pdfBytes, nombreArchivo);
 
       toast.current?.show({

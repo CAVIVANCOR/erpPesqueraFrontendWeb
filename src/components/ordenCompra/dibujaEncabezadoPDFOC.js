@@ -1,5 +1,5 @@
 // src/components/ordenCompra/dibujaEncabezadoPDFOC.js
-// Función para dibujar encabezado completo de la Orden de Compra - VERSIÓN MEJORADA CON 3 COLUMNAS
+// Función para dibujar encabezado completo de la Orden de Compra - VERSIÓN OPTIMIZADA
 import { rgb } from "pdf-lib";
 
 /**
@@ -137,20 +137,29 @@ export async function dibujaEncabezadoPDFOC({
   });
 
   // ========================================
-  // DATOS EN 3 COLUMNAS COMPACTAS
+  // DATOS EN 3 COLUMNAS OPTIMIZADAS
   // ========================================
   yPos -= 12;
   const yInicial = yPos;
-  
-  // Calcular anchos de columnas (más compactos)
+  const gapEntreColumnas = 5;
+  // Calcular anchos de columnas optimizados
   const anchoDisponible = width - (margin * 2);
-  const anchoColumna = anchoDisponible / 3;
+  
+  // Columna 1: más ancha (30%)
+  // Columna 2: estrecha (20%) - movida 1.5cm a la derecha
+  // Columna 3: el doble de ancho (50%)
+  const anchoColumna1 = (anchoDisponible * 0.30)+80;  // 30% (aumentado)
+  const anchoColumna2 = anchoDisponible * 0.20;  // 20% (reducido)
+  const anchoColumna3 = anchoDisponible * 0.50;  // 50% (el doble)
   
   const columna1X = margin;
-  const columna2X = margin + anchoColumna;
-  const columna3X = margin + (anchoColumna * 2);
+  const columna2X = gapEntreColumnas + anchoColumna1 + 42; // +42 puntos = ~1.5cm a la derecha
+  const columna3X = gapEntreColumnas + anchoColumna1 + anchoColumna2 + 42;
   
-  const anchoLabel = 70; // Ancho más compacto para juntar label y data
+  // Anchos de labels ajustados por columna
+  const anchoLabelCol1 = 60;  // Más compacto para labels acortados
+  const anchoLabelCol2 = 55;  // Más compacto para labels acortados
+  const anchoLabelCol3 = 140; // El doble para datos adicionales
 
   // ========================================
   // COLUMNA 1: Datos principales
@@ -163,17 +172,71 @@ export async function dibujaEncabezadoPDFOC({
       size: 9,
       font: fontBold,
     });
-    pag.drawText(String(value), {
-      x: columna1X + anchoLabel,
-      y: yCol1,
-      size: 9,
-      font: fontNormal,
-    });
-    yCol1 -= lineHeight;
+    
+    // Verificar si es la dirección de entrega (texto largo)
+    const esDireccionEntrega = label === "Entregar en:";
+    
+    if (esDireccionEntrega) {
+      // Dividir dirección en múltiples líneas
+      const maxValueWidth = anchoColumna1 - anchoLabelCol1 - 5;
+      const words = String(value).split(' ');
+      let currentLine = '';
+      let yDireccion = yCol1;
+      
+      words.forEach((word, idx) => {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        const testWidth = fontNormal.widthOfTextAtSize(testLine, 9);
+        
+        if (testWidth > maxValueWidth && currentLine) {
+          // Dibujar línea actual
+          pag.drawText(currentLine, {
+            x: columna1X + anchoLabelCol1,
+            y: yDireccion,
+            size: 9,
+            font: fontNormal,
+          });
+          currentLine = word;
+          yDireccion -= lineHeight;
+        } else {
+          currentLine = testLine;
+        }
+        
+        // Última palabra
+        if (idx === words.length - 1 && currentLine) {
+          pag.drawText(currentLine, {
+            x: columna1X + anchoLabelCol1,
+            y: yDireccion,
+            size: 9,
+            font: fontNormal,
+          });
+        }
+      });
+      
+      // Ajustar yCol1 para la siguiente línea
+      yCol1 = yDireccion - lineHeight;
+    } else {
+      // Limitar ancho del value para otros campos
+      const maxValueWidth = anchoColumna1 - anchoLabelCol1 - 5;
+      let valueTexto = String(value);
+      let valueWidth = fontNormal.widthOfTextAtSize(valueTexto, 9);
+      
+      while (valueWidth > maxValueWidth && valueTexto.length > 3) {
+        valueTexto = valueTexto.substring(0, valueTexto.length - 4) + "...";
+        valueWidth = fontNormal.widthOfTextAtSize(valueTexto, 9);
+      }
+      
+      pag.drawText(valueTexto, {
+        x: columna1X + anchoLabelCol1,
+        y: yCol1,
+        size: 9,
+        font: fontNormal,
+      });
+      yCol1 -= lineHeight;
+    }
   });
 
   // ========================================
-  // COLUMNA 2: Datos financieros
+  // COLUMNA 2: Datos financieros (MOVIDA 1.5CM A LA DERECHA)
   // ========================================
   let yCol2 = yInicial;
   datosColumna2.forEach(([label, value]) => {
@@ -184,7 +247,7 @@ export async function dibujaEncabezadoPDFOC({
       font: fontBold,
     });
     pag.drawText(String(value), {
-      x: columna2X + anchoLabel,
+      x: columna2X + anchoLabelCol2,
       y: yCol2,
       size: 9,
       font: fontNormal,
@@ -193,13 +256,13 @@ export async function dibujaEncabezadoPDFOC({
   });
 
   // ========================================
-  // COLUMNA 3: Datos adicionales dinámicos
+  // COLUMNA 3: Datos adicionales dinámicos (DOBLE DE ANCHO)
   // ========================================
   let yCol3 = yInicial;
   if (datosColumna3 && datosColumna3.length > 0) {
     datosColumna3.forEach(([label, value]) => {
-      // Limitar ancho del label
-      const maxLabelWidth = anchoLabel - 5;
+      // Limitar ancho del label (ahora tiene el doble de espacio)
+      const maxLabelWidth = anchoLabelCol3 - 5;
       let labelTexto = label;
       let labelWidth = fontBold.widthOfTextAtSize(labelTexto, 9);
       
@@ -216,8 +279,8 @@ export async function dibujaEncabezadoPDFOC({
         font: fontBold,
       });
       
-      // Limitar ancho del value
-      const maxValueWidth = anchoColumna - anchoLabel - 10;
+      // Limitar ancho del value (ahora tiene el doble de espacio)
+      const maxValueWidth = anchoColumna3 - anchoLabelCol3 - 10;
       let valueTexto = String(value);
       let valueWidth = fontNormal.widthOfTextAtSize(valueTexto, 9);
       
@@ -228,7 +291,7 @@ export async function dibujaEncabezadoPDFOC({
       }
       
       pag.drawText(valueTexto, {
-        x: columna3X + anchoLabel,
+        x: columna3X + anchoLabelCol3,
         y: yCol3,
         size: 9,
         font: fontNormal,

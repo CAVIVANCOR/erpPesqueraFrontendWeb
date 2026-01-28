@@ -1002,6 +1002,7 @@ const TemporadaPescaForm = ({
               watch={watch}
               getValues={getValues}
               defaultValues={getValues()}
+              temporadaPescaId={editingItem?.id}
               readOnly={readOnly}
             />
           )}

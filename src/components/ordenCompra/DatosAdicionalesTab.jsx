@@ -6,7 +6,6 @@ import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
-import { Checkbox } from "primereact/checkbox";
 import { confirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import { Message } from "primereact/message";
@@ -17,9 +16,10 @@ import {
   eliminarDatoAdicional,
 } from "../../api/detDatosAdicionalesOrdenCompra";
 import { getResponsiveFontSize } from "../../utils/utils";
-import DocumentoCapture from "../shared/DocumentoCapture";
-import PDFViewer from "../shared/PDFViewer";
-import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
+
+import PDFMultiCapture from "../pdf/PDFMultiCapture";
+import PDFViewerV2 from "../pdf/PDFViewerV2";
+import PDFActionButtons from "../pdf/PDFActionButtons";
 
 export default function DatosAdicionalesTab({
   ordenCompraId,
@@ -29,12 +29,14 @@ export default function DatosAdicionalesTab({
   readOnly = false,
   permisos = {},
   estadoId,
+  onRecargarRegistro,
 }) {
   const [datos, setDatos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editingDato, setEditingDato] = useState(null);
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
+  const [pdfRefreshKey, setPdfRefreshKey] = useState(0);
 
   const [formData, setFormData] = useState({
     nombreDato: "",
@@ -44,8 +46,6 @@ export default function DatosAdicionalesTab({
     urlDocumento: "",
   });
 
-  // ⭐ CAMBIO: Datos adicionales siempre editables (pueden surgir a último momento)
-  // Ya no se restringe por estado de la orden
   const noSePuedeEditar = false;
 
   useEffect(() => {
@@ -64,9 +64,10 @@ export default function DatosAdicionalesTab({
     setLoading(true);
     try {
       const data = await getDatosAdicionalesOrdenCompra(ordenCompraId);
+      console.log("📋 [DatosAdicionalesTab] Datos cargados:", data);
       setDatos(data);
     } catch (err) {
-      console.error("Error al cargar datos adicionales:", err);
+      console.error("❌ [DatosAdicionalesTab] Error al cargar datos:", err);
     }
     setLoading(false);
   };
@@ -84,6 +85,7 @@ export default function DatosAdicionalesTab({
   };
 
   const handleEdit = (dato) => {
+    console.log("✏️ [DatosAdicionalesTab] Editando dato:", dato);
     setEditingDato(dato);
     setFormData({
       nombreDato: dato.nombreDato || "",
@@ -126,6 +128,12 @@ export default function DatosAdicionalesTab({
   };
 
   const handleSave = async () => {
+    console.log(
+      "💾 [DatosAdicionalesTab] Intentando guardar dato adicional...",
+    );
+    console.log("📝 [DatosAdicionalesTab] formData:", formData);
+    console.log("🔑 [DatosAdicionalesTab] editingDato:", editingDato);
+
     if (!formData.nombreDato?.trim()) {
       toast.current.show({
         severity: "warn",
@@ -159,19 +167,30 @@ export default function DatosAdicionalesTab({
         nombreDato: formData.nombreDato.trim(),
         esDocumento: formData.esDocumento,
         imprimirEnOC: formData.imprimirEnOC,
-        valorDato: formData.esDocumento ? null : formData.valorDato?.trim() || null,
-        urlDocumento: formData.esDocumento ? formData.urlDocumento?.trim() || null : null,
+        valorDato: formData.esDocumento
+          ? null
+          : formData.valorDato?.trim() || null,
+        urlDocumento: formData.esDocumento
+          ? formData.urlDocumento?.trim() || null
+          : null,
       };
+
+      console.log("📤 [DatosAdicionalesTab] Datos a guardar:", dataToSave);
 
       if (editingDato) {
         await actualizarDatoAdicional(editingDato.id, dataToSave);
+        console.log("✅ [DatosAdicionalesTab] Dato actualizado exitosamente");
         toast.current.show({
           severity: "success",
           summary: "Actualizado",
           detail: "Dato adicional actualizado correctamente",
         });
       } else {
-        await crearDatoAdicional(dataToSave);
+        const resultado = await crearDatoAdicional(dataToSave);
+        console.log(
+          "✅ [DatosAdicionalesTab] Dato creado exitosamente:",
+          resultado,
+        );
         toast.current.show({
           severity: "success",
           summary: "Creado",
@@ -179,9 +198,21 @@ export default function DatosAdicionalesTab({
         });
       }
 
+      await cargarDatos();
+
+      console.log("🔄 [DatosAdicionalesTab] Llamando a onRecargarRegistro...");
+      if (onRecargarRegistro) {
+        await onRecargarRegistro();
+        console.log("✅ [DatosAdicionalesTab] onRecargarRegistro ejecutado");
+      } else {
+        console.warn(
+          "⚠️ [DatosAdicionalesTab] onRecargarRegistro no está definido",
+        );
+      }
+
       setShowDialog(false);
-      cargarDatos();
     } catch (err) {
+      console.error("❌ [DatosAdicionalesTab] Error al guardar:", err);
       toast.current.show({
         severity: "error",
         summary: "Error",
@@ -191,26 +222,87 @@ export default function DatosAdicionalesTab({
     }
   };
 
-  // Función para ver PDF
-  const handleVerPDF = (urlDocumento) => {
-    if (urlDocumento) {
-      abrirPdfEnNuevaPestana(
-        urlDocumento,
-        toast,
-        "No hay documento disponible"
+  const handlePdfComplete = async (url) => {
+    console.log("📎 [DatosAdicionalesTab] PDF subido exitosamente:", url);
+    console.log("📝 [DatosAdicionalesTab] editingDato actual:", editingDato);
+
+    setFormData((prev) => ({ ...prev, urlDocumento: url }));
+    setPdfRefreshKey((k) => k + 1);
+    setMostrarCaptura(false);
+
+    toast.current?.show({
+      severity: "success",
+      summary: "Documento Subido",
+      detail:
+        "El documento se consolidó y subió correctamente. Ahora guarde el dato adicional.",
+      life: 5000,
+    });
+
+    if (editingDato?.id) {
+      console.log(
+        "💾 [DatosAdicionalesTab] Auto-guardando dato adicional con PDF...",
+      );
+      try {
+        const dataToSave = {
+          ordenCompraId: Number(ordenCompraId),
+          nombreDato: formData.nombreDato.trim(),
+          esDocumento: formData.esDocumento,
+          imprimirEnOC: formData.imprimirEnOC,
+          valorDato: null,
+          urlDocumento: url,
+        };
+
+        console.log(
+          "📤 [DatosAdicionalesTab] Auto-guardando con datos:",
+          dataToSave,
+        );
+        await actualizarDatoAdicional(editingDato.id, dataToSave);
+        console.log("✅ [DatosAdicionalesTab] PDF guardado en dato adicional");
+
+        await cargarDatos();
+
+        console.log(
+          "🔄 [DatosAdicionalesTab] Llamando a onRecargarRegistro después de PDF...",
+        );
+        if (onRecargarRegistro) {
+          await onRecargarRegistro();
+          console.log(
+            "✅ [DatosAdicionalesTab] Orden recargada después de subir PDF",
+          );
+        }
+
+        toast.current?.show({
+          severity: "success",
+          summary: "Guardado Automático",
+          detail: "El documento se guardó automáticamente en el dato adicional",
+          life: 3000,
+        });
+      } catch (err) {
+        console.error(
+          "❌ [DatosAdicionalesTab] Error al auto-guardar PDF:",
+          err,
+        );
+        toast.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "PDF subido pero debe hacer clic en Guardar para confirmar",
+          life: 4000,
+        });
+      }
+    } else {
+      console.warn(
+        "⚠️ [DatosAdicionalesTab] No hay editingDato.id, no se puede auto-guardar",
       );
     }
   };
 
-  // Función para manejar documento subido
-  const handleDocumentoSubido = (urlDocumento) => {
-    setFormData({ ...formData, urlDocumento });
-    setMostrarCaptura(false);
+  const handlePdfError = (error) => {
+    console.error("❌ [DatosAdicionalesTab] Error al subir PDF:", error);
     toast.current?.show({
-      severity: "success",
-      summary: "Documento Subido",
-      detail: "El documento se ha subido correctamente",
-      life: 3000,
+      severity: "error",
+      summary: "Error",
+      detail: error?.message || "No se pudo subir el documento",
+      life: 4000,
     });
   };
 
@@ -233,22 +325,30 @@ export default function DatosAdicionalesTab({
   const valorTemplate = (rowData) => {
     if (rowData.esDocumento) {
       return (
-        <div className="flex gap-2 align-items-center">
-          <Button
-            icon="pi pi-eye"
-            className="p-button-text p-button-sm p-button-success"
-            onClick={() => handleVerPDF(rowData.urlDocumento)}
-            tooltip="Ver documento"
-          />
-          <span className="text-sm text-500">{rowData.urlDocumento}</span>
-        </div>
+        <span className="text-sm text-500">
+          {rowData.urlDocumento || "Sin documento"}
+        </span>
       );
     }
     return rowData.valorDato || "-";
   };
 
   const accionesTemplate = (rowData) => (
-    <div className="flex gap-2">
+    <div className="flex gap-2 align-items-center">
+      {rowData.esDocumento && rowData.urlDocumento && (
+        <div style={{ display: "inline-block" }}>
+          <PDFActionButtons
+            pdfUrl={rowData.urlDocumento}
+            moduleName="datos-adicionales-oc"
+            fileName={`${rowData.nombreDato}.pdf`}
+            showViewButton={true}
+            showDownloadButton={false}
+            viewButtonLabel=""
+            className="p-0"
+            toast={toast.current}
+          />
+        </div>
+      )}
       <Button
         icon="pi pi-pencil"
         className="p-button-text p-button-sm"
@@ -350,7 +450,7 @@ export default function DatosAdicionalesTab({
         <Column
           header="Acciones"
           body={accionesTemplate}
-          style={{ width: "120px" }}
+          style={{ width: "180px" }}
         />
       </DataTable>
 
@@ -387,7 +487,6 @@ export default function DatosAdicionalesTab({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          {/* ES DOCUMENTO */}
           <div style={{ flex: 1 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -396,7 +495,9 @@ export default function DatosAdicionalesTab({
               Tipo de Dato
             </label>
             <Button
-              label={formData.esDocumento ? "DOCUMENTO ADJUNTO" : "DATO DE TEXTO"}
+              label={
+                formData.esDocumento ? "DOCUMENTO ADJUNTO" : "DATO DE TEXTO"
+              }
               icon={formData.esDocumento ? "pi pi-file" : "pi pi-info-circle"}
               severity={formData.esDocumento ? "info" : "success"}
               onClick={() =>
@@ -412,7 +513,6 @@ export default function DatosAdicionalesTab({
             />
           </div>
 
-          {/* IMPRIMIR EN OC */}
           <div style={{ flex: 1 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -425,7 +525,10 @@ export default function DatosAdicionalesTab({
               icon={formData.imprimirEnOC ? "pi pi-check" : "pi pi-times"}
               severity={formData.imprimirEnOC ? "success" : "danger"}
               onClick={() =>
-                setFormData({ ...formData, imprimirEnOC: !formData.imprimirEnOC })
+                setFormData({
+                  ...formData,
+                  imprimirEnOC: !formData.imprimirEnOC,
+                })
               }
               disabled={!puedeEditar}
               outlined
@@ -459,13 +562,14 @@ export default function DatosAdicionalesTab({
             <label htmlFor="urlDocumento">
               Documento Adjunto <span style={{ color: "red" }}>*</span>
             </label>
-            {/* URL del documento con botones */}
+
             <div
               style={{
                 display: "flex",
                 gap: "0.5rem",
                 alignItems: "flex-end",
                 marginBottom: "1rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
               <div style={{ flex: 2 }}>
@@ -479,40 +583,43 @@ export default function DatosAdicionalesTab({
                 />
               </div>
 
-              {/* Botones de acción */}
-              <div style={{ flex: 0.5 }}>
+              <div style={{ flex: 1 }}>
                 <Button
                   type="button"
                   label="Capturar/Subir"
-                  icon="pi pi-camera"
+                  icon="pi pi-upload"
                   className="p-button-info"
                   size="small"
                   onClick={() => setMostrarCaptura(true)}
-                  disabled={!puedeEditar}
+                  disabled={!puedeEditar || !editingDato?.id}
                 />
               </div>
-              <div style={{ flex: 0.5 }}>
+
+              <div style={{ flex: 2 }}>
                 {formData.urlDocumento && (
-                  <Button
-                    type="button"
-                    label="Ver PDF"
-                    icon="pi pi-eye"
-                    className="p-button-success"
-                    size="small"
-                    onClick={() => handleVerPDF(formData.urlDocumento)}
+                  <PDFActionButtons
+                    pdfUrl={formData.urlDocumento}
+                    moduleName="datos-adicionales-oc"
+                    fileName={`datos-adicionales-oc-${editingDato?.id || "sin-id"}.pdf`}
+                    viewButtonLabel="Ver"
+                    downloadButtonLabel="Descargar"
+                    toast={toast}
                   />
                 )}
               </div>
             </div>
 
-            {/* Visor de PDF */}
             {formData.urlDocumento && (
               <div style={{ marginTop: "1rem" }}>
-                <PDFViewer urlDocumento={formData.urlDocumento} />
+                <PDFViewerV2
+                  pdfUrl={formData.urlDocumento}
+                  moduleName="datos-adicionales-oc"
+                  height="600px"
+                  key={pdfRefreshKey}
+                />
               </div>
             )}
 
-            {/* Mensaje si no hay documento */}
             {!formData.urlDocumento && (
               <div style={{ marginTop: "1rem" }}>
                 <Message
@@ -525,15 +632,14 @@ export default function DatosAdicionalesTab({
         )}
       </Dialog>
 
-      {/* Modal de captura de documento */}
-      <DocumentoCapture
+      <PDFMultiCapture
         visible={mostrarCaptura}
         onHide={() => setMostrarCaptura(false)}
-        onDocumentoSubido={handleDocumentoSubido}
-        endpoint="/api/det-datos-adicionales-orden-compra/upload-documento"
-        titulo="Capturar Documento Adjunto"
-        toast={toast}
-        extraData={{ detDatosAdicionalesOrdenCompraId: editingDato?.id }}
+        moduleName="datos-adicionales-oc"
+        entityId={editingDato?.id}
+        dialogTitle="Subir Documento"
+        onComplete={handlePdfComplete}
+        onError={handlePdfError}
       />
     </div>
   );

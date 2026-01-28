@@ -40,12 +40,12 @@ const DetalleDocEmbarcacionCard = ({
   temporadaData,
   faenaData,
   faenaDescripcion,
-  documentosPesca = [], // Todos los registros de DocumentoPesca
-  documentacionEmbarcacion = [], // Documentos filtrados por embarcacionId
+  documentosPesca = [],
+  documentacionEmbarcacion = [],
   loading = false,
   onDataChange,
-  onDocEmbarcacionChange, // Callback para notificar cambios
-  onFaenasChange, // Callback para notificar cambios en faenas
+  onDocEmbarcacionChange,
+  onFaenasChange,
 }) => {
   const [docEmbarcacion, setDocEmbarcacion] = useState([]);
   const [selectedDocEmbarcacion, setSelectedDocEmbarcacion] = useState(null);
@@ -54,6 +54,18 @@ const DetalleDocEmbarcacionCard = ({
   const [globalFilter, setGlobalFilter] = useState("");
   const [loadingData, setLoadingData] = useState(false);
   const toast = useRef(null);
+
+  // Estados para manejo de formulario
+  const [formData, setFormData] = useState({
+    tipoDocumentoId: null,
+    numeroDocumento: "",
+    fechaEmision: null,
+    fechaVencimiento: null,
+    observaciones: "",
+    vigente: true,
+    urlDocEmbarcacion: "",
+  });
+  const [errors, setErrors] = useState({});
 
   // Estados para filtros
   const [filtroEstado, setFiltroEstado] = useState(null);
@@ -83,6 +95,30 @@ const DetalleDocEmbarcacionCard = ({
     { label: "VIGENTES", value: false },
   ];
 
+  // Handlers para el formulario
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleDateChange = (name, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleCheckboxChange = (e) => {
+    const { name, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: checked,
+    }));
+  };
+
   useEffect(() => {
     if (faenaPescaId) {
       cargarDocEmbarcacion();
@@ -94,7 +130,6 @@ const DetalleDocEmbarcacionCard = ({
   }, [docEmbarcacion, documentosPesca]);
 
   useEffect(() => {
-    // Normalizar documentos para el formulario
     const documentosFormateados = documentosPesca
       .filter((d) => d.paraEmbarcacion === true)
       .map((d) => ({
@@ -108,16 +143,15 @@ const DetalleDocEmbarcacionCard = ({
   const actualizarOpcionesFiltros = () => {
     if (!docEmbarcacion.length) return;
 
-    // Filtro de Documento
     const documentosUnicos = [
       ...new Set(
-        docEmbarcacion.map((doc) => doc.documentoPescaId).filter(Boolean)
+        docEmbarcacion.map((doc) => doc.documentoPescaId).filter(Boolean),
       ),
     ];
     const opcionesDocumentoNuevas = documentosUnicos
       .map((documentoPescaId) => {
         const documentoEncontrado = documentosPesca.find(
-          (d) => Number(d.id) === Number(documentoPescaId)
+          (d) => Number(d.id) === Number(documentoPescaId),
         );
         return {
           label: documentoEncontrado
@@ -149,30 +183,11 @@ const DetalleDocEmbarcacionCard = ({
   };
 
   const cargarDocumentosEmbarcacion = async () => {
-    const embarcacionId = faenaData?.embarcacionId;
-
-    if (!embarcacionId) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "Debe seleccionar una embarcación primero",
-        life: 3000,
-      });
-      return;
-    }
-
     try {
       setLoadingData(true);
 
-      // 1. Obtener todos los documentos de embarcación
-      const todosLosDocumentos = await getDocumentacionesEmbarcacion();
-
-      // 2. Filtrar por embarcacionId
-      const documentosEmbarcacion = todosLosDocumentos.filter(
-        (doc) => Number(doc.embarcacionId) === Number(embarcacionId)
-      );
-
-      if (documentosEmbarcacion.length === 0) {
+      // Usar la prop documentacionEmbarcacion que ya viene filtrada desde el padre
+      if (!documentacionEmbarcacion || documentacionEmbarcacion.length === 0) {
         toast.current?.show({
           severity: "info",
           summary: "Sin Documentos",
@@ -182,19 +197,16 @@ const DetalleDocEmbarcacionCard = ({
         return;
       }
 
-      // 3. Obtener documentos existentes en DetalleDocEmbarcacion
       const documentosExistentes = await getDetallesDocEmbarcacion({
         faenaPescaId,
       });
 
-      // 4. Crear o actualizar registros en DetalleDocEmbarcacion
       let creados = 0;
       let actualizados = 0;
       let errores = 0;
 
-      for (const docEmb of documentosEmbarcacion) {
+      for (const docEmb of documentacionEmbarcacion) {
         try {
-          // Calcular docVencido basado en fechaVencimiento
           const fechaActual = new Date();
           const fechaVencimiento = docEmb.fechaVencimiento
             ? new Date(docEmb.fechaVencimiento)
@@ -215,22 +227,19 @@ const DetalleDocEmbarcacionCard = ({
             updatedAt: new Date().toISOString(),
           };
 
-          // Verificar si ya existe el documento
           const documentoExistente = documentosExistentes.find(
             (d) =>
               Number(d.faenaPescaId) === Number(faenaPescaId) &&
-              Number(d.documentoPescaId) === Number(docEmb.documentoPescaId)
+              Number(d.documentoPescaId) === Number(docEmb.documentoPescaId),
           );
 
           if (documentoExistente) {
-            // Actualizar documento existente
             await actualizarDetalleDocEmbarcacion(
               documentoExistente.id,
-              dataToSend
+              dataToSend,
             );
             actualizados++;
           } else {
-            // Crear nuevo documento
             await crearDetalleDocEmbarcacion(dataToSend);
             creados++;
           }
@@ -240,7 +249,6 @@ const DetalleDocEmbarcacionCard = ({
         }
       }
 
-      // 5. Mostrar resultado
       if (creados > 0 || actualizados > 0) {
         toast.current?.show({
           severity: "success",
@@ -253,7 +261,6 @@ const DetalleDocEmbarcacionCard = ({
 
         await cargarDocEmbarcacion();
 
-        // Notificar cambios al componente padre
         if (onDocEmbarcacionChange) {
           onDocEmbarcacionChange();
         }
@@ -279,11 +286,38 @@ const DetalleDocEmbarcacionCard = ({
   };
 
   const openNew = () => {
+    setFormData({
+      tipoDocumentoId: null,
+      numeroDocumento: "",
+      fechaEmision: null,
+      fechaVencimiento: null,
+      observaciones: "",
+      vigente: true,
+      urlDocEmbarcacion: "",
+    });
+    setErrors({});
     setEditingDocEmbarcacion(null);
     setDocEmbarcacionDialog(true);
   };
 
   const editDocEmbarcacion = (docEmbarcacion) => {
+    setFormData({
+      tipoDocumentoId: docEmbarcacion.documentoPescaId
+        ? Number(docEmbarcacion.documentoPescaId)
+        : null,
+      numeroDocumento: docEmbarcacion.numeroDocumento || "",
+      fechaEmision: docEmbarcacion.fechaEmision
+        ? new Date(docEmbarcacion.fechaEmision)
+        : null,
+      fechaVencimiento: docEmbarcacion.fechaVencimiento
+        ? new Date(docEmbarcacion.fechaVencimiento)
+        : null,
+      observaciones: docEmbarcacion.observaciones || "",
+      vigente:
+        docEmbarcacion.vigente !== undefined ? docEmbarcacion.vigente : true,
+      urlDocEmbarcacion: docEmbarcacion.urlDocEmbarcacion || "",
+    });
+    setErrors({});
     setEditingDocEmbarcacion(docEmbarcacion);
     setDocEmbarcacionDialog(true);
   };
@@ -295,7 +329,6 @@ const DetalleDocEmbarcacionCard = ({
 
   const confirmDeleteDocEmbarcacion = (docEmbarcacion) => {
     setSelectedDocEmbarcacion(docEmbarcacion);
-    // Implementar confirmación de eliminación si es necesario
   };
 
   const verificarDocumento = async (rowData) => {
@@ -333,8 +366,6 @@ const DetalleDocEmbarcacionCard = ({
       setLoadingData(false);
     }
   };
-
-  // Función para filtrar datos
   const datosFiltrados = docEmbarcacion.filter((doc) => {
     const cumpleFiltroEstado =
       filtroEstado === null || doc.verificado === filtroEstado;
@@ -342,7 +373,6 @@ const DetalleDocEmbarcacionCard = ({
       filtroDocumento === null ||
       Number(doc.documentoPescaId) === Number(filtroDocumento);
 
-    // Filtro por vencidos - evaluar fechaVencimiento vs fecha actual
     let cumpleFiltroVencidos = true;
     if (filtroVencidos !== null) {
       const fechaActual = new Date();
@@ -350,10 +380,7 @@ const DetalleDocEmbarcacionCard = ({
         ? new Date(doc.fechaVencimiento)
         : null;
 
-      // Si fechaVencimiento es null, se considera vencido (true)
-      // Si fechaVencimiento < fechaActual, se considera vencido (true)
       const estaVencido = !fechaVencimiento || fechaVencimiento < fechaActual;
-
       cumpleFiltroVencidos = estaVencido === filtroVencidos;
     }
 
@@ -377,14 +404,13 @@ const DetalleDocEmbarcacionCard = ({
     }
   };
 
-  // Funciones para el filtro toggle de Estado
   const handleToggleEstado = () => {
     if (filtroEstado === null) {
-      setFiltroEstado(false); // Mostrar solo pendientes
+      setFiltroEstado(false);
     } else if (filtroEstado === false) {
-      setFiltroEstado(true); // Mostrar solo verificados
+      setFiltroEstado(true);
     } else {
-      setFiltroEstado(null); // Mostrar todos
+      setFiltroEstado(null);
     }
   };
 
@@ -534,7 +560,6 @@ const DetalleDocEmbarcacionCard = ({
     </div>
   );
 
-  // Templates para las columnas
   const verificadoTemplate = (rowData) => {
     return (
       <Tag
@@ -552,7 +577,7 @@ const DetalleDocEmbarcacionCard = ({
     return (
       <span style={{ fontWeight: "bold" }}>
         {documentosPescaNormalizados.find(
-          (doc) => Number(doc.value) === Number(rowData.documentoPescaId)
+          (doc) => Number(doc.value) === Number(rowData.documentoPescaId),
         )?.label || "N/A"}
       </span>
     );
@@ -564,8 +589,6 @@ const DetalleDocEmbarcacionCard = ({
       ? new Date(rowData.fechaVencimiento)
       : null;
 
-    // Si fechaVencimiento es null, se considera vencido (true)
-    // Si fechaVencimiento < fechaActual, se considera vencido (true)
     const estaVencido = !fechaVencimiento || fechaVencimiento < fechaActual;
 
     const fechaTexto = rowData.fechaVencimiento
@@ -606,7 +629,7 @@ const DetalleDocEmbarcacionCard = ({
             abrirPdfEnNuevaPestana(
               rowData.urlDocEmbarcacion,
               toast.current,
-              "No hay PDF disponible"
+              "No hay PDF disponible",
             )
           }
           tooltip={
@@ -645,9 +668,8 @@ const DetalleDocEmbarcacionCard = ({
         onSelectionChange={(e) => setSelectedDocEmbarcacion(e.value)}
         dataKey="id"
         paginator
-        rows={5}
-        rowsPerPageOptions={[5, 10, 25]}
-        className="datatable-responsive"
+        rows={15}
+        rowsPerPageOptions={[15, 30, 60]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} documentos"
         globalFilter={globalFilter}
@@ -664,6 +686,8 @@ const DetalleDocEmbarcacionCard = ({
           setSortField(e.sortField);
           setSortOrder(e.sortOrder);
         }}
+        onRowClick={(e) => editDocEmbarcacion(e.data)}
+        selectionMode="single"
       >
         <Column field="id" header="ID" sortable style={{ minWidth: "80px" }} />
         <Column
@@ -722,16 +746,14 @@ const DetalleDocEmbarcacionCard = ({
       >
         {docEmbarcacionDialog && (
           <DetalleDocEmbarcacionForm
-            detalle={editingDocEmbarcacion}
-            documentosPesca={documentosPescaNormalizados}
-            onGuardadoExitoso={() => {
-              hideDialog();
-              cargarDocEmbarcacion();
-              if (onDataChange) {
-                onDataChange();
-              }
-            }}
-            onCancelar={hideDialog}
+            formData={formData}
+            errors={errors}
+            handleInputChange={handleInputChange}
+            handleDateChange={handleDateChange}
+            handleCheckboxChange={handleCheckboxChange}
+            tiposDocumentoOptions={documentosPescaNormalizados}
+            readOnly={false}
+            toast={toast}
           />
         )}
       </Dialog>

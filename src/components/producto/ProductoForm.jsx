@@ -189,13 +189,13 @@ const schema = yup.object().shape({
     .min(0, "El margen mínimo no puede ser negativo")
     .max(100, "El margen mínimo no puede ser mayor a 100%")
     .test(
-      'margen-minimo-menor-objetivo',
-      'El margen mínimo debe ser menor o igual al margen objetivo',
-      function(value) {
+      "margen-minimo-menor-objetivo",
+      "El margen mínimo debe ser menor o igual al margen objetivo",
+      function (value) {
         const { margenUtilidadObjetivo } = this.parent;
         if (value == null || margenUtilidadObjetivo == null) return true;
         return value <= margenUtilidadObjetivo;
-      }
+      },
     ),
   margenUtilidadObjetivo: yup
     .number()
@@ -266,8 +266,8 @@ export default function ProductoForm({
             estadosIniciales.find(
               (e) =>
                 e.descripcion?.toUpperCase() === "LIBERADO" &&
-                e.tipoProvieneDe?.descripcion?.toUpperCase() === "PRODUCTOS"
-            )?.id
+                e.tipoProvieneDe?.descripcion?.toUpperCase() === "PRODUCTOS",
+            )?.id,
           ) || null,
       empresaId: producto?.empresaId ? Number(producto.empresaId) : null,
       clienteId: producto?.clienteId ? Number(producto.clienteId) : null,
@@ -316,13 +316,16 @@ export default function ProductoForm({
       urlFichaTecnica: producto?.urlFichaTecnica || "",
       urlFotoProducto: producto?.urlFotoProducto || "",
       // Márgenes de utilidad
-      margenMinimoPermitido: producto?.margenMinimoPermitido ? Number(producto.margenMinimoPermitido) : null,
-      margenUtilidadObjetivo: producto?.margenUtilidadObjetivo ? Number(producto.margenUtilidadObjetivo) : null,
+      margenMinimoPermitido: producto?.margenMinimoPermitido
+        ? Number(producto.margenMinimoPermitido)
+        : null,
+      margenUtilidadObjetivo: producto?.margenUtilidadObjetivo
+        ? Number(producto.margenUtilidadObjetivo)
+        : null,
     },
   });
 
   const familiaIdWatch = watch("familiaId");
-
 
   // Limpiar subfamilia cuando cambie la familia
   useEffect(() => {
@@ -331,7 +334,7 @@ export default function ProductoForm({
       const subfamiliaValida = subfamilias.find(
         (s) =>
           Number(s.id) === Number(subfamiliaActual) &&
-          Number(s.familiaId) === Number(familiaIdWatch)
+          Number(s.familiaId) === Number(familiaIdWatch),
       );
       if (!subfamiliaValida) {
         setValue("subfamiliaId", null);
@@ -345,7 +348,7 @@ export default function ProductoForm({
       const estadoLiberado = estadosIniciales.find(
         (e) =>
           e.descripcion?.toUpperCase() === "LIBERADO" &&
-          e.tipoProvieneDe?.descripcion?.toUpperCase() === "PRODUCTOS"
+          e.tipoProvieneDe?.descripcion?.toUpperCase() === "PRODUCTOS",
       );
 
       if (estadoLiberado) {
@@ -376,7 +379,6 @@ export default function ProductoForm({
   const handleCancelar = () => {
     onCancelar();
   };
-
 
   const onSubmitForm = async (data) => {
     try {
@@ -481,7 +483,10 @@ export default function ProductoForm({
       </div>
 
       <form onSubmit={handleSubmit(onSubmitForm)}>
-        <TabView activeIndex={activeIndex} onTabChange={(e) => setActiveIndex(e.index)}>
+        <TabView
+          activeIndex={activeIndex}
+          onTabChange={(e) => setActiveIndex(e.index)}
+        >
           <TabPanel header="Datos Generales" leftIcon="pi pi-info-circle mr-2">
             <DatosGeneralesProductoForm
               control={control}
@@ -536,6 +541,7 @@ export default function ProductoForm({
               getValues={getValues}
               defaultValues={getValues()}
               readOnly={readOnly}
+              productoId={getValues("id")}
             />
           </TabPanel>
         </TabView>
@@ -568,7 +574,13 @@ export default function ProductoForm({
             onClick={handleSubmit(onSubmitForm)}
             loading={loading}
             disabled={readOnly || !permisos.puedeEditar}
-            tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""}
+            tooltip={
+              readOnly
+                ? "Modo solo lectura"
+                : !permisos.puedeEditar
+                  ? "No tiene permisos para editar"
+                  : ""
+            }
             raised
             size="small"
             outlined
@@ -580,7 +592,6 @@ export default function ProductoForm({
             <ProgressSpinner />
           </div>
         )}
-        
       </form>
     </div>
   );
