@@ -19,7 +19,7 @@ import { TabView, TabPanel } from "primereact/tabview";
 import {
   createPrestamoBancario,
   updatePrestamoBancario,
-  recalcularCuotasPrestamo
+  recalcularCuotasPrestamo,
 } from "../../api/tesoreria/prestamoBancarios";
 import { getEmpresas } from "../../api/empresa";
 import { getBancos } from "../../api/banco";
@@ -47,7 +47,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
     loading,
     readOnly = false,
   },
-  ref
+  ref,
 ) {
   const toast = useRef(null);
   const [activeTabIndex, setActiveTabIndex] = useState(0);
@@ -76,21 +76,39 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
     formState: { errors },
   } = useForm({
     defaultValues: {
-      id: defaultValues?.id || null,
-      empresaId: defaultValues?.empresaId || empresaFija || null,
-      bancoId: defaultValues?.bancoId || null,
-      lineaCreditoId: defaultValues?.lineaCreditoId || null,
-      cuentaCorrienteId: defaultValues?.cuentaCorrienteId || null,
+      id: defaultValues?.id ? Number(defaultValues.id) : null,
+      empresaId: defaultValues?.empresaId
+        ? Number(defaultValues.empresaId)
+        : empresaFija
+          ? Number(empresaFija)
+          : null,
+      bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
+      lineaCreditoId: defaultValues?.lineaCreditoId
+        ? Number(defaultValues.lineaCreditoId)
+        : null,
+      cuentaCorrienteId: defaultValues?.cuentaCorrienteId
+        ? Number(defaultValues.cuentaCorrienteId)
+        : null,
       numeroPrestamo: defaultValues?.numeroPrestamo || "",
       numeroContrato: defaultValues?.numeroContrato || "",
-      fechaContrato: defaultValues?.fechaContrato ? new Date(defaultValues.fechaContrato) : null,
-      fechaDesembolso: defaultValues?.fechaDesembolso ? new Date(defaultValues.fechaDesembolso) : null,
-      fechaVencimiento: defaultValues?.fechaVencimiento ? new Date(defaultValues.fechaVencimiento) : null,
-      fechaEmision: defaultValues?.fechaEmision ? new Date(defaultValues.fechaEmision) : null,
-      fechaExpiracion: defaultValues?.fechaExpiracion ? new Date(defaultValues.fechaExpiracion) : null,
+      fechaContrato: defaultValues?.fechaContrato
+        ? new Date(defaultValues.fechaContrato)
+        : null,
+      fechaDesembolso: defaultValues?.fechaDesembolso
+        ? new Date(defaultValues.fechaDesembolso)
+        : null,
+      fechaVencimiento: defaultValues?.fechaVencimiento
+        ? new Date(defaultValues.fechaVencimiento)
+        : null,
+      fechaEmision: defaultValues?.fechaEmision
+        ? new Date(defaultValues.fechaEmision)
+        : null,
+      fechaExpiracion: defaultValues?.fechaExpiracion
+        ? new Date(defaultValues.fechaExpiracion)
+        : null,
       montoAprobado: defaultValues?.montoAprobado || 0,
       montoDesembolsado: defaultValues?.montoDesembolsado || 0,
-      monedaId: defaultValues?.monedaId || null,
+      monedaId: defaultValues?.monedaId ? Number(defaultValues.monedaId) : null,
       tasaInteresAnual: defaultValues?.tasaInteresAnual || 0,
       tasaInteresEfectiva: defaultValues?.tasaInteresEfectiva || 0,
       tasaMoratoria: defaultValues?.tasaMoratoria || 0,
@@ -113,16 +131,21 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       saldoInteres: defaultValues?.saldoInteres || 0,
       capitalPagado: defaultValues?.capitalPagado || 0,
       interesPagado: defaultValues?.interesPagado || 0,
-      estadoId: defaultValues?.estadoId || null,
+      estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : null,
       destinoFondos: defaultValues?.destinoFondos || "",
       descripcionGarantia: defaultValues?.descripcionGarantia || "",
       observaciones: defaultValues?.observaciones || "",
       esRefinanciamiento: defaultValues?.esRefinanciamiento || false,
-      prestamoRefinanciadoId: defaultValues?.prestamoRefinanciadoId || null,
+      prestamoRefinanciadoId: defaultValues?.prestamoRefinanciadoId
+        ? Number(defaultValues.prestamoRefinanciadoId)
+        : null,
       esRevolvente: defaultValues?.esRevolvente || false,
       permitePagoParcial: defaultValues?.permitePagoParcial || false,
-      tipoPrestamoId: defaultValues?.tipoPrestamoId || null,
-      refNroProformaVentaExportacion: defaultValues?.refNroProformaVentaExportacion || "",
+      tipoPrestamoId: defaultValues?.tipoPrestamoId
+        ? Number(defaultValues.tipoPrestamoId)
+        : null,
+      refNroProformaVentaExportacion:
+        defaultValues?.refNroProformaVentaExportacion || "",
       urlDocumentoPrincipal: defaultValues?.urlDocumentoPDF || "",
       urlDocumentoAdicional: defaultValues?.urlDocAdicionalPDF || "",
     },
@@ -150,7 +173,10 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
 
   useEffect(() => {
     const subscription = watch((value, { name, type }) => {
-      if (name === "urlDocumentoPrincipal" || name === "urlDocumentoAdicional") {
+      if (
+        name === "urlDocumentoPrincipal" ||
+        name === "urlDocumentoAdicional"
+      ) {
       }
     });
     return () => subscription.unsubscribe();
@@ -192,7 +218,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       setCargandoDatos(false);
     }
   };
-  
+
   const cargarPrestamosParaRefinanciar = async () => {
     try {
       const response = await getAllPrestamoBancario();
@@ -201,7 +227,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
           Number(p.empresaId) === Number(empresaIdWatch) &&
           (Number(p.estadoId) === 81 ||
             Number(p.estadoId) === 83 ||
-            Number(p.estadoId) === 84)
+            Number(p.estadoId) === 84),
       );
       setPrestamosParaRefinanciar(prestamosFiltrados);
     } catch (error) {
@@ -215,7 +241,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       const lineasFiltradas = lineas.filter(
         (linea) =>
           Number(linea.empresaId) === Number(empresaIdWatch) &&
-          Number(linea.bancoId) === Number(bancoIdWatch)
+          Number(linea.bancoId) === Number(bancoIdWatch),
       );
       setLineasCredito(lineasFiltradas);
     } catch (error) {
@@ -228,7 +254,11 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
     const currentBanco = getValues("bancoId");
     const currentMoneda = getValues("monedaId");
 
-    if (empresaIdWatch !== currentEmpresa || bancoIdWatch !== currentBanco || monedaIdWatch !== currentMoneda) {
+    if (
+      empresaIdWatch !== currentEmpresa ||
+      bancoIdWatch !== currentBanco ||
+      monedaIdWatch !== currentMoneda
+    ) {
       setValue("lineaCreditoId", null);
       setValue("cuentaCorrienteId", null);
     }
@@ -309,10 +339,12 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       let resultado;
       if (isEdit) {
         resultado = await updatePrestamoBancario(defaultValues.id, dataToSend);
-        
+
         try {
-          const recalculoResultado = await recalcularCuotasPrestamo(defaultValues.id);
-          
+          const recalculoResultado = await recalcularCuotasPrestamo(
+            defaultValues.id,
+          );
+
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
@@ -323,14 +355,16 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
           toast.current?.show({
             severity: "warn",
             summary: "Advertencia",
-            detail: "Préstamo actualizado pero hubo un error al recalcular las cuotas: " + 
-                    (recalculoError.response?.data?.mensaje || recalculoError.message),
+            detail:
+              "Préstamo actualizado pero hubo un error al recalcular las cuotas: " +
+              (recalculoError.response?.data?.mensaje ||
+                recalculoError.message),
             life: 5000,
           });
         }
       } else {
         resultado = await createPrestamoBancario(dataToSend);
-        
+
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -390,7 +424,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         (c) =>
           Number(c.empresaId) === Number(empresaIdWatch) &&
           Number(c.bancoId) === Number(bancoIdWatch) &&
-          Number(c.monedaId) === Number(monedaIdWatch)
+          Number(c.monedaId) === Number(monedaIdWatch),
       )
       .map((c) => ({
         ...c,
@@ -423,7 +457,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       bancoId: Number(l.bancoId),
       empresaId: Number(l.empresaId),
       label: `${l.numeroLinea} - ${l.moneda?.codigoSunat || ""} ${Number(
-        l.montoDisponible
+        l.montoDisponible,
       ).toFixed(2)}`,
       value: Number(l.id),
     }));
@@ -454,9 +488,15 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         onTabChange={(e) => setActiveTabIndex(e.index)}
       >
         <TabPanel header="Datos Generales" leftIcon="pi pi-info-circle">
-                    <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
+          <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label htmlFor="empresaId" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="empresaId"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Empresa *
               </label>
               <Controller
@@ -477,7 +517,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label htmlFor="bancoId" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="bancoId"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Banco *
               </label>
               <Controller
@@ -498,7 +544,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label htmlFor="monedaId" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="monedaId"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Moneda *
               </label>
               <Controller
@@ -519,7 +571,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="lineaCreditoId" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="lineaCreditoId"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Línea de Crédito
               </label>
               <Controller
@@ -543,7 +601,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="cuentaCorrienteId" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="cuentaCorrienteId"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Cuenta Corriente
               </label>
               <Controller
@@ -565,7 +629,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label htmlFor="estadoId" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="estadoId"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Estado *
               </label>
               <Controller
@@ -591,7 +661,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
 
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 0.75 }}>
-              <label htmlFor="numeroPrestamo" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="numeroPrestamo"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Número de Préstamo *
               </label>
               <Controller
@@ -601,7 +677,9 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   <InputText
                     id="numeroPrestamo"
                     value={field.value}
-                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                      field.onChange(e.target.value.toUpperCase())
+                    }
                     placeholder="Ej: PRES-2024-001"
                     disabled={readOnly}
                     style={{ width: "100%" }}
@@ -610,7 +688,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 0.75 }}>
-              <label htmlFor="numeroContrato" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="numeroContrato"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Número de Contrato *
               </label>
               <Controller
@@ -620,7 +704,9 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   <InputText
                     id="numeroContrato"
                     value={field.value}
-                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                      field.onChange(e.target.value.toUpperCase())
+                    }
                     placeholder="Ej: CONT-2024-001"
                     disabled={readOnly}
                     style={{ width: "100%" }}
@@ -629,7 +715,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="tipoPrestamo" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="tipoPrestamo"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Tipo de Préstamo *
               </label>
               <Controller
@@ -653,7 +745,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="tipoAmortizacion" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="tipoAmortizacion"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Tipo de Amortización *
               </label>
               <Controller
@@ -673,7 +771,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label htmlFor="fechaContrato" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="fechaContrato"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Fecha de Contrato *
               </label>
               <Controller
@@ -693,7 +797,14 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label htmlFor="fechaDesembolso" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize(), color: "#22940E" }}>
+              <label
+                htmlFor="fechaDesembolso"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                  color: "#22940E",
+                }}
+              >
                 Fecha de Desembolso *
               </label>
               <Controller
@@ -713,7 +824,14 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label htmlFor="fechaVencimiento" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize(), color: "#BF001E" }}>
+              <label
+                htmlFor="fechaVencimiento"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                  color: "#BF001E",
+                }}
+              >
                 Fecha de Vencimiento *
               </label>
               <Controller
@@ -736,7 +854,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
 
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label htmlFor="montoAprobado" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="montoAprobado"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Monto Aprobado *
               </label>
               <Controller
@@ -758,7 +882,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="montoDesembolsado" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="montoDesembolsado"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Monto Desembolsado *
               </label>
               <Controller
@@ -780,7 +910,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label htmlFor="plazoMeses" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="plazoMeses"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Plazo (Meses) *
               </label>
               <Controller
@@ -799,7 +935,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label htmlFor="numeroCuotas" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="numeroCuotas"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Número de Cuotas *
               </label>
               <Controller
@@ -818,7 +960,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 0.75 }}>
-              <label htmlFor="frecuenciaPago" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="frecuenciaPago"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Frecuencia de Pago *
               </label>
               <Controller
@@ -838,7 +986,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label htmlFor="numeroDias" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="numeroDias"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Número de Días
               </label>
               <Controller
@@ -857,7 +1011,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label htmlFor="diaPago" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="diaPago"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Día de Pago *
               </label>
               <Controller
@@ -877,7 +1037,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 0.5 }}>
-              <label htmlFor="periodoGracia" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="periodoGracia"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Período de Gracia
               </label>
               <Controller
@@ -896,10 +1062,16 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
           </div>
-          
+
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label htmlFor="tasaInteresAnual" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="tasaInteresAnual"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Tasa de Interés Anual (%) *
               </label>
               <Controller
@@ -921,7 +1093,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="tasaInteresEfectiva" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="tasaInteresEfectiva"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Tasa de Interés Efectiva (%)
               </label>
               <Controller
@@ -943,7 +1121,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="tasaMoratoria" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="tasaMoratoria"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Tasa Moratoria (%)
               </label>
               <Controller
@@ -965,7 +1149,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="comisionInicial" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="comisionInicial"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Comisión Inicial
               </label>
               <Controller
@@ -987,7 +1177,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="comisionMantenimiento" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="comisionMantenimiento"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Comisión Mantenimiento
               </label>
               <Controller
@@ -1009,7 +1205,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="seguroDesgravamen" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="seguroDesgravamen"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Seguro Desgravamen
               </label>
               <Controller
@@ -1034,7 +1236,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
 
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label htmlFor="tipoGarantia" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="tipoGarantia"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Tipo de Garantía
               </label>
               <Controller
@@ -1055,7 +1263,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="valorGarantia" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="valorGarantia"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Valor de Garantía
               </label>
               <Controller
@@ -1077,7 +1291,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="beneficiario" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="beneficiario"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Beneficiario (para Garantías/Cartas)
               </label>
               <Controller
@@ -1087,7 +1307,9 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   <InputText
                     id="beneficiario"
                     value={field.value}
-                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                      field.onChange(e.target.value.toUpperCase())
+                    }
                     disabled={readOnly}
                     style={{ width: "100%" }}
                   />
@@ -1095,7 +1317,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="numeroGarantia" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="numeroGarantia"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Número de Garantía
               </label>
               <Controller
@@ -1105,7 +1333,9 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   <InputText
                     id="numeroGarantia"
                     value={field.value}
-                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                      field.onChange(e.target.value.toUpperCase())
+                    }
                     disabled={readOnly}
                     style={{ width: "100%" }}
                   />
@@ -1113,7 +1343,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="numeroCartaCredito" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="numeroCartaCredito"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Número de Carta de Crédito
               </label>
               <Controller
@@ -1123,7 +1359,9 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   <InputText
                     id="numeroCartaCredito"
                     value={field.value}
-                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                      field.onChange(e.target.value.toUpperCase())
+                    }
                     disabled={readOnly}
                     style={{ width: "100%" }}
                   />
@@ -1131,7 +1369,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="refNroProformaVentaExportacion" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="refNroProformaVentaExportacion"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 N° Proforma Venta Exportacion
               </label>
               <Controller
@@ -1151,7 +1395,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="fechaEmision" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="fechaEmision"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Fecha de Emisión (Garantías/Cartas)
               </label>
               <Controller
@@ -1171,7 +1421,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="fechaExpiracion" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="fechaExpiracion"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Fecha de Expiración (Garantías/Cartas)
               </label>
               <Controller
@@ -1192,9 +1448,22 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "end", gap: 20, marginBottom: 20 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "end",
+              gap: 20,
+              marginBottom: 20,
+            }}
+          >
             <div style={{ flex: 1 }}>
-              <label htmlFor="esRevolvente" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="esRevolvente"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Línea Revolvente
               </label>
               <Controller
@@ -1204,7 +1473,9 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   <Button
                     id="esRevolvente"
                     label={field.value ? "SÍ REVOLVENTE" : "NO REVOLVENTE"}
-                    icon={field.value ? "pi pi-check-circle" : "pi pi-times-circle"}
+                    icon={
+                      field.value ? "pi pi-check-circle" : "pi pi-times-circle"
+                    }
                     severity={field.value ? "success" : "secondary"}
                     onClick={() => field.onChange(!field.value)}
                     disabled={readOnly}
@@ -1215,7 +1486,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="permitePagoParcial" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="permitePagoParcial"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Pago Parcial
               </label>
               <Controller
@@ -1224,8 +1501,12 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 render={({ field }) => (
                   <Button
                     id="permitePagoParcial"
-                    label={field.value ? "PERMITE PARCIAL" : "NO PERMITE PARCIAL"}
-                    icon={field.value ? "pi pi-check-circle" : "pi pi-times-circle"}
+                    label={
+                      field.value ? "PERMITE PARCIAL" : "NO PERMITE PARCIAL"
+                    }
+                    icon={
+                      field.value ? "pi pi-check-circle" : "pi pi-times-circle"
+                    }
                     severity={field.value ? "info" : "secondary"}
                     onClick={() => field.onChange(!field.value)}
                     disabled={readOnly}
@@ -1236,7 +1517,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="esRefinanciamiento" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="esRefinanciamiento"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Refinanciamiento
               </label>
               <Controller
@@ -1245,7 +1532,11 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 render={({ field }) => (
                   <Button
                     id="esRefinanciamiento"
-                    label={field.value ? "ES REFINANCIAMIENTO" : "NO ES REFINANCIAMIENTO"}
+                    label={
+                      field.value
+                        ? "ES REFINANCIAMIENTO"
+                        : "NO ES REFINANCIAMIENTO"
+                    }
                     icon={field.value ? "pi pi-refresh" : "pi pi-times-circle"}
                     severity={field.value ? "warning" : "secondary"}
                     onClick={() => field.onChange(!field.value)}
@@ -1258,7 +1549,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
             </div>
             {watch("esRefinanciamiento") && (
               <div style={{ flex: 2 }}>
-                <label htmlFor="prestamoRefinanciadoId" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+                <label
+                  htmlFor="prestamoRefinanciadoId"
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: getResponsiveFontSize(),
+                  }}
+                >
                   Préstamo Refinanciado *
                 </label>
                 <Controller
@@ -1272,7 +1569,10 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                       onChange={(e) => field.onChange(e.value)}
                       placeholder="Seleccione préstamo a refinanciar"
                       disabled={readOnly || !empresaIdWatch}
-                      style={{ width: "100%", fontSize: getResponsiveFontSize() }}
+                      style={{
+                        width: "100%",
+                        fontSize: getResponsiveFontSize(),
+                      }}
                       filter
                       showClear
                       emptyMessage="No hay préstamos vigentes o vencidos para refinanciar"
@@ -1285,7 +1585,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
 
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label htmlFor="destinoFondos" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="destinoFondos"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Destino de Fondos
               </label>
               <Controller
@@ -1295,7 +1601,9 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   <InputTextarea
                     id="destinoFondos"
                     value={field.value}
-                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                      field.onChange(e.target.value.toUpperCase())
+                    }
                     placeholder="Descripción del destino de los fondos del préstamo"
                     disabled={readOnly}
                     rows={2}
@@ -1305,7 +1613,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="descripcionGarantia" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="descripcionGarantia"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Descripción de Garantía
               </label>
               <Controller
@@ -1315,7 +1629,9 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   <InputTextarea
                     id="descripcionGarantia"
                     value={field.value}
-                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                      field.onChange(e.target.value.toUpperCase())
+                    }
                     placeholder="Descripción detallada de la garantía"
                     disabled={readOnly}
                     rows={2}
@@ -1325,7 +1641,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="observaciones" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="observaciones"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Observaciones
               </label>
               <Controller
@@ -1335,7 +1657,9 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                   <InputTextarea
                     id="observaciones"
                     value={field.value}
-                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                      field.onChange(e.target.value.toUpperCase())
+                    }
                     placeholder="Observaciones adicionales"
                     disabled={readOnly}
                     rows={2}
@@ -1348,7 +1672,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
 
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <label htmlFor="saldoCapital" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="saldoCapital"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Saldo Capital
               </label>
               <Controller
@@ -1370,7 +1700,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="saldoInteres" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="saldoInteres"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Saldo Interés
               </label>
               <Controller
@@ -1392,7 +1728,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="capitalPagado" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="capitalPagado"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Capital Pagado
               </label>
               <Controller
@@ -1414,7 +1756,13 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="interesPagado" style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="interesPagado"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
                 Interés Pagado
               </label>
               <Controller
@@ -1440,33 +1788,66 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
 
         <TabPanel header="Cuotas" leftIcon="pi pi-list">
           {isEdit && defaultValues?.id ? (
-            <CuotaPrestamoList prestamoId={defaultValues.id} readOnly={readOnly} />
+            <CuotaPrestamoList
+              prestamoBancarioId={defaultValues.id}
+              readOnly={readOnly}
+            />
           ) : (
-            <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>
-              <i className="pi pi-info-circle" style={{ fontSize: "2em", marginBottom: "10px" }}></i>
-              <p>Las cuotas se generarán automáticamente después de guardar el préstamo.</p>
+            <div
+              style={{ padding: "20px", textAlign: "center", color: "#666" }}
+            >
+              <i
+                className="pi pi-info-circle"
+                style={{ fontSize: "2em", marginBottom: "10px" }}
+              ></i>
+              <p>
+                Las cuotas se generarán automáticamente después de guardar el
+                préstamo.
+              </p>
             </div>
           )}
         </TabPanel>
 
         <TabPanel header="Desembolsos" leftIcon="pi pi-money-bill">
           {isEdit && defaultValues?.id ? (
-            <DesembolsoPrestamoCard prestamoId={defaultValues.id} readOnly={readOnly} />
+            <DesembolsoPrestamoCard
+              prestamoBancarioId={defaultValues.id}
+              readOnly={readOnly}
+            />
           ) : (
-            <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>
-              <i className="pi pi-info-circle" style={{ fontSize: "2em", marginBottom: "10px" }}></i>
-              <p>Los desembolsos se podrán registrar después de guardar el préstamo.</p>
+            <div
+              style={{ padding: "20px", textAlign: "center", color: "#666" }}
+            >
+              <i
+                className="pi pi-info-circle"
+                style={{ fontSize: "2em", marginBottom: "10px" }}
+              ></i>
+              <p>
+                Los desembolsos se podrán registrar después de guardar el
+                préstamo.
+              </p>
             </div>
           )}
         </TabPanel>
 
         <TabPanel header="Garantías" leftIcon="pi pi-shield">
           {isEdit && defaultValues?.id ? (
-            <GarantiaPrestamoCard prestamoId={defaultValues.id} readOnly={readOnly} />
+            <GarantiaPrestamoCard
+              prestamoBancarioId={defaultValues.id}
+              readOnly={readOnly}
+            />
           ) : (
-            <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>
-              <i className="pi pi-info-circle" style={{ fontSize: "2em", marginBottom: "10px" }}></i>
-              <p>Las garantías se podrán registrar después de guardar el préstamo.</p>
+            <div
+              style={{ padding: "20px", textAlign: "center", color: "#666" }}
+            >
+              <i
+                className="pi pi-info-circle"
+                style={{ fontSize: "2em", marginBottom: "10px" }}
+              ></i>
+              <p>
+                Las garantías se podrán registrar después de guardar el
+                préstamo.
+              </p>
             </div>
           )}
         </TabPanel>
@@ -1499,7 +1880,14 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       </TabView>
 
       {!readOnly && (
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "10px",
+            marginTop: "20px",
+          }}
+        >
           <Button
             label="Cancelar"
             icon="pi pi-times"
