@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboards - Unidades de Negocio | MEGUI ERP</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .card {
+            background: linear-gradient(135deg, var(--color1), var(--color2));
+            border-radius: 15px;
+            padding: 30px;
+            text-decoration: none;
+            color: white;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .card-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        .card-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .card-desc {
+            opacity: 0.9;
+            font-size: 0.95em;
+            margin-bottom: 15px;
+        }
+        .card-modules {
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+        .card1 { --color1: #1E40AF; --color2: #3B82F6; }
+        .card2 { --color1: #059669; --color2: #10B981; }
+        .card3 { --color1: #DC2626; --color2: #EF4444; }
+        .card4 { --color1: #0891B2; --color2: #06B6D4; }
+        .card5 { --color1: #65A30D; --color2: #84CC16; }
+        .card6 { --color1: #7C3AED; --color2: #8B5CF6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏢 MEGUI ERP</h1>
+        <p class="subtitle">Sistema de Gestión por Unidades de Negocio</p>
+        
+        <div class="grid">
+            <a href="pesca-industrial.html" class="card card1">
+                <div class="card-icon">🚢</div>
+                <div class="card-title">Pesca Industrial</div>
+                <div class="card-desc">Captura y procesamiento de anchoveta para harina y aceite de pescado</div>
+                <div class="card-modules">
+                    <strong>Módulos:</strong> Temporadas, Faenas, Descargas, Compras, Ventas, Inventarios
+                </div>
+            </a>
+            
+            <a href="pesca-consumo.html" class="card card2">
+                <div class="card-icon">🐟</div>
+                <div class="card-title">Pesca Consumo</div>
+                <div class="card-desc">Captura de especies para consumo humano directo</div>
+                <div class="card-modules">
+                    <strong>Módulos:</strong> Novedades, Descargas, Liquidaciones, Compras, Ventas, Inventarios
+                </div>
+            </a>
+            
+            <a href="conservas.html" class="card card3">
+                <div class="card-icon">🥫</div>
+                <div class="card-title">Conservas de Pescado</div>
+                <div class="card-desc">Maquila de conservas de pescado enlatado (calidad controlada por planta)</div>
+                <div class="card-modules">
+                    <strong>Módulos:</strong> Líneas Producción, Envasado, Etiquetado, Compras, Ventas, Inventarios
+                </div>
+            </a>
+            
+            <a href="congelados.html" class="card card4">
+                <div class="card-icon">❄️</div>
+                <div class="card-title">Congelados Hidrobiológicos</div>
+                <div class="card-desc">Maquila de congelado IQF (pota, jurel, bonito, caballa) con almacenamiento en planta y almacenes externos</div>
+                <div class="card-modules">
+                    <strong>Módulos:</strong> Congelado IQF, Almacenes Externos, Compras, Ventas, Inventarios, Exportaciones
+                </div>
+            </a>
+            
+            <a href="agroindustrias.html" class="card card5">
+                <div class="card-icon">🌾</div>
+                <div class="card-title">Agroindustrias</div>
+                <div class="card-desc">Acopio de materia prima, maquila externa y control de almacenamiento con vencimientos (cobro mensual adelantado)</div>
+                <div class="card-modules">
+                    <strong>Módulos:</strong> Acopio, Maquila, Control Almacenamiento, Compras, Ventas, Inventarios
+                </div>
+            </a>
+            
+            <a href="servicios.html" class="card card6">
+                <div class="card-icon">🏭</div>
+                <div class="card-title">Servicios de Almacenes</div>
+                <div class="card-desc">Alquiler de espacios y custodia de productos por caja (cobro mensual adelantado)</div>
+                <div class="card-modules">
+                    <strong>Módulos:</strong> Contratos, Custodia, Compras, Ventas, Inventarios
+                </div>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

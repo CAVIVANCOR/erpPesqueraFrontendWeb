@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Congelados Hidrobiológicos | MEGUI ERP</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f7fafc;
+            padding: 0;
+        }
+        .navbar {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .navbar-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        .back-btn {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        .back-btn:hover { background: #5a67d8; }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 60px;
+            width: 250px;
+            height: calc(100vh - 60px);
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+        .sidebar-title {
+            font-size: 0.85em;
+            font-weight: bold;
+            color: #718096;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+        .sidebar-item {
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #4a5568;
+        }
+        .sidebar-item:hover {
+            background: #CFFAFE;
+            color: #0891B2;
+        }
+        .sidebar-item.active {
+            background: linear-gradient(135deg, #0891B2, #06B6D4);
+            color: white;
+        }
+        
+        .main-content {
+            margin-left: 270px;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #0891B2, #06B6D4);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        .header h1 { font-size: 2em; margin-bottom: 10px; }
+        .header p { opacity: 0.9; }
+        
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .kpi-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .kpi-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .kpi-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #2d3748;
+            margin: 10px 0;
+        }
+        .kpi-label {
+            color: #718096;
+            font-size: 0.9em;
+        }
+        .kpi-trend {
+            margin-top: 10px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            display: inline-block;
+        }
+        .trend-up { background: #C6F6D5; color: #22543D; }
+        
+        .module-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .module-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .action-card {
+            background: linear-gradient(135deg, #F7FAFC, #EDF2F7);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #0891B2;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .action-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-left-color: #06B6D4;
+        }
+        .action-icon {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+        .action-title {
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+        .action-desc {
+            font-size: 0.85em;
+            color: #718096;
+        }
+        
+        .table-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .table-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        .btn-new {
+            background: #0891B2;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .btn-new:hover {
+            background: #06B6D4;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: #F7FAFC;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #4a5568;
+            border-bottom: 2px solid #E2E8F0;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #E2E8F0;
+            color: #2d3748;
+        }
+        tr:hover {
+            background: #F7FAFC;
+        }
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .badge-success { background: #C6F6D5; color: #22543D; }
+        .badge-warning { background: #FEF5E7; color: #7D6608; }
+        .badge-info { background: #DBEAFE; color: #1E40AF; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="navbar-title">❄️ Congelados Hidrobiológicos</div>
+        <a href="index.html" class="back-btn">← Volver al menú</a>
+    </div>
+
+    <div class="sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-title">📊 Dashboard</div>
+            <div class="sidebar-item active">
+                <span>📈</span>
+                <span>Resumen General</span>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">❄️ Procesos Productivos</div>
+            <div class="sidebar-item">
+                <span>📦</span>
+                <span>Materia Prima en Proceso</span>
+            </div>
+            <div class="sidebar-item">
+                <span>❄️</span>
+                <span>Producto Final</span>
+            </div>
+            <div class="sidebar-item">
+                <span>📅</span>
+                <span>Vencimientos Almacenamiento Externo</span>
+            </div>
+            <div class="sidebar-item">
+                <span>🚢</span>
+                <span>Salidas Exportación</span>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">💼 Operaciones</div>
+            <div class="sidebar-item">
+                <span>🛒</span>
+                <span>Compras</span>
+            </div>
+            <div class="sidebar-item">
+                <span>💰</span>
+                <span>Ventas</span>
+            </div>
+            <div class="sidebar-item">
+                <span>📦</span>
+                <span>Inventarios</span>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">📋 Maestros</div>
+            <div class="sidebar-item">
+                <span>🐟</span>
+                <span>Productos</span>
+            </div>
+            <div class="sidebar-item">
+                <span>👥</span>
+                <span>Entidades Comerciales</span>
+            </div>
+            <div class="sidebar-item">
+                <span>🏢</span>
+                <span>Almacenes Externos</span>
+            </div>
+            <div class="sidebar-item">
+                <span>🏭</span>
+                <span>Plantas de Maquila</span>
+            </div>
+            <div class="sidebar-item">
+                <span>👤</span>
+                <span>Personal</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>Dashboard - Congelados Hidrobiológicos</h1>
+            <p>Sistema completo de gestión de congelados IQF y almacenamiento externo</p>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon">❄️</div>
+                <div class="kpi-value">450 TN</div>
+                <div class="kpi-label">Stock en Almacenes Externos</div>
+                <div class="kpi-trend trend-up">📊 Stock óptimo</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon">📦</div>
+                <div class="kpi-value">185 TN</div>
+                <div class="kpi-label">Producto en Proceso</div>
+                <div class="kpi-trend trend-up">🏭 En maquila</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon">📅</div>
+                <div class="kpi-value">3</div>
+                <div class="kpi-label">Vencimientos Próximos</div>
+                <div class="kpi-trend trend-up">⚠️ Revisar pagos</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon">🚢</div>
+                <div class="kpi-value">12</div>
+                <div class="kpi-label">Contenedores Listos</div>
+                <div class="kpi-trend trend-up">🚀 Para exportar</div>
+            </div>
+        </div>
+
+        <div class="module-section">
+            <div class="module-title">
+                <span>🛒</span>
+                <span>Módulo de Compras</span>
+            </div>
+            <div class="action-grid">
+                <div class="action-card">
+                    <div class="action-icon">📝</div>
+                    <div class="action-title">Requerimientos</div>
+                    <div class="action-desc">Gestionar solicitudes de compra</div>
+                </div>
+                <div class="action-card">
+                    <div class="action-icon">🛍️</div>
+                    <div class="action-title">Órdenes de Compra</div>
+                    <div class="action-desc">Crear y gestionar OC</div>
+                </div>
+                <div class="action-card">
+                    <div class="action-icon">📊</div>
+                    <div class="action-title">Reportes de Compras</div>
+                    <div class="action-desc">Análisis y estadísticas</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="module-section">
+            <div class="module-title">
+                <span>💰</span>
+                <span>Módulo de Ventas</span>
+            </div>
+            <div class="action-grid">
+                <div class="action-card">
+                    <div class="action-icon">📋</div>
+                    <div class="action-title">Cotizaciones</div>
+                    <div class="action-desc">Generar cotizaciones</div>
+                </div>
+                <div class="action-card">
+                    <div class="action-icon">📄</div>
+                    <div class="action-title">PreFacturas</div>
+                    <div class="action-desc">Gestionar prefacturas</div>
+                </div>
+                <div class="action-card">
+                    <div class="action-icon">🧾</div>
+                    <div class="action-title">Comprobantes</div>
+                    <div class="action-desc">Facturación electrónica</div>
+                </div>
+                <div class="action-card">
+                    <div class="action-icon">📈</div>
+                    <div class="action-title">Reportes de Ventas</div>
+                    <div class="action-desc">Análisis de ventas</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="module-section">
+            <div class="module-title">
+                <span>📦</span>
+                <span>Módulo de Inventarios</span>
+            </div>
+            <div class="action-grid">
+                <div class="action-card">
+                    <div class="action-icon">📥</div>
+                    <div class="action-title">Movimientos</div>
+                    <div class="action-desc">Ingresos y salidas</div>
+                </div>
+                <div class="action-card">
+                    <div class="action-icon">📊</div>
+                    <div class="action-title">Kardex</div>
+                    <div class="action-desc">Historial de movimientos</div>
+                </div>
+                <div class="action-card">
+                    <div class="action-icon">🔍</div>
+                    <div class="action-title">Consulta de Stock</div>
+                    <div class="action-desc">Disponibilidad en tiempo real</div>
+                </div>
+                <div class="action-card">
+                    <div class="action-icon">⚠️</div>
+                    <div class="action-title">Alertas de Stock</div>
+                    <div class="action-desc">Stock mínimo y máximo</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-section">
+            <div class="table-header">
+                <div class="table-title">🐟 Productos - Congelados IQF</div>
+                <button class="btn-new">+ Nuevo Producto</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Producto</th>
+                        <th>Presentación</th>
+                        <th>Stock Actual</th>
+                        <th>Unidad</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>CONG-001</td>
+                        <td>Pota Congelada IQF</td>
+                        <td>Bloques 10kg</td>
+                        <td>185 TN</td>
+                        <td>TN</td>
+                        <td><span class="badge badge-success">Activo</span></td>
+                    </tr>
+                    <tr>
+                        <td>CONG-002</td>
+                        <td>Jurel Congelado IQF</td>
+                        <td>Bloques 10kg</td>
+                        <td>125 TN</td>
+                        <td>TN</td>
+                        <td><span class="badge badge-success">Activo</span></td>
+                    </tr>
+                    <tr>
+                        <td>CONG-003</td>
+                        <td>Bonito Congelado IQF</td>
+                        <td>Bloques 10kg</td>
+                        <td>92 TN</td>
+                        <td>TN</td>
+                        <td><span class="badge badge-warning">Stock Bajo</span></td>
+                    </tr>
+                    <tr>
+                        <td>CONG-004</td>
+                        <td>Caballa Congelada IQF</td>
+                        <td>Bloques 10kg</td>
+                        <td>48 TN</td>
+                        <td>TN</td>
+                        <td><span class="badge badge-success">Activo</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-section">
+            <div class="table-header">
+                <div class="table-title">🏢 Almacenes Externos</div>
+                <button class="btn-new">+ Nuevo Almacén</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Ubicación</th>
+                        <th>Stock Actual</th>
+                        <th>Vencimiento Pago</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>ALM-EXT-001</td>
+                        <td>Frigorífico del Pacífico</td>
+                        <td>Callao</td>
+                        <td>185 TN</td>
+                        <td>15/02/2026</td>
+                        <td><span class="badge badge-success">Vigente</span></td>
+                    </tr>
+                    <tr>
+                        <td>ALM-EXT-002</td>
+                        <td>Almacenes Frigoríficos del Sur</td>
+                        <td>Pisco</td>
+                        <td>125 TN</td>
+                        <td>28/02/2026</td>
+                        <td><span class="badge badge-warning">Por vencer</span></td>
+                    </tr>
+                    <tr>
+                        <td>ALM-EXT-003</td>
+                        <td>Congelados Industriales SAC</td>
+                        <td>Chimbote</td>
+                        <td>140 TN</td>
+                        <td>10/03/2026</td>
+                        <td><span class="badge badge-success">Vigente</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-section">
+            <div class="table-header">
+                <div class="table-title">👥 Entidades Comerciales</div>
+                <button class="btn-new">+ Nueva Entidad</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>RUC</th>
+                        <th>Razón Social</th>
+                        <th>Tipo</th>
+                        <th>Contacto</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>20123456789</td>
+                        <td>Exportadora de Productos Congelados SAC</td>
+                        <td><span class="badge badge-info">Cliente</span></td>
+                        <td>export@congelados.com</td>
+                        <td><span class="badge badge-success">Activo</span></td>
+                    </tr>
+                    <tr>
+                        <td>20987654321</td>
+                        <td>Planta de Congelado IQF del Norte EIRL</td>
+                        <td><span class="badge badge-warning">Proveedor Maquila</span></td>
+                        <td>operaciones@iqfnorte.com</td>
+                        <td><span class="badge badge-success">Activo</span></td>
+                    </tr>
+                    <tr>
+                        <td>20456789123</td>
+                        <td>Distribuidora Internacional de Congelados SA</td>
+                        <td><span class="badge badge-info">Cliente</span></td>
+                        <td>ventas@distcongelados.com</td>
+                        <td><span class="badge badge-success">Activo</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

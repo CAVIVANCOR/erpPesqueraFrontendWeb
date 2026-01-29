@@ -13,7 +13,7 @@ import { generarPDFReporteLineasDisponibles, descargarPDFReporte } from "./Repor
 
 export default function ReporteLineasDisponibles() {
   const toast = useRef(null);
-  const [reporte, setReporte] = useState([]);
+  const [reporte, setReporte] = useState(null);
   const [empresas, setEmpresas] = useState([]);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -54,7 +54,7 @@ export default function ReporteLineasDisponibles() {
       const data = await getReporteLineasDisponibles(empresaSeleccionada);
       setReporte(data);
 
-      if (data.length === 0) {
+      if (!data || !data.resumen || !data.resumen.bancos || data.resumen.bancos.length === 0) {
         toast.current?.show({
           severity: "info",
           summary: "Sin resultados",
@@ -76,7 +76,7 @@ export default function ReporteLineasDisponibles() {
   };
 
   const exportPDF = async () => {
-    if (!reporte || reporte.length === 0) {
+    if (!reporte || !reporte.resumen || !reporte.resumen.bancos || reporte.resumen.bancos.length === 0) {
       toast.current?.show({
         severity: "warn",
         summary: "Advertencia",
@@ -91,7 +91,7 @@ export default function ReporteLineasDisponibles() {
       const empresaData = empresas.find(e => Number(e.id) === Number(empresaSeleccionada));
       const pdfBytes = await generarPDFReporteLineasDisponibles(reporte, empresaData);
       
-  const nombreArchivo = `reporte-lineas-credito-${empresaData?.razonSocial || 'empresa'}.pdf`;
+      const nombreArchivo = `reporte-lineas-credito-${empresaData?.razonSocial || 'empresa'}.pdf`;
       descargarPDFReporte(pdfBytes, nombreArchivo);
 
       toast.current?.show({
@@ -113,7 +113,7 @@ export default function ReporteLineasDisponibles() {
     }
   };
 
-  const formatCurrency = (value, moneda = "PEN") => {
+  const formatCurrency = (value, moneda = "USD") => {
     const simbolo = moneda === "USD" ? "$" : "S/";
     return `${simbolo} ${new Intl.NumberFormat("es-PE", {
       minimumFractionDigits: 2,
@@ -121,87 +121,7 @@ export default function ReporteLineasDisponibles() {
     }).format(value || 0)}`;
   };
 
-  const montoAprobadoTemplate = (rowData) => {
-    return formatCurrency(rowData.montoAprobado, rowData.moneda?.codigo);
-  };
-
-  const montoUtilizadoTemplate = (rowData) => {
-    return formatCurrency(rowData.montoUtilizado, rowData.moneda?.codigo);
-  };
-
-  const montoDisponibleTemplate = (rowData) => {
-    return formatCurrency(rowData.montoDisponible, rowData.moneda?.codigo);
-  };
-
-  const porcentajeUsoTemplate = (rowData) => {
-    const porcentaje = rowData.montoAprobado > 0
-      ? ((rowData.montoUtilizado / rowData.montoAprobado) * 100).toFixed(1)
-      : 0;
-
-    let color = "#22c55e";
-    if (porcentaje > 80) color = "#ef4444";
-    else if (porcentaje > 50) color = "#f59e0b";
-
-    return (
-      <div>
-        <ProgressBar
-          value={parseFloat(porcentaje)}
-          showValue={false}
-          style={{ height: "8px", marginBottom: "4px" }}
-          color={color}
-        />
-        <span style={{ fontSize: "0.85rem", fontWeight: "600", color }}>
-          {porcentaje}%
-        </span>
-      </div>
-    );
-  };
-
-  const estadoTemplate = (rowData) => {
-    const estadoMap = {
-      APROBADA: { label: "APROBADA", color: "#3b82f6" },
-      VIGENTE: { label: "VIGENTE", color: "#22c55e" },
-      VENCIDA: { label: "VENCIDA", color: "#ef4444" },
-      CANCELADA: { label: "CANCELADA", color: "#6b7280" },
-    };
-
-    const estado = estadoMap[rowData.estado?.descripcion] || {
-      label: rowData.estado?.descripcion || "N/A",
-      color: "#6b7280",
-    };
-
-    return (
-      <span
-        style={{
-          padding: "4px 8px",
-          borderRadius: "4px",
-          backgroundColor: estado.color,
-          color: "white",
-          fontSize: "0.75rem",
-          fontWeight: "600",
-        }}
-      >
-        {estado.label}
-      </span>
-    );
-  };
-
-  const calcularTotales = () => {
-    return reporte.reduce(
-      (acc, linea) => {
-        acc.aprobado += Number(linea.montoAprobado || 0);
-        acc.utilizado += Number(linea.montoUtilizado || 0);
-        acc.disponible += Number(linea.montoDisponible || 0);
-        return acc;
-      },
-      { aprobado: 0, utilizado: 0, disponible: 0 }
-    );
-  };
-
-  const totales = calcularTotales();
-  const porcentajeUsoTotal = totales.aprobado > 0
-    ? ((totales.utilizado / totales.aprobado) * 100).toFixed(1)
-    : 0;
+  const totales = reporte?.resumen?.totales || { limite: 0, utilizado: 0, disponible: 0, porcentajeUtilizado: 0 };
 
   return (
     <div>
@@ -250,13 +170,16 @@ export default function ReporteLineasDisponibles() {
               className="p-button-success"
               onClick={exportPDF}
               loading={generandoPDF}
-              disabled={!reporte || reporte.length === 0}
+              disabled={!reporte || !reporte.resumen || !reporte.resumen.bancos || reporte.resumen.bancos.length === 0}
             />
           </div>
         </div>
 
-        {reporte && reporte.length > 0 && (
+        {reporte && reporte.resumen && reporte.resumen.bancos && reporte.resumen.bancos.length > 0 && (
           <>
+            {/* SECCIÓN 1: RESUMEN SUPERIOR */}
+            <h2 style={{ marginBottom: "1rem", color: "#2d3748" }}>📊 Resumen de Líneas de Crédito</h2>
+            
             <div
               style={{
                 display: "grid",
@@ -272,10 +195,10 @@ export default function ReporteLineasDisponibles() {
                 }}
               >
                 <h4 style={{ margin: 0, fontSize: "0.9rem", opacity: 0.9 }}>
-                  Total Aprobado
+                  Total Límite
                 </h4>
                 <p style={{ margin: "0.5rem 0 0 0", fontSize: "1.5rem", fontWeight: "bold" }}>
-                  {formatCurrency(totales.aprobado)}
+                  {formatCurrency(totales.limite)}
                 </p>
               </Card>
 
@@ -317,53 +240,140 @@ export default function ReporteLineasDisponibles() {
                   % Uso Total
                 </h4>
                 <p style={{ margin: "0.5rem 0 0 0", fontSize: "1.5rem", fontWeight: "bold" }}>
-                  {porcentajeUsoTotal}%
+                  {totales.porcentajeUtilizado.toFixed(2)}%
                 </p>
               </Card>
             </div>
 
             <DataTable
-              value={reporte}
-              paginator
-              rows={10}
-              rowsPerPageOptions={[5, 10, 25, 50]}
+              value={reporte.resumen.bancos}
               responsiveLayout="scroll"
               stripedRows
-              emptyMessage="No hay líneas de crédito"
+              style={{ marginBottom: "2rem" }}
             >
-              <Column field="numeroLinea" header="Número Línea" sortable />
+              <Column field="banco" header="Banco" sortable />
+              <Column field="moneda" header="Moneda" sortable />
               <Column
-                field="banco.nombre"
-                header="Banco"
+                field="limite"
+                header="Límite"
                 sortable
-              />
-              <Column field="tipoLinea" header="Tipo" sortable />
-              <Column
-                field="moneda.codigo"
-                header="Moneda"
-                sortable
+                body={(rowData) => formatCurrency(rowData.limite, rowData.moneda)}
               />
               <Column
-                header="Monto Aprobado"
-                body={montoAprobadoTemplate}
+                field="utilizado"
+                header="Utilizado"
                 sortable
-                sortField="montoAprobado"
+                body={(rowData) => formatCurrency(rowData.utilizado, rowData.moneda)}
               />
               <Column
-                header="Monto Utilizado"
-                body={montoUtilizadoTemplate}
+                field="disponible"
+                header="Disponible"
                 sortable
-                sortField="montoUtilizado"
+                body={(rowData) => formatCurrency(rowData.disponible, rowData.moneda)}
               />
               <Column
-                header="Monto Disponible"
-                body={montoDisponibleTemplate}
+                field="porcentajeUtilizado"
+                header="% Utilizado"
                 sortable
-                sortField="montoDisponible"
+                body={(rowData) => `${rowData.porcentajeUtilizado.toFixed(2)}%`}
               />
-              <Column header="% Uso" body={porcentajeUsoTemplate} />
-              <Column header="Estado" body={estadoTemplate} />
             </DataTable>
+
+            {/* SECCIÓN 2: DETALLE POR BANCO */}
+            <h2 style={{ marginTop: "2rem", marginBottom: "1rem", color: "#2d3748" }}>📋 Detalle por Banco</h2>
+            
+            {reporte.detalle && reporte.detalle.map((banco, index) => (
+              <div key={index} style={{ marginBottom: "2rem" }}>
+                <Card style={{ background: "#f8f9fa", marginBottom: "1rem" }}>
+                  <h3 style={{ margin: 0, color: "#2d3748" }}>
+                    🏦 {banco.banco}
+                  </h3>
+                </Card>
+
+                <DataTable
+                  value={banco.lineas}
+                  responsiveLayout="scroll"
+                  stripedRows
+                  emptyMessage="No hay líneas de crédito"
+                >
+                  <Column field="numeroLinea" header="Número Línea" sortable />
+                  <Column field="tipoLinea" header="Tipo Línea" sortable />
+                  <Column field="moneda" header="Moneda" sortable />
+                  <Column
+                    field="limite"
+                    header="Límite"
+                    sortable
+                    body={(rowData) => formatCurrency(rowData.limite, rowData.moneda)}
+                  />
+                  <Column
+                    field="utilizado"
+                    header="Utilizado"
+                    sortable
+                    body={(rowData) => formatCurrency(rowData.utilizado, rowData.moneda)}
+                  />
+                  <Column
+                    field="disponible"
+                    header="Disponible"
+                    sortable
+                    body={(rowData) => formatCurrency(rowData.disponible, rowData.moneda)}
+                  />
+                  <Column
+                    field="tasa"
+                    header="Tasa %"
+                    sortable
+                    body={(rowData) => `${rowData.tasa.toFixed(2)}%`}
+                  />
+                  <Column
+                    header="Tipos de Préstamo"
+                    body={(rowData) => (
+                      <div>
+                        {rowData.tiposPrestamo && rowData.tiposPrestamo.map((tipo, idx) => (
+                          <div key={idx} style={{ fontSize: "0.85rem" }}>
+                            <strong>{tipo.tipo}:</strong> {formatCurrency(tipo.saldo, rowData.moneda)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  />
+                </DataTable>
+              </div>
+            ))}
+
+            {/* SECCIÓN 3: FACTORING INDIRECTO */}
+            {reporte.factoring && reporte.factoring.length > 0 && (
+              <>
+                <h2 style={{ marginTop: "2rem", marginBottom: "1rem", color: "#2d3748" }}>💼 Factoring Indirecto</h2>
+                
+                {reporte.factoring.map((banco, index) => (
+                  <div key={index} style={{ marginBottom: "2rem" }}>
+                    <Card style={{ background: "#f8f9fa", marginBottom: "1rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <h3 style={{ margin: 0, color: "#2d3748" }}>
+                          🏦 {banco.banco} - {banco.moneda}
+                        </h3>
+                        <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#2d3748" }}>
+                          Total: {formatCurrency(banco.total, banco.moneda)}
+                        </div>
+                      </div>
+                    </Card>
+
+                    <DataTable
+                      value={banco.clientes}
+                      stripedRows
+                      emptyMessage="No hay factoring indirecto"
+                    >
+                      <Column field="nombre" header="Cliente" sortable />
+                      <Column
+                        field="monto"
+                        header="Monto"
+                        sortable
+                        body={(rowData) => formatCurrency(rowData.monto, banco.moneda)}
+                      />
+                    </DataTable>
+                  </div>
+                ))}
+              </>
+            )}
           </>
         )}
       </Card>
