@@ -79,7 +79,8 @@ export default function OrdenCompra({ ruta }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showRequerimientoDialog, setShowRequerimientoDialog] = useState(false);
   const [requerimientoOrigen, setRequerimientoOrigen] = useState(null);
-  const [showMovimientoAlmacenDialog, setShowMovimientoAlmacenDialog] = useState(false);
+  const [showMovimientoAlmacenDialog, setShowMovimientoAlmacenDialog] =
+    useState(false);
   const [movimientoAlmacenOrigen, setMovimientoAlmacenOrigen] = useState(null);
   const [toDelete, setToDelete] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
@@ -99,13 +100,13 @@ export default function OrdenCompra({ ruta }) {
 
     if (empresaSeleccionada) {
       filtrados = filtrados.filter(
-        (item) => Number(item.empresaId) === Number(empresaSeleccionada)
+        (item) => Number(item.empresaId) === Number(empresaSeleccionada),
       );
     }
 
     if (proveedorSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => Number(item.proveedorId) === Number(proveedorSeleccionado)
+        (item) => Number(item.proveedorId) === Number(proveedorSeleccionado),
       );
     }
 
@@ -129,7 +130,7 @@ export default function OrdenCompra({ ruta }) {
 
     if (estadoSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => Number(item.estadoId) === Number(estadoSeleccionado)
+        (item) => Number(item.estadoId) === Number(estadoSeleccionado),
       );
     }
 
@@ -216,30 +217,30 @@ export default function OrdenCompra({ ruta }) {
       setPersonalOptions(personalConNombres);
 
       const estadosDocFiltrados = estadosData.filter(
-        (e) => Number(e.tipoProvieneDeId) === 12 && !e.cesado
+        (e) => Number(e.tipoProvieneDeId) === 12 && !e.cesado,
       );
       setEstadosDoc(estadosDocFiltrados);
 
       const estadosMercaderiaFiltrados = estadosData.filter(
-        (e) => Number(e.tipoProvieneDeId) === 2 && !e.cesado
+        (e) => Number(e.tipoProvieneDeId) === 2 && !e.cesado,
       );
       setEstadosMercaderia(estadosMercaderiaFiltrados);
 
       const estadosCalidadFiltrados = estadosData.filter(
-        (e) => Number(e.tipoProvieneDeId) === 10 && !e.cesado
+        (e) => Number(e.tipoProvieneDeId) === 10 && !e.cesado,
       );
       setEstadosCalidad(estadosCalidadFiltrados);
 
       const ordenesNormalizadas = ordenesData.map((orden) => ({
         ...orden,
         estadoDoc: estadosDocFiltrados.find(
-          (e) => Number(e.id) === Number(orden.estadoId)
+          (e) => Number(e.id) === Number(orden.estadoId),
         ),
       }));
       setItems(ordenesNormalizadas);
 
       const requerimientosAprobados = requerimientosData.filter(
-        (r) => r.estadoDocId === 33
+        (r) => r.estadoDocId === 33,
       );
       setRequerimientos(requerimientosAprobados);
     } catch (err) {
@@ -271,15 +272,10 @@ export default function OrdenCompra({ ruta }) {
 
   const recargarOrdenActual = async () => {
     if (!editing?.id) return;
-    
+
     try {
-      console.log("🔄 [OrdenCompra] Recargando orden actual desde BD...");
       const { getOrdenCompraPorId } = await import("../api/ordenCompra");
       const ordenActualizada = await getOrdenCompraPorId(editing.id);
-      
-      console.log("✅ [OrdenCompra] Orden recargada:", ordenActualizada);
-      console.log("📎 [OrdenCompra] datosAdicionales actualizados:", ordenActualizada.datosAdicionales);
-      
       setEditing(ordenActualizada);
     } catch (error) {
       console.error("❌ [OrdenCompra] Error al recargar orden:", error);
@@ -415,9 +411,9 @@ export default function OrdenCompra({ ruta }) {
 
       const { getOrdenCompraPorId } = await import("../api/ordenCompra");
       const ordenActualizada = await getOrdenCompraPorId(id);
-      
+
       setEditing(ordenActualizada);
-      
+
       cargarDatos();
     } catch (err) {
       console.error("Error al aprobar:", err);
@@ -467,12 +463,10 @@ export default function OrdenCompra({ ruta }) {
 
   const handleIrAlOrigen = async (requerimientoId) => {
     try {
-      const { getRequerimientoCompraPorId } = await import(
-        "../api/requerimientoCompra"
-      );
-      const requerimientoCompleto = await getRequerimientoCompraPorId(
-        requerimientoId
-      );
+      const { getRequerimientoCompraPorId } =
+        await import("../api/requerimientoCompra");
+      const requerimientoCompleto =
+        await getRequerimientoCompraPorId(requerimientoId);
 
       setRequerimientoOrigen(requerimientoCompleto);
       setShowRequerimientoDialog(true);
@@ -489,9 +483,8 @@ export default function OrdenCompra({ ruta }) {
 
   const handleIrAMovimientoAlmacen = async (movimientoId) => {
     try {
-      const { getMovimientoAlmacenPorId } = await import(
-        "../api/movimientoAlmacen"
-      );
+      const { getMovimientoAlmacenPorId } =
+        await import("../api/movimientoAlmacen");
       const movimientoCompleto = await getMovimientoAlmacenPorId(movimientoId);
 
       setMovimientoAlmacenOrigen(movimientoCompleto);
@@ -546,6 +539,26 @@ export default function OrdenCompra({ ruta }) {
         return;
       }
 
+      // ✅ VALIDAR ESTADOS PROHIBIDOS - AGREGADO SIN ELIMINAR NADA
+      const estadoId = Number(ordenActual.estadoId);
+      const estadosProhibidos = [38, 40, 50];
+
+      if (estadosProhibidos.includes(estadoId)) {
+        const mensajes = {
+          38: "La orden debe estar APROBADA para generar kardex",
+          40: "No se puede generar kardex de una orden ANULADA",
+          50: "No se puede generar kardex de una orden PARTICIONADA",
+        };
+
+        toast.current.show({
+          severity: "warn",
+          summary: "Acción no permitida",
+          detail: mensajes[estadoId],
+          life: 5000,
+        });
+        return;
+      }
+
       if (ordenActual.movIngresoAlmacenId) {
         confirmDialog({
           message:
@@ -566,19 +579,27 @@ export default function OrdenCompra({ ruta }) {
                 detail: "Kardex regenerado correctamente",
               });
 
-              const { getOrdenCompraPorId } = await import("../api/ordenCompra");
+              const { getOrdenCompraPorId } =
+                await import("../api/ordenCompra");
               const ordenActualizada = await getOrdenCompraPorId(id);
               setEditing(ordenActualizada);
 
               await cargarDatos();
             } catch (error) {
               console.error("Error al regenerar kardex:", error);
+
+              // ✅ CAPTURAR MENSAJE DEL BACKEND
+              const mensajeError =
+                error.response?.data?.mensaje ||
+                error.response?.data?.message ||
+                error.message ||
+                "Error al regenerar el kardex";
+
               toast.current.show({
                 severity: "error",
                 summary: "Error",
-                detail:
-                  error.response?.data?.message ||
-                  "Error al regenerar el kardex",
+                detail: mensajeError,
+                life: 7000, // 7 segundos para que el usuario pueda leer el mensaje completo
               });
             } finally {
               setLoading(false);
@@ -605,18 +626,27 @@ export default function OrdenCompra({ ruta }) {
                 detail: "Kardex generado correctamente",
               });
 
-              const { getOrdenCompraPorId } = await import("../api/ordenCompra");
+              const { getOrdenCompraPorId } =
+                await import("../api/ordenCompra");
               const ordenActualizada = await getOrdenCompraPorId(id);
               setEditing(ordenActualizada);
 
               await cargarDatos();
             } catch (error) {
               console.error("Error al generar kardex:", error);
+
+              // ✅ CAPTURAR MENSAJE DEL BACKEND
+              const mensajeError =
+                error.response?.data?.mensaje ||
+                error.response?.data?.message ||
+                error.message ||
+                "Error al generar el kardex";
+
               toast.current.show({
                 severity: "error",
                 summary: "Error",
-                detail:
-                  error.response?.data?.message || "Error al generar el kardex",
+                detail: mensajeError,
+                life: 7000,
               });
             } finally {
               setLoading(false);
@@ -687,7 +717,15 @@ export default function OrdenCompra({ ruta }) {
   };
 
   const actionBody = (rowData) => (
-    <div style={{ display: "flex", flexDirection: "row", gap: "4px", justifyContent: "center", alignItems: "center" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        gap: "4px",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
       <Button
         icon="pi pi-pencil"
         className="p-button-text p-button-sm"

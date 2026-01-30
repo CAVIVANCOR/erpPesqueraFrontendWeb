@@ -249,13 +249,6 @@ const CotizacionVentasForm = ({
 
   // Actualizar formData cuando cambian los defaultValues (modo edición)
   useEffect(() => {
-    console.log(
-      "🟡 [CotizacionVentasForm] useEffect detectó cambio en defaultValues",
-    );
-    console.log(
-      "🟡 [CotizacionVentasForm] defaultValues.urlCotizacionPdf:",
-      defaultValues?.urlCotizacionPdf,
-    );
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       setFormData((prev) => ({
         ...prev,

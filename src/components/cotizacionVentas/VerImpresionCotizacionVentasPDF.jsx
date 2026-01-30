@@ -122,7 +122,6 @@ const VerImpresionCotizacionVentasPDF = ({
 
     const detallesCompletos = cotizacionCompleta.detallesProductos || detalles;
 
-    console.log("🔄 [VerImpresionCotizacionVentasPDF] Generando PDF con idioma:", idioma);
     const resultado = await generarYSubirPDFCotizacionVentas(
       cotizacionCompleta,
       detallesCompletos,
@@ -130,38 +129,19 @@ const VerImpresionCotizacionVentasPDF = ({
       idioma
     );
 
-    console.log("📦 [VerImpresionCotizacionVentasPDF] Resultado de generación:", resultado);
 
     if (resultado.success && resultado.urlPdf) {
       try {
-        console.log("💾 [VerImpresionCotizacionVentasPDF] Guardando URL del PDF en BD...");
-        console.log("🆔 [VerImpresionCotizacionVentasPDF] ID de cotización:", datosCotizacion.id);
-        console.log("🔗 [VerImpresionCotizacionVentasPDF] URL a guardar:", resultado.urlPdf);
-        
         const dataToUpdate = {
           urlCotizacionPdf: resultado.urlPdf,
         };
-
-        console.log("📤 [VerImpresionCotizacionVentasPDF] Datos a enviar:", dataToUpdate);
-
         const respuestaActualizacion = await actualizarCotizacionVentas(datosCotizacion.id, dataToUpdate);
-
-        console.log("✅ [VerImpresionCotizacionVentasPDF] Respuesta de actualización:", respuestaActualizacion);
-        console.log("✅ [VerImpresionCotizacionVentasPDF] Datos guardados correctamente en BD");
-
         if (onPdfGenerated && typeof onPdfGenerated === "function") {
-          console.log("📢 [VerImpresionCotizacionVentasPDF] Llamando onPdfGenerated...");
           onPdfGenerated(resultado.urlPdf);
         }
-
         if (onRecargarRegistro && typeof onRecargarRegistro === "function") {
-          console.log("🔄 [VerImpresionCotizacionVentasPDF] Llamando onRecargarRegistro...");
           await onRecargarRegistro();
-          console.log("✅ [VerImpresionCotizacionVentasPDF] Registro recargado exitosamente");
-        } else {
-          console.warn("⚠️ [VerImpresionCotizacionVentasPDF] onRecargarRegistro NO está definido o no es función");
-        }
-
+        } 
         if (toast?.current) {
           toast.current.show({
             severity: "success",
@@ -171,10 +151,6 @@ const VerImpresionCotizacionVentasPDF = ({
           });
         }
       } catch (error) {
-        console.error("❌ [VerImpresionCotizacionVentasPDF] Error al guardar:", error);
-        console.error("❌ Detalles del error:", error.response?.data || error.message);
-        console.error("❌ Stack trace:", error.stack);
-        
         if (toast?.current) {
           toast.current.show({
             severity: "warn",
@@ -184,8 +160,6 @@ const VerImpresionCotizacionVentasPDF = ({
           });
         }
       }
-    } else {
-      console.error("❌ [VerImpresionCotizacionVentasPDF] No se pudo generar el PDF:", resultado.error);
     }
 
     return resultado;

@@ -46,20 +46,11 @@ export async function generarYSubirPDFRequerimientoCompra(
       },
       body: formData,
     });
-
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || "Error al subir el PDF");
     }
-
     const resultado = await response.json();
-
-    console.log(
-      "🔍 [RequerimientoCompraPDF] Respuesta del backend:",
-      resultado,
-    );
-    console.log("🔍 [RequerimientoCompraPDF] URL retornada:", resultado.url);
-
     return {
       success: true,
       urlPdf: resultado.url,

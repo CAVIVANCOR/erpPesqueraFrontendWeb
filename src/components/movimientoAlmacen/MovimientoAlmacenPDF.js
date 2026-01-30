@@ -20,9 +20,7 @@ export async function generarYSubirPDFMovimientoAlmacen(
   empresa,
   incluirCostos = false
 ) {
-  try {
-    console.log('📤 Generando PDF con:', { movimientoId: movimiento.id, incluirCostos });
-    
+  try {    
     // 1. Generar el PDF
     const pdfBytes = await generarPDFMovimientoAlmacen(
       movimiento,
@@ -30,10 +28,8 @@ export async function generarYSubirPDFMovimientoAlmacen(
       empresa,
       incluirCostos
     );
-
     // 2. Crear un blob del PDF
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
-
     // 3. Crear FormData para subir
     const formData = new FormData();
     const sufijo = incluirCostos ? "-costos" : "";
@@ -41,13 +37,6 @@ export async function generarYSubirPDFMovimientoAlmacen(
     formData.append("pdf", blob, nombreArchivo);
     formData.append("movimientoId", String(movimiento.id));
     formData.append("incluirCostos", String(incluirCostos));
-
-    console.log('📤 Enviando al backend:', {
-      movimientoId: String(movimiento.id),
-      incluirCostos: String(incluirCostos),
-      nombreArchivo
-    });
-
     // 4. Subir al servidor
     const token = useAuthStore.getState().token;
     const response = await fetch(
@@ -60,16 +49,12 @@ export async function generarYSubirPDFMovimientoAlmacen(
         body: formData,
       }
     );
-
     if (!response.ok) {
       const errorData = await response.json();
       console.error('❌ Error del backend:', errorData);
       throw new Error(errorData.error || errorData.mensaje || "Error al subir el PDF");
     }
-
     const resultado = await response.json();
-    console.log('✅ PDF subido exitosamente:', resultado);
-
     return {
       success: true,
       urlPdf: incluirCostos

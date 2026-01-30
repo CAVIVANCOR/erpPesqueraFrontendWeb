@@ -1,23 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Navigate } from 'react-router-dom';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Dialog } from 'primereact/dialog';
-import { Toast } from 'primereact/toast';
-import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
-import { Dropdown } from 'primereact/dropdown';
-import { Tag } from 'primereact/tag';
-import { ProgressBar } from 'primereact/progressbar';
-import { getAllLineaCredito, deleteLineaCredito } from '../../api/tesoreria/lineaCredito';
-import { getEmpresas } from '../../api/empresa';
-import { getAllBancos } from '../../api/banco';
-import { getAllMonedas } from '../../api/moneda';
-import { getEstadosMultiFuncionPorTipoProviene } from '../../api/estadoMultiFuncion';
-import LineaCreditoForm from '../../components/tesoreria/LineaCreditoForm';
-import ReporteLineasDisponibles from '../../components/tesoreria/ReporteLineasDisponibles';
+import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { Dropdown } from "primereact/dropdown";
+import { Tag } from "primereact/tag";
+import { ProgressBar } from "primereact/progressbar";
+import {
+  getAllLineaCredito,
+  deleteLineaCredito,
+} from "../../api/tesoreria/lineaCredito";
+import { getEmpresas } from "../../api/empresa";
+import { getAllBancos } from "../../api/banco";
+import { getAllMonedas } from "../../api/moneda";
+import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
+import { getEnumsTesoreria } from "../../api/tesoreria/enumsTesoreria";
+import LineaCreditoForm from "../../components/tesoreria/LineaCreditoForm";
+import ReporteLineasDisponibles from "../../components/tesoreria/ReporteLineasDisponibles";
 import { getResponsiveFontSize } from "../../utils/utils";
-import { usePermissions } from '../../hooks/usePermissions';
+import { usePermissions } from "../../hooks/usePermissions";
 
 const LineaCredito = ({ ruta }) => {
   const permisos = usePermissions(ruta);
@@ -48,8 +52,14 @@ const LineaCredito = ({ ruta }) => {
   const [tipoLineaSeleccionado, setTipoLineaSeleccionado] = useState(null);
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [globalFilter, setGlobalFilter] = useState('');
+  const [globalFilter, setGlobalFilter] = useState("");
   const [mostrarReporte, setMostrarReporte] = useState(false);
+  // Estados para catálogos filtrados dinámicamente
+  const [bancosFiltrados, setBancosFiltrados] = useState([]);
+  const [estadosFiltrados, setEstadosFiltrados] = useState([]);
+  const [tiposLineaFiltrados, setTiposLineaFiltrados] = useState([]);
+  const [monedasFiltradas, setMonedasFiltradas] = useState([]);
+  const [enums, setEnums] = useState({ tiposLineaCredito: [] });
 
   // Cargar datos al montar el componente
   useEffect(() => {
@@ -62,58 +72,147 @@ const LineaCredito = ({ ruta }) => {
 
     if (empresaSeleccionada) {
       filtradas = filtradas.filter(
-        (linea) => Number(linea.empresaId) === Number(empresaSeleccionada)
+        (linea) => Number(linea.empresaId) === Number(empresaSeleccionada),
       );
     }
 
     if (bancoSeleccionado) {
       filtradas = filtradas.filter(
-        (linea) => Number(linea.bancoId) === Number(bancoSeleccionado)
+        (linea) => Number(linea.bancoId) === Number(bancoSeleccionado),
       );
     }
 
     if (estadoSeleccionado) {
       filtradas = filtradas.filter(
-        (linea) => Number(linea.estadoId) === Number(estadoSeleccionado)
+        (linea) => Number(linea.estadoId) === Number(estadoSeleccionado),
       );
     }
 
     if (tipoLineaSeleccionado) {
       filtradas = filtradas.filter(
-        (linea) => linea.tipoLinea === tipoLineaSeleccionado
+        (linea) => linea.tipoLinea === tipoLineaSeleccionado,
       );
     }
 
     if (monedaSeleccionada) {
       filtradas = filtradas.filter(
-        (linea) => Number(linea.monedaId) === Number(monedaSeleccionada)
+        (linea) => Number(linea.monedaId) === Number(monedaSeleccionada),
       );
     }
 
     setLineasFiltradas(filtradas);
-  }, [empresaSeleccionada, bancoSeleccionado, estadoSeleccionado, tipoLineaSeleccionado, monedaSeleccionada, lineas]);
+  }, [
+    empresaSeleccionada,
+    bancoSeleccionado,
+    estadoSeleccionado,
+    tipoLineaSeleccionado,
+    monedaSeleccionada,
+    lineas,
+  ]);
+
+  // ⭐ FILTRADO DINÁMICO EN CASCADA - Actualizar opciones de dropdowns
+  useEffect(() => {
+    // Obtener líneas que cumplen con TODOS los filtros activos
+    let lineasFiltradas = lineas;
+
+    if (empresaSeleccionada) {
+      lineasFiltradas = lineasFiltradas.filter(
+        (linea) => Number(linea.empresaId) === Number(empresaSeleccionada),
+      );
+    }
+
+    if (bancoSeleccionado) {
+      lineasFiltradas = lineasFiltradas.filter(
+        (linea) => Number(linea.bancoId) === Number(bancoSeleccionado),
+      );
+    }
+
+    if (estadoSeleccionado) {
+      lineasFiltradas = lineasFiltradas.filter(
+        (linea) => Number(linea.estadoId) === Number(estadoSeleccionado),
+      );
+    }
+
+    if (tipoLineaSeleccionado) {
+      lineasFiltradas = lineasFiltradas.filter(
+        (linea) => linea.tipoLinea === tipoLineaSeleccionado,
+      );
+    }
+
+    if (monedaSeleccionada) {
+      lineasFiltradas = lineasFiltradas.filter(
+        (linea) => Number(linea.monedaId) === Number(monedaSeleccionada),
+      );
+    }
+
+    // Extraer IDs únicos de las líneas filtradas
+    const bancosIds = [
+      ...new Set(lineasFiltradas.map((l) => Number(l.bancoId))),
+    ];
+    const estadosIds = [
+      ...new Set(lineasFiltradas.map((l) => Number(l.estadoId))),
+    ];
+    const tiposLinea = [
+      ...new Set(lineasFiltradas.map((l) => l.tipoLinea).filter(Boolean)),
+    ];
+    const monedasIds = [
+      ...new Set(lineasFiltradas.map((l) => Number(l.monedaId))),
+    ];
+
+    // Filtrar catálogos completos para mostrar solo opciones disponibles
+    setBancosFiltrados(bancos.filter((b) => bancosIds.includes(Number(b.id))));
+    setEstadosFiltrados(
+      estados.filter((e) => estadosIds.includes(Number(e.id))),
+    );
+    setTiposLineaFiltrados(
+      enums.tiposLineaCredito.filter((t) => tiposLinea.includes(t.value)),
+    );
+    setMonedasFiltradas(
+      monedas.filter((m) => monedasIds.includes(Number(m.id))),
+    );
+  }, [
+    empresaSeleccionada,
+    bancoSeleccionado,
+    estadoSeleccionado,
+    tipoLineaSeleccionado,
+    monedaSeleccionada,
+    lineas,
+    bancos,
+    estados,
+    monedas,
+    enums,
+  ]);
 
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const [lineasData, empresasData, bancosData, monedasData, estadosData] = await Promise.all([
+      const [
+        lineasData,
+        empresasData,
+        bancosData,
+        monedasData,
+        estadosData,
+        enumsData,
+      ] = await Promise.all([
         getAllLineaCredito(),
         getEmpresas(),
         getAllBancos(),
         getAllMonedas(),
-        getEstadosMultiFuncionPorTipoProviene(22)
+        getEstadosMultiFuncionPorTipoProviene(22),
+        getEnumsTesoreria(),
       ]);
       setLineas(lineasData);
       setEmpresas(empresasData);
       setBancos(bancosData);
       setMonedas(monedasData);
       setEstados(estadosData);
+      setEnums(enumsData);
     } catch (error) {
-      toast.current?.show({ 
-        severity: 'error', 
-        summary: 'Error', 
-        detail: 'Error al cargar datos', 
-        life: 3000 
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar datos",
+        life: 3000,
       });
     } finally {
       setLoading(false);
@@ -148,30 +247,31 @@ const LineaCredito = ({ ruta }) => {
   const confirmarEliminar = (linea) => {
     confirmDialog({
       message: `¿Está seguro de eliminar la línea ${linea.numeroLinea}?`,
-      header: 'Confirmar Eliminación',
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Sí',
-      rejectLabel: 'No',
-      accept: () => eliminarLinea(linea.id)
+      header: "Confirmar Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Sí",
+      rejectLabel: "No",
+      accept: () => eliminarLinea(linea.id),
     });
   };
 
   const eliminarLinea = async (id) => {
     try {
       await deleteLineaCredito(id);
-      toast.current?.show({ 
-        severity: 'success', 
-        summary: 'Éxito', 
-        detail: 'Línea de crédito eliminada', 
-        life: 3000 
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Línea de crédito eliminada",
+        life: 3000,
       });
       cargarDatos();
     } catch (error) {
-      toast.current?.show({ 
-        severity: 'error', 
-        summary: 'Error', 
-        detail: error.response?.data?.message || 'Error al eliminar línea de crédito', 
-        life: 3000 
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.message || "Error al eliminar línea de crédito",
+        life: 3000,
       });
     }
   };
@@ -182,69 +282,84 @@ const LineaCredito = ({ ruta }) => {
     setEstadoSeleccionado(null);
     setTipoLineaSeleccionado(null);
     setMonedaSeleccionada(null);
-    setGlobalFilter('');
+    setGlobalFilter("");
+
+    // Resetear catálogos filtrados a sus valores completos
+    setBancosFiltrados(bancos);
+    setEstadosFiltrados(estados);
+    setTiposLineaFiltrados(enums.tiposLineaCredito);
+    setMonedasFiltradas(monedas);
   };
 
   // Funciones de formato
-  const formatCurrency = (value, moneda = 'USD') => {
-    return new Intl.NumberFormat('es-PE', {
-      style: 'currency',
+  const formatCurrency = (value, moneda = "USD") => {
+    return new Intl.NumberFormat("es-PE", {
+      style: "currency",
       currency: moneda,
-      minimumFractionDigits: 2
+      minimumFractionDigits: 2,
     }).format(value);
   };
 
   const formatDate = (value) => {
-    if (!value) return '';
-    return new Date(value).toLocaleDateString('es-PE');
+    if (!value) return "";
+    return new Date(value).toLocaleDateString("es-PE");
   };
 
   // Templates para las columnas
   const empresaBodyTemplate = (rowData) => {
-    return rowData.empresa?.razonSocial || '';
+    return rowData.empresa?.razonSocial || "";
   };
 
   const bancoBodyTemplate = (rowData) => {
-    return rowData.banco?.nombre || '';
+    return rowData.banco?.nombre || "";
   };
 
   const tipoLineaBodyTemplate = (rowData) => {
     const tipoLabels = {
-      'REVOLVENTE': 'Revolvente',
-      'CARTA_CREDITO': 'Carta de Crédito',
-      'GARANTIA_BANCARIA': 'Garantía Bancaria',
-      'SOBREGIRO': 'Sobregiro'
+      REVOLVENTE: "Revolvente",
+      CARTA_CREDITO: "Carta de Crédito",
+      GARANTIA_BANCARIA: "Garantía Bancaria",
+      SOBREGIRO: "Sobregiro",
     };
     return tipoLabels[rowData.tipoLinea] || rowData.tipoLinea;
   };
 
   const montoBodyTemplate = (rowData) => {
-    const moneda = rowData.moneda?.codigo || 'USD';
+    const moneda = rowData.moneda?.codigo || "USD";
     return formatCurrency(rowData.montoAprobado, moneda);
   };
 
   const utilizadoBodyTemplate = (rowData) => {
-    const moneda = rowData.moneda?.codigo || 'USD';
+    const moneda = rowData.moneda?.codigo || "USD";
     return formatCurrency(rowData.montoUtilizado || 0, moneda);
   };
 
   const disponibleBodyTemplate = (rowData) => {
-    const moneda = rowData.moneda?.codigo || 'USD';
+    const moneda = rowData.moneda?.codigo || "USD";
     return formatCurrency(rowData.montoDisponible || 0, moneda);
   };
 
   const porcentajeBodyTemplate = (rowData) => {
-    const porcentaje = rowData.montoAprobado > 0 
-      ? ((rowData.montoUtilizado || 0) / rowData.montoAprobado * 100).toFixed(2)
-      : 0;
-    
-    let severity = 'success';
-    if (porcentaje > 80) severity = 'danger';
-    else if (porcentaje > 60) severity = 'warning';
+    const porcentaje =
+      rowData.montoAprobado > 0
+        ? (
+            ((rowData.montoUtilizado || 0) / rowData.montoAprobado) *
+            100
+          ).toFixed(2)
+        : 0;
+
+    let severity = "success";
+    if (porcentaje > 80) severity = "danger";
+    else if (porcentaje > 60) severity = "warning";
 
     return (
       <div>
-        <ProgressBar value={porcentaje} showValue={false} style={{ height: '6px' }} color={severity} />
+        <ProgressBar
+          value={porcentaje}
+          showValue={false}
+          style={{ height: "6px" }}
+          color={severity}
+        />
         <span className="text-sm">{porcentaje}%</span>
       </div>
     );
@@ -253,16 +368,27 @@ const LineaCredito = ({ ruta }) => {
   const estadoBodyTemplate = (rowData) => {
     const getSeverity = (estado) => {
       switch (estado?.nombre) {
-        case 'APROBADA': return 'info';
-        case 'VIGENTE': return 'success';
-        case 'VENCIDA': return 'danger';
-        case 'CANCELADA': return 'warning';
-        case 'SUSPENDIDA': return 'danger';
-        default: return 'secondary';
+        case "APROBADA":
+          return "info";
+        case "VIGENTE":
+          return "success";
+        case "VENCIDA":
+          return "danger";
+        case "CANCELADA":
+          return "warning";
+        case "SUSPENDIDA":
+          return "danger";
+        default:
+          return "secondary";
       }
     };
 
-    return <Tag value={rowData.estado?.nombre || ''} severity={getSeverity(rowData.estado)} />;
+    return (
+      <Tag
+        value={rowData.estado?.nombre || ""}
+        severity={getSeverity(rowData.estado)}
+      />
+    );
   };
 
   const fechaVencimientoBodyTemplate = (rowData) => {
@@ -303,21 +429,24 @@ const LineaCredito = ({ ruta }) => {
     <div>
       <div
         style={{
-          alignItems: 'end',
-          display: 'flex',
+          alignItems: "end",
+          display: "flex",
           gap: 10,
-          flexDirection: window.innerWidth < 768 ? 'column' : 'row',
-          marginBottom: 15
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+          marginBottom: 15,
         }}
       >
         <div style={{ flex: 2 }}>
           <h3 style={{ margin: 0 }}>Líneas de Crédito</h3>
-          <small style={{ color: '#666', fontWeight: 'normal' }}>
+          <small style={{ color: "#666", fontWeight: "normal" }}>
             Total de registros: {lineasFiltradas.length}
           </small>
         </div>
         <div style={{ flex: 2 }}>
-          <label htmlFor="empresaFiltro" style={{ fontWeight: 'bold', display: 'block', marginBottom: 5 }}>
+          <label
+            htmlFor="empresaFiltro"
+            style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
+          >
             Empresa *
           </label>
           <Dropdown
@@ -333,7 +462,7 @@ const LineaCredito = ({ ruta }) => {
             optionValue="value"
             showClear
             disabled={loading}
-            style={{ width: '100%' }}
+            style={{ width: "100%" }}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -349,10 +478,10 @@ const LineaCredito = ({ ruta }) => {
               !permisos.puedeCrear
                 ? "No tiene permisos para crear"
                 : !empresaSeleccionada
-                ? 'Seleccione una empresa primero'
-                : 'Nueva Línea de Crédito'
+                  ? "Seleccione una empresa primero"
+                  : "Nueva Línea de Crédito"
             }
-            style={{ width: '100%' }}
+            style={{ width: "100%" }}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -362,8 +491,8 @@ const LineaCredito = ({ ruta }) => {
             className="p-button-info"
             onClick={() => setMostrarReporte(true)}
             tooltip="Ver reporte de líneas disponibles"
-            tooltipOptions={{ position: 'top' }}
-            style={{ width: '100%' }}
+            tooltipOptions={{ position: "top" }}
+            style={{ width: "100%" }}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -373,16 +502,16 @@ const LineaCredito = ({ ruta }) => {
             onClick={async () => {
               await cargarDatos();
               toast.current?.show({
-                severity: 'success',
-                summary: 'Actualizado',
-                detail: 'Datos actualizados correctamente',
-                life: 3000
+                severity: "success",
+                summary: "Actualizado",
+                detail: "Datos actualizados correctamente",
+                life: 3000,
               });
             }}
             loading={loading}
             tooltip="Actualizar datos"
-            tooltipOptions={{ position: 'top' }}
-            style={{ width: '100%' }}
+            tooltipOptions={{ position: "top" }}
+            style={{ width: "100%" }}
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -393,27 +522,30 @@ const LineaCredito = ({ ruta }) => {
             outlined
             onClick={limpiarFiltros}
             disabled={loading}
-            style={{ width: '100%' }}
+            style={{ width: "100%" }}
           />
         </div>
       </div>
       <div
         style={{
-          alignItems: 'end',
-          display: 'flex',
+          alignItems: "end",
+          display: "flex",
           gap: 10,
-          flexDirection: window.innerWidth < 768 ? 'column' : 'row',
-          marginBottom: 15
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+          marginBottom: 15,
         }}
       >
         <div style={{ flex: 1 }}>
-          <label htmlFor="bancoFiltro" style={{ fontWeight: 'bold', display: 'block', marginBottom: 5 }}>
+          <label
+            htmlFor="bancoFiltro"
+            style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
+          >
             Banco
           </label>
           <Dropdown
             id="bancoFiltro"
             value={bancoSeleccionado}
-            options={bancos.map((b) => ({
+            options={bancosFiltrados.map((b) => ({
               label: b.nombre,
               value: Number(b.id),
             }))}
@@ -423,17 +555,20 @@ const LineaCredito = ({ ruta }) => {
             optionValue="value"
             showClear
             disabled={loading}
-            style={{ width: '100%' }}
+            style={{ width: "100%" }}
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="estadoFiltro" style={{ fontWeight: 'bold', display: 'block', marginBottom: 5 }}>
+          <label
+            htmlFor="estadoFiltro"
+            style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
+          >
             Estado
           </label>
           <Dropdown
             id="estadoFiltro"
             value={estadoSeleccionado}
-            options={estados.map((e) => ({
+            options={estadosFiltrados.map((e) => ({
               label: e.descripcion || e.nombre,
               value: Number(e.id),
             }))}
@@ -443,39 +578,40 @@ const LineaCredito = ({ ruta }) => {
             optionValue="value"
             showClear
             disabled={loading}
-            style={{ width: '100%' }}
+            style={{ width: "100%" }}
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="tipoLineaFiltro" style={{ fontWeight: 'bold', display: 'block', marginBottom: 5 }}>
+          <label
+            htmlFor="tipoLineaFiltro"
+            style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
+          >
             Tipo Línea
           </label>
           <Dropdown
             id="tipoLineaFiltro"
             value={tipoLineaSeleccionado}
-            options={[
-              { label: 'Revolvente', value: 'REVOLVENTE' },
-              { label: 'Carta de Crédito', value: 'CARTA_CREDITO' },
-              { label: 'Garantía Bancaria', value: 'GARANTIA_BANCARIA' },
-              { label: 'Sobregiro', value: 'SOBREGIRO' }
-            ]}
+            options={tiposLineaFiltrados}
             onChange={(e) => setTipoLineaSeleccionado(e.value)}
             placeholder="Todos"
             optionLabel="label"
             optionValue="value"
             showClear
             disabled={loading}
-            style={{ width: '100%' }}
+            style={{ width: "100%" }}
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label htmlFor="monedaFiltro" style={{ fontWeight: 'bold', display: 'block', marginBottom: 5 }}>
+          <label
+            htmlFor="monedaFiltro"
+            style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
+          >
             Moneda
           </label>
           <Dropdown
             id="monedaFiltro"
             value={monedaSeleccionada}
-            options={monedas.map((m) => ({
+            options={monedasFiltradas.map((m) => ({
               label: m.codigoSunat,
               value: Number(m.id),
             }))}
@@ -485,12 +621,12 @@ const LineaCredito = ({ ruta }) => {
             optionValue="value"
             showClear
             disabled={loading}
-            style={{ width: '100%' }}
+            style={{ width: "100%" }}
           />
         </div>
       </div>
       <div style={{ marginTop: 10 }}>
-        <span className="p-input-icon-left" style={{ width: '100%' }}>
+        <span className="p-input-icon-left" style={{ width: "100%" }}>
           <i className="pi pi-search" />
           <input
             type="search"
@@ -498,7 +634,7 @@ const LineaCredito = ({ ruta }) => {
             placeholder="Buscar..."
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            style={{ width: '100%' }}
+            style={{ width: "100%" }}
           />
         </span>
       </div>
@@ -509,7 +645,7 @@ const LineaCredito = ({ ruta }) => {
     <div className="card">
       <Toast ref={toast} />
       <ConfirmDialog />
-      
+
       <DataTable
         value={lineasFiltradas}
         loading={loading}
@@ -543,20 +679,32 @@ const LineaCredito = ({ ruta }) => {
         <Column body={utilizadoBodyTemplate} header="Utilizado" sortable />
         <Column body={disponibleBodyTemplate} header="Disponible" sortable />
         <Column body={porcentajeBodyTemplate} header="% Utilizado" />
-        <Column body={fechaVencimientoBodyTemplate} header="Vencimiento" sortable />
+        <Column
+          body={fechaVencimientoBodyTemplate}
+          header="Vencimiento"
+          sortable
+        />
         <Column body={estadoBodyTemplate} header="Estado" sortable />
         <Column
           body={accionesBodyTemplate}
           header="Acciones"
-          style={{ width: 130, textAlign: 'center' }}
+          style={{ width: 130, textAlign: "center" }}
         />
       </DataTable>
 
       {/* Dialog con Formulario */}
-      <Dialog
-        header={lineaSeleccionada ? 'Editar Línea de Crédito' : 'Nueva Línea de Crédito'}
+           <Dialog
+        header={
+          lineaSeleccionada
+            ? permisos.puedeEditar
+              ? "Editar Línea de Crédito"
+              : "Ver Línea de Crédito"
+            : "Nueva Línea de Crédito"
+        }
         visible={visible}
-        style={{ width: '90vw', maxWidth: '1200px' }}
+        style={{ width: "1300px" }}
+        maximizable
+        maximized={true}
         onHide={handleCancel}
         modal
       >
@@ -566,6 +714,7 @@ const LineaCredito = ({ ruta }) => {
           empresaFija={empresaFija}
           onSave={handleSave}
           onCancel={handleCancel}
+          readOnly={lineaSeleccionada && !permisos.puedeEditar}
         />
       </Dialog>
 
@@ -573,9 +722,10 @@ const LineaCredito = ({ ruta }) => {
       <Dialog
         header="Reporte de Líneas Disponibles"
         visible={mostrarReporte}
-        style={{ width: '95vw', maxWidth: '1400px' }}
+        style={{ width: "1300px" }}
         onHide={() => setMostrarReporte(false)}
         maximizable
+        maximized={true}
         modal
       >
         <ReporteLineasDisponibles />

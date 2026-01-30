@@ -338,11 +338,17 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
 
       let resultado;
       if (isEdit) {
-        resultado = await updatePrestamoBancario(defaultValues.id, dataToSend);
+        console.log("defaultValues:", defaultValues);
+        console.log("defaultValues.id:", defaultValues.id);
+        console.log("Number(defaultValues.id):", Number(defaultValues.id));
+        resultado = await updatePrestamoBancario(
+          Number(defaultValues.id),
+          dataToSend,
+        );
 
         try {
           const recalculoResultado = await recalcularCuotasPrestamo(
-            defaultValues.id,
+            Number(defaultValues.id),
           );
 
           toast.current?.show({

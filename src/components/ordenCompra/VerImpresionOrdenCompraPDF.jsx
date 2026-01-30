@@ -56,7 +56,6 @@ const VerImpresionOrdenCompraPDF = ({
       }
     }
 
-    console.log("🔄 [VerImpresionOrdenCompraPDF] Generando PDF...");
     const resultado = await generarYSubirPDFOrdenCompra(
       ordenConPersonal,
       detalles,
@@ -64,27 +63,17 @@ const VerImpresionOrdenCompraPDF = ({
     );
 
     if (resultado.success && resultado.urlPdf) {
-      try {
-        console.log("💾 [VerImpresionOrdenCompraPDF] Guardando URL del PDF en BD...");
-        
+      try {        
         const dataToUpdate = {
           urlOrdenCompraPdf: resultado.urlPdf,
         };
-
-        console.log("📤 [VerImpresionOrdenCompraPDF] Datos a enviar:", dataToUpdate);
-
         await actualizarOrdenCompra(datosOrdenCompra.id, dataToUpdate);
-
-        console.log("✅ [VerImpresionOrdenCompraPDF] Datos guardados correctamente en BD");
-
         if (onPdfGenerated && typeof onPdfGenerated === "function") {
           onPdfGenerated(resultado.urlPdf);
         }
 
         if (onRecargarRegistro && typeof onRecargarRegistro === "function") {
-          console.log("🔄 [VerImpresionOrdenCompraPDF] Recargando registro desde el servidor...");
           await onRecargarRegistro();
-          console.log("✅ [VerImpresionOrdenCompraPDF] Registro recargado exitosamente");
         }
 
         if (toast?.current) {

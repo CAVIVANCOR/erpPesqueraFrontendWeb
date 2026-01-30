@@ -64,10 +64,8 @@ export default function DatosAdicionalesTab({
     setLoading(true);
     try {
       const data = await getDatosAdicionalesOrdenCompra(ordenCompraId);
-      console.log("📋 [DatosAdicionalesTab] Datos cargados:", data);
       setDatos(data);
     } catch (err) {
-      console.error("❌ [DatosAdicionalesTab] Error al cargar datos:", err);
     }
     setLoading(false);
   };
@@ -85,7 +83,6 @@ export default function DatosAdicionalesTab({
   };
 
   const handleEdit = (dato) => {
-    console.log("✏️ [DatosAdicionalesTab] Editando dato:", dato);
     setEditingDato(dato);
     setFormData({
       nombreDato: dato.nombreDato || "",
@@ -128,12 +125,6 @@ export default function DatosAdicionalesTab({
   };
 
   const handleSave = async () => {
-    console.log(
-      "💾 [DatosAdicionalesTab] Intentando guardar dato adicional...",
-    );
-    console.log("📝 [DatosAdicionalesTab] formData:", formData);
-    console.log("🔑 [DatosAdicionalesTab] editingDato:", editingDato);
-
     if (!formData.nombreDato?.trim()) {
       toast.current.show({
         severity: "warn",
@@ -174,12 +165,8 @@ export default function DatosAdicionalesTab({
           ? formData.urlDocumento?.trim() || null
           : null,
       };
-
-      console.log("📤 [DatosAdicionalesTab] Datos a guardar:", dataToSave);
-
       if (editingDato) {
         await actualizarDatoAdicional(editingDato.id, dataToSave);
-        console.log("✅ [DatosAdicionalesTab] Dato actualizado exitosamente");
         toast.current.show({
           severity: "success",
           summary: "Actualizado",
@@ -187,23 +174,15 @@ export default function DatosAdicionalesTab({
         });
       } else {
         const resultado = await crearDatoAdicional(dataToSave);
-        console.log(
-          "✅ [DatosAdicionalesTab] Dato creado exitosamente:",
-          resultado,
-        );
         toast.current.show({
           severity: "success",
           summary: "Creado",
           detail: "Dato adicional creado correctamente",
         });
       }
-
       await cargarDatos();
-
-      console.log("🔄 [DatosAdicionalesTab] Llamando a onRecargarRegistro...");
       if (onRecargarRegistro) {
         await onRecargarRegistro();
-        console.log("✅ [DatosAdicionalesTab] onRecargarRegistro ejecutado");
       } else {
         console.warn(
           "⚠️ [DatosAdicionalesTab] onRecargarRegistro no está definido",
@@ -223,9 +202,6 @@ export default function DatosAdicionalesTab({
   };
 
   const handlePdfComplete = async (url) => {
-    console.log("📎 [DatosAdicionalesTab] PDF subido exitosamente:", url);
-    console.log("📝 [DatosAdicionalesTab] editingDato actual:", editingDato);
-
     setFormData((prev) => ({ ...prev, urlDocumento: url }));
     setPdfRefreshKey((k) => k + 1);
     setMostrarCaptura(false);
@@ -239,9 +215,6 @@ export default function DatosAdicionalesTab({
     });
 
     if (editingDato?.id) {
-      console.log(
-        "💾 [DatosAdicionalesTab] Auto-guardando dato adicional con PDF...",
-      );
       try {
         const dataToSave = {
           ordenCompraId: Number(ordenCompraId),
@@ -251,24 +224,10 @@ export default function DatosAdicionalesTab({
           valorDato: null,
           urlDocumento: url,
         };
-
-        console.log(
-          "📤 [DatosAdicionalesTab] Auto-guardando con datos:",
-          dataToSave,
-        );
         await actualizarDatoAdicional(editingDato.id, dataToSave);
-        console.log("✅ [DatosAdicionalesTab] PDF guardado en dato adicional");
-
         await cargarDatos();
-
-        console.log(
-          "🔄 [DatosAdicionalesTab] Llamando a onRecargarRegistro después de PDF...",
-        );
         if (onRecargarRegistro) {
           await onRecargarRegistro();
-          console.log(
-            "✅ [DatosAdicionalesTab] Orden recargada después de subir PDF",
-          );
         }
 
         toast.current?.show({

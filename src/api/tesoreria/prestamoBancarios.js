@@ -24,6 +24,7 @@ export async function getPrestamoBancarioById(id) {
   return res.data;
 }
 
+
 export async function createPrestamoBancario(data) {
   const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
   return res.data;
@@ -58,3 +59,10 @@ export async function recalcularCuotasPrestamo(id) {
   const res = await axios.post(`${API_URL}/${id}/recalcular-cuotas`, {}, { headers: getAuthHeaders() });
   return res.data;
 }
+
+
+export const getPrestamoBancarioSimple = async () => {
+  const res = await axios.get(`${API_URL}/lista-simple`, { headers: getAuthHeaders() });
+  return res.data;
+};
+

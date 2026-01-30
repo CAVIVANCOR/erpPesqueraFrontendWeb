@@ -46,17 +46,11 @@ export async function generarYSubirPDFOrdenCompra(
         body: formData,
       }
     );
-
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || "Error al subir el PDF");
     }
-
     const resultado = await response.json();
-
-    console.log('🔍 [OrdenCompraPDF] Respuesta del backend:', resultado);
-    console.log('🔍 [OrdenCompraPDF] URL retornada:', resultado.url);
-
     return {
       success: true,
       urlPdf: resultado.url,
@@ -79,12 +73,6 @@ export async function generarPDFOrdenCompra(
   detalles,
   empresa
 ) {
-  console.log('📄 [OrdenCompraPDF] ordenCompra recibida:', ordenCompra);
-  console.log('📄 [OrdenCompraPDF] ordenCompra.solicitante:', ordenCompra.solicitante);
-  console.log('📄 [OrdenCompraPDF] ordenCompra.aprobadoPor:', ordenCompra.aprobadoPor);
-  console.log('📄 [OrdenCompraPDF] ordenCompra.centroCosto:', ordenCompra.centroCosto);
-  console.log('📄 [OrdenCompraPDF] ordenCompra.proveedor:', ordenCompra.proveedor);
-  
   // Funciones de formateo
   const formatearFecha = (fecha) => {
     if (!fecha) return "-";
@@ -154,14 +142,6 @@ export async function generarPDFOrdenCompra(
   
   if (ordenCompra.datosAdicionales && ordenCompra.datosAdicionales.length > 0) {
     ordenCompra.datosAdicionales.forEach((dato) => {
-      console.log('🔍 [OrdenCompraPDF] Procesando dato adicional:', {
-        nombreDato: dato.nombreDato,
-        esDocumento: dato.esDocumento,
-        imprimirEnOC: dato.imprimirEnOC,
-        urlDocumento: dato.urlDocumento,
-        valorDato: dato.valorDato
-      });
-      
       // Construir label
       let label = dato.nombreDato;
       if (dato.esDocumento) {
@@ -512,28 +492,15 @@ const tableStartX = margin;
   console.log('🔍 [OrdenCompraPDF] ordenCompra.datosAdicionales:', ordenCompra.datosAdicionales);
   
   if (ordenCompra.datosAdicionales && ordenCompra.datosAdicionales.length > 0) {
-    console.log(`🔍 [OrdenCompraPDF] Total de datos adicionales: ${ordenCompra.datosAdicionales.length}`);
-    
     for (const dato of ordenCompra.datosAdicionales) {
-      console.log('🔍 [OrdenCompraPDF] Evaluando dato:', {
-        nombreDato: dato.nombreDato,
-        esDocumento: dato.esDocumento,
-        urlDocumento: dato.urlDocumento,
-        imprimirEnOC: dato.imprimirEnOC
-      });
-      
       if (dato.esDocumento && dato.urlDocumento) {
-        console.log(`✅ [OrdenCompraPDF] Dato ES documento y TIENE URL: ${dato.nombreDato}`);
         try {
           // Extraer el nombre del archivo de la URL completa
           // Ejemplo: /uploads/pdf-system/datos-adicionales-oc/datos-adicionales-oc-merged-1769457901911-su3q0n.pdf
           // Resultado: datos-adicionales-oc-merged-1769457901911-su3q0n.pdf
           const fileName = dato.urlDocumento.split('/').pop();
-          
           // Construir URL usando el endpoint genérico del sistema PDF unificado
-          const docUrl = `${import.meta.env.VITE_API_URL}/pdf/datos-adicionales-oc/${fileName}`;
-          console.log(`📎 [OrdenCompraPDF] Cargando documento adjunto: ${docUrl}`);
-          
+          const docUrl = `${import.meta.env.VITE_API_URL}/pdf/datos-adicionales-oc/${fileName}`;          
           // Obtener token de autenticación
           const token = useAuthStore.getState().token;
           
@@ -558,8 +525,6 @@ const tableStartX = margin;
                 pdfDoc.addPage(copiedPage);
                 pages.push(copiedPage);
               });
-              
-              console.log(`✅ [OrdenCompraPDF] PDF adjunto agregado: ${dato.nombreDato} (${copiedPages.length} páginas)`);
             } else {
               // Si es una imagen, agregarla como nueva página
               let adjuntoImage;
@@ -610,8 +575,6 @@ const tableStartX = margin;
                   size: 12,
                   font: fontBold,
                 });
-                
-                console.log(`✅ [OrdenCompraPDF] Imagen adjunta agregada: ${dato.nombreDato}`);
               }
             }
           } else {

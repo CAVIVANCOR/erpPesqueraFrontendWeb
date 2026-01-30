@@ -27,7 +27,6 @@ const VerImpresionPreFacturaPDF = ({
       throw new Error("Debe guardar la pre-factura antes de generar el PDF");
     }
 
-    console.log("🔄 [VerImpresionPreFacturaPDF] Generando PDF...");
     const resultado = await generarYSubirPDFPreFactura(
       preFacturaId,
       datosPreFactura,
@@ -37,26 +36,16 @@ const VerImpresionPreFacturaPDF = ({
 
     if (resultado.success && resultado.url) {
       try {
-        console.log("💾 [VerImpresionPreFacturaPDF] Guardando URL del PDF en BD...");
-        
         const dataToUpdate = {
           urlPreFacturaPdf: resultado.url,
         };
-
-        console.log("📤 [VerImpresionPreFacturaPDF] Datos a enviar:", dataToUpdate);
-
         await actualizarPreFactura(preFacturaId, dataToUpdate);
-
-        console.log("✅ [VerImpresionPreFacturaPDF] Datos guardados correctamente en BD");
-
         if (onPdfGenerated && typeof onPdfGenerated === "function") {
           onPdfGenerated(resultado.url);
         }
 
         if (onRecargarRegistro && typeof onRecargarRegistro === "function") {
-          console.log("🔄 [VerImpresionPreFacturaPDF] Recargando registro desde el servidor...");
           await onRecargarRegistro();
-          console.log("✅ [VerImpresionPreFacturaPDF] Registro recargado exitosamente");
         }
 
         if (toast?.current) {
@@ -68,9 +57,6 @@ const VerImpresionPreFacturaPDF = ({
           });
         }
       } catch (error) {
-        console.error("❌ [VerImpresionPreFacturaPDF] Error al guardar:", error);
-        console.error("❌ Detalles del error:", error.response?.data || error.message);
-        
         if (toast?.current) {
           toast.current.show({
             severity: "warn",
@@ -81,7 +67,6 @@ const VerImpresionPreFacturaPDF = ({
         }
       }
     }
-
     return {
       success: resultado.success,
       urlPdf: resultado.url,

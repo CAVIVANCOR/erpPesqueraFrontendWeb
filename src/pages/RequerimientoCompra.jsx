@@ -263,29 +263,13 @@ export default function RequerimientoCompra({ ruta }) {
    */
   const recargarRequerimientoActual = async () => {
     if (!editing?.id) return;
-
-    console.log(
-      "🔵 [RequerimientoCompra] ANTES de recargar - editing.urlReqCompraPdf:",
-      editing.urlReqCompraPdf,
-    );
-
     try {
       const { getRequerimientoCompraPorId } =
         await import("../api/requerimientoCompra");
       const requerimientoActualizado = await getRequerimientoCompraPorId(
         editing.id,
       );
-
-      console.log(
-        "🔵 [RequerimientoCompra] DESPUÉS de consultar BD - requerimientoActualizado.urlReqCompraPdf:",
-        requerimientoActualizado.urlReqCompraPdf,
-      );
-
       setEditing(requerimientoActualizado);
-
-      console.log(
-        "✅ [RequerimientoCompra] Estado editing actualizado desde BD",
-      );
     } catch (error) {
       console.error(
         "❌ [RequerimientoCompra] Error al recargar requerimiento:",

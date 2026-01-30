@@ -368,28 +368,11 @@ const CotizacionVentas = ({ ruta }) => {
     if (!selectedCotizacion?.id) return;
 
     try {
-      console.log(
-        "🔄 [CotizacionVentas] Recargando cotización actual desde BD...",
-      );
       const cotizacionActualizada = await getCotizacionVentasPorId(
         selectedCotizacion.id,
       );
-
-      console.log(
-        "✅ [CotizacionVentas] Cotización recargada:",
-        cotizacionActualizada,
-      );
-      console.log(
-        "📎 [CotizacionVentas] urlCotizacionPdf actualizada:",
-        cotizacionActualizada.urlCotizacionPdf,
-      );
-
       setSelectedCotizacion(cotizacionActualizada);
     } catch (error) {
-      console.error(
-        "❌ [CotizacionVentas] Error al recargar cotización:",
-        error,
-      );
       toast.current?.show({
         severity: "error",
         summary: "Error",

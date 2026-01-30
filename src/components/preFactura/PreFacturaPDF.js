@@ -248,10 +248,8 @@ export async function generarYSubirPDFPreFactura(
       detalles,
       datosPreFactura.empresa,
     );
-
     // 2. Crear un blob del PDF
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
-
     // 3. Crear FormData - El backend generará el nombre automáticamente
     const formData = new FormData();
     formData.append("files", blob, "temp.pdf"); // Nombre temporal, el backend lo reemplazará
@@ -266,17 +264,11 @@ export async function generarYSubirPDFPreFactura(
       },
       body: formData,
     });
-
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || "Error al subir el PDF");
     }
-
     const resultado = await response.json();
-
-    console.log("🔍 [PreFacturaPDF] Respuesta del backend:", resultado);
-    console.log("🔍 [PreFacturaPDF] URL retornada:", resultado.url);
-
     return {
       success: true,
       url: resultado.url,

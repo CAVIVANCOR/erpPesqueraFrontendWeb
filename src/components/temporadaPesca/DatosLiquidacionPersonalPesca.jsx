@@ -48,8 +48,6 @@ useEffect(() => {
    */
   const cargarParametrosDesdeEmpresa = async () => {
     const empresaId = watch("empresaId");
-    console.log("cargarParametrosDesdeEmpresa: empresaId", empresaId);
-
     if (!empresaId) {
       toast.current?.show({
         severity: "warn",
@@ -64,7 +62,6 @@ useEffect(() => {
 
     try {
       const parametros = await getParametrosLiquidacion(empresaId);
-      console.log("PARAMETROS", parametros);
       setValue(
         "porcentajeBaseLiqPesca",
         parametros.porcentajeBaseLiqPesca || 0,

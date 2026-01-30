@@ -147,13 +147,6 @@ export default function RequerimientoCompraForm({
 
   // Actualizar formData cuando cambian los defaultValues (modo edición)
   useEffect(() => {
-    console.log(
-      "🟡 [RequerimientoCompraForm] useEffect detectó cambio en defaultValues",
-    );
-    console.log(
-      "🟡 [RequerimientoCompraForm] defaultValues.urlReqCompraPdf:",
-      defaultValues?.urlReqCompraPdf,
-    );
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       setFormData({
         // Datos básicos
@@ -252,10 +245,6 @@ export default function RequerimientoCompraForm({
         creadoEn: defaultValues?.creadoEn || null,
         actualizadoEn: defaultValues?.actualizadoEn || null,
       });
-      console.log(
-        "🟡 [RequerimientoCompraForm] formData actualizado con urlReqCompraPdf:",
-        defaultValues?.urlReqCompraPdf,
-      );
     }
   }, [defaultValues, empresaFija]);
 

@@ -57,12 +57,7 @@ export async function generarYSubirPDFCotizacionVentas(
       const errorData = await response.json();
       throw new Error(errorData.error || "Error al subir el PDF");
     }
-
     const resultado = await response.json();
-
-    console.log("🔍 [CotizacionVentasPDF] Respuesta del backend:", resultado);
-    console.log("🔍 [CotizacionVentasPDF] URL retornada:", resultado.url);
-
     return {
       success: true,
       urlPdf: resultado.url,

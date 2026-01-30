@@ -59,7 +59,6 @@ const VerImpresionRequerimientoCompraPDF = ({
     }
 
     // 1. PRIMERO: Generar el PDF
-    console.log("🔄 [VerImpresionRequerimientoCompraPDF] Generando PDF...");
     const resultado = await generarYSubirPDFRequerimientoCompra(
       requerimientoConPersonal,
       detalles,
@@ -70,29 +69,14 @@ const VerImpresionRequerimientoCompraPDF = ({
     if (resultado.success && resultado.urlPdf) {
       try {
         // 2. DESPUÉS: Guardar automáticamente SOLO el campo urlReqCompraPdf
-        console.log(
-          "💾 [VerImpresionRequerimientoCompraPDF] Guardando URL del PDF en BD...",
-        );
-
         // ✅ ENVIAR SOLO EL CAMPO urlReqCompraPdf
         const dataToUpdate = {
           urlReqCompraPdf: resultado.urlPdf,
         };
-
-        console.log(
-          "📤 [VerImpresionRequerimientoCompraPDF] Datos a enviar:",
-          dataToUpdate,
-        );
-
         await actualizarRequerimientoCompra(
           datosRequerimiento.id,
           dataToUpdate,
         );
-
-        console.log(
-          "✅ [VerImpresionRequerimientoCompraPDF] Datos guardados correctamente en BD",
-        );
-
         // Notificar al componente padre para actualizar estado local
         if (onPdfGenerated && typeof onPdfGenerated === "function") {
           onPdfGenerated(resultado.urlPdf);
@@ -100,13 +84,7 @@ const VerImpresionRequerimientoCompraPDF = ({
 
         // ✅ RECARGAR el registro completo desde el servidor para actualizar el estado del padre
         if (onRecargarRegistro && typeof onRecargarRegistro === "function") {
-          console.log(
-            "🔄 [VerImpresionRequerimientoCompraPDF] Recargando registro desde el servidor...",
-          );
           await onRecargarRegistro();
-          console.log(
-            "✅ [VerImpresionRequerimientoCompraPDF] Registro recargado exitosamente",
-          );
         }
 
         // Mostrar mensaje de éxito
