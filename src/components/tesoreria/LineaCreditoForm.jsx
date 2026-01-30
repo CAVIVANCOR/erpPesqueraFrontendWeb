@@ -473,8 +473,12 @@ const LineaCreditoForm = forwardRef(
           >
             <DataTable
               value={[...prestamos].sort((a, b) => {
-                const fechaA = a.fechaDesembolso ? new Date(a.fechaDesembolso) : new Date(0);
-                const fechaB = b.fechaDesembolso ? new Date(b.fechaDesembolso) : new Date(0);
+                const fechaA = a.fechaDesembolso
+                  ? new Date(a.fechaDesembolso)
+                  : new Date(0);
+                const fechaB = b.fechaDesembolso
+                  ? new Date(b.fechaDesembolso)
+                  : new Date(0);
                 return fechaB - fechaA; // Más reciente primero por defecto
               })}
               size="small"
@@ -487,7 +491,7 @@ const LineaCreditoForm = forwardRef(
               sortMode="multiple"
               removableSort
             >
-                           <Column
+              <Column
                 field="numeroPrestamo"
                 header="Número Préstamo"
                 style={{ fontWeight: "bold", minWidth: "150px" }}
@@ -528,12 +532,12 @@ const LineaCreditoForm = forwardRef(
                 sortable
               />
               <Column
-                header={`Monto en ${lineaCredito.moneda?.codigoSunat || 'USD'}`}
+                header={`Monto en ${lineaCredito.moneda?.codigoSunat || "USD"}`}
                 body={(rowData) => {
                   const monedaLinea = lineaCredito.moneda?.codigoSunat || "USD";
                   const monedaPrestamo = rowData.moneda?.codigoSunat || "USD";
                   const monto = parseFloat(rowData.montoDesembolsado || 0);
-                  
+
                   // Si es la misma moneda, no hay conversión
                   if (monedaLinea === monedaPrestamo) {
                     return new Intl.NumberFormat("es-PE", {
@@ -542,46 +546,68 @@ const LineaCreditoForm = forwardRef(
                       minimumFractionDigits: 2,
                     }).format(monto);
                   }
-                  
+
                   // Si necesita conversión, usar TC 3.8 (default)
                   const tc = 3.8;
                   let montoConvertido = monto;
-                  
+
                   if (monedaLinea === "USD" && monedaPrestamo === "PEN") {
                     montoConvertido = monto / tc;
-                  } else if (monedaLinea === "PEN" && monedaPrestamo === "USD") {
+                  } else if (
+                    monedaLinea === "PEN" &&
+                    monedaPrestamo === "USD"
+                  ) {
                     montoConvertido = monto * tc;
                   }
-                  
+
                   return new Intl.NumberFormat("es-PE", {
                     style: "currency",
                     currency: monedaLinea === "PEN" ? "PEN" : "USD",
                     minimumFractionDigits: 2,
                   }).format(montoConvertido);
                 }}
-                style={{ textAlign: "right", fontWeight: "bold", minWidth: "180px", backgroundColor: "#e3f2fd" }}
+                style={{
+                  textAlign: "right",
+                  fontWeight: "bold",
+                  minWidth: "180px",
+                  backgroundColor: "#e3f2fd",
+                }}
                 sortable
                 sortField="montoDesembolsado"
                 footer={() => {
                   const monedaLinea = lineaCredito.moneda?.codigoSunat || "USD";
                   let total = 0;
-                  
+
                   prestamos.forEach((prestamo) => {
-                    const monedaPrestamo = prestamo.moneda?.codigoSunat || "USD";
+                    const monedaPrestamo =
+                      prestamo.moneda?.codigoSunat || "USD";
                     const monto = parseFloat(prestamo.montoDesembolsado || 0);
                     const tc = 3.8;
-                    
+
                     if (monedaLinea === monedaPrestamo) {
                       total += monto;
-                    } else if (monedaLinea === "USD" && monedaPrestamo === "PEN") {
+                    } else if (
+                      monedaLinea === "USD" &&
+                      monedaPrestamo === "PEN"
+                    ) {
                       total += monto / tc;
-                    } else if (monedaLinea === "PEN" && monedaPrestamo === "USD") {
+                    } else if (
+                      monedaLinea === "PEN" &&
+                      monedaPrestamo === "USD"
+                    ) {
                       total += monto * tc;
                     }
                   });
-                  
+
                   return (
-                    <div style={{ textAlign: "right", fontWeight: "bold", fontSize: "1.1rem", color: "#1976d2" }}>
+                    <div
+                      style={{
+                        textAlign: "right",
+                        fontWeight: "bold",
+                        fontSize: "1.1rem",
+                        color: "#1976d2",
+                      }}
+                    >
                       {new Intl.NumberFormat("es-PE", {
                         style: "currency",
                         currency: monedaLinea === "PEN" ? "PEN" : "USD",
@@ -596,17 +622,18 @@ const LineaCreditoForm = forwardRef(
                 body={(rowData) => {
                   const monedaLinea = lineaCredito.moneda?.codigoSunat || "USD";
                   const monedaPrestamo = rowData.moneda?.codigoSunat || "USD";
-                  
+
                   // Si es la misma moneda, no hay TC
                   if (monedaLinea === monedaPrestamo) {
                     return <Tag value="N/A" severity="secondary" />;
                   }
-                  
-                  // TC por defecto
-                  const tc = 3.8;
+
+                  // Obtener TC del préstamo (debe venir del backend)
+                  const tc = rowData.tipoCambioUsado || 3.75;
+
                   return (
-                    <Tag 
-                      value={tc.toFixed(4)} 
+                    <Tag
+                      value={tc.toFixed(4)}
                       severity="warning"
                       style={{ fontWeight: "bold" }}
                     />
@@ -691,8 +718,8 @@ const LineaCreditoForm = forwardRef(
                         .reduce(
                           (sum, p) =>
                             sum + parseFloat(p.montoDesembolsado || 0),
-                          0
-                        )
+                          0,
+                        ),
                     )}
                   </div>
                 </div>
@@ -717,8 +744,8 @@ const LineaCreditoForm = forwardRef(
                         .reduce(
                           (sum, p) =>
                             sum + parseFloat(p.montoDesembolsado || 0),
-                          0
-                        )
+                          0,
+                        ),
                     )}
                   </div>
                 </div>
@@ -734,7 +761,8 @@ const LineaCreditoForm = forwardRef(
               >
                 <div style={{ flex: 1, minWidth: "200px" }}>
                   <small style={{ color: "#666" }}>
-                    Total Desembolsado en {lineaCredito.moneda?.codigoSunat || "USD"}:
+                    Total Desembolsado en{" "}
+                    {lineaCredito.moneda?.codigoSunat || "USD"}:
                   </small>
                   <div
                     style={{
