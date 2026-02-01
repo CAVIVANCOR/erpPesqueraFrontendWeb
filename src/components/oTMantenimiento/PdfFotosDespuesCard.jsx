@@ -35,13 +35,6 @@ const PdfFotosDespuesCard = ({
   defaultValues = {},
   readOnly = false,
 }) => {
-  // DEBUG: Ver qué entityId recibimos
-  console.log('[PdfFotosDespuesCard] Props recibidas:');
-  console.log('  - otMantenimientoId:', otMantenimientoId);
-  console.log('  - defaultValues:', defaultValues);
-  console.log('  - readOnly:', readOnly);
-  console.log('  - control:', control);
-  console.log('  - watch:', watch);
   
   return (
     <PDFDocumentManager

@@ -327,7 +327,7 @@ export default function CuotaPrestamoList({
     <div>
       <Toast ref={toast} />
       <ConfirmDialog />
-      <div className="card">
+          <div className="card">
         <DataTable
           value={cuotas}
           loading={loading}
@@ -344,6 +344,9 @@ export default function CuotaPrestamoList({
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} cuotas"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           style={{ fontSize: getResponsiveFontSize() }}
+          selectionMode="single"
+          onRowClick={(e) => !readOnly && openEdit(e.data)}
+          rowClassName={() => !readOnly ? "cursor-pointer" : ""}
           header={
             <div
               style={{

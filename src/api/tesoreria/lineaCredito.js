@@ -70,3 +70,11 @@ export async function getReporteLineasDisponibles(empresaId) {
   const res = await axios.get(`${API_URL}/reporte/lineas-disponibles/${empresaId}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+export async function obtenerTipoCambio(fecha) {
+  const fechaISO = fecha instanceof Date ? fecha.toISOString().split('T')[0] : fecha;
+  const res = await axios.get(`${API_URL}/tipo-cambio/${fechaISO}`, { 
+    headers: getAuthHeaders() 
+  });
+  return res.data;
+}

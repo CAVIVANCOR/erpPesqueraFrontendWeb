@@ -20,6 +20,8 @@ export default function CuotaPrestamoForm({
     saldoCapitalAntes: defaultValues?.saldoCapitalAntes || 0,
     montoCapital: defaultValues?.montoCapital || 0,
     montoInteres: defaultValues?.montoInteres || 0,
+    montoComision: defaultValues?.montoComision || 0,
+    montoSeguro: defaultValues?.montoSeguro || 0,
     montoTotal: defaultValues?.montoTotal || 0,
     saldoCapitalDespues: defaultValues?.saldoCapitalDespues || 0,
     estadoPago: defaultValues?.estadoPago || "PENDIENTE",
@@ -37,21 +39,22 @@ export default function CuotaPrestamoForm({
     setFormData((prev) => {
       const newData = { ...prev, [field]: value };
 
-      // Calcular cuota total automáticamente
-      if (field === "montoCapital" || field === "montoInteres") {
-        newData.montoTotal = Number(newData.montoCapital || 0) + Number(newData.montoInteres || 0);
+           // Calcular cuota total automáticamente (Capital + Interés + Comisión + Seguro)
+      if (field === "montoCapital" || field === "montoInteres" || field === "montoComision" || field === "montoSeguro") {
+        newData.montoTotal = 
+          Number(newData.montoCapital || 0) + 
+          Number(newData.montoInteres || 0) + 
+          Number(newData.montoComision || 0) + 
+          Number(newData.montoSeguro || 0);
       }
 
-      // Calcular saldo final automáticamente
-      if (field === "saldoCapitalAntes" || field === "montoCapital") {
-        newData.saldoCapitalDespues = Number(newData.saldoCapitalAntes || 0) - Number(newData.montoCapital || 0);
-      }
+      // Los saldos se calculan automáticamente en el backend
 
       return newData;
     });
   };
 
-  useEffect(() => {
+    useEffect(() => {
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       setFormData({
         numeroCuota: defaultValues?.numeroCuota || 1,
@@ -59,6 +62,8 @@ export default function CuotaPrestamoForm({
         saldoCapitalAntes: defaultValues?.saldoCapitalAntes || 0,
         montoCapital: defaultValues?.montoCapital || 0,
         montoInteres: defaultValues?.montoInteres || 0,
+        montoComision: defaultValues?.montoComision || 0,
+        montoSeguro: defaultValues?.montoSeguro || 0,
         montoTotal: defaultValues?.montoTotal || 0,
         saldoCapitalDespues: defaultValues?.saldoCapitalDespues || 0,
         estadoPago: defaultValues?.estadoPago || "PENDIENTE",
@@ -83,11 +88,11 @@ export default function CuotaPrestamoForm({
       const dataToSend = {
         numeroCuota: Number(formData.numeroCuota),
         fechaVencimiento: formData.fechaVencimiento,
-        saldoCapitalAntes: Number(formData.saldoCapitalAntes),
         montoCapital: Number(formData.montoCapital),
         montoInteres: Number(formData.montoInteres),
+        montoComision: Number(formData.montoComision),
+        montoSeguro: Number(formData.montoSeguro),
         montoTotal: Number(formData.montoTotal),
-        saldoCapitalDespues: Number(formData.saldoCapitalDespues),
         estadoPago: formData.estadoPago,
       };
       await onSubmit(dataToSend);
@@ -179,9 +184,9 @@ export default function CuotaPrestamoForm({
       </div>
 
       <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
-        <div style={{ flex: 1 }}>
+               <div style={{ flex: 1 }}>
           <label htmlFor="saldoCapitalAntes" style={{ fontWeight: "bold" }}>
-            Saldo Capital Antes *
+            Saldo Capital Antes
           </label>
           <InputNumber
             id="saldoCapitalAntes"
@@ -190,7 +195,8 @@ export default function CuotaPrestamoForm({
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={2}
-            required
+            disabled
+            tooltip="Calculado automáticamente por el sistema"
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -220,6 +226,35 @@ export default function CuotaPrestamoForm({
             maxFractionDigits={2}
             required
           />
+               </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="montoComision" style={{ fontWeight: "bold" }}>
+            Monto Comisión
+          </label>
+          <InputNumber
+            id="montoComision"
+            value={formData.montoComision}
+            onValueChange={(e) => handleChange("montoComision", e.value)}
+            mode="decimal"
+            minFractionDigits={2}
+            maxFractionDigits={2}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="montoSeguro" style={{ fontWeight: "bold" }}>
+            Monto Seguro
+          </label>
+          <InputNumber
+            id="montoSeguro"
+            value={formData.montoSeguro}
+            onValueChange={(e) => handleChange("montoSeguro", e.value)}
+            mode="decimal"
+            minFractionDigits={2}
+            maxFractionDigits={2}
+          />
         </div>
       </div>
 
@@ -239,9 +274,9 @@ export default function CuotaPrestamoForm({
             disabled
           />
         </div>
-        <div style={{ flex: 1 }}>
+                <div style={{ flex: 1 }}>
           <label htmlFor="saldoCapitalDespues" style={{ fontWeight: "bold" }}>
-            Saldo Capital Después *
+            Saldo Capital Después
           </label>
           <InputNumber
             id="saldoCapitalDespues"
@@ -250,8 +285,8 @@ export default function CuotaPrestamoForm({
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={2}
-            required
             disabled
+            tooltip="Calculado automáticamente por el sistema"
           />
         </div>
       </div>

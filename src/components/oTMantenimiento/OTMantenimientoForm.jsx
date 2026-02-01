@@ -813,23 +813,6 @@ const OTMantenimientoForm = ({
           <div
             style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
           >
-            {/* DEBUG: Ver qué IDs tenemos disponibles */}
-            {console.log(
-              "[OTMantenimientoForm - TAB DOCUMENTOS] defaultValues:",
-              defaultValues,
-            )}
-            {console.log(
-              "[OTMantenimientoForm - TAB DOCUMENTOS] defaultValues?.id:",
-              defaultValues?.id,
-            )}
-            {console.log(
-              "[OTMantenimientoForm - TAB DOCUMENTOS] formData.id:",
-              formData.id,
-            )}
-            {console.log(
-              "[OTMantenimientoForm - TAB DOCUMENTOS] isEdit:",
-              isEdit,
-            )}
             <PdfFotosAntesCard
               control={control}
               errors={errors}

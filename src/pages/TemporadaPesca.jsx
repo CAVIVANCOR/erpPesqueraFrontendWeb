@@ -46,6 +46,7 @@ import { getTiposDocumento } from "../api/tipoDocumento";
 import TemporadaPescaForm from "../components/temporadaPesca/TemporadaPescaForm";
 import { getResponsiveFontSize } from "../utils/utils";
 import { abrirPdfEnNuevaPestana } from "../utils/pdfUtils";
+import PDFActionButtons from "../components/pdf/PDFActionButtons";
 
 /**
  * Componente principal para gestión de temporadas de pesca
@@ -515,26 +516,11 @@ const TemporadaPesca = ({ ruta }) => {
     );
   };
 
-  /**
-   * Template para resolución con enlace al PDF
+    /**
+   * Template para resolución (solo texto)
    */
   const resolucionTemplate = (rowData) => {
-    if (!rowData.numeroResolucion) return "-";
-
-    return (
-      <div className="flex align-items-center gap-2">
-        <span>{rowData.numeroResolucion}</span>
-        {rowData.urlResolucionPdf && (
-          <Button
-            icon="pi pi-file-pdf"
-            className="p-button-rounded p-button-text p-button-sm"
-            tooltip="Ver PDF"
-            tooltipOptions={{ position: "top" }}
-            onClick={() => abrirPdfEnNuevaPestana(rowData.urlResolucionPdf, toast, "No hay PDF disponible para esta resolución.")}
-          />
-        )}
-      </div>
-    );
+    return rowData.numeroResolucion || "-";
   };
 
   /**
@@ -544,12 +530,26 @@ const TemporadaPesca = ({ ruta }) => {
     return rowData.empresa?.razonSocial || "Sin empresa";
   };
 
-  /**
-   * Template para acciones (solo eliminar, edición por clic en fila)
+    /**
+   * Template para acciones (PDF, eliminar, edición por clic en fila)
    */
   const actionTemplate = (rowData) => {
     return (
-      <div className="flex gap-2">
+      <div className="flex gap-2 align-items-center">
+        {rowData.urlResolucionPdf && (
+          <div style={{ display: "inline-block" }}>
+            <PDFActionButtons
+              pdfUrl={rowData.urlResolucionPdf}
+              moduleName="temporada-pesca"
+              fileName={`Resolucion_${rowData.numeroResolucion}.pdf`}
+              showViewButton={true}
+              showDownloadButton={false}
+              viewButtonLabel=""
+              className="p-0"
+              toast={toast}
+            />
+          </div>
+        )}
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-text p-button-danger p-button-sm"
@@ -920,7 +920,7 @@ const TemporadaPesca = ({ ruta }) => {
             header="Acciones"
             body={actionTemplate}
             exportable={false}
-            style={{ minWidth: "100px", maxWidth: "100px" }}
+            style={{ minWidth: "100px", maxWidth: "150px" }}
             className="text-center"
           />
         </DataTable>

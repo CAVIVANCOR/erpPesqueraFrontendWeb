@@ -36,6 +36,7 @@ import GarantiaPrestamoCard from "./GarantiaPrestamoCard";
 import DocPrestamoPrincipal from "./DocPrestamoPrincipal";
 import DocPrestamoAdicional from "./DocPrestamoAdicional";
 import { getTipoPrestamoActivos } from "../../api/tesoreria/tipoPrestamo";
+import { obtenerTipoCambio } from "../../api/tesoreria/lineaCredito";
 
 const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   {
@@ -50,6 +51,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   ref,
 ) {
   const toast = useRef(null);
+  const esPrimeraCargaRef = useRef(true);
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const [cargandoDatos, setCargandoDatos] = useState(true);
   const [empresas, setEmpresas] = useState([]);
@@ -148,12 +150,14 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         defaultValues?.refNroProformaVentaExportacion || "",
       urlDocumentoPrincipal: defaultValues?.urlDocumentoPDF || "",
       urlDocumentoAdicional: defaultValues?.urlDocAdicionalPDF || "",
+      tipoCambioAplicado: defaultValues?.tipoCambioAplicado || null,
     },
   });
 
   const empresaIdWatch = watch("empresaId");
   const bancoIdWatch = watch("bancoId");
   const monedaIdWatch = watch("monedaId");
+  const fechaDesembolsoWatch = watch("fechaDesembolso");
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -181,6 +185,46 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
     });
     return () => subscription.unsubscribe();
   }, [watch]);
+
+  // Calcular tipo de cambio automáticamente SOLO al cambiar fecha (no al cargar)
+  useEffect(() => {
+    // Ignorar la primera carga
+    if (esPrimeraCargaRef.current) {
+      esPrimeraCargaRef.current = false;
+      return;
+    }
+
+    const calcularTipoCambio = async () => {
+      if (fechaDesembolsoWatch && monedaIdWatch) {
+        const tipoCambioActual = getValues("tipoCambioAplicado");
+
+        // Solo calcular si el TC es null o 0
+        if (!tipoCambioActual || tipoCambioActual === 0) {
+          try {
+            const tc = await obtenerTipoCambio(fechaDesembolsoWatch);
+            setValue("tipoCambioAplicado", tc.venta);
+
+            toast.current?.show({
+              severity: "success",
+              summary: "Tipo de Cambio Calculado",
+              detail: `TC Venta: ${tc.venta.toFixed(4)} (Fecha: ${tc.fecha})`,
+              life: 3000,
+            });
+          } catch (error) {
+            console.error("Error al obtener tipo de cambio:", error);
+            toast.current?.show({
+              severity: "warn",
+              summary: "TC no disponible",
+              detail: "No se pudo obtener el tipo de cambio para esta fecha",
+              life: 3000,
+            });
+          }
+        }
+      }
+    };
+
+    calcularTipoCambio();
+  }, [fechaDesembolsoWatch, monedaIdWatch]);
 
   const cargarDatosIniciales = async () => {
     try {
@@ -334,13 +378,11 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         refNroProformaVentaExportacion: data.refNroProformaVentaExportacion,
         urlDocumentoPDF: data.urlDocumentoPrincipal || null,
         urlDocAdicionalPDF: data.urlDocumentoAdicional || null,
+        tipoCambioAplicado: data.tipoCambioAplicado,
       };
 
       let resultado;
       if (isEdit) {
-        console.log("defaultValues:", defaultValues);
-        console.log("defaultValues.id:", defaultValues.id);
-        console.log("Number(defaultValues.id):", Number(defaultValues.id));
         resultado = await updatePrestamoBancario(
           Number(defaultValues.id),
           dataToSend,
@@ -666,7 +708,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
           </div>
 
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
-            <div style={{ flex: 0.75 }}>
+            <div style={{ flex: 1 }}>
               <label
                 htmlFor="numeroPrestamo"
                 style={{
@@ -693,7 +735,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
-            <div style={{ flex: 0.75 }}>
+            <div style={{ flex: 1 }}>
               <label
                 htmlFor="numeroContrato"
                 style={{
@@ -776,7 +818,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
-            <div style={{ flex: 0.5 }}>
+            <div style={{ flex: 1 }}>
               <label
                 htmlFor="fechaContrato"
                 style={{
@@ -802,7 +844,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
-            <div style={{ flex: 0.5 }}>
+            <div style={{ flex: 1 }}>
               <label
                 htmlFor="fechaDesembolso"
                 style={{
@@ -829,7 +871,36 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
-            <div style={{ flex: 0.5 }}>
+            {/* Tipo de Cambio Aplicado */}
+            <div style={{ flex: 0.3 }}>
+              <label
+                htmlFor="tipoCambioAplicado"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                  color: "#22940E",
+                }}
+              >
+                T/C
+              </label>
+              <Controller
+                name="tipoCambioAplicado"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="tipoCambioAplicado"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="decimal"
+                    minFractionDigits={4}
+                    maxFractionDigits={4}
+                    disabled={readOnly}
+                    style={{ width: "100%" }}
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
               <label
                 htmlFor="fechaVencimiento"
                 style={{

@@ -429,10 +429,7 @@ export default function PrestamoBancario({ ruta }) {
     }
 
     try {
-      console.log("rowData:", rowData);
-      console.log("rowData.id:", rowData.id);
       const prestamoCompleto = await getPrestamoBancarioById(Number(rowData.id));
-      console.log("prestamoCompleto:", prestamoCompleto);
       setSelected(prestamoCompleto);
       setIsEdit(true);
       setShowDialog(true);
@@ -1111,7 +1108,7 @@ export default function PrestamoBancario({ ruta }) {
           body={(rowData) => rowData.cuentaCorriente?.numeroCuenta || "N/A"}
         />
 
-        <Column
+               <Column
           field="montoAprobado"
           header="Monto Aprobado"
           body={montoTemplate}
@@ -1119,10 +1116,30 @@ export default function PrestamoBancario({ ruta }) {
           sortable
         />
         <Column
-          field="fechaContrato"
-          header="Fecha Contrato"
-          body={(rowData) => fechaTemplate(rowData, "fechaContrato")}
+          field="numeroCuotas"
+          header="N° Cuotas"
+          body={(rowData) => rowData.numeroCuotas || "-"}
+          style={{ width: 80, textAlign: "center" }}
+          sortable
+        />
+        <Column
+          field="fechaDesembolso"
+          header="Fecha Desembolso"
+          body={(rowData) => fechaTemplate(rowData, "fechaDesembolso")}
           style={{ width: 130, textAlign: "center" }}
+          sortable
+        />
+        <Column
+          field="tipoCambioAplicado"
+          header="T/C"
+          body={(rowData) => {
+            const tc = rowData.tipoCambioAplicado;
+            return tc ? new Intl.NumberFormat("es-PE", {
+              minimumFractionDigits: 4,
+              maximumFractionDigits: 4,
+            }).format(tc) : "-";
+          }}
+          style={{ width: 80, textAlign: "center" }}
           sortable
         />
         <Column

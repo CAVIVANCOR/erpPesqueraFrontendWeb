@@ -138,7 +138,6 @@ export async function generarPDFOrdenCompra(
 
   // COLUMNA 3: Datos adicionales dinámicos
   const datosColumna3 = [];
-  console.log('🔍 [OrdenCompraPDF] ordenCompra.datosAdicionales:', ordenCompra.datosAdicionales);
   
   if (ordenCompra.datosAdicionales && ordenCompra.datosAdicionales.length > 0) {
     ordenCompra.datosAdicionales.forEach((dato) => {
@@ -488,8 +487,6 @@ const tableStartX = margin;
   // ========================================
   // AGREGAR DOCUMENTOS ADJUNTOS COMO PÁGINAS ADICIONALES
   // ========================================
-  console.log('🔍 [OrdenCompraPDF] Iniciando proceso de adjuntar documentos...');
-  console.log('🔍 [OrdenCompraPDF] ordenCompra.datosAdicionales:', ordenCompra.datosAdicionales);
   
   if (ordenCompra.datosAdicionales && ordenCompra.datosAdicionales.length > 0) {
     for (const dato of ordenCompra.datosAdicionales) {
