@@ -41,6 +41,7 @@ export default function DatosGeneralesTemporadaForm({
   embarcaciones = [],
   boliches = [],
   puertos = [],
+  unidadesNegocio = [],
   temporadaData = null,
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
   onFaenasChange, // Callback para notificar cambios en faenas
@@ -103,17 +104,19 @@ export default function DatosGeneralesTemporadaForm({
 
       try {
         // Obtener detalles de cuota activos de la empresa
-        const detalles = await getDetallesCuotaPesca({ empresaId: empresaWatched });
-        const detallesActivos = detalles.filter(d => d.activo);
+        const detalles = await getDetallesCuotaPesca({
+          empresaId: empresaWatched,
+        });
+        const detallesActivos = detalles.filter((d) => d.activo);
 
         // Sumar porcentajes de cuotas propias
         const totalPropiaPorcentaje = detallesActivos
-          .filter(d => d.cuotaPropia)
+          .filter((d) => d.cuotaPropia)
           .reduce((sum, d) => sum + Number(d.porcentajeCuota), 0);
 
         // Sumar porcentajes de cuotas alquiladas
         const totalAlquiladaPorcentaje = detallesActivos
-          .filter(d => !d.cuotaPropia)
+          .filter((d) => !d.cuotaPropia)
           .reduce((sum, d) => sum + Number(d.porcentajeCuota), 0);
 
         // Calcular toneladas
@@ -161,15 +164,20 @@ export default function DatosGeneralesTemporadaForm({
     if (!temporadaData?.id) {
       return;
     }
-    
+
     try {
-      const temporadaActualizada = await getTemporadaPescaPorId(temporadaData.id);
-      const valorASetear = temporadaActualizada.toneladasCapturadas || temporadaActualizada.toneladasCapturadasTemporada || 0;
+      const temporadaActualizada = await getTemporadaPescaPorId(
+        temporadaData.id,
+      );
+      const valorASetear =
+        temporadaActualizada.toneladasCapturadas ||
+        temporadaActualizada.toneladasCapturadasTemporada ||
+        0;
       setValue("toneladasCapturadasTemporada", valorASetear);
-      
+
       // Verificar si se actualizó
       const valorActual = getValues("toneladasCapturadasTemporada");
-      
+
       // Notificar cambios al componente padre
       if (onTemporadaDataChange) {
         onTemporadaDataChange(temporadaActualizada);
@@ -201,6 +209,11 @@ export default function DatosGeneralesTemporadaForm({
   const estadosTemporadaOptions = estadosTemporada.map((estado) => ({
     label: estado.descripcion,
     value: Number(estado.id),
+  }));
+
+  const unidadesNegocioOptions = unidadesNegocio.map((unidad) => ({
+    label: unidad.nombre,
+    value: Number(unidad.id),
   }));
 
   return (
@@ -356,6 +369,42 @@ export default function DatosGeneralesTemporadaForm({
               />
             )}
           </div>
+
+          {/* Unidad de Negocio */}
+          <div style={{ flex: 1 }}>
+            <label htmlFor="unidadNegocioId" className="font-semibold">
+              Unidad de Negocio *
+            </label>
+            <Controller
+              name="unidadNegocioId"
+              control={control}
+              rules={{ required: "La unidad de negocio es obligatoria" }}
+              render={({ field }) => (
+                <Dropdown
+                  id="unidadNegocioId"
+                  {...field}
+                  value={field.value}
+                  onChange={(e) => {
+                    field.onChange(e.value);
+                    setValue("unidadNegocioId", e.value);
+                  }}
+                  options={unidadesNegocioOptions}
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Seleccione unidad de negocio"
+                  filter
+                  disabled={true}
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({
+                    "p-invalid": errors.unidadNegocioId,
+                  })}
+                />
+              )}
+            />
+            {errors.unidadNegocioId && (
+              <Message severity="error" text={errors.unidadNegocioId.message} />
+            )}
+          </div>
         </div>
 
         <div
@@ -480,7 +529,10 @@ export default function DatosGeneralesTemporadaForm({
               )}
             />
             {errors.limiteMaximoCapturaTn && (
-              <Message severity="error" text={errors.limiteMaximoCapturaTn.message} />
+              <Message
+                severity="error"
+                text={errors.limiteMaximoCapturaTn.message}
+              />
             )}
           </div>
           {/* Cuota Propia */}
@@ -542,7 +594,10 @@ export default function DatosGeneralesTemporadaForm({
           </div>
           {/* Toneladas Capturadas */}
           <div style={{ flex: 1 }}>
-            <label htmlFor="toneladasCapturadasTemporada" className="font-semibold">
+            <label
+              htmlFor="toneladasCapturadasTemporada"
+              className="font-semibold"
+            >
               Toneladas Capturadas
             </label>
             <Controller

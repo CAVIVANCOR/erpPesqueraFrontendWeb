@@ -54,7 +54,8 @@ export default function EntregaARendirMovAlmacenCard({
   const [verificandoEntrega, setVerificandoEntrega] = useState(true);
 
   // Estados para cálculos automáticos
-  const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] = useState(0);
+  const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] =
+    useState(0);
   const [totalGastosEntregasRendir, setTotalGastosEntregasRendir] = useState(0);
   const [totalSaldoEntregasRendir, setTotalSaldoEntregasRendir] = useState(0);
 
@@ -66,7 +67,8 @@ export default function EntregaARendirMovAlmacenCard({
   const [productos, setProductos] = useState([]);
 
   // Estado para entidades comerciales filtradas por empresa
-  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] = useState([]);
+  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] =
+    useState([]);
 
   // Estados para edición de la entrega
   const [responsableEditado, setResponsableEditado] = useState(null);
@@ -110,7 +112,7 @@ export default function EntregaARendirMovAlmacenCard({
   useEffect(() => {
     if (movimientoAlmacen?.empresaId && entidadesComerciales.length > 0) {
       const entidadesFiltradas = entidadesComerciales.filter(
-        (e) => Number(e.empresaId) === Number(movimientoAlmacen.empresaId)
+        (e) => Number(e.empresaId) === Number(movimientoAlmacen.empresaId),
       );
       setEntidadesComercialesFiltradas(entidadesFiltradas);
     } else {
@@ -128,7 +130,7 @@ export default function EntregaARendirMovAlmacenCard({
       const productosFiltrados = productosData.filter(
         (p) =>
           familiasGastosIds.includes(Number(p.familiaId)) &&
-          Number(p.empresaId) === Number(movimientoAlmacen?.empresaId)
+          Number(p.empresaId) === Number(movimientoAlmacen?.empresaId),
       );
       setProductos(productosFiltrados);
     } catch (error) {
@@ -150,7 +152,7 @@ export default function EntregaARendirMovAlmacenCard({
     try {
       const data = await getAllEntregaARendirMovAlmacen();
       const entregaExistente = data.find(
-        (e) => Number(e.movimientoAlmacenId) === Number(movimientoAlmacen.id)
+        (e) => Number(e.movimientoAlmacenId) === Number(movimientoAlmacen.id),
       );
 
       if (entregaExistente) {
@@ -179,7 +181,8 @@ export default function EntregaARendirMovAlmacenCard({
    */
   const preguntarCrearEntrega = () => {
     confirmDialog({
-      message: "No existe una entrega a rendir para este movimiento de almacén. ¿Desea crear una?",
+      message:
+        "No existe una entrega a rendir para este movimiento de almacén. ¿Desea crear una?",
       header: "Crear Entrega a Rendir",
       icon: "pi pi-question-circle",
       acceptLabel: "Sí, Crear",
@@ -195,11 +198,15 @@ export default function EntregaARendirMovAlmacenCard({
    * Crear entrega a rendir automáticamente
    */
   const crearEntregaAutomatica = async () => {
-    if (!movimientoAlmacen.personalRespAlmacen || Number(movimientoAlmacen.personalRespAlmacen) <= 0) {
+    if (
+      !movimientoAlmacen.personalRespAlmacen ||
+      Number(movimientoAlmacen.personalRespAlmacen) <= 0
+    ) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "El movimiento de almacén debe tener un Responsable asignado para crear una entrega a rendir",
+        detail:
+          "El movimiento de almacén debe tener un Responsable asignado para crear una entrega a rendir",
         life: 5000,
       });
       return;
@@ -226,8 +233,12 @@ export default function EntregaARendirMovAlmacenCard({
         movimientoAlmacenId: Number(nuevaEntrega.movimientoAlmacenId),
         respEntregaRendirId: Number(nuevaEntrega.respEntregaRendirId),
         centroCostoId: Number(nuevaEntrega.centroCostoId),
-        creadoPor: nuevaEntrega.creadoPor ? Number(nuevaEntrega.creadoPor) : null,
-        actualizadoPor: nuevaEntrega.actualizadoPor ? Number(nuevaEntrega.actualizadoPor) : null,
+        creadoPor: nuevaEntrega.creadoPor
+          ? Number(nuevaEntrega.creadoPor)
+          : null,
+        actualizadoPor: nuevaEntrega.actualizadoPor
+          ? Number(nuevaEntrega.actualizadoPor)
+          : null,
       };
 
       setEntregaARendir(entregaNormalizada);
@@ -246,7 +257,8 @@ export default function EntregaARendirMovAlmacenCard({
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.mensaje || "Error al crear la entrega a rendir",
+        detail:
+          error.response?.data?.mensaje || "Error al crear la entrega a rendir",
         life: 3000,
       });
     } finally {
@@ -264,7 +276,8 @@ export default function EntregaARendirMovAlmacenCard({
     try {
       const data = await getAllDetMovsEntregaRendirMovAlmacen();
       const movsFiltrados = data.filter(
-        (m) => Number(m.entregaARendirMovAlmacenId) === Number(entregaARendir.id)
+        (m) =>
+          Number(m.entregaARendirMovAlmacenId) === Number(entregaARendir.id),
       );
       setMovimientos(movsFiltrados);
       calcularTotales(movsFiltrados);
@@ -290,8 +303,10 @@ export default function EntregaARendirMovAlmacenCard({
 
     movs.forEach((mov) => {
       const monto = Number(mov.monto) || 0;
-      const tipoMov = tiposMovimiento.find((t) => Number(t.id) === Number(mov.tipoMovimientoId));
-      
+      const tipoMov = tiposMovimiento.find(
+        (t) => Number(t.id) === Number(mov.tipoMovimientoId),
+      );
+
       if (tipoMov?.esIngreso === true) {
         totalAsignaciones += monto;
       } else if (tipoMov?.esIngreso === false) {
@@ -313,7 +328,7 @@ export default function EntregaARendirMovAlmacenCard({
     setResponsableEditado(value);
     setHayCambios(
       Number(value) !== Number(entregaARendir.respEntregaRendirId) ||
-        Number(centroCostoEditado) !== Number(entregaARendir.centroCostoId)
+        Number(centroCostoEditado) !== Number(entregaARendir.centroCostoId),
     );
   };
 
@@ -323,8 +338,9 @@ export default function EntregaARendirMovAlmacenCard({
   const handleCentroCostoChange = (value) => {
     setCentroCostoEditado(value);
     setHayCambios(
-      Number(responsableEditado) !== Number(entregaARendir.respEntregaRendirId) ||
-        Number(value) !== Number(entregaARendir.centroCostoId)
+      Number(responsableEditado) !==
+        Number(entregaARendir.respEntregaRendirId) ||
+        Number(value) !== Number(entregaARendir.centroCostoId),
     );
   };
 
@@ -344,7 +360,7 @@ export default function EntregaARendirMovAlmacenCard({
 
       const entregaActualizada = await actualizarEntregaARendirMovAlmacen(
         entregaARendir.id,
-        dataToUpdate
+        dataToUpdate,
       );
 
       const entregaNormalizada = {
@@ -353,8 +369,12 @@ export default function EntregaARendirMovAlmacenCard({
         movimientoAlmacenId: Number(entregaActualizada.movimientoAlmacenId),
         respEntregaRendirId: Number(entregaActualizada.respEntregaRendirId),
         centroCostoId: Number(entregaActualizada.centroCostoId),
-        creadoPor: entregaActualizada.creadoPor ? Number(entregaActualizada.creadoPor) : null,
-        actualizadoPor: entregaActualizada.actualizadoPor ? Number(entregaActualizada.actualizadoPor) : null,
+        creadoPor: entregaActualizada.creadoPor
+          ? Number(entregaActualizada.creadoPor)
+          : null,
+        actualizadoPor: entregaActualizada.actualizadoPor
+          ? Number(entregaActualizada.actualizadoPor)
+          : null,
       };
 
       setEntregaARendir(entregaNormalizada);
@@ -373,7 +393,9 @@ export default function EntregaARendirMovAlmacenCard({
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.mensaje || "Error al actualizar la entrega a rendir",
+        detail:
+          error.response?.data?.mensaje ||
+          "Error al actualizar la entrega a rendir",
         life: 3000,
       });
     } finally {
@@ -397,7 +419,8 @@ export default function EntregaARendirMovAlmacenCard({
    */
   const handleEliminarEntrega = () => {
     confirmDialog({
-      message: "¿Está seguro de eliminar esta entrega a rendir? Esta acción no se puede deshacer.",
+      message:
+        "¿Está seguro de eliminar esta entrega a rendir? Esta acción no se puede deshacer.",
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-danger",
@@ -418,7 +441,9 @@ export default function EntregaARendirMovAlmacenCard({
           toast.current?.show({
             severity: "error",
             summary: "Error",
-            detail: error.response?.data?.mensaje || "Error al eliminar la entrega a rendir",
+            detail:
+              error.response?.data?.mensaje ||
+              "Error al eliminar la entrega a rendir",
             life: 3000,
           });
         } finally {
@@ -526,22 +551,22 @@ export default function EntregaARendirMovAlmacenCard({
                 entregaARendir.entregaLiquidada
                   ? "LIQUIDADA"
                   : movimientos.length > 0 && totalSaldoEntregasRendir === 0
-                  ? "LISTA PARA LIQUIDAR"
-                  : "PENDIENTE"
+                    ? "LISTA PARA LIQUIDAR"
+                    : "PENDIENTE"
               }
               severity={
                 entregaARendir.entregaLiquidada
                   ? "success"
                   : movimientos.length > 0 && totalSaldoEntregasRendir === 0
-                  ? "info"
-                  : "danger"
+                    ? "info"
+                    : "danger"
               }
               className="w-full"
               disabled
               style={{ fontWeight: "bold" }}
             />
           </div>
-          <div style={{ flex: 1}}>
+          <div style={{ flex: 1 }}>
             <label className="block text-900 font-medium mb-2">
               Fecha Liquidación
             </label>
@@ -549,7 +574,7 @@ export default function EntregaARendirMovAlmacenCard({
               value={
                 entregaARendir.fechaLiquidacion
                   ? new Date(
-                      entregaARendir.fechaLiquidacion
+                      entregaARendir.fechaLiquidacion,
                     ).toLocaleDateString("es-PE")
                   : "N/A"
               }
@@ -579,7 +604,6 @@ export default function EntregaARendirMovAlmacenCard({
               disabled={!puedeEditar || entregaARendir.entregaLiquidada}
             />
           </div>
-
         </div>
         <Divider />
 
@@ -667,8 +691,12 @@ export default function EntregaARendirMovAlmacenCard({
               className="p-button-success"
               onClick={handleGuardarCambios}
               loading={loadingEntrega}
-              disabled={entregaARendir.entregaLiquidada || !permisos.puedeEditar}
-              tooltip={!permisos.puedeEditar ? "No tiene permisos para editar" : ""}
+              disabled={
+                entregaARendir.entregaLiquidada || !permisos.puedeEditar
+              }
+              tooltip={
+                !permisos.puedeEditar ? "No tiene permisos para editar" : ""
+              }
             />
           </div>
         </div>

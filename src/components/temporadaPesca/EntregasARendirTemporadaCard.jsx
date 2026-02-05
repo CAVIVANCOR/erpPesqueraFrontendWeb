@@ -45,6 +45,7 @@ import { getProductos } from "../../api/producto"; // Importar API de productos
 
 const EntregasARendirTemporadaCard = ({
   temporadaPescaId,
+  temporadaPesca = null,
   temporadaPescaIniciada = false,
   empresaId,
   personal = [],
@@ -121,7 +122,7 @@ const EntregasARendirTemporadaCard = ({
       const productosFiltrados = data.filter(
         (p) =>
           familiasGastosIds.includes(Number(p.familiaId)) &&
-          Number(p.empresaId) === Number(empresaId)
+          Number(p.empresaId) === Number(empresaId),
       );
       setProductos(productosFiltrados);
     } catch (error) {
@@ -144,7 +145,7 @@ const EntregasARendirTemporadaCard = ({
       const entregasData = await getAllEntregaARendir();
       const entregaTemporada = entregasData.find(
         (entrega) =>
-          Number(entrega.temporadaPescaId) === Number(temporadaPescaId)
+          Number(entrega.temporadaPescaId) === Number(temporadaPescaId),
       );
       setEntregaARendir(entregaTemporada || null);
     } catch (error) {
@@ -168,7 +169,7 @@ const EntregasARendirTemporadaCard = ({
       setLoadingMovimientos(true);
       const movimientosData = await getAllDetMovsEntregaRendir();
       const movimientosEntrega = movimientosData.filter(
-        (mov) => Number(mov.entregaARendirId) === Number(entregaARendir.id)
+        (mov) => Number(mov.entregaARendirId) === Number(entregaARendir.id),
       );
 
       setMovimientos(movimientosEntrega);
@@ -198,7 +199,7 @@ const EntregasARendirTemporadaCard = ({
 
       // Buscar el tipo de movimiento en el array tiposMovimiento usando el ID
       const tipoMov = tiposMovimiento.find(
-        (t) => Number(t.id) === Number(mov.tipoMovimientoId)
+        (t) => Number(t.id) === Number(mov.tipoMovimientoId),
       );
 
       // Verificar si es ingreso o egreso usando el campo "esIngreso" (booleano)
@@ -304,7 +305,7 @@ const EntregasARendirTemporadaCard = ({
     }
 
     const responsable = personal.find(
-      (p) => Number(p.id) === Number(entregaARendir.respEntregaRendirId)
+      (p) => Number(p.id) === Number(entregaARendir.respEntregaRendirId),
     );
 
     if (!responsable) {
@@ -344,7 +345,7 @@ const EntregasARendirTemporadaCard = ({
     }
 
     const centroCosto = centrosCosto.find(
-      (c) => Number(c.id) === Number(entregaARendir.centroCostoId)
+      (c) => Number(c.id) === Number(entregaARendir.centroCostoId),
     );
 
     if (!centroCosto) {
@@ -413,15 +414,15 @@ const EntregasARendirTemporadaCard = ({
                     value={
                       entregaARendir.fechaLiquidacion
                         ? new Date(
-                            entregaARendir.fechaLiquidacion
+                            entregaARendir.fechaLiquidacion,
                           ).toLocaleString("es-PE", {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                            hour12: false
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                            hour12: false,
                           })
                         : "N/A"
                     }
@@ -489,7 +490,7 @@ const EntregasARendirTemporadaCard = ({
                         onClick={() =>
                           window.open(
                             entregaARendir.urlLiquidacionPdf,
-                            "_blank"
+                            "_blank",
                           )
                         }
                       />
@@ -605,15 +606,15 @@ const EntregasARendirTemporadaCard = ({
                   entregaARendir.entregaLiquidada
                     ? "TEMPORADA LIQUIDADA"
                     : movimientos.length > 0 && totalSaldoEntregasRendir === 0
-                    ? "LISTA PARA LIQUIDAR"
-                    : "PENDIENTE LIQUIDACION"
+                      ? "LISTA PARA LIQUIDAR"
+                      : "PENDIENTE LIQUIDACION"
                 }
                 severity={
                   entregaARendir.entregaLiquidada
                     ? "success"
                     : movimientos.length > 0 && totalSaldoEntregasRendir === 0
-                    ? "info"
-                    : "danger"
+                      ? "info"
+                      : "danger"
                 }
                 className="w-full"
                 disabled
@@ -630,6 +631,7 @@ const EntregasARendirTemporadaCard = ({
           <TabPanel header="Movimientos" leftIcon="pi pi-list">
             <DetEntregaRendirPescaIndustrial
               entregaARendir={entregaARendir}
+              temporadaPesca={temporadaPesca}
               movimientos={movimientos}
               personal={personal}
               centrosCosto={centrosCosto}

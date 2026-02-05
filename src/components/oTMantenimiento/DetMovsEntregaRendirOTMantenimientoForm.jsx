@@ -26,6 +26,7 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
   centrosCosto = [],
   tiposMovimiento = [],
   entidadesComerciales = [],
+  movimientosAsignacionEntregaRendir = [],
   monedas = [],
   tiposDocumento = [],
   productos = [],
@@ -70,6 +71,8 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
       numeroSerieComprobante: "",
       numeroCorrelativoComprobante: "",
       productoId: "",
+      detalleGastosPlanificados: "",
+      asignacionOrigenId: null,
     },
   });
 
@@ -149,6 +152,10 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
           movimiento.numeroCorrelativoComprobante || "",
         productoId: movimiento.productoId
           ? Number(movimiento.productoId)
+          : null,
+        detalleGastosPlanificados: movimiento.detalleGastosPlanificados || "",
+        asignacionOrigenId: movimiento.asignacionOrigenId
+          ? Number(movimiento.asignacionOrigenId)
           : null,
       });
     } else {
@@ -238,7 +245,13 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
     label: p.descripcionArmada || p.descripcionBase || p.codigo,
     value: Number(p.id),
   }));
-
+  // Crear opciones de asignación origen desde los movimientos de asignación (inicial o adicional) que forman parte del cálculo
+  const asignacionOrigenOptions = (
+    movimientosAsignacionEntregaRendir || []
+  ).map((mov) => ({
+    label: `Mov #${mov.id} - ${mov.descripcion || "Sin descripción"} - S/ ${mov.monto}`,
+    value: Number(mov.id),
+  }));
   const handleToggleOperacionSinFactura = () => {
     const valorActual = getValues("operacionSinFactura");
     setValue("operacionSinFactura", !valorActual);
@@ -301,6 +314,12 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
         numeroCorrelativoComprobante:
           data.numeroCorrelativoComprobante?.trim() || null,
         productoId: data.productoId ? Number(data.productoId) : null,
+        detalleGastosPlanificados: data.detalleGastosPlanificados
+          ? data.detalleGastosPlanificados.toUpperCase().trim()
+          : null,
+        asignacionOrigenId: data.asignacionOrigenId
+          ? Number(data.asignacionOrigenId)
+          : null,
         actualizadoEn: new Date(),
       };
       if (!isEditing) {
@@ -558,6 +577,88 @@ const DetMovsEntregaRendirOTMantenimientoForm = ({
                 />
                 {errors.productoId && (
                   <Message severity="error" text={errors.productoId.message} />
+                )}
+              </div>
+            </div>
+            {/* NUEVOS CAMPOS: Asignación Origen y Detalle Gastos Planificados */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <label
+                  htmlFor="asignacionOrigenId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Asignación Origen
+                </label>
+                <Controller
+                  name="asignacionOrigenId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="asignacionOrigenId"
+                      {...field}
+                      value={field.value}
+                      options={asignacionOrigenOptions}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione asignación origen"
+                      className={classNames({
+                        "p-invalid": errors.asignacionOrigenId,
+                      })}
+                      filter
+                      showClear
+                      style={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.asignacionOrigenId && (
+                  <Message
+                    severity="error"
+                    text={errors.asignacionOrigenId.message}
+                  />
+                )}
+              </div>
+              <div style={{ flex: 3 }}>
+                <label
+                  htmlFor="detalleGastosPlanificados"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Detalle Gastos Planificados
+                </label>
+                <Controller
+                  name="detalleGastosPlanificados"
+                  control={control}
+                  render={({ field }) => (
+                    <InputTextarea
+                      id="detalleGastosPlanificados"
+                      {...field}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      rows={1}
+                      placeholder="Ingrese detalle de gastos planificados"
+                      className={classNames({
+                        "p-invalid": errors.detalleGastosPlanificados,
+                      })}
+                      style={{
+                        fontWeight: "bold",
+                        textTransform: "uppercase",
+                      }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.detalleGastosPlanificados && (
+                  <Message
+                    severity="error"
+                    text={errors.detalleGastosPlanificados.message}
+                  />
                 )}
               </div>
             </div>

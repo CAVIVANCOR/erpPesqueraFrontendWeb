@@ -9,7 +9,6 @@
  * @author ERP Megui
  * @version 2.1.0
  */
-
 import React, { useEffect, useRef, useState } from "react";
 import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
@@ -39,6 +38,7 @@ export default function DatosGeneralesNovedadForm({
   embarcaciones = [],
   boliches = [],
   puertos = [],
+  unidadesNegocio = [],
   novedadData = null,
   onNovedadDataChange, // Callback para notificar cambios en datos de novedad
   readOnly = false,
@@ -70,7 +70,7 @@ export default function DatosGeneralesNovedadForm({
   // Generar nombre automáticamente cuando cambien id, numeroResolucion o referenciaExtra
   useEffect(() => {
     let nombreGenerado = "";
-    
+
     if (idWatched && numeroResolucionWatched) {
       nombreGenerado = `Novedad Pesca Consumo - ${idWatched} - ${numeroResolucionWatched}`;
     } else if (numeroResolucionWatched && numeroResolucionWatched.trim()) {
@@ -79,12 +79,14 @@ export default function DatosGeneralesNovedadForm({
     } else if (idWatched) {
       nombreGenerado = `Novedad Pesca Consumo - ${idWatched}`;
     }
-    
+
     // Agregar referenciaExtra al final si existe
     if (referenciaExtraWatched && referenciaExtraWatched.trim()) {
-      nombreGenerado = nombreGenerado ? `${nombreGenerado} - ${referenciaExtraWatched}` : referenciaExtraWatched;
+      nombreGenerado = nombreGenerado
+        ? `${nombreGenerado} - ${referenciaExtraWatched}`
+        : referenciaExtraWatched;
     }
-    
+
     if (nombreGenerado) {
       setValue("nombre", nombreGenerado);
     }
@@ -107,17 +109,14 @@ export default function DatosGeneralesNovedadForm({
     if (!novedadData?.id) {
       return;
     }
-
     try {
       const novedadActualizada = await getNovedadPescaConsumoPorId(
-        novedadData.id
+        novedadData.id,
       );
       const valorASetear = novedadActualizada.toneladasCapturadas || 0;
       setValue("toneladasCapturadas", valorASetear);
-
       // Verificar si se actualizó
       const valorActual = getValues("toneladasCapturadas");
-
       // Notificar al componente padre sobre los cambios
       if (onNovedadDataChange) {
         onNovedadDataChange(novedadActualizada);
@@ -126,20 +125,16 @@ export default function DatosGeneralesNovedadForm({
       console.error("Error al recargar datos de novedad:", error);
     }
   };
-
   // Escuchar evento personalizado para recargar datos
   useEffect(() => {
     const handleRefreshFaenas = () => {
       recargarDatosNovedad();
     };
-
     window.addEventListener("refreshFaenas", handleRefreshFaenas);
-
     return () => {
       window.removeEventListener("refreshFaenas", handleRefreshFaenas);
     };
   }, [novedadData?.id]);
-
   // Función para formatear opciones de empresa
   const formatearOpcionesEmpresa = (empresas) => {
     return empresas.map((empresa) => ({
@@ -148,7 +143,6 @@ export default function DatosGeneralesNovedadForm({
       label: `${empresa.ruc} - ${empresa.razonSocial}`,
     }));
   };
-
   // Función para formatear opciones de estado
   const formatearOpcionesEstado = (estados) => {
     const estadosFormateados = estados.map((estado) => ({
@@ -157,6 +151,11 @@ export default function DatosGeneralesNovedadForm({
     }));
     return estadosFormateados;
   };
+
+  const unidadesNegocioOptions = unidadesNegocio.map((unidad) => ({
+    label: unidad.nombre,
+    value: Number(unidad.id),
+  }));
 
   return (
     <Card
@@ -274,6 +273,47 @@ export default function DatosGeneralesNovedadForm({
               </small>
             )}
           </div>
+
+          {/* Unidad de Negocio */}
+          <div style={{ flex: 1 }}>
+            <label
+              htmlFor="unidadNegocioId"
+              className="block text-900 font-medium mb-2"
+            >
+              Unidad de Negocio *
+            </label>
+            <Controller
+              name="unidadNegocioId"
+              control={control}
+              rules={{ required: "La unidad de negocio es obligatoria" }}
+              render={({ field }) => (
+                <Dropdown
+                  id="unidadNegocioId"
+                  {...field}
+                  value={field.value}
+                  onChange={(e) => {
+                    field.onChange(e.value);
+                    setValue("unidadNegocioId", e.value);
+                  }}
+                  options={unidadesNegocioOptions}
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Seleccione unidad de negocio"
+                  filter
+                  disabled={true}
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({
+                    "p-invalid": errors.unidadNegocioId,
+                  })}
+                />
+              )}
+            />
+            {errors.unidadNegocioId && (
+              <small className="p-error">
+                {errors.unidadNegocioId.message}
+              </small>
+            )}
+          </div>
         </div>
 
         {/* Tercera fila: Número de Resolución, Referencia Extra Fecha Inicio, Fecha Fin, Cuota Propia, Toneladas Capturadas */}
@@ -284,8 +324,8 @@ export default function DatosGeneralesNovedadForm({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-           {/* Número de Resolución */}
-           <div style={{ flex: 1 }}>
+          {/* Número de Resolución */}
+          <div style={{ flex: 1 }}>
             <label
               htmlFor="numeroResolucion"
               className="block text-900 font-medium mb-2"

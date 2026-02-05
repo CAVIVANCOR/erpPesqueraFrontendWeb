@@ -2,43 +2,49 @@
  * Pantalla CRUD profesional para OTMantenimiento (Órdenes de Trabajo de Mantenimiento)
  * Implementa el patrón estándar ERP Megui con DataTable, modal, confirmación y feedback.
  * Incluye edición por clic en fila y eliminación con control de roles.
- * 
+ *
  * @author ERP Megui
  * @version 1.0.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Navigate } from 'react-router-dom';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Dialog } from 'primereact/dialog';
-import { Toast } from 'primereact/toast';
-import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
-import { Tag } from 'primereact/tag';
-import { Dropdown } from 'primereact/dropdown';
-import { Calendar } from 'primereact/calendar';
-import { getOrdenesTrabajoMantenimiento, crearOrdenTrabajo, actualizarOrdenTrabajo, eliminarOrdenTrabajo, getOrdenTrabajoPorId } from '../api/oTMantenimiento';
-import { getEmpresas } from '../api/empresa';
-import { getSedes } from '../api/sedes';
-import { getActivos } from '../api/activo';
-import { getTiposMantenimiento } from '../api/tipoMantenimiento';
-import { getMotivosOrigenOT } from '../api/motivoOriginoOT';
-import { getEstadosMultiFuncionPorTipoProviene } from '../api/estadoMultiFuncion';
-import { getPersonal } from '../api/personal';
-import { getContratistas } from '../api/contratista';
-import { getProductos } from '../api/producto';
-import { getAlmacenes } from '../api/almacen';
-import { getTiposDocumento } from '../api/tipoDocumento';
-import { getSeriesDoc } from '../api/serieDoc';
-import { getMonedas } from '../api/moneda';
-import { getCentrosCosto } from '../api/centroCosto';
-import { getAllTipoMovEntregaRendir } from '../api/tipoMovEntregaRendir';
-import { getEntidadesComerciales } from '../api/entidadComercial';
-import { useAuthStore } from '../shared/stores/useAuthStore';
-import { usePermissions } from '../hooks/usePermissions';
-import OTMantenimientoForm from '../components/oTMantenimiento/OTMantenimientoForm';
-import { formatearFecha } from '../utils/utils';
+import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { Tag } from "primereact/tag";
+import { Dropdown } from "primereact/dropdown";
+import { Calendar } from "primereact/calendar";
+import {
+  getOrdenesTrabajoMantenimiento,
+  crearOrdenTrabajo,
+  actualizarOrdenTrabajo,
+  eliminarOrdenTrabajo,
+  getOrdenTrabajoPorId,
+} from "../api/oTMantenimiento";
+import { getEmpresas } from "../api/empresa";
+import { getSedes } from "../api/sedes";
+import { getActivos } from "../api/activo";
+import { getTiposMantenimiento } from "../api/tipoMantenimiento";
+import { getMotivosOrigenOT } from "../api/motivoOriginoOT";
+import { getEstadosMultiFuncionPorTipoProviene } from "../api/estadoMultiFuncion";
+import { getPersonal } from "../api/personal";
+import { getContratistas } from "../api/contratista";
+import { getProductos } from "../api/producto";
+import { getAlmacenes } from "../api/almacen";
+import { getTiposDocumento } from "../api/tipoDocumento";
+import { getSeriesDoc } from "../api/serieDoc";
+import { getMonedas } from "../api/moneda";
+import { getCentrosCosto } from "../api/centroCosto";
+import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
+import { getEntidadesComerciales } from "../api/entidadComercial";
+import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
+import OTMantenimientoForm from "../components/oTMantenimiento/OTMantenimientoForm";
+import { formatearFecha } from "../utils/utils";
 import { getResponsiveFontSize } from "../utils/utils";
 
 /**
@@ -54,7 +60,7 @@ const OTMantenimiento = ({ ruta }) => {
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
-  
+
   // Estados del componente
   const [ordenesTrabajo, setOrdenesTrabajo] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -90,7 +96,6 @@ const OTMantenimiento = ({ ruta }) => {
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
-
   /**
    * Carga las órdenes de trabajo desde la API
    */
@@ -99,13 +104,14 @@ const OTMantenimiento = ({ ruta }) => {
       setLoading(true);
       const filtros = {};
       if (empresaSeleccionada) filtros.empresaId = empresaSeleccionada;
-      if (tipoMantenimientoFiltro) filtros.tipoMantenimientoId = tipoMantenimientoFiltro;
+      if (tipoMantenimientoFiltro)
+        filtros.tipoMantenimientoId = tipoMantenimientoFiltro;
       if (motivoFiltro) filtros.motivoOriginoId = motivoFiltro;
       if (estadoFiltro) filtros.estadoId = estadoFiltro;
-      
-      const data = await getOrdenesTrabajoMantenimiento(filtros);      
+
+      const data = await getOrdenesTrabajoMantenimiento(filtros);
       // Normalizar IDs según regla ERP Megui
-      const ordenesNormalizadas = data.map(orden => ({
+      const ordenesNormalizadas = data.map((orden) => ({
         ...orden,
         id: Number(orden.id),
         empresaId: Number(orden.empresaId),
@@ -115,7 +121,9 @@ const OTMantenimiento = ({ ruta }) => {
         motivoOriginoId: Number(orden.motivoOriginoId),
         solicitanteId: orden.solicitanteId ? Number(orden.solicitanteId) : null,
         responsableId: orden.responsableId ? Number(orden.responsableId) : null,
-        autorizadoPorId: orden.autorizadoPorId ? Number(orden.autorizadoPorId) : null
+        autorizadoPorId: orden.autorizadoPorId
+          ? Number(orden.autorizadoPorId)
+          : null,
       }));
 
       // Aplicar filtros de fecha en frontend
@@ -138,14 +146,14 @@ const OTMantenimiento = ({ ruta }) => {
           return fechaDoc <= fechaFinDia;
         });
       }
-      
+
       setOrdenesTrabajo(ordenesFiltradas);
     } catch (error) {
-      console.error('Error al cargar órdenes de trabajo:', error);
+      console.error("Error al cargar órdenes de trabajo:", error);
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al cargar las órdenes de trabajo'
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar las órdenes de trabajo",
       });
     } finally {
       setLoading(false);
@@ -175,7 +183,7 @@ const OTMantenimiento = ({ ruta }) => {
         monedasData,
         centrosCostoData,
         tiposMovimientoData,
-        entidadesComercialesData
+        entidadesComercialesData,
       ] = await Promise.all([
         getEmpresas(),
         getSedes(),
@@ -194,35 +202,52 @@ const OTMantenimiento = ({ ruta }) => {
         getMonedas(),
         getCentrosCosto(),
         getAllTipoMovEntregaRendir(),
-        getEntidadesComerciales()
+        getEntidadesComerciales(),
       ]);
 
       // Normalizar IDs
-      setEmpresas(empresasData.map(e => ({ ...e, id: Number(e.id) })));
-      setSedes(sedesData.map(s => ({ ...s, id: Number(s.id) })));
-      setAlmacenes(almacenesData.map(a => ({ ...a, id: Number(a.id) })));
-      setActivos(activosData.map(a => ({ ...a, id: Number(a.id) })));
-      setTiposMantenimiento(tiposData.map(t => ({ ...t, id: Number(t.id) })));
-      setMotivosOrigen(motivosData.map(m => ({ ...m, id: Number(m.id) })));
-      const estadosDocNormalizados = estadosDocData.map(e => ({ ...e, id: Number(e.id) }));
+      setEmpresas(empresasData.map((e) => ({ ...e, id: Number(e.id) })));
+      setSedes(sedesData.map((s) => ({ ...s, id: Number(s.id) })));
+      setAlmacenes(almacenesData.map((a) => ({ ...a, id: Number(a.id) })));
+      setActivos(activosData.map((a) => ({ ...a, id: Number(a.id) })));
+      setTiposMantenimiento(tiposData.map((t) => ({ ...t, id: Number(t.id) })));
+      setMotivosOrigen(motivosData.map((m) => ({ ...m, id: Number(m.id) })));
+      const estadosDocNormalizados = estadosDocData.map((e) => ({
+        ...e,
+        id: Number(e.id),
+      }));
       setEstadosDoc(estadosDocNormalizados);
-      setEstadosTarea(estadosTareaData.map(e => ({ ...e, id: Number(e.id) })));
-      setEstadosInsumo(estadosInsumoData.map(e => ({ ...e, id: Number(e.id) })));
-      setPersonalOptions(personalData.map(p => ({ ...p, id: Number(p.id) })));
-      setContratistas(contratistasData.map(c => ({ ...c, id: Number(c.id) })));
-      setProductos(productosData.map(p => ({ ...p, id: Number(p.id) })));
-      setTiposDocumento(tiposDocumentoData.map(t => ({ ...t, id: Number(t.id) })));
-      setSeriesDocs(seriesDocsData.map(s => ({ ...s, id: Number(s.id) })));
-      setMonedas(monedasData.map(m => ({ ...m, id: Number(m.id) })));
-      setCentrosCosto(centrosCostoData.map(c => ({ ...c, id: Number(c.id) })));
-      setTiposMovimiento(tiposMovimientoData.map(t => ({ ...t, id: Number(t.id) })));
-      setEntidadesComerciales(entidadesComercialesData.map(e => ({ ...e, id: Number(e.id) })));
+      setEstadosTarea(
+        estadosTareaData.map((e) => ({ ...e, id: Number(e.id) })),
+      );
+      setEstadosInsumo(
+        estadosInsumoData.map((e) => ({ ...e, id: Number(e.id) })),
+      );
+      setPersonalOptions(personalData.map((p) => ({ ...p, id: Number(p.id) })));
+      setContratistas(
+        contratistasData.map((c) => ({ ...c, id: Number(c.id) })),
+      );
+      setProductos(productosData.map((p) => ({ ...p, id: Number(p.id) })));
+      setTiposDocumento(
+        tiposDocumentoData.map((t) => ({ ...t, id: Number(t.id) })),
+      );
+      setSeriesDocs(seriesDocsData.map((s) => ({ ...s, id: Number(s.id) })));
+      setMonedas(monedasData.map((m) => ({ ...m, id: Number(m.id) })));
+      setCentrosCosto(
+        centrosCostoData.map((c) => ({ ...c, id: Number(c.id) })),
+      );
+      setTiposMovimiento(
+        tiposMovimientoData.map((t) => ({ ...t, id: Number(t.id) })),
+      );
+      setEntidadesComerciales(
+        entidadesComercialesData.map((e) => ({ ...e, id: Number(e.id) })),
+      );
     } catch (error) {
-      console.error('Error al cargar catálogos:', error);
+      console.error("Error al cargar catálogos:", error);
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Error al cargar los catálogos'
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar los catálogos",
       });
     }
   };
@@ -239,7 +264,14 @@ const OTMantenimiento = ({ ruta }) => {
    */
   useEffect(() => {
     cargarOrdenes();
-  }, [empresaSeleccionada, tipoMantenimientoFiltro, motivoFiltro, estadoFiltro, fechaInicio, fechaFin]);
+  }, [
+    empresaSeleccionada,
+    tipoMantenimientoFiltro,
+    motivoFiltro,
+    estadoFiltro,
+    fechaInicio,
+    fechaFin,
+  ]);
 
   /**
    * Abre el diálogo para crear nueva orden de trabajo
@@ -247,9 +279,9 @@ const OTMantenimiento = ({ ruta }) => {
   const abrirDialogoNuevo = () => {
     if (!empresaSeleccionada) {
       toast.current?.show({
-        severity: 'warn',
-        summary: 'Advertencia',
-        detail: 'Debe seleccionar una empresa primero'
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe seleccionar una empresa primero",
       });
       return;
     }
@@ -285,18 +317,18 @@ const OTMantenimiento = ({ ruta }) => {
     // Validar permisos antes de guardar
     if (esEdicion && !permisos.puedeEditar) {
       toast.current.show({
-        severity: 'warn',
-        summary: 'Acceso Denegado',
-        detail: 'No tiene permisos para editar registros.',
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para editar registros.",
         life: 3000,
       });
       return;
     }
     if (!esEdicion && !permisos.puedeCrear) {
       toast.current.show({
-        severity: 'warn',
-        summary: 'Acceso Denegado',
-        detail: 'No tiene permisos para crear registros.',
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear registros.",
         life: 3000,
       });
       return;
@@ -304,24 +336,26 @@ const OTMantenimiento = ({ ruta }) => {
 
     setLoading(true);
     try {
-
       if (esEdicion) {
         await actualizarOrdenTrabajo(ordenSeleccionada.id, datos);
         toast.current.show({
-          severity: 'success',
-          summary: 'Actualizado',
-          detail: 'Orden de trabajo actualizada. Puedes seguir agregando detalles.',
+          severity: "success",
+          summary: "Actualizado",
+          detail:
+            "Orden de trabajo actualizada. Puedes seguir agregando detalles.",
         });
 
         // Recargar la orden actualizada
-        const ordenActualizada = await getOrdenTrabajoPorId(ordenSeleccionada.id);
+        const ordenActualizada = await getOrdenTrabajoPorId(
+          ordenSeleccionada.id,
+        );
         setOrdenSeleccionada(ordenActualizada);
-        setRefreshKey(prev => prev + 1);
+        setRefreshKey((prev) => prev + 1);
       } else {
         const resultado = await crearOrdenTrabajo(datos);
         toast.current.show({
-          severity: 'success',
-          summary: 'Creado',
+          severity: "success",
+          summary: "Creado",
           detail: `Orden de trabajo creada con código: ${resultado.codigo}. Ahora puedes agregar detalles.`,
           life: 5000,
         });
@@ -330,24 +364,27 @@ const OTMantenimiento = ({ ruta }) => {
         const ordenCompleta = await getOrdenTrabajoPorId(resultado.id);
         setOrdenSeleccionada(ordenCompleta);
         setIsEditing(true);
-        setRefreshKey(prev => prev + 1);
+        setRefreshKey((prev) => prev + 1);
       }
 
       cargarOrdenes();
     } catch (err) {
-      console.error('Error al guardar orden de trabajo:', err);
-      
+      console.error("Error al guardar orden de trabajo:", err);
+
       // Si el backend devuelve campos faltantes, mostrar lista
-      if (err.response?.data?.camposFaltantes && Array.isArray(err.response.data.camposFaltantes)) {
+      if (
+        err.response?.data?.camposFaltantes &&
+        Array.isArray(err.response.data.camposFaltantes)
+      ) {
         toast.current.show({
-          severity: 'warn',
-          summary: 'Campos Obligatorios Faltantes',
+          severity: "warn",
+          summary: "Campos Obligatorios Faltantes",
           detail: (
             <div>
-              <p style={{ marginBottom: '8px', fontWeight: 'bold' }}>
+              <p style={{ marginBottom: "8px", fontWeight: "bold" }}>
                 Los siguientes campos son obligatorios:
               </p>
-              <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              <ul style={{ margin: 0, paddingLeft: "20px" }}>
                 {err.response.data.camposFaltantes.map((campo, index) => (
                   <li key={index}>{campo}</li>
                 ))}
@@ -358,9 +395,11 @@ const OTMantenimiento = ({ ruta }) => {
         });
       } else {
         toast.current.show({
-          severity: 'error',
-          summary: 'Error',
-          detail: err.response?.data?.message || 'Error al guardar la orden de trabajo',
+          severity: "error",
+          summary: "Error",
+          detail:
+            err.response?.data?.message ||
+            "Error al guardar la orden de trabajo",
           life: 5000,
         });
       }
@@ -376,21 +415,21 @@ const OTMantenimiento = ({ ruta }) => {
     // Validar permisos de eliminación
     if (!permisos.puedeEliminar) {
       toast.current?.show({
-        severity: 'warn',
-        summary: 'Acceso Denegado',
-        detail: 'No tiene permisos para eliminar registros.'
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar registros.",
       });
       return;
     }
 
     confirmDialog({
       message: `¿Está seguro de eliminar la orden de trabajo "${orden.codigo}"?`,
-      header: 'Confirmar Eliminación',
-      icon: 'pi pi-exclamation-triangle',
-      acceptClassName: 'p-button-danger',
-      acceptLabel: 'Sí, Eliminar',
-      rejectLabel: 'Cancelar',
-      accept: () => eliminarOrden(orden.id)
+      header: "Confirmar Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
+      acceptLabel: "Sí, Eliminar",
+      rejectLabel: "Cancelar",
+      accept: () => eliminarOrden(orden.id),
     });
   };
 
@@ -401,17 +440,19 @@ const OTMantenimiento = ({ ruta }) => {
     try {
       await eliminarOrdenTrabajo(id);
       toast.current?.show({
-        severity: 'success',
-        summary: 'Éxito',
-        detail: 'Orden de trabajo eliminada correctamente'
+        severity: "success",
+        summary: "Éxito",
+        detail: "Orden de trabajo eliminada correctamente",
       });
       await cargarOrdenes();
     } catch (error) {
-      console.error('Error al eliminar orden de trabajo:', error);
+      console.error("Error al eliminar orden de trabajo:", error);
       toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: error.response?.data?.message || 'Error al eliminar la orden de trabajo'
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.message ||
+          "Error al eliminar la orden de trabajo",
       });
     }
   };
@@ -467,32 +508,30 @@ const OTMantenimiento = ({ ruta }) => {
    * Template para tipo de mantenimiento
    */
   const tipoMantenimientoTemplate = (rowData) => {
-    return rowData.tipoMantenimiento?.nombre || '-';
+    return rowData.tipoMantenimiento?.nombre || "-";
   };
 
   /**
    * Template para motivo de origen
    */
   const motivoOrigenTemplate = (rowData) => {
-    return rowData.motivoOrigino?.nombre || '-';
+    return rowData.motivoOrigino?.nombre || "-";
   };
 
   /**
    * Template para responsable
    */
   const responsableTemplate = (rowData) => {
-    return rowData.responsable?.nombres || '-';
+    return rowData.responsable?.nombres || "-";
   };
 
   /**
    * Template para estado
    */
   const estadoTemplate = (rowData) => {
-    if (!rowData.estadoDoc) return 'N/A';
-    const severity = rowData.estadoDoc.severityColor || 'secondary';
-    return (
-      <Tag value={rowData.estadoDoc.descripcion} severity={severity} />
-    );
+    if (!rowData.estadoDoc) return "N/A";
+    const severity = rowData.estadoDoc.severityColor || "secondary";
+    return <Tag value={rowData.estadoDoc.descripcion} severity={severity} />;
   };
 
   /**
@@ -509,8 +548,8 @@ const OTMantenimiento = ({ ruta }) => {
             abrirDialogoEdicion(rowData);
           }}
           disabled={!permisos.puedeVer && !permisos.puedeEditar}
-          tooltip={permisos.puedeEditar ? 'Editar' : 'Ver'}
-          tooltipOptions={{ position: 'top' }}
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+          tooltipOptions={{ position: "top" }}
         />
         <Button
           icon="pi pi-trash"
@@ -521,7 +560,7 @@ const OTMantenimiento = ({ ruta }) => {
           }}
           disabled={!permisos.puedeEliminar}
           tooltip="Eliminar"
-          tooltipOptions={{ position: 'top' }}
+          tooltipOptions={{ position: "top" }}
         />
       </div>
     );
@@ -531,7 +570,7 @@ const OTMantenimiento = ({ ruta }) => {
     <div className="crud-demo">
       <Toast ref={toast} />
       <ConfirmDialog />
-      
+
       <div className="card">
         <div className="flex justify-content-between align-items-center mb-4">
           <h2>Órdenes de Trabajo de Mantenimiento</h2>
@@ -550,7 +589,9 @@ const OTMantenimiento = ({ ruta }) => {
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} órdenes"
           emptyMessage="No se encontraron órdenes de trabajo"
-          onRowClick={permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined}
+          onRowClick={
+            permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
+          }
           selectionMode="single"
           scrollable
           scrollHeight="600px"
@@ -558,11 +599,19 @@ const OTMantenimiento = ({ ruta }) => {
           sortOrder={-1}
           style={{
             fontSize: getResponsiveFontSize(),
-            cursor: permisos.puedeVer || permisos.puedeEditar ? 'pointer' : 'default',
+            cursor:
+              permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
           }}
-                  header={
+          header={
             <div>
-              <div style={{ alignItems: "end", display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+              <div
+                style={{
+                  alignItems: "end",
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
                 <div style={{ flex: 2 }}>
                   <h2>Órdenes de Trabajo</h2>
                 </div>
@@ -573,7 +622,10 @@ const OTMantenimiento = ({ ruta }) => {
                   <Dropdown
                     id="empresaFiltro"
                     value={empresaSeleccionada}
-                    options={empresas.map((e) => ({ label: e.razonSocial, value: Number(e.id) }))}
+                    options={empresas.map((e) => ({
+                      label: e.razonSocial,
+                      value: Number(e.id),
+                    }))}
                     onChange={(e) => setEmpresaSeleccionada(e.value)}
                     placeholder="Seleccionar empresa para filtrar"
                     optionLabel="label"
@@ -588,13 +640,15 @@ const OTMantenimiento = ({ ruta }) => {
                     icon="pi pi-plus"
                     onClick={abrirDialogoNuevo}
                     className="p-button-primary"
-                    disabled={!permisos.puedeCrear || loading || !empresaSeleccionada}
+                    disabled={
+                      !permisos.puedeCrear || loading || !empresaSeleccionada
+                    }
                     tooltip={
                       !permisos.puedeCrear
-                        ? 'No tiene permisos para crear'
+                        ? "No tiene permisos para crear"
                         : !empresaSeleccionada
-                        ? 'Seleccione una empresa primero'
-                        : 'Nueva Orden de Trabajo'
+                          ? "Seleccione una empresa primero"
+                          : "Nueva Orden de Trabajo"
                     }
                   />
                 </div>
@@ -607,7 +661,8 @@ const OTMantenimiento = ({ ruta }) => {
                       toast.current?.show({
                         severity: "success",
                         summary: "Actualizado",
-                        detail: "Datos actualizados correctamente desde el servidor",
+                        detail:
+                          "Datos actualizados correctamente desde el servidor",
                         life: 3000,
                       });
                     }}
@@ -627,15 +682,28 @@ const OTMantenimiento = ({ ruta }) => {
                   />
                 </div>
               </div>
-              <div style={{ alignItems: "end", display: "flex", gap: 10, flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+              <div
+                style={{
+                  alignItems: "end",
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
                 <div style={{ flex: 2 }}>
-                  <label htmlFor="tipoMantenimientoFiltro" style={{ fontWeight: "bold" }}>
+                  <label
+                    htmlFor="tipoMantenimientoFiltro"
+                    style={{ fontWeight: "bold" }}
+                  >
                     Tipo Mantenimiento
                   </label>
                   <Dropdown
                     id="tipoMantenimientoFiltro"
                     value={tipoMantenimientoFiltro}
-                    options={tiposMantenimiento.map((t) => ({ label: t.nombre, value: Number(t.id) }))}
+                    options={tiposMantenimiento.map((t) => ({
+                      label: t.nombre,
+                      value: Number(t.id),
+                    }))}
                     onChange={(e) => setTipoMantenimientoFiltro(e.value)}
                     placeholder="Todos"
                     optionLabel="label"
@@ -651,7 +719,10 @@ const OTMantenimiento = ({ ruta }) => {
                   <Dropdown
                     id="motivoFiltro"
                     value={motivoFiltro}
-                    options={motivosOrigen.map((m) => ({ label: m.nombre, value: Number(m.id) }))}
+                    options={motivosOrigen.map((m) => ({
+                      label: m.nombre,
+                      value: Number(m.id),
+                    }))}
                     onChange={(e) => setMotivoFiltro(e.value)}
                     placeholder="Todos"
                     optionLabel="label"
@@ -697,7 +768,10 @@ const OTMantenimiento = ({ ruta }) => {
                   <Dropdown
                     id="estadoFiltro"
                     value={estadoFiltro}
-                    options={estadosDoc.map((e) => ({ label: e.descripcion, value: Number(e.id) }))}
+                    options={estadosDoc.map((e) => ({
+                      label: e.descripcion,
+                      value: Number(e.id),
+                    }))}
                     onChange={(e) => setEstadoFiltro(e.value)}
                     placeholder="Todos"
                     optionLabel="label"
@@ -710,76 +784,76 @@ const OTMantenimiento = ({ ruta }) => {
             </div>
           }
         >
-          <Column 
-            field="id" 
-            header="ID" 
-            sortable 
+          <Column
+            field="id"
+            header="ID"
+            sortable
             frozen
-            style={{ width: '80px', verticalAlign: 'top' }}
-          />
-          
-          <Column 
-            field="numeroCompleto" 
-            header="Número OT" 
-            sortable 
-            style={{ width: '160px', verticalAlign: 'top', fontWeight: 'bold' }}
-          />
-          
-          <Column 
-            field="tipoMantenimiento.nombre" 
-            header="Tipo Mantenimiento" 
-            body={tipoMantenimientoTemplate}
-            sortable 
-            style={{ width: '180px', verticalAlign: 'top' }}
-          />
-          
-          <Column 
-            field="motivoOrigino.nombre" 
-            header="Motivo Origen" 
-            body={motivoOrigenTemplate}
-            sortable 
-            style={{ width: '150px', verticalAlign: 'top' }}
-          />
-          
-          <Column 
-            field="prioridadAlta" 
-            header="Prioridad" 
-            body={prioridadTemplate}
-            sortable 
-            style={{ width: '100px', verticalAlign: 'top' }}
-            className="text-center"
-          />
-          
-          <Column 
-            field="responsable.nombres" 
-            header="Responsable" 
-            body={responsableTemplate}
-            sortable 
-            style={{ width: '150px', verticalAlign: 'top' }}
+            style={{ width: "80px", verticalAlign: "top" }}
           />
 
-          <Column 
-            field="estadoDoc.descripcion" 
-            header="Estado" 
-            body={estadoTemplate}
-            sortable 
-            style={{ width: '120px', verticalAlign: 'top' }}
+          <Column
+            field="numeroCompleto"
+            header="Número OT"
+            sortable
+            style={{ width: "160px", verticalAlign: "top", fontWeight: "bold" }}
+          />
+
+          <Column
+            field="tipoMantenimiento.nombre"
+            header="Tipo Mantenimiento"
+            body={tipoMantenimientoTemplate}
+            sortable
+            style={{ width: "180px", verticalAlign: "top" }}
+          />
+
+          <Column
+            field="motivoOrigino.nombre"
+            header="Motivo Origen"
+            body={motivoOrigenTemplate}
+            sortable
+            style={{ width: "150px", verticalAlign: "top" }}
+          />
+
+          <Column
+            field="prioridadAlta"
+            header="Prioridad"
+            body={prioridadTemplate}
+            sortable
+            style={{ width: "100px", verticalAlign: "top" }}
             className="text-center"
           />
-          
-          <Column 
-            field="descripcion" 
-            header="Descripción" 
-            sortable 
-            style={{ width: '200px', verticalAlign: 'top' }}
+
+          <Column
+            field="responsable.nombres"
+            header="Responsable"
+            body={responsableTemplate}
+            sortable
+            style={{ width: "150px", verticalAlign: "top" }}
           />
-          
-          <Column 
-            body={accionesTemplate} 
-            header="Acciones" 
-            frozen 
+
+          <Column
+            field="estadoDoc.descripcion"
+            header="Estado"
+            body={estadoTemplate}
+            sortable
+            style={{ width: "120px", verticalAlign: "top" }}
+            className="text-center"
+          />
+
+          <Column
+            field="descripcion"
+            header="Descripción"
+            sortable
+            style={{ width: "200px", verticalAlign: "top" }}
+          />
+
+          <Column
+            body={accionesTemplate}
+            header="Acciones"
+            frozen
             alignFrozen="right"
-            style={{ width: '100px' }}
+            style={{ width: "100px" }}
             className="text-center"
           />
         </DataTable>
@@ -787,8 +861,12 @@ const OTMantenimiento = ({ ruta }) => {
 
       <Dialog
         visible={dialogoVisible}
-        style={{ width: '1300px' }}
-        header={isEditing ? `Editar Orden de Trabajo: ${ordenSeleccionada?.codigo || ''}` : 'Nueva Orden de Trabajo'}
+        style={{ width: "1300px" }}
+        header={
+          isEditing
+            ? `Editar Orden de Trabajo: ${ordenSeleccionada?.codigo || ""}`
+            : "Nueva Orden de Trabajo"
+        }
         modal
         className="p-fluid"
         onHide={cerrarDialogo}
@@ -820,7 +898,11 @@ const OTMantenimiento = ({ ruta }) => {
           tiposMovimiento={tiposMovimiento}
           entidadesComerciales={entidadesComerciales}
           permisos={permisos}
-          readOnly={!!ordenSeleccionada && !!ordenSeleccionada.codigo && !permisos.puedeEditar}
+          readOnly={
+            !!ordenSeleccionada &&
+            !!ordenSeleccionada.codigo &&
+            !permisos.puedeEditar
+          }
           loading={loading}
           toast={toast}
           empresaFija={empresaSeleccionada}

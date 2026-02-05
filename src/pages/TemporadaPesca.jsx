@@ -41,6 +41,7 @@ import {
   subirDocumentoTemporada,
 } from "../api/temporadaPesca";
 import { getEmpresas } from "../api/empresa";
+import { getUnidadesNegocio } from "../api/unidadNegocio";
 import { getEstadosMultiFuncionParaTemporadaPesca } from "../api/estadoMultiFuncion";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import TemporadaPescaForm from "../components/temporadaPesca/TemporadaPescaForm";
@@ -79,6 +80,7 @@ const TemporadaPesca = ({ ruta }) => {
   const [empresas, setEmpresas] = useState([]);
   const [estadosTemporada, setEstadosTemporada] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
+  const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [filtroEmpresa, setFiltroEmpresa] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState(null);
   const [fechaDesde, setFechaDesde] = useState(null);
@@ -107,12 +109,17 @@ const TemporadaPesca = ({ ruta }) => {
       isMounted.current = true;
       return;
     }
-    
+
     // Si todos los filtros son null, no aplicar (se limpiaron los filtros)
-    if (filtroEmpresa === null && filtroEstado === null && fechaDesde === null && fechaHasta === null) {
+    if (
+      filtroEmpresa === null &&
+      filtroEstado === null &&
+      fechaDesde === null &&
+      fechaHasta === null
+    ) {
       return;
     }
-    
+
     aplicarFiltros();
   }, [filtroEmpresa, filtroEstado, fechaDesde, fechaHasta]);
 
@@ -129,7 +136,8 @@ const TemporadaPesca = ({ ruta }) => {
       toast.current?.show({
         severity: "error",
         summary: "Error de Carga",
-        detail: "No se pudieron cargar las temporadas de pesca. Verifique su conexión e intente nuevamente.",
+        detail:
+          "No se pudieron cargar las temporadas de pesca. Verifique su conexión e intente nuevamente.",
         life: 4000,
       });
     } finally {
@@ -142,10 +150,16 @@ const TemporadaPesca = ({ ruta }) => {
    */
   const cargarCombos = async () => {
     try {
-      const [empresasData, estadosData, tiposDocumentoData] = await Promise.all([
+      const [
+        empresasData,
+        estadosData,
+        tiposDocumentoData,
+        unidadesNegocioData,
+      ] = await Promise.all([
         getEmpresas(),
         getEstadosMultiFuncionParaTemporadaPesca(),
         getTiposDocumento(),
+        getUnidadesNegocio({ activo: true }),
       ]);
 
       if (empresasData && Array.isArray(empresasData)) {
@@ -154,13 +168,19 @@ const TemporadaPesca = ({ ruta }) => {
 
       if (estadosData && Array.isArray(estadosData)) {
         setEstadosTemporada(
-          estadosData.map((e) => ({ ...e, id: Number(e.id) }))
+          estadosData.map((e) => ({ ...e, id: Number(e.id) })),
         );
       }
 
       if (tiposDocumentoData && Array.isArray(tiposDocumentoData)) {
         setTiposDocumento(
-          tiposDocumentoData.map((td) => ({ ...td, id: Number(td.id) }))
+          tiposDocumentoData.map((td) => ({ ...td, id: Number(td.id) })),
+        );
+      }
+
+      if (unidadesNegocioData && Array.isArray(unidadesNegocioData)) {
+        setUnidadesNegocio(
+          unidadesNegocioData.map((un) => ({ ...un, id: Number(un.id) })),
         );
       }
     } catch (error) {
@@ -168,7 +188,8 @@ const TemporadaPesca = ({ ruta }) => {
       toast.current?.show({
         severity: "error",
         summary: "Error de Carga",
-        detail: "No se pudieron cargar los datos de los combos. Verifique su conexión e intente nuevamente.",
+        detail:
+          "No se pudieron cargar los datos de los combos. Verifique su conexión e intente nuevamente.",
         life: 4000,
       });
     }
@@ -184,8 +205,10 @@ const TemporadaPesca = ({ ruta }) => {
 
       if (filtroEmpresa) filtros.empresaId = filtroEmpresa;
       if (filtroEstado !== null) filtros.estadoTemporadaId = filtroEstado;
-      if (fechaDesde) filtros.fechaDesde = fechaDesde.toISOString().split('T')[0];
-      if (fechaHasta) filtros.fechaHasta = fechaHasta.toISOString().split('T')[0];
+      if (fechaDesde)
+        filtros.fechaDesde = fechaDesde.toISOString().split("T")[0];
+      if (fechaHasta)
+        filtros.fechaHasta = fechaHasta.toISOString().split("T")[0];
 
       const data = await getTemporadasPesca(filtros);
       setTemporadas(data);
@@ -194,7 +217,8 @@ const TemporadaPesca = ({ ruta }) => {
       toast.current?.show({
         severity: "error",
         summary: "Error de Filtro",
-        detail: "No se pudieron aplicar los filtros. Verifique su conexión e intente nuevamente.",
+        detail:
+          "No se pudieron aplicar los filtros. Verifique su conexión e intente nuevamente.",
         life: 4000,
       });
     }
@@ -287,40 +311,53 @@ const TemporadaPesca = ({ ruta }) => {
       cargarDatos();
     } catch (error) {
       console.error("Error al eliminar temporada:", error);
-      
-      let mensajeError = "No se pudo eliminar la temporada. Verifique su conexión e intente nuevamente.";
-      
+
+      let mensajeError =
+        "No se pudo eliminar la temporada. Verifique su conexión e intente nuevamente.";
+
       // Manejo específico de errores HTTP
       if (error.response) {
         const { status, data } = error.response;
-        
+
         switch (status) {
           case 409: // Conflict
-            if (data.mensaje && data.mensaje.includes("faenas, entregas o liquidación")) {
-              mensajeError = "No se puede eliminar esta temporada porque tiene faenas, entregas o liquidaciones asociadas. Debe eliminar primero estos registros relacionados antes de poder eliminar la temporada.";
-            } else if (data.mensaje && data.mensaje.includes("faenas, entregas o liquidación")) {
-              mensajeError = "No se puede eliminar esta temporada porque tiene faenas, entregas o liquidaciones asociadas. Debe eliminar primero estos registros relacionados.";
+            if (
+              data.mensaje &&
+              data.mensaje.includes("faenas, entregas o liquidación")
+            ) {
+              mensajeError =
+                "No se puede eliminar esta temporada porque tiene faenas, entregas o liquidaciones asociadas. Debe eliminar primero estos registros relacionados antes de poder eliminar la temporada.";
+            } else if (
+              data.mensaje &&
+              data.mensaje.includes("faenas, entregas o liquidación")
+            ) {
+              mensajeError =
+                "No se puede eliminar esta temporada porque tiene faenas, entregas o liquidaciones asociadas. Debe eliminar primero estos registros relacionados.";
             } else {
-              mensajeError = "Ya existe un registro similar. Por favor, verifique los datos ingresados.";
+              mensajeError =
+                "Ya existe un registro similar. Por favor, verifique los datos ingresados.";
             }
             break;
           case 400: // Bad Request
-            mensajeError = "Solicitud inválida. Verifique que el registro existe y es válido para eliminación.";
+            mensajeError =
+              "Solicitud inválida. Verifique que el registro existe y es válido para eliminación.";
             break;
           case 404: // Not Found
-            mensajeError = "La temporada que intenta eliminar no existe o ya ha sido eliminada.";
+            mensajeError =
+              "La temporada que intenta eliminar no existe o ya ha sido eliminada.";
             break;
           case 403: // Forbidden
             mensajeError = "No tiene permisos para eliminar este registro.";
             break;
           case 500: // Internal Server Error
-            mensajeError = "Error interno del servidor. Por favor, contacte al administrador del sistema.";
+            mensajeError =
+              "Error interno del servidor. Por favor, contacte al administrador del sistema.";
             break;
           default:
             mensajeError = `Error del servidor (${status}). Por favor, intente nuevamente o contacte al soporte técnico.`;
         }
       }
-      
+
       toast.current?.show({
         severity: "error",
         summary: "Error de Eliminación",
@@ -356,10 +393,13 @@ const TemporadaPesca = ({ ruta }) => {
 
     try {
       let temporadaGuardada;
-      
+
       if (editingItem?.id) {
         // Actualizar temporada existente
-        temporadaGuardada = await actualizarTemporadaPesca(editingItem.id, data);
+        temporadaGuardada = await actualizarTemporadaPesca(
+          editingItem.id,
+          data,
+        );
         toast.current?.show({
           severity: "success",
           summary: "Actualización Exitosa",
@@ -375,7 +415,7 @@ const TemporadaPesca = ({ ruta }) => {
           detail: "La temporada ha sido creada correctamente.",
           life: 3000,
         });
-        
+
         // Para nuevas temporadas, actualizar editingItem con los datos guardados
         // para mantener el formulario en modo edición
         setEditingItem(temporadaGuardada);
@@ -385,48 +425,61 @@ const TemporadaPesca = ({ ruta }) => {
       // NO cerrar el formulario - mantener modo edición activo
       // setShowForm(false);
       // setEditingItem(null);
-      
+
       // Recargar datos para actualizar la tabla
       cargarDatos();
-      
+
       // Devolver el objeto resultado
       return temporadaGuardada;
     } catch (error) {
       console.error("Error al guardar temporada:", error);
-      
-      let mensajeError = "No se pudo guardar la temporada. Verifique su conexión e intente nuevamente.";
-      
+
+      let mensajeError =
+        "No se pudo guardar la temporada. Verifique su conexión e intente nuevamente.";
+
       // Manejo específico de errores HTTP
       if (error.response) {
         const { status, data } = error.response;
-        
+
         switch (status) {
           case 409: // Conflict
-            if (data.mensaje && data.mensaje.includes("fechas que se superponen")) {
-              mensajeError = "Ya existe una temporada con el mismo nombre para esta empresa en fechas que se superponen. Por favor, verifique las fechas de inicio y fin o cambie el nombre de la temporada.";
-            } else if (data.mensaje && data.mensaje.includes("faenas, entregas o liquidación")) {
-              mensajeError = "No se puede eliminar esta temporada porque tiene faenas, entregas o liquidaciones asociadas. Debe eliminar primero estos registros relacionados.";
+            if (
+              data.mensaje &&
+              data.mensaje.includes("fechas que se superponen")
+            ) {
+              mensajeError =
+                "Ya existe una temporada con el mismo nombre para esta empresa en fechas que se superponen. Por favor, verifique las fechas de inicio y fin o cambie el nombre de la temporada.";
+            } else if (
+              data.mensaje &&
+              data.mensaje.includes("faenas, entregas o liquidación")
+            ) {
+              mensajeError =
+                "No se puede eliminar esta temporada porque tiene faenas, entregas o liquidaciones asociadas. Debe eliminar primero estos registros relacionados.";
             } else {
-              mensajeError = "Ya existe un registro similar. Por favor, verifique los datos ingresados.";
+              mensajeError =
+                "Ya existe un registro similar. Por favor, verifique los datos ingresados.";
             }
             break;
           case 400: // Bad Request
-            mensajeError = "Los datos ingresados no son válidos. Por favor, revise la información y corrija los errores.";
+            mensajeError =
+              "Los datos ingresados no son válidos. Por favor, revise la información y corrija los errores.";
             break;
           case 404: // Not Found
-            mensajeError = "El registro que intenta modificar no existe o ha sido eliminado.";
+            mensajeError =
+              "El registro que intenta modificar no existe o ha sido eliminado.";
             break;
           case 403: // Forbidden
             mensajeError = "No tiene permisos para realizar esta operación.";
             break;
           case 500: // Internal Server Error
-            mensajeError = "Error interno del servidor. Por favor, contacte al administrador del sistema.";
+            mensajeError =
+              "Error interno del servidor. Por favor, contacte al administrador del sistema.";
             break;
           default:
             mensajeError = `Error del servidor (${status}). Por favor, intente nuevamente o contacte al soporte técnico.`;
         }
       }
-      
+
       toast.current?.show({
         severity: "error",
         summary: "Error de Guardado",
@@ -443,7 +496,8 @@ const TemporadaPesca = ({ ruta }) => {
    * Template para estado de temporada desde EstadoMultiFuncion
    */
   const estadoTemplate = (rowData) => {
-    const estadoDescripcion = rowData.estadoTemporada?.descripcion || "Sin estado";
+    const estadoDescripcion =
+      rowData.estadoTemporada?.descripcion || "Sin estado";
 
     // Determinar el color según el estado
     let severity = "secondary";
@@ -516,7 +570,7 @@ const TemporadaPesca = ({ ruta }) => {
     );
   };
 
-    /**
+  /**
    * Template para resolución (solo texto)
    */
   const resolucionTemplate = (rowData) => {
@@ -530,7 +584,7 @@ const TemporadaPesca = ({ ruta }) => {
     return rowData.empresa?.razonSocial || "Sin empresa";
   };
 
-    /**
+  /**
    * Template para acciones (PDF, eliminar, edición por clic en fila)
    */
   const actionTemplate = (rowData) => {
@@ -616,7 +670,7 @@ const TemporadaPesca = ({ ruta }) => {
     const cuotaAlquilada = Number(rowData.cuotaAlquiladaTon) || 0;
     const cuotaTotal = cuotaPropia + cuotaAlquilada;
     const capturadas = Number(rowData.toneladasCapturadasTemporada) || 0;
-    
+
     // Evitar división por cero
     if (cuotaTotal === 0) {
       return (
@@ -625,9 +679,9 @@ const TemporadaPesca = ({ ruta }) => {
         </div>
       );
     }
-    
+
     const porcentaje = (capturadas / cuotaTotal) * 100;
-    
+
     // Determinar color según el porcentaje
     let severity = "secondary";
     if (porcentaje >= 100) {
@@ -655,7 +709,7 @@ const TemporadaPesca = ({ ruta }) => {
   const actualizarEditingItem = async (temporadaActualizada) => {
     if (temporadaActualizada && editingItem?.id === temporadaActualizada.id) {
       setEditingItem(temporadaActualizada);
-      
+
       // También actualizar la lista de temporadas
       await cargarDatos();
     }
@@ -714,7 +768,6 @@ const TemporadaPesca = ({ ruta }) => {
                 <div style={{ flex: 1 }}>
                   <h2>Pesca Industrial</h2>
                 </div>
-                
               </div>
 
               {/* Segunda fila: Filtros de fecha, estado y botón limpiar */}
@@ -750,8 +803,8 @@ const TemporadaPesca = ({ ruta }) => {
                       !permisos.puedeCrear
                         ? "No tiene permisos para crear temporadas"
                         : !filtroEmpresa
-                        ? "Seleccione una empresa para crear una nueva temporada"
-                        : "Crear nueva temporada"
+                          ? "Seleccione una empresa para crear una nueva temporada"
+                          : "Crear nueva temporada"
                     }
                     tooltipOptions={{ position: "bottom" }}
                   />
@@ -814,7 +867,8 @@ const TemporadaPesca = ({ ruta }) => {
                       toast.current?.show({
                         severity: "success",
                         summary: "Actualizado",
-                        detail: "Datos actualizados correctamente desde el servidor",
+                        detail:
+                          "Datos actualizados correctamente desde el servidor",
                         life: 3000,
                       });
                     }}
@@ -937,6 +991,7 @@ const TemporadaPesca = ({ ruta }) => {
         editingItem={editingItem}
         empresas={empresas}
         tiposDocumento={tiposDocumento}
+        unidadesNegocio={unidadesNegocio}
         onTemporadaDataChange={actualizarEditingItem}
         readOnly={isEdit && !permisos.puedeEditar}
         isEdit={isEdit}

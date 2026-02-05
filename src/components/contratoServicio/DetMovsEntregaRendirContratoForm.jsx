@@ -28,6 +28,7 @@ const DetMovsEntregaRendirContratoForm = ({
   entidadesComerciales = [],
   monedas = [],
   tiposDocumento = [],
+  movimientosAsignacionEntregaRendir = [],
   productos = [],
   onGuardadoExitoso,
   onCancelar,
@@ -70,6 +71,8 @@ const DetMovsEntregaRendirContratoForm = ({
       numeroSerieComprobante: "",
       numeroCorrelativoComprobante: "",
       productoId: "",
+      detalleGastosPlanificados: "",
+      asignacionOrigenId: null,
     },
   });
 
@@ -77,7 +80,7 @@ const DetMovsEntregaRendirContratoForm = ({
   const validadoTesoreria = watch("validadoTesoreria");
   const urlComprobanteMovimiento = watch("urlComprobanteMovimiento");
   const urlComprobanteOperacionMovCaja = watch(
-    "urlComprobanteOperacionMovCaja"
+    "urlComprobanteOperacionMovCaja",
   );
 
   useEffect(() => {
@@ -85,7 +88,7 @@ const DetMovsEntregaRendirContratoForm = ({
       try {
         const modulos = await getModulos();
         const moduloContrato = modulos.find(
-          (m) => m.nombre === "CONTRATOS DE SERVICIOS"
+          (m) => m.nombre === "CONTRATOS DE SERVICIOS",
         );
         if (moduloContrato) {
           setModulosContratos(moduloContrato);
@@ -104,7 +107,7 @@ const DetMovsEntregaRendirContratoForm = ({
     if (isEditing && movimiento) {
       reset({
         entregaARendirContratoServicioId: Number(
-          movimiento.entregaARendirContratoServicioId
+          movimiento.entregaARendirContratoServicioId,
         ),
         responsableId: movimiento.responsableId
           ? Number(movimiento.responsableId)
@@ -150,11 +153,15 @@ const DetMovsEntregaRendirContratoForm = ({
         productoId: movimiento.productoId
           ? Number(movimiento.productoId)
           : null,
+        detalleGastosPlanificados: movimiento.detalleGastosPlanificados || "",
+        asignacionOrigenId: movimiento.asignacionOrigenId
+          ? Number(movimiento.asignacionOrigenId)
+          : null,
       });
     } else {
       setValue(
         "entregaARendirContratoServicioId",
-        Number(entregaARendirContratoServicioId)
+        Number(entregaARendirContratoServicioId),
       );
       setValue("fechaMovimiento", new Date());
       if (usuario?.personalId) {
@@ -209,7 +216,7 @@ const DetMovsEntregaRendirContratoForm = ({
 
   const familiasGastosIds = [2, 3, 4, 6, 7];
   const productosGastos = (productos || []).filter((p) =>
-    familiasGastosIds.includes(Number(p.familiaId))
+    familiasGastosIds.includes(Number(p.familiaId)),
   );
   const familiasMap = new Map();
   productosGastos.forEach((p) => {
@@ -227,18 +234,24 @@ const DetMovsEntregaRendirContratoForm = ({
     }
   });
   const familiasUnicas = Array.from(familiasMap.values()).sort((a, b) =>
-    a.label.localeCompare(b.label)
+    a.label.localeCompare(b.label),
   );
   const productosFiltrados = familiaFiltroId
     ? productosGastos.filter(
-        (p) => Number(p.familiaId) === Number(familiaFiltroId)
+        (p) => Number(p.familiaId) === Number(familiaFiltroId),
       )
     : productosGastos;
   const productoOptions = productosFiltrados.map((p) => ({
     label: p.descripcionArmada || p.descripcionBase || p.codigo,
     value: Number(p.id),
   }));
-
+  // Crear opciones de asignación origen desde los movimientos de asignación (inicial o adicional) que forman parte del cálculo
+  const asignacionOrigenOptions = (
+    movimientosAsignacionEntregaRendir || []
+  ).map((mov) => ({
+    label: `Mov #${mov.id} - ${mov.descripcion || "Sin descripción"} - S/ ${mov.monto}`,
+    value: Number(mov.id),
+  }));
   const handleToggleOperacionSinFactura = () => {
     const valorActual = getValues("operacionSinFactura");
     setValue("operacionSinFactura", !valorActual);
@@ -267,7 +280,7 @@ const DetMovsEntregaRendirContratoForm = ({
       }
       const datosNormalizados = {
         entregaARendirContratoServicioId: Number(
-          data.entregaARendirContratoServicioId
+          data.entregaARendirContratoServicioId,
         ),
         responsableId: data.responsableId ? Number(data.responsableId) : null,
         tipoMovimientoId: data.tipoMovimientoId
@@ -301,6 +314,12 @@ const DetMovsEntregaRendirContratoForm = ({
         numeroCorrelativoComprobante:
           data.numeroCorrelativoComprobante?.trim() || null,
         productoId: data.productoId ? Number(data.productoId) : null,
+        detalleGastosPlanificados: data.detalleGastosPlanificados
+          ? data.detalleGastosPlanificados.toUpperCase().trim()
+          : null,
+        asignacionOrigenId: data.asignacionOrigenId
+          ? Number(data.asignacionOrigenId)
+          : null,
         actualizadoEn: new Date(),
       };
       if (!isEditing) {
@@ -345,7 +364,7 @@ const DetMovsEntregaRendirContratoForm = ({
                   value={
                     movimiento?.fechaCreacion
                       ? new Date(movimiento.fechaCreacion).toLocaleString(
-                          "es-PE"
+                          "es-PE",
                         )
                       : new Date().toLocaleString("es-PE")
                   }
@@ -558,6 +577,82 @@ const DetMovsEntregaRendirContratoForm = ({
                 />
                 {errors.productoId && (
                   <Message severity="error" text={errors.productoId.message} />
+                )}
+              </div>
+            </div>
+            {/* Asignación Origen y Detalle Gastos Planificados */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <label
+                  htmlFor="asignacionOrigenId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Asignación Origen
+                </label>
+                <Controller
+                  name="asignacionOrigenId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="asignacionOrigenId"
+                      {...field}
+                      value={field.value}
+                      options={asignacionOrigenOptions}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione asignación origen"
+                      className={classNames({
+                        "p-invalid": errors.asignacionOrigenId,
+                      })}
+                      filter
+                      showClear
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.asignacionOrigenId && (
+                  <Message
+                    severity="error"
+                    text={errors.asignacionOrigenId.message}
+                  />
+                )}
+              </div>
+              <div style={{ flex: 3 }}>
+                <label
+                  htmlFor="detalleGastosPlanificados"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Detalle Gastos Planificados
+                </label>
+                <Controller
+                  name="detalleGastosPlanificados"
+                  control={control}
+                  render={({ field }) => (
+                    <InputTextarea
+                      id="detalleGastosPlanificados"
+                      {...field}
+                      value={field.value || ""}
+                      rows={2}
+                      placeholder="Ingrese detalle de gastos planificados"
+                      className={classNames({
+                        "p-invalid": errors.detalleGastosPlanificados,
+                      })}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+                {errors.detalleGastosPlanificados && (
+                  <Message
+                    severity="error"
+                    text={errors.detalleGastosPlanificados.message}
+                  />
                 )}
               </div>
             </div>
@@ -949,7 +1044,7 @@ const DetMovsEntregaRendirContratoForm = ({
                   value={
                     movimiento?.fechaActualizacion
                       ? new Date(movimiento.fechaActualizacion).toLocaleString(
-                          "es-PE"
+                          "es-PE",
                         )
                       : ""
                   }

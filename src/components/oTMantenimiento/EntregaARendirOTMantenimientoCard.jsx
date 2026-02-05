@@ -53,7 +53,8 @@ export default function EntregaARendirOTMantenimientoCard({
   const [verificandoEntrega, setVerificandoEntrega] = useState(true);
 
   // Estados para cálculos automáticos
-  const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] = useState(0);
+  const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] =
+    useState(0);
   const [totalGastosEntregasRendir, setTotalGastosEntregasRendir] = useState(0);
   const [totalSaldoEntregasRendir, setTotalSaldoEntregasRendir] = useState(0);
 
@@ -65,7 +66,8 @@ export default function EntregaARendirOTMantenimientoCard({
   const [productos, setProductos] = useState([]);
 
   // Estado para entidades comerciales filtradas por empresa
-  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] = useState([]);
+  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] =
+    useState([]);
 
   // Estados para edición de la entrega
   const [responsableEditado, setResponsableEditado] = useState(null);
@@ -109,7 +111,7 @@ export default function EntregaARendirOTMantenimientoCard({
   useEffect(() => {
     if (otMantenimiento?.empresaId && entidadesComerciales.length > 0) {
       const entidadesFiltradas = entidadesComerciales.filter(
-        (e) => Number(e.empresaId) === Number(otMantenimiento.empresaId)
+        (e) => Number(e.empresaId) === Number(otMantenimiento.empresaId),
       );
       setEntidadesComercialesFiltradas(entidadesFiltradas);
     } else {
@@ -127,7 +129,7 @@ export default function EntregaARendirOTMantenimientoCard({
       const productosFiltrados = productosData.filter(
         (p) =>
           familiasGastosIds.includes(Number(p.familiaId)) &&
-          Number(p.empresaId) === Number(otMantenimiento?.empresaId)
+          Number(p.empresaId) === Number(otMantenimiento?.empresaId),
       );
       setProductos(productosFiltrados);
     } catch (error) {
@@ -149,7 +151,7 @@ export default function EntregaARendirOTMantenimientoCard({
     try {
       const data = await obtenerEntregasRendirOTMantenimiento();
       const entregaExistente = data.find(
-        (e) => Number(e.otMantenimientoId) === Number(otMantenimiento.id)
+        (e) => Number(e.otMantenimientoId) === Number(otMantenimiento.id),
       );
 
       if (entregaExistente) {
@@ -178,7 +180,8 @@ export default function EntregaARendirOTMantenimientoCard({
    */
   const preguntarCrearEntrega = () => {
     confirmDialog({
-      message: "No existe una entrega a rendir para esta OT de Mantenimiento. ¿Desea crear una?",
+      message:
+        "No existe una entrega a rendir para esta OT de Mantenimiento. ¿Desea crear una?",
       header: "Crear Entrega a Rendir",
       icon: "pi pi-question-circle",
       acceptLabel: "Sí, Crear",
@@ -194,11 +197,15 @@ export default function EntregaARendirOTMantenimientoCard({
    * Crear entrega a rendir automáticamente
    */
   const crearEntregaAutomatica = async () => {
-    if (!otMantenimiento.responsableId || Number(otMantenimiento.responsableId) <= 0) {
+    if (
+      !otMantenimiento.responsableId ||
+      Number(otMantenimiento.responsableId) <= 0
+    ) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "La OT debe tener un Responsable asignado para crear una entrega a rendir",
+        detail:
+          "La OT debe tener un Responsable asignado para crear una entrega a rendir",
         life: 5000,
       });
       return;
@@ -217,7 +224,8 @@ export default function EntregaARendirOTMantenimientoCard({
         actualizadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
       };
 
-      const nuevaEntrega = await crearEntregaRendirOTMantenimiento(dataToCreate);
+      const nuevaEntrega =
+        await crearEntregaRendirOTMantenimiento(dataToCreate);
 
       const entregaNormalizada = {
         ...nuevaEntrega,
@@ -225,8 +233,12 @@ export default function EntregaARendirOTMantenimientoCard({
         otMantenimientoId: Number(nuevaEntrega.otMantenimientoId),
         respEntregaRendirId: Number(nuevaEntrega.respEntregaRendirId),
         centroCostoId: Number(nuevaEntrega.centroCostoId),
-        creadoPor: nuevaEntrega.creadoPor ? Number(nuevaEntrega.creadoPor) : null,
-        actualizadoPor: nuevaEntrega.actualizadoPor ? Number(nuevaEntrega.actualizadoPor) : null,
+        creadoPor: nuevaEntrega.creadoPor
+          ? Number(nuevaEntrega.creadoPor)
+          : null,
+        actualizadoPor: nuevaEntrega.actualizadoPor
+          ? Number(nuevaEntrega.actualizadoPor)
+          : null,
       };
 
       setEntregaARendir(entregaNormalizada);
@@ -245,7 +257,8 @@ export default function EntregaARendirOTMantenimientoCard({
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.mensaje || "Error al crear la entrega a rendir",
+        detail:
+          error.response?.data?.mensaje || "Error al crear la entrega a rendir",
         life: 3000,
       });
     } finally {
@@ -261,7 +274,9 @@ export default function EntregaARendirOTMantenimientoCard({
 
     setLoadingMovimientos(true);
     try {
-      const data = await obtenerDetMovsPorEntregaOTMantenimiento(entregaARendir.id);
+      const data = await obtenerDetMovsPorEntregaOTMantenimiento(
+        entregaARendir.id,
+      );
       setMovimientos(data || []);
       calcularTotales(data || []);
     } catch (error) {
@@ -286,8 +301,10 @@ export default function EntregaARendirOTMantenimientoCard({
 
     movs.forEach((mov) => {
       const monto = Number(mov.monto) || 0;
-      const tipoMov = tiposMovimiento.find((t) => Number(t.id) === Number(mov.tipoMovimientoId));
-      
+      const tipoMov = tiposMovimiento.find(
+        (t) => Number(t.id) === Number(mov.tipoMovimientoId),
+      );
+
       if (tipoMov?.esIngreso === true) {
         totalAsignaciones += monto;
       } else if (tipoMov?.esIngreso === false) {
@@ -309,7 +326,7 @@ export default function EntregaARendirOTMantenimientoCard({
     setResponsableEditado(value);
     setHayCambios(
       Number(value) !== Number(entregaARendir.respEntregaRendirId) ||
-        Number(centroCostoEditado) !== Number(entregaARendir.centroCostoId)
+        Number(centroCostoEditado) !== Number(entregaARendir.centroCostoId),
     );
   };
 
@@ -319,8 +336,9 @@ export default function EntregaARendirOTMantenimientoCard({
   const handleCentroCostoChange = (value) => {
     setCentroCostoEditado(value);
     setHayCambios(
-      Number(responsableEditado) !== Number(entregaARendir.respEntregaRendirId) ||
-        Number(value) !== Number(entregaARendir.centroCostoId)
+      Number(responsableEditado) !==
+        Number(entregaARendir.respEntregaRendirId) ||
+        Number(value) !== Number(entregaARendir.centroCostoId),
     );
   };
 
@@ -340,7 +358,7 @@ export default function EntregaARendirOTMantenimientoCard({
 
       const entregaActualizada = await actualizarEntregaRendirOTMantenimiento(
         entregaARendir.id,
-        dataToUpdate
+        dataToUpdate,
       );
 
       const entregaNormalizada = {
@@ -349,8 +367,12 @@ export default function EntregaARendirOTMantenimientoCard({
         otMantenimientoId: Number(entregaActualizada.otMantenimientoId),
         respEntregaRendirId: Number(entregaActualizada.respEntregaRendirId),
         centroCostoId: Number(entregaActualizada.centroCostoId),
-        creadoPor: entregaActualizada.creadoPor ? Number(entregaActualizada.creadoPor) : null,
-        actualizadoPor: entregaActualizada.actualizadoPor ? Number(entregaActualizada.actualizadoPor) : null,
+        creadoPor: entregaActualizada.creadoPor
+          ? Number(entregaActualizada.creadoPor)
+          : null,
+        actualizadoPor: entregaActualizada.actualizadoPor
+          ? Number(entregaActualizada.actualizadoPor)
+          : null,
       };
 
       setEntregaARendir(entregaNormalizada);
@@ -369,7 +391,8 @@ export default function EntregaARendirOTMantenimientoCard({
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.mensaje || "Error al actualizar la entrega",
+        detail:
+          error.response?.data?.mensaje || "Error al actualizar la entrega",
         life: 3000,
       });
     } finally {
@@ -443,12 +466,15 @@ export default function EntregaARendirOTMantenimientoCard({
           }}
         >
           <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">Responsable</label>
+            <label className="block text-900 font-medium mb-2">
+              Responsable
+            </label>
             <Dropdown
               value={responsableEditado}
               options={personal.map((p) => ({
                 ...p,
-                label: p.nombreCompleto || `${p.nombres || ""} ${p.apellidos || ""}`,
+                label:
+                  p.nombreCompleto || `${p.nombres || ""} ${p.apellidos || ""}`,
                 value: Number(p.id),
               }))}
               optionLabel="label"
@@ -459,7 +485,9 @@ export default function EntregaARendirOTMantenimientoCard({
               showClear
               className="w-full"
               style={{ fontWeight: "bold" }}
-              disabled={!puedeEditar || readOnly || entregaARendir.entregaLiquidada}
+              disabled={
+                !puedeEditar || readOnly || entregaARendir.entregaLiquidada
+              }
             />
           </div>
           <div style={{ flex: 0.5 }}>
@@ -469,15 +497,15 @@ export default function EntregaARendirOTMantenimientoCard({
                 entregaARendir.entregaLiquidada
                   ? "LIQUIDADA"
                   : movimientos.length > 0 && totalSaldoEntregasRendir === 0
-                  ? "LISTA PARA LIQUIDAR"
-                  : "PENDIENTE"
+                    ? "LISTA PARA LIQUIDAR"
+                    : "PENDIENTE"
               }
               severity={
                 entregaARendir.entregaLiquidada
                   ? "success"
                   : movimientos.length > 0 && totalSaldoEntregasRendir === 0
-                  ? "info"
-                  : "danger"
+                    ? "info"
+                    : "danger"
               }
               className="w-full"
               disabled
@@ -485,11 +513,15 @@ export default function EntregaARendirOTMantenimientoCard({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">Fecha Liquidación</label>
+            <label className="block text-900 font-medium mb-2">
+              Fecha Liquidación
+            </label>
             <InputText
               value={
                 entregaARendir.fechaLiquidacion
-                  ? new Date(entregaARendir.fechaLiquidacion).toLocaleDateString("es-PE")
+                  ? new Date(
+                      entregaARendir.fechaLiquidacion,
+                    ).toLocaleDateString("es-PE")
                   : "N/A"
               }
               readOnly
@@ -497,7 +529,9 @@ export default function EntregaARendirOTMantenimientoCard({
             />
           </div>
           <div style={{ flex: 2 }}>
-            <label className="block text-900 font-medium mb-2">Centro de Costo</label>
+            <label className="block text-900 font-medium mb-2">
+              Centro de Costo
+            </label>
             <Dropdown
               value={centroCostoEditado}
               options={centrosCosto.map((c) => ({
@@ -513,7 +547,9 @@ export default function EntregaARendirOTMantenimientoCard({
               showClear
               className="w-full"
               style={{ fontWeight: "bold" }}
-              disabled={!puedeEditar || readOnly || entregaARendir.entregaLiquidada}
+              disabled={
+                !puedeEditar || readOnly || entregaARendir.entregaLiquidada
+              }
             />
           </div>
         </div>
@@ -533,7 +569,9 @@ export default function EntregaARendirOTMantenimientoCard({
           }}
         >
           <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">Total Asignaciones</label>
+            <label className="block text-900 font-medium mb-2">
+              Total Asignaciones
+            </label>
             <InputText
               value={new Intl.NumberFormat("es-PE", {
                 style: "currency",
@@ -552,7 +590,9 @@ export default function EntregaARendirOTMantenimientoCard({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">Total Gastos</label>
+            <label className="block text-900 font-medium mb-2">
+              Total Gastos
+            </label>
             <InputText
               value={new Intl.NumberFormat("es-PE", {
                 style: "currency",
@@ -571,7 +611,9 @@ export default function EntregaARendirOTMantenimientoCard({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">Saldo Total</label>
+            <label className="block text-900 font-medium mb-2">
+              Saldo Total
+            </label>
             <InputText
               value={new Intl.NumberFormat("es-PE", {
                 style: "currency",
@@ -596,7 +638,9 @@ export default function EntregaARendirOTMantenimientoCard({
               className="p-button-success"
               onClick={handleGuardarCambios}
               loading={loadingEntrega}
-              disabled={!hayCambios || readOnly || entregaARendir.entregaLiquidada}
+              disabled={
+                !hayCambios || readOnly || entregaARendir.entregaLiquidada
+              }
             />
           </div>
         </div>

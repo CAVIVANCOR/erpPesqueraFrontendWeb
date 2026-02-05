@@ -33,6 +33,7 @@ import { getPersonal } from "../api/personal";
 import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { getRequerimientosCompra } from "../api/requerimientoCompra";
 import { getMonedas } from "../api/moneda";
+import { getUnidadesNegocio } from "../api/unidadNegocio";
 import { getCentrosCosto } from "../api/centroCosto";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getSeriesDoc } from "../api/serieDoc";
@@ -48,11 +49,9 @@ import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 export default function OrdenCompra({ ruta }) {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
-
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
-
   const toast = useRef(null);
   const [items, setItems] = useState([]);
   const [empresas, setEmpresas] = useState([]);
@@ -73,6 +72,7 @@ export default function OrdenCompra({ ruta }) {
   const [conceptosMovAlmacen, setConceptosMovAlmacen] = useState([]);
   const [estadosMercaderia, setEstadosMercaderia] = useState([]);
   const [estadosCalidad, setEstadosCalidad] = useState([]);
+  const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -176,6 +176,7 @@ export default function OrdenCompra({ ruta }) {
         destinosProductoData,
         tiposMovimientoData,
         conceptosMovAlmacenData,
+        unidadesNegocioData,
       ] = await Promise.all([
         getOrdenesCompra(),
         getEmpresas(),
@@ -194,6 +195,7 @@ export default function OrdenCompra({ ruta }) {
         getAllDestinoProducto(),
         getAllTipoMovEntregaRendir(),
         getConceptosMovAlmacen(),
+        getUnidadesNegocio({ activo: true }),
       ]);
 
       setEmpresas(empresasData);
@@ -243,6 +245,11 @@ export default function OrdenCompra({ ruta }) {
         (r) => r.estadoDocId === 33,
       );
       setRequerimientos(requerimientosAprobados);
+      if (unidadesNegocioData && Array.isArray(unidadesNegocioData)) {
+        setUnidadesNegocio(
+          unidadesNegocioData.map((un) => ({ ...un, id: Number(un.id) })),
+        );
+      }
     } catch (err) {
       toast.current.show({
         severity: "error",
@@ -1009,6 +1016,7 @@ export default function OrdenCompra({ ruta }) {
           requerimientos={requerimientos}
           monedas={monedas}
           centrosCosto={centrosCosto}
+          unidadesNegocio={unidadesNegocio}
           empresaFija={empresaSeleccionada}
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}

@@ -14,8 +14,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
-import { Dialog } from "primereact/dialog";
-import { confirmDialog } from "primereact/confirmdialog";
 import { Divider } from "primereact/divider";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
@@ -23,12 +21,7 @@ import { Message } from "primereact/message";
 import { TabView, TabPanel } from "primereact/tabview";
 import DetEntregaRendirNovedadConsumo from "./DetEntregaRendirNovedadConsumo";
 import VerImpresionLiquidacionPC from "./VerImpresionLiquidacionPC";
-import {
-  getEntregasARendirPescaConsumo,
-  crearEntregaARendirPescaConsumo,
-  actualizarEntregaARendirPescaConsumo,
-  eliminarEntregaARendirPescaConsumo,
-} from "../../api/entregaARendirPescaConsumo";
+import { getEntregasARendirPescaConsumo } from "../../api/entregaARendirPescaConsumo";
 import { getAllDetMovsEntRendirPescaConsumo } from "../../api/detMovsEntRendirPescaConsumo";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
 import { getMonedas } from "../../api/moneda";
@@ -36,6 +29,7 @@ import { getProductos } from "../../api/producto";
 
 const EntregasARendirNovedadCard = ({
   novedadPescaConsumoId,
+  novedadPescaConsumo = null,
   novedadPescaConsumoIniciada = false,
   empresaId,
   personal = [],
@@ -54,7 +48,6 @@ const EntregasARendirNovedadCard = ({
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
   const [productos, setProductos] = useState([]);
   const [monedas, setMonedas] = useState([]); // ← AGREGAR ESTA LÍNEA
-
 
   // Estados para cálculos automáticos
   const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] =
@@ -99,9 +92,10 @@ const EntregasARendirNovedadCard = ({
     try {
       const familiasGastosIds = [2, 3, 4, 6, 7];
       const productosData = await getProductos();
-      const productosFiltrados = productosData.filter(p => 
-        familiasGastosIds.includes(Number(p.familiaId)) &&
-        Number(p.empresaId) === Number(empresaId)
+      const productosFiltrados = productosData.filter(
+        (p) =>
+          familiasGastosIds.includes(Number(p.familiaId)) &&
+          Number(p.empresaId) === Number(empresaId),
       );
       setProductos(productosFiltrados);
     } catch (error) {
@@ -125,7 +119,7 @@ const EntregasARendirNovedadCard = ({
       const entregaNovedad = entregasData.find(
         (entrega) =>
           Number(entrega.novedadPescaConsumoId) ===
-          Number(novedadPescaConsumoId)
+          Number(novedadPescaConsumoId),
       );
       setEntregaARendir(entregaNovedad || null);
     } catch (error) {
@@ -150,7 +144,8 @@ const EntregasARendirNovedadCard = ({
       const movimientosData = await getAllDetMovsEntRendirPescaConsumo();
       const movimientosEntrega = movimientosData.filter(
         (mov) =>
-          Number(mov.entregaARendirPescaConsumoId) === Number(entregaARendir.id)
+          Number(mov.entregaARendirPescaConsumoId) ===
+          Number(entregaARendir.id),
       );
       setMovimientos(movimientosEntrega);
       calcularTotales(movimientosEntrega);
@@ -176,12 +171,12 @@ const EntregasARendirNovedadCard = ({
 
     movs.forEach((mov) => {
       const monto = Number(mov.monto) || 0;
-      
+
       // Buscar el tipo de movimiento en el array tiposMovimiento usando el ID
       const tipoMov = tiposMovimiento.find(
-        (t) => Number(t.id) === Number(mov.tipoMovimientoId)
+        (t) => Number(t.id) === Number(mov.tipoMovimientoId),
       );
-      
+
       // Verificar si es ingreso o egreso usando el campo "esIngreso" (booleano)
       if (tipoMov?.esIngreso === true) {
         totalAsignaciones += monto;
@@ -242,7 +237,7 @@ const EntregasARendirNovedadCard = ({
     }
 
     const responsable = personal.find(
-      (p) => Number(p.id) === Number(entregaARendir.respEntregaRendirId)
+      (p) => Number(p.id) === Number(entregaARendir.respEntregaRendirId),
     );
 
     if (!responsable) {
@@ -279,7 +274,7 @@ const EntregasARendirNovedadCard = ({
     }
 
     const centroCosto = centrosCosto.find(
-      (c) => Number(c.id) === Number(entregaARendir.centroCostoId)
+      (c) => Number(c.id) === Number(entregaARendir.centroCostoId),
     );
 
     if (!centroCosto) {
@@ -348,15 +343,15 @@ const EntregasARendirNovedadCard = ({
                     entregaARendir.entregaLiquidada
                       ? "NOVEDAD LIQUIDADA"
                       : movimientos.length > 0 && totalSaldoEntregasRendir === 0
-                      ? "LISTA PARA LIQUIDAR"
-                      : "PENDIENTE LIQUIDACION"
+                        ? "LISTA PARA LIQUIDAR"
+                        : "PENDIENTE LIQUIDACION"
                   }
                   severity={
                     entregaARendir.entregaLiquidada
                       ? "success"
                       : movimientos.length > 0 && totalSaldoEntregasRendir === 0
-                      ? "info"
-                      : "danger"
+                        ? "info"
+                        : "danger"
                   }
                   className="w-full"
                   disabled
@@ -371,7 +366,7 @@ const EntregasARendirNovedadCard = ({
                   value={
                     entregaARendir.fechaLiquidacion
                       ? new Date(
-                          entregaARendir.fechaLiquidacion
+                          entregaARendir.fechaLiquidacion,
                         ).toLocaleDateString("es-PE")
                       : "N/A"
                   }
@@ -492,6 +487,7 @@ const EntregasARendirNovedadCard = ({
           <TabPanel header="Movimientos" leftIcon="pi pi-list">
             <DetEntregaRendirNovedadConsumo
               entregaARendirPescaConsumo={entregaARendir}
+              novedadPescaConsumo={novedadPescaConsumo}
               movimientos={movimientos}
               personal={personal}
               centrosCosto={centrosCosto}

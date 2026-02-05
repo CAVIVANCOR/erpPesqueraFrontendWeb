@@ -27,6 +27,7 @@ export default function DatosGeneralesTab({
   estadosPreFacturaOptions,
   centrosCostoOptions,
   monedasOptions,
+  unidadesNegocioOptions = [],
   bancosOptions,
   incotermsOptions,
   paisesOptions,
@@ -58,9 +59,10 @@ export default function DatosGeneralesTab({
 
   // Obtener la moneda seleccionada dinámicamente del estado
   const monedaSeleccionada = monedasOptions.find(
-    (m) => m.value === formData.monedaId
+    (m) => m.value === formData.monedaId,
   );
-  const simboloMoneda = monedaSeleccionada?.simbolo || monedaPreFactura?.simbolo || "S/";
+  const simboloMoneda =
+    monedaSeleccionada?.simbolo || monedaPreFactura?.simbolo || "S/";
 
   return (
     <div className="fluid">
@@ -298,6 +300,31 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar estado"
               disabled={!puedeEditar || readOnly}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
+            />
+          </div>
+          <div style={{ flex: 1.5 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="unidadNegocioId"
+            >
+              Unidad de Negocio*
+            </label>
+            <Dropdown
+              id="unidadNegocioId"
+              value={
+                formData.unidadNegocioId
+                  ? Number(formData.unidadNegocioId)
+                  : null
+              }
+              options={unidadesNegocioOptions}
+              onChange={(e) => onChange("unidadNegocioId", e.value)}
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccionar unidad de negocio"
+              filter
+              showClear
+              style={{ fontWeight: "bold", textTransform: "uppercase" }}
+              disabled={!puedeEditar || readOnly}
             />
           </div>
         </div>

@@ -275,3 +275,13 @@ export const getSeverityColors = (severity) => {
 
     return severityColors[severity] || severityColors.default;
 };
+
+
+/**
+ * Constante con los tipos de Dashboard disponibles en el ERP
+ * Usada en formulario de Usuario para campo dashboardPorDefecto
+ */
+export const DASHBOARD_TYPES = [
+  { label: "Dashboard por Módulos", value: "modular" },
+  { label: "Dashboard por Unidades de Negocio", value: "unidades" }
+];

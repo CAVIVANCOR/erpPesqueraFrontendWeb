@@ -51,7 +51,8 @@ export default function EntregaARendirContratoCard({
   const [verificandoEntrega, setVerificandoEntrega] = useState(true);
 
   // Estados para cálculos automáticos
-  const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] = useState(0);
+  const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] =
+    useState(0);
   const [totalGastosEntregasRendir, setTotalGastosEntregasRendir] = useState(0);
   const [totalSaldoEntregasRendir, setTotalSaldoEntregasRendir] = useState(0);
 
@@ -63,7 +64,8 @@ export default function EntregaARendirContratoCard({
   const [productos, setProductos] = useState([]);
 
   // Estado para entidades comerciales filtradas por empresa
-  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] = useState([]);
+  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] =
+    useState([]);
 
   // Estados para edición de la entrega
   const [responsableEditado, setResponsableEditado] = useState(null);
@@ -107,7 +109,7 @@ export default function EntregaARendirContratoCard({
   useEffect(() => {
     if (contratoServicio?.empresaId && entidadesComerciales.length > 0) {
       const entidadesFiltradas = entidadesComerciales.filter(
-        (e) => Number(e.empresaId) === Number(contratoServicio.empresaId)
+        (e) => Number(e.empresaId) === Number(contratoServicio.empresaId),
       );
       setEntidadesComercialesFiltradas(entidadesFiltradas);
     } else {
@@ -125,7 +127,7 @@ export default function EntregaARendirContratoCard({
       const productosFiltrados = productosData.filter(
         (p) =>
           familiasGastosIds.includes(Number(p.familiaId)) &&
-          Number(p.empresaId) === Number(contratoServicio?.empresaId)
+          Number(p.empresaId) === Number(contratoServicio?.empresaId),
       );
       setProductos(productosFiltrados);
     } catch (error) {
@@ -147,7 +149,7 @@ export default function EntregaARendirContratoCard({
     try {
       const data = await getAllEntregaARendirContratoServicios();
       const entregaExistente = data.find(
-        (e) => Number(e.contratoServicioId) === Number(contratoServicio.id)
+        (e) => Number(e.contratoServicioId) === Number(contratoServicio.id),
       );
 
       if (entregaExistente) {
@@ -176,7 +178,8 @@ export default function EntregaARendirContratoCard({
    */
   const preguntarCrearEntrega = () => {
     confirmDialog({
-      message: "No existe una entrega a rendir para este contrato. ¿Desea crear una?",
+      message:
+        "No existe una entrega a rendir para este contrato. ¿Desea crear una?",
       header: "Crear Entrega a Rendir",
       icon: "pi pi-question-circle",
       acceptLabel: "Sí, Crear",
@@ -192,11 +195,15 @@ export default function EntregaARendirContratoCard({
    * Crear entrega a rendir automáticamente
    */
   const crearEntregaAutomatica = async () => {
-    if (!contratoServicio.responsableId || Number(contratoServicio.responsableId) <= 0) {
+    if (
+      !contratoServicio.responsableId ||
+      Number(contratoServicio.responsableId) <= 0
+    ) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "El contrato debe tener un Responsable asignado para crear una entrega a rendir",
+        detail:
+          "El contrato debe tener un Responsable asignado para crear una entrega a rendir",
         life: 5000,
       });
       return;
@@ -215,7 +222,8 @@ export default function EntregaARendirContratoCard({
         actualizadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
       };
 
-      const nuevaEntrega = await crearEntregaARendirContratoServicios(dataToCreate);
+      const nuevaEntrega =
+        await crearEntregaARendirContratoServicios(dataToCreate);
 
       const entregaNormalizada = {
         ...nuevaEntrega,
@@ -223,8 +231,12 @@ export default function EntregaARendirContratoCard({
         contratoServicioId: Number(nuevaEntrega.contratoServicioId),
         respEntregaRendirId: Number(nuevaEntrega.respEntregaRendirId),
         centroCostoId: Number(nuevaEntrega.centroCostoId),
-        creadoPor: nuevaEntrega.creadoPor ? Number(nuevaEntrega.creadoPor) : null,
-        actualizadoPor: nuevaEntrega.actualizadoPor ? Number(nuevaEntrega.actualizadoPor) : null,
+        creadoPor: nuevaEntrega.creadoPor
+          ? Number(nuevaEntrega.creadoPor)
+          : null,
+        actualizadoPor: nuevaEntrega.actualizadoPor
+          ? Number(nuevaEntrega.actualizadoPor)
+          : null,
       };
 
       setEntregaARendir(entregaNormalizada);
@@ -243,7 +255,8 @@ export default function EntregaARendirContratoCard({
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.mensaje || "Error al crear la entrega a rendir",
+        detail:
+          error.response?.data?.mensaje || "Error al crear la entrega a rendir",
         life: 3000,
       });
     } finally {
@@ -261,7 +274,9 @@ export default function EntregaARendirContratoCard({
     try {
       const data = await getAllDetMovsEntregaRendirContratoServicios();
       const movsFiltrados = data.filter(
-        (m) => Number(m.entregaARendirContratoServicioId) === Number(entregaARendir.id)
+        (m) =>
+          Number(m.entregaARendirContratoServicioId) ===
+          Number(entregaARendir.id),
       );
       setMovimientos(movsFiltrados);
       calcularTotales(movsFiltrados);
@@ -287,8 +302,10 @@ export default function EntregaARendirContratoCard({
 
     movs.forEach((mov) => {
       const monto = Number(mov.monto) || 0;
-      const tipoMov = tiposMovimiento.find((t) => Number(t.id) === Number(mov.tipoMovimientoId));
-      
+      const tipoMov = tiposMovimiento.find(
+        (t) => Number(t.id) === Number(mov.tipoMovimientoId),
+      );
+
       if (tipoMov?.esIngreso === true) {
         totalAsignaciones += monto;
       } else if (tipoMov?.esIngreso === false) {
@@ -310,7 +327,7 @@ export default function EntregaARendirContratoCard({
     setResponsableEditado(value);
     setHayCambios(
       Number(value) !== Number(entregaARendir.respEntregaRendirId) ||
-        Number(centroCostoEditado) !== Number(entregaARendir.centroCostoId)
+        Number(centroCostoEditado) !== Number(entregaARendir.centroCostoId),
     );
   };
 
@@ -320,8 +337,9 @@ export default function EntregaARendirContratoCard({
   const handleCentroCostoChange = (value) => {
     setCentroCostoEditado(value);
     setHayCambios(
-      Number(responsableEditado) !== Number(entregaARendir.respEntregaRendirId) ||
-        Number(value) !== Number(entregaARendir.centroCostoId)
+      Number(responsableEditado) !==
+        Number(entregaARendir.respEntregaRendirId) ||
+        Number(value) !== Number(entregaARendir.centroCostoId),
     );
   };
 
@@ -339,10 +357,11 @@ export default function EntregaARendirContratoCard({
         actualizadoPor: usuario?.personalId ? Number(usuario.personalId) : null,
       };
 
-      const entregaActualizada = await actualizarEntregaARendirContratoServicios(
-        entregaARendir.id,
-        dataToUpdate
-      );
+      const entregaActualizada =
+        await actualizarEntregaARendirContratoServicios(
+          entregaARendir.id,
+          dataToUpdate,
+        );
 
       const entregaNormalizada = {
         ...entregaActualizada,
@@ -350,8 +369,12 @@ export default function EntregaARendirContratoCard({
         contratoServicioId: Number(entregaActualizada.contratoServicioId),
         respEntregaRendirId: Number(entregaActualizada.respEntregaRendirId),
         centroCostoId: Number(entregaActualizada.centroCostoId),
-        creadoPor: entregaActualizada.creadoPor ? Number(entregaActualizada.creadoPor) : null,
-        actualizadoPor: entregaActualizada.actualizadoPor ? Number(entregaActualizada.actualizadoPor) : null,
+        creadoPor: entregaActualizada.creadoPor
+          ? Number(entregaActualizada.creadoPor)
+          : null,
+        actualizadoPor: entregaActualizada.actualizadoPor
+          ? Number(entregaActualizada.actualizadoPor)
+          : null,
       };
 
       setEntregaARendir(entregaNormalizada);
@@ -370,7 +393,8 @@ export default function EntregaARendirContratoCard({
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.mensaje || "Error al actualizar la entrega",
+        detail:
+          error.response?.data?.mensaje || "Error al actualizar la entrega",
         life: 3000,
       });
     } finally {
@@ -444,12 +468,15 @@ export default function EntregaARendirContratoCard({
           }}
         >
           <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">Responsable</label>
+            <label className="block text-900 font-medium mb-2">
+              Responsable
+            </label>
             <Dropdown
               value={responsableEditado}
               options={personal.map((p) => ({
                 ...p,
-                label: p.nombreCompleto || `${p.nombres || ""} ${p.apellidos || ""}`,
+                label:
+                  p.nombreCompleto || `${p.nombres || ""} ${p.apellidos || ""}`,
                 value: Number(p.id),
               }))}
               optionLabel="label"
@@ -470,15 +497,15 @@ export default function EntregaARendirContratoCard({
                 entregaARendir.entregaLiquidada
                   ? "LIQUIDADA"
                   : movimientos.length > 0 && totalSaldoEntregasRendir === 0
-                  ? "LISTA PARA LIQUIDAR"
-                  : "PENDIENTE"
+                    ? "LISTA PARA LIQUIDAR"
+                    : "PENDIENTE"
               }
               severity={
                 entregaARendir.entregaLiquidada
                   ? "success"
                   : movimientos.length > 0 && totalSaldoEntregasRendir === 0
-                  ? "info"
-                  : "danger"
+                    ? "info"
+                    : "danger"
               }
               className="w-full"
               disabled
@@ -486,11 +513,15 @@ export default function EntregaARendirContratoCard({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">Fecha Liquidación</label>
+            <label className="block text-900 font-medium mb-2">
+              Fecha Liquidación
+            </label>
             <InputText
               value={
                 entregaARendir.fechaLiquidacion
-                  ? new Date(entregaARendir.fechaLiquidacion).toLocaleDateString("es-PE")
+                  ? new Date(
+                      entregaARendir.fechaLiquidacion,
+                    ).toLocaleDateString("es-PE")
                   : "N/A"
               }
               readOnly
@@ -498,7 +529,9 @@ export default function EntregaARendirContratoCard({
             />
           </div>
           <div style={{ flex: 2 }}>
-            <label className="block text-900 font-medium mb-2">Centro de Costo</label>
+            <label className="block text-900 font-medium mb-2">
+              Centro de Costo
+            </label>
             <Dropdown
               value={centroCostoEditado}
               options={centrosCosto.map((c) => ({
@@ -534,7 +567,9 @@ export default function EntregaARendirContratoCard({
           }}
         >
           <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">Total Asignaciones</label>
+            <label className="block text-900 font-medium mb-2">
+              Total Asignaciones
+            </label>
             <InputText
               value={new Intl.NumberFormat("es-PE", {
                 style: "currency",
@@ -553,7 +588,9 @@ export default function EntregaARendirContratoCard({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">Total Gastos</label>
+            <label className="block text-900 font-medium mb-2">
+              Total Gastos
+            </label>
             <InputText
               value={new Intl.NumberFormat("es-PE", {
                 style: "currency",
@@ -572,7 +609,9 @@ export default function EntregaARendirContratoCard({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label className="block text-900 font-medium mb-2">Saldo Total</label>
+            <label className="block text-900 font-medium mb-2">
+              Saldo Total
+            </label>
             <InputText
               value={new Intl.NumberFormat("es-PE", {
                 style: "currency",

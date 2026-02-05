@@ -51,7 +51,6 @@ import { getPersonal } from "../../api/personal";
 import { getCentrosCosto } from "../../api/centroCosto";
 import { getAllTipoMovEntregaRendir } from "../../api/tipoMovEntregaRendir";
 import { getEmpresas } from "../../api/empresa";
-
 /**
  * Componente de formulario para temporadas de pesca
  * Implementa las reglas de validación y normalización del ERP Megui
@@ -63,6 +62,7 @@ const TemporadaPescaForm = ({
   editingItem,
   empresas = [],
   tiposDocumento = [],
+  unidadesNegocio = [],
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
   readOnly = false,
   isEdit = false,
@@ -98,7 +98,6 @@ const TemporadaPescaForm = ({
 
   // Ref para Toast
   const toast = useRef(null);
-
   // Configuración del formulario con React Hook Form
   const {
     control,
@@ -114,6 +113,7 @@ const TemporadaPescaForm = ({
       empresaId: null,
       BahiaId: null,
       estadoTemporadaId: null,
+      unidadNegocioId: 1,
       nombre: "",
       fechaInicio: null,
       fechaFin: null,
@@ -188,7 +188,7 @@ const TemporadaPescaForm = ({
 
         // Encontrar y guardar el ID del estado por defecto
         const estadoDefault = estadosData.find(
-          (estado) => estado.descripcion === "EN ESPERA DE INICIO"
+          (estado) => estado.descripcion === "EN ESPERA DE INICIO",
         );
         if (estadoDefault) {
           setEstadoDefaultId(Number(estadoDefault.id));
@@ -348,6 +348,9 @@ const TemporadaPescaForm = ({
       empresaId: Number(data.empresaId),
       BahiaId: Number(data.BahiaId),
       estadoTemporadaId: Number(data.estadoTemporadaId),
+      unidadNegocioId: data.unidadNegocioId
+        ? Number(data.unidadNegocioId)
+        : 1,
       nombre: data.nombre?.trim().toUpperCase() || "",
       fechaInicio: data.fechaInicio.toISOString(),
       fechaFin: data.fechaFin.toISOString(),
@@ -364,28 +367,60 @@ const TemporadaPescaForm = ({
       fechaActualizacion: new Date().toISOString(),
       toneladasCapturadasTemporada: data.toneladasCapturadasTemporada || null,
 
-          // Campos de liquidación - Parámetros de comisiones
-    porcentajeBaseLiqPesca: data.porcentajeBaseLiqPesca ? Number(data.porcentajeBaseLiqPesca) : null,
-    porcentajeComisionPatron: data.porcentajeComisionPatron ? Number(data.porcentajeComisionPatron) : null,
-    cantPersonalCalcComisionMotorista: data.cantPersonalCalcComisionMotorista ? Number(data.cantPersonalCalcComisionMotorista) : null,
-    cantDivisoriaCalcComisionMotorista: data.cantDivisoriaCalcComisionMotorista ? Number(data.cantDivisoriaCalcComisionMotorista) : null,
-    porcentajeCalcComisionPanguero: data.porcentajeCalcComisionPanguero ? Number(data.porcentajeCalcComisionPanguero) : null,
-      
-    // Campos de liquidación - Liquidaciones Estimadas
-    liqTripulantesPescaEstimado: data.liqTripulantesPescaEstimado ? Number(data.liqTripulantesPescaEstimado) : null,
-    liqComisionPatronEstimado: data.liqComisionPatronEstimado ? Number(data.liqComisionPatronEstimado) : null,
-    liqComisionMotoristaEstimado: data.liqComisionMotoristaEstimado ? Number(data.liqComisionMotoristaEstimado) : null,
-    liqComisionPangueroEstimado: data.liqComisionPangueroEstimado ? Number(data.liqComisionPangueroEstimado) : null,
-    liqTotalPescaEstimada: data.liqTotalPescaEstimada ? Number(data.liqTotalPescaEstimada) : null,
-    liqComisionAlquilerCuota: data.liqComisionAlquilerCuota ? Number(data.liqComisionAlquilerCuota) : null,
-      
-    // Campos de liquidación - Liquidaciones Reales
-    liqTripulantesPescaReal: data.liqTripulantesPescaReal ? Number(data.liqTripulantesPescaReal) : null,
-    liqComisionPatronReal: data.liqComisionPatronReal ? Number(data.liqComisionPatronReal) : null,
-    liqComisionMotoristaReal: data.liqComisionMotoristaReal ? Number(data.liqComisionMotoristaReal) : null,
-    liqComisionPangueroReal: data.liqComisionPangueroReal ? Number(data.liqComisionPangueroReal) : null,
-    liqTotalPescaReal: data.liqTotalPescaReal ? Number(data.liqTotalPescaReal) : null,
-    
+      // Campos de liquidación - Parámetros de comisiones
+      porcentajeBaseLiqPesca: data.porcentajeBaseLiqPesca
+        ? Number(data.porcentajeBaseLiqPesca)
+        : null,
+      porcentajeComisionPatron: data.porcentajeComisionPatron
+        ? Number(data.porcentajeComisionPatron)
+        : null,
+      cantPersonalCalcComisionMotorista: data.cantPersonalCalcComisionMotorista
+        ? Number(data.cantPersonalCalcComisionMotorista)
+        : null,
+      cantDivisoriaCalcComisionMotorista:
+        data.cantDivisoriaCalcComisionMotorista
+          ? Number(data.cantDivisoriaCalcComisionMotorista)
+          : null,
+      porcentajeCalcComisionPanguero: data.porcentajeCalcComisionPanguero
+        ? Number(data.porcentajeCalcComisionPanguero)
+        : null,
+
+      // Campos de liquidación - Liquidaciones Estimadas
+      liqTripulantesPescaEstimado: data.liqTripulantesPescaEstimado
+        ? Number(data.liqTripulantesPescaEstimado)
+        : null,
+      liqComisionPatronEstimado: data.liqComisionPatronEstimado
+        ? Number(data.liqComisionPatronEstimado)
+        : null,
+      liqComisionMotoristaEstimado: data.liqComisionMotoristaEstimado
+        ? Number(data.liqComisionMotoristaEstimado)
+        : null,
+      liqComisionPangueroEstimado: data.liqComisionPangueroEstimado
+        ? Number(data.liqComisionPangueroEstimado)
+        : null,
+      liqTotalPescaEstimada: data.liqTotalPescaEstimada
+        ? Number(data.liqTotalPescaEstimada)
+        : null,
+      liqComisionAlquilerCuota: data.liqComisionAlquilerCuota
+        ? Number(data.liqComisionAlquilerCuota)
+        : null,
+
+      // Campos de liquidación - Liquidaciones Reales
+      liqTripulantesPescaReal: data.liqTripulantesPescaReal
+        ? Number(data.liqTripulantesPescaReal)
+        : null,
+      liqComisionPatronReal: data.liqComisionPatronReal
+        ? Number(data.liqComisionPatronReal)
+        : null,
+      liqComisionMotoristaReal: data.liqComisionMotoristaReal
+        ? Number(data.liqComisionMotoristaReal)
+        : null,
+      liqComisionPangueroReal: data.liqComisionPangueroReal
+        ? Number(data.liqComisionPangueroReal)
+        : null,
+      liqTotalPescaReal: data.liqTotalPescaReal
+        ? Number(data.liqTotalPescaReal)
+        : null,
     };
 
     // Solo incluir ID si existe y no es null (para edición)
@@ -497,7 +532,7 @@ const TemporadaPescaForm = ({
 
           // Obtener datos actualizados de la temporada y notificar cambios
           const temporadaActualizada = await getTemporadaPescaPorId(
-            editingItem.id
+            editingItem.id,
           );
           if (onTemporadaDataChange && temporadaActualizada) {
             onTemporadaDataChange(temporadaActualizada);
@@ -507,12 +542,12 @@ const TemporadaPescaForm = ({
           window.dispatchEvent(
             new CustomEvent("refreshFaenas", {
               detail: { temporadaId: editingItem.id },
-            })
+            }),
           );
 
           // Recalcular estados de documentación personal
           window.dispatchEvent(
-            new CustomEvent("recalcularDocumentacionPersonal")
+            new CustomEvent("recalcularDocumentacionPersonal"),
           );
         } catch (error) {
           console.error("Error iniciando temporada:", error);
@@ -581,7 +616,7 @@ const TemporadaPescaForm = ({
 
           // Recargar datos actualizados
           const temporadaActualizada = await getTemporadaPescaPorId(
-            editingItem.id
+            editingItem.id,
           );
           if (onTemporadaDataChange && temporadaActualizada) {
             onTemporadaDataChange(temporadaActualizada);
@@ -654,7 +689,7 @@ const TemporadaPescaForm = ({
 
           // Recargar datos actualizados
           const temporadaActualizada = await getTemporadaPescaPorId(
-            editingItem.id
+            editingItem.id,
           );
           if (onTemporadaDataChange && temporadaActualizada) {
             onTemporadaDataChange(temporadaActualizada);
@@ -763,12 +798,12 @@ const TemporadaPescaForm = ({
               readOnly
                 ? "No tiene permisos para iniciar temporadas"
                 : iniciandoTemporada
-                ? "Procesando inicio de temporada..."
-                : !camposRequeridosCompletos
-                ? "Complete todos los campos requeridos primero"
-                : tieneFaenas
-                ? "La temporada ya fue iniciada"
-                : "Iniciar temporada de pesca"
+                  ? "Procesando inicio de temporada..."
+                  : !camposRequeridosCompletos
+                    ? "Complete todos los campos requeridos primero"
+                    : tieneFaenas
+                      ? "La temporada ya fue iniciada"
+                      : "Iniciar temporada de pesca"
             }
           />
         )}
@@ -841,7 +876,6 @@ const TemporadaPescaForm = ({
       </div>
     </div>
   );
-
   useEffect(() => {
     if (editingItem) {
       reset({
@@ -849,6 +883,9 @@ const TemporadaPescaForm = ({
         empresaId: editingItem.empresaId ? Number(editingItem.empresaId) : null,
         BahiaId: editingItem.BahiaId || null,
         estadoTemporadaId: editingItem.estadoTemporadaId || estadoDefaultId,
+        unidadNegocioId: editingItem.unidadNegocioId
+          ? Number(editingItem.unidadNegocioId)
+          : 1,
         nombre: editingItem.nombre || "",
         fechaInicio: editingItem.fechaInicio
           ? new Date(editingItem.fechaInicio)
@@ -894,6 +931,7 @@ const TemporadaPescaForm = ({
         empresaId: null,
         BahiaId: null,
         estadoTemporadaId: estadoDefaultId,
+        unidadNegocioId: 1,
         nombre: "",
         fechaInicio: null,
         fechaFin: null,
@@ -988,6 +1026,7 @@ const TemporadaPescaForm = ({
               embarcaciones={embarcaciones}
               boliches={boliches}
               puertos={puertosPesca}
+              unidadesNegocio={unidadesNegocio}
               temporadaData={editingItem}
               onTemporadaDataChange={onTemporadaDataChange}
               readOnly={readOnly}
@@ -1009,6 +1048,7 @@ const TemporadaPescaForm = ({
           {activeCard === "entregas-a-rendir" && (
             <EntregasARendirTemporadaCard
               temporadaPescaId={editingItem?.id}
+              temporadaPesca={editingItem}
               temporadaPescaIniciada={
                 editingItem?.temporadaPescaIniciada || false
               }
@@ -1053,8 +1093,8 @@ const TemporadaPescaForm = ({
                 iniciandoTemporada
                   ? "Iniciando temporada, por favor espere. No cierre esta ventana."
                   : finalizandoTemporada
-                  ? "Finalizando temporada, por favor espere. No cierre esta ventana."
-                  : "Cancelando temporada, por favor espere. No cierre esta ventana."
+                    ? "Finalizando temporada, por favor espere. No cierre esta ventana."
+                    : "Cancelando temporada, por favor espere. No cierre esta ventana."
               }
               className="w-full"
             />

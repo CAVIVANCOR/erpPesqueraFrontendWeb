@@ -36,6 +36,7 @@ const CotizacionVentasForm = ({
   centrosCosto = [],
   tiposMovimiento = [],
   monedas = [],
+  unidadesNegocio = [],
   incoterms = [],
   paises = [],
   puertos = [],
@@ -245,7 +246,7 @@ const CotizacionVentasForm = ({
     actualizadoPor: defaultValues?.actualizadoPor
       ? Number(defaultValues.actualizadoPor)
       : null,
-   });
+  });
 
   // Actualizar formData cuando cambian los defaultValues (modo edición)
   useEffect(() => {
@@ -257,8 +258,6 @@ const CotizacionVentasForm = ({
     }
   }, [defaultValues]);
 
-
-  
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -736,7 +735,10 @@ const CotizacionVentasForm = ({
     label: d.direccion || `${d.calle || ""} ${d.numero || ""}`.trim(),
     value: Number(d.id),
   }));
-
+  const unidadesNegocioOptions = unidadesNegocio.map((unidad) => ({
+    label: unidad.nombre,
+    value: Number(unidad.id),
+  }));
   return (
     <div className="cotizacion-ventas-form">
       <Toast
@@ -766,6 +768,7 @@ const CotizacionVentasForm = ({
               formasPago={formasPago}
               monedas={monedas}
               centrosCosto={centrosCosto}
+              unidadesNegocioOptions={unidadesNegocioOptions}
               responsablesVentas={responsablesVentas}
               responsablesAutorizaVenta={responsablesAutorizaVenta}
               responsablesSupervisorCampo={responsablesSupervisorCampo}

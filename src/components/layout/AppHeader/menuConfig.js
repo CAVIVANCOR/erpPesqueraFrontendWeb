@@ -14,34 +14,40 @@ export const getMenuConfig = (abrirModulo) => ({
       {
         label: "Movimientos Acceso",
         icon: "pi pi-sign-in",
-        action: () => abrirModulo("accesoInstalacion", "Movimientos Acceso Instalaciones")
+        action: () =>
+          abrirModulo("accesoInstalacion", "Movimientos Acceso Instalaciones"),
       },
       {
         label: "Tipos de Movimiento",
         icon: "pi pi-arrows-h",
-        action: () => abrirModulo("tipoMovimientoAcceso", "Tipos de Movimiento de Acceso")
+        action: () =>
+          abrirModulo("tipoMovimientoAcceso", "Tipos de Movimiento de Acceso"),
       },
       {
         label: "Tipo Equipos",
         icon: "pi pi-desktop",
-        action: () => abrirModulo("tipoEquipo", "Tipo Equipos")
+        action: () => abrirModulo("tipoEquipo", "Tipo Equipos"),
       },
       {
         label: "Tipos de Persona",
         icon: "pi pi-users",
-        action: () => abrirModulo("tipoPersona", "Tipos de Persona")
+        action: () => abrirModulo("tipoPersona", "Tipos de Persona"),
       },
       {
         label: "Motivos de Acceso",
         icon: "pi pi-question-circle",
-        action: () => abrirModulo("motivoAcceso", "Motivos de Acceso")
+        action: () => abrirModulo("motivoAcceso", "Motivos de Acceso"),
       },
       {
         label: "Tipos de Acceso",
         icon: "pi pi-key",
-        action: () => abrirModulo("tipoAccesoInstalacion", "Tipos de Acceso a Instalaciones")
-      }
-    ]
+        action: () =>
+          abrirModulo(
+            "tipoAccesoInstalacion",
+            "Tipos de Acceso a Instalaciones",
+          ),
+      },
+    ],
   },
 
   // ============================================
@@ -64,14 +70,15 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Pesca Industrial",
                 icon: "pi pi-compass",
-                action: () => abrirModulo("temporadaPesca", "Pesca Industrial")
+                action: () => abrirModulo("temporadaPesca", "Pesca Industrial"),
               },
               {
                 label: "Pesca de Consumo",
                 icon: "pi pi-shopping-bag",
-                action: () => abrirModulo("novedadPescaConsumo", "Pesca de Consumo")
-              }
-            ]
+                action: () =>
+                  abrirModulo("novedadPescaConsumo", "Pesca de Consumo"),
+              },
+            ],
           },
           {
             title: "📋 Tablas",
@@ -79,61 +86,74 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Katana Tripulación",
                 icon: "pi pi-users",
-                action: () => abrirModulo("katanaTripulacion", "Katana Tripulación")
+                action: () =>
+                  abrirModulo("katanaTripulacion", "Katana Tripulación"),
               },
               {
                 label: "Especies",
                 icon: "pi pi-star",
-                action: () => abrirModulo("especie", "Especies")
+                action: () => abrirModulo("especie", "Especies"),
               },
               {
                 label: "Detalle Cuotas Pesca",
                 icon: "pi pi-percentage",
-                action: () => abrirModulo("detCuotaPesca", "Detalle Cuotas Pesca")
+                action: () =>
+                  abrirModulo("detCuotaPesca", "Detalle Cuotas Pesca"),
               },
               {
                 label: "Acciones Previas",
                 icon: "pi pi-list-check",
-                action: () => abrirModulo("accionesPreviasFaena", "Acciones previas Faena")
+                action: () =>
+                  abrirModulo("accionesPreviasFaena", "Acciones previas Faena"),
               },
               {
                 label: "Embarcaciones",
                 icon: "pi pi-directions",
-                action: () => abrirModulo("embarcacion", "Embarcaciones")
+                action: () => abrirModulo("embarcacion", "Embarcaciones"),
               },
               {
                 label: "Tipo Embarcación",
                 icon: "pi pi-tags",
-                action: () => abrirModulo("tipoEmbarcacion", "Tipo Embarcación")
+                action: () =>
+                  abrirModulo("tipoEmbarcacion", "Tipo Embarcación"),
               },
               {
                 label: "Boliche de Red",
                 icon: "pi pi-circle",
-                action: () => abrirModulo("bolicheRed", "Boliche de Red")
+                action: () => abrirModulo("bolicheRed", "Boliche de Red"),
               },
               {
                 label: "Documentación Pesca",
                 icon: "pi pi-file-pdf",
-                action: () => abrirModulo("documentoPesca", "Documentación Pesca")
+                action: () =>
+                  abrirModulo("documentoPesca", "Documentación Pesca"),
               },
               {
                 label: "Documentación Embarcación",
                 icon: "pi pi-folder-open",
-                action: () => abrirModulo("documentacionEmbarcacion", "Detalle Documentación Embarcación")
+                action: () =>
+                  abrirModulo(
+                    "documentacionEmbarcacion",
+                    "Detalle Documentación Embarcación",
+                  ),
               },
               {
                 label: "Documentación Personal",
                 icon: "pi pi-id-card",
-                action: () => abrirModulo("documentacionPersonal", "Documentación Personal")
+                action: () =>
+                  abrirModulo(
+                    "documentacionPersonal",
+                    "Documentación Personal",
+                  ),
               },
               {
                 label: "Puerto de Pesca",
                 icon: "pi pi-map-marker",
-                action: () => abrirModulo("puertoPesca", "Puerto de Pesca")
-              }
-            ]
-          }
-        ]
+                action: () => abrirModulo("puertoPesca", "Puerto de Pesca"),
+              },
+            ],
+          },
+        ],
       },
 
       // COLUMNA 2: COMPRAS
@@ -147,14 +167,15 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Requerimiento Compra",
                 icon: "pi pi-file-edit",
-                action: () => abrirModulo("requerimientoCompra", "Requerimiento Compra")
+                action: () =>
+                  abrirModulo("requerimientoCompra", "Requerimiento Compra"),
               },
               {
                 label: "Orden de Compra",
                 icon: "pi pi-shopping-cart",
-                action: () => abrirModulo("ordenCompra", "Orden de Compra")
-              }
-            ]
+                action: () => abrirModulo("ordenCompra", "Orden de Compra"),
+              },
+            ],
           },
           {
             title: "📋 Tablas",
@@ -162,31 +183,37 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Tipo Producto",
                 icon: "pi pi-box",
-                action: () => abrirModulo("tipoProducto", "Tipo Producto")
+                action: () => abrirModulo("tipoProducto", "Tipo Producto"),
               },
               {
                 label: "Tipo Estado Producto",
                 icon: "pi pi-flag",
-                action: () => abrirModulo("tipoEstadoProducto", "Tipo Estado Producto")
+                action: () =>
+                  abrirModulo("tipoEstadoProducto", "Tipo Estado Producto"),
               },
               {
                 label: "Destino Producto",
                 icon: "pi pi-send",
-                action: () => abrirModulo("destinoProducto", "Destino Producto")
+                action: () =>
+                  abrirModulo("destinoProducto", "Destino Producto"),
               },
               {
                 label: "Forma de Pago",
                 icon: "pi pi-credit-card",
-                action: () => abrirModulo("formaPago", "Forma de Pago")
+                action: () => abrirModulo("formaPago", "Forma de Pago"),
               },
               {
                 label: "Modo Despacho/Recepción",
                 icon: "pi pi-truck",
-                action: () => abrirModulo("modoDespachoRecepcion", "Modo Despacho/Recepción")
-              }
-            ]
-          }
-        ]
+                action: () =>
+                  abrirModulo(
+                    "modoDespachoRecepcion",
+                    "Modo Despacho/Recepción",
+                  ),
+              },
+            ],
+          },
+        ],
       },
 
       // COLUMNA 3: VENTAS
@@ -200,24 +227,30 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Cotización Ventas",
                 icon: "pi pi-file-edit",
-                action: () => abrirModulo("cotizacionVentas", "Cotización Ventas")
+                action: () =>
+                  abrirModulo("cotizacionVentas", "Cotización Ventas"),
               },
               {
                 label: "Pre-Factura",
                 icon: "pi pi-file-pdf",
-                action: () => abrirModulo("preFactura", "Pre-Factura")
+                action: () => abrirModulo("preFactura", "Pre-Factura"),
               },
               {
                 label: "Comprobantes Electrónicos SUNAT",
                 icon: "pi pi-send",
-                action: () => abrirModulo("comprobanteElectronico", "Comprobantes Electrónicos SUNAT")
+                action: () =>
+                  abrirModulo(
+                    "comprobanteElectronico",
+                    "Comprobantes Electrónicos SUNAT",
+                  ),
               },
               {
                 label: "Contratos de Servicios",
                 icon: "pi pi-file-contract",
-                action: () => abrirModulo("contratoServicio", "Contratos de Servicios")
-              }
-            ]
+                action: () =>
+                  abrirModulo("contratoServicio", "Contratos de Servicios"),
+              },
+            ],
           },
           {
             title: "📋 Tablas",
@@ -225,31 +258,40 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Incoterms",
                 icon: "pi pi-globe",
-                action: () => abrirModulo("incoterm", "Incoterms")
+                action: () => abrirModulo("incoterm", "Incoterms"),
               },
               {
                 label: "Documentos Requeridos Ventas",
                 icon: "pi pi-file-check",
-                action: () => abrirModulo("docRequeridaVentas", "Documentos Requeridos Ventas")
+                action: () =>
+                  abrirModulo(
+                    "docRequeridaVentas",
+                    "Documentos Requeridos Ventas",
+                  ),
               },
               {
                 label: "Requisitos Doc. por País",
                 icon: "pi pi-map",
-                action: () => abrirModulo("requisitoDocPorPais", "Requisitos Documentales por País")
+                action: () =>
+                  abrirModulo(
+                    "requisitoDocPorPais",
+                    "Requisitos Documentales por País",
+                  ),
               },
               {
                 label: "Tipo Contenedor",
                 icon: "pi pi-box",
-                action: () => abrirModulo("tipoContenedor", "Tipo Contenedor")
+                action: () => abrirModulo("tipoContenedor", "Tipo Contenedor"),
               },
               {
                 label: "Formas Transacción",
                 icon: "pi pi-sync",
-                action: () => abrirModulo("formaTransaccion", "Formas Transacción")
-              }
-            ]
-          }
-        ]
+                action: () =>
+                  abrirModulo("formaTransaccion", "Formas Transacción"),
+              },
+            ],
+          },
+        ],
       },
 
       // COLUMNA 4: INVENTARIOS
@@ -263,24 +305,33 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Movimientos Almacén",
                 icon: "pi pi-arrows-h",
-                action: () => abrirModulo("movimientoAlmacen", "Movimientos Almacén")
+                action: () =>
+                  abrirModulo("movimientoAlmacen", "Movimientos Almacén"),
               },
               {
                 label: "Kardex Almacén",
                 icon: "pi pi-chart-line",
-                action: () => abrirModulo("kardexAlmacen", "Kardex Almacén")
+                action: () => abrirModulo("kardexAlmacen", "Kardex Almacén"),
               },
               {
                 label: "Saldos Productos-Cliente",
                 icon: "pi pi-chart-bar",
-                action: () => abrirModulo("saldosProductoCliente", "Saldos Productos-Cliente")
+                action: () =>
+                  abrirModulo(
+                    "saldosProductoCliente",
+                    "Saldos Productos-Cliente",
+                  ),
               },
               {
                 label: "Saldos Productos-Cliente Variables",
                 icon: "pi pi-table",
-                action: () => abrirModulo("saldosDetProductoCliente", "Saldos Productos-Cliente Variables Control Stock")
-              }
-            ]
+                action: () =>
+                  abrirModulo(
+                    "saldosDetProductoCliente",
+                    "Saldos Productos-Cliente Variables Control Stock",
+                  ),
+              },
+            ],
           },
           {
             title: "📋 Tablas",
@@ -288,46 +339,60 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Conceptos Movimientos",
                 icon: "pi pi-bookmark",
-                action: () => abrirModulo("conceptoMovAlmacen", "Conceptos Movimientos Almacén")
+                action: () =>
+                  abrirModulo(
+                    "conceptoMovAlmacen",
+                    "Conceptos Movimientos Almacén",
+                  ),
               },
               {
                 label: "Tipos de Documento",
                 icon: "pi pi-file",
-                action: () => abrirModulo("tipoDocumento", "Tipos de Documento")
+                action: () =>
+                  abrirModulo("tipoDocumento", "Tipos de Documento"),
               },
               {
                 label: "Tipos de Concepto",
                 icon: "pi pi-tags",
-                action: () => abrirModulo("tipoConcepto", "Tipos de Concepto Movimientos Almacén")
+                action: () =>
+                  abrirModulo(
+                    "tipoConcepto",
+                    "Tipos de Concepto Movimientos Almacén",
+                  ),
               },
               {
                 label: "Tipos de Movimiento",
                 icon: "pi pi-sort-alt",
-                action: () => abrirModulo("tipoMovimientoAlmacen", "Tipos de Movimiento Almacén")
+                action: () =>
+                  abrirModulo(
+                    "tipoMovimientoAlmacen",
+                    "Tipos de Movimiento Almacén",
+                  ),
               },
               {
                 label: "Tipos de Almacén",
                 icon: "pi pi-building",
-                action: () => abrirModulo("tipoAlmacen", "Tipos de Almacén")
+                action: () => abrirModulo("tipoAlmacen", "Tipos de Almacén"),
               },
               {
                 label: "Centros de Almacén",
                 icon: "pi pi-sitemap",
-                action: () => abrirModulo("centrosAlmacen", "Centros de Almacén")
+                action: () =>
+                  abrirModulo("centrosAlmacen", "Centros de Almacén"),
               },
               {
                 label: "Almacenes",
                 icon: "pi pi-warehouse",
-                action: () => abrirModulo("almacen", "Almacenes")
+                action: () => abrirModulo("almacen", "Almacenes"),
               },
               {
                 label: "Series de Documento",
                 icon: "pi pi-hashtag",
-                action: () => abrirModulo("serieDoc", "Series de Documento")
-              }
-            ]
-          }
-        ]
+                action: () => abrirModulo("serieDoc", "Series de Documento"),
+              },
+            ],
+          },
+        ],
       },
 
       // COLUMNA 5: MANTENIMIENTO
@@ -341,9 +406,10 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Órdenes de Trabajo",
                 icon: "pi pi-wrench",
-                action: () => abrirModulo("oTMantenimiento", "Órdenes de Trabajo")
-              }
-            ]
+                action: () =>
+                  abrirModulo("oTMantenimiento", "Órdenes de Trabajo"),
+              },
+            ],
           },
           {
             title: "📋 Tablas",
@@ -351,16 +417,18 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Tipo de Mantenimiento",
                 icon: "pi pi-cog",
-                action: () => abrirModulo("tipoMantenimiento", "Tipo de Mantenimiento")
+                action: () =>
+                  abrirModulo("tipoMantenimiento", "Tipo de Mantenimiento"),
               },
               {
                 label: "Motivo Origino OT",
                 icon: "pi pi-exclamation-circle",
-                action: () => abrirModulo("motivoOriginoOT", "Motivo Origino OT")
-              }
-            ]
-          }
-        ]
+                action: () =>
+                  abrirModulo("motivoOriginoOT", "Motivo Origino OT"),
+              },
+            ],
+          },
+        ],
       },
 
       // COLUMNA 6: FLUJO DE CAJA
@@ -374,9 +442,10 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Movimientos de Caja",
                 icon: "pi pi-money-bill",
-                action: () => abrirModulo("movimientoCaja", "Movimientos de Caja")
-              }
-            ]
+                action: () =>
+                  abrirModulo("movimientoCaja", "Movimientos de Caja"),
+              },
+            ],
           },
           {
             title: "📋 Tablas",
@@ -384,63 +453,90 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Cuenta Corriente",
                 icon: "pi pi-wallet",
-                action: () => abrirModulo("cuentaCorriente", "Cuenta Corriente")
+                action: () =>
+                  abrirModulo("cuentaCorriente", "Cuenta Corriente"),
               },
               {
                 label: "Saldos Cuenta Corriente",
                 icon: "pi pi-chart-line",
-                action: () => abrirModulo("saldoCuentaCorriente", "Saldos Cuenta Corriente")
+                action: () =>
+                  abrirModulo(
+                    "saldoCuentaCorriente",
+                    "Saldos Cuenta Corriente",
+                  ),
               },
               {
                 label: "Configuración Cuenta Contable",
                 icon: "pi pi-cog",
-                action: () => abrirModulo("configuracionCuentaContable", "Configuración Cuenta Contable")
+                action: () =>
+                  abrirModulo(
+                    "configuracionCuentaContable",
+                    "Configuración Cuenta Contable",
+                  ),
               },
               {
                 label: "Tipos Movimiento Entregas a Rendir",
                 icon: "pi pi-send",
-                action: () => abrirModulo("tipoMovEntregaRendir", "Tipos Movimiento Entrega a Rendir")
+                action: () =>
+                  abrirModulo(
+                    "tipoMovEntregaRendir",
+                    "Tipos Movimiento Entrega a Rendir",
+                  ),
               },
               {
                 label: "Asientos Contables",
                 icon: "pi pi-book",
-                action: () => abrirModulo("asientoContableInterfaz", "Asientos Contables Generados")
+                action: () =>
+                  abrirModulo(
+                    "asientoContableInterfaz",
+                    "Asientos Contables Generados",
+                  ),
               },
               {
                 label: "Centros de Costo",
                 icon: "pi pi-sitemap",
-                action: () => abrirModulo("centroCosto", "Centros de Costo")
+                action: () => abrirModulo("centroCosto", "Centros de Costo"),
               },
               {
                 label: "Categorías Centro Costo",
                 icon: "pi pi-tags",
-                action: () => abrirModulo("categoriaCCosto", "Categorías de Centros de Costo")
+                action: () =>
+                  abrirModulo(
+                    "categoriaCCosto",
+                    "Categorías de Centros de Costo",
+                  ),
               },
               {
                 label: "Empresa por Centro Costo",
                 icon: "pi pi-building",
-                action: () => abrirModulo("empresaCentroCosto", "Empresa por Centro Costo")
+                action: () =>
+                  abrirModulo("empresaCentroCosto", "Empresa por Centro Costo"),
               },
               {
                 label: "Tipo Cuenta Corriente",
                 icon: "pi pi-list",
-                action: () => abrirModulo("tipoCuentaCorriente", "Tipo Cuenta Corriente")
+                action: () =>
+                  abrirModulo("tipoCuentaCorriente", "Tipo Cuenta Corriente"),
               },
               {
                 label: "Tipo Referencia",
                 icon: "pi pi-tag",
-                action: () => abrirModulo("tipoReferenciaMovimientoCaja", "Tipo Referencia Movimiento Caja")
+                action: () =>
+                  abrirModulo(
+                    "tipoReferenciaMovimientoCaja",
+                    "Tipo Referencia Movimiento Caja",
+                  ),
               },
               {
                 label: "Bancos",
                 icon: "pi pi-credit-card",
-                action: () => abrirModulo("banco", "Bancos")
-              }
-            ]
-          }
-        ]
-      }
-    ]
+                action: () => abrirModulo("banco", "Bancos"),
+              },
+            ],
+          },
+        ],
+      },
+    ],
   },
 
   // ============================================
@@ -455,44 +551,46 @@ export const getMenuConfig = (abrirModulo) => ({
       {
         label: "Cuenta Por Cobrar",
         icon: "pi pi-money-bill",
-        action: () => abrirModulo("cuentaPorCobrar", "Cuenta Por Cobrar")
+        action: () => abrirModulo("cuentaPorCobrar", "Cuenta Por Cobrar"),
       },
       {
         label: "Cuenta Por Pagar",
         icon: "pi pi-credit-card",
-        action: () => abrirModulo("cuentaPorPagar", "Cuenta Por Pagar")
+        action: () => abrirModulo("cuentaPorPagar", "Cuenta Por Pagar"),
       },
       {
         label: "Pagos",
         icon: "pi pi-dollar",
-        action: () => abrirModulo("pago", "Pagos")
+        action: () => abrirModulo("pago", "Pagos"),
       },
       {
         label: "Tipos de Préstamo",
         icon: "pi pi-tags",
-        action: () => abrirModulo("tipoPrestamo", "Tipos de Préstamo")
+        action: () => abrirModulo("tipoPrestamo", "Tipos de Préstamo"),
       },
       {
         label: "Préstamo Bancario",
         icon: "pi pi-briefcase",
-        action: () => abrirModulo("prestamoBancario", "Préstamo Bancario")
+        action: () => abrirModulo("prestamoBancario", "Préstamo Bancario"),
       },
       {
         label: "Línea de Crédito",
         icon: "pi pi-credit-card",
-        action: () => abrirModulo("lineaCredito", "Línea de Crédito")
+        action: () => abrirModulo("lineaCredito", "Línea de Crédito"),
       },
       {
         label: "Inversión Financiera",
         icon: "pi pi-chart-pie",
-        action: () => abrirModulo("inversionFinanciera", "Inversión Financiera")
+        action: () =>
+          abrirModulo("inversionFinanciera", "Inversión Financiera"),
       },
       {
         label: "Reporte Líneas Disponibles",
         icon: "pi pi-chart-bar",
-        action: () => abrirModulo("reporteLineasDisponibles", "Reporte Líneas Disponibles")
-      }
-    ]
+        action: () =>
+          abrirModulo("reporteLineasDisponibles", "Reporte Líneas Disponibles"),
+      },
+    ],
   },
 
   // ============================================
@@ -507,54 +605,55 @@ export const getMenuConfig = (abrirModulo) => ({
       {
         label: "Plan Contable",
         icon: "pi pi-list",
-        action: () => abrirModulo("planCuentasContable", "Plan Contable")
+        action: () => abrirModulo("planCuentasContable", "Plan Contable"),
       },
       {
         label: "Período Contable",
         icon: "pi pi-calendar",
-        action: () => abrirModulo("periodoContable", "Período Contable")
+        action: () => abrirModulo("periodoContable", "Período Contable"),
       },
       {
         label: "Asiento Contable",
         icon: "pi pi-book",
-        action: () => abrirModulo("asientoContable", "Asiento Contable")
+        action: () => abrirModulo("asientoContable", "Asiento Contable"),
       },
       {
         label: "Tipo Afectación IGV",
         icon: "pi pi-percentage",
-        action: () => abrirModulo("tipoAfectacionIGV", "Tipo Afectación IGV")
+        action: () => abrirModulo("tipoAfectacionIGV", "Tipo Afectación IGV"),
       },
       {
         label: "Flujo de Caja Financiero",
         icon: "pi pi-chart-line",
-        action: () => abrirModulo("flujoCaja", "Flujo de Caja Financiero")
+        action: () => abrirModulo("flujoCaja", "Flujo de Caja Financiero"),
       },
       {
         label: "Conciliación Bancaria",
         icon: "pi pi-check-square",
-        action: () => abrirModulo("conciliacionBancaria", "Conciliación Bancaria")
+        action: () =>
+          abrirModulo("conciliacionBancaria", "Conciliación Bancaria"),
       },
       {
         label: "Letras de Cambio",
         icon: "pi pi-file-edit",
-        action: () => abrirModulo("letraCambio", "Letras de Cambio")
+        action: () => abrirModulo("letraCambio", "Letras de Cambio"),
       },
       {
         label: "Retenciones",
         icon: "pi pi-minus-circle",
-        action: () => abrirModulo("retencion", "Retenciones")
+        action: () => abrirModulo("retencion", "Retenciones"),
       },
       {
         label: "Percepciones",
         icon: "pi pi-plus-circle",
-        action: () => abrirModulo("percepcion", "Percepciones")
+        action: () => abrirModulo("percepcion", "Percepciones"),
       },
       {
         label: "Presupuestos",
         icon: "pi pi-chart-bar",
-        action: () => abrirModulo("presupuesto", "Presupuestos")
-      }
-    ]
+        action: () => abrirModulo("presupuesto", "Presupuestos"),
+      },
+    ],
   },
 
   // ============================================
@@ -577,21 +676,22 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Empresas",
                 icon: "pi pi-building",
-                action: () => abrirModulo("empresas", "Empresas")
+                action: () => abrirModulo("empresas", "Empresas"),
               },
               {
                 label: "Sedes Empresa",
                 icon: "pi pi-map-marker",
-                action: () => abrirModulo("sedesEmpresa", "Sedes Empresa")
+                action: () => abrirModulo("sedesEmpresa", "Sedes Empresa"),
               },
               {
                 label: "Áreas Físicas Sede",
                 icon: "pi pi-map",
-                action: () => abrirModulo("areasFisicasSede", "Áreas Físicas Sede")
-              }
-            ]
-          }
-        ]
+                action: () =>
+                  abrirModulo("areasFisicasSede", "Áreas Físicas Sede"),
+              },
+            ],
+          },
+        ],
       },
 
       // COLUMNA 2: PERSONAL Y RRHH
@@ -605,31 +705,33 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Personal",
                 icon: "pi pi-id-card",
-                action: () => abrirModulo("personal", "Personal")
+                action: () => abrirModulo("personal", "Personal"),
               },
               {
                 label: "Cargos Personal",
                 icon: "pi pi-briefcase",
-                action: () => abrirModulo("cargosPersonal", "Cargos del Personal")
+                action: () =>
+                  abrirModulo("cargosPersonal", "Cargos del Personal"),
               },
               {
                 label: "Tipo Contrato",
                 icon: "pi pi-file-edit",
-                action: () => abrirModulo("tipoContrato", "Tipo Contrato")
+                action: () => abrirModulo("tipoContrato", "Tipo Contrato"),
               },
               {
                 label: "Aprobadores",
                 icon: "pi pi-check-circle",
-                action: () => abrirModulo("parametroAprobador", "Aprobadores")
+                action: () => abrirModulo("parametroAprobador", "Aprobadores"),
               },
               {
                 label: "Tipos Documento Identidad",
                 icon: "pi pi-id-card",
-                action: () => abrirModulo("tiposDocIdentidad", "Tipos Documento Identidad")
-              }
-            ]
-          }
-        ]
+                action: () =>
+                  abrirModulo("tiposDocIdentidad", "Tipos Documento Identidad"),
+              },
+            ],
+          },
+        ],
       },
 
       // COLUMNA 3: ENTIDADES COMERCIALES
@@ -643,21 +745,23 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Entidad Comercial",
                 icon: "pi pi-briefcase",
-                action: () => abrirModulo("entidadComercial", "Entidad Comercial")
+                action: () =>
+                  abrirModulo("entidadComercial", "Entidad Comercial"),
               },
               {
                 label: "Tipo Entidad",
                 icon: "pi pi-tags",
-                action: () => abrirModulo("tipoEntidad", "Tipo Entidad")
+                action: () => abrirModulo("tipoEntidad", "Tipo Entidad"),
               },
               {
                 label: "Agrupaciones Entidad",
                 icon: "pi pi-users",
-                action: () => abrirModulo("agrupacionEntidad", "Agrupaciones Entidad")
-              }
-            ]
-          }
-        ]
+                action: () =>
+                  abrirModulo("agrupacionEntidad", "Agrupaciones Entidad"),
+              },
+            ],
+          },
+        ],
       },
 
       // COLUMNA 4: PRODUCTOS Y SERVICIOS
@@ -671,46 +775,49 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Productos y Servicios",
                 icon: "pi pi-box",
-                action: () => abrirModulo("producto", "Productos y Servicios")
+                action: () => abrirModulo("producto", "Productos y Servicios"),
               },
               {
                 label: "Familia Producto",
                 icon: "pi pi-sitemap",
-                action: () => abrirModulo("familiaProducto", "Familia Producto")
+                action: () =>
+                  abrirModulo("familiaProducto", "Familia Producto"),
               },
               {
                 label: "Subfamilia Producto",
                 icon: "pi pi-list",
-                action: () => abrirModulo("subfamiliaProducto", "Subfamilia Producto")
+                action: () =>
+                  abrirModulo("subfamiliaProducto", "Subfamilia Producto"),
               },
               {
                 label: "Tipo Almacenamiento",
                 icon: "pi pi-database",
-                action: () => abrirModulo("tipoAlmacenamiento", "Tipo Almacenamiento")
+                action: () =>
+                  abrirModulo("tipoAlmacenamiento", "Tipo Almacenamiento"),
               },
               {
                 label: "Marca",
                 icon: "pi pi-tag",
-                action: () => abrirModulo("marca", "Marca")
+                action: () => abrirModulo("marca", "Marca"),
               },
               {
                 label: "Unidad Medida",
                 icon: "pi pi-calculator",
-                action: () => abrirModulo("unidadMedida", "Unidad Medida")
+                action: () => abrirModulo("unidadMedida", "Unidad Medida"),
               },
               {
                 label: "Tipo Material",
                 icon: "pi pi-box",
-                action: () => abrirModulo("tipoMaterial", "Tipo Material")
+                action: () => abrirModulo("tipoMaterial", "Tipo Material"),
               },
               {
                 label: "Color",
                 icon: "pi pi-palette",
-                action: () => abrirModulo("color", "Color")
-              }
-            ]
-          }
-        ]
+                action: () => abrirModulo("color", "Color"),
+              },
+            ],
+          },
+        ],
       },
 
       // COLUMNA 5: UBICACIÓN GEOGRÁFICA
@@ -724,26 +831,26 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "País",
                 icon: "pi pi-globe",
-                action: () => abrirModulo("pais", "País")
+                action: () => abrirModulo("pais", "País"),
               },
               {
                 label: "Departamento",
                 icon: "pi pi-map",
-                action: () => abrirModulo("departamento", "Departamento")
+                action: () => abrirModulo("departamento", "Departamento"),
               },
               {
                 label: "Provincia",
                 icon: "pi pi-map-marker",
-                action: () => abrirModulo("provincia", "Provincia")
+                action: () => abrirModulo("provincia", "Provincia"),
               },
               {
                 label: "Ubigeo",
                 icon: "pi pi-compass",
-                action: () => abrirModulo("ubigeo", "Ubigeo")
-              }
-            ]
-          }
-        ]
+                action: () => abrirModulo("ubigeo", "Ubigeo"),
+              },
+            ],
+          },
+        ],
       },
 
       // COLUMNA 6: ACTIVOS
@@ -757,26 +864,28 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Activos",
                 icon: "pi pi-cog",
-                action: () => abrirModulo("activo", "Activos")
+                action: () => abrirModulo("activo", "Activos"),
               },
               {
                 label: "Tipo Activo",
                 icon: "pi pi-tags",
-                action: () => abrirModulo("tipoActivo", "Tipo Activo")
+                action: () => abrirModulo("tipoActivo", "Tipo Activo"),
               },
               {
                 label: "Detalle Permiso Activo",
                 icon: "pi pi-lock-open",
-                action: () => abrirModulo("detallePermisoActivo", "Detalle Permiso Activo")
+                action: () =>
+                  abrirModulo("detallePermisoActivo", "Detalle Permiso Activo"),
               },
               {
                 label: "Permiso Autorización",
                 icon: "pi pi-key",
-                action: () => abrirModulo("permisoAutorizacion", "Permiso Autorización")
-              }
-            ]
-          }
-        ]
+                action: () =>
+                  abrirModulo("permisoAutorizacion", "Permiso Autorización"),
+              },
+            ],
+          },
+        ],
       },
 
       // COLUMNA 7: OTROS CATÁLOGOS
@@ -790,28 +899,29 @@ export const getMenuConfig = (abrirModulo) => ({
               {
                 label: "Estado Multi Función",
                 icon: "pi pi-flag",
-                action: () => abrirModulo("estadoMultiFuncion", "Estado Multi Función")
+                action: () =>
+                  abrirModulo("estadoMultiFuncion", "Estado Multi Función"),
               },
               {
                 label: "Tipo Proviene De",
                 icon: "pi pi-arrow-circle-left",
-                action: () => abrirModulo("tipoProvieneDe", "Tipo Proviene De")
+                action: () => abrirModulo("tipoProvieneDe", "Tipo Proviene De"),
               },
               {
                 label: "Monedas",
                 icon: "pi pi-dollar",
-                action: () => abrirModulo("monedas", "Monedas")
+                action: () => abrirModulo("monedas", "Monedas"),
               },
               {
                 label: "Tipo Vehículos",
                 icon: "pi pi-car",
-                action: () => abrirModulo("tipoVehiculo", "Tipo Vehículos")
-              }
-            ]
-          }
-        ]
-      }
-    ]
+                action: () => abrirModulo("tipoVehiculo", "Tipo Vehículos"),
+              },
+            ],
+          },
+        ],
+      },
+    ],
   },
 
   // ============================================
@@ -826,23 +936,28 @@ export const getMenuConfig = (abrirModulo) => ({
       {
         label: "Usuarios del Sistema",
         icon: "pi pi-user",
-        action: () => abrirModulo("usuarios", "Usuarios del Sistema")
+        action: () => abrirModulo("usuarios", "Usuarios del Sistema"),
       },
       {
         label: "Accesos Usuario",
         icon: "pi pi-lock",
-        action: () => abrirModulo("accesosUsuario", "Accesos Usuario")
+        action: () => abrirModulo("accesosUsuario", "Accesos Usuario"),
       },
       {
         label: "Módulos Sistema",
         icon: "pi pi-th-large",
-        action: () => abrirModulo("modulosSistema", "Módulos Sistema")
+        action: () => abrirModulo("modulosSistema", "Módulos Sistema"),
       },
       {
         label: "Submódulos Sistema",
         icon: "pi pi-sitemap",
-        action: () => abrirModulo("SubmodulosSistema", "Submódulos Sistema")
-      }
-    ]
-  }
+        action: () => abrirModulo("SubmodulosSistema", "Submódulos Sistema"),
+      },
+      {
+        label: "Unidades de Negocio",
+        icon: "pi pi-briefcase",
+        action: () => abrirModulo("unidadesNegocio", "Unidades de Negocio"),
+      },
+    ],
+  },
 });

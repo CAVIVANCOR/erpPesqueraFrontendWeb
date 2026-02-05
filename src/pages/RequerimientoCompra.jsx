@@ -33,23 +33,21 @@ import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { getCentrosCosto } from "../api/centroCosto";
 import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { getMonedas } from "../api/moneda";
+import { getUnidadesNegocio } from "../api/unidadNegocio";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 import { Calendar } from "primereact/calendar";
-
 /**
  * Pantalla profesional para gestión de Requerimientos de Compra.
  */
 export default function RequerimientoCompra({ ruta }) {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
-
   // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
-
   const toast = useRef(null);
   const [items, setItems] = useState([]);
   const [empresas, setEmpresas] = useState([]);
@@ -65,6 +63,7 @@ export default function RequerimientoCompra({ ruta }) {
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [monedas, setMonedas] = useState([]);
+  const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -175,6 +174,7 @@ export default function RequerimientoCompra({ ruta }) {
         centrosCostoData,
         tiposMovimientoData,
         monedasData,
+        unidadesNegocioData,
       ] = await Promise.all([
         getRequerimientosCompra(),
         getEmpresas(),
@@ -190,6 +190,7 @@ export default function RequerimientoCompra({ ruta }) {
         getCentrosCosto(),
         getAllTipoMovEntregaRendir(),
         getMonedas(),
+        getUnidadesNegocio({ activo: true }),
       ]);
 
       setEmpresas(empresasData);
@@ -200,14 +201,12 @@ export default function RequerimientoCompra({ ruta }) {
       setDestinosProducto(destinosProductoData);
       setFormasPago(formasPagoData);
       setProductos(productosData);
-
       // Mapear personal con nombreCompleto
       const personalConNombres = personalData.map((p) => ({
         ...p,
         nombreCompleto: `${p.nombres || ""} ${p.apellidos || ""}`.trim(),
       }));
       setPersonalOptions(personalConNombres);
-
       // Filtrar estados de documentos (tipoProvieneDeId = 11 para REQUERIMIENTO COMPRA)
       const estadosDocFiltrados = estadosData.filter(
         (e) => Number(e.tipoProvieneDeId) === 11 && !e.cesado,
@@ -225,6 +224,11 @@ export default function RequerimientoCompra({ ruta }) {
       setCentrosCosto(centrosCostoData);
       setTiposMovimiento(tiposMovimientoData);
       setMonedas(monedasData);
+      if (unidadesNegocioData && Array.isArray(unidadesNegocioData)) {
+        setUnidadesNegocio(
+          unidadesNegocioData.map((un) => ({ ...un, id: Number(un.id) })),
+        );
+      }
     } catch (err) {
       toast.current.show({
         severity: "error",
@@ -838,6 +842,7 @@ export default function RequerimientoCompra({ ruta }) {
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           monedas={monedas}
+          unidadesNegocio={unidadesNegocio}
           empresaFija={empresaSeleccionada}
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}

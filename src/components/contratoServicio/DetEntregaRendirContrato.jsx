@@ -37,7 +37,8 @@ export default function DetEntregaRendirContrato({
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
   const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);
   const [filtroIngresoEgreso, setFiltroIngresoEgreso] = useState(null);
-  const [filtroValidacionTesoreria, setFiltroValidacionTesoreria] = useState(null);
+  const [filtroValidacionTesoreria, setFiltroValidacionTesoreria] =
+    useState(null);
   const [showMovimientoForm, setShowMovimientoForm] = useState(false);
   const [editingMovimiento, setEditingMovimiento] = useState(null);
 
@@ -48,20 +49,20 @@ export default function DetEntregaRendirContrato({
 
     if (filtroTipoMovimiento) {
       movimientosFiltrados = movimientosFiltrados.filter(
-        (mov) => Number(mov.tipoMovimientoId) === Number(filtroTipoMovimiento)
+        (mov) => Number(mov.tipoMovimientoId) === Number(filtroTipoMovimiento),
       );
     }
 
     if (filtroCentroCosto) {
       movimientosFiltrados = movimientosFiltrados.filter(
-        (mov) => Number(mov.centroCostoId) === Number(filtroCentroCosto)
+        (mov) => Number(mov.centroCostoId) === Number(filtroCentroCosto),
       );
     }
 
     if (filtroIngresoEgreso !== null) {
       movimientosFiltrados = movimientosFiltrados.filter((mov) => {
         const tipoMov = tiposMovimiento.find(
-          (t) => Number(t.id) === Number(mov.tipoMovimientoId)
+          (t) => Number(t.id) === Number(mov.tipoMovimientoId),
         );
         return tipoMov?.esIngreso === filtroIngresoEgreso;
       });
@@ -69,13 +70,18 @@ export default function DetEntregaRendirContrato({
 
     if (filtroValidacionTesoreria !== null) {
       movimientosFiltrados = movimientosFiltrados.filter(
-        (mov) => mov.validadoTesoreria === filtroValidacionTesoreria
+        (mov) => mov.validadoTesoreria === filtroValidacionTesoreria,
       );
     }
 
     return movimientosFiltrados;
   };
-
+  // Filtrar movimientos que son asignaciones (inicial o adicional) y forman parte del cálculo
+  const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
+    (mov) =>
+      (mov.tipoMovimientoId === 1 || mov.tipoMovimientoId === 2) &&
+      mov.formaParteCalculoEntregaARendir === true,
+  );
   const limpiarFiltros = () => {
     setFiltroTipoMovimiento(null);
     setFiltroCentroCosto(null);
@@ -136,7 +142,10 @@ export default function DetEntregaRendirContrato({
   const handleGuardarMovimiento = async (data) => {
     try {
       if (editingMovimiento) {
-        await actualizarDetMovsEntregaRendirContratoServicios(editingMovimiento.id, data);
+        await actualizarDetMovsEntregaRendirContratoServicios(
+          editingMovimiento.id,
+          data,
+        );
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -170,7 +179,7 @@ export default function DetEntregaRendirContrato({
   const handleEliminarMovimiento = (movimiento) => {
     confirmDialog({
       message: `¿Está seguro de eliminar el movimiento del ${new Date(
-        movimiento.fechaMovimiento
+        movimiento.fechaMovimiento,
       ).toLocaleDateString("es-PE")}?`,
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
@@ -219,7 +228,7 @@ export default function DetEntregaRendirContrato({
 
           await actualizarEntregaARendirContratoServicios(
             entregaARendir.id,
-            entregaActualizada
+            entregaActualizada,
           );
 
           const promesasActualizacion = movimientos.map((movimiento) => {
@@ -230,7 +239,7 @@ export default function DetEntregaRendirContrato({
             };
             return actualizarDetMovsEntregaRendirContratoServicios(
               movimiento.id,
-              movimientoActualizado
+              movimientoActualizado,
             );
           });
 
@@ -263,7 +272,9 @@ export default function DetEntregaRendirContrato({
   };
 
   const montoTemplate = (rowData) => {
-    const moneda = monedas.find((m) => Number(m.id) === Number(rowData.monedaId));
+    const moneda = monedas.find(
+      (m) => Number(m.id) === Number(rowData.monedaId),
+    );
     const codigoMoneda = moneda?.codigoSunat || "PEN";
 
     let backgroundColor = "#fff9c4";
@@ -296,26 +307,33 @@ export default function DetEntregaRendirContrato({
   };
 
   const responsableTemplate = (rowData) => {
-    const responsable = personal.find((p) => Number(p.id) === Number(rowData.responsableId));
+    const responsable = personal.find(
+      (p) => Number(p.id) === Number(rowData.responsableId),
+    );
     return responsable
-      ? responsable.nombreCompleto || `${responsable.nombres} ${responsable.apellidos}`
+      ? responsable.nombreCompleto ||
+          `${responsable.nombres} ${responsable.apellidos}`
       : "N/A";
   };
 
   const tipoMovimientoTemplate = (rowData) => {
-    const tipo = tiposMovimiento.find((t) => Number(t.id) === Number(rowData.tipoMovimientoId));
+    const tipo = tiposMovimiento.find(
+      (t) => Number(t.id) === Number(rowData.tipoMovimientoId),
+    );
     return tipo ? tipo.nombre : "N/A";
   };
 
   const centroCostoTemplate = (rowData) => {
-    const centro = centrosCosto.find((c) => Number(c.id) === Number(rowData.centroCostoId));
+    const centro = centrosCosto.find(
+      (c) => Number(c.id) === Number(rowData.centroCostoId),
+    );
     return centro ? centro.Codigo + " - " + centro.Nombre : "N/A";
   };
 
   const entidadComercialTemplate = (rowData) => {
     if (!rowData.entidadComercialId) return "N/A";
     const entidad = entidadesComerciales.find(
-      (e) => Number(e.id) === Number(rowData.entidadComercialId)
+      (e) => Number(e.id) === Number(rowData.entidadComercialId),
     );
     return entidad ? entidad.razonSocial : "N/A";
   };
@@ -422,7 +440,9 @@ export default function DetEntregaRendirContrato({
                     label={obtenerPropiedadesFiltroValidacionTesoreria().label}
                     icon="pi pi-filter"
                     onClick={alternarFiltroValidacionTesoreria}
-                    severity={obtenerPropiedadesFiltroValidacionTesoreria().severity}
+                    severity={
+                      obtenerPropiedadesFiltroValidacionTesoreria().severity
+                    }
                     type="button"
                   />
                 </div>
@@ -487,7 +507,10 @@ export default function DetEntregaRendirContrato({
             </div>
           }
         >
-          <Column selectionMode="single" headerStyle={{ width: "3rem" }}></Column>
+          <Column
+            selectionMode="single"
+            headerStyle={{ width: "3rem" }}
+          ></Column>
           <Column
             field="fechaMovimiento"
             header="Fecha"
@@ -562,6 +585,9 @@ export default function DetEntregaRendirContrato({
           entidadesComerciales={entidadesComerciales}
           monedas={monedas}
           tiposDocumento={tiposDocumento}
+          movimientosAsignacionEntregaRendir={
+            movimientosAsignacionEntregaRendir
+          }
           productos={productos}
           onGuardadoExitoso={handleGuardarMovimiento}
           onCancelar={() => {

@@ -20,7 +20,12 @@ import {
   actualizarPreFactura,
 } from "../api/preFactura";
 import PreFacturaForm from "../components/preFactura/PreFacturaForm";
-import { getResponsiveFontSize, formatearFecha, formatearNumero, getSeverityColors } from "../utils/utils";
+import {
+  getResponsiveFontSize,
+  formatearFecha,
+  formatearNumero,
+  getSeverityColors,
+} from "../utils/utils";
 import { getEmpresas } from "../api/empresa";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getEntidadesComerciales } from "../api/entidadComercial";
@@ -29,6 +34,7 @@ import { getProductos } from "../api/producto";
 import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { getCentrosCosto } from "../api/centroCosto";
 import { getMonedas } from "../api/moneda";
+import { getUnidadesNegocio } from "../api/unidadNegocio";
 import { getIncoterms } from "../api/incoterm";
 import { getTiposContenedor } from "../api/tipoContenedor";
 import { getTiposProducto } from "../api/tipoProducto";
@@ -38,7 +44,6 @@ import { usePermissions } from "../hooks/usePermissions";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import ColorTag from "../components/shared/ColorTag";
-
 /**
  * Componente PreFactura
  * Gestión CRUD de pre-facturas con patrón profesional ERP Megui
@@ -46,7 +51,6 @@ import ColorTag from "../components/shared/ColorTag";
 const PreFactura = ({ ruta }) => {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
-
   // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
@@ -60,6 +64,7 @@ const PreFactura = ({ ruta }) => {
   const [estadosDoc, setEstadosDoc] = useState([]);
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [monedas, setMonedas] = useState([]);
+  const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [incoterms, setIncoterms] = useState([]);
   const [tiposContenedor, setTiposContenedor] = useState([]);
   const [tiposProducto, setTiposProducto] = useState([]);
@@ -135,6 +140,7 @@ const PreFactura = ({ ruta }) => {
         estadosData,
         centrosCostoData,
         monedasData,
+        unidadesNegocioData,
         incotermsData,
         tiposContenedorData,
         tiposProductoData,
@@ -149,6 +155,7 @@ const PreFactura = ({ ruta }) => {
         getEstadosMultiFuncion(),
         getCentrosCosto(),
         getMonedas(),
+        getUnidadesNegocio({ activo: true }),
         getIncoterms(),
         getTiposContenedor(),
         getTiposProducto(),
@@ -164,7 +171,7 @@ const PreFactura = ({ ruta }) => {
 
       // Filtrar estados de documentos (tipoProvieneDeId = 14 para PRE FACTURA)
       const estadosDocFiltrados = estadosData.filter(
-        (e) => Number(e.tipoProvieneDeId) === 14 && !e.cesado
+        (e) => Number(e.tipoProvieneDeId) === 14 && !e.cesado,
       );
       setEstadosDoc(estadosDocFiltrados);
 
@@ -172,12 +179,17 @@ const PreFactura = ({ ruta }) => {
       const preFacturasNormalizadas = preFacturas.map((req) => ({
         ...req,
         estadoDoc: estadosDocFiltrados.find(
-          (e) => Number(e.id) === Number(req.estadoId)
+          (e) => Number(e.id) === Number(req.estadoId),
         ),
       }));
       setItems(preFacturasNormalizadas);
       setCentrosCosto(centrosCostoData);
       setMonedas(monedasData);
+      if (unidadesNegocioData && Array.isArray(unidadesNegocioData)) {
+        setUnidadesNegocio(
+          unidadesNegocioData.map((un) => ({ ...un, id: Number(un.id) })),
+        );
+      }
       setIncoterms(incotermsData);
       setTiposContenedor(tiposContenedorData);
       setTiposProducto(tiposProductoData);
@@ -200,14 +212,14 @@ const PreFactura = ({ ruta }) => {
     // Filtro por empresa
     if (empresaSeleccionada) {
       filtrados = filtrados.filter(
-        (item) => Number(item.empresaId) === Number(empresaSeleccionada)
+        (item) => Number(item.empresaId) === Number(empresaSeleccionada),
       );
     }
 
     // Filtro por cliente
     if (clienteSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => Number(item.clienteId) === Number(clienteSeleccionado)
+        (item) => Number(item.clienteId) === Number(clienteSeleccionado),
       );
     }
 
@@ -233,7 +245,7 @@ const PreFactura = ({ ruta }) => {
     // Filtro por estado
     if (estadoSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => Number(item.estadoId) === Number(estadoSeleccionado)
+        (item) => Number(item.estadoId) === Number(estadoSeleccionado),
       );
     }
 
@@ -306,14 +318,12 @@ const PreFactura = ({ ruta }) => {
         });
 
         // Recargar la pre-factura actualizada
-        const { getPreFacturaPorId } = await import(
-          "../api/preFactura"
-        );
+        const { getPreFacturaPorId } = await import("../api/preFactura");
         const preFacturaActualizada = await getPreFacturaPorId(
-          selectedPreFactura.id
+          selectedPreFactura.id,
         );
         setSelectedPreFactura(preFacturaActualizada);
-        setRefreshKey(prev => prev + 1);
+        setRefreshKey((prev) => prev + 1);
       } else {
         const resultado = await crearPreFactura(datos);
         toast.current.show({
@@ -324,12 +334,10 @@ const PreFactura = ({ ruta }) => {
         });
 
         // Cargar la pre-factura recién creada
-        const { getPreFacturaPorId } = await import(
-          "../api/preFactura"
-        );
+        const { getPreFacturaPorId } = await import("../api/preFactura");
         const preFacturaCompleta = await getPreFacturaPorId(resultado.id);
         setSelectedPreFactura(preFacturaCompleta);
-        setRefreshKey(prev => prev + 1);
+        setRefreshKey((prev) => prev + 1);
       }
 
       cargarPreFacturas();
@@ -395,14 +403,15 @@ const PreFactura = ({ ruta }) => {
     try {
       // TODO: Implementar API de aprobación cuando esté disponible
       // await aprobarPreFactura(preFacturaId);
-      
+
       toast.current.show({
         severity: "info",
         summary: "Función en desarrollo",
-        detail: "La función de aprobar pre-factura estará disponible próximamente.",
+        detail:
+          "La función de aprobar pre-factura estará disponible próximamente.",
         life: 3000,
       });
-      
+
       // cargarPreFacturas();
       // cerrarDialogo();
     } catch (err) {
@@ -441,14 +450,15 @@ const PreFactura = ({ ruta }) => {
         try {
           // TODO: Implementar API de anulación cuando esté disponible
           // await anularPreFactura(preFacturaId);
-          
+
           toast.current.show({
             severity: "info",
             summary: "Función en desarrollo",
-            detail: "La función de anular pre-factura estará disponible próximamente.",
+            detail:
+              "La función de anular pre-factura estará disponible próximamente.",
             life: 3000,
           });
-          
+
           // cargarPreFacturas();
           // cerrarDialogo();
         } catch (err) {
@@ -556,7 +566,7 @@ const PreFactura = ({ ruta }) => {
     const severity = rowData.estadoDoc?.severityColor || "success";
 
     return (
-      <ColorTag 
+      <ColorTag
         value={rowData.cliente.razonSocial || "Sin nombre"}
         severity={severity}
         size="normal"
@@ -715,13 +725,15 @@ const PreFactura = ({ ruta }) => {
                     icon="pi pi-plus"
                     onClick={abrirDialogoNuevo}
                     className="p-button-primary"
-                    disabled={!permisos.puedeCrear || loading || !empresaSeleccionada}
+                    disabled={
+                      !permisos.puedeCrear || loading || !empresaSeleccionada
+                    }
                     tooltip={
                       !permisos.puedeCrear
                         ? "No tiene permisos para crear"
                         : !empresaSeleccionada
-                        ? "Seleccione una empresa primero"
-                        : "Nueva Pre-Factura"
+                          ? "Seleccione una empresa primero"
+                          : "Nueva Pre-Factura"
                     }
                   />
                 </div>
@@ -735,7 +747,8 @@ const PreFactura = ({ ruta }) => {
                       toast.current?.show({
                         severity: "success",
                         summary: "Actualizado",
-                        detail: "Datos actualizados correctamente desde el servidor",
+                        detail:
+                          "Datos actualizados correctamente desde el servidor",
                         life: 3000,
                       });
                     }}
@@ -895,14 +908,14 @@ const PreFactura = ({ ruta }) => {
             ? `Editar Pre-Factura: ${selectedPreFactura?.codigo || ""}`
             : "Nueva Pre-Factura"
         }
-      style={{ width: "1300px" }}
+        style={{ width: "1300px" }}
         modal
         maximizable
         maximized={true}
         onHide={cerrarDialogo}
       >
         <PreFacturaForm
-          key={`${selectedPreFactura?.id || 'new'}-${refreshKey}`}
+          key={`${selectedPreFactura?.id || "new"}-${refreshKey}`}
           isEdit={isEditing}
           defaultValues={selectedPreFactura}
           onSubmit={handleGuardarPreFactura}
@@ -912,7 +925,11 @@ const PreFactura = ({ ruta }) => {
           loading={loading}
           toast={toast}
           permisos={permisos}
-          readOnly={!!selectedPreFactura && !!selectedPreFactura.numeroDocumento && !permisos.puedeEditar}
+          readOnly={
+            !!selectedPreFactura &&
+            !!selectedPreFactura.numeroDocumento &&
+            !permisos.puedeEditar
+          }
           empresas={empresas}
           tiposDocumento={tiposDocumento}
           clientes={clientes}
@@ -923,6 +940,7 @@ const PreFactura = ({ ruta }) => {
           estadosDoc={estadosDoc}
           centrosCosto={centrosCosto}
           monedas={monedas}
+          unidadesNegocio={unidadesNegocio}
           bancos={bancos}
           incoterms={incoterms}
           tiposContenedor={tiposContenedor}

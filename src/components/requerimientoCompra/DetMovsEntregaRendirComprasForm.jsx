@@ -35,6 +35,7 @@ const DetMovsEntregaRendirComprasForm = ({
   monedas = [],
   tiposDocumento = [],
   productos = [], // Nueva prop para productos (gastos)
+  movimientosAsignacionEntregaRendir = [],
   onGuardadoExitoso,
   onCancelar,
 }) => {
@@ -45,7 +46,6 @@ const DetMovsEntregaRendirComprasForm = ({
   // Estados para navegación de cards
   const [cardActiva, setCardActiva] = useState("datos");
   const [modulosCompras, setModulosCompras] = useState(null);
-
   // Estado para filtro de familia de productos
   const [familiaFiltroId, setFamiliaFiltroId] = useState(null);
 
@@ -81,15 +81,17 @@ const DetMovsEntregaRendirComprasForm = ({
       numeroSerieComprobante: "",
       numeroCorrelativoComprobante: "",
       productoId: "", // Nuevo campo para producto (gasto)
+      detalleGastosPlanificados: "", // Campo opcional para gastos planificados
+      asignacionOrigenId: null, // Campo opcional para asignación de origen
     },
   });
-
   // Observar cambios
   const operacionSinFactura = watch("operacionSinFactura");
   const validadoTesoreria = watch("validadoTesoreria");
   const urlComprobanteMovimiento = watch("urlComprobanteMovimiento");
-  const urlComprobanteOperacionMovCaja = watch("urlComprobanteOperacionMovCaja");
-
+  const urlComprobanteOperacionMovCaja = watch(
+    "urlComprobanteOperacionMovCaja",
+  );
   // Cargar módulo COMPRAS
   useEffect(() => {
     const cargarModuloCompras = async () => {
@@ -114,26 +116,52 @@ const DetMovsEntregaRendirComprasForm = ({
     if (isEditing && movimiento) {
       reset({
         entregaARendirPComprasId: Number(movimiento.entregaARendirPComprasId),
-        responsableId: movimiento.responsableId ? Number(movimiento.responsableId) : null,
-        fechaMovimiento: movimiento.fechaMovimiento ? new Date(movimiento.fechaMovimiento) : new Date(),
-        tipoMovimientoId: movimiento.tipoMovimientoId ? Number(movimiento.tipoMovimientoId) : null,
-        centroCostoId: movimiento.centroCostoId ? Number(movimiento.centroCostoId) : null,
+        responsableId: movimiento.responsableId
+          ? Number(movimiento.responsableId)
+          : null,
+        fechaMovimiento: movimiento.fechaMovimiento
+          ? new Date(movimiento.fechaMovimiento)
+          : new Date(),
+        tipoMovimientoId: movimiento.tipoMovimientoId
+          ? Number(movimiento.tipoMovimientoId)
+          : null,
+        centroCostoId: movimiento.centroCostoId
+          ? Number(movimiento.centroCostoId)
+          : null,
         monto: Number(movimiento.monto) || 0,
         monedaId: movimiento.monedaId ? Number(movimiento.monedaId) : null,
         descripcion: movimiento.descripcion || "",
-        entidadComercialId: movimiento.entidadComercialId ? Number(movimiento.entidadComercialId) : null,
+        entidadComercialId: movimiento.entidadComercialId
+          ? Number(movimiento.entidadComercialId)
+          : null,
         urlComprobanteMovimiento: movimiento.urlComprobanteMovimiento || "",
         validadoTesoreria: movimiento.validadoTesoreria || false,
         fechaValidacionTesoreria: movimiento.fechaValidacionTesoreria || null,
         operacionSinFactura: movimiento.operacionSinFactura || false,
-        fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja ? new Date(movimiento.fechaOperacionMovCaja) : null,
-        operacionMovCajaId: movimiento.operacionMovCajaId ? Number(movimiento.operacionMovCajaId) : null,
-        moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId ? Number(movimiento.moduloOrigenMovCajaId) : 1,
-        urlComprobanteOperacionMovCaja: movimiento.urlComprobanteOperacionMovCaja || "",
-        tipoDocumentoId: movimiento.tipoDocumentoId ? Number(movimiento.tipoDocumentoId) : null,
+        fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja
+          ? new Date(movimiento.fechaOperacionMovCaja)
+          : null,
+        operacionMovCajaId: movimiento.operacionMovCajaId
+          ? Number(movimiento.operacionMovCajaId)
+          : null,
+        moduloOrigenMovCajaId: movimiento.moduloOrigenMovCajaId
+          ? Number(movimiento.moduloOrigenMovCajaId)
+          : 1,
+        urlComprobanteOperacionMovCaja:
+          movimiento.urlComprobanteOperacionMovCaja || "",
+        tipoDocumentoId: movimiento.tipoDocumentoId
+          ? Number(movimiento.tipoDocumentoId)
+          : null,
         numeroSerieComprobante: movimiento.numeroSerieComprobante || "",
-        numeroCorrelativoComprobante: movimiento.numeroCorrelativoComprobante || "",
-        productoId: movimiento.productoId ? Number(movimiento.productoId) : null, // Nuevo campo
+        numeroCorrelativoComprobante:
+          movimiento.numeroCorrelativoComprobante || "",
+        productoId: movimiento.productoId
+          ? Number(movimiento.productoId)
+          : null, // Nuevo campo
+        detalleGastosPlanificados: movimiento.detalleGastosPlanificados || "",
+        asignacionOrigenId: movimiento.asignacionOrigenId
+          ? Number(movimiento.asignacionOrigenId)
+          : null,
       });
     } else {
       setValue("entregaARendirPComprasId", Number(entregaARendirPComprasId));
@@ -146,13 +174,21 @@ const DetMovsEntregaRendirComprasForm = ({
           toast.current?.show({
             severity: "info",
             summary: "Responsable Asignado",
-            detail: "Se ha asignado automáticamente como responsable del movimiento",
+            detail:
+              "Se ha asignado automáticamente como responsable del movimiento",
             life: 3000,
           });
         }, 500);
       }
     }
-  }, [movimiento, isEditing, entregaARendirPComprasId, reset, setValue, usuario]);
+  }, [
+    movimiento,
+    isEditing,
+    entregaARendirPComprasId,
+    reset,
+    setValue,
+    usuario,
+  ]);
 
   // Preparar opciones para dropdowns
   const personalOptions = personal.map((p) => ({
@@ -183,7 +219,8 @@ const DetMovsEntregaRendirComprasForm = ({
   const tipoDocumentoOptions = tiposDocumento
     .filter((td) => td.esParaCompras === true || td.esParaVentas === true)
     .map((td) => ({
-      label: td.activo === false ? `${td.descripcion} (INACTIVO)` : td.descripcion,
+      label:
+        td.activo === false ? `${td.descripcion} (INACTIVO)` : td.descripcion,
       value: Number(td.id),
     }));
 
@@ -191,16 +228,19 @@ const DetMovsEntregaRendirComprasForm = ({
   const familiasGastosIds = [2, 3, 4, 6, 7];
 
   // Filtrar productos por familias de gastos
-  const productosGastos = (productos || []).filter((p) => 
-    familiasGastosIds.includes(Number(p.familiaId))
+  const productosGastos = (productos || []).filter((p) =>
+    familiasGastosIds.includes(Number(p.familiaId)),
   );
 
   // Obtener familias únicas de los productos filtrados usando un Map para evitar duplicados
   const familiasMap = new Map();
-  productosGastos.forEach(p => {
+  productosGastos.forEach((p) => {
     if (p.familia && p.familia.id && p.familia.nombre) {
       const familiaId = Number(p.familia.id);
-      if (familiasGastosIds.includes(familiaId) && !familiasMap.has(familiaId)) {
+      if (
+        familiasGastosIds.includes(familiaId) &&
+        !familiasMap.has(familiaId)
+      ) {
         familiasMap.set(familiaId, {
           label: p.familia.nombre,
           value: familiaId,
@@ -208,13 +248,16 @@ const DetMovsEntregaRendirComprasForm = ({
       }
     }
   });
-  
-  const familiasUnicas = Array.from(familiasMap.values())
-    .sort((a, b) => a.label.localeCompare(b.label));
+
+  const familiasUnicas = Array.from(familiasMap.values()).sort((a, b) =>
+    a.label.localeCompare(b.label),
+  );
 
   // Filtrar productos por familia seleccionada
   const productosFiltrados = familiaFiltroId
-    ? productosGastos.filter(p => Number(p.familiaId) === Number(familiaFiltroId))
+    ? productosGastos.filter(
+        (p) => Number(p.familiaId) === Number(familiaFiltroId),
+      )
     : productosGastos;
 
   // Opciones de productos para el dropdown
@@ -223,6 +266,13 @@ const DetMovsEntregaRendirComprasForm = ({
     value: Number(p.id),
   }));
 
+  // Crear opciones de asignación origen desde los movimientos de asignación (inicial o adicional) que forman parte del cálculo
+  const asignacionOrigenOptions = (
+    movimientosAsignacionEntregaRendir || []
+  ).map((mov) => ({
+    label: `Mov #${mov.id} - ${mov.descripcion || "Sin descripción"} - S/ ${mov.monto}`,
+    value: Number(mov.id),
+  }));
   // Función para toggle operación sin factura
   const handleToggleOperacionSinFactura = () => {
     const valorActual = getValues("operacionSinFactura");
@@ -230,7 +280,9 @@ const DetMovsEntregaRendirComprasForm = ({
     toast.current?.show({
       severity: "info",
       summary: "Estado Actualizado",
-      detail: !valorActual ? "Operación marcada como SIN FACTURA" : "Operación marcada como CON FACTURA",
+      detail: !valorActual
+        ? "Operación marcada como SIN FACTURA"
+        : "Operación marcada como CON FACTURA",
       life: 2000,
     });
   };
@@ -254,25 +306,42 @@ const DetMovsEntregaRendirComprasForm = ({
       const datosNormalizados = {
         entregaARendirPComprasId: Number(data.entregaARendirPComprasId),
         responsableId: data.responsableId ? Number(data.responsableId) : null,
-        tipoMovimientoId: data.tipoMovimientoId ? Number(data.tipoMovimientoId) : null,
+        tipoMovimientoId: data.tipoMovimientoId
+          ? Number(data.tipoMovimientoId)
+          : null,
         centroCostoId: data.centroCostoId ? Number(data.centroCostoId) : null,
         monto: Number(data.monto),
         monedaId: data.monedaId ? Number(data.monedaId) : null,
         fechaMovimiento: data.fechaMovimiento,
         descripcion: data.descripcion ? data.descripcion.toUpperCase() : null,
-        entidadComercialId: data.entidadComercialId ? Number(data.entidadComercialId) : null,
+        entidadComercialId: data.entidadComercialId
+          ? Number(data.entidadComercialId)
+          : null,
         urlComprobanteMovimiento: data.urlComprobanteMovimiento?.trim() || null,
-        urlComprobanteOperacionMovCaja: data.urlComprobanteOperacionMovCaja?.trim() || null,
+        urlComprobanteOperacionMovCaja:
+          data.urlComprobanteOperacionMovCaja?.trim() || null,
         validadoTesoreria: data.validadoTesoreria,
         fechaValidacionTesoreria: data.fechaValidacionTesoreria,
         operacionSinFactura: data.operacionSinFactura,
         fechaOperacionMovCaja: data.fechaOperacionMovCaja,
-        operacionMovCajaId: data.operacionMovCajaId ? Number(data.operacionMovCajaId) : null,
-        moduloOrigenMovCajaId: data.moduloOrigenMovCajaId ? Number(data.moduloOrigenMovCajaId) : null,
-        tipoDocumentoId: data.tipoDocumentoId ? Number(data.tipoDocumentoId) : null,
+        operacionMovCajaId: data.operacionMovCajaId
+          ? Number(data.operacionMovCajaId)
+          : null,
+        moduloOrigenMovCajaId: data.moduloOrigenMovCajaId
+          ? Number(data.moduloOrigenMovCajaId)
+          : null,
+        tipoDocumentoId: data.tipoDocumentoId
+          ? Number(data.tipoDocumentoId)
+          : null,
         numeroSerieComprobante: data.numeroSerieComprobante?.trim() || null,
-        numeroCorrelativoComprobante: data.numeroCorrelativoComprobante?.trim() || null,
+        numeroCorrelativoComprobante:
+          data.numeroCorrelativoComprobante?.trim() || null,
         productoId: data.productoId ? Number(data.productoId) : null, // Nuevo campo
+        detalleGastosPlanificados:
+          data.detalleGastosPlanificados?.trim().toUpperCase() || null,
+        asignacionOrigenId: data.asignacionOrigenId
+          ? Number(data.asignacionOrigenId)
+          : null,
         actualizadoEn: new Date(),
       };
 
@@ -309,17 +378,35 @@ const DetMovsEntregaRendirComprasForm = ({
           }}
         >
           <form>
-            <div style={{ display: "flex", gap: 10, marginBottom: "0.5rem", flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
               <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">Fecha de Creación</label>
+                <label className="block text-900 font-medium mb-2">
+                  Fecha de Creación
+                </label>
                 <InputText
-                  value={movimiento?.creadoEn ? new Date(movimiento.creadoEn).toLocaleString("es-PE") : new Date().toLocaleString("es-PE")}
+                  value={
+                    movimiento?.creadoEn
+                      ? new Date(movimiento.creadoEn).toLocaleString("es-PE")
+                      : new Date().toLocaleString("es-PE")
+                  }
                   readOnly
                   className="p-inputtext-sm"
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label htmlFor="fechaMovimiento" className="block text-900 font-medium mb-2">Fecha del Movimiento *</label>
+                <label
+                  htmlFor="fechaMovimiento"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Fecha del Movimiento *
+                </label>
                 <Controller
                   name="fechaMovimiento"
                   control={control}
@@ -335,16 +422,28 @@ const DetMovsEntregaRendirComprasForm = ({
                       hourFormat="24"
                       dateFormat="dd/mm/yy"
                       placeholder="Seleccione fecha y hora"
-                      className={classNames({ "p-invalid": errors.fechaMovimiento })}
+                      className={classNames({
+                        "p-invalid": errors.fechaMovimiento,
+                      })}
                       inputStyle={{ fontWeight: "bold" }}
                       disabled={formularioDeshabilitado}
                     />
                   )}
                 />
-                {errors.fechaMovimiento && <Message severity="error" text={errors.fechaMovimiento.message} />}
+                {errors.fechaMovimiento && (
+                  <Message
+                    severity="error"
+                    text={errors.fechaMovimiento.message}
+                  />
+                )}
               </div>
               <div style={{ flex: 2 }}>
-                <label htmlFor="responsableId" className="block text-900 font-medium mb-2">Responsable *</label>
+                <label
+                  htmlFor="responsableId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Responsable *
+                </label>
                 <Controller
                   name="responsableId"
                   control={control}
@@ -358,7 +457,9 @@ const DetMovsEntregaRendirComprasForm = ({
                       optionLabel="label"
                       optionValue="value"
                       placeholder="Seleccione responsable"
-                      className={classNames({ "p-invalid": errors.responsableId })}
+                      className={classNames({
+                        "p-invalid": errors.responsableId,
+                      })}
                       filter
                       showClear
                       style={{ fontWeight: "bold" }}
@@ -366,10 +467,20 @@ const DetMovsEntregaRendirComprasForm = ({
                     />
                   )}
                 />
-                {errors.responsableId && <Message severity="error" text={errors.responsableId.message} />}
+                {errors.responsableId && (
+                  <Message
+                    severity="error"
+                    text={errors.responsableId.message}
+                  />
+                )}
               </div>
               <div style={{ flex: 2 }}>
-                <label htmlFor="tipoMovimientoId" className="block text-900 font-medium mb-2">Tipo de Movimiento *</label>
+                <label
+                  htmlFor="tipoMovimientoId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Tipo de Movimiento *
+                </label>
                 <Controller
                   name="tipoMovimientoId"
                   control={control}
@@ -383,7 +494,9 @@ const DetMovsEntregaRendirComprasForm = ({
                       optionLabel="label"
                       optionValue="value"
                       placeholder="Seleccione tipo"
-                      className={classNames({ "p-invalid": errors.tipoMovimientoId })}
+                      className={classNames({
+                        "p-invalid": errors.tipoMovimientoId,
+                      })}
                       filter
                       showClear
                       style={{ fontWeight: "bold" }}
@@ -391,15 +504,29 @@ const DetMovsEntregaRendirComprasForm = ({
                     />
                   )}
                 />
-                {errors.tipoMovimientoId && <Message severity="error" text={errors.tipoMovimientoId.message} />}
+                {errors.tipoMovimientoId && (
+                  <Message
+                    severity="error"
+                    text={errors.tipoMovimientoId.message}
+                  />
+                )}
               </div>
             </div>
 
             {/* Entidad Comercial */}
-            <div style={{ display: "flex", gap: 10, marginBottom: "0.5rem", flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
               <div style={{ flex: 2 }}>
                 <div className="p-field">
-                  <label htmlFor="entidadComercialId">Entidad Comercial <span className="text-red-500">*</span></label>
+                  <label htmlFor="entidadComercialId">
+                    Entidad Comercial <span className="text-red-500">*</span>
+                  </label>
                   <Controller
                     name="entidadComercialId"
                     control={control}
@@ -411,7 +538,9 @@ const DetMovsEntregaRendirComprasForm = ({
                         optionLabel="label"
                         optionValue="value"
                         placeholder="Seleccione una entidad comercial"
-                        className={classNames({ "p-invalid": errors.entidadComercialId })}
+                        className={classNames({
+                          "p-invalid": errors.entidadComercialId,
+                        })}
                         showClear
                         filter
                         filterBy="label"
@@ -420,12 +549,20 @@ const DetMovsEntregaRendirComprasForm = ({
                       />
                     )}
                   />
-                  {errors.entidadComercialId && <Message severity="error" text={errors.entidadComercialId.message} />}
+                  {errors.entidadComercialId && (
+                    <Message
+                      severity="error"
+                      text={errors.entidadComercialId.message}
+                    />
+                  )}
                 </div>
               </div>
               <div style={{ flex: 1 }}>
                 {/* Filtro de Familia */}
-                <label htmlFor="familiaFiltro" className="block text-900 font-medium mb-2">
+                <label
+                  htmlFor="familiaFiltro"
+                  className="block text-900 font-medium mb-2"
+                >
                   Filtrar Gastos por Familia
                 </label>
                 <Dropdown
@@ -444,7 +581,10 @@ const DetMovsEntregaRendirComprasForm = ({
               </div>
               <div style={{ flex: 2 }}>
                 {/* Producto (Gasto) */}
-                <label htmlFor="productoId" className="block text-900 font-medium mb-2">
+                <label
+                  htmlFor="productoId"
+                  className="block text-900 font-medium mb-2"
+                >
                   Gasto
                 </label>
                 <Controller
@@ -475,9 +615,21 @@ const DetMovsEntregaRendirComprasForm = ({
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: 10, marginBottom: "0.5rem", flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
               <div style={{ flex: 2 }}>
-                <label htmlFor="centroCostoId" className="block text-900 font-medium mb-2">Centro de Costo *</label>
+                <label
+                  htmlFor="centroCostoId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Centro de Costo *
+                </label>
                 <Controller
                   name="centroCostoId"
                   control={control}
@@ -491,7 +643,9 @@ const DetMovsEntregaRendirComprasForm = ({
                       optionLabel="label"
                       optionValue="value"
                       placeholder="Seleccione centro de costo"
-                      className={classNames({ "p-invalid": errors.centroCostoId })}
+                      className={classNames({
+                        "p-invalid": errors.centroCostoId,
+                      })}
                       filter
                       showClear
                       style={{ fontWeight: "bold" }}
@@ -499,11 +653,21 @@ const DetMovsEntregaRendirComprasForm = ({
                     />
                   )}
                 />
-                {errors.centroCostoId && <Message severity="error" text={errors.centroCostoId.message} />}
+                {errors.centroCostoId && (
+                  <Message
+                    severity="error"
+                    text={errors.centroCostoId.message}
+                  />
+                )}
               </div>
 
               <div style={{ flex: 3 }}>
-                <label htmlFor="descripcion" className="block text-900 font-medium mb-2">Descripción</label>
+                <label
+                  htmlFor="descripcion"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Descripción
+                </label>
                 <Controller
                   name="descripcion"
                   control={control}
@@ -515,16 +679,29 @@ const DetMovsEntregaRendirComprasForm = ({
                       onChange={(e) => field.onChange(e.target.value)}
                       rows={1}
                       placeholder="Ingrese una descripción del movimiento"
-                      className={classNames({ "p-invalid": errors.descripcion })}
-                      style={{ fontWeight: "bold", textTransform: "uppercase", color: "red" }}
+                      className={classNames({
+                        "p-invalid": errors.descripcion,
+                      })}
+                      style={{
+                        fontWeight: "bold",
+                        textTransform: "uppercase",
+                        color: "red",
+                      }}
                       disabled={formularioDeshabilitado}
                     />
                   )}
                 />
-                {errors.descripcion && <Message severity="error" text={errors.descripcion.message} />}
+                {errors.descripcion && (
+                  <Message severity="error" text={errors.descripcion.message} />
+                )}
               </div>
               <div style={{ flex: 1 }}>
-                <label htmlFor="monedaId" className="block text-900 font-medium mb-2">Moneda *</label>
+                <label
+                  htmlFor="monedaId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Moneda *
+                </label>
                 <Controller
                   name="monedaId"
                   control={control}
@@ -546,14 +723,27 @@ const DetMovsEntregaRendirComprasForm = ({
                     />
                   )}
                 />
-                {errors.monedaId && <Message severity="error" text={errors.monedaId.message} />}
+                {errors.monedaId && (
+                  <Message severity="error" text={errors.monedaId.message} />
+                )}
               </div>
               <div style={{ flex: 1 }}>
-                <label htmlFor="monto" className="block text-900 font-medium mb-2">Monto *</label>
+                <label
+                  htmlFor="monto"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Monto *
+                </label>
                 <Controller
                   name="monto"
                   control={control}
-                  rules={{ required: "El monto es obligatorio", min: { value: 0.01, message: "El monto debe ser mayor a cero" } }}
+                  rules={{
+                    required: "El monto es obligatorio",
+                    min: {
+                      value: 0.01,
+                      message: "El monto debe ser mayor a cero",
+                    },
+                  }}
                   render={({ field }) => (
                     <InputNumber
                       id="monto"
@@ -569,33 +759,122 @@ const DetMovsEntregaRendirComprasForm = ({
                     />
                   )}
                 />
-                {errors.monto && <Message severity="error" text={errors.monto.message} />}
+                {errors.monto && (
+                  <Message severity="error" text={errors.monto.message} />
+                )}
               </div>
             </div>
-
-            {/* Sección de Comprobante PDF */}
-            <div style={{ display: "flex", gap: 10, marginBottom: "0.5rem", alignItems: "end", flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+            {/* Campos Opcionales: Gastos Planificados y Asignación Origen */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 2 }}>
+                <label
+                  htmlFor="detalleGastosPlanificados"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Detalle Gastos Planificados
+                </label>
+                <Controller
+                  name="detalleGastosPlanificados"
+                  control={control}
+                  render={({ field }) => (
+                    <InputTextarea
+                      id="detalleGastosPlanificados"
+                      {...field}
+                      value={field.value || ""}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      rows={2}
+                      placeholder="Ingrese detalle de gastos planificados (opcional)"
+                      style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+              </div>
               <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">Validado Tesorería</label>
+                <label
+                  htmlFor="asignacionOrigenId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Asignación Origen
+                </label>
+                <Controller
+                  name="asignacionOrigenId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="asignacionOrigenId"
+                      {...field}
+                      value={field.value}
+                      options={asignacionOrigenOptions}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione asignación (opcional)"
+                      filter
+                      showClear
+                      style={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+              </div>
+            </div>
+            {/* Sección de Comprobante PDF */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                alignItems: "end",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Validado Tesorería
+                </label>
                 <Button
                   type="button"
                   label={validadoTesoreria ? "VALIDADO" : "PENDIENTE"}
-                  icon={validadoTesoreria ? "pi pi-check-circle" : "pi pi-clock"}
-                  className={validadoTesoreria ? "p-button-primary" : "p-button-danger"}
+                  icon={
+                    validadoTesoreria ? "pi pi-check-circle" : "pi pi-clock"
+                  }
+                  className={
+                    validadoTesoreria ? "p-button-primary" : "p-button-danger"
+                  }
                   disabled
                   size="small"
                   style={{ width: "100%" }}
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">Fecha de Validación</label>
+                <label className="block text-900 font-medium mb-2">
+                  Fecha de Validación
+                </label>
                 <Controller
                   name="fechaValidacionTesoreria"
                   control={control}
                   render={({ field }) => (
                     <InputText
                       {...field}
-                      value={field.value ? new Date(field.value).toLocaleString("es-PE", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) : ""}
+                      value={
+                        field.value
+                          ? new Date(field.value).toLocaleString("es-PE", {
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: false,
+                            })
+                          : ""
+                      }
                       placeholder="Pendiente"
                       readOnly
                       disabled
@@ -605,12 +884,22 @@ const DetMovsEntregaRendirComprasForm = ({
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">Comprobante</label>
+                <label className="block text-900 font-medium mb-2">
+                  Comprobante
+                </label>
                 <Button
                   type="button"
                   label={operacionSinFactura ? "S/FACTURA" : "C/FACTURA"}
-                  icon={operacionSinFactura ? "pi pi-exclamation-triangle" : "pi pi-check-circle"}
-                  className={operacionSinFactura ? "p-button-warning" : "p-button-primary"}
+                  icon={
+                    operacionSinFactura
+                      ? "pi pi-exclamation-triangle"
+                      : "pi pi-check-circle"
+                  }
+                  className={
+                    operacionSinFactura
+                      ? "p-button-warning"
+                      : "p-button-primary"
+                  }
                   onClick={handleToggleOperacionSinFactura}
                   size="small"
                   style={{ width: "100%" }}
@@ -621,9 +910,21 @@ const DetMovsEntregaRendirComprasForm = ({
 
             {/* Tipo y Número de Documento (solo si NO es sin factura) */}
             {!operacionSinFactura && (
-              <div style={{ display: "flex", gap: 10, marginBottom: "0.5rem", flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginBottom: "0.5rem",
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="tipoDocumentoId" className="block text-900 font-medium mb-2">Tipo Documento</label>
+                  <label
+                    htmlFor="tipoDocumentoId"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Tipo Documento
+                  </label>
                   <Controller
                     name="tipoDocumentoId"
                     control={control}
@@ -645,7 +946,12 @@ const DetMovsEntregaRendirComprasForm = ({
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="numeroSerieComprobante" className="block text-900 font-medium mb-2">Serie</label>
+                  <label
+                    htmlFor="numeroSerieComprobante"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Serie
+                  </label>
                   <Controller
                     name="numeroSerieComprobante"
                     control={control}
@@ -654,7 +960,9 @@ const DetMovsEntregaRendirComprasForm = ({
                         id="numeroSerieComprobante"
                         {...field}
                         value={field.value}
-                        onChange={(e) => field.onChange(e.target.value?.toUpperCase())}
+                        onChange={(e) =>
+                          field.onChange(e.target.value?.toUpperCase())
+                        }
                         placeholder="Ej: F001"
                         style={{ fontWeight: "bold" }}
                         disabled={formularioDeshabilitado}
@@ -663,7 +971,12 @@ const DetMovsEntregaRendirComprasForm = ({
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="numeroCorrelativoComprobante" className="block text-900 font-medium mb-2">Correlativo</label>
+                  <label
+                    htmlFor="numeroCorrelativoComprobante"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Correlativo
+                  </label>
                   <Controller
                     name="numeroCorrelativoComprobante"
                     control={control}
@@ -684,15 +997,29 @@ const DetMovsEntregaRendirComprasForm = ({
             )}
 
             {/* Sección Movimiento de Caja */}
-            <div style={{ display: "flex", gap: 10, marginBottom: "0.5rem", alignItems: "end", flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                alignItems: "end",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
               <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">Fecha Operación Mov. Caja</label>
+                <label className="block text-900 font-medium mb-2">
+                  Fecha Operación Mov. Caja
+                </label>
                 <Controller
                   name="fechaOperacionMovCaja"
                   control={control}
                   render={({ field }) => (
                     <InputText
-                      value={field.value ? new Date(field.value).toLocaleString("es-PE") : ""}
+                      value={
+                        field.value
+                          ? new Date(field.value).toLocaleString("es-PE")
+                          : ""
+                      }
                       placeholder="Pendiente"
                       readOnly
                       disabled
@@ -702,7 +1029,9 @@ const DetMovsEntregaRendirComprasForm = ({
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">ID Operación Mov. Caja</label>
+                <label className="block text-900 font-medium mb-2">
+                  ID Operación Mov. Caja
+                </label>
                 <Controller
                   name="operacionMovCajaId"
                   control={control}
@@ -718,9 +1047,15 @@ const DetMovsEntregaRendirComprasForm = ({
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">Módulo Origen</label>
+                <label className="block text-900 font-medium mb-2">
+                  Módulo Origen
+                </label>
                 <InputText
-                  value={modulosCompras ? `${modulosCompras.id} - ${modulosCompras.nombre}` : "1 - COMPRAS"}
+                  value={
+                    modulosCompras
+                      ? `${modulosCompras.id} - ${modulosCompras.nombre}`
+                      : "1 - COMPRAS"
+                  }
                   readOnly
                   disabled
                   className="p-inputtext-sm"
@@ -728,9 +1063,17 @@ const DetMovsEntregaRendirComprasForm = ({
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">Última Actualización</label>
+                <label className="block text-900 font-medium mb-2">
+                  Última Actualización
+                </label>
                 <InputText
-                  value={movimiento?.actualizadoEn ? new Date(movimiento.actualizadoEn).toLocaleString("es-PE") : ""}
+                  value={
+                    movimiento?.actualizadoEn
+                      ? new Date(movimiento.actualizadoEn).toLocaleString(
+                          "es-PE",
+                        )
+                      : ""
+                  }
                   readOnly
                   className="p-inputtext-sm"
                 />
@@ -740,7 +1083,7 @@ const DetMovsEntregaRendirComprasForm = ({
         </Card>
       )}
 
-           {/* Card de PDF */}
+      {/* Card de PDF */}
       {cardActiva === "pdf" && (
         <PdfDetMovEntregaRendirComprasCard
           control={control}
@@ -769,12 +1112,24 @@ const DetMovsEntregaRendirComprasForm = ({
       )}
 
       {/* Botones de Cards y Acciones */}
-      <div style={{ display: "flex", gap: 10, marginBottom: "0.5rem", alignItems: "center", marginTop: "0.5rem", justifyContent: "space-between", flexDirection: window.innerWidth < 768 ? "column" : "row" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          marginBottom: "0.5rem",
+          alignItems: "center",
+          marginTop: "0.5rem",
+          justifyContent: "space-between",
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
         {/* Grupo de botones de navegación - Izquierda */}
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <Button
             icon="pi pi-file-edit"
-            className={cardActiva === "datos" ? "p-button-primary" : "p-button-outlined"}
+            className={
+              cardActiva === "datos" ? "p-button-primary" : "p-button-outlined"
+            }
             onClick={() => setCardActiva("datos")}
             size="small"
             tooltip="Datos Generales"
@@ -782,7 +1137,9 @@ const DetMovsEntregaRendirComprasForm = ({
           />
           <Button
             icon="pi pi-file-pdf"
-            className={cardActiva === "pdf" ? "p-button-primary" : "p-button-outlined"}
+            className={
+              cardActiva === "pdf" ? "p-button-primary" : "p-button-outlined"
+            }
             onClick={() => setCardActiva("pdf")}
             size="small"
             tooltip="Comprobante PDF"
@@ -790,7 +1147,11 @@ const DetMovsEntregaRendirComprasForm = ({
           />
           <Button
             icon="pi pi-receipt"
-            className={cardActiva === "pdfOperacion" ? "p-button-primary" : "p-button-outlined"}
+            className={
+              cardActiva === "pdfOperacion"
+                ? "p-button-primary"
+                : "p-button-outlined"
+            }
             onClick={() => setCardActiva("pdfOperacion")}
             size="small"
             tooltip="Comprobante Operación MovCaja"
@@ -820,9 +1181,7 @@ const DetMovsEntregaRendirComprasForm = ({
             disabled={formularioDeshabilitado}
           />
         </div>
-
       </div>
-
     </div>
   );
 };

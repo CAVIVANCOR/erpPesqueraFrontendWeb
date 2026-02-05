@@ -119,6 +119,7 @@ import LineaCredito from "../../pages/tesoreria/LineaCredito";
 import InversionFinanciera from "../../pages/tesoreria/InversionFinanciera";
 import ReporteLineasDisponibles from "../../pages/tesoreria/ReporteLineasDisponibles";
 import ComprobanteElectronico from "../../pages/ComprobanteElectronico";
+import UnidadesNegocio from "../../pages/UnidadesNegocio";
 /**
  * BaseLayout - Layout principal con gestión de módulos
  *
@@ -432,6 +433,10 @@ export default function BaseLayout({ children, onLogout }) {
     cargosPersonal: {
       label: "Cargos del Personal",
       componente: <CargosPersonal ruta="cargosPersonal" />,
+    },
+    unidadesNegocio: {
+      label: "Unidades de Negocio",
+      componente: <UnidadesNegocio ruta="unidadesNegocio" />,
     },
     tipoContrato: {
       label: "Tipo Contrato",

@@ -27,6 +27,7 @@ const ContratoServicioForm = ({
   centrosAlmacen = [],
   centrosCosto = [],
   tiposMovimiento = [],
+  unidadesNegocio = [],
   entidadesComerciales = [],
   empresaFija = null,
   toast: toastProp,
@@ -39,40 +40,67 @@ const ContratoServicioForm = ({
   const toast = useRef(toastProp || null);
   const [seriesDoc, setSeriesDoc] = useState([]);
   const [detalles, setDetalles] = useState(contrato?.detallesServicios || []);
-  const [urlContratoPdf, setUrlContratoPdf] = useState(contrato?.urlContratoPdf || null);
+  const [urlContratoPdf, setUrlContratoPdf] = useState(
+    contrato?.urlContratoPdf || null,
+  );
   const [countEntregasRendir, setCountEntregasRendir] = useState(0);
-  const [detallesCount, setDetallesCount] = useState(contrato?.detallesServicios?.length || 0);
+  const [detallesCount, setDetallesCount] = useState(
+    contrato?.detallesServicios?.length || 0,
+  );
   const [totales, setTotales] = useState({ subtotal: 0, total: 0 });
   const [fechaCelebracionInicial, setFechaCelebracionInicial] = useState(null);
 
   const [formData, setFormData] = useState({
     id: contrato?.id || null,
-    empresaId: contrato?.empresaId ? Number(contrato.empresaId) : (empresaFija ? Number(empresaFija) : null),
+    empresaId: contrato?.empresaId
+      ? Number(contrato.empresaId)
+      : empresaFija
+        ? Number(empresaFija)
+        : null,
     sedeId: contrato?.sedeId ? Number(contrato.sedeId) : null,
     activoId: contrato?.activoId ? Number(contrato.activoId) : null,
     almacenId: contrato?.almacenId ? Number(contrato.almacenId) : null,
     clienteId: contrato?.clienteId ? Number(contrato.clienteId) : null,
-    contactoClienteId: contrato?.contactoClienteId ? Number(contrato.contactoClienteId) : null,
-    responsableId: contrato?.responsableId ? Number(contrato.responsableId) : null,
+    contactoClienteId: contrato?.contactoClienteId
+      ? Number(contrato.contactoClienteId)
+      : null,
+    responsableId: contrato?.responsableId
+      ? Number(contrato.responsableId)
+      : null,
     aprobadorId: contrato?.aprobadorId ? Number(contrato.aprobadorId) : null,
-    tipoDocumentoId: contrato?.tipoDocumentoId ? Number(contrato.tipoDocumentoId) : 20,
+    tipoDocumentoId: contrato?.tipoDocumentoId
+      ? Number(contrato.tipoDocumentoId)
+      : 20,
     serieDocId: contrato?.serieDocId ? Number(contrato.serieDocId) : null,
     numeroSerie: contrato?.numeroSerie || "",
     numeroCorrelativo: contrato?.numeroCorrelativo || 0,
     numeroCompleto: contrato?.numeroCompleto || "",
     monedaId: contrato?.monedaId ? Number(contrato.monedaId) : 1,
-    estadoContratoId: contrato?.estadoContratoId ? Number(contrato.estadoContratoId) : 67,
-    fechaCelebracion: contrato?.fechaCelebracion ? new Date(contrato.fechaCelebracion) : new Date(),
-    fechaInicioContrato: contrato?.fechaInicioContrato ? new Date(contrato.fechaInicioContrato) : new Date(),
-    fechaFinContrato: contrato?.fechaFinContrato ? new Date(contrato.fechaFinContrato) : null,
-    fechaInicioCobro: contrato?.fechaInicioCobro ? new Date(contrato.fechaInicioCobro) : new Date(),
+    estadoContratoId: contrato?.estadoContratoId
+      ? Number(contrato.estadoContratoId)
+      : 67,
+    fechaCelebracion: contrato?.fechaCelebracion
+      ? new Date(contrato.fechaCelebracion)
+      : new Date(),
+    fechaInicioContrato: contrato?.fechaInicioContrato
+      ? new Date(contrato.fechaInicioContrato)
+      : new Date(),
+    fechaFinContrato: contrato?.fechaFinContrato
+      ? new Date(contrato.fechaFinContrato)
+      : null,
+    fechaInicioCobro: contrato?.fechaInicioCobro
+      ? new Date(contrato.fechaInicioCobro)
+      : new Date(),
     periodicidadCobro: contrato?.periodicidadCobro || 1,
     textoEsenciaContrato: contrato?.textoEsenciaContrato || "",
     urlContratoPdf: contrato?.urlContratoPdf || null,
     incluyeLuz: contrato?.incluyeLuz || false,
     porcentajeRecargoLuz: contrato?.porcentajeRecargoLuz || null,
     costoPorKilovatio: contrato?.costoPorKilovatio || null,
-    tipoCambio: contrato?.tipoCambio || 3.75,
+    tipoCambio: contrato?.tipoCambio || 0.0,
+    unidadNegocioId: contrato?.unidadNegocioId
+      ? Number(contrato.unidadNegocioId)
+      : null,
   });
 
   const handleChange = (field, value) => {
@@ -102,10 +130,16 @@ const ContratoServicioForm = ({
       const serie = seriesDoc.find((s) => Number(s.id) === Number(serieId));
       if (serie) {
         const proximoCorrelativo = Number(serie.correlativo) + 1;
-        const numSerie = String(serie.serie).padStart(serie.numCerosIzqSerie, "0");
-        const numCorre = String(proximoCorrelativo).padStart(serie.numCerosIzqCorre, "0");
+        const numSerie = String(serie.serie).padStart(
+          serie.numCerosIzqSerie,
+          "0",
+        );
+        const numCorre = String(proximoCorrelativo).padStart(
+          serie.numCerosIzqCorre,
+          "0",
+        );
         const numeroCompleto = `${numSerie}-${numCorre}`;
-        
+
         setFormData((prev) => ({
           ...prev,
           numeroSerie: numSerie,
@@ -141,31 +175,34 @@ const ContratoServicioForm = ({
   useEffect(() => {
     const cargarTipoCambio = async () => {
       // No ejecutar si no hay fecha o si es la carga inicial
-      if (!formData.fechaCelebracion || fechaCelebracionInicial === null) return;
-      
+      if (!formData.fechaCelebracion || fechaCelebracionInicial === null)
+        return;
+
       // Comparar fechas por valor (ISO string) en lugar de por referencia
       const fechaActualISO = new Date(formData.fechaCelebracion).toISOString();
       const fechaInicialISO = new Date(fechaCelebracionInicial).toISOString();
-      
+
       // No ejecutar si la fecha no ha cambiado realmente
       if (fechaActualISO === fechaInicialISO) return;
 
       try {
         // Convertir fecha a formato YYYY-MM-DD
         const fecha = new Date(formData.fechaCelebracion);
-        const fechaISO = fecha.toISOString().split('T')[0];
+        const fechaISO = fecha.toISOString().split("T")[0];
 
         // Consultar tipo de cambio SUNAT
-        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
-        
+        const tipoCambioData = await consultarTipoCambioSunat({
+          date: fechaISO,
+        });
+
         // Para COMPRAS DE SERVICIOS usamos sell_price (precio de venta del dólar)
         if (tipoCambioData && tipoCambioData.sell_price) {
           const tipoCambioVenta = parseFloat(tipoCambioData.sell_price);
           handleChange("tipoCambio", tipoCambioVenta.toFixed(3));
-          
+
           // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
           setFechaCelebracionInicial(formData.fechaCelebracion);
-          
+
           toast?.current?.show({
             severity: "success",
             summary: "Tipo de Cambio Actualizado",
@@ -192,14 +229,15 @@ const ContratoServicioForm = ({
       }
 
       try {
-        const { getDetallesServicioContrato } = await import("../../api/detServicioContrato");
+        const { getDetallesServicioContrato } =
+          await import("../../api/detServicioContrato");
         const detallesData = await getDetallesServicioContrato(formData.id);
 
         // Calcular subtotal sumando cantidad * valorVentaUnitario de cada detalle
         const subtotalCalc = detallesData.reduce((sum, det) => {
           const cantidad = Number(det.cantidad) || 0;
           const valorUnitario = Number(det.valorVentaUnitario) || 0;
-          return sum + (cantidad * valorUnitario);
+          return sum + cantidad * valorUnitario;
         }, 0);
 
         // Para contratos de servicio, el total es igual al subtotal (sin IGV)
@@ -274,11 +312,19 @@ const ContratoServicioForm = ({
     value: Number(s.id),
   }));
 
+  const unidadesNegocioOptions = unidadesNegocio.map((unidad) => ({
+    label: unidad.nombre,
+    value: Number(unidad.id),
+  }));
+
   return (
     <div>
       <Toast ref={toast} />
-      
-      <TabView activeIndex={activeTab} onTabChange={(e) => setActiveTab(e.index)}>
+
+      <TabView
+        activeIndex={activeTab}
+        onTabChange={(e) => setActiveTab(e.index)}
+      >
         <TabPanel header="Datos Generales" leftIcon="pi pi-file-edit">
           <DatosGeneralesContratoCard
             formData={formData}
@@ -295,6 +341,7 @@ const ContratoServicioForm = ({
             seriesDocOptions={seriesDocOptions}
             monedas={monedas}
             estadosContrato={estadosContrato}
+            unidadesNegocioOptions={unidadesNegocioOptions}
             centrosAlmacen={centrosAlmacen}
             handleSerieDocChange={handleSerieDocChange}
             isEdit={isEdit}
@@ -320,7 +367,7 @@ const ContratoServicioForm = ({
           />
         </TabPanel>
 
-        <TabPanel 
+        <TabPanel
           header={`Entrega a Rendir ${countEntregasRendir > 0 ? `(${countEntregasRendir})` : ""}`}
           leftIcon="pi pi-money-bill"
         >
@@ -364,7 +411,13 @@ const ContratoServicioForm = ({
           onClick={handleSubmit}
           loading={loading}
           disabled={readOnly || !permisos.puedeEditar}
-          tooltip={readOnly ? "Modo solo lectura" : !permisos.puedeEditar ? "No tiene permisos para editar" : ""}
+          tooltip={
+            readOnly
+              ? "Modo solo lectura"
+              : !permisos.puedeEditar
+                ? "No tiene permisos para editar"
+                : ""
+          }
           type="button"
         />
       </div>

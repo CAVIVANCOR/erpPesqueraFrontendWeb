@@ -30,6 +30,7 @@ const DatosGeneralesContratoCard = ({
   seriesDocOptions = [],
   monedas = [],
   estadosContrato = [],
+  unidadesNegocioOptions = [],
   centrosAlmacen = [],
   isEdit = false,
   // Props para DetServicioContratoCard
@@ -45,12 +46,12 @@ const DatosGeneralesContratoCard = ({
 }) => {
   // Filtrar sedes por empresa
   const sedesFiltradas = sedes.filter(
-    (s) => Number(s.empresaId) === Number(formData.empresaId)
+    (s) => Number(s.empresaId) === Number(formData.empresaId),
   );
 
   // Filtrar activos por empresa
   const activosFiltrados = activos.filter(
-    (a) => Number(a.empresaId) === Number(formData.empresaId)
+    (a) => Number(a.empresaId) === Number(formData.empresaId),
   );
 
   // Filtrar almacenes por empresa usando CentrosAlmacen
@@ -59,37 +60,40 @@ const DatosGeneralesContratoCard = ({
   if (formData.empresaId && centrosAlmacen.length > 0) {
     // 1. Obtener los centros de la empresa seleccionada
     const centrosEmpresa = centrosAlmacen.filter(
-      (ca) => Number(ca.empresaId) === Number(formData.empresaId)
+      (ca) => Number(ca.empresaId) === Number(formData.empresaId),
     );
-    
+
     // 2. Obtener los IDs de los centros de la empresa
     const centrosIdsPermitidos = centrosEmpresa.map((ca) => Number(ca.id));
-    
+
     // 3. Filtrar almacenes cuyo centroAlmacenId esté en la lista de centros permitidos
     //    Y que sean almacenes propios de sede (esAlmacenPropioSede = true)
     //    Y que tipoAlmacenamientoId sea <= 2
     almacenesFiltrados = almacenes.filter(
-      (a) => centrosIdsPermitidos.includes(Number(a.centroAlmacenId)) && 
-             a.esAlmacenPropioSede === true &&
-             Number(a.tipoAlmacenamientoId) <= 2
+      (a) =>
+        centrosIdsPermitidos.includes(Number(a.centroAlmacenId)) &&
+        a.esAlmacenPropioSede === true &&
+        Number(a.tipoAlmacenamientoId) <= 2,
     );
   }
 
   // Filtrar clientes por empresa y tipoEntidadId = 15 (Clientes Servicios)
   const clientesFiltrados = formData.empresaId
     ? clientes.filter(
-        (c) => Number(c.empresaId) === Number(formData.empresaId) && Number(c.tipoEntidadId) === 15
+        (c) =>
+          Number(c.empresaId) === Number(formData.empresaId) &&
+          Number(c.tipoEntidadId) === 15,
       )
     : [];
 
   // Filtrar tipos de documento para mostrar solo ID = 20 (Contratos de Servicios)
   const tiposDocumentoFiltrados = tiposDocumento.filter(
-    (td) => Number(td.id) === 20
+    (td) => Number(td.id) === 20,
   );
 
   // Filtrar contactos por cliente
   const contactosFiltrados = contactos.filter(
-    (c) => Number(c.entidadComercialId) === Number(formData.clienteId)
+    (c) => Number(c.entidadComercialId) === Number(formData.clienteId),
   );
 
   // Limpiar campos dependientes cuando cambie la empresa (solo en modo creación)
@@ -97,31 +101,39 @@ const DatosGeneralesContratoCard = ({
     if (!isEdit && formData.empresaId) {
       // Verificar si la sede actual pertenece a la empresa seleccionada
       if (formData.sedeId && sedesFiltradas.length > 0) {
-        const sedeValida = sedesFiltradas.some((s) => Number(s.id) === Number(formData.sedeId));
+        const sedeValida = sedesFiltradas.some(
+          (s) => Number(s.id) === Number(formData.sedeId),
+        );
         if (!sedeValida) {
           handleChange("sedeId", null);
         }
       }
-      
+
       // Verificar si el activo actual pertenece a la empresa seleccionada
       if (formData.activoId && activosFiltrados.length > 0) {
-        const activoValido = activosFiltrados.some((a) => Number(a.id) === Number(formData.activoId));
+        const activoValido = activosFiltrados.some(
+          (a) => Number(a.id) === Number(formData.activoId),
+        );
         if (!activoValido) {
           handleChange("activoId", null);
         }
       }
-      
+
       // Verificar si el almacén actual pertenece a la empresa seleccionada
       if (formData.almacenId && almacenesFiltrados.length > 0) {
-        const almacenValido = almacenesFiltrados.some((a) => Number(a.id) === Number(formData.almacenId));
+        const almacenValido = almacenesFiltrados.some(
+          (a) => Number(a.id) === Number(formData.almacenId),
+        );
         if (!almacenValido) {
           handleChange("almacenId", null);
         }
       }
-      
+
       // Verificar si el cliente actual pertenece a la empresa seleccionada
       if (formData.clienteId && clientesFiltrados.length > 0) {
-        const clienteValido = clientesFiltrados.some((c) => Number(c.id) === Number(formData.clienteId));
+        const clienteValido = clientesFiltrados.some(
+          (c) => Number(c.id) === Number(formData.clienteId),
+        );
         if (!clienteValido) {
           handleChange("clienteId", null);
           handleChange("contactoClienteId", null);
@@ -159,12 +171,18 @@ const DatosGeneralesContratoCard = ({
         >
           {/* Empresa */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Empresa <span style={{ color: "red" }}>*</span>
             </label>
             <Dropdown
               value={formData.empresaId}
-              options={empresas.map(e => ({ ...e, id: Number(e.id) }))}
+              options={empresas.map((e) => ({ ...e, id: Number(e.id) }))}
               onChange={(e) => handleChange("empresaId", e.value)}
               optionLabel="razonSocial"
               optionValue="id"
@@ -178,12 +196,18 @@ const DatosGeneralesContratoCard = ({
 
           {/* Sede */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Sede
             </label>
             <Dropdown
               value={formData.sedeId}
-              options={sedesFiltradas.map(s => ({ ...s, id: Number(s.id) }))}
+              options={sedesFiltradas.map((s) => ({ ...s, id: Number(s.id) }))}
               onChange={(e) => handleChange("sedeId", e.value)}
               optionLabel="nombre"
               optionValue="id"
@@ -197,12 +221,21 @@ const DatosGeneralesContratoCard = ({
 
           {/* Activo */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Activo
             </label>
             <Dropdown
               value={formData.activoId}
-              options={activosFiltrados.map(a => ({ ...a, id: Number(a.id) }))}
+              options={activosFiltrados.map((a) => ({
+                ...a,
+                id: Number(a.id),
+              }))}
               onChange={(e) => handleChange("activoId", e.value)}
               optionLabel="nombre"
               optionValue="id"
@@ -216,12 +249,21 @@ const DatosGeneralesContratoCard = ({
 
           {/* Almacén */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Almacén
             </label>
             <Dropdown
               value={formData.almacenId}
-              options={almacenesFiltrados.map(a => ({ ...a, id: Number(a.id) }))}
+              options={almacenesFiltrados.map((a) => ({
+                ...a,
+                id: Number(a.id),
+              }))}
               onChange={(e) => handleChange("almacenId", e.value)}
               optionLabel="nombre"
               optionValue="id"
@@ -235,12 +277,21 @@ const DatosGeneralesContratoCard = ({
 
           {/* Cliente */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Cliente <span style={{ color: "red" }}>*</span>
             </label>
             <Dropdown
               value={formData.clienteId}
-              options={clientesFiltrados.map(c => ({ ...c, id: Number(c.id) }))}
+              options={clientesFiltrados.map((c) => ({
+                ...c,
+                id: Number(c.id),
+              }))}
               onChange={(e) => handleChange("clienteId", e.value)}
               optionLabel="razonSocial"
               optionValue="id"
@@ -254,7 +305,13 @@ const DatosGeneralesContratoCard = ({
 
           {/* Contacto Cliente */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Contacto Cliente
             </label>
             <Dropdown
@@ -273,13 +330,22 @@ const DatosGeneralesContratoCard = ({
 
           {/* Responsable */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Responsable <span style={{ color: "red" }}>*</span>
             </label>
             <Dropdown
-              value={formData.responsableId ? Number(formData.responsableId) : null}
+              value={
+                formData.responsableId ? Number(formData.responsableId) : null
+              }
               options={personalOptions.map((p) => ({
-                label: p.nombreCompleto || `${p.nombres || ""} ${p.apellidos || ""}`,
+                label:
+                  p.nombreCompleto || `${p.nombres || ""} ${p.apellidos || ""}`,
                 value: Number(p.id),
               }))}
               onChange={(e) => handleChange("responsableId", e.value)}
@@ -295,7 +361,13 @@ const DatosGeneralesContratoCard = ({
 
           {/* Aprobador */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Aprobador <span style={{ color: "red" }}>*</span>
             </label>
             <Dropdown
@@ -311,10 +383,44 @@ const DatosGeneralesContratoCard = ({
               style={{ width: "100%" }}
             />
           </div>
+
+          {/* Unidad de Negocio */}
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
+              Unidad de Negocio <span style={{ color: "red" }}>*</span>
+            </label>
+            <Dropdown
+              value={
+                formData.unidadNegocioId
+                  ? Number(formData.unidadNegocioId)
+                  : null
+              }
+              options={unidadesNegocioOptions}
+              onChange={(e) => handleChange("unidadNegocioId", e.value)}
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccionar unidad de negocio"
+              filter
+              showClear
+              style={{ width: "100%" }}
+              disabled={readOnly}
+            />
+          </div>
         </div>
       </Panel>
 
-      <Panel header="Numeración del Documento" toggleable collapsed style={{ marginTop: "1rem" }}>
+      <Panel
+        header="Numeración del Documento"
+        toggleable
+        collapsed
+        style={{ marginTop: "1rem" }}
+      >
         <div
           style={{
             display: "grid",
@@ -324,29 +430,41 @@ const DatosGeneralesContratoCard = ({
         >
           {/* Tipo Documento */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Tipo Documento
             </label>
             <Dropdown
               value={formData.tipoDocumentoId}
-              options={tiposDocumentoFiltrados.map(t => ({
+              options={tiposDocumentoFiltrados.map((t) => ({
                 label: t.descripcion || t.nombre,
-                value: Number(t.id)
+                value: Number(t.id),
               }))}
               onChange={(e) => handleChange("tipoDocumentoId", e.value)}
               placeholder="Tipo documento"
               disabled={true}
-              style={{ 
+              style={{
                 width: "100%",
                 fontWeight: "bold",
-                textTransform: "uppercase"
+                textTransform: "uppercase",
               }}
             />
           </div>
 
           {/* Serie */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Serie de Dcmto <span style={{ color: "red" }}>*</span>
             </label>
             <Dropdown
@@ -356,14 +474,22 @@ const DatosGeneralesContratoCard = ({
               optionLabel="label"
               optionValue="value"
               placeholder="Seleccionar serie"
-              disabled={!formData.empresaId || !!formData.serieDocId || readOnly}
+              disabled={
+                !formData.empresaId || !!formData.serieDocId || readOnly
+              }
               style={{ width: "100%" }}
             />
           </div>
 
           {/* Número Completo */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Número Completo
             </label>
             <InputText
@@ -379,7 +505,11 @@ const DatosGeneralesContratoCard = ({
         </div>
       </Panel>
 
-      <Panel header="Fechas y Vigencia" toggleable style={{ marginTop: "1rem" }}>
+      <Panel
+        header="Fechas y Vigencia"
+        toggleable
+        style={{ marginTop: "1rem" }}
+      >
         <div
           style={{
             display: "grid",
@@ -389,7 +519,13 @@ const DatosGeneralesContratoCard = ({
         >
           {/* Fecha Celebración */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Fecha Celebración
             </label>
             <Calendar
@@ -404,7 +540,13 @@ const DatosGeneralesContratoCard = ({
 
           {/* Fecha Inicio */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Fecha Inicio Contrato
             </label>
             <Calendar
@@ -419,7 +561,13 @@ const DatosGeneralesContratoCard = ({
 
           {/* Fecha Fin */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Fecha Fin Contrato
             </label>
             <Calendar
@@ -434,7 +582,11 @@ const DatosGeneralesContratoCard = ({
         </div>
       </Panel>
 
-      <Panel header="Información Comercial" toggleable style={{ marginTop: "1rem" }}>
+      <Panel
+        header="Información Comercial"
+        toggleable
+        style={{ marginTop: "1rem" }}
+      >
         <div
           style={{
             display: "grid",
@@ -444,7 +596,13 @@ const DatosGeneralesContratoCard = ({
         >
           {/* Moneda */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Moneda
             </label>
             <Dropdown
@@ -462,7 +620,13 @@ const DatosGeneralesContratoCard = ({
 
           {/* Tipo Cambio */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Tipo Cambio
             </label>
             <InputNumber
@@ -478,11 +642,21 @@ const DatosGeneralesContratoCard = ({
 
           {/* Estado */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Estado
             </label>
             <Dropdown
-              value={formData.estadoContratoId ? Number(formData.estadoContratoId) : null}
+              value={
+                formData.estadoContratoId
+                  ? Number(formData.estadoContratoId)
+                  : null
+              }
               options={estadosContrato.map((e) => ({
                 label: e.descripcion,
                 value: Number(e.id),
@@ -494,11 +668,15 @@ const DatosGeneralesContratoCard = ({
               disabled={readOnly}
             />
           </div>
-
         </div>
       </Panel>
 
-      <Panel header="Configuración de Luz" toggleable collapsed style={{ marginTop: "1rem" }}>
+      <Panel
+        header="Configuración de Luz"
+        toggleable
+        collapsed
+        style={{ marginTop: "1rem" }}
+      >
         <div
           style={{
             display: "grid",
@@ -508,7 +686,13 @@ const DatosGeneralesContratoCard = ({
         >
           {/* Incluye Luz */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Incluye Luz
             </label>
             <Checkbox
@@ -520,12 +704,20 @@ const DatosGeneralesContratoCard = ({
 
           {/* Porcentaje Recargo Luz */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Porcentaje Recargo Luz (%)
             </label>
             <InputNumber
               value={formData.porcentajeRecargoLuz}
-              onValueChange={(e) => handleChange("porcentajeRecargoLuz", e.value)}
+              onValueChange={(e) =>
+                handleChange("porcentajeRecargoLuz", e.value)
+              }
               mode="decimal"
               minFractionDigits={2}
               maxFractionDigits={2}
@@ -538,7 +730,13 @@ const DatosGeneralesContratoCard = ({
 
           {/* Costo por Kilovatio */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Costo por Kilovatio
             </label>
             <InputNumber
@@ -554,16 +752,29 @@ const DatosGeneralesContratoCard = ({
         </div>
       </Panel>
 
-      <Panel header="Contenido del Contrato" toggleable collapsed style={{ marginTop: "1rem" }}>
+      <Panel
+        header="Contenido del Contrato"
+        toggleable
+        collapsed
+        style={{ marginTop: "1rem" }}
+      >
         <div style={{ display: "grid", gap: "1rem" }}>
           {/* Texto Esencia Contrato */}
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
               Texto Esencia del Contrato <span style={{ color: "red" }}>*</span>
             </label>
             <InputTextarea
               value={formData.textoEsenciaContrato}
-              onChange={(e) => handleChange("textoEsenciaContrato", e.target.value)}
+              onChange={(e) =>
+                handleChange("textoEsenciaContrato", e.target.value)
+              }
               rows={5}
               style={{
                 width: "100%",
@@ -585,7 +796,9 @@ const DatosGeneralesContratoCard = ({
             detalles={detalles}
             setDetalles={setDetalles}
             productos={productos}
-            moneda={monedas.find(m => Number(m.id) === Number(formData.monedaId))}
+            moneda={monedas.find(
+              (m) => Number(m.id) === Number(formData.monedaId),
+            )}
             toast={toast}
             isEdit={isEdit}
             readOnly={readOnly}

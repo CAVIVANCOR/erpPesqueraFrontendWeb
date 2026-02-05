@@ -2,9 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Button } from "primereact/button";
-import { Tag } from "primereact/tag";
 import DatosGeneralesTab from "./DatosGeneralesTab";
-import DetallesTab from "./DetallesTab";
 import CotizacionesCompras from "./CotizacionesCompras";
 import EntregasARendirComprasCard from "./EntregasARendirComprasCard";
 import { getSeriesDocRequerimiento } from "../../api/requerimientoCompra";
@@ -13,7 +11,6 @@ import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFunc
 import { getParametrosAprobadorPorModulo } from "../../api/parametroAprobador";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import VerImpresionRequerimientoCompraPDF from "./VerImpresionRequerimientoCompraPDF";
-
 export default function RequerimientoCompraForm({
   isEdit,
   defaultValues,
@@ -29,6 +26,7 @@ export default function RequerimientoCompraForm({
   centrosCosto = [],
   tiposMovimiento = [],
   monedas = [],
+  unidadesNegocio = [],
   empresaFija,
   onSubmit,
   onCancel,
@@ -765,7 +763,6 @@ export default function RequerimientoCompraForm({
 
   const handleAnularClick = () => {
     if (!defaultValues?.id) return;
-
     if (!puedeAnular) {
       toast.current.show({
         severity: "warn",
@@ -774,13 +771,11 @@ export default function RequerimientoCompraForm({
       });
       return;
     }
-
     onAnular(defaultValues.id);
   };
 
   const handleAutorizarCompraClick = () => {
     if (!defaultValues?.id) return;
-
     if (!puedeAutorizar) {
       toast.current.show({
         severity: "warn",
@@ -789,13 +784,11 @@ export default function RequerimientoCompraForm({
       });
       return;
     }
-
     // Llamar a onAutorizarCompra pasando el ID y el usuario actual
     if (onAutorizarCompra) {
       onAutorizarCompra(defaultValues.id, usuario?.personalId);
     }
   };
-
   // Estados del documento
   const estaPendiente = estadoId === 34 || !estadoId;
   const estaAprobado = estadoId === 35;
@@ -804,7 +797,6 @@ export default function RequerimientoCompraForm({
   const puedeEditar = estaPendiente && !loading;
   const puedeAnular = (estaPendiente || estaAprobado) && !loading;
   const puedeAutorizar = estaAprobado && !loading;
-
   // Preparar options para dropdowns siguiendo patrón MovimientoAlmacenForm
   const tiposDocumentoOptions = tiposDocumento.map((t) => ({
     ...t,
@@ -917,6 +909,11 @@ export default function RequerimientoCompraForm({
     value: Number(m.id),
   }));
 
+  const unidadesNegocioOptions = unidadesNegocio.map((unidad) => ({
+    label: unidad.nombre,
+    value: Number(unidad.id),
+  }));
+
   return (
     <div className="p-fluid">
       <TabView
@@ -944,6 +941,7 @@ export default function RequerimientoCompraForm({
             responsablesAlmacenOptions={responsablesAlmacenOptions}
             centrosCostoOptions={centrosCostoOptions}
             monedasOptions={monedasOptions}
+            unidadesNegocioOptions={unidadesNegocioOptions}
             isEdit={isEdit}
             puedeEditar={puedeEditar}
             puedeVerDetalles={permisos.puedeVer || puedeEditar}
@@ -1069,7 +1067,7 @@ export default function RequerimientoCompraForm({
             />
           )}
 
-                  {/* APROBADO: Mostrar Autorizar Compra */}
+          {/* APROBADO: Mostrar Autorizar Compra */}
           {estaAprobado && isEdit && (
             <Button
               label="Autorizar Compra"
@@ -1077,7 +1075,11 @@ export default function RequerimientoCompraForm({
               className="p-button-warning"
               onClick={handleAutorizarCompraClick}
               disabled={readOnly || loading || !permisos.puedeEditar}
-              style={{ whiteSpace: "nowrap", width: "auto", minWidth: "fit-content" }}
+              style={{
+                whiteSpace: "nowrap",
+                width: "auto",
+                minWidth: "fit-content",
+              }}
               tooltip={
                 readOnly
                   ? "Modo solo lectura"

@@ -15,7 +15,10 @@ import { Checkbox } from "primereact/checkbox";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { confirmDialog } from "primereact/confirmdialog";
-import { getClientesPorEmpresa, getEntidadesComerciales } from "../../api/entidadComercial";
+import {
+  getClientesPorEmpresa,
+  getEntidadesComerciales,
+} from "../../api/entidadComercial";
 import { getSeriesDoc } from "../../api/cotizacionVentas";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import DetCotizacionVentasCard from "./DetCotizacionVentasCard";
@@ -42,6 +45,7 @@ const DatosGeneralesCotizacionCard = ({
   formasPago = [],
   monedas = [],
   centrosCosto = [],
+  unidadesNegocioOptions = [],
   responsablesVentas = [],
   responsablesAutorizaVenta = [],
   responsablesSupervisorCampo = [],
@@ -79,7 +83,7 @@ const DatosGeneralesCotizacionCard = ({
 }) => {
   // Obtener la moneda seleccionada dinámicamente del estado
   const monedaSeleccionada = monedasOptions.find(
-    (m) => m.value === formData.monedaId
+    (m) => m.value === formData.monedaId,
   );
   const simboloMoneda = monedaSeleccionada?.simbolo || "S/";
 
@@ -96,7 +100,7 @@ const DatosGeneralesCotizacionCard = ({
             .map((e) => ({
               ...e,
               label: e.razonSocial || e.nombreComercial,
-              value: Number(e.id)
+              value: Number(e.id),
             }));
           setClientes(entidadesFiltradas);
         } catch (error) {
@@ -119,7 +123,7 @@ const DatosGeneralesCotizacionCard = ({
       // Calcular diferencia en milisegundos y convertir a días
       const diferenciaMilisegundos = arribo - zarpe;
       const diferenciaDias = Math.round(
-        diferenciaMilisegundos / (1000 * 60 * 60 * 24)
+        diferenciaMilisegundos / (1000 * 60 * 60 * 24),
       );
 
       // Solo actualizar si el valor calculado es diferente y es positivo
@@ -133,7 +137,7 @@ const DatosGeneralesCotizacionCard = ({
   const obtenerPorcentajeIgvEmpresa = () => {
     if (!formData.empresaId) return 18; // Valor por defecto
     const empresaSeleccionada = empresas.find(
-      (e) => Number(e.id) === Number(formData.empresaId)
+      (e) => Number(e.id) === Number(formData.empresaId),
     );
     return empresaSeleccionada?.porcentajeIgv || 18;
   };
@@ -270,6 +274,29 @@ const DatosGeneralesCotizacionCard = ({
             }}
           />
         </div>
+        <div style={{ flex: 1 }}>
+          {/* UNIDAD DE NEGOCIO */}
+          <label htmlFor="unidadNegocioId">Unidad de Negocio*</label>
+          <Dropdown
+            id="unidadNegocioId"
+            value={
+              formData.unidadNegocioId ? Number(formData.unidadNegocioId) : null
+            }
+            options={unidadesNegocioOptions}
+            onChange={(e) => handleChange("unidadNegocioId", e.value)}
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccionar unidad de negocio"
+            filter
+            showClear
+            style={{
+              fontWeight: "bold",
+              textTransform: "uppercase",
+              width: "100%",
+            }}
+            disabled={disabled || readOnly}
+          />
+        </div>
       </div>
 
       {/* Segunda fila: Serie de Documento */}
@@ -293,7 +320,10 @@ const DatosGeneralesCotizacionCard = ({
             optionValue="value"
             placeholder="Seleccionar serie"
             disabled={
-              disabled || readOnly || !formData.tipoDocumentoId || !!formData.serieDocId
+              disabled ||
+              readOnly ||
+              !formData.tipoDocumentoId ||
+              !!formData.serieDocId
             }
             required
             style={{
@@ -355,7 +385,7 @@ const DatosGeneralesCotizacionCard = ({
           marginTop: "0.5rem",
           alignItems: "end",
           display: "flex",
-          gap:3,
+          gap: 3,
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >

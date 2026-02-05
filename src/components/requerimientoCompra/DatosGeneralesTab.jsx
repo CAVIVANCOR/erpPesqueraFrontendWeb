@@ -28,6 +28,7 @@ export default function DatosGeneralesTab({
   responsablesAlmacenOptions,
   centrosCostoOptions,
   monedasOptions,
+  unidadesNegocioOptions,
   isEdit,
   puedeEditar,
   puedeVerDetalles,
@@ -51,7 +52,7 @@ export default function DatosGeneralesTab({
   const getNombrePersonal = (personalId) => {
     if (!personalId) return "";
     const personal = personalOptions.find(
-      (p) => Number(p.value) === Number(personalId)
+      (p) => Number(p.value) === Number(personalId),
     );
     return personal ? personal.label : `ID: ${personalId}`;
   };
@@ -68,7 +69,12 @@ export default function DatosGeneralesTab({
       >
         <div style={{ flex: 1.5 }}>
           {/* EMPRESA */}
-          <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="empresaId">Empresa*</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="empresaId"
+          >
+            Empresa*
+          </label>
           <Dropdown
             id="empresaId"
             value={formData.empresaId}
@@ -82,7 +88,12 @@ export default function DatosGeneralesTab({
           />
         </div>
         <div style={{ flex: 0.7 }}>
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="fechaDocumento">Fecha Documento*</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="fechaDocumento"
+          >
+            Fecha Documento*
+          </label>
           <Calendar
             id="fechaDocumento"
             value={formData.fechaDocumento}
@@ -95,7 +106,12 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 1 }}>
           {/* TIPO DOCUMENTO - Siempre ID 16: REQUERIMIENTO DE COMPRA */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="tipoDocumentoId">Tipo Documento*</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="tipoDocumentoId"
+          >
+            Tipo Documento*
+          </label>
           <Dropdown
             id="tipoDocumentoId"
             value={
@@ -116,7 +132,12 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 1 }}>
           {/* NÚMERO DOCUMENTO */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="numeroDocumento">Número de Documento</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="numeroDocumento"
+          >
+            Número de Documento
+          </label>
           <InputText
             id="numeroDocumento"
             value={formData.numeroDocumento || ""}
@@ -129,7 +150,12 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 0.5 }}>
           {/* ESTADO */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="estadoId">Estado*</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="estadoId"
+          >
+            Estado*
+          </label>
           <Dropdown
             id="estadoId"
             value={formData.estadoId}
@@ -145,6 +171,33 @@ export default function DatosGeneralesTab({
             }}
           />
         </div>
+        <div style={{ flex: 1 }}>
+          {/* UNIDAD DE NEGOCIO */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="unidadNegocioId"
+          >
+            Unidad de Negocio*
+          </label>
+          <Dropdown
+            id="unidadNegocioId"
+            value={
+              formData.unidadNegocioId ? Number(formData.unidadNegocioId) : null
+            }
+            options={unidadesNegocioOptions}
+            onChange={(e) => onChange("unidadNegocioId", e.value)}
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccionar unidad de negocio"
+            filter
+            showClear
+            style={{
+              fontWeight: "bold",
+              textTransform: "uppercase",
+            }}
+            disabled={!puedeEditar || readOnly}
+          />
+        </div>
       </div>
       <div
         style={{
@@ -156,7 +209,12 @@ export default function DatosGeneralesTab({
       >
         <div style={{ flex: 1 }}>
           {/* SERIE DOCUMENTO */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="serieDocId">Serie de Documento*</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="serieDocId"
+          >
+            Serie de Documento*
+          </label>
           <Dropdown
             id="serieDocId"
             value={formData.serieDocId ? Number(formData.serieDocId) : null}
@@ -166,10 +224,16 @@ export default function DatosGeneralesTab({
             optionValue="value"
             placeholder="Seleccionar serie"
             disabled={
-              !puedeEditar || readOnly || !formData.tipoDocumentoId || !!formData.serieDocId
+              !puedeEditar ||
+              readOnly ||
+              !formData.tipoDocumentoId ||
+              !!formData.serieDocId
             }
             readOnly={
-              !puedeEditar || readOnly || !formData.tipoDocumentoId || !!formData.serieDocId
+              !puedeEditar ||
+              readOnly ||
+              !formData.tipoDocumentoId ||
+              !!formData.serieDocId
             }
             required
             style={{
@@ -180,7 +244,12 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 1 }}>
           {/* NÚMERO SERIE DOC */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="numSerieDoc">Número Serie Doc.</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="numSerieDoc"
+          >
+            Número Serie Doc.
+          </label>
           <InputText
             id="numSerieDoc"
             value={formData.numSerieDoc || ""}
@@ -194,7 +263,12 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 1 }}>
           {/* NÚMERO CORRELATIVO */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="numCorreDoc">Número Correlativo</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="numCorreDoc"
+          >
+            Número Correlativo
+          </label>
           <InputText
             id="numCorreDoc"
             value={formData.numCorreDoc || ""}
@@ -208,7 +282,12 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 2 }}>
           {/* SOLICITANTE */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="solicitanteId">Solicitante</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="solicitanteId"
+          >
+            Solicitante
+          </label>
           <Dropdown
             id="solicitanteId"
             value={formData.solicitanteId}
@@ -237,7 +316,12 @@ export default function DatosGeneralesTab({
       >
         <div style={{ flex: 1 }}>
           {/* ES CON COTIZACIÓN */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="esConCotizacion">Tipo de Compra</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="esConCotizacion"
+          >
+            Tipo de Compra
+          </label>
           <Button
             label={
               formData.esConCotizacion ? "C/COTIZACIONES" : "COMPRA DIRECTA"
@@ -264,7 +348,12 @@ export default function DatosGeneralesTab({
         {/* PROVEEDOR (Solo si NO es con cotización) */}
         {!formData.esConCotizacion && (
           <div style={{ flex: 3 }}>
-             <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="proveedorId">Proveedor*</label>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="proveedorId"
+            >
+              Proveedor*
+            </label>
             <Dropdown
               id="proveedorId"
               value={formData.proveedorId}
@@ -285,7 +374,12 @@ export default function DatosGeneralesTab({
 
         <div style={{ flex: 1 }}>
           {/* FECHA REQUERIDA */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="fechaRequerida">Fecha Requerida</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="fechaRequerida"
+          >
+            Fecha Requerida
+          </label>
           <Calendar
             id="fechaRequerida"
             value={formData.fechaRequerida}
@@ -311,7 +405,12 @@ export default function DatosGeneralesTab({
       >
         <div style={{ flex: 1 }}>
           {/* TIPO PRODUCTO */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="tipoProductoId">Tipo Producto</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="tipoProductoId"
+          >
+            Tipo Producto
+          </label>
           <Dropdown
             id="tipoProductoId"
             value={formData.tipoProductoId}
@@ -331,7 +430,12 @@ export default function DatosGeneralesTab({
 
         <div style={{ flex: 1 }}>
           {/* DESTINO PRODUCTO */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="destinoProductoId">Destino Producto</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="destinoProductoId"
+          >
+            Destino Producto
+          </label>
           <Dropdown
             id="destinoProductoId"
             value={formData.destinoProductoId}
@@ -350,7 +454,12 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 1 }}>
           {/* ESTADO PRODUCTO */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="tipoEstadoProductoId">Estado Producto</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="tipoEstadoProductoId"
+          >
+            Estado Producto
+          </label>
           <Dropdown
             id="tipoEstadoProductoId"
             value={formData.tipoEstadoProductoId}
@@ -378,7 +487,12 @@ export default function DatosGeneralesTab({
       >
         <div style={{ flex: 2 }}>
           {/* FORMA DE PAGO */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="formaPagoId">Forma de Pago</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="formaPagoId"
+          >
+            Forma de Pago
+          </label>
           <Dropdown
             id="formaPagoId"
             value={formData.formaPagoId}
@@ -397,7 +511,12 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 0.5 }}>
           {/* PORCENTAJE IGV */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="porcentajeIGV">IGV (%)</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="porcentajeIGV"
+          >
+            IGV (%)
+          </label>
           <InputNumber
             id="porcentajeIGV"
             value={formData.porcentajeIGV}
@@ -418,7 +537,12 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 1 }}>
           {/* ES EXONERADO AL IGV */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="esExoneradoAlIGV">Estado IGV</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="esExoneradoAlIGV"
+          >
+            Estado IGV
+          </label>
           <Button
             id="esExoneradoAlIGV"
             label={
@@ -445,7 +569,12 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 1 }}>
           {/* MONEDA */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="monedaId">Moneda</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="monedaId"
+          >
+            Moneda
+          </label>
           <Dropdown
             id="monedaId"
             value={formData.monedaId}
@@ -464,7 +593,12 @@ export default function DatosGeneralesTab({
         </div>
         <div style={{ flex: 0.5 }}>
           {/* TIPO DE CAMBIO */}
-           <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="tipoCambio">T/C</label>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="tipoCambio"
+          >
+            T/C
+          </label>
           <InputNumber
             id="tipoCambio"
             value={formData.tipoCambio}
@@ -509,11 +643,7 @@ export default function DatosGeneralesTab({
       )}
 
       {/* Sección de Información Adicional */}
-      <Panel
-        header="Información Adicional"
-        toggleable
-        collapsed
-      >
+      <Panel header="Información Adicional" toggleable collapsed>
         {/* SECCIÓN: RESPONSABLES Y APROBACIONES */}
         <div
           style={{
@@ -525,7 +655,12 @@ export default function DatosGeneralesTab({
         >
           <div style={{ flex: 1 }}>
             {/* RESPONSABLE COMPRAS */}
-             <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="respComprasId">Resp. Compras</label>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="respComprasId"
+            >
+              Resp. Compras
+            </label>
             <Dropdown
               id="respComprasId"
               value={formData.respComprasId}
@@ -544,7 +679,12 @@ export default function DatosGeneralesTab({
           </div>
           <div style={{ flex: 1 }}>
             {/* RESPONSABLE PRODUCCIÓN */}
-             <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="respProduccionId">Resp. Producción</label>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="respProduccionId"
+            >
+              Resp. Producción
+            </label>
             <Dropdown
               id="respProduccionId"
               value={formData.respProduccionId}
@@ -563,7 +703,12 @@ export default function DatosGeneralesTab({
           </div>
           <div style={{ flex: 1 }}>
             {/* RESPONSABLE ALMACÉN */}
-             <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="respAlmacenId">Resp. Almacén</label>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="respAlmacenId"
+            >
+              Resp. Almacén
+            </label>
             <Dropdown
               id="respAlmacenId"
               value={formData.respAlmacenId}
@@ -592,7 +737,12 @@ export default function DatosGeneralesTab({
         >
           <div style={{ flex: 1 }}>
             {/* CENTRO DE COSTO */}
-             <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="centroCostoId">Centro de Costo*</label>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="centroCostoId"
+            >
+              Centro de Costo*
+            </label>
             <Dropdown
               id="centroCostoId"
               value={formData.centroCostoId}
@@ -610,7 +760,12 @@ export default function DatosGeneralesTab({
           </div>
           <div style={{ flex: 1 }}>
             {/* SUPERVISOR CAMPO */}
-             <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="supervisorCampoId">Supervisor Campo</label>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="supervisorCampoId"
+            >
+              Supervisor Campo
+            </label>
             <Dropdown
               id="supervisorCampoId"
               value={formData.supervisorCampoId}
@@ -640,7 +795,12 @@ export default function DatosGeneralesTab({
         >
           <div style={{ flex: 1 }}>
             {/* APROBADO POR */}
-             <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="aprobadoPorId">Aprobado Por</label>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="aprobadoPorId"
+            >
+              Aprobado Por
+            </label>
             <InputText
               id="aprobadoPorId"
               value={getNombrePersonal(formData.aprobadoPorId)}
@@ -654,7 +814,12 @@ export default function DatosGeneralesTab({
           </div>
           <div style={{ flex: 1 }}>
             {/* FECHA APROBACIÓN */}
-             <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="fechaAprobacion">Fecha Aprobación</label>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="fechaAprobacion"
+            >
+              Fecha Aprobación
+            </label>
             <Calendar
               id="fechaAprobacion"
               value={formData.fechaAprobacion}
@@ -670,7 +835,12 @@ export default function DatosGeneralesTab({
           </div>
           <div style={{ flex: 1 }}>
             {/* AUTORIZA COMPRA */}
-             <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="autorizaCompraId">Autoriza Compra</label>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="autorizaCompraId"
+            >
+              Autoriza Compra
+            </label>
             <InputText
               id="autorizaCompraId"
               value={getNombrePersonal(formData.autorizaCompraId)}
@@ -684,7 +854,12 @@ export default function DatosGeneralesTab({
           </div>
           <div style={{ flex: 1 }}>
             {/* ORDEN TRABAJO ID */}
-             <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="ordenTrabajoId">Orden Trabajo ID</label>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="ordenTrabajoId"
+            >
+              Orden Trabajo ID
+            </label>
             <InputText
               id="ordenTrabajoId"
               value={formData.ordenTrabajoId || ""}
@@ -709,7 +884,12 @@ export default function DatosGeneralesTab({
         >
           <div style={{ flex: 2 }}>
             {/* CREADO POR */}
-             <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="creadoPor">Creado Por</label>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="creadoPor"
+            >
+              Creado Por
+            </label>
             <InputText
               id="creadoPor"
               value={getNombrePersonal(formData.creadoPor)}
@@ -723,7 +903,12 @@ export default function DatosGeneralesTab({
           </div>
           <div style={{ flex: 1 }}>
             {/* CREADO EN */}
-             <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="creadoEn">Creado En</label>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="creadoEn"
+            >
+              Creado En
+            </label>
             <InputText
               id="creadoEn"
               value={
@@ -740,7 +925,12 @@ export default function DatosGeneralesTab({
           </div>
           <div style={{ flex: 2 }}>
             {/* ACTUALIZADO POR */}
-             <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="actualizadoPor">Actualizado Por</label>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="actualizadoPor"
+            >
+              Actualizado Por
+            </label>
             <InputText
               id="actualizadoPor"
               value={getNombrePersonal(formData.actualizadoPor)}
@@ -753,7 +943,12 @@ export default function DatosGeneralesTab({
           </div>
           <div style={{ flex: 1 }}>
             {/* ACTUALIZADO EN */}
-             <label style={{fontWeight:"bold", fontSize: getResponsiveFontSize()}} htmlFor="actualizadoEn">Actualizado En</label>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="actualizadoEn"
+            >
+              Actualizado En
+            </label>
             <InputText
               id="actualizadoEn"
               value={

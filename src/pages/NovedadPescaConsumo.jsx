@@ -30,6 +30,7 @@ import { getEstadosMultiFuncionParaNovedadPescaConsumo } from "../api/estadoMult
 import { getTiposDocumento } from "../api/tipoDocumento";
 import NovedadPescaConsumoForm from "../components/novedadPescaConsumo/NovedadPescaConsumoForm";
 import { getResponsiveFontSize } from "../utils/utils";
+import { getUnidadesNegocio } from "../api/unidadNegocio";
 
 /**
  * Componente principal para gestión de Novedades de Pesca para Consumo
@@ -39,12 +40,10 @@ const NovedadPescaConsumo = ({ ruta }) => {
   // Store de autenticación y permisos
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
-
   // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
-
   // Estados principales de la tabla
   const [novedades, setNovedades] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +58,7 @@ const NovedadPescaConsumo = ({ ruta }) => {
   const [empresas, setEmpresas] = useState([]);
   const [estadosNovedad, setEstadosNovedad] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
+  const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [filtroEmpresa, setFiltroEmpresa] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState(null);
   const [fechaDesde, setFechaDesde] = useState(null);
@@ -104,13 +104,17 @@ const NovedadPescaConsumo = ({ ruta }) => {
    */
   const cargarCombos = async () => {
     try {
-      const [empresasData, estadosData, tiposDocumentoData] = await Promise.all(
-        [
-          getEmpresas(),
-          getEstadosMultiFuncionParaNovedadPescaConsumo(),
-          getTiposDocumento(),
-        ]
-      );
+      const [
+        empresasData,
+        estadosData,
+        tiposDocumentoData,
+        unidadesNegocioData,
+      ] = await Promise.all([
+        getEmpresas(),
+        getEstadosMultiFuncionParaNovedadPescaConsumo(),
+        getTiposDocumento(),
+        getUnidadesNegocio({ activo: true }),
+      ]);
 
       if (empresasData && Array.isArray(empresasData)) {
         setEmpresas(empresasData.map((e) => ({ ...e, id: Number(e.id) })));
@@ -122,7 +126,13 @@ const NovedadPescaConsumo = ({ ruta }) => {
 
       if (tiposDocumentoData && Array.isArray(tiposDocumentoData)) {
         setTiposDocumento(
-          tiposDocumentoData.map((td) => ({ ...td, id: Number(td.id) }))
+          tiposDocumentoData.map((td) => ({ ...td, id: Number(td.id) })),
+        );
+      }
+
+      if (unidadesNegocioData && Array.isArray(unidadesNegocioData)) {
+        setUnidadesNegocio(
+          unidadesNegocioData.map((un) => ({ ...un, id: Number(un.id) })),
         );
       }
     } catch (error) {
@@ -161,7 +171,7 @@ const NovedadPescaConsumo = ({ ruta }) => {
         empresaId: Number(novedad.empresaId),
         BahiaId: Number(novedad.BahiaId),
         estadoNovedadPescaConsumoId: Number(
-          novedad.estadoNovedadPescaConsumoId
+          novedad.estadoNovedadPescaConsumoId,
         ),
       }));
 
@@ -206,12 +216,10 @@ const NovedadPescaConsumo = ({ ruta }) => {
     }
 
     try {
-      const { getBahiaComercialUnicoPorEmpresa } = await import(
-        "../api/personal"
-      );
-      const bahiaComercial = await getBahiaComercialUnicoPorEmpresa(
-        filtroEmpresa
-      );
+      const { getBahiaComercialUnicoPorEmpresa } =
+        await import("../api/personal");
+      const bahiaComercial =
+        await getBahiaComercialUnicoPorEmpresa(filtroEmpresa);
 
       setEditingItem({
         empresaId: filtroEmpresa,
@@ -402,38 +410,44 @@ const NovedadPescaConsumo = ({ ruta }) => {
       cargarNovedades();
     } catch (error) {
       console.error("Error al eliminar novedad:", error);
-      
-      let mensajeError = "No se pudo eliminar la novedad. Verifique su conexión e intente nuevamente.";
-      
+
+      let mensajeError =
+        "No se pudo eliminar la novedad. Verifique su conexión e intente nuevamente.";
+
       // Manejo específico de errores HTTP
       if (error.response) {
         const { status, data } = error.response;
-        
+
         switch (status) {
           case 409: // Conflict
             if (data.mensaje && data.mensaje.includes("dependencias")) {
-              mensajeError = "No se puede eliminar esta novedad porque tiene faenas o entregas asociadas. Debe eliminar primero estos registros relacionados antes de poder eliminar la novedad.";
+              mensajeError =
+                "No se puede eliminar esta novedad porque tiene faenas o entregas asociadas. Debe eliminar primero estos registros relacionados antes de poder eliminar la novedad.";
             } else {
-              mensajeError = "Ya existe un registro similar. Por favor, verifique los datos ingresados.";
+              mensajeError =
+                "Ya existe un registro similar. Por favor, verifique los datos ingresados.";
             }
             break;
           case 400: // Bad Request
-            mensajeError = "Solicitud inválida. Verifique que el registro existe y es válido para eliminación.";
+            mensajeError =
+              "Solicitud inválida. Verifique que el registro existe y es válido para eliminación.";
             break;
           case 404: // Not Found
-            mensajeError = "La novedad que intenta eliminar no existe o ya ha sido eliminada.";
+            mensajeError =
+              "La novedad que intenta eliminar no existe o ya ha sido eliminada.";
             break;
           case 403: // Forbidden
             mensajeError = "No tiene permisos para eliminar este registro.";
             break;
           case 500: // Internal Server Error
-            mensajeError = "Error interno del servidor. Por favor, contacte al administrador del sistema.";
+            mensajeError =
+              "Error interno del servidor. Por favor, contacte al administrador del sistema.";
             break;
           default:
             mensajeError = `Error del servidor (${status}). Por favor, intente nuevamente o contacte al soporte técnico.`;
         }
       }
-      
+
       toast.current?.show({
         severity: "error",
         summary: "Error de Eliminación",
@@ -504,7 +518,8 @@ const NovedadPescaConsumo = ({ ruta }) => {
    */
   const bahiaTemplate = (rowData) => {
     if (!rowData.bahiaComercial) return "Sin bahía";
-    const nombreCompleto = `${rowData.bahiaComercial.nombres || ""} ${rowData.bahiaComercial.apellidos || ""}`.trim();
+    const nombreCompleto =
+      `${rowData.bahiaComercial.nombres || ""} ${rowData.bahiaComercial.apellidos || ""}`.trim();
     return nombreCompleto || "Sin nombre";
   };
 
@@ -788,8 +803,8 @@ const NovedadPescaConsumo = ({ ruta }) => {
                       !permisos.puedeCrear
                         ? "No tiene permisos para crear novedades"
                         : !filtroEmpresa
-                        ? "Seleccione una empresa para crear una nueva novedad"
-                        : "Crear nueva novedad"
+                          ? "Seleccione una empresa para crear una nueva novedad"
+                          : "Crear nueva novedad"
                     }
                     tooltipOptions={{ position: "bottom" }}
                   />
@@ -842,7 +857,8 @@ const NovedadPescaConsumo = ({ ruta }) => {
                       toast.current?.show({
                         severity: "success",
                         summary: "Actualizado",
-                        detail: "Datos actualizados correctamente desde el servidor",
+                        detail:
+                          "Datos actualizados correctamente desde el servidor",
                         life: 3000,
                       });
                     }}
@@ -969,6 +985,7 @@ const NovedadPescaConsumo = ({ ruta }) => {
         editingItem={editingItem}
         empresas={empresas}
         tiposDocumento={tiposDocumento}
+        unidadesNegocio={unidadesNegocio}
         onNovedadDataChange={actualizarEditingItem}
         readOnly={isEdit && !permisos.puedeEditar}
         isEdit={isEdit}

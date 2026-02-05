@@ -11,7 +11,10 @@ import { obtenerContactosPorEntidad } from "../../api/contactoEntidad";
 import { obtenerDireccionesPorEntidad } from "../../api/direccionEntidad";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
-import { partirPreFactura, facturarPreFacturaNegra } from "../../api/preFactura";
+import {
+  partirPreFactura,
+  facturarPreFacturaNegra,
+} from "../../api/preFactura";
 import { Dialog } from "primereact/dialog";
 import { InputNumber } from "primereact/inputnumber";
 
@@ -27,6 +30,7 @@ export default function PreFacturaForm({
   personalOptions,
   centrosCosto = [],
   monedas = [],
+  unidadesNegocio = [],
   bancos = [],
   incoterms = [],
   paises = [],
@@ -44,15 +48,14 @@ export default function PreFacturaForm({
   readOnly = false,
 }) {
   const { usuario } = useAuthStore();
-
   // Estado único para todos los campos del formulario (patrón eficiente)
   const [formData, setFormData] = useState({
     // Datos básicos
     empresaId: defaultValues?.empresaId
       ? Number(defaultValues.empresaId)
       : empresaFija
-      ? Number(empresaFija)
-      : null,
+        ? Number(empresaFija)
+        : null,
     tipoDocumentoId: defaultValues?.tipoDocumentoId
       ? Number(defaultValues.tipoDocumentoId)
       : 19,
@@ -126,8 +129,8 @@ export default function PreFacturaForm({
     monedaId: defaultValues?.moneda?.id
       ? Number(defaultValues.moneda.id)
       : defaultValues?.monedaId
-      ? Number(defaultValues.monedaId)
-      : 1,
+        ? Number(defaultValues.monedaId)
+        : 1,
     tipoCambio: defaultValues?.tipoCambio || 3.75,
     centroCostoId: defaultValues?.centroCostoId
       ? Number(defaultValues.centroCostoId)
@@ -232,8 +235,8 @@ export default function PreFacturaForm({
         empresaId: defaultValues?.empresaId
           ? Number(defaultValues.empresaId)
           : empresaFija
-          ? Number(empresaFija)
-          : null,
+            ? Number(empresaFija)
+            : null,
         tipoDocumentoId: defaultValues?.tipoDocumentoId
           ? Number(defaultValues.tipoDocumentoId)
           : 19,
@@ -307,8 +310,8 @@ export default function PreFacturaForm({
         monedaId: defaultValues?.moneda?.id
           ? Number(defaultValues.moneda.id)
           : defaultValues?.monedaId
-          ? Number(defaultValues.monedaId)
-          : 1,
+            ? Number(defaultValues.monedaId)
+            : 1,
         tipoCambio: defaultValues?.tipoCambio || 3.75,
         centroCostoId: defaultValues?.centroCostoId
           ? Number(defaultValues.centroCostoId)
@@ -443,7 +446,7 @@ export default function PreFacturaForm({
   useEffect(() => {
     if (clientesProp && clientesProp.length > 0 && empresaId) {
       const clientesPorEmpresa = clientesProp.filter(
-        (c) => Number(c.empresaId) === Number(empresaId)
+        (c) => Number(c.empresaId) === Number(empresaId),
       );
       setClientes(clientesPorEmpresa);
     } else {
@@ -455,7 +458,7 @@ export default function PreFacturaForm({
   useEffect(() => {
     if (personalOptions && personalOptions.length > 0 && empresaId) {
       const personalPorEmpresa = personalOptions.filter(
-        (p) => Number(p.empresaId) === Number(empresaId)
+        (p) => Number(p.empresaId) === Number(empresaId),
       );
       setPersonalFiltrado(personalPorEmpresa);
     } else {
@@ -476,7 +479,10 @@ export default function PreFacturaForm({
           const direcciones = await obtenerDireccionesPorEntidad(clienteId);
           setDireccionesCliente(direcciones || []);
         } catch (err) {
-          console.error("Error al cargar contactos/direcciones del cliente:", err);
+          console.error(
+            "Error al cargar contactos/direcciones del cliente:",
+            err,
+          );
           setContactosCliente([]);
           setDireccionesCliente([]);
         }
@@ -493,7 +499,7 @@ export default function PreFacturaForm({
   useEffect(() => {
     if (empresaId && empresas && empresas.length > 0 && !isEdit) {
       const empresaSeleccionada = empresas.find(
-        (e) => Number(e.id) === Number(empresaId)
+        (e) => Number(e.id) === Number(empresaId),
       );
       if (
         empresaSeleccionada &&
@@ -508,7 +514,7 @@ export default function PreFacturaForm({
   useEffect(() => {
     if (empresaId && empresas && empresas.length > 0) {
       const empresaSeleccionada = empresas.find(
-        (e) => Number(e.id) === Number(empresaId)
+        (e) => Number(e.id) === Number(empresaId),
       );
 
       if (exoneradoIgv) {
@@ -578,30 +584,32 @@ export default function PreFacturaForm({
     const cargarTipoCambio = async () => {
       // No ejecutar si no hay fecha o si es la carga inicial
       if (!fechaDocumento || fechaDocumentoInicial === null) return;
-      
+
       // Comparar fechas por valor (ISO string) en lugar de por referencia
       const fechaActualISO = new Date(fechaDocumento).toISOString();
       const fechaInicialISO = new Date(fechaDocumentoInicial).toISOString();
-      
+
       // No ejecutar si la fecha no ha cambiado realmente
       if (fechaActualISO === fechaInicialISO) return;
 
       try {
         // Convertir fecha a formato YYYY-MM-DD
         const fecha = new Date(fechaDocumento);
-        const fechaISO = fecha.toISOString().split('T')[0];
+        const fechaISO = fecha.toISOString().split("T")[0];
 
         // Consultar tipo de cambio SUNAT
-        const tipoCambioData = await consultarTipoCambioSunat({ date: fechaISO });
-        
+        const tipoCambioData = await consultarTipoCambioSunat({
+          date: fechaISO,
+        });
+
         // Para VENTAS usamos buy_price (precio de compra del dólar)
         if (tipoCambioData && tipoCambioData.buy_price) {
           const tipoCambioCompra = parseFloat(tipoCambioData.buy_price);
           handleChange("tipoCambio", tipoCambioCompra.toFixed(3));
-          
+
           // Actualizar fecha inicial para permitir consultas futuras a esta misma fecha
           setFechaDocumentoInicial(fechaDocumento);
-          
+
           toast?.current?.show({
             severity: "success",
             summary: "Tipo de Cambio Actualizado",
@@ -628,7 +636,7 @@ export default function PreFacturaForm({
         const proximoCorrelativo = correlativoActual + 1;
         const numSerie = String(serie.serie).padStart(
           serie.numCerosIzqSerie,
-          "0"
+          "0",
         );
 
         handleChange("serieDocId", serieId);
@@ -650,15 +658,14 @@ export default function PreFacturaForm({
       if (!defaultValues?.id || !isEdit) return;
 
       try {
-        const { getDetallesPreFactura } = await import(
-          "../../api/detallePreFactura"
-        );
+        const { getDetallesPreFactura } =
+          await import("../../api/detallePreFactura");
         const detalles = await getDetallesPreFactura(defaultValues.id);
 
         const subtotalCalc = detalles.reduce(
           (sum, det) =>
             sum + (Number(det.cantidad) * Number(det.precioUnitario) || 0),
-          0
+          0,
         );
         const igvCalc = exoneradoIgv
           ? 0
@@ -825,7 +832,6 @@ export default function PreFacturaForm({
     onAnular(defaultValues.id);
   };
 
-
   // Handler para partir PreFactura (Caso 2: Mixto Blanco/Negro)
   const [showPartirDialog, setShowPartirDialog] = useState(false);
   const [porcentajeNegro, setPorcentajeNegro] = useState(40);
@@ -849,7 +855,7 @@ export default function PreFacturaForm({
     try {
       const resultado = await partirPreFactura(defaultValues.id, {
         porcentajeNegro,
-        porcentajeBlanco
+        porcentajeBlanco,
       });
 
       toast?.current?.show({
@@ -866,7 +872,8 @@ export default function PreFacturaForm({
       toast?.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.mensaje || "No se pudo partir la PreFactura",
+        detail:
+          error.response?.data?.mensaje || "No se pudo partir la PreFactura",
         life: 3000,
       });
     }
@@ -890,14 +897,13 @@ export default function PreFacturaForm({
       toast?.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.mensaje || "No se pudo facturar la PreFactura negra",
+        detail:
+          error.response?.data?.mensaje ||
+          "No se pudo facturar la PreFactura negra",
         life: 3000,
       });
     }
   };
-
-
-
 
   // Estados del documento
   const estaPendiente = estadoId === 45 || !estadoId;
@@ -1041,7 +1047,7 @@ export default function PreFacturaForm({
   const contactosClienteOptions = (contactosCliente || []).map((c) => ({
     ...c,
     id: Number(c.id),
-    label: `${c.nombres} ${c.compras ? ` - COMPRAS` : "" }${c.finanzas ? ` - FINANZAS` : "" }${c.logistica ? ` - LOGISTICA` : "" }${c.ventas ? ` - VENTAS` : "" }`,
+    label: `${c.nombres} ${c.compras ? ` - COMPRAS` : ""}${c.finanzas ? ` - FINANZAS` : ""}${c.logistica ? ` - LOGISTICA` : ""}${c.ventas ? ` - VENTAS` : ""}`,
     value: Number(c.id),
   }));
 
@@ -1052,7 +1058,10 @@ export default function PreFacturaForm({
     label: d.direccion || `${d.calle || ""} ${d.numero || ""}`.trim(),
     value: Number(d.id),
   }));
-
+  const unidadesNegocioOptions = unidadesNegocio.map((unidad) => ({
+    label: unidad.nombre,
+    value: Number(unidad.id),
+  }));
   return (
     <div className="p-fluid">
       <TabView
@@ -1076,6 +1085,7 @@ export default function PreFacturaForm({
             estadosPreFacturaOptions={estadosPreFacturaOptions}
             centrosCostoOptions={centrosCostoOptions}
             monedasOptions={monedasOptions}
+            unidadesNegocioOptions={unidadesNegocioOptions}
             bancosOptions={bancosOptions}
             incotermsOptions={incotermsOptions}
             paisesOptions={paisesOptions}
@@ -1100,7 +1110,6 @@ export default function PreFacturaForm({
             readOnly={readOnly}
           />
         </TabPanel>
-
         {/* TAB 2: IMPRESION PDF */}
         <TabPanel header="Impresión PDF" leftIcon="pi pi-file-pdf">
           <VerImpresionPreFacturaPDF
@@ -1151,8 +1160,8 @@ export default function PreFacturaForm({
                   readOnly
                     ? "Modo solo lectura"
                     : !permisos.puedeEditar
-                    ? "No tiene permisos para aprobar"
-                    : ""
+                      ? "No tiene permisos para aprobar"
+                      : ""
                 }
               />
               <Button
@@ -1165,8 +1174,8 @@ export default function PreFacturaForm({
                   readOnly
                     ? "Modo solo lectura"
                     : !permisos.puedeEliminar
-                    ? "No tiene permisos para anular"
-                    : ""
+                      ? "No tiene permisos para anular"
+                      : ""
                 }
               />
             </>
@@ -1215,14 +1224,14 @@ export default function PreFacturaForm({
               readOnly
                 ? "Modo solo lectura"
                 : !puedeEditar
-                ? "No se puede editar"
-                : ""
+                  ? "No se puede editar"
+                  : ""
             }
           />
         </div>
       </div>
 
- {/* Dialog para Partir PreFactura */}
+      {/* Dialog para Partir PreFactura */}
       <Dialog
         visible={showPartirDialog}
         style={{ width: "450px" }}
@@ -1269,18 +1278,30 @@ export default function PreFacturaForm({
               step={5}
             />
           </div>
-          <div className="mb-3 p-3" style={{ backgroundColor: "#f8f9fa", borderRadius: "4px" }}>
+          <div
+            className="mb-3 p-3"
+            style={{ backgroundColor: "#f8f9fa", borderRadius: "4px" }}
+          >
             <p className="m-0 text-sm">
               <strong>Total:</strong> {porcentajeNegro + porcentajeBlanco}%
             </p>
             <p className="m-0 text-sm mt-2">
-              <strong>Monto Negra:</strong> S/ {((formData.total || 0) * porcentajeNegro / 100).toFixed(2)}
+              <strong>Monto Negra:</strong> S/{" "}
+              {(((formData.total || 0) * porcentajeNegro) / 100).toFixed(2)}
             </p>
             <p className="m-0 text-sm">
-              <strong>Monto Blanca:</strong> S/ {((formData.total || 0) * porcentajeBlanco / 100).toFixed(2)}
+              <strong>Monto Blanca:</strong> S/{" "}
+              {(((formData.total || 0) * porcentajeBlanco) / 100).toFixed(2)}
             </p>
           </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 8,
+              marginTop: 16,
+            }}
+          >
             <Button
               label="Cancelar"
               icon="pi pi-times"
@@ -1296,7 +1317,6 @@ export default function PreFacturaForm({
           </div>
         </div>
       </Dialog>
-
     </div>
   );
 }

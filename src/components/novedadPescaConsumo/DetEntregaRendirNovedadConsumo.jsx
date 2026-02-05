@@ -23,6 +23,7 @@ import { useAuthStore } from "../../shared/stores/useAuthStore";
 export default function DetEntregaRendirNovedadConsumo({
   // Props de datos
   entregaARendirPescaConsumo,
+  novedadPescaConsumo = null,
   movimientos = [],
   personal = [],
   centrosCosto = [],
@@ -31,7 +32,6 @@ export default function DetEntregaRendirNovedadConsumo({
   monedas = [],
   tiposDocumento = [],
   productos = [], // Nueva prop para productos (gastos)
-
   // Props de estado
   novedadPescaConsumoIniciada = false,
   loading = false,
@@ -47,10 +47,18 @@ export default function DetEntregaRendirNovedadConsumo({
   const [filtroIngresoEgreso, setFiltroIngresoEgreso] = useState(null);
   const [filtroValidacionTesoreria, setFiltroValidacionTesoreria] =
     useState(null);
-
   // Estados para el dialog
   const [showMovimientoForm, setShowMovimientoForm] = useState(false);
   const [editingMovimiento, setEditingMovimiento] = useState(null);
+  // Filtrar movimientos que son asignaciones (inicial o adicional) y forman parte del cálculo
+  // Excluir el movimiento en edición para evitar auto-referencia
+  const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
+    (mov) =>
+      (Number(mov.tipoMovimientoId) === 1 ||
+        Number(mov.tipoMovimientoId) === 2) &&
+      mov.formaParteCalculoEntregaARendir === true &&
+      (!editingMovimiento || Number(mov.id) !== Number(editingMovimiento.id)),
+  );
 
   const toast = useRef(null);
 
@@ -60,20 +68,20 @@ export default function DetEntregaRendirNovedadConsumo({
 
     if (filtroTipoMovimiento) {
       movimientosFiltrados = movimientosFiltrados.filter(
-        (mov) => Number(mov.tipoMovimientoId) === Number(filtroTipoMovimiento)
+        (mov) => Number(mov.tipoMovimientoId) === Number(filtroTipoMovimiento),
       );
     }
 
     if (filtroCentroCosto) {
       movimientosFiltrados = movimientosFiltrados.filter(
-        (mov) => Number(mov.centroCostoId) === Number(filtroCentroCosto)
+        (mov) => Number(mov.centroCostoId) === Number(filtroCentroCosto),
       );
     }
 
     if (filtroIngresoEgreso !== null) {
       movimientosFiltrados = movimientosFiltrados.filter((mov) => {
         const tipoMov = tiposMovimiento.find(
-          (t) => Number(t.id) === Number(mov.tipoMovimientoId)
+          (t) => Number(t.id) === Number(mov.tipoMovimientoId),
         );
         return tipoMov?.esIngreso === filtroIngresoEgreso;
       });
@@ -81,7 +89,7 @@ export default function DetEntregaRendirNovedadConsumo({
 
     if (filtroValidacionTesoreria !== null) {
       movimientosFiltrados = movimientosFiltrados.filter(
-        (mov) => mov.validadoTesoreria === filtroValidacionTesoreria
+        (mov) => mov.validadoTesoreria === filtroValidacionTesoreria,
       );
     }
 
@@ -150,7 +158,10 @@ export default function DetEntregaRendirNovedadConsumo({
   const handleGuardarMovimiento = async (data) => {
     try {
       if (editingMovimiento) {
-        await actualizarDetMovsEntRendirPescaConsumo(editingMovimiento.id, data);
+        await actualizarDetMovsEntRendirPescaConsumo(
+          editingMovimiento.id,
+          data,
+        );
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -184,7 +195,7 @@ export default function DetEntregaRendirNovedadConsumo({
   const handleEliminarMovimiento = (movimiento) => {
     confirmDialog({
       message: `¿Está seguro de eliminar el movimiento del ${new Date(
-        movimiento.fechaMovimiento
+        movimiento.fechaMovimiento,
       ).toLocaleDateString()}?`,
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
@@ -233,7 +244,7 @@ export default function DetEntregaRendirNovedadConsumo({
             };
             return actualizarDetMovsEntRendirPescaConsumo(
               movimiento.id,
-              movimientoActualizado
+              movimientoActualizado,
             );
           });
 
@@ -242,10 +253,10 @@ export default function DetEntregaRendirNovedadConsumo({
           // 2. Cargar entrega completa con relaciones para el PDF
           const token = useAuthStore.getState().token;
           const headers = { Authorization: `Bearer ${token}` };
-          
+
           const entregaResponse = await fetch(
             `${import.meta.env.VITE_API_URL}/entregas-rendir-consumo/${entregaARendirPescaConsumo.id}`,
-            { headers }
+            { headers },
           );
           const entregaCompleta = await entregaResponse.json();
 
@@ -254,7 +265,7 @@ export default function DetEntregaRendirNovedadConsumo({
           try {
             const empresaResponse = await fetch(
               `${import.meta.env.VITE_API_URL}/empresas/1`,
-              { headers }
+              { headers },
             );
             if (empresaResponse.ok) {
               empresa = await empresaResponse.json();
@@ -277,7 +288,7 @@ export default function DetEntregaRendirNovedadConsumo({
               fechaLiquidacion: fechaActual,
             },
             movimientos,
-            empresa
+            empresa,
           );
 
           if (!resultadoPdf.success) {
@@ -287,7 +298,8 @@ export default function DetEntregaRendirNovedadConsumo({
           toast.current?.show({
             severity: "success",
             summary: "Liquidación Procesada",
-            detail: "La entrega a rendir ha sido liquidada exitosamente y el PDF ha sido generado",
+            detail:
+              "La entrega a rendir ha sido liquidada exitosamente y el PDF ha sido generado",
             life: 5000,
           });
 
@@ -308,26 +320,28 @@ export default function DetEntregaRendirNovedadConsumo({
   // Templates para las columnas
   const fechaMovimientoTemplate = (rowData) => {
     if (!rowData.fechaMovimiento) return "N/A";
-    
+
     const fecha = new Date(rowData.fechaMovimiento);
-    
+
     // Validar si la fecha es válida
     if (isNaN(fecha.getTime())) return "Fecha inválida";
-    
+
     return fecha.toLocaleDateString("es-PE", {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     });
   };
   const montoTemplate = (rowData) => {
     // Buscar la moneda correspondiente
-    const moneda = monedas.find((m) => Number(m.id) === Number(rowData.monedaId));
-    
+    const moneda = monedas.find(
+      (m) => Number(m.id) === Number(rowData.monedaId),
+    );
+
     // Si no hay moneda, usar PEN por defecto
     const codigoMoneda = moneda?.codigoSunat || "PEN";
     const simboloMoneda = moneda?.simbolo || "S/.";
-    
+
     // Definir color de fondo según la moneda
     let backgroundColor = "#fff9c4"; // Amarillo claro por defecto (SOLES)
     if (codigoMoneda === "USD") {
@@ -335,7 +349,7 @@ export default function DetEntregaRendirNovedadConsumo({
     } else if (codigoMoneda !== "PEN") {
       backgroundColor = "#b3e5fc"; // Celeste claro (OTRAS MONEDAS)
     }
-    
+
     // Formatear el monto con la moneda correcta
     const montoFormateado = new Intl.NumberFormat("es-PE", {
       style: "currency",
@@ -343,7 +357,7 @@ export default function DetEntregaRendirNovedadConsumo({
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(rowData.monto);
-    
+
     return (
       <div
         style={{
@@ -361,7 +375,7 @@ export default function DetEntregaRendirNovedadConsumo({
 
   const responsableTemplate = (rowData) => {
     const responsable = personal.find(
-      (p) => Number(p.id) === Number(rowData.responsableId)
+      (p) => Number(p.id) === Number(rowData.responsableId),
     );
     return responsable
       ? responsable.nombreCompleto ||
@@ -371,14 +385,14 @@ export default function DetEntregaRendirNovedadConsumo({
 
   const tipoMovimientoTemplate = (rowData) => {
     const tipo = tiposMovimiento.find(
-      (t) => Number(t.id) === Number(rowData.tipoMovimientoId)
+      (t) => Number(t.id) === Number(rowData.tipoMovimientoId),
     );
     return tipo ? tipo.nombre : "N/A";
   };
 
   const centroCostoTemplate = (rowData) => {
     const centro = centrosCosto.find(
-      (c) => Number(c.id) === Number(rowData.centroCostoId)
+      (c) => Number(c.id) === Number(rowData.centroCostoId),
     );
     return centro ? centro.Codigo + " - " + centro.Nombre : "N/A";
   };
@@ -388,7 +402,7 @@ export default function DetEntregaRendirNovedadConsumo({
     if (!rowData.entidadComercialId) return "N/A";
 
     const entidad = entidadesComerciales.find(
-      (e) => Number(e.id) === Number(rowData.entidadComercialId)
+      (e) => Number(e.id) === Number(rowData.entidadComercialId),
     );
     return entidad ? entidad.razonSocial : "N/A";
   };
@@ -639,6 +653,8 @@ export default function DetEntregaRendirNovedadConsumo({
           setShowMovimientoForm(false);
           setEditingMovimiento(null);
         }}
+        maximizable
+        maximized={true}
       >
         <DetMovsEntRendirNovedadForm
           movimiento={editingMovimiento}
@@ -647,6 +663,9 @@ export default function DetEntregaRendirNovedadConsumo({
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           entidadesComerciales={entidadesComerciales}
+          movimientosAsignacionEntregaRendir={
+            movimientosAsignacionEntregaRendir
+          }
           monedas={monedas}
           tiposDocumento={tiposDocumento}
           productos={productos}

@@ -49,20 +49,20 @@ export default function DetEntregaRendirOTMantenimiento({
 
     if (filtroTipoMovimiento) {
       movimientosFiltrados = movimientosFiltrados.filter(
-        (mov) => Number(mov.tipoMovimientoId) === Number(filtroTipoMovimiento)
+        (mov) => Number(mov.tipoMovimientoId) === Number(filtroTipoMovimiento),
       );
     }
 
     if (filtroCentroCosto) {
       movimientosFiltrados = movimientosFiltrados.filter(
-        (mov) => Number(mov.centroCostoId) === Number(filtroCentroCosto)
+        (mov) => Number(mov.centroCostoId) === Number(filtroCentroCosto),
       );
     }
 
     if (filtroIngresoEgreso !== null) {
       movimientosFiltrados = movimientosFiltrados.filter((mov) => {
         const tipoMov = tiposMovimiento.find(
-          (t) => Number(t.id) === Number(mov.tipoMovimientoId)
+          (t) => Number(t.id) === Number(mov.tipoMovimientoId),
         );
         return tipoMov?.esIngreso === filtroIngresoEgreso;
       });
@@ -70,13 +70,18 @@ export default function DetEntregaRendirOTMantenimiento({
 
     if (filtroValidacionTesoreria !== null) {
       movimientosFiltrados = movimientosFiltrados.filter(
-        (mov) => mov.validadoTesoreria === filtroValidacionTesoreria
+        (mov) => mov.validadoTesoreria === filtroValidacionTesoreria,
       );
     }
 
     return movimientosFiltrados;
   };
-
+  // Filtrar movimientos que son asignaciones (inicial o adicional) y forman parte del cálculo
+  const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
+    (mov) =>
+      (mov.tipoMovimientoId === 1 || mov.tipoMovimientoId === 2) &&
+      mov.formaParteCalculoEntregaARendir === true,
+  );
   const limpiarFiltros = () => {
     setFiltroTipoMovimiento(null);
     setFiltroCentroCosto(null);
@@ -139,7 +144,7 @@ export default function DetEntregaRendirOTMantenimiento({
       if (editingMovimiento) {
         await actualizarDetMovEntregaRendirOTMantenimiento(
           editingMovimiento.id,
-          data
+          data,
         );
         toast.current?.show({
           severity: "success",
@@ -174,7 +179,7 @@ export default function DetEntregaRendirOTMantenimiento({
   const handleEliminarMovimiento = (movimiento) => {
     confirmDialog({
       message: `¿Está seguro de eliminar el movimiento del ${new Date(
-        movimiento.fechaMovimiento
+        movimiento.fechaMovimiento,
       ).toLocaleDateString("es-PE")}?`,
       header: "Confirmar Eliminación",
       icon: "pi pi-exclamation-triangle",
@@ -209,7 +214,7 @@ export default function DetEntregaRendirOTMantenimiento({
 
   const tipoMovimientoBodyTemplate = (rowData) => {
     const tipoMov = tiposMovimiento.find(
-      (t) => Number(t.id) === Number(rowData.tipoMovimientoId)
+      (t) => Number(t.id) === Number(rowData.tipoMovimientoId),
     );
     const severity = tipoMov?.esIngreso ? "success" : "danger";
     return <Badge value={tipoMov?.descripcion || "N/A"} severity={severity} />;
@@ -217,7 +222,7 @@ export default function DetEntregaRendirOTMantenimiento({
 
   const responsableBodyTemplate = (rowData) => {
     const resp = personal.find(
-      (p) => Number(p.id) === Number(rowData.responsableId)
+      (p) => Number(p.id) === Number(rowData.responsableId),
     );
     return resp
       ? `${resp.nombres || ""} ${resp.apellidos || ""}`.trim()
@@ -226,14 +231,14 @@ export default function DetEntregaRendirOTMantenimiento({
 
   const centroCostoBodyTemplate = (rowData) => {
     const centro = centrosCosto.find(
-      (c) => Number(c.id) === Number(rowData.centroCostoId)
+      (c) => Number(c.id) === Number(rowData.centroCostoId),
     );
     return centro ? `${centro.Codigo} - ${centro.Nombre}` : "N/A";
   };
 
   const montoBodyTemplate = (rowData) => {
     const moneda = monedas.find(
-      (m) => Number(m.id) === Number(rowData.monedaId)
+      (m) => Number(m.id) === Number(rowData.monedaId),
     );
     const simbolo = moneda?.simbolo || "S/";
     return `${simbolo} ${Number(rowData.monto).toFixed(2)}`;
@@ -241,7 +246,7 @@ export default function DetEntregaRendirOTMantenimiento({
 
   const entidadComercialBodyTemplate = (rowData) => {
     const entidad = entidadesComerciales.find(
-      (e) => Number(e.id) === Number(rowData.entidadComercialId)
+      (e) => Number(e.id) === Number(rowData.entidadComercialId),
     );
     return entidad?.razonSocial || "N/A";
   };
@@ -366,7 +371,7 @@ export default function DetEntregaRendirOTMantenimiento({
         />
       </div>
 
-            {/* Tabla de movimientos */}
+      {/* Tabla de movimientos */}
       <DataTable
         dataKey="id"
         value={movimientosFiltrados}
@@ -385,10 +390,7 @@ export default function DetEntregaRendirOTMantenimiento({
         stripedRows
         size="small"
       >
-        <Column
-          selectionMode="single"
-          headerStyle={{ width: "3rem" }}
-        />
+        <Column selectionMode="single" headerStyle={{ width: "3rem" }} />
         <Column
           field="fechaMovimiento"
           header="Fecha"
@@ -465,6 +467,9 @@ export default function DetEntregaRendirOTMantenimiento({
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           entidadesComerciales={entidadesComerciales}
+          movimientosAsignacionEntregaRendir={
+            movimientosAsignacionEntregaRendir
+          }
           monedas={monedas}
           tiposDocumento={tiposDocumento}
           productos={productos}

@@ -20,6 +20,7 @@ export default function DatosGeneralesTab({
   personalOptions,
   monedas,
   centrosCosto,
+  unidadesNegocioOptions,
   tiposDocumentoOptions,
   seriesDocOptions,
   estadosOrdenOptions,
@@ -68,7 +69,7 @@ export default function DatosGeneralesTab({
     }
     // Prioridad 2: Buscar en el array de opciones (fallback)
     const moneda = monedas.find(
-      (m) => Number(m.id) === Number(formData.monedaId)
+      (m) => Number(m.id) === Number(formData.monedaId),
     );
     return moneda?.codigoSunat || "PEN";
   };
@@ -223,6 +224,34 @@ export default function DatosGeneralesTab({
               fontWeight: "bold",
               backgroundColor: "#f0f0f0",
             }}
+          />
+        </div>
+
+        <div style={{ flex: 1 }}>
+          {/* UNIDAD DE NEGOCIO */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="unidadNegocioId"
+          >
+            Unidad de Negocio*
+          </label>
+          <Dropdown
+            id="unidadNegocioId"
+            value={
+              formData.unidadNegocioId ? Number(formData.unidadNegocioId) : null
+            }
+            options={unidadesNegocioOptions}
+            onChange={(e) => onChange("unidadNegocioId", e.value)}
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccionar unidad de negocio"
+            filter
+            showClear
+            style={{
+              fontWeight: "bold",
+              textTransform: "uppercase",
+            }}
+            disabled={!puedeEditar || readOnly}
           />
         </div>
       </div>
@@ -537,7 +566,9 @@ export default function DatosGeneralesTab({
           <Calendar
             id="fechaFacturacion"
             value={fechaFacturacion}
-            onChange={(e) => onFechaFacturacionChange && onFechaFacturacionChange(e.value)}
+            onChange={(e) =>
+              onFechaFacturacionChange && onFechaFacturacionChange(e.value)
+            }
             dateFormat="dd/mm/yy"
             showIcon
             disabled={!puedeEditar || readOnly}
@@ -559,7 +590,9 @@ export default function DatosGeneralesTab({
             label={esGerencial ? "SÍ" : "NO"}
             icon={esGerencial ? "pi pi-check-circle" : "pi pi-times-circle"}
             severity={esGerencial ? "success" : "danger"}
-            onClick={() => onEsGerencialChange && onEsGerencialChange(!esGerencial)}
+            onClick={() =>
+              onEsGerencialChange && onEsGerencialChange(!esGerencial)
+            }
             disabled={!puedeEditar || readOnly}
             outlined
             style={{
@@ -584,7 +617,9 @@ export default function DatosGeneralesTab({
             label={esParticionada ? "SÍ" : "NO"}
             icon={esParticionada ? "pi pi-check-circle" : "pi pi-times-circle"}
             severity={esParticionada ? "info" : "secondary"}
-            onClick={() => onEsParticionadaChange && onEsParticionadaChange(!esParticionada)}
+            onClick={() =>
+              onEsParticionadaChange && onEsParticionadaChange(!esParticionada)
+            }
             disabled={!puedeEditar || readOnly}
             outlined
             style={{
@@ -680,7 +715,7 @@ export default function DatosGeneralesTab({
           />
         </div>
 
-        <div style={{ flex: 0.30 }}>
+        <div style={{ flex: 0.3 }}>
           {/* PORCENTAJE IGV */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -774,7 +809,8 @@ export default function DatosGeneralesTab({
               icon="pi pi-box"
               severity="success"
               onClick={() =>
-                onIrAMovimientoAlmacen && onIrAMovimientoAlmacen(formData.movIngresoAlmacenId)
+                onIrAMovimientoAlmacen &&
+                onIrAMovimientoAlmacen(formData.movIngresoAlmacenId)
               }
               outlined
               style={{

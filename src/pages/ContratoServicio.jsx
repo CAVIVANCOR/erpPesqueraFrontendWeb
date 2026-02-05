@@ -30,6 +30,7 @@ import { getContactosEntidad } from "../api/contactoEntidad";
 import { getPersonal } from "../api/personal";
 import { getTiposDocumento } from "../api/tipoDocumento";
 import { getMonedas } from "../api/moneda";
+import { getUnidadesNegocio } from "../api/unidadNegocio";
 import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { getProductos } from "../api/producto";
 import { getCentrosAlmacen } from "../api/centrosAlmacen";
@@ -39,7 +40,6 @@ import { usePermissions } from "../hooks/usePermissions";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import ColorTag from "../components/shared/ColorTag";
-
 /**
  * Componente ContratoServicio
  * Gestión CRUD de contratos de servicio con patrón profesional ERP Megui
@@ -47,7 +47,6 @@ import ColorTag from "../components/shared/ColorTag";
 const ContratoServicio = ({ ruta }) => {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
-
   // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
@@ -67,6 +66,7 @@ const ContratoServicio = ({ ruta }) => {
   const [centrosAlmacen, setCentrosAlmacen] = useState([]);
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
+  const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [selectedContrato, setSelectedContrato] = useState(null);
@@ -116,6 +116,7 @@ const ContratoServicio = ({ ruta }) => {
         personalData,
         tiposDocData,
         monedasData,
+        unidadesNegocioData,
         estadosData,
         productosData,
         centrosAlmacenData,
@@ -131,11 +132,13 @@ const ContratoServicio = ({ ruta }) => {
         getPersonal(),
         getTiposDocumento(),
         getMonedas(),
+        getUnidadesNegocio({ activo: true }),
         getEstadosMultiFuncion(),
         getProductos(),
         getCentrosAlmacen(),
         getCentrosCosto(),
         getTiposMovimiento(),
+        getAsignacionesOrigen({ activo: true }),
       ]);
 
       setEmpresas(empresasData);
@@ -154,10 +157,14 @@ const ContratoServicio = ({ ruta }) => {
 
       setTiposDocumento(tiposDocData);
       setMonedas(monedasData);
-
+      if (unidadesNegocioData && Array.isArray(unidadesNegocioData)) {
+        setUnidadesNegocio(
+          unidadesNegocioData.map((un) => ({ ...un, id: Number(un.id) })),
+        );
+      }
       // Filtrar estados de contratos (tipoProvieneDeId = 18 para CONTRATOS DE SERVICIOS)
       const estadosContratoFiltrados = estadosData.filter(
-        (e) => Number(e.tipoProvieneDeId) === 18 && !e.cesado
+        (e) => Number(e.tipoProvieneDeId) === 18 && !e.cesado,
       );
       setEstadosContrato(estadosContratoFiltrados);
 
@@ -178,19 +185,21 @@ const ContratoServicio = ({ ruta }) => {
 
   // Filtrar clientes por empresa seleccionada
   const clientesFiltrados = empresaSeleccionada
-    ? clientes.filter((c) => Number(c.empresaId) === Number(empresaSeleccionada))
+    ? clientes.filter(
+        (c) => Number(c.empresaId) === Number(empresaSeleccionada),
+      )
     : clientes;
 
   // Filtrar estados dinámicamente (solo mostrar estados que existan en los contratos)
   const estadosDisponibles = estadosContrato.filter((estado) =>
-    contratos.some((c) => Number(c.estadoContratoId) === Number(estado.id))
+    contratos.some((c) => Number(c.estadoContratoId) === Number(estado.id)),
   );
 
   // Limpiar cliente seleccionado cuando cambie la empresa
   useEffect(() => {
     if (empresaSeleccionada && clienteSeleccionado) {
       const clienteValido = clientesFiltrados.some(
-        (c) => Number(c.id) === Number(clienteSeleccionado)
+        (c) => Number(c.id) === Number(clienteSeleccionado),
       );
       if (!clienteValido) {
         setClienteSeleccionado(null);
@@ -204,19 +213,19 @@ const ContratoServicio = ({ ruta }) => {
 
     if (empresaSeleccionada) {
       filtrados = filtrados.filter(
-        (item) => Number(item.empresaId) === Number(empresaSeleccionada)
+        (item) => Number(item.empresaId) === Number(empresaSeleccionada),
       );
     }
 
     if (clienteSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => Number(item.clienteId) === Number(clienteSeleccionado)
+        (item) => Number(item.clienteId) === Number(clienteSeleccionado),
       );
     }
 
     if (estadoSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => Number(item.estadoContratoId) === Number(estadoSeleccionado)
+        (item) => Number(item.estadoContratoId) === Number(estadoSeleccionado),
       );
     }
 
@@ -253,12 +262,11 @@ const ContratoServicio = ({ ruta }) => {
       // Obtener aprobadorId desde ParametroAprobador
       let aprobadorId = null;
       if (empresaSeleccionada) {
-        const { getParametrosAprobadorPorModulo } = await import(
-          "../api/parametroAprobador"
-        );
+        const { getParametrosAprobadorPorModulo } =
+          await import("../api/parametroAprobador");
         const parametros = await getParametrosAprobadorPorModulo(
           empresaSeleccionada,
-          5
+          5,
         ); // 5 = VENTAS (Contratos de Servicios son ventas de servicios)
 
         // Filtrar por cesado=false y tomar el primero
@@ -267,7 +275,7 @@ const ContratoServicio = ({ ruta }) => {
           aprobadorId = parametroActivo.personalRespId;
         } else {
           console.warn(
-            `[ContratoServicio] No se encontró ParametroAprobador activo para empresa ${empresaSeleccionada}, módulo VENTAS`
+            `[ContratoServicio] No se encontró ParametroAprobador activo para empresa ${empresaSeleccionada}, módulo VENTAS`,
           );
         }
       }
@@ -336,7 +344,9 @@ const ContratoServicio = ({ ruta }) => {
           detail: "Contrato actualizado correctamente",
         });
         // Recargar el contrato actualizado
-        const contratoActualizado = await getContratoServicioPorId(selectedContrato.id);
+        const contratoActualizado = await getContratoServicioPorId(
+          selectedContrato.id,
+        );
         setSelectedContrato(contratoActualizado);
         cargarContratos();
       } else {
@@ -345,7 +355,8 @@ const ContratoServicio = ({ ruta }) => {
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
-          detail: "Contrato creado correctamente. Ahora puede agregar los servicios.",
+          detail:
+            "Contrato creado correctamente. Ahora puede agregar los servicios.",
         });
         // Cambiar a modo edición con el contrato recién creado
         setSelectedContrato(contratoCreado);
@@ -512,8 +523,8 @@ const ContratoServicio = ({ ruta }) => {
             !permisos.puedeCrear
               ? "No tiene permisos para crear"
               : !empresaSeleccionada
-              ? "Seleccione una empresa para crear un contrato"
-              : "Nuevo Contrato"
+                ? "Seleccione una empresa para crear un contrato"
+                : "Nuevo Contrato"
           }
           tooltipOptions={{ position: "left" }}
         />
@@ -532,7 +543,13 @@ const ContratoServicio = ({ ruta }) => {
         }}
       >
         <div>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "0.5rem",
+              fontWeight: "bold",
+            }}
+          >
             Empresa
           </label>
           <Dropdown
@@ -549,7 +566,13 @@ const ContratoServicio = ({ ruta }) => {
         </div>
 
         <div>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "0.5rem",
+              fontWeight: "bold",
+            }}
+          >
             Cliente
           </label>
           <Dropdown
@@ -567,12 +590,22 @@ const ContratoServicio = ({ ruta }) => {
         </div>
 
         <div>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "0.5rem",
+              fontWeight: "bold",
+            }}
+          >
             Estado
           </label>
           <Dropdown
             value={estadoSeleccionado}
-            options={estadosDisponibles.length > 0 ? estadosDisponibles : estadosContrato}
+            options={
+              estadosDisponibles.length > 0
+                ? estadosDisponibles
+                : estadosContrato
+            }
             onChange={(e) => setEstadoSeleccionado(e.value)}
             optionLabel="descripcion"
             optionValue="id"
@@ -583,7 +616,13 @@ const ContratoServicio = ({ ruta }) => {
         </div>
 
         <div>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "0.5rem",
+              fontWeight: "bold",
+            }}
+          >
             Fecha Desde
           </label>
           <Calendar
@@ -597,7 +636,13 @@ const ContratoServicio = ({ ruta }) => {
         </div>
 
         <div>
-          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "0.5rem",
+              fontWeight: "bold",
+            }}
+          >
             Fecha Hasta
           </label>
           <Calendar
@@ -642,16 +687,66 @@ const ContratoServicio = ({ ruta }) => {
         }}
         stripedRows
       >
-        <Column field="numeroCompleto" header="Número" body={numeroTemplate} sortable />
-        <Column field="empresa.razonSocial" header="Empresa" body={empresaTemplate} sortable />
-        <Column field="sede.nombre" header="Sede" body={sedeTemplate} sortable />
-        <Column field="cliente.razonSocial" header="Cliente" body={clienteTemplate} sortable filter />
-        <Column field="fechaCelebracion" header="F. Celebración" body={fechaCelebracionTemplate} sortable />
-        <Column field="fechaInicioContrato" header="F. Inicio" body={fechaInicioTemplate} sortable />
-        <Column field="fechaFinContrato" header="F. Fin" body={fechaFinTemplate} sortable />
-        <Column field="estadoContrato.nombre" header="Estado" body={estadoTemplate} sortable />
-        <Column field="montoTotal" header="Monto Total" body={montoTemplate} sortable />
-        <Column header="Acciones" body={accionesTemplate} style={{ width: "120px" }} />
+        <Column
+          field="numeroCompleto"
+          header="Número"
+          body={numeroTemplate}
+          sortable
+        />
+        <Column
+          field="empresa.razonSocial"
+          header="Empresa"
+          body={empresaTemplate}
+          sortable
+        />
+        <Column
+          field="sede.nombre"
+          header="Sede"
+          body={sedeTemplate}
+          sortable
+        />
+        <Column
+          field="cliente.razonSocial"
+          header="Cliente"
+          body={clienteTemplate}
+          sortable
+          filter
+        />
+        <Column
+          field="fechaCelebracion"
+          header="F. Celebración"
+          body={fechaCelebracionTemplate}
+          sortable
+        />
+        <Column
+          field="fechaInicioContrato"
+          header="F. Inicio"
+          body={fechaInicioTemplate}
+          sortable
+        />
+        <Column
+          field="fechaFinContrato"
+          header="F. Fin"
+          body={fechaFinTemplate}
+          sortable
+        />
+        <Column
+          field="estadoContrato.nombre"
+          header="Estado"
+          body={estadoTemplate}
+          sortable
+        />
+        <Column
+          field="montoTotal"
+          header="Monto Total"
+          body={montoTemplate}
+          sortable
+        />
+        <Column
+          header="Acciones"
+          body={accionesTemplate}
+          style={{ width: "120px" }}
+        />
       </DataTable>
 
       {/* Dialog del Formulario */}
@@ -681,12 +776,15 @@ const ContratoServicio = ({ ruta }) => {
           centrosAlmacen={centrosAlmacen}
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
+          unidadesNegocio={unidadesNegocio}
           entidadesComerciales={clientes}
           empresaFija={empresaSeleccionada}
           toast={toast}
           isEdit={isEditing}
           permisos={permisos}
-          readOnly={!!selectedContrato && !!selectedContrato.id && !permisos.puedeEditar}
+          readOnly={
+            !!selectedContrato && !!selectedContrato.id && !permisos.puedeEditar
+          }
         />
       </Dialog>
     </div>

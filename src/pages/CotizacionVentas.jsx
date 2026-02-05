@@ -40,6 +40,7 @@ import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { getCentrosCosto } from "../api/centroCosto";
 import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { getMonedas } from "../api/moneda";
+import { getUnidadesNegocio } from "../api/unidadNegocio";
 import { getIncoterms } from "../api/incoterm";
 import { getPaises } from "../api/pais";
 import { getPuertosPesca } from "../api/puertoPesca";
@@ -60,7 +61,6 @@ import ColorTag from "../components/shared/ColorTag";
 const CotizacionVentas = ({ ruta }) => {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
-
   // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
@@ -82,6 +82,7 @@ const CotizacionVentas = ({ ruta }) => {
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [monedas, setMonedas] = useState([]);
+  const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [incoterms, setIncoterms] = useState([]);
   const [paises, setPaises] = useState([]);
   const [puertos, setPuertos] = useState([]);
@@ -166,6 +167,7 @@ const CotizacionVentas = ({ ruta }) => {
         centrosCostoData,
         tiposMovimientoData,
         monedasData,
+        unidadesNegocioData,
         incotermsData,
         paisesData,
         puertosData,
@@ -188,6 +190,7 @@ const CotizacionVentas = ({ ruta }) => {
         getCentrosCosto(),
         getAllTipoMovEntregaRendir(),
         getMonedas(),
+        getUnidadesNegocio({ activo: true }),
         getIncoterms(),
         getPaises(),
         getPuertosPesca(),
@@ -214,26 +217,22 @@ const CotizacionVentas = ({ ruta }) => {
       setAgenteAduanas(agenteAduanasData);
       setOperadoresLogisticos(operadoresLogisticosData);
       setNavieras(navierasData);
-
       setTiposProducto(tiposProductoData);
       setTiposEstadoProducto(tiposEstadoProductoData);
       setDestinosProducto(destinosProductoData);
       setFormasPago(formasPagoData);
       setProductos(productosData);
-
       // Mapear personal con nombreCompleto
       const personalConNombres = personalData.map((p) => ({
         ...p,
         nombreCompleto: `${p.nombres || ""} ${p.apellidos || ""}`.trim(),
       }));
       setPersonalOptions(personalConNombres);
-
       // Filtrar estados de documentos (tipoProvieneDeId = 13 para COTIZACION VENTA)
       const estadosDocFiltrados = estadosData.filter(
         (e) => Number(e.tipoProvieneDeId) === 13 && !e.cesado,
       );
       setEstadosDoc(estadosDocFiltrados);
-
       // Normalizar cotizaciones agregando estadoDoc manualmente
       const cotizacionesNormalizadas = cotizaciones.map((req) => ({
         ...req,
@@ -245,6 +244,11 @@ const CotizacionVentas = ({ ruta }) => {
       setCentrosCosto(centrosCostoData);
       setTiposMovimiento(tiposMovimientoData);
       setMonedas(monedasData);
+      if (unidadesNegocioData && Array.isArray(unidadesNegocioData)) {
+        setUnidadesNegocio(
+          unidadesNegocioData.map((un) => ({ ...un, id: Number(un.id) })),
+        );
+      }
       setIncoterms(incotermsData);
       setPaises(paisesData);
       setPuertos(puertosData);
@@ -1025,6 +1029,7 @@ const CotizacionVentas = ({ ruta }) => {
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           monedas={monedas}
+          unidadesNegocio={unidadesNegocio}
           incoterms={incoterms}
           paises={paises}
           puertos={puertos}

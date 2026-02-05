@@ -53,6 +53,7 @@ export default function MovimientoAlmacenForm({
   centrosCosto = [], // Para entregas a rendir
   tiposMovimiento = [], // Para entregas a rendir
   monedas = [], // Para entregas a rendir
+  unidadesNegocio = [],
   onSubmit,
   onCancel,
   onCerrar,
@@ -69,83 +70,87 @@ export default function MovimientoAlmacenForm({
   // Estados de la cabecera - Conforme al modelo MovimientoAlmacen
   const [empresaId, setEmpresaId] = useState(defaultValues.empresaId || null);
   const [tipoDocumentoId, setTipoDocumentoId] = useState(
-    defaultValues.tipoDocumentoId || null
+    defaultValues.tipoDocumentoId || null,
   );
   const [conceptoMovAlmacenId, setConceptoMovAlmacenId] = useState(
-    defaultValues.conceptoMovAlmacenId || null
+    defaultValues.conceptoMovAlmacenId || null,
   );
   const [serieDocId, setSerieDocId] = useState(
-    defaultValues.serieDocId || null
+    defaultValues.serieDocId || null,
   );
   const [numSerieDoc, setNumSerieDoc] = useState(
-    defaultValues.numSerieDoc || ""
+    defaultValues.numSerieDoc || "",
   );
   const [numCorreDoc, setNumCorreDoc] = useState(
-    defaultValues.numCorreDoc || ""
+    defaultValues.numCorreDoc || "",
   );
   const [numeroDocumento, setNumeroDocumento] = useState(
-    defaultValues.numeroDocumento || ""
+    defaultValues.numeroDocumento || "",
   );
   const [fechaDocumento, setFechaDocumento] = useState(
     defaultValues.fechaDocumento
       ? new Date(defaultValues.fechaDocumento)
-      : new Date()
+      : new Date(),
   );
   const [entidadComercialId, setEntidadComercialId] = useState(
-    defaultValues.entidadComercialId || null
+    defaultValues.entidadComercialId || null,
   );
   const [faenaPescaId, setFaenaPescaId] = useState(
-    defaultValues.faenaPescaId || null
+    defaultValues.faenaPescaId || null,
   );
   const [embarcacionId, setEmbarcacionId] = useState(
-    defaultValues.embarcacionId || null
+    defaultValues.embarcacionId || null,
   );
   const [ordenTrabajoId, setOrdenTrabajoId] = useState(
-    defaultValues.ordenTrabajoId || null
+    defaultValues.ordenTrabajoId || null,
   );
   const [dirOrigenId, setDirOrigenId] = useState(
-    defaultValues.dirOrigenId || null
+    defaultValues.dirOrigenId || null,
   );
   const [dirDestinoId, setDirDestinoId] = useState(
-    defaultValues.dirDestinoId || null
+    defaultValues.dirDestinoId || null,
   );
   const [numGuiaSunat, setNumGuiaSunat] = useState(
-    defaultValues.numGuiaSunat || ""
+    defaultValues.numGuiaSunat || "",
   );
   const [fechaGuiaSunat, setFechaGuiaSunat] = useState(
-    defaultValues.fechaGuiaSunat ? new Date(defaultValues.fechaGuiaSunat) : null
+    defaultValues.fechaGuiaSunat
+      ? new Date(defaultValues.fechaGuiaSunat)
+      : null,
   );
   const [transportistaId, setTransportistaId] = useState(
-    defaultValues.transportistaId || null
+    defaultValues.transportistaId || null,
   );
   const [vehiculoId, setVehiculoId] = useState(
-    defaultValues.vehiculoId || null
+    defaultValues.vehiculoId || null,
   );
   const [agenciaEnvioId, setAgenciaEnvioId] = useState(
-    defaultValues.agenciaEnvioId || null
+    defaultValues.agenciaEnvioId || null,
   );
   const [dirAgenciaEnvioId, setDirAgenciaEnvioId] = useState(
-    defaultValues.dirAgenciaEnvioId || null
+    defaultValues.dirAgenciaEnvioId || null,
   );
   const [personalRespAlmacen, setPersonalRespAlmacen] = useState(
-    defaultValues.personalRespAlmacen || null
+    defaultValues.personalRespAlmacen || null,
   );
   const [ordenCompraId, setOrdenCompraId] = useState(
-    defaultValues.ordenCompraId || null
+    defaultValues.ordenCompraId || null,
   );
   const [pedidoVentaId, setPedidoVentaId] = useState(
-    defaultValues.pedidoVentaId || null
+    defaultValues.pedidoVentaId || null,
   );
   const [estadoDocAlmacenId, setEstadoDocAlmacenId] = useState(
-    defaultValues.estadoDocAlmacenId || null
+    defaultValues.estadoDocAlmacenId || null,
   );
   const [esCustodia, setEsCustodia] = useState(
-    defaultValues.esCustodia !== undefined ? defaultValues.esCustodia : false
+    defaultValues.esCustodia !== undefined ? defaultValues.esCustodia : false,
   );
   const [observaciones, setObservaciones] = useState(
-    defaultValues.observaciones || ""
+    defaultValues.observaciones || "",
   );
-
+  const [unidadNegocioId, setUnidadNegocioId] = useState(
+    defaultValues.unidadNegocioId || null,
+  );
   // Estados para información de almacenes del concepto
   const [almacenOrigenInfo, setAlmacenOrigenInfo] = useState(null);
   const [almacenDestinoInfo, setAlmacenDestinoInfo] = useState(null);
@@ -186,11 +191,10 @@ export default function MovimientoAlmacenForm({
   const recargarDetalles = async () => {
     if (defaultValues?.id) {
       try {
-        const { getMovimientoAlmacenPorId } = await import(
-          "../../api/movimientoAlmacen"
-        );
+        const { getMovimientoAlmacenPorId } =
+          await import("../../api/movimientoAlmacen");
         const movimientoActualizado = await getMovimientoAlmacenPorId(
-          defaultValues.id
+          defaultValues.id,
         );
         setDetalles(movimientoActualizado.detalles || []);
       } catch (error) {
@@ -215,21 +219,21 @@ export default function MovimientoAlmacenForm({
       empresaFija
         ? Number(empresaFija)
         : defaultValues.empresaId
-        ? Number(defaultValues.empresaId)
-        : null
+          ? Number(defaultValues.empresaId)
+          : null,
     );
     setTipoDocumentoId(
       defaultValues.tipoDocumentoId
         ? Number(defaultValues.tipoDocumentoId)
-        : null
+        : null,
     );
     setConceptoMovAlmacenId(
       defaultValues.conceptoMovAlmacenId
         ? Number(defaultValues.conceptoMovAlmacenId)
-        : null
+        : null,
     );
     setSerieDocId(
-      defaultValues.serieDocId ? Number(defaultValues.serieDocId) : null
+      defaultValues.serieDocId ? Number(defaultValues.serieDocId) : null,
     );
     setNumSerieDoc(defaultValues.numSerieDoc || "");
     setNumCorreDoc(defaultValues.numCorreDoc || "");
@@ -237,21 +241,21 @@ export default function MovimientoAlmacenForm({
     setFechaDocumento(
       defaultValues.fechaDocumento
         ? new Date(defaultValues.fechaDocumento)
-        : new Date()
+        : new Date(),
     );
     setEntidadComercialId(
       defaultValues.entidadComercialId
         ? Number(defaultValues.entidadComercialId)
-        : null
+        : null,
     );
     setEsCustodia(
-      defaultValues.esCustodia !== undefined ? defaultValues.esCustodia : false
+      defaultValues.esCustodia !== undefined ? defaultValues.esCustodia : false,
     );
     setObservaciones(defaultValues.observaciones || "");
     setEstadoDocAlmacenId(
       defaultValues.estadoDocAlmacenId
         ? Number(defaultValues.estadoDocAlmacenId)
-        : null
+        : null,
     );
     setDetalles(defaultValues.detalles || []);
   }, [defaultValues, empresaFija]);
@@ -261,7 +265,7 @@ export default function MovimientoAlmacenForm({
     const cargarInfoAlmacenes = async () => {
       if (conceptoMovAlmacenId) {
         const concepto = conceptosMovAlmacen.find(
-          (c) => Number(c.id) === Number(conceptoMovAlmacenId)
+          (c) => Number(c.id) === Number(conceptoMovAlmacenId),
         );
         if (concepto) {
           setEsCustodia(concepto.esCustodia || false);
@@ -320,14 +324,14 @@ export default function MovimientoAlmacenForm({
         try {
           // Obtener el concepto para sacar el tipoAlmacenId
           const concepto = conceptosMovAlmacen.find(
-            (c) => Number(c.id) === Number(conceptoMovAlmacenId)
+            (c) => Number(c.id) === Number(conceptoMovAlmacenId),
           );
 
           if (concepto && concepto.tipoAlmacenId) {
             const series = await getSeriesDoc(
               empresaId,
               tipoDocumentoId,
-              concepto.tipoAlmacenId
+              concepto.tipoAlmacenId,
             );
             setSeriesDoc(series);
           } else {
@@ -350,12 +354,12 @@ export default function MovimientoAlmacenForm({
       try {
         if (conceptoMovAlmacenId && empresaId) {
           const concepto = conceptosMovAlmacen.find(
-            (c) => Number(c.id) === Number(conceptoMovAlmacenId)
+            (c) => Number(c.id) === Number(conceptoMovAlmacenId),
           );
 
           if (concepto) {
             const empresa = empresas.find(
-              (e) => Number(e.id) === Number(empresaId)
+              (e) => Number(e.id) === Number(empresaId),
             );
             const entidadEmpresaId = empresa?.entidadComercialId;
 
@@ -367,7 +371,7 @@ export default function MovimientoAlmacenForm({
                 // Solo direcciones de la empresa
                 direccionesFiltradas = direcciones.filter(
                   (d) =>
-                    Number(d.entidadComercialId) === Number(entidadEmpresaId)
+                    Number(d.entidadComercialId) === Number(entidadEmpresaId),
                 );
               } else {
                 // Direcciones de la empresa + entidad comercial del movimiento
@@ -376,7 +380,7 @@ export default function MovimientoAlmacenForm({
                   entidadesPermitidas.push(entidadComercialId);
                 }
                 direccionesFiltradas = direcciones.filter((d) =>
-                  entidadesPermitidas.includes(Number(d.entidadComercialId))
+                  entidadesPermitidas.includes(Number(d.entidadComercialId)),
                 );
               }
 
@@ -408,12 +412,12 @@ export default function MovimientoAlmacenForm({
       try {
         if (conceptoMovAlmacenId && empresaId) {
           const concepto = conceptosMovAlmacen.find(
-            (c) => Number(c.id) === Number(conceptoMovAlmacenId)
+            (c) => Number(c.id) === Number(conceptoMovAlmacenId),
           );
 
           if (concepto) {
             const empresa = empresas.find(
-              (e) => Number(e.id) === Number(empresaId)
+              (e) => Number(e.id) === Number(empresaId),
             );
             const entidadEmpresaId = empresa?.entidadComercialId;
 
@@ -425,7 +429,7 @@ export default function MovimientoAlmacenForm({
                 // Solo direcciones de la empresa
                 direccionesFiltradas = direcciones.filter(
                   (d) =>
-                    Number(d.entidadComercialId) === Number(entidadEmpresaId)
+                    Number(d.entidadComercialId) === Number(entidadEmpresaId),
                 );
               } else {
                 // Direcciones de la empresa + entidad comercial del movimiento
@@ -434,7 +438,7 @@ export default function MovimientoAlmacenForm({
                   entidadesPermitidas.push(entidadComercialId);
                 }
                 direccionesFiltradas = direcciones.filter((d) =>
-                  entidadesPermitidas.includes(Number(d.entidadComercialId))
+                  entidadesPermitidas.includes(Number(d.entidadComercialId)),
                 );
               }
 
@@ -464,7 +468,7 @@ export default function MovimientoAlmacenForm({
   useEffect(() => {
     if (entidadesComerciales && entidadesComerciales.length > 0 && empresaId) {
       const entidadesPorEmpresa = entidadesComerciales.filter(
-        (e) => Number(e.empresaId) === Number(empresaId)
+        (e) => Number(e.empresaId) === Number(empresaId),
       );
       setEntidadesFiltradas(entidadesPorEmpresa);
     } else {
@@ -476,18 +480,18 @@ export default function MovimientoAlmacenForm({
   useEffect(() => {
     if (entidadesComerciales && entidadesComerciales.length > 0) {
       const transportistasFiltrados = entidadesComerciales.filter(
-        (e) => Number(e.tipoEntidadId) === 11
+        (e) => Number(e.tipoEntidadId) === 11,
       );
 
       // Agregar la entidad comercial seleccionada si existe
       if (entidadComercialId) {
         const entidadSeleccionada = entidadesComerciales.find(
-          (e) => Number(e.id) === Number(entidadComercialId)
+          (e) => Number(e.id) === Number(entidadComercialId),
         );
         if (
           entidadSeleccionada &&
           !transportistasFiltrados.find(
-            (t) => Number(t.id) === Number(entidadSeleccionada.id)
+            (t) => Number(t.id) === Number(entidadSeleccionada.id),
           )
         ) {
           transportistasFiltrados.push(entidadSeleccionada);
@@ -504,18 +508,18 @@ export default function MovimientoAlmacenForm({
   useEffect(() => {
     if (entidadesComerciales && entidadesComerciales.length > 0) {
       const agenciasFiltradas = entidadesComerciales.filter(
-        (e) => Number(e.tipoEntidadId) === 7
+        (e) => Number(e.tipoEntidadId) === 7,
       );
 
       // Agregar la entidad comercial seleccionada si existe
       if (entidadComercialId) {
         const entidadSeleccionada = entidadesComerciales.find(
-          (e) => Number(e.id) === Number(entidadComercialId)
+          (e) => Number(e.id) === Number(entidadComercialId),
         );
         if (
           entidadSeleccionada &&
           !agenciasFiltradas.find(
-            (a) => Number(a.id) === Number(entidadSeleccionada.id)
+            (a) => Number(a.id) === Number(entidadSeleccionada.id),
           )
         ) {
           agenciasFiltradas.push(entidadSeleccionada);
@@ -535,7 +539,7 @@ export default function MovimientoAlmacenForm({
         if (transportistaId) {
           const vehiculos = await getVehiculosEntidad();
           const vehiculosFiltrados = vehiculos.filter(
-            (v) => Number(v.entidadComercialId) === Number(transportistaId)
+            (v) => Number(v.entidadComercialId) === Number(transportistaId),
           );
           setVehiculosFiltrados(vehiculosFiltrados);
         } else {
@@ -557,7 +561,7 @@ export default function MovimientoAlmacenForm({
         if (agenciaEnvioId) {
           const direcciones = await getDireccionesEntidad();
           const direccionesFiltradas = direcciones.filter(
-            (d) => Number(d.entidadComercialId) === Number(agenciaEnvioId)
+            (d) => Number(d.entidadComercialId) === Number(agenciaEnvioId),
           );
           setDireccionesAgencia(direccionesFiltradas);
         } else {
@@ -581,14 +585,14 @@ export default function MovimientoAlmacenForm({
         // Filtrar estados para Inventarios (tipoProvieneDeId = 9)
         // Estados: 30=Pendiente, 31=Cerrado, 32=Anulado
         const estadosFiltrados = estados.filter(
-          (e) => Number(e.tipoProvieneDeId) === 9 && !e.cesado
+          (e) => Number(e.tipoProvieneDeId) === 9 && !e.cesado,
         );
         setEstadosDocumento(estadosFiltrados);
 
         // Si no hay estado asignado, asignar estado "Pendiente" (id=30) por defecto
         if (!estadoDocAlmacenId && estadosFiltrados.length > 0) {
           const estadoPendiente = estadosFiltrados.find(
-            (e) => Number(e.id) === 30
+            (e) => Number(e.id) === 30,
           );
           if (estadoPendiente) {
             setEstadoDocAlmacenId(Number(estadoPendiente.id));
@@ -612,7 +616,7 @@ export default function MovimientoAlmacenForm({
             (p) =>
               Number(p.empresaId) === Number(empresaId) &&
               Number(p.moduloSistemaId) === 6 &&
-              p.cesado === false
+              p.cesado === false,
           );
           if (parametroInventario && parametroInventario.personalRespId) {
             setPersonalRespAlmacen(Number(parametroInventario.personalRespId));
@@ -637,7 +641,7 @@ export default function MovimientoAlmacenForm({
         const proximoCorrelativo = Number(serie.correlativo) + 1;
         const numSerie = String(serie.serie).padStart(
           serie.numCerosIzqSerie,
-          "0"
+          "0",
         );
 
         setNumSerieDoc(numSerie);
@@ -695,6 +699,7 @@ export default function MovimientoAlmacenForm({
         : null,
       esCustodia,
       observaciones,
+      unidadNegocioId: unidadNegocioId ? Number(unidadNegocioId) : null,
       detalles,
     });
   };
@@ -736,6 +741,11 @@ export default function MovimientoAlmacenForm({
     id: Number(s.id),
     label: `${s.serie} (Correlativo: ${s.correlativo})`,
     value: Number(s.id),
+  }));
+
+  const unidadesNegocioOptions = unidadesNegocio.map((unidad) => ({
+    label: unidad.nombre,
+    value: Number(unidad.id),
   }));
 
   return (
@@ -894,18 +904,18 @@ export default function MovimientoAlmacenForm({
                     estadoDocAlmacenId === 30
                       ? "#f97316"
                       : estadoDocAlmacenId === 31
-                      ? "#22c55e"
-                      : estadoDocAlmacenId === 32
-                      ? "#ef4444"
-                      : "#ffffff",
+                        ? "#22c55e"
+                        : estadoDocAlmacenId === 32
+                          ? "#ef4444"
+                          : "#ffffff",
                   color:
                     estadoDocAlmacenId === 30
                       ? "#ffffff"
                       : estadoDocAlmacenId === 31
-                      ? "#ffffff"
-                      : estadoDocAlmacenId === 32
-                      ? "#ffffff"
-                      : "#000000",
+                        ? "#ffffff"
+                        : estadoDocAlmacenId === 32
+                          ? "#ffffff"
+                          : "#000000",
                 }}
               />
             </div>
@@ -919,6 +929,25 @@ export default function MovimientoAlmacenForm({
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
+            <div style={{ flex: 1.5 }}>
+              <label htmlFor="unidadNegocioId">Unidad de Negocio*</label>
+              <Dropdown
+                id="unidadNegocioId"
+                value={unidadNegocioId ? Number(unidadNegocioId) : null}
+                options={unidadesNegocioOptions}
+                onChange={(e) => setUnidadNegocioId(e.value)}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccionar unidad de negocio"
+                filter
+                showClear
+                style={{
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                }}
+                disabled={readOnly || loading}
+              />
+            </div>
             <div style={{ flex: 4 }}>
               <label htmlFor="conceptoMovAlmacenId">Concepto Movimiento*</label>
               <Dropdown
@@ -957,11 +986,7 @@ export default function MovimientoAlmacenForm({
               <>
                 {ordenCompraId && (
                   <div style={{ flex: 0.5 }}>
-                    <label
-                      htmlFor="ordenCompra"
-                    >
-                      O/C (Origen)
-                    </label>
+                    <label htmlFor="ordenCompra">O/C (Origen)</label>
                     <Button
                       type="button"
                       id="ordenCompra"
@@ -982,9 +1007,7 @@ export default function MovimientoAlmacenForm({
                 )}
                 {pedidoVentaId && (
                   <div style={{ flex: 0.5 }}>
-                    <label htmlFor="preFactura">
-                      PreFactura (Destino)
-                    </label>
+                    <label htmlFor="preFactura">PreFactura (Destino)</label>
                     <Button
                       type="button"
                       id="preFactura"
@@ -1224,8 +1247,8 @@ export default function MovimientoAlmacenForm({
                   !isEdit
                     ? "Primero debes guardar el movimiento"
                     : !permisos.puedeCrear && !permisos.puedeEditar
-                    ? "No tiene permisos para agregar detalles"
-                    : ""
+                      ? "No tiene permisos para agregar detalles"
+                      : ""
                 }
                 tooltipOptions={{ position: "top" }}
               />
@@ -1249,8 +1272,8 @@ export default function MovimientoAlmacenForm({
                     detalles.map((d) =>
                       d === editingDetalle
                         ? { ...editingDetalle, ...detalleData }
-                        : d
-                    )
+                        : d,
+                    ),
                   );
                 } else {
                   setDetalles([
@@ -1274,9 +1297,8 @@ export default function MovimientoAlmacenForm({
                       !isNaN(Number(detalle.id))
                     ) {
                       try {
-                        const { eliminarDetalleMovimiento } = await import(
-                          "../../api/movimientoAlmacen"
-                        );
+                        const { eliminarDetalleMovimiento } =
+                          await import("../../api/movimientoAlmacen");
                         await eliminarDetalleMovimiento(Number(detalle.id));
                         await recargarDetalles();
                       } catch (error) {
@@ -1600,7 +1622,7 @@ export default function MovimientoAlmacenForm({
               fechaDocumento,
               empresa: empresas.find((e) => Number(e.id) === Number(empresaId)),
               conceptoMovAlmacen: conceptosMovAlmacen.find(
-                (c) => Number(c.id) === Number(conceptoMovAlmacenId)
+                (c) => Number(c.id) === Number(conceptoMovAlmacenId),
               ),
             }}
             estadosMercaderia={estadosMercaderia}
@@ -1615,8 +1637,8 @@ export default function MovimientoAlmacenForm({
                     detalles.map((d) =>
                       d === editingDetalle
                         ? { ...editingDetalle, ...detalleData }
-                        : d
-                    )
+                        : d,
+                    ),
                   );
                 } else {
                   setDetalles([
@@ -1701,8 +1723,6 @@ export default function MovimientoAlmacenForm({
           justifyContent: "flex-end",
         }}
       >
-
-
         {/* Botón Cerrar Documento - Solo en edición y si está pendiente */}
         {isEdit && defaultValues?.id && !documentoCerrado && (
           <Button
@@ -1720,8 +1740,8 @@ export default function MovimientoAlmacenForm({
               readOnly
                 ? "Modo solo lectura"
                 : !permisos.puedeEditar
-                ? "No tiene permisos para cerrar documentos (requiere permiso de Editar)"
-                : "Cerrar el documento (no se podrá editar)"
+                  ? "No tiene permisos para cerrar documentos (requiere permiso de Editar)"
+                  : "Cerrar el documento (no se podrá editar)"
             }
             tooltipOptions={{ position: "top" }}
           />
@@ -1746,8 +1766,8 @@ export default function MovimientoAlmacenForm({
               readOnly
                 ? "Modo solo lectura"
                 : !permisos.puedeEliminar
-                ? "No tiene permisos para anular documentos (requiere permiso de Eliminar)"
-                : "Anular el documento y revertir kardex"
+                  ? "No tiene permisos para anular documentos (requiere permiso de Eliminar)"
+                  : "Anular el documento y revertir kardex"
             }
             tooltipOptions={{ position: "top" }}
           />
@@ -1760,7 +1780,9 @@ export default function MovimientoAlmacenForm({
             label="Reactivar Documento"
             icon="pi pi-replay"
             onClick={() => onReactivar && onReactivar(defaultValues.id)}
-            disabled={loading || !documentoCerrado || !permisos.puedeReactivarDocs}
+            disabled={
+              loading || !documentoCerrado || !permisos.puedeReactivarDocs
+            }
             className="p-button-warning"
             severity="warning"
             raised
@@ -1770,8 +1792,8 @@ export default function MovimientoAlmacenForm({
               !permisos.puedeReactivarDocs
                 ? "No tiene permisos para reactivar documentos"
                 : !documentoCerrado
-                ? "El documento debe estar cerrado para poder reactivarlo"
-                : "Reactivar el documento para permitir edición"
+                  ? "El documento debe estar cerrado para poder reactivarlo"
+                  : "Reactivar el documento para permitir edición"
             }
             tooltipOptions={{ position: "top" }}
           />
@@ -1794,8 +1816,8 @@ export default function MovimientoAlmacenForm({
               !permisos.puedeCrear
                 ? "No tiene permisos para generar kardex (requiere permiso de Crear)"
                 : !documentoCerrado
-                ? "Debe cerrar el documento antes de generar kardex"
-                : "Generar registros de kardex"
+                  ? "Debe cerrar el documento antes de generar kardex"
+                  : "Generar registros de kardex"
             }
             tooltipOptions={{ position: "top" }}
           />
@@ -1828,12 +1850,12 @@ export default function MovimientoAlmacenForm({
             readOnly
               ? "Modo solo lectura"
               : isEdit
-              ? !permisos.puedeEditar
-                ? "No tiene permisos para editar"
-                : ""
-              : !permisos.puedeCrear
-              ? "No tiene permisos para crear"
-              : ""
+                ? !permisos.puedeEditar
+                  ? "No tiene permisos para editar"
+                  : ""
+                : !permisos.puedeCrear
+                  ? "No tiene permisos para crear"
+                  : ""
           }
         />
       </div>

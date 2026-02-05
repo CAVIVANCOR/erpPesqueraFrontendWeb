@@ -69,7 +69,8 @@ export default function EntregasARendirComprasCard({
   const [productos, setProductos] = useState([]);
 
   // Estado para entidades comerciales filtradas por empresa
-  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] = useState([]);
+  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] =
+    useState([]);
 
   // Estados para edición de la entrega
   const [responsableEditado, setResponsableEditado] = useState(null);
@@ -115,7 +116,7 @@ export default function EntregasARendirComprasCard({
       // Filtrar solo por empresaId, sin importar el tipo de entidad
       // Esto incluirá clientes, proveedores y cualquier otro tipo de entidad comercial
       const entidadesFiltradas = entidadesComerciales.filter(
-        (e) => Number(e.empresaId) === Number(requerimientoCompra.empresaId)
+        (e) => Number(e.empresaId) === Number(requerimientoCompra.empresaId),
       );
       setEntidadesComercialesFiltradas(entidadesFiltradas);
     } else {
@@ -133,7 +134,7 @@ export default function EntregasARendirComprasCard({
       const productosFiltrados = productosData.filter(
         (p) =>
           familiasGastosIds.includes(Number(p.familiaId)) &&
-          Number(p.empresaId) === Number(requerimientoCompra?.empresaId)
+          Number(p.empresaId) === Number(requerimientoCompra?.empresaId),
       );
       setProductos(productosFiltrados);
     } catch (error) {
@@ -157,7 +158,7 @@ export default function EntregasARendirComprasCard({
       const data = await getAllEntregaARendirPCompras();
       const entregaExistente = data.find(
         (e) =>
-          Number(e.requerimientoCompraId) === Number(requerimientoCompra.id)
+          Number(e.requerimientoCompraId) === Number(requerimientoCompra.id),
       );
 
       if (entregaExistente) {
@@ -204,7 +205,6 @@ export default function EntregasARendirComprasCard({
    * Crear entrega a rendir automáticamente
    */
   const crearEntregaAutomatica = async () => {
-    
     // Validar que supervisorCampoId esté asignado
     if (
       !requerimientoCompra.supervisorCampoId ||
@@ -262,8 +262,14 @@ export default function EntregasARendirComprasCard({
         life: 3000,
       });
     } catch (error) {
-      console.error('❌ [EntregaARendir] Error al crear entrega automática:', error);
-      console.error('❌ [EntregaARendir] Detalles del error:', error.response?.data);
+      console.error(
+        "❌ [EntregaARendir] Error al crear entrega automática:",
+        error,
+      );
+      console.error(
+        "❌ [EntregaARendir] Detalles del error:",
+        error.response?.data,
+      );
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -286,7 +292,7 @@ export default function EntregasARendirComprasCard({
     try {
       const data = await getDetMovsEntregaRendirPCompras();
       const movsFiltrados = data.filter(
-        (m) => Number(m.entregaARendirPComprasId) === Number(entregaARendir.id)
+        (m) => Number(m.entregaARendirPComprasId) === Number(entregaARendir.id),
       );
       setMovimientos(movsFiltrados);
       calcularTotales(movsFiltrados);
@@ -312,12 +318,12 @@ export default function EntregasARendirComprasCard({
 
     movs.forEach((mov) => {
       const monto = Number(mov.monto) || 0;
-      
+
       // Buscar el tipo de movimiento en el array tiposMovimiento usando el ID
       const tipoMov = tiposMovimiento.find(
-        (t) => Number(t.id) === Number(mov.tipoMovimientoId)
+        (t) => Number(t.id) === Number(mov.tipoMovimientoId),
       );
-      
+
       // Verificar si es ingreso o egreso usando el campo "esIngreso" (booleano)
       if (tipoMov?.esIngreso === true) {
         totalAsignaciones += monto;
@@ -351,7 +357,7 @@ export default function EntregasARendirComprasCard({
     // Fallback: buscar en el array de personal (retrocompatibilidad)
     if (!entregaARendir?.respEntregaRendirId) return "N/A";
     const resp = personal.find(
-      (p) => Number(p.id) === Number(entregaARendir.respEntregaRendirId)
+      (p) => Number(p.id) === Number(entregaARendir.respEntregaRendirId),
     );
     return (
       resp?.nombreCompleto ||
@@ -374,7 +380,7 @@ export default function EntregasARendirComprasCard({
     // Fallback: buscar en el array de centrosCosto (retrocompatibilidad)
     if (!entregaARendir?.centroCostoId) return "N/A";
     const centro = centrosCosto.find(
-      (c) => Number(c.id) === Number(entregaARendir.centroCostoId)
+      (c) => Number(c.id) === Number(entregaARendir.centroCostoId),
     );
     return centro ? `${centro.Codigo} - ${centro.Nombre}` : "N/A";
   };
@@ -386,7 +392,7 @@ export default function EntregasARendirComprasCard({
     setResponsableEditado(value);
     setHayCambios(
       Number(value) !== Number(entregaARendir.respEntregaRendirId) ||
-        Number(centroCostoEditado) !== Number(entregaARendir.centroCostoId)
+        Number(centroCostoEditado) !== Number(entregaARendir.centroCostoId),
     );
   };
 
@@ -398,7 +404,7 @@ export default function EntregasARendirComprasCard({
     setHayCambios(
       Number(responsableEditado) !==
         Number(entregaARendir.respEntregaRendirId) ||
-        Number(value) !== Number(entregaARendir.centroCostoId)
+        Number(value) !== Number(entregaARendir.centroCostoId),
     );
   };
 
@@ -418,7 +424,7 @@ export default function EntregasARendirComprasCard({
 
       const entregaActualizada = await actualizarEntregaARendirPCompras(
         entregaARendir.id,
-        dataToUpdate
+        dataToUpdate,
       );
 
       // Normalizar BigInt
@@ -581,15 +587,15 @@ export default function EntregasARendirComprasCard({
                 entregaARendir.entregaLiquidada
                   ? "LIQUIDADA"
                   : movimientos.length > 0 && totalSaldoEntregasRendir === 0
-                  ? "LISTA PARA LIQUIDAR"
-                  : "PENDIENTE"
+                    ? "LISTA PARA LIQUIDAR"
+                    : "PENDIENTE"
               }
               severity={
                 entregaARendir.entregaLiquidada
                   ? "success"
                   : movimientos.length > 0 && totalSaldoEntregasRendir === 0
-                  ? "info"
-                  : "danger"
+                    ? "info"
+                    : "danger"
               }
               className="w-full"
               disabled
@@ -604,7 +610,7 @@ export default function EntregasARendirComprasCard({
               value={
                 entregaARendir.fechaLiquidacion
                   ? new Date(
-                      entregaARendir.fechaLiquidacion
+                      entregaARendir.fechaLiquidacion,
                     ).toLocaleDateString("es-PE")
                   : "N/A"
               }
@@ -635,7 +641,6 @@ export default function EntregasARendirComprasCard({
               disabled={!puedeEditar || entregaARendir.entregaLiquidada}
             />
           </div>
-
         </div>
 
         <Divider />
@@ -716,7 +721,7 @@ export default function EntregasARendirComprasCard({
               }}
             />
           </div>
-                    {/* Botón de acción para actualizar */}
+          {/* Botón de acción para actualizar */}
           <div style={{ flex: 0.5 }}>
             <Button
               label="Actualizar"

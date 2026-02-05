@@ -35,6 +35,7 @@ import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { getCentrosCosto } from "../api/centroCosto";
 import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { getMonedas } from "../api/moneda";
+import { getUnidadesNegocio } from "../api/unidadNegocio";
 import { getFormasPago } from "../api/formaPago";
 import { getRequerimientosCompra } from "../api/requerimientoCompra";
 import { getSeriesDoc } from "../api/serieDoc";
@@ -72,6 +73,7 @@ export default function MovimientoAlmacen({ ruta }) {
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [monedas, setMonedas] = useState([]);
+  const [unidadesNegocio, setUnidadesNegocio] = useState([]);
   const [formasPago, setFormasPago] = useState([]);
   const [requerimientos, setRequerimientos] = useState([]);
   const [seriesDoc, setSeriesDoc] = useState([]);
@@ -81,16 +83,23 @@ export default function MovimientoAlmacen({ ruta }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
-  const [entidadComercialSeleccionada, setEntidadComercialSeleccionada] = useState(null);
-  const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] = useState(null);
+  const [entidadComercialSeleccionada, setEntidadComercialSeleccionada] =
+    useState(null);
+  const [tipoDocumentoSeleccionado, setTipoDocumentoSeleccionado] =
+    useState(null);
   const [fechaInicio, setFechaInicio] = useState(null);
   const [fechaFin, setFechaFin] = useState(null);
   const [esCustodiaSeleccionado, setEsCustodiaSeleccionado] = useState(null);
-  const [conceptoMovAlmacenSeleccionado, setConceptoMovAlmacenSeleccionado] = useState(null);
-  const [almacenOrigenSeleccionado, setAlmacenOrigenSeleccionado] = useState(null);
-  const [almacenDestinoSeleccionado, setAlmacenDestinoSeleccionado] = useState(null);
+  const [conceptoMovAlmacenSeleccionado, setConceptoMovAlmacenSeleccionado] =
+    useState(null);
+  const [almacenOrigenSeleccionado, setAlmacenOrigenSeleccionado] =
+    useState(null);
+  const [almacenDestinoSeleccionado, setAlmacenDestinoSeleccionado] =
+    useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
-  const [entidadesComercialesUnicas, setEntidadesComercialesUnicas] = useState([]);
+  const [entidadesComercialesUnicas, setEntidadesComercialesUnicas] = useState(
+    [],
+  );
   const [tiposDocumentoUnicos, setTiposDocumentoUnicos] = useState([]);
   const [almacenesOrigen, setAlmacenesOrigen] = useState([]);
   const [almacenesDestino, setAlmacenesDestino] = useState([]);
@@ -114,21 +123,24 @@ export default function MovimientoAlmacen({ ruta }) {
     // Filtro por empresa
     if (empresaSeleccionada) {
       filtrados = filtrados.filter(
-        (item) => String(item.empresaId) === String(empresaSeleccionada)
+        (item) => String(item.empresaId) === String(empresaSeleccionada),
       );
     }
 
     // Filtro por entidad comercial
     if (entidadComercialSeleccionada) {
       filtrados = filtrados.filter(
-        (item) => String(item.entidadComercialId) === String(entidadComercialSeleccionada)
+        (item) =>
+          String(item.entidadComercialId) ===
+          String(entidadComercialSeleccionada),
       );
     }
 
     // Filtro por tipo documento
     if (tipoDocumentoSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => String(item.tipoDocumentoId) === String(tipoDocumentoSeleccionado)
+        (item) =>
+          String(item.tipoDocumentoId) === String(tipoDocumentoSeleccionado),
       );
     }
 
@@ -154,28 +166,32 @@ export default function MovimientoAlmacen({ ruta }) {
     // Filtro por custodia/mercadería propia
     if (esCustodiaSeleccionado !== null) {
       filtrados = filtrados.filter(
-        (item) => item.esCustodia === esCustodiaSeleccionado
+        (item) => item.esCustodia === esCustodiaSeleccionado,
       );
     }
 
     // Filtro por concepto de almacén
     if (conceptoMovAlmacenSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => String(item.conceptoMovAlmacenId) === String(conceptoMovAlmacenSeleccionado)
+        (item) =>
+          String(item.conceptoMovAlmacenId) ===
+          String(conceptoMovAlmacenSeleccionado),
       );
     }
 
     // Filtro por almacén origen
     if (almacenOrigenSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => String(item.almacenOrigenId) === String(almacenOrigenSeleccionado)
+        (item) =>
+          String(item.almacenOrigenId) === String(almacenOrigenSeleccionado),
       );
     }
 
     // Filtro por almacén destino
     if (almacenDestinoSeleccionado) {
       filtrados = filtrados.filter(
-        (item) => String(item.almacenDestinoId) === String(almacenDestinoSeleccionado)
+        (item) =>
+          String(item.almacenDestinoId) === String(almacenDestinoSeleccionado),
       );
     }
 
@@ -248,6 +264,7 @@ export default function MovimientoAlmacen({ ruta }) {
         centrosCostoData,
         tiposMovimientoData,
         monedasData,
+        unidadesNegocioData,
         formasPagoData,
         requerimientosData,
         seriesDocData,
@@ -263,6 +280,7 @@ export default function MovimientoAlmacen({ ruta }) {
         getCentrosCosto(),
         getAllTipoMovEntregaRendir(),
         getMonedas(),
+        getUnidadesNegocio({ activo: true }),
         getFormasPago(),
         getRequerimientosCompra(),
         getSeriesDoc(),
@@ -273,23 +291,23 @@ export default function MovimientoAlmacen({ ruta }) {
       setEntidadesComerciales(entidadesData);
       setConceptosMovAlmacen(conceptosData);
       setProductos(productosData);
-      
+
       // Mapear personal con nombreCompleto
-      const personalConNombres = personalData.map(p => ({
+      const personalConNombres = personalData.map((p) => ({
         ...p,
-        nombreCompleto: `${p.nombres || ''} ${p.apellidos || ''}`.trim()
+        nombreCompleto: `${p.nombres || ""} ${p.apellidos || ""}`.trim(),
       }));
       setPersonalOptions(personalConNombres);
 
       // Filtrar estados de mercadería (tipoProvieneDeId = 2 para PRODUCTOS)
       const estadosMercaderiaFiltrados = estadosData.filter(
-        (e) => Number(e.tipoProvieneDeId) === 2 && !e.cesado
+        (e) => Number(e.tipoProvieneDeId) === 2 && !e.cesado,
       );
       setEstadosMercaderia(estadosMercaderiaFiltrados);
 
       // Filtrar estados de calidad (tipoProvieneDeId = 10 para PRODUCTOS CALIDAD)
       const estadosCalidadFiltrados = estadosData.filter(
-        (e) => Number(e.tipoProvieneDeId) === 10 && !e.cesado
+        (e) => Number(e.tipoProvieneDeId) === 10 && !e.cesado,
       );
       setEstadosCalidad(estadosCalidadFiltrados);
 
@@ -297,7 +315,11 @@ export default function MovimientoAlmacen({ ruta }) {
       setCentrosCosto(centrosCostoData);
       setTiposMovimiento(tiposMovimientoData);
       setMonedas(monedasData);
-      
+      if (unidadesNegocioData && Array.isArray(unidadesNegocioData)) {
+        setUnidadesNegocio(
+          unidadesNegocioData.map((un) => ({ ...un, id: Number(un.id) })),
+        );
+      }
       // Establecer datos para OrdenCompraForm
       setFormasPago(formasPagoData);
       setRequerimientos(requerimientosData);
@@ -387,22 +409,25 @@ export default function MovimientoAlmacen({ ruta }) {
         toast.current.show({
           severity: "success",
           summary: "Actualizado",
-          detail: "Movimiento de almacén actualizado. Puedes seguir agregando detalles.",
+          detail:
+            "Movimiento de almacén actualizado. Puedes seguir agregando detalles.",
         });
         // NO cerrar el diálogo - permitir seguir agregando detalles
         // El usuario cerrará manualmente cuando termine
       } else {
-        const resultado = await crearMovimientoAlmacen(data);        
+        const resultado = await crearMovimientoAlmacen(data);
         toast.current.show({
           severity: "success",
           summary: "Creado",
           detail: `Movimiento creado con número: ${resultado.numeroDocumento}. Ahora puedes agregar detalles.`,
-          life: 5000
+          life: 5000,
         });
-        
+
         // Cargar el movimiento recién creado para permitir agregar detalles
         try {
-          const movimientoCompleto = await getMovimientoAlmacenPorId(resultado.id);
+          const movimientoCompleto = await getMovimientoAlmacenPorId(
+            resultado.id,
+          );
           setEditing(movimientoCompleto);
         } catch (reloadErr) {
           console.error("Error al recargar movimiento:", reloadErr);
@@ -411,12 +436,17 @@ export default function MovimientoAlmacen({ ruta }) {
         }
         // NO cerrar el diálogo - mantenerlo abierto para agregar detalles
       }
-      
+
       // Refresca la lista para mostrar el nuevo movimiento
       cargarDatos();
     } catch (err) {
       console.error("Error en handleFormSubmit:", err);
-      const errorMsg = err.response?.data?.mensaje || err.response?.data?.message || err.response?.data?.error || err.message || "No se pudo guardar el movimiento.";
+      const errorMsg =
+        err.response?.data?.mensaje ||
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "No se pudo guardar el movimiento.";
       toast.current.show({
         severity: "error",
         summary: "Error al Guardar",
@@ -449,27 +479,32 @@ export default function MovimientoAlmacen({ ruta }) {
     try {
       // Cerrar movimiento (cambiar estado a CERRADO id=31)
       await cerrarMovimientoAlmacen(id);
-      
+
       toast.current.show({
         severity: "success",
         summary: "Documento Cerrado",
         detail: "El documento se cerró exitosamente (Estado: CERRADO).",
-        life: 3000
+        life: 3000,
       });
-      
+
       // Recargar el documento actual para actualizar el estado en el formulario
       const movimientoActualizado = await getMovimientoAlmacenPorId(id);
       setEditing(movimientoActualizado);
-      
+
       // Recargar la lista
       cargarDatos();
     } catch (err) {
-      const errorMsg = err.response?.data?.mensaje || err.response?.data?.message || err.response?.data?.error || err.message || "No se pudo cerrar el movimiento.";
+      const errorMsg =
+        err.response?.data?.mensaje ||
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "No se pudo cerrar el movimiento.";
       toast.current.show({
         severity: "error",
         summary: "Error al Cerrar Documento",
         detail: errorMsg,
-        life: 5000
+        life: 5000,
       });
     }
     setLoading(false);
@@ -482,16 +517,20 @@ export default function MovimientoAlmacen({ ruta }) {
       // Guardar resultado y mostrar diálogo
       setKardexResultData(resultado);
       setShowKardexResult(true);
-      
-      cargarDatos();
 
+      cargarDatos();
     } catch (err) {
-      const errorMsg = err.response?.data?.mensaje || err.response?.data?.message || err.response?.data?.error || err.message || "No se pudo generar el kardex.";
+      const errorMsg =
+        err.response?.data?.mensaje ||
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "No se pudo generar el kardex.";
       toast.current.show({
         severity: "error",
         summary: "Error al Generar Kardex",
         detail: errorMsg,
-        life: 5000
+        life: 5000,
       });
     }
     setLoading(false);
@@ -501,7 +540,7 @@ export default function MovimientoAlmacen({ ruta }) {
     setLoading(true);
     try {
       const resultado = await anularMovimientoAlmacen(id, empresaId);
-      
+
       // Mostrar resumen detallado de la anulación
       const mensajeDetalle = `
         Movimiento anulado exitosamente:
@@ -512,12 +551,12 @@ export default function MovimientoAlmacen({ ruta }) {
         - SaldosDetProductoCliente: ${resultado.saldosDetProductoClienteActualizados || 0}
         - SaldosProductoCliente: ${resultado.saldosProductoClienteActualizados || 0}
       `;
-      
+
       toast.current.show({
         severity: "success",
         summary: "Movimiento Anulado",
         detail: mensajeDetalle,
-        life: 5000
+        life: 5000,
       });
       // No cerrar el diálogo para permitir seguir trabajando
       cargarDatos();
@@ -532,7 +571,7 @@ export default function MovimientoAlmacen({ ruta }) {
         severity: "error",
         summary: "Error al Anular Documento",
         detail: errorMsg,
-        life: 5000
+        life: 5000,
       });
     }
     setLoading(false);
@@ -542,18 +581,18 @@ export default function MovimientoAlmacen({ ruta }) {
     setLoading(true);
     try {
       const resultado = await reactivarDocumentoAlmacen(id);
-      
+
       toast.current.show({
         severity: "success",
         summary: "Documento Reactivado",
         detail: "El documento se reactivó exitosamente. Ahora puede editarlo.",
-        life: 3000
+        life: 3000,
       });
-      
+
       // Recargar el documento actual para actualizar el estado en el formulario
       const movimientoActualizado = await getMovimientoAlmacenPorId(id);
       setEditing(movimientoActualizado);
-      
+
       // Recargar la lista
       cargarDatos();
     } catch (err) {
@@ -567,7 +606,7 @@ export default function MovimientoAlmacen({ ruta }) {
         severity: "error",
         summary: "Error al Reactivar Documento",
         detail: errorMsg,
-        life: 5000
+        life: 5000,
       });
     }
     setLoading(false);
@@ -742,7 +781,7 @@ export default function MovimientoAlmacen({ ruta }) {
                   disabled={loading}
                 />
               </div>
-                            <div style={{ flex: 0.5 }}>
+              <div style={{ flex: 0.5 }}>
                 <Button
                   label="Nuevo"
                   icon="pi pi-plus"
@@ -750,8 +789,14 @@ export default function MovimientoAlmacen({ ruta }) {
                   severity="success"
                   raised
                   onClick={handleAdd}
-                  disabled={loading || !empresaSeleccionada || !permisos.puedeCrear}
-                  tooltip={!permisos.puedeCrear ? "No tiene permisos para crear" : "Nuevo Movimiento"}
+                  disabled={
+                    loading || !empresaSeleccionada || !permisos.puedeCrear
+                  }
+                  tooltip={
+                    !permisos.puedeCrear
+                      ? "No tiene permisos para crear"
+                      : "Nuevo Movimiento"
+                  }
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -775,7 +820,8 @@ export default function MovimientoAlmacen({ ruta }) {
                     toast.current?.show({
                       severity: "success",
                       summary: "Actualizado",
-                      detail: "Datos actualizados correctamente desde el servidor",
+                      detail:
+                        "Datos actualizados correctamente desde el servidor",
                       life: 3000,
                     });
                   }}
@@ -875,7 +921,13 @@ export default function MovimientoAlmacen({ ruta }) {
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={{ fontWeight: "bold", display: "block", marginBottom: "0.5rem" }}>
+                <label
+                  style={{
+                    fontWeight: "bold",
+                    display: "block",
+                    marginBottom: "0.5rem",
+                  }}
+                >
                   Tipo Mercadería
                 </label>
                 <Button
@@ -883,22 +935,22 @@ export default function MovimientoAlmacen({ ruta }) {
                     esCustodiaSeleccionado === null
                       ? "TODAS"
                       : esCustodiaSeleccionado
-                      ? "CUSTODIA"
-                      : "PROPIA"
+                        ? "CUSTODIA"
+                        : "PROPIA"
                   }
                   icon={
                     esCustodiaSeleccionado === null
                       ? "pi pi-filter"
                       : esCustodiaSeleccionado
-                      ? "pi pi-exclamation-circle"
-                      : "pi pi-check-circle"
+                        ? "pi pi-exclamation-circle"
+                        : "pi pi-check-circle"
                   }
                   severity={
                     esCustodiaSeleccionado === null
                       ? "secondary"
                       : esCustodiaSeleccionado
-                      ? "danger"
-                      : "success"
+                        ? "danger"
+                        : "success"
                   }
                   onClick={() => {
                     if (esCustodiaSeleccionado === null) {
@@ -944,7 +996,10 @@ export default function MovimientoAlmacen({ ruta }) {
                 />
               </div>
               <div style={{ flex: 2 }}>
-                <label htmlFor="almacenOrigenFiltro" style={{ fontWeight: "bold" }}>
+                <label
+                  htmlFor="almacenOrigenFiltro"
+                  style={{ fontWeight: "bold" }}
+                >
                   Almacén Origen
                 </label>
                 <Dropdown
@@ -963,7 +1018,10 @@ export default function MovimientoAlmacen({ ruta }) {
                 />
               </div>
               <div style={{ flex: 2 }}>
-                <label htmlFor="almacenDestinoFiltro" style={{ fontWeight: "bold" }}>
+                <label
+                  htmlFor="almacenDestinoFiltro"
+                  style={{ fontWeight: "bold" }}
+                >
                   Almacén Destino
                 </label>
                 <Dropdown
@@ -985,9 +1043,14 @@ export default function MovimientoAlmacen({ ruta }) {
           </div>
         }
       >
-        <Column field="id" header="ID" style={{ width: 80 }} sortable/>
+        <Column field="id" header="ID" style={{ width: 80 }} sortable />
         <Column field="numeroDocumento" header="Nº Documento" sortable />
-        <Column field="empresaId" header="Empresa" body={empresaNombre} sortable/>
+        <Column
+          field="empresaId"
+          header="Empresa"
+          body={empresaNombre}
+          sortable
+        />
         <Column
           field="tipoDocumentoId"
           header="Tipo Doc."
@@ -1054,6 +1117,7 @@ export default function MovimientoAlmacen({ ruta }) {
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
           monedas={monedas}
+          unidadesNegocio={unidadesNegocio}
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           onCerrar={handleCerrar}
@@ -1065,7 +1129,9 @@ export default function MovimientoAlmacen({ ruta }) {
           loading={loading}
           toast={toast}
           permisos={permisos}
-          readOnly={!!editing && !!editing.numeroDocumento && !permisos.puedeEditar}
+          readOnly={
+            !!editing && !!editing.numeroDocumento && !permisos.puedeEditar
+          }
         />
       </Dialog>
 
@@ -1083,100 +1149,145 @@ export default function MovimientoAlmacen({ ruta }) {
         closable={false}
         showHeader={false}
         onHide={() => setShowKardexResult(false)}
-        style={{ width: '600px' }}
+        style={{ width: "600px" }}
       >
         {kardexResultData && (
-          <div style={{ padding: '0', fontFamily: 'var(--font-family)' }}>
+          <div style={{ padding: "0", fontFamily: "var(--font-family)" }}>
             {/* Header con gradiente verde */}
-            <div 
-              style={{ 
-                background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-                padding: '2.5rem 2rem',
-                textAlign: 'center',
-                borderRadius: '6px 6px 0 0'
+            <div
+              style={{
+                background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+                padding: "2.5rem 2rem",
+                textAlign: "center",
+                borderRadius: "6px 6px 0 0",
               }}
             >
-              <div style={{
-                width: '80px',
-                height: '80px',
-                margin: '0 auto 1.5rem',
-                background: 'rgba(255, 255, 255, 0.2)',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <i 
-                  className="pi pi-check" 
-                  style={{ 
-                    fontSize: '3rem', 
-                    color: 'white',
-                    fontWeight: 'bold'
+              <div
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  margin: "0 auto 1.5rem",
+                  background: "rgba(255, 255, 255, 0.2)",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <i
+                  className="pi pi-check"
+                  style={{
+                    fontSize: "3rem",
+                    color: "white",
+                    fontWeight: "bold",
                   }}
                 />
               </div>
-              <h2 style={{ 
-                color: 'white', 
-                margin: 0, 
-                fontSize: '1.75rem',
-                fontWeight: '600',
-                letterSpacing: '0.5px'
-              }}>
+              <h2
+                style={{
+                  color: "white",
+                  margin: 0,
+                  fontSize: "1.75rem",
+                  fontWeight: "600",
+                  letterSpacing: "0.5px",
+                }}
+              >
                 Kardex Generado Exitosamente
               </h2>
-              <p style={{ 
-                color: 'rgba(255, 255, 255, 0.95)', 
-                margin: '0.75rem 0 0 0',
-                fontSize: '1rem',
-                fontWeight: '400'
-              }}>
+              <p
+                style={{
+                  color: "rgba(255, 255, 255, 0.95)",
+                  margin: "0.75rem 0 0 0",
+                  fontSize: "1rem",
+                  fontWeight: "400",
+                }}
+              >
                 Operación completada correctamente
               </p>
             </div>
 
             {/* Contenido con estadísticas */}
-            <div style={{ padding: '2.5rem 2rem' }}>
-              <div style={{ 
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1.25rem',
-                marginBottom: '1.5rem'
-              }}>
+            <div style={{ padding: "2.5rem 2rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "1.25rem",
+                  marginBottom: "1.5rem",
+                }}
+              >
                 {/* KardexAlmacen */}
-                <div style={{
-                  background: '#dcfce7',
-                  border: '3px solid #86efac',
-                  borderRadius: '12px',
-                  padding: '1.25rem 1.5rem'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <i className="pi pi-database" style={{ 
-                      fontSize: '2.5rem', 
-                      color: '#16a34a'
-                    }} />
+                <div
+                  style={{
+                    background: "#dcfce7",
+                    border: "3px solid #86efac",
+                    borderRadius: "12px",
+                    padding: "1.25rem 1.5rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "1rem",
+                    }}
+                  >
+                    <i
+                      className="pi pi-database"
+                      style={{
+                        fontSize: "2.5rem",
+                        color: "#16a34a",
+                      }}
+                    />
                     <div style={{ flex: 1 }}>
-                      <div style={{ 
-                        fontSize: '1.1rem',
-                        color: '#15803d',
-                        fontWeight: '600',
-                        marginBottom: '0.5rem'
-                      }}>
+                      <div
+                        style={{
+                          fontSize: "1.1rem",
+                          color: "#15803d",
+                          fontWeight: "600",
+                          marginBottom: "0.5rem",
+                        }}
+                      >
                         KardexAlmacen
                       </div>
-                      <div style={{ display: 'flex', gap: '2rem' }}>
+                      <div style={{ display: "flex", gap: "2rem" }}>
                         <div>
-                          <span style={{ fontSize: '2rem', fontWeight: 'bold', color: '#16a34a' }}>
+                          <span
+                            style={{
+                              fontSize: "2rem",
+                              fontWeight: "bold",
+                              color: "#16a34a",
+                            }}
+                          >
                             {kardexResultData.kardexCreados || 0}
                           </span>
-                          <span style={{ fontSize: '0.9rem', color: '#15803d', marginLeft: '0.5rem' }}>
+                          <span
+                            style={{
+                              fontSize: "0.9rem",
+                              color: "#15803d",
+                              marginLeft: "0.5rem",
+                            }}
+                          >
                             Creados
                           </span>
                         </div>
                         <div>
-                          <span style={{ fontSize: '2rem', fontWeight: 'bold', color: '#16a34a' }}>
+                          <span
+                            style={{
+                              fontSize: "2rem",
+                              fontWeight: "bold",
+                              color: "#16a34a",
+                            }}
+                          >
                             {kardexResultData.kardexActualizados || 0}
                           </span>
-                          <span style={{ fontSize: '0.9rem', color: '#15803d', marginLeft: '0.5rem' }}>
+                          <span
+                            style={{
+                              fontSize: "0.9rem",
+                              color: "#15803d",
+                              marginLeft: "0.5rem",
+                            }}
+                          >
                             Actualizados
                           </span>
                         </div>
@@ -1186,31 +1297,56 @@ export default function MovimientoAlmacen({ ruta }) {
                 </div>
 
                 {/* SaldosDetProductoCliente */}
-                <div style={{
-                  background: '#fef3c7',
-                  border: '3px solid #fcd34d',
-                  borderRadius: '12px',
-                  padding: '1.25rem 1.5rem'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <i className="pi pi-list" style={{ 
-                      fontSize: '2.5rem', 
-                      color: '#d97706'
-                    }} />
+                <div
+                  style={{
+                    background: "#fef3c7",
+                    border: "3px solid #fcd34d",
+                    borderRadius: "12px",
+                    padding: "1.25rem 1.5rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "1rem",
+                    }}
+                  >
+                    <i
+                      className="pi pi-list"
+                      style={{
+                        fontSize: "2.5rem",
+                        color: "#d97706",
+                      }}
+                    />
                     <div style={{ flex: 1 }}>
-                      <div style={{ 
-                        fontSize: '1.1rem',
-                        color: '#b45309',
-                        fontWeight: '600',
-                        marginBottom: '0.5rem'
-                      }}>
+                      <div
+                        style={{
+                          fontSize: "1.1rem",
+                          color: "#b45309",
+                          fontWeight: "600",
+                          marginBottom: "0.5rem",
+                        }}
+                      >
                         SaldosDetProductoCliente
                       </div>
                       <div>
-                        <span style={{ fontSize: '2rem', fontWeight: 'bold', color: '#d97706' }}>
+                        <span
+                          style={{
+                            fontSize: "2rem",
+                            fontWeight: "bold",
+                            color: "#d97706",
+                          }}
+                        >
                           {kardexResultData.saldosDetActualizados || 0}
                         </span>
-                        <span style={{ fontSize: '0.9rem', color: '#b45309', marginLeft: '0.5rem' }}>
+                        <span
+                          style={{
+                            fontSize: "0.9rem",
+                            color: "#b45309",
+                            marginLeft: "0.5rem",
+                          }}
+                        >
                           Actualizados
                         </span>
                       </div>
@@ -1219,31 +1355,56 @@ export default function MovimientoAlmacen({ ruta }) {
                 </div>
 
                 {/* SaldosProductoCliente */}
-                <div style={{
-                  background: '#f3e8ff',
-                  border: '3px solid #c4b5fd',
-                  borderRadius: '12px',
-                  padding: '1.25rem 1.5rem'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <i className="pi pi-chart-bar" style={{ 
-                      fontSize: '2.5rem', 
-                      color: '#7c3aed'
-                    }} />
+                <div
+                  style={{
+                    background: "#f3e8ff",
+                    border: "3px solid #c4b5fd",
+                    borderRadius: "12px",
+                    padding: "1.25rem 1.5rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "1rem",
+                    }}
+                  >
+                    <i
+                      className="pi pi-chart-bar"
+                      style={{
+                        fontSize: "2.5rem",
+                        color: "#7c3aed",
+                      }}
+                    />
                     <div style={{ flex: 1 }}>
-                      <div style={{ 
-                        fontSize: '1.1rem',
-                        color: '#6d28d9',
-                        fontWeight: '600',
-                        marginBottom: '0.5rem'
-                      }}>
+                      <div
+                        style={{
+                          fontSize: "1.1rem",
+                          color: "#6d28d9",
+                          fontWeight: "600",
+                          marginBottom: "0.5rem",
+                        }}
+                      >
                         SaldosProductoCliente
                       </div>
                       <div>
-                        <span style={{ fontSize: '2rem', fontWeight: 'bold', color: '#7c3aed' }}>
+                        <span
+                          style={{
+                            fontSize: "2rem",
+                            fontWeight: "bold",
+                            color: "#7c3aed",
+                          }}
+                        >
                           {kardexResultData.saldosGenActualizados || 0}
                         </span>
-                        <span style={{ fontSize: '0.9rem', color: '#6d28d9', marginLeft: '0.5rem' }}>
+                        <span
+                          style={{
+                            fontSize: "0.9rem",
+                            color: "#6d28d9",
+                            marginLeft: "0.5rem",
+                          }}
+                        >
                           Actualizados
                         </span>
                       </div>
@@ -1253,68 +1414,82 @@ export default function MovimientoAlmacen({ ruta }) {
               </div>
 
               {/* Advertencias si existen */}
-              {kardexResultData.errores && kardexResultData.errores.length > 0 && (
-                <div style={{
-                  background: '#fef3c7',
-                  border: '2px solid #fbbf24',
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  marginBottom: '1.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem'
-                }}>
-                  <i className="pi pi-exclamation-triangle" style={{ 
-                    fontSize: '1.5rem', 
-                    color: '#f59e0b'
-                  }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ 
-                      fontWeight: 'bold',
-                      color: '#92400e',
-                      marginBottom: '0.25rem'
-                    }}>
-                      Advertencias Encontradas
+              {kardexResultData.errores &&
+                kardexResultData.errores.length > 0 && (
+                  <div
+                    style={{
+                      background: "#fef3c7",
+                      border: "2px solid #fbbf24",
+                      borderRadius: "8px",
+                      padding: "1rem",
+                      marginBottom: "1.5rem",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                    }}
+                  >
+                    <i
+                      className="pi pi-exclamation-triangle"
+                      style={{
+                        fontSize: "1.5rem",
+                        color: "#f59e0b",
+                      }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div
+                        style={{
+                          fontWeight: "bold",
+                          color: "#92400e",
+                          marginBottom: "0.25rem",
+                        }}
+                      >
+                        Advertencias Encontradas
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.9rem",
+                          color: "#b45309",
+                        }}
+                      >
+                        {kardexResultData.errores.length} advertencia(s) durante
+                        el proceso
+                      </div>
                     </div>
-                    <div style={{ 
-                      fontSize: '0.9rem',
-                      color: '#b45309'
-                    }}>
-                      {kardexResultData.errores.length} advertencia(s) durante el proceso
+                    <div
+                      style={{
+                        background: "#f59e0b",
+                        color: "white",
+                        borderRadius: "50%",
+                        width: "2.5rem",
+                        height: "2.5rem",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "1.25rem",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {kardexResultData.errores.length}
                     </div>
                   </div>
-                  <div style={{
-                    background: '#f59e0b',
-                    color: 'white',
-                    borderRadius: '50%',
-                    width: '2.5rem',
-                    height: '2.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '1.25rem',
-                    fontWeight: 'bold'
-                  }}>
-                    {kardexResultData.errores.length}
-                  </div>
-                </div>
-              )}
+                )}
 
               {/* Botón de cerrar */}
-              <Button 
-                label="Cerrar" 
+              <Button
+                label="Cerrar"
                 icon="pi pi-check"
                 onClick={() => setShowKardexResult(false)}
-                style={{ 
-                  width: '100%',
-                  padding: '0.875rem',
-                  fontSize: '1.05rem',
-                  fontWeight: '600',
-                  background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: 'white',
-                  cursor: 'pointer'
+                style={{
+                  width: "100%",
+                  padding: "0.875rem",
+                  fontSize: "1.05rem",
+                  fontWeight: "600",
+                  background:
+                    "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "white",
+                  cursor: "pointer",
                 }}
               />
             </div>

@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { TabView, TabPanel } from "primereact/tabview";
 import { Button } from "primereact/button";
-import { Tag } from "primereact/tag";
 import { confirmDialog } from "primereact/confirmdialog";
 import DatosGeneralesTab from "./DatosGeneralesTab";
 import DatosAdicionalesTab from "./DatosAdicionalesTab";
@@ -23,6 +22,7 @@ export default function OrdenCompraForm({
   requerimientos,
   monedas,
   centrosCosto,
+  unidadesNegocio = [],
   tiposDocumento,
   seriesDoc,
   estadosOrden,
@@ -44,93 +44,92 @@ export default function OrdenCompraForm({
   const { usuario } = useAuthStore();
 
   const [empresaId, setEmpresaId] = useState(
-    defaultValues?.empresaId || empresaFija || null
+    defaultValues?.empresaId || empresaFija || null,
   );
   const [tipoDocumentoId, setTipoDocumentoId] = useState(
-    defaultValues?.tipoDocumentoId || 17
+    defaultValues?.tipoDocumentoId || 17,
   );
   const [serieDocId, setSerieDocId] = useState(
-    defaultValues?.serieDocId || null
+    defaultValues?.serieDocId || null,
   );
   const [numSerieDoc, setNumSerieDoc] = useState(
-    defaultValues?.numSerieDoc || ""
+    defaultValues?.numSerieDoc || "",
   );
   const [numCorreDoc, setNumCorreDoc] = useState(
-    defaultValues?.numCorreDoc || ""
+    defaultValues?.numCorreDoc || "",
   );
   const [numeroDocumento, setNumeroDocumento] = useState(
-    defaultValues?.numeroDocumento || ""
+    defaultValues?.numeroDocumento || "",
   );
   const [fechaDocumento, setFechaDocumento] = useState(
     defaultValues?.fechaDocumento
       ? new Date(defaultValues.fechaDocumento)
-      : new Date()
+      : new Date(),
   );
   const [requerimientoCompraId, setRequerimientoCompraId] = useState(
-    defaultValues?.requerimientoCompraId || null
+    defaultValues?.requerimientoCompraId || null,
   );
   const [proveedorId, setProveedorId] = useState(
-    defaultValues?.proveedorId || null
+    defaultValues?.proveedorId || null,
   );
   const [formaPagoId, setFormaPagoId] = useState(
-    defaultValues?.formaPagoId || null
+    defaultValues?.formaPagoId || null,
   );
   const [monedaId, setMonedaId] = useState(defaultValues?.monedaId || null);
   const [tipoCambio, setTipoCambio] = useState(
-    defaultValues?.tipoCambio || null
+    defaultValues?.tipoCambio || null,
   );
   const [fechaEntrega, setFechaEntrega] = useState(
-    defaultValues?.fechaEntrega ? new Date(defaultValues.fechaEntrega) : null
+    defaultValues?.fechaEntrega ? new Date(defaultValues.fechaEntrega) : null,
   );
   const [fechaRecepcion, setFechaRecepcion] = useState(
     defaultValues?.fechaRecepcion
       ? new Date(defaultValues.fechaRecepcion)
-      : null
+      : null,
   );
   const [solicitanteId, setSolicitanteId] = useState(
-    defaultValues?.solicitanteId || null
+    defaultValues?.solicitanteId || null,
   );
   const [aprobadoPorId, setAprobadoPorId] = useState(
-    defaultValues?.aprobadoPorId || null
+    defaultValues?.aprobadoPorId || null,
   );
   const [estadoId, setEstadoId] = useState(
-    defaultValues?.estadoId ? Number(defaultValues.estadoId) : null
+    defaultValues?.estadoId ? Number(defaultValues.estadoId) : null,
   );
   const [centroCostoId, setCentroCostoId] = useState(
-    defaultValues?.centroCostoId || null
+    defaultValues?.centroCostoId || null,
   );
   const [movIngresoAlmacenId, setMovIngresoAlmacenId] = useState(
-    defaultValues?.movIngresoAlmacenId || null
+    defaultValues?.movIngresoAlmacenId || null,
   );
   const [observaciones, setObservaciones] = useState(
-    defaultValues?.observaciones || ""
+    defaultValues?.observaciones || "",
   );
   const [porcentajeIGV, setPorcentajeIGV] = useState(
-    defaultValues?.porcentajeIGV || null
+    defaultValues?.porcentajeIGV || null,
   );
   const [esExoneradoAlIGV, setEsExoneradoAlIGV] = useState(
-    defaultValues?.esExoneradoAlIGV || false
+    defaultValues?.esExoneradoAlIGV || false,
   );
-  const [direccionRecepcionAlmacenId, setDireccionRecepcionAlmacenId] = useState(
-    defaultValues?.direccionRecepcionAlmacenId || null
-  );
+  const [direccionRecepcionAlmacenId, setDireccionRecepcionAlmacenId] =
+    useState(defaultValues?.direccionRecepcionAlmacenId || null);
   const [contactoProveedorId, setContactoProveedorId] = useState(
-    defaultValues?.contactoProveedorId || null
+    defaultValues?.contactoProveedorId || null,
   );
-  const [facturado, setFacturado] = useState(
-    defaultValues?.facturado || false
-  );
+  const [facturado, setFacturado] = useState(defaultValues?.facturado || false);
   const [fechaFacturacion, setFechaFacturacion] = useState(
-    defaultValues?.fechaFacturacion ? new Date(defaultValues.fechaFacturacion) : null
+    defaultValues?.fechaFacturacion
+      ? new Date(defaultValues.fechaFacturacion)
+      : null,
   );
   const [esGerencial, setEsGerencial] = useState(
-    defaultValues?.esGerencial || false
+    defaultValues?.esGerencial || false,
   );
   const [ordenCompraOrigenId, setOrdenCompraOrigenId] = useState(
-    defaultValues?.ordenCompraOrigenId || null
+    defaultValues?.ordenCompraOrigenId || null,
   );
   const [esParticionada, setEsParticionada] = useState(
-    defaultValues?.esParticionada || false
+    defaultValues?.esParticionada || false,
   );
   const [direccionesEmpresa, setDireccionesEmpresa] = useState([]);
   const [contactosProveedor, setContactosProveedor] = useState([]);
@@ -145,7 +144,7 @@ export default function OrdenCompraForm({
   useEffect(() => {
     if (proveedores && proveedores.length > 0 && empresaId) {
       const proveedoresPorEmpresa = proveedores.filter(
-        (p) => Number(p.empresaId) === Number(empresaId)
+        (p) => Number(p.empresaId) === Number(empresaId),
       );
       setProveedoresFiltrados(proveedoresPorEmpresa);
     } else {
@@ -159,16 +158,16 @@ export default function OrdenCompraForm({
         defaultValues.empresaId
           ? Number(defaultValues.empresaId)
           : empresaFija
-          ? Number(empresaFija)
-          : null
+            ? Number(empresaFija)
+            : null,
       );
       setTipoDocumentoId(
         defaultValues.tipoDocumentoId
           ? Number(defaultValues.tipoDocumentoId)
-          : 17
+          : 17,
       );
       setSerieDocId(
-        defaultValues.serieDocId ? Number(defaultValues.serieDocId) : null
+        defaultValues.serieDocId ? Number(defaultValues.serieDocId) : null,
       );
       setNumSerieDoc(defaultValues.numSerieDoc || "");
       setNumCorreDoc(defaultValues.numCorreDoc || "");
@@ -176,47 +175,55 @@ export default function OrdenCompraForm({
       setFechaDocumento(
         defaultValues.fechaDocumento
           ? new Date(defaultValues.fechaDocumento)
-          : new Date()
+          : new Date(),
       );
       setRequerimientoCompraId(
         defaultValues.requerimientoCompraId
           ? Number(defaultValues.requerimientoCompraId)
-          : null
+          : null,
       );
       setProveedorId(
-        defaultValues.proveedorId ? Number(defaultValues.proveedorId) : null
+        defaultValues.proveedorId ? Number(defaultValues.proveedorId) : null,
       );
       setFormaPagoId(
-        defaultValues.formaPagoId ? Number(defaultValues.formaPagoId) : null
+        defaultValues.formaPagoId ? Number(defaultValues.formaPagoId) : null,
       );
       setMonedaId(
-        defaultValues.monedaId ? Number(defaultValues.monedaId) : null
+        defaultValues.monedaId ? Number(defaultValues.monedaId) : null,
       );
       setTipoCambio(defaultValues.tipoCambio || null);
       setFechaEntrega(
-        defaultValues.fechaEntrega ? new Date(defaultValues.fechaEntrega) : null
+        defaultValues.fechaEntrega
+          ? new Date(defaultValues.fechaEntrega)
+          : null,
       );
       setFechaRecepcion(
         defaultValues.fechaRecepcion
           ? new Date(defaultValues.fechaRecepcion)
-          : null
+          : null,
       );
       setSolicitanteId(
-        defaultValues.solicitanteId ? Number(defaultValues.solicitanteId) : null
+        defaultValues.solicitanteId
+          ? Number(defaultValues.solicitanteId)
+          : null,
       );
       setAprobadoPorId(
-        defaultValues.aprobadoPorId ? Number(defaultValues.aprobadoPorId) : null
+        defaultValues.aprobadoPorId
+          ? Number(defaultValues.aprobadoPorId)
+          : null,
       );
       setEstadoId(
-        defaultValues.estadoId ? Number(defaultValues.estadoId) : null
+        defaultValues.estadoId ? Number(defaultValues.estadoId) : null,
       );
       setCentroCostoId(
-        defaultValues.centroCostoId ? Number(defaultValues.centroCostoId) : null
+        defaultValues.centroCostoId
+          ? Number(defaultValues.centroCostoId)
+          : null,
       );
       setMovIngresoAlmacenId(
         defaultValues.movIngresoAlmacenId
           ? Number(defaultValues.movIngresoAlmacenId)
-          : null
+          : null,
       );
       setObservaciones(defaultValues.observaciones || "");
       setPorcentajeIGV(defaultValues.porcentajeIGV || null);
@@ -224,20 +231,24 @@ export default function OrdenCompraForm({
       setDireccionRecepcionAlmacenId(
         defaultValues.direccionRecepcionAlmacenId
           ? Number(defaultValues.direccionRecepcionAlmacenId)
-          : null
+          : null,
       );
       setContactoProveedorId(
         defaultValues.contactoProveedorId
           ? Number(defaultValues.contactoProveedorId)
-          : null
+          : null,
       );
       setFacturado(defaultValues.facturado || false);
       setFechaFacturacion(
-        defaultValues.fechaFacturacion ? new Date(defaultValues.fechaFacturacion) : null
+        defaultValues.fechaFacturacion
+          ? new Date(defaultValues.fechaFacturacion)
+          : null,
       );
       setEsGerencial(defaultValues.esGerencial || false);
       setOrdenCompraOrigenId(
-        defaultValues.ordenCompraOrigenId ? Number(defaultValues.ordenCompraOrigenId) : null
+        defaultValues.ordenCompraOrigenId
+          ? Number(defaultValues.ordenCompraOrigenId)
+          : null,
       );
       setEsParticionada(defaultValues.esParticionada || false);
     }
@@ -292,7 +303,7 @@ export default function OrdenCompraForm({
             severity: "success",
             summary: "Tipo de Cambio Actualizado",
             detail: `Tipo de cambio SUNAT: S/ ${tipoCambioVenta.toFixed(
-              3
+              3,
             )} por USD`,
             life: 3000,
           });
@@ -310,14 +321,13 @@ export default function OrdenCompraForm({
       if (!defaultValues?.id || !isEdit) return;
 
       try {
-        const { getDetallesOrdenCompra } = await import(
-          "../../api/detalleOrdenCompra"
-        );
+        const { getDetallesOrdenCompra } =
+          await import("../../api/detalleOrdenCompra");
         const detalles = await getDetallesOrdenCompra(defaultValues.id);
 
         const subtotalCalc = detalles.reduce(
           (sum, det) => sum + (Number(det.subtotal) || 0),
-          0
+          0,
         );
         const igvCalc = esExoneradoAlIGV
           ? 0
@@ -343,10 +353,12 @@ export default function OrdenCompraForm({
     const cargarDireccionesEmpresa = async () => {
       if (empresaId) {
         try {
-          const empresa = empresas.find((e) => Number(e.id) === Number(empresaId));
+          const empresa = empresas.find(
+            (e) => Number(e.id) === Number(empresaId),
+          );
           if (empresa && empresa.entidadComercialId) {
             const direcciones = await obtenerDireccionesPorEntidad(
-              Number(empresa.entidadComercialId)
+              Number(empresa.entidadComercialId),
             );
             setDireccionesEmpresa(direcciones || []);
           }
@@ -366,7 +378,9 @@ export default function OrdenCompraForm({
     const cargarContactosProveedor = async () => {
       if (proveedorId) {
         try {
-          const contactos = await obtenerContactosPorEntidad(Number(proveedorId));
+          const contactos = await obtenerContactosPorEntidad(
+            Number(proveedorId),
+          );
           setContactosProveedor(contactos || []);
         } catch (error) {
           console.error("Error al cargar contactos de proveedor:", error);
@@ -388,7 +402,7 @@ export default function OrdenCompraForm({
         const proximoCorrelativo = correlativoActual + 1;
         const numSerie = String(serie.serie).padStart(
           serie.numCerosIzqSerie,
-          "0"
+          "0",
         );
 
         setSerieDocId(serieId);
@@ -472,11 +486,15 @@ export default function OrdenCompraForm({
       direccionRecepcionAlmacenId: direccionRecepcionAlmacenId
         ? Number(direccionRecepcionAlmacenId)
         : null,
-      contactoProveedorId: contactoProveedorId ? Number(contactoProveedorId) : null,
+      contactoProveedorId: contactoProveedorId
+        ? Number(contactoProveedorId)
+        : null,
       facturado: facturado || false,
       fechaFacturacion: fechaFacturacion,
       esGerencial: esGerencial || false,
-      ordenCompraOrigenId: ordenCompraOrigenId ? Number(ordenCompraOrigenId) : null,
+      ordenCompraOrigenId: ordenCompraOrigenId
+        ? Number(ordenCompraOrigenId)
+        : null,
       esParticionada: esParticionada || false,
     };
 
@@ -609,6 +627,11 @@ export default function OrdenCompraForm({
     value: Number(e.id),
   }));
 
+  const unidadesNegocioOptions = unidadesNegocio.map((unidad) => ({
+    label: unidad.nombre,
+    value: Number(unidad.id),
+  }));
+
   return (
     <div className="p-fluid">
       <TabView
@@ -626,6 +649,7 @@ export default function OrdenCompraForm({
             personalOptions={personalOptions}
             monedas={monedas}
             centrosCosto={centrosCosto}
+            unidadesNegocioOptions={unidadesNegocioOptions}
             tiposDocumentoOptions={tiposDocumentoOptions}
             seriesDocOptions={seriesDocOptions}
             estadosOrdenOptions={estadosOrdenOptions}
@@ -725,14 +749,14 @@ export default function OrdenCompraForm({
                 estaAprobado
                   ? "La orden ya está aprobada"
                   : kardexGenerado
-                  ? "La orden ya tiene kardex generado"
-                  : estaAnulado
-                  ? "No se puede aprobar una orden anulada"
-                  : readOnly
-                  ? "Modo solo lectura"
-                  : !permisos.puedeEditar
-                  ? "No tiene permisos para aprobar"
-                  : "Aprobar orden de compra"
+                    ? "La orden ya tiene kardex generado"
+                    : estaAnulado
+                      ? "No se puede aprobar una orden anulada"
+                      : readOnly
+                        ? "Modo solo lectura"
+                        : !permisos.puedeEditar
+                          ? "No tiene permisos para aprobar"
+                          : "Aprobar orden de compra"
               }
             />
           )}
@@ -755,14 +779,14 @@ export default function OrdenCompraForm({
                 !estaAprobado && !kardexGenerado
                   ? "Solo se puede generar kardex en órdenes aprobadas"
                   : estaAnulado
-                  ? "No se puede generar kardex en orden anulada"
-                  : kardexGenerado
-                  ? "Regenerar kardex (eliminar y crear nuevo movimiento)"
-                  : readOnly
-                  ? "Modo solo lectura"
-                  : !permisos.puedeEditar
-                  ? "No tiene permisos para generar kardex"
-                  : "Generar movimiento de almacén y kardex"
+                    ? "No se puede generar kardex en orden anulada"
+                    : kardexGenerado
+                      ? "Regenerar kardex (eliminar y crear nuevo movimiento)"
+                      : readOnly
+                        ? "Modo solo lectura"
+                        : !permisos.puedeEditar
+                          ? "No tiene permisos para generar kardex"
+                          : "Generar movimiento de almacén y kardex"
               }
             />
           )}
@@ -781,10 +805,10 @@ export default function OrdenCompraForm({
                 estaAnulado
                   ? "La orden ya está anulada"
                   : readOnly
-                  ? "Modo solo lectura"
-                  : !permisos.puedeEliminar
-                  ? "No tiene permisos para anular"
-                  : "Anular orden de compra"
+                    ? "Modo solo lectura"
+                    : !permisos.puedeEliminar
+                      ? "No tiene permisos para anular"
+                      : "Anular orden de compra"
               }
             />
           )}
@@ -810,8 +834,8 @@ export default function OrdenCompraForm({
               readOnly
                 ? "Modo solo lectura"
                 : !puedeEditar
-                ? "No se puede editar"
-                : ""
+                  ? "No se puede editar"
+                  : ""
             }
           />
         </div>

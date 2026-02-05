@@ -30,6 +30,7 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
   entidadesComerciales = [],
   monedas = [],
   tiposDocumento = [],
+  movimientosAsignacionEntregaRendir = [],
   productos = [],
   onGuardadoExitoso,
   onCancelar,
@@ -51,14 +52,13 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
     watch,
   } = useForm({
     defaultValues: {
-      id: null, // ✅ AGREGAR ESTA LÍNEA
       entregaARendirMovAlmacenId: entregaARendirMovAlmacenId || "",
       responsableId: "",
       fechaMovimiento: new Date(),
       tipoMovimientoId: "",
       centroCostoId: "",
       monto: 0,
-      monedaId: "",
+      monedaId: 1,
       descripcion: "",
       entidadComercialId: "",
       urlComprobanteMovimiento: "",
@@ -73,14 +73,22 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
       numeroSerieComprobante: "",
       numeroCorrelativoComprobante: "",
       productoId: "",
+      detalleGastosPlanificados: "",
+      asignacionOrigenId: null,
+      formaParteCalculoLiquidacionTripulantes: false,
+      formaParteCalculoEntregaARendir: false,
     },
   });
 
   const operacionSinFactura = watch("operacionSinFactura");
   const validadoTesoreria = watch("validadoTesoreria");
   const urlComprobanteMovimiento = watch("urlComprobanteMovimiento");
-  const urlComprobanteOperacionMovCaja = watch(
-    "urlComprobanteOperacionMovCaja",
+  const tipoMovimientoId = watch("tipoMovimientoId");
+  const formaParteCalculoLiquidacionTripulantes = watch(
+    "formaParteCalculoLiquidacionTripulantes",
+  );
+  const formaParteCalculoEntregaARendir = watch(
+    "formaParteCalculoEntregaARendir",
   );
 
   useEffect(() => {
@@ -104,7 +112,6 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
   useEffect(() => {
     if (isEditing && movimiento) {
       reset({
-        id: movimiento.id ? Number(movimiento.id) : null, // ✅ AGREGAR ESTA LÍNEA
         entregaARendirMovAlmacenId: Number(
           movimiento.entregaARendirMovAlmacenId,
         ),
@@ -121,17 +128,15 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
           ? Number(movimiento.centroCostoId)
           : null,
         monto: Number(movimiento.monto) || 0,
-        monedaId: movimiento.monedaId ? Number(movimiento.monedaId) : null,
+        monedaId: movimiento.monedaId ? Number(movimiento.monedaId) : 1,
         descripcion: movimiento.descripcion || "",
         entidadComercialId: movimiento.entidadComercialId
           ? Number(movimiento.entidadComercialId)
           : null,
         urlComprobanteMovimiento: movimiento.urlComprobanteMovimiento || "",
-        validadoTesoreria: movimiento.validadoTesoreria || false,
-        fechaValidacionTesoreria: movimiento.fechaValidacionTesoreria
-          ? new Date(movimiento.fechaValidacionTesoreria)
-          : null,
-        operacionSinFactura: movimiento.operacionSinFactura || false,
+        validadoTesoreria: movimiento.validadoTesoreria ?? false,
+        fechaValidacionTesoreria: movimiento.fechaValidacionTesoreria || null,
+        operacionSinFactura: movimiento.operacionSinFactura ?? false,
         fechaOperacionMovCaja: movimiento.fechaOperacionMovCaja
           ? new Date(movimiento.fechaOperacionMovCaja)
           : null,
@@ -152,6 +157,14 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
         productoId: movimiento.productoId
           ? Number(movimiento.productoId)
           : null,
+        detalleGastosPlanificados: movimiento.detalleGastosPlanificados || "",
+        asignacionOrigenId: movimiento.asignacionOrigenId
+          ? Number(movimiento.asignacionOrigenId)
+          : null,
+        formaParteCalculoLiquidacionTripulantes:
+          movimiento.formaParteCalculoLiquidacionTripulantes ?? false,
+        formaParteCalculoEntregaARendir:
+          movimiento.formaParteCalculoEntregaARendir ?? false,
       });
     } else {
       setValue(
@@ -180,7 +193,12 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
     setValue,
     usuario,
   ]);
-
+  // Auto-setear formaParteCalculoEntregaARendir cuando es asignación (tipo 1 o 2)
+  useEffect(() => {
+    if (tipoMovimientoId === 1 || tipoMovimientoId === 2) {
+      setValue("formaParteCalculoEntregaARendir", true);
+    }
+  }, [tipoMovimientoId, setValue]);
   const personalOptions = personal.map((p) => ({
     label: p.nombreCompleto || `${p.nombres} ${p.apellidos}`,
     value: Number(p.id),
@@ -240,7 +258,13 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
     label: p.descripcionArmada || p.descripcionBase || p.codigo,
     value: Number(p.id),
   }));
-
+  // Crear opciones de asignación origen desde los movimientos de asignación (inicial o adicional) que forman parte del cálculo
+  const asignacionOrigenOptions = (
+    movimientosAsignacionEntregaRendir || []
+  ).map((mov) => ({
+    label: `Mov #${mov.id} - ${mov.descripcion || "Sin descripción"} - S/ ${mov.monto}`,
+    value: Number(mov.id),
+  }));
   const handleToggleOperacionSinFactura = () => {
     const valorActual = getValues("operacionSinFactura");
     setValue("operacionSinFactura", !valorActual);
@@ -275,7 +299,7 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
           : null,
         centroCostoId: data.centroCostoId ? Number(data.centroCostoId) : null,
         monto: Number(data.monto),
-        monedaId: data.monedaId ? Number(data.monedaId) : null,
+        monedaId: data.monedaId ? Number(data.monedaId) : 1,
         fechaMovimiento: data.fechaMovimiento,
         descripcion: data.descripcion ? data.descripcion.toUpperCase() : null,
         entidadComercialId: data.entidadComercialId
@@ -301,7 +325,15 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
         numeroCorrelativoComprobante:
           data.numeroCorrelativoComprobante?.trim() || null,
         productoId: data.productoId ? Number(data.productoId) : null,
-        actualizadoEn: new Date(),
+        detalleGastosPlanificados: data.detalleGastosPlanificados
+          ? data.detalleGastosPlanificados.trim()
+          : null,
+        asignacionOrigenId: data.asignacionOrigenId
+          ? Number(data.asignacionOrigenId)
+          : null,
+        formaParteCalculoLiquidacionTripulantes:
+          data.formaParteCalculoLiquidacionTripulantes,
+        formaParteCalculoEntregaARendir: data.formaParteCalculoEntregaARendir,
       };
       if (!isEditing) {
         datosNormalizados.creadoEn = new Date();
@@ -337,23 +369,7 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">
-                  Fecha de Creación
-                </label>
-                <InputText
-                  value={
-                    movimiento?.fechaCreacion
-                      ? new Date(movimiento.fechaCreacion).toLocaleString(
-                          "es-PE",
-                        )
-                      : new Date().toLocaleString("es-PE")
-                  }
-                  readOnly
-                  className="p-inputtext-sm"
-                />
-              </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.8 }}>
                 <label
                   htmlFor="fechaMovimiento"
                   className="block text-900 font-medium mb-2"
@@ -390,7 +406,7 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
                   />
                 )}
               </div>
-              <div style={{ flex: 2 }}>
+              <div style={{ flex: 1 }}>
                 <label
                   htmlFor="responsableId"
                   className="block text-900 font-medium mb-2"
@@ -427,7 +443,7 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
                   />
                 )}
               </div>
-              <div style={{ flex: 2 }}>
+              <div style={{ flex: 1 }}>
                 <label
                   htmlFor="tipoMovimientoId"
                   className="block text-900 font-medium mb-2"
@@ -559,6 +575,62 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
                 {errors.productoId && (
                   <Message severity="error" text={errors.productoId.message} />
                 )}
+              </div>
+
+              {/* Asignación Origen */}
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="asignacionOrigenId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Asignación Origen (Opcional)
+                </label>
+                <Controller
+                  name="asignacionOrigenId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="asignacionOrigenId"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.value)}
+                      options={asignacionOrigenOptions}
+                      placeholder="Seleccione asignación origen"
+                      filter
+                      showClear
+                      className={classNames({
+                        "p-invalid": errors.asignacionOrigenId,
+                      })}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
+              </div>
+
+              {/* Detalle Gastos Planificados */}
+              <div style={{ flex: 2 }}>
+                <label
+                  htmlFor="detalleGastosPlanificados"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Detalle Gastos Planificados (Opcional)
+                </label>
+                <Controller
+                  name="detalleGastosPlanificados"
+                  control={control}
+                  render={({ field }) => (
+                    <InputTextarea
+                      id="detalleGastosPlanificados"
+                      value={field.value || ""}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      rows={3}
+                      placeholder="Ingrese detalle de gastos planificados"
+                      className={classNames({
+                        "p-invalid": errors.detalleGastosPlanificados,
+                      })}
+                      disabled={formularioDeshabilitado}
+                    />
+                  )}
+                />
               </div>
             </div>
             <div
@@ -885,7 +957,23 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.5 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Fecha de Creación
+                </label>
+                <InputText
+                  value={
+                    movimiento?.fechaCreacion
+                      ? new Date(movimiento.fechaCreacion).toLocaleString(
+                          "es-PE",
+                        )
+                      : new Date().toLocaleString("es-PE")
+                  }
+                  readOnly
+                  className="p-inputtext-sm"
+                />
+              </div>
+              <div style={{ flex: 0.5 }}>
                 <label className="block text-900 font-medium mb-2">
                   Fecha Operación Mov. Caja
                 </label>
@@ -907,7 +995,7 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
                   )}
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.5 }}>
                 <label className="block text-900 font-medium mb-2">
                   ID Operación Mov. Caja
                 </label>
@@ -941,7 +1029,7 @@ const DetMovsEntregaRendirMovAlmacenForm = ({
                   style={{ color: "#2196F3" }}
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.5 }}>
                 <label className="block text-900 font-medium mb-2">
                   Última Actualización
                 </label>
