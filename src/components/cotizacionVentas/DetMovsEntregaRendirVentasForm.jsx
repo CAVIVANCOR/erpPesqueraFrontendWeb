@@ -7,7 +7,6 @@
  * @author ERP Megui
  * @version 2.0.0
  */
-
 import React, { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { Button } from "primereact/button";
@@ -28,6 +27,7 @@ import { getModulos } from "../../api/moduloSistema";
 const DetMovsEntregaRendirVentasForm = ({
   movimiento = null,
   entregaARendirPVentasId,
+  cotizacionVentas = null,
   personal = [],
   centrosCosto = [],
   tiposMovimiento = [],
@@ -67,7 +67,7 @@ const DetMovsEntregaRendirVentasForm = ({
       tipoMovimientoId: "",
       centroCostoId: "",
       monto: 0,
-      monedaId: "",
+      monedaId: 1,
       descripcion: "",
       entidadComercialId: "",
       urlComprobanteMovimiento: "",
@@ -84,6 +84,7 @@ const DetMovsEntregaRendirVentasForm = ({
       productoId: "", // Nuevo campo para producto (gasto)
       detalleGastosPlanificados: "",
       asignacionOrigenId: null,
+      formaParteCalculoEntregaARendir: false,
     },
   });
 
@@ -94,7 +95,10 @@ const DetMovsEntregaRendirVentasForm = ({
   const urlComprobanteOperacionMovCaja = watch(
     "urlComprobanteOperacionMovCaja",
   );
-
+  const tipoMovimientoId = watch("tipoMovimientoId");
+  const formaParteCalculoEntregaARendir = watch(
+    "formaParteCalculoEntregaARendir",
+  );
   // Cargar módulo VENTAS
   useEffect(() => {
     const cargarModuloVentas = async () => {
@@ -132,7 +136,7 @@ const DetMovsEntregaRendirVentasForm = ({
           ? Number(movimiento.centroCostoId)
           : null,
         monto: Number(movimiento.monto) || 0,
-        monedaId: movimiento.monedaId ? Number(movimiento.monedaId) : null,
+        monedaId: movimiento.monedaId ? Number(movimiento.monedaId) : 1,
         descripcion: movimiento.descripcion || "",
         entidadComercialId: movimiento.entidadComercialId
           ? Number(movimiento.entidadComercialId)
@@ -192,6 +196,28 @@ const DetMovsEntregaRendirVentasForm = ({
     setValue,
     usuario,
   ]);
+  // Auto-setear formaParteCalculoEntregaARendir cuando es asignación (tipo 1 o 2)
+  useEffect(() => {
+    if (tipoMovimientoId === 1 || tipoMovimientoId === 2) {
+      setValue("formaParteCalculoEntregaARendir", true);
+    }
+  }, [tipoMovimientoId, setValue]);
+
+  // Auto-asignar entidadComercialId desde CotizacionVentas.empresa.entidadComercialId cuando es asignación
+  useEffect(() => {
+    if (tipoMovimientoId === 1 || tipoMovimientoId === 2) {
+      if (
+        cotizacionVentas &&
+        cotizacionVentas.empresa &&
+        cotizacionVentas.empresa.entidadComercialId
+      ) {
+        setValue(
+          "entidadComercialId",
+          Number(cotizacionVentas.empresa.entidadComercialId),
+        );
+      }
+    }
+  }, [tipoMovimientoId, cotizacionVentas, setValue]);
 
   // Preparar opciones para dropdowns
   const personalOptions = personal.map((p) => ({
@@ -288,7 +314,18 @@ const DetMovsEntregaRendirVentasForm = ({
       life: 2000,
     });
   };
-
+  const handleToggleCalculoEntrega = () => {
+    const valorActual = getValues("formaParteCalculoEntregaARendir");
+    setValue("formaParteCalculoEntregaARendir", !valorActual);
+    toast.current?.show({
+      severity: "info",
+      summary: "Estado Actualizado",
+      detail: !valorActual
+        ? "Movimiento forma parte del cálculo de entrega a rendir"
+        : "Movimiento NO forma parte del cálculo de entrega a rendir",
+      life: 2000,
+    });
+  };
   // Función para manejar el envío
   const onSubmit = async (data, event) => {
     event?.preventDefault();
@@ -313,7 +350,7 @@ const DetMovsEntregaRendirVentasForm = ({
           : null,
         centroCostoId: data.centroCostoId ? Number(data.centroCostoId) : null,
         monto: Number(data.monto),
-        monedaId: data.monedaId ? Number(data.monedaId) : null,
+        monedaId: data.monedaId ? Number(data.monedaId) : 1,
         fechaMovimiento: data.fechaMovimiento,
         descripcion: data.descripcion ? data.descripcion.toUpperCase() : null,
         entidadComercialId: data.entidadComercialId
@@ -345,6 +382,7 @@ const DetMovsEntregaRendirVentasForm = ({
         asignacionOrigenId: data.asignacionOrigenId
           ? Number(data.asignacionOrigenId)
           : null,
+        formaParteCalculoEntregaARendir: data.formaParteCalculoEntregaARendir,
         fechaActualizacion: new Date(),
       };
 
@@ -389,23 +427,7 @@ const DetMovsEntregaRendirVentasForm = ({
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <div style={{ flex: 1 }}>
-                <label className="block text-900 font-medium mb-2">
-                  Fecha de Creación
-                </label>
-                <InputText
-                  value={
-                    movimiento?.fechaCreacion
-                      ? new Date(movimiento.fechaCreacion).toLocaleString(
-                          "es-PE",
-                        )
-                      : new Date().toLocaleString("es-PE")
-                  }
-                  readOnly
-                  className="p-inputtext-sm"
-                />
-              </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.8 }}>
                 <label
                   htmlFor="fechaMovimiento"
                   className="block text-900 font-medium mb-2"
@@ -442,7 +464,7 @@ const DetMovsEntregaRendirVentasForm = ({
                   />
                 )}
               </div>
-              <div style={{ flex: 2 }}>
+              <div style={{ flex: 1 }}>
                 <label
                   htmlFor="responsableId"
                   className="block text-900 font-medium mb-2"
@@ -479,7 +501,7 @@ const DetMovsEntregaRendirVentasForm = ({
                   />
                 )}
               </div>
-              <div style={{ flex: 2 }}>
+              <div style={{ flex: 1 }}>
                 <label
                   htmlFor="tipoMovimientoId"
                   className="block text-900 font-medium mb-2"
@@ -516,187 +538,229 @@ const DetMovsEntregaRendirVentasForm = ({
                   />
                 )}
               </div>
+              <div style={{ flex: 0.5 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Entrega a Rendir
+                </label>
+                <Button
+                  type="button"
+                  label={formaParteCalculoEntregaARendir ? "SI" : "NO"}
+                  icon={
+                    formaParteCalculoEntregaARendir
+                      ? "pi pi-check-circle"
+                      : "pi pi-times-circle"
+                  }
+                  className={
+                    formaParteCalculoEntregaARendir
+                      ? "p-button-success"
+                      : "p-button-secondary"
+                  }
+                  onClick={handleToggleCalculoEntrega}
+                  size="small"
+                  style={{ width: "100%" }}
+                  disabled={formularioDeshabilitado}
+                />
+              </div>
+              {/* Asignación Origen - Solo visible si NO es asignación Y formaParteCalculoEntregaARendir=true */}
+              {tipoMovimientoId !== 1 &&
+                tipoMovimientoId !== 2 &&
+                formaParteCalculoEntregaARendir === true && (
+                  <div style={{ flex: 2 }}>
+                    <label
+                      htmlFor="asignacionOrigenId"
+                      className="block text-900 font-medium mb-2"
+                    >
+                      Asignación Origen *
+                    </label>
+                    <Controller
+                      name="asignacionOrigenId"
+                      control={control}
+                      render={({ field }) => (
+                        <Dropdown
+                          id="asignacionOrigenId"
+                          {...field}
+                          value={field.value}
+                          options={asignacionOrigenOptions}
+                          optionLabel="label"
+                          optionValue="value"
+                          placeholder="Seleccione asignación origen"
+                          className={classNames({
+                            "p-invalid": errors.asignacionOrigenId,
+                          })}
+                          filter
+                          showClear
+                          style={{ fontWeight: "bold" }}
+                          disabled={formularioDeshabilitado}
+                        />
+                      )}
+                    />
+                    {errors.asignacionOrigenId && (
+                      <Message
+                        severity="error"
+                        text={errors.asignacionOrigenId.message}
+                      />
+                    )}
+                  </div>
+                )}
             </div>
-            {/* Entidad Comercial */}
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginBottom: "0.5rem",
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 2 }}>
-                <div className="p-field">
-                  <label htmlFor="entidadComercialId">
-                    Entidad Comercial <span className="text-red-500">*</span>
+            {/* Entidad Comercial, Familia y Producto - Solo visibles cuando NO es asignación */}
+            {tipoMovimientoId !== 1 && tipoMovimientoId !== 2 && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginBottom: "0.5rem",
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 2 }}>
+                  <div className="p-field">
+                    <label htmlFor="entidadComercialId">
+                      Entidad Comercial <span className="text-red-500">*</span>
+                    </label>
+                    <Controller
+                      name="entidadComercialId"
+                      control={control}
+                      rules={{
+                        required: "La entidad comercial es obligatoria",
+                      }}
+                      render={({ field }) => (
+                        <Dropdown
+                          {...field}
+                          options={entidadComercialOptions}
+                          optionLabel="label"
+                          optionValue="value"
+                          placeholder="Seleccione una entidad comercial"
+                          className={classNames({
+                            "p-invalid": errors.entidadComercialId,
+                          })}
+                          showClear
+                          filter
+                          filterBy="label"
+                          style={{ fontWeight: "bold" }}
+                          disabled={formularioDeshabilitado}
+                        />
+                      )}
+                    />
+                    {errors.entidadComercialId && (
+                      <Message
+                        severity="error"
+                        text={errors.entidadComercialId.message}
+                      />
+                    )}
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  {/* Filtro de Familia */}
+                  <label
+                    htmlFor="familiaFiltro"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Filtrar Gastos por Familia
+                  </label>
+                  <Dropdown
+                    id="familiaFiltro"
+                    value={familiaFiltroId}
+                    options={familiasUnicas}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Todas las familias"
+                    onChange={(e) => setFamiliaFiltroId(e.value)}
+                    showClear
+                    filter
+                    style={{ fontWeight: "bold" }}
+                    disabled={formularioDeshabilitado}
+                  />
+                </div>
+                <div style={{ flex: 2 }}>
+                  {/* Producto (Gasto) */}
+                  <label
+                    htmlFor="productoId"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Gasto
                   </label>
                   <Controller
-                    name="entidadComercialId"
+                    name="productoId"
                     control={control}
-                    rules={{ required: "La entidad comercial es obligatoria" }}
                     render={({ field }) => (
                       <Dropdown
+                        id="productoId"
                         {...field}
-                        options={entidadComercialOptions}
+                        value={field.value}
+                        options={productoOptions}
                         optionLabel="label"
                         optionValue="value"
-                        placeholder="Seleccione una entidad comercial"
+                        placeholder="Seleccione producto/gasto"
                         className={classNames({
-                          "p-invalid": errors.entidadComercialId,
+                          "p-invalid": errors.productoId,
                         })}
-                        showClear
                         filter
-                        filterBy="label"
+                        showClear
                         style={{ fontWeight: "bold" }}
                         disabled={formularioDeshabilitado}
                       />
                     )}
                   />
-                  {errors.entidadComercialId && (
+                  {errors.productoId && (
                     <Message
                       severity="error"
-                      text={errors.entidadComercialId.message}
+                      text={errors.productoId.message}
                     />
                   )}
                 </div>
               </div>
-              <div style={{ flex: 1 }}>
-                {/* Filtro de Familia */}
-                <label
-                  htmlFor="familiaFiltro"
-                  className="block text-900 font-medium mb-2"
-                >
-                  Filtrar Gastos por Familia
-                </label>
-                <Dropdown
-                  id="familiaFiltro"
-                  value={familiaFiltroId}
-                  options={familiasUnicas}
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Todas las familias"
-                  onChange={(e) => setFamiliaFiltroId(e.value)}
-                  showClear
-                  filter
-                  style={{ fontWeight: "bold" }}
-                  disabled={formularioDeshabilitado}
-                />
-              </div>
-              <div style={{ flex: 2 }}>
-                {/* Producto (Gasto) */}
-                <label
-                  htmlFor="productoId"
-                  className="block text-900 font-medium mb-2"
-                >
-                  Gasto
-                </label>
-                <Controller
-                  name="productoId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="productoId"
-                      {...field}
-                      value={field.value}
-                      options={productoOptions}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccione producto/gasto"
-                      className={classNames({
-                        "p-invalid": errors.productoId,
-                      })}
-                      filter
-                      showClear
-                      style={{ fontWeight: "bold" }}
-                      disabled={formularioDeshabilitado}
-                    />
-                  )}
-                />
-                {errors.productoId && (
-                  <Message severity="error" text={errors.productoId.message} />
-                )}
-              </div>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginBottom: "0.5rem",
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              <div style={{ flex: 2 }}>
-                <label
-                  htmlFor="asignacionOrigenId"
-                  className="block text-900 font-medium mb-2"
-                >
-                  Asignación Origen
-                </label>
-                <Controller
-                  name="asignacionOrigenId"
-                  control={control}
-                  render={({ field }) => (
-                    <Dropdown
-                      id="asignacionOrigenId"
-                      {...field}
-                      value={field.value}
-                      options={asignacionOrigenOptions}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Seleccione asignación origen"
-                      className={classNames({
-                        "p-invalid": errors.asignacionOrigenId,
-                      })}
-                      filter
-                      showClear
-                      style={{ fontWeight: "bold" }}
-                      disabled={formularioDeshabilitado}
-                    />
-                  )}
-                />
-                {errors.asignacionOrigenId && (
-                  <Message
-                    severity="error"
-                    text={errors.asignacionOrigenId.message}
-                  />
-                )}
-              </div>
+            )}
 
-              <div style={{ flex: 3 }}>
-                <label
-                  htmlFor="detalleGastosPlanificados"
-                  className="block text-900 font-medium mb-2"
-                >
-                  Detalle Gastos Planificados
-                </label>
-                <Controller
-                  name="detalleGastosPlanificados"
-                  control={control}
-                  render={({ field }) => (
-                    <InputTextarea
-                      id="detalleGastosPlanificados"
-                      {...field}
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      rows={1}
-                      placeholder="Ingrese detalle de gastos planificados"
-                      className={classNames({
-                        "p-invalid": errors.detalleGastosPlanificados,
-                      })}
-                      style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                      disabled={formularioDeshabilitado}
+            {/* Detalle Gastos Planificados - Solo visible para asignaciones (tipo 1 o 2) */}
+            {(tipoMovimientoId === 1 || tipoMovimientoId === 2) && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginBottom: "0.5rem",
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label
+                    htmlFor="detalleGastosPlanificados"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Detalle Gastos Planificados
+                  </label>
+                  <Controller
+                    name="detalleGastosPlanificados"
+                    control={control}
+                    render={({ field }) => (
+                      <InputTextarea
+                        id="detalleGastosPlanificados"
+                        {...field}
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        rows={3}
+                        placeholder="Ingrese detalle de gastos planificados"
+                        className={classNames({
+                          "p-invalid": errors.detalleGastosPlanificados,
+                        })}
+                        style={{
+                          fontWeight: "bold",
+                          textTransform: "uppercase",
+                        }}
+                        disabled={formularioDeshabilitado}
+                      />
+                    )}
+                  />
+                  {errors.detalleGastosPlanificados && (
+                    <Message
+                      severity="error"
+                      text={errors.detalleGastosPlanificados.message}
                     />
                   )}
-                />
-                {errors.detalleGastosPlanificados && (
-                  <Message
-                    severity="error"
-                    text={errors.detalleGastosPlanificados.message}
-                  />
-                )}
+                </div>
               </div>
-            </div>
+            )}
+
             <div
               style={{
                 display: "flex",
@@ -777,7 +841,7 @@ const DetMovsEntregaRendirVentasForm = ({
                   <Message severity="error" text={errors.descripcion.message} />
                 )}
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.5 }}>
                 <label
                   htmlFor="monedaId"
                   className="block text-900 font-medium mb-2"
@@ -809,7 +873,7 @@ const DetMovsEntregaRendirVentasForm = ({
                   <Message severity="error" text={errors.monedaId.message} />
                 )}
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.5 }}>
                 <label
                   htmlFor="monto"
                   className="block text-900 font-medium mb-2"
@@ -1028,7 +1092,23 @@ const DetMovsEntregaRendirVentasForm = ({
                 flexDirection: window.innerWidth < 768 ? "column" : "row",
               }}
             >
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.5 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Fecha de Creación
+                </label>
+                <InputText
+                  value={
+                    movimiento?.fechaCreacion
+                      ? new Date(movimiento.fechaCreacion).toLocaleString(
+                          "es-PE",
+                        )
+                      : new Date().toLocaleString("es-PE")
+                  }
+                  readOnly
+                  className="p-inputtext-sm"
+                />
+              </div>
+              <div style={{ flex: 0.5 }}>
                 <label className="block text-900 font-medium mb-2">
                   Fecha Operación Mov. Caja
                 </label>
@@ -1050,7 +1130,7 @@ const DetMovsEntregaRendirVentasForm = ({
                   )}
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.5 }}>
                 <label className="block text-900 font-medium mb-2">
                   ID Operación Mov. Caja
                 </label>
@@ -1084,7 +1164,7 @@ const DetMovsEntregaRendirVentasForm = ({
                   style={{ color: "#2196F3" }}
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 0.5 }}>
                 <label className="block text-900 font-medium mb-2">
                   Última Actualización
                 </label>

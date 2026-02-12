@@ -20,6 +20,9 @@ import {
   actualizarPreFactura,
 } from "../api/preFactura";
 import PreFacturaForm from "../components/preFactura/PreFacturaForm";
+import CotizacionVentasForm from "../components/cotizacionVentas/CotizacionVentasForm"; // ⬅️ AGREGAR
+import MovimientoAlmacenForm from "../components/movimientoAlmacen/MovimientoAlmacenForm"; // ⬅️ AGREGAR
+import ContratoServicioForm from "../components/contratoServicio/ContratoServicioForm"; // ⬅️ AGREGAR
 import {
   getResponsiveFontSize,
   formatearFecha,
@@ -87,34 +90,19 @@ const PreFactura = ({ ruta }) => {
   const [selectedPreFactura, setSelectedPreFactura] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showCotizacionDialog, setShowCotizacionDialog] = useState(false); // ⬅️ AGREGAR
+  const [cotizacionOrigen, setCotizacionOrigen] = useState(null); // ⬅️ AGREGAR
+  const [showMovimientoAlmacenDialog, setShowMovimientoAlmacenDialog] =
+    useState(false); // ⬅️ AGREGAR
+  const [movimientoAlmacenOrigen, setMovimientoAlmacenOrigen] = useState(null); // ⬅️ AGREGAR
+  const [showContratoServicioDialog, setShowContratoServicioDialog] =
+    useState(false); // ⬅️ AGREGAR
+  const [contratoServicioOrigen, setContratoServicioOrigen] = useState(null); // ⬅️ AGREGAR
   const toast = useRef(null);
 
   useEffect(() => {
-    cargarPreFacturas();
     cargarDatos();
   }, []);
-
-  const cargarPreFacturas = async () => {
-    try {
-      setLoading(true);
-      const data = await getAllPreFactura();
-      setPreFacturas(data);
-    } catch (error) {
-      console.error("Error detallado al cargar pre-facturas:", error);
-      console.error("Response:", error.response);
-      console.error("Status:", error.response?.status);
-      console.error("Data:", error.response?.data);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: `Error al cargar pre-facturas: ${
-          error.response?.data?.message || error.message
-        }`,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Extraer clientes únicos de las pre-facturas
   useEffect(() => {
@@ -132,6 +120,7 @@ const PreFactura = ({ ruta }) => {
     setLoading(true);
     try {
       const [
+        preFacturasData,
         empresasData,
         tiposDocData,
         clientesData,
@@ -147,6 +136,7 @@ const PreFactura = ({ ruta }) => {
         personalData,
         bancosData,
       ] = await Promise.all([
+        getAllPreFactura(),
         getEmpresas(),
         getTiposDocumento(),
         getEntidadesComerciales(),
@@ -176,13 +166,14 @@ const PreFactura = ({ ruta }) => {
       setEstadosDoc(estadosDocFiltrados);
 
       // Normalizar pre-facturas agregando estadoDoc manualmente
-      const preFacturasNormalizadas = preFacturas.map((req) => ({
-        ...req,
+      const preFacturasNormalizadas = preFacturasData.map((pf) => ({
+        ...pf,
         estadoDoc: estadosDocFiltrados.find(
-          (e) => Number(e.id) === Number(req.estadoId),
+          (e) => Number(e.id) === Number(pf.estadoId),
         ),
       }));
       setItems(preFacturasNormalizadas);
+      setPreFacturas(preFacturasNormalizadas);
       setCentrosCosto(centrosCostoData);
       setMonedas(monedasData);
       if (unidadesNegocioData && Array.isArray(unidadesNegocioData)) {
@@ -258,6 +249,84 @@ const PreFactura = ({ ruta }) => {
     estadoSeleccionado,
     items,
   ]);
+  const handleIrAPreFacturaOrigen = (preFacturaOrigenId) => {
+    // Cargar la PreFactura origen en el formulario
+    const preFacturaOrigen = preFacturas.find(
+      (pf) => Number(pf.id) === Number(preFacturaOrigenId),
+    );
+
+    if (preFacturaOrigen) {
+      setPreFacturaSeleccionada(preFacturaOrigen);
+      setDialogVisible(true);
+      setIsEdit(true);
+    } else {
+      toast.current.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "No se encontró la PreFactura Origen",
+        life: 3000,
+      });
+    }
+  };
+
+  const handleIrAMovimientoAlmacen = async (movimientoId) => {
+    try {
+      const { getMovimientoAlmacenPorId } =
+        await import("../api/movimientoAlmacen");
+      const movimientoCompleto = await getMovimientoAlmacenPorId(movimientoId);
+
+      setMovimientoAlmacenOrigen(movimientoCompleto);
+      setShowMovimientoAlmacenDialog(true);
+    } catch (error) {
+      console.error("Error al cargar movimiento de almacén:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar el movimiento de almacén",
+        life: 3000,
+      });
+    }
+  };
+
+  const handleIrACotizacionVenta = async (cotizacionVentaId) => {
+    try {
+      const { getCotizacionVentasPorId } =
+        await import("../api/cotizacionVentas");
+      const cotizacionCompleta =
+        await getCotizacionVentasPorId(cotizacionVentaId);
+
+      setCotizacionOrigen(cotizacionCompleta);
+      setShowCotizacionDialog(true);
+    } catch (error) {
+      console.error("Error al cargar cotización origen:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar la cotización origen",
+        life: 3000,
+      });
+    }
+  };
+
+  const handleIrAContratoServicio = async (contratoServicioId) => {
+    try {
+      const { getContratoServicioPorId } =
+        await import("../api/contratoServicio");
+      const contratoCompleto =
+        await getContratoServicioPorId(contratoServicioId);
+
+      setContratoServicioOrigen(contratoCompleto);
+      setShowContratoServicioDialog(true);
+    } catch (error) {
+      console.error("Error al cargar contrato de servicio:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar el contrato de servicio",
+        life: 3000,
+      });
+    }
+  };
 
   const abrirDialogoNuevo = async () => {
     try {
@@ -340,7 +409,7 @@ const PreFactura = ({ ruta }) => {
         setRefreshKey((prev) => prev + 1);
       }
 
-      cargarPreFacturas();
+      cargarDatos();
     } catch (err) {
       // Si el backend devuelve campos faltantes, mostrar lista
       if (
@@ -439,7 +508,8 @@ const PreFactura = ({ ruta }) => {
     }
 
     confirmDialog({
-      message: "¿Está seguro de anular esta pre-factura?",
+      message:
+        "¿Está seguro de anular esta pre-factura? Si tiene movimiento de almacén asociado, también será eliminado.",
       header: "Confirmar Anulación",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-danger",
@@ -448,25 +518,27 @@ const PreFactura = ({ ruta }) => {
       accept: async () => {
         setLoading(true);
         try {
-          // TODO: Implementar API de anulación cuando esté disponible
-          // await anularPreFactura(preFacturaId);
+          await axios.put(
+            `${API_BASE_URL}/api/ventas/prefacturas/${preFacturaId}/anular`,
+          );
 
           toast.current.show({
-            severity: "info",
-            summary: "Función en desarrollo",
-            detail:
-              "La función de anular pre-factura estará disponible próximamente.",
+            severity: "success",
+            summary: "Éxito",
+            detail: "Pre-factura anulada correctamente.",
             life: 3000,
           });
 
-          // cargarPreFacturas();
-          // cerrarDialogo();
+          cargarPreFacturas();
+          cerrarDialogo();
         } catch (err) {
           console.error("Error al anular pre-factura:", err);
           toast.current.show({
             severity: "error",
             summary: "Error",
-            detail: "No se pudo anular la pre-factura.",
+            detail:
+              err.response?.data?.message ||
+              "No se pudo anular la pre-factura.",
             life: 3000,
           });
         } finally {
@@ -522,29 +594,6 @@ const PreFactura = ({ ruta }) => {
     }
   };
 
-  const formatearMoneda = (valor) => {
-    if (!valor) return "S/ 0.00";
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: "PEN",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(valor);
-  };
-
-  const fechaRegistroTemplate = (rowData) => {
-    return (
-      <div>
-        <div className="font-bold text-primary">
-          {rowData.codigo || `ID: ${rowData.id}`}
-        </div>
-        <div className="text-sm text-gray-600">
-          {formatearFecha(rowData.fechaDocumento || rowData.fechaRegistro)}
-        </div>
-      </div>
-    );
-  };
-
   const empresaTemplate = (rowData) => {
     if (!rowData.empresa) return "N/A";
 
@@ -553,9 +602,6 @@ const PreFactura = ({ ruta }) => {
         <div className="font-medium text-blue-600">
           {rowData.empresa.razonSocial || "Sin nombre"}
         </div>
-        <div className="text-sm text-gray-600">
-          RUC: {rowData.empresa.ruc || "N/A"}
-        </div>
       </div>
     );
   };
@@ -563,19 +609,18 @@ const PreFactura = ({ ruta }) => {
   const clienteTemplate = (rowData) => {
     if (!rowData.cliente) return "N/A";
 
-    const severity = rowData.estadoDoc?.severityColor || "success";
-
     return (
-      <ColorTag
-        value={rowData.cliente.razonSocial || "Sin nombre"}
-        severity={severity}
-        size="normal"
-      />
+      <div>
+        <div className="font-medium">
+          {rowData.cliente.razonSocial || "Sin nombre"}
+        </div>
+      </div>
     );
   };
 
   const estadoTemplate = (rowData) => {
     if (!rowData.estadoDoc) return "N/A";
+
     // Usar el severityColor del estado o 'secondary' por defecto
     const severity = rowData.estadoDoc.severityColor || "secondary";
     return (
@@ -587,40 +632,53 @@ const PreFactura = ({ ruta }) => {
     );
   };
 
+  const fechaDocumentoTemplate = (rowData) => {
+    return formatearFecha(rowData.fechaDocumento, "");
+  };
+
+  const monedaTemplate = (rowData) => {
+    return rowData.moneda?.codigoSunat || "";
+  };
+
+  const tipoCambioTemplate = (rowData) => {
+    return rowData.tipoCambio
+      ? Number(rowData.tipoCambio).toLocaleString("es-PE", {
+          minimumFractionDigits: 4,
+          maximumFractionDigits: 4,
+        })
+      : "";
+  };
+
+  const igvTemplate = (rowData) => {
+    return rowData.esExoneradoAlIGV ? (
+      <Tag value="EXONERADO" severity="danger" />
+    ) : (
+      <Tag value="AFECTO" severity="success" />
+    );
+  };
+
   const montosTemplate = (rowData) => {
-    // Calcular subtotal desde detalles
     const subtotal = (rowData.detalles || []).reduce((sum, det) => {
       const cantidad = Number(det.cantidad) || 0;
       const precio = Number(det.precioUnitario) || 0;
       return sum + cantidad * precio;
     }, 0);
 
-    // Calcular IGV
     const porcentajeIGV = Number(rowData.porcentajeIGV) || 0;
     const igv = rowData.esExoneradoAlIGV ? 0 : subtotal * (porcentajeIGV / 100);
-
-    // Total
     const total = subtotal + igv;
-
-    // Símbolo de moneda
-    const simboloMoneda = rowData.moneda?.codigoSunat === "USD" ? "$" : "S/";
+    const simboloMoneda = rowData.moneda?.simbolo || "";
 
     return (
-      <div className="text-right">
+      <div style={{ textAlign: "right" }}>
         <Tag
           value={`${simboloMoneda} ${formatearNumero(total)}`}
           severity="info"
           style={{
             fontSize: "0.9rem",
             fontWeight: "bold",
-            padding: "6px 10px",
           }}
         />
-        {rowData.tipoCambio && (
-          <div style={{ fontSize: "0.75rem", color: "#666", marginTop: "4px" }}>
-            T/C: {formatearNumero(rowData.tipoCambio)}
-          </div>
-        )}
       </div>
     );
   };
@@ -630,7 +688,7 @@ const PreFactura = ({ ruta }) => {
       <div className="flex gap-2">
         <Button
           icon="pi pi-pencil"
-          className="p-button-rounded p-button-sm"
+          className="p-button-text p-button-sm"
           onClick={(e) => {
             e.stopPropagation();
             abrirDialogoEdicion(rowData);
@@ -640,7 +698,7 @@ const PreFactura = ({ ruta }) => {
         />
         <Button
           icon="pi pi-trash"
-          className="p-button-rounded p-button-danger p-button-sm"
+          className="p-button-text p-button-danger p-button-sm"
           onClick={(e) => {
             e.stopPropagation();
             confirmarEliminacion(rowData);
@@ -653,6 +711,7 @@ const PreFactura = ({ ruta }) => {
   };
 
   const limpiarFiltros = () => {
+    setEmpresaSeleccionada(null);
     setClienteSeleccionado(null);
     setFechaInicio(null);
     setFechaFin(null);
@@ -665,15 +724,15 @@ const PreFactura = ({ ruta }) => {
       <ConfirmDialog />
       <div className="card">
         <DataTable
-          value={preFacturas}
+          value={itemsFiltrados}
           loading={loading}
           dataKey="id"
           paginator
           size="small"
           showGridlines
           stripedRows
-          rows={20}
-          rowsPerPageOptions={[20, 40, 80, 160]}
+          rows={50}
+          rowsPerPageOptions={[50, 100, 200, 500]}
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} pre-facturas"
           sortField="id"
@@ -739,26 +798,6 @@ const PreFactura = ({ ruta }) => {
                 </div>
                 <div style={{ flex: 1 }}>
                   <Button
-                    icon="pi pi-refresh"
-                    className="p-button-outlined p-button-info"
-                    onClick={async () => {
-                      await cargarPreFacturas();
-                      await cargarDatos();
-                      toast.current?.show({
-                        severity: "success",
-                        summary: "Actualizado",
-                        detail:
-                          "Datos actualizados correctamente desde el servidor",
-                        life: 3000,
-                      });
-                    }}
-                    loading={loading}
-                    tooltip="Actualizar todos los datos desde el servidor"
-                    tooltipOptions={{ position: "bottom" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <Button
                     label="Limpiar Filtros"
                     icon="pi pi-filter-slash"
                     className="p-button-secondary"
@@ -773,6 +812,7 @@ const PreFactura = ({ ruta }) => {
                   alignItems: "end",
                   display: "flex",
                   gap: 10,
+                  marginTop: 10,
                   flexDirection: window.innerWidth < 768 ? "column" : "row",
                 }}
               >
@@ -848,55 +888,66 @@ const PreFactura = ({ ruta }) => {
             </div>
           }
         >
+          <Column field="id" header="ID" style={{ width: 80 }} sortable />
+          <Column field="empresaId" header="Empresa" body={empresaTemplate} />
           <Column
-            field="id"
-            header="ID"
+            field="numeroDocumento"
+            header="N° Documento"
+            style={{ width: 140, textAlign: "center" }}
             sortable
-            style={{ width: "80px", verticalAlign: "top" }}
-            frozen
           />
           <Column
-            field="fechaRegistro"
-            header="N° Pre-Factura"
-            body={fechaRegistroTemplate}
+            field="fechaDocumento"
+            header="Fecha Documento"
+            body={fechaDocumentoTemplate}
+            style={{ width: 110, textAlign: "center" }}
             sortable
-            style={{ width: "160px", verticalAlign: "top", fontWeight: "bold" }}
-          />
-          <Column
-            field="empresaId"
-            header="Empresa"
-            body={empresaTemplate}
-            sortable
-            style={{ width: "100px", verticalAlign: "top" }}
           />
           <Column
             field="clienteId"
             header="Cliente"
             body={clienteTemplate}
             sortable
-            style={{ width: "200px", verticalAlign: "top" }}
+          />
+          <Column
+            field="monedaId"
+            header="Moneda"
+            body={monedaTemplate}
+            style={{ width: 80, textAlign: "center" }}
+            sortable
+          />
+          <Column
+            header="Montos"
+            body={montosTemplate}
+            style={{ width: 120, textAlign: "right" }}
+            bodyStyle={{ textAlign: "right" }}
+          />
+          <Column
+            field="tipoCambio"
+            header="T/C"
+            body={tipoCambioTemplate}
+            style={{ width: 90, textAlign: "right" }}
+            bodyStyle={{ textAlign: "right" }}
+            sortable
           />
           <Column
             field="estadoId"
             header="Estado"
             body={estadoTemplate}
+            style={{ width: 150, textAlign: "center" }}
             sortable
-            style={{ width: "120px", verticalAlign: "top" }}
-            className="text-center"
           />
           <Column
-            header="Montos"
-            body={montosTemplate}
-            style={{ width: "120px", verticalAlign: "top" }}
-            className="text-right"
+            field="esExoneradoAlIGV"
+            header="IGV"
+            body={igvTemplate}
+            style={{ width: 110, textAlign: "center" }}
+            sortable
           />
           <Column
-            header="Acciones"
             body={accionesTemplate}
-            style={{ width: "100px" }}
-            className="text-center"
-            frozen
-            alignFrozen="right"
+            header="Acciones"
+            style={{ width: 120, textAlign: "center" }}
           />
         </DataTable>
       </div>
@@ -945,6 +996,117 @@ const PreFactura = ({ ruta }) => {
           incoterms={incoterms}
           tiposContenedor={tiposContenedor}
           empresaFija={empresaSeleccionada}
+          onIrAPreFacturaOrigen={handleIrAPreFacturaOrigen}
+          onIrAMovimientoAlmacen={handleIrAMovimientoAlmacen} // Agregar después de onIrAPreFacturaOrigen
+          onIrACotizacionVenta={handleIrACotizacionVenta} // Agregar después de onIrAMovimientoAlmacen
+          onIrAContratoServicio={handleIrAContratoServicio} // ⬅️ AGREGAR
+        />
+      </Dialog>
+
+      {/* DIALOG PARA MOSTRAR COTIZACIÓN ORIGEN */}
+      <Dialog
+        header="Cotización de Venta Origen"
+        visible={showCotizacionDialog}
+        style={{ width: "1300px" }}
+        onHide={() => setShowCotizacionDialog(false)}
+        modal
+        maximizable
+        maximized={true}
+      >
+        <CotizacionVentasForm
+          isEdit={true}
+          defaultValues={cotizacionOrigen || {}}
+          empresas={empresas}
+          tiposDocumento={tiposDocumento}
+          clientes={clientes}
+          tiposProducto={tiposProducto}
+          formasPago={formasPago}
+          productos={productos}
+          personalOptions={personalOptions}
+          estadosDoc={estadosDoc}
+          centrosCosto={centrosCosto}
+          monedas={monedas}
+          unidadesNegocio={unidadesNegocio}
+          incoterms={incoterms}
+          tiposContenedor={tiposContenedor}
+          onSubmit={() => {}}
+          onCancel={() => setShowCotizacionDialog(false)}
+          onAprobar={() => {}}
+          onAnular={() => {}}
+          loading={false}
+          readOnly={true}
+          toast={toast}
+          permisos={{ puedeEditar: false, puedeEliminar: false }}
+        />
+      </Dialog>
+
+      {/* DIALOG PARA MOSTRAR MOVIMIENTO DE ALMACÉN */}
+      <Dialog
+        header="Movimiento de Almacén (Kardex)"
+        visible={showMovimientoAlmacenDialog}
+        style={{ width: "1300px" }}
+        onHide={() => setShowMovimientoAlmacenDialog(false)}
+        modal
+        maximizable
+        maximized={true}
+      >
+        <MovimientoAlmacenForm
+          isEdit={true}
+          defaultValues={movimientoAlmacenOrigen || {}}
+          empresas={empresas}
+          tiposDocumento={tiposDocumento}
+          entidadesComerciales={clientes}
+          productos={productos}
+          personalOptions={personalOptions}
+          empresaFija={empresaSeleccionada}
+          centrosCosto={centrosCosto}
+          monedas={monedas}
+          onSubmit={() => {}}
+          onCancel={() => setShowMovimientoAlmacenDialog(false)}
+          onCerrar={() => {}}
+          onAnular={() => {}}
+          onGenerarKardex={() => {}}
+          loading={false}
+          toast={toast}
+          permisos={{ puedeVer: true, puedeEditar: false }}
+          readOnly={true}
+        />
+      </Dialog>
+
+      {/* DIALOG PARA MOSTRAR CONTRATO DE SERVICIO */}
+      <Dialog
+        header="Contrato de Servicio Origen"
+        visible={showContratoServicioDialog}
+        style={{ width: "1300px" }}
+        onHide={() => setShowContratoServicioDialog(false)}
+        modal
+        maximizable
+        maximized={true}
+      >
+        <ContratoServicioForm
+          isEdit={true}
+          defaultValues={contratoServicioOrigen || {}}
+          empresas={empresas}
+          tiposDocumento={tiposDocumento}
+          clientes={clientes}
+          tiposProducto={tiposProducto}
+          formasPago={formasPago}
+          productos={productos}
+          personalOptions={personalOptions}
+          estadosDoc={estadosDoc}
+          centrosCosto={centrosCosto}
+          monedas={monedas}
+          unidadesNegocio={unidadesNegocio}
+          incoterms={incoterms}
+          tiposContenedor={tiposContenedor}
+          onSubmit={() => {}}
+          onCancel={() => setShowContratoServicioDialog(false)}
+          onAprobar={() => {}}
+          onAnular={() => {}}
+          loading={false}
+          readOnly={true}
+          toast={toast}
+          permisos={{ puedeEditar: false, puedeEliminar: false }}
         />
       </Dialog>
     </div>

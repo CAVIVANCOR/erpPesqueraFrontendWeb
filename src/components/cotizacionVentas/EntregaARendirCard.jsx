@@ -68,7 +68,8 @@ export default function EntregaARendirCard({
   const [productos, setProductos] = useState([]);
 
   // Estado para entidades comerciales filtradas por empresa
-  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] = useState([]);
+  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] =
+    useState([]);
 
   // Estados para edición de la entrega
   const [responsableEditado, setResponsableEditado] = useState(null);
@@ -114,9 +115,9 @@ export default function EntregaARendirCard({
       // Filtrar solo por empresaId, sin importar el tipo de entidad
       // Esto incluirá clientes, proveedores y cualquier otro tipo de entidad comercial
       const entidadesFiltradas = entidadesComerciales.filter(
-        (e) => Number(e.empresaId) === Number(cotizacionVentas.empresaId)
+        (e) => Number(e.empresaId) === Number(cotizacionVentas.empresaId),
       );
-      
+
       setEntidadesComercialesFiltradas(entidadesFiltradas);
     } else {
       setEntidadesComercialesFiltradas([]);
@@ -133,7 +134,7 @@ export default function EntregaARendirCard({
       const productosFiltrados = productosData.filter(
         (p) =>
           familiasGastosIds.includes(Number(p.familiaId)) &&
-          Number(p.empresaId) === Number(cotizacionVentas?.empresaId)
+          Number(p.empresaId) === Number(cotizacionVentas?.empresaId),
       );
       setProductos(productosFiltrados);
     } catch (error) {
@@ -156,7 +157,7 @@ export default function EntregaARendirCard({
     try {
       const data = await getAllEntregaARendirPVentas();
       const entregaExistente = data.find(
-        (e) => Number(e.cotizacionVentasId) === Number(cotizacionVentas.id)
+        (e) => Number(e.cotizacionVentasId) === Number(cotizacionVentas.id),
       );
 
       if (entregaExistente) {
@@ -283,7 +284,7 @@ export default function EntregaARendirCard({
     try {
       const data = await getAllDetMovsEntregaRendirPVentas();
       const movsFiltrados = data.filter(
-        (m) => Number(m.entregaARendirPVentasId) === Number(entregaARendir.id)
+        (m) => Number(m.entregaARendirPVentasId) === Number(entregaARendir.id),
       );
       setMovimientos(movsFiltrados);
       calcularTotales(movsFiltrados);
@@ -309,12 +310,12 @@ export default function EntregaARendirCard({
 
     movs.forEach((mov) => {
       const monto = Number(mov.monto) || 0;
-      
+
       // Buscar el tipo de movimiento en el array tiposMovimiento usando el ID
       const tipoMov = tiposMovimiento.find(
-        (t) => Number(t.id) === Number(mov.tipoMovimientoId)
+        (t) => Number(t.id) === Number(mov.tipoMovimientoId),
       );
-      
+
       // Verificar si es ingreso o egreso usando el campo "esIngreso" (booleano)
       if (tipoMov?.esIngreso === true) {
         totalAsignaciones += monto;
@@ -348,7 +349,7 @@ export default function EntregaARendirCard({
     // Fallback: buscar en el array de personal (retrocompatibilidad)
     if (!entregaARendir?.respEntregaRendirId) return "N/A";
     const resp = personal.find(
-      (p) => Number(p.id) === Number(entregaARendir.respEntregaRendirId)
+      (p) => Number(p.id) === Number(entregaARendir.respEntregaRendirId),
     );
     return (
       resp?.nombreCompleto ||
@@ -371,7 +372,7 @@ export default function EntregaARendirCard({
     // Fallback: buscar en el array de centrosCosto (retrocompatibilidad)
     if (!entregaARendir?.centroCostoId) return "N/A";
     const centro = centrosCosto.find(
-      (c) => Number(c.id) === Number(entregaARendir.centroCostoId)
+      (c) => Number(c.id) === Number(entregaARendir.centroCostoId),
     );
     return centro ? `${centro.Codigo} - ${centro.Nombre}` : "N/A";
   };
@@ -382,7 +383,7 @@ export default function EntregaARendirCard({
     setResponsableEditado(value);
     setHayCambios(
       Number(value) !== Number(entregaARendir.respEntregaRendirId) ||
-        Number(centroCostoEditado) !== Number(entregaARendir.centroCostoId)
+        Number(centroCostoEditado) !== Number(entregaARendir.centroCostoId),
     );
   };
 
@@ -394,7 +395,7 @@ export default function EntregaARendirCard({
     setHayCambios(
       Number(responsableEditado) !==
         Number(entregaARendir.respEntregaRendirId) ||
-        Number(value) !== Number(entregaARendir.centroCostoId)
+        Number(value) !== Number(entregaARendir.centroCostoId),
     );
   };
 
@@ -414,7 +415,7 @@ export default function EntregaARendirCard({
 
       const entregaActualizada = await actualizarEntregaARendirPVentas(
         entregaARendir.id,
-        dataToUpdate
+        dataToUpdate,
       );
 
       // Normalizar BigInt
@@ -519,23 +520,15 @@ export default function EntregaARendirCard({
   return (
     <>
       <Panel
-        header={
-          <div className="flex justify-content-between align-items-center w-full">
-            <span>
-              <i className="pi pi-money-bill mr-2" />
-              Entrega a Rendir - Cotización #{cotizacionVentas.id}
-            </span>
-          </div>
-        }
-        className="mt-3"
-        toggleable
+        header={`Entrega a Rendir - Cotización #${entregaARendir?.id || ""}`}
+        className="mt-4"
       >
         {/* Información de la entrega */}
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "end",
+            alignItems: "flex-start",
             gap: 10,
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
@@ -560,7 +553,9 @@ export default function EntregaARendirCard({
               showClear
               className="w-full"
               style={{ fontWeight: "bold" }}
-              disabled={!puedeEditar || readOnly || entregaARendir.entregaLiquidada}
+              disabled={
+                !puedeEditar || readOnly || entregaARendir.entregaLiquidada
+              }
             />
           </div>
           <div style={{ flex: 0.5 }}>
@@ -570,22 +565,22 @@ export default function EntregaARendirCard({
                 entregaARendir.entregaLiquidada
                   ? "LIQUIDADA"
                   : movimientos.length > 0 && totalSaldoEntregasRendir === 0
-                  ? "LISTA PARA LIQUIDAR"
-                  : "PENDIENTE"
+                    ? "LISTA PARA LIQUIDAR"
+                    : "PENDIENTE"
               }
               severity={
                 entregaARendir.entregaLiquidada
                   ? "success"
                   : movimientos.length > 0 && totalSaldoEntregasRendir === 0
-                  ? "info"
-                  : "danger"
+                    ? "info"
+                    : "danger"
               }
               className="w-full"
               disabled
               style={{ fontWeight: "bold" }}
             />
           </div>
-          <div style={{ flex: 1}}>
+          <div style={{ flex: 1 }}>
             <label className="block text-900 font-medium mb-2">
               Fecha Liquidación
             </label>
@@ -593,7 +588,7 @@ export default function EntregaARendirCard({
               value={
                 entregaARendir.fechaLiquidacion
                   ? new Date(
-                      entregaARendir.fechaLiquidacion
+                      entregaARendir.fechaLiquidacion,
                     ).toLocaleDateString("es-PE")
                   : "N/A"
               }
@@ -620,10 +615,11 @@ export default function EntregaARendirCard({
               showClear
               className="w-full"
               style={{ fontWeight: "bold" }}
-              disabled={!puedeEditar || readOnly || entregaARendir.entregaLiquidada}
+              disabled={
+                !puedeEditar || readOnly || entregaARendir.entregaLiquidada
+              }
             />
           </div>
-
         </div>
         <Divider />
 
@@ -703,7 +699,7 @@ export default function EntregaARendirCard({
               }}
             />
           </div>
-                    {/* Botón de acción para actualizar */}
+          {/* Botón de acción para actualizar */}
           <div style={{ flex: 0.5 }}>
             <Button
               label="Actualizar"
@@ -731,6 +727,7 @@ export default function EntregaARendirCard({
               monedas={monedas}
               tiposDocumento={tiposDocumento}
               productos={productos}
+              cotizacionVentas={cotizacionVentas}
               cotizacionVentasAprobada={true}
               onDataChange={cargarMovimientos}
               readOnly={readOnly}

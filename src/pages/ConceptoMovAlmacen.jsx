@@ -54,6 +54,7 @@ export default function ConceptoMovAlmacen({ ruta }) {
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  const [empresaAutoDetectada, setEmpresaAutoDetectada] = useState(false); // Rastrear si empresa fue auto-detectada
   const [tipoConceptoSeleccionado, setTipoConceptoSeleccionado] = useState(null);
   const [tipoMovimientoSeleccionado, setTipoMovimientoSeleccionado] = useState(null);
   const [tipoAlmacenSeleccionado, setTipoAlmacenSeleccionado] = useState(null);
@@ -202,22 +203,25 @@ export default function ConceptoMovAlmacen({ ruta }) {
   };
 
   const handleEdit = (rowData) => {
-    // Detectar automáticamente la empresa del almacén origen o destino
-    let empresaId = null;
-    if (rowData.almacenOrigenId) {
-      const almacen = almacenes.find(a => Number(a.id) === Number(rowData.almacenOrigenId));
-      if (almacen && almacen.centroAlmacen) {
-        empresaId = almacen.centroAlmacen.empresaId;
+    // Detectar automáticamente la empresa del almacén origen o destino SOLO si no hay empresa seleccionada
+    if (!empresaSeleccionada) {
+      let empresaId = null;
+      if (rowData.almacenOrigenId) {
+        const almacen = almacenes.find(a => Number(a.id) === Number(rowData.almacenOrigenId));
+        if (almacen && almacen.centroAlmacen) {
+          empresaId = almacen.centroAlmacen.empresaId;
+        }
       }
-    }
-    if (!empresaId && rowData.almacenDestinoId) {
-      const almacen = almacenes.find(a => Number(a.id) === Number(rowData.almacenDestinoId));
-      if (almacen && almacen.centroAlmacen) {
-        empresaId = almacen.centroAlmacen.empresaId;
+      if (!empresaId && rowData.almacenDestinoId) {
+        const almacen = almacenes.find(a => Number(a.id) === Number(rowData.almacenDestinoId));
+        if (almacen && almacen.centroAlmacen) {
+          empresaId = almacen.centroAlmacen.empresaId;
+        }
       }
-    }
-    if (empresaId) {
-      setEmpresaSeleccionada(empresaId);
+      if (empresaId) {
+        setEmpresaSeleccionada(empresaId);
+        setEmpresaAutoDetectada(true); // Marcar como auto-detectada
+      }
     }
     setEditing(rowData);
     setShowDialog(true);
@@ -290,6 +294,11 @@ export default function ConceptoMovAlmacen({ ruta }) {
       }
       setShowDialog(false);
       setEditing(null);
+      // Solo limpiar empresa si fue auto-detectada, no si el usuario la seleccionó manualmente
+      if (empresaAutoDetectada) {
+        setEmpresaSeleccionada(null);
+        setEmpresaAutoDetectada(false);
+      }
       cargarDatos();
     } catch (err) {
       toast.current.show({
@@ -397,6 +406,8 @@ export default function ConceptoMovAlmacen({ ruta }) {
         rows={10}
         onRowClick={(e) => handleEdit(e.data)}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        sortField="id"
+        sortOrder={-1}
         header={
           <div>
             <div
@@ -653,54 +664,63 @@ export default function ConceptoMovAlmacen({ ruta }) {
           </div>
         }
       >
-        <Column field="id" header="ID" style={{ width: 80 }} />
+        <Column field="id" header="ID" style={{ width: 80 }} sortable />
         <Column
           field="descripcionArmada"
           header="Descripción Armada"
           style={{ minWidth: "200px" }}
+          sortable
         />
         <Column
           field="tipoConceptoId"
           header="Tipo Concepto"
           body={tipoConceptoNombre}
+          sortable
         />
         <Column
           field="tipoMovimientoId"
           header="Tipo Movimiento"
           body={tipoMovimientoNombre}
+          sortable
         />
         <Column
           field="tipoAlmacenId"
           header="Tipo Almacén"
           body={tipoAlmacenNombre}
+          sortable
         />
         <Column
           field="almacenOrigenId"
           header="Almacén Origen"
           body={almacenOrigenNombre}
+          sortable
         />
         <Column
           field="llevaKardexOrigen"
           header="Kardex Origen"
           body={(rowData) => booleanTemplate(rowData, "llevaKardexOrigen")}
           style={{ width: 80, textAlign: "center" }}
+          sortable
         />
         <Column
           field="almacenDestinoId"
           header="Almacén Destino"
           body={almacenDestinoNombre}
+          sortable
         />
         <Column
           field="llevaKardexDestino"
           header="Kardex Destino"
           body={(rowData) => booleanTemplate(rowData, "llevaKardexDestino")}
           style={{ width: 80, textAlign: "center" }}
+          sortable
         />
         <Column
           field="esCustodia"
           header="Custodia"
           body={(rowData) => booleanTemplate(rowData, "esCustodia")}
           style={{ width: 80, textAlign: "center" }}
+          sortable
         />
         <Column
           body={actionBody}

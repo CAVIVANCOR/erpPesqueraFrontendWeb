@@ -105,6 +105,9 @@ export default function RequerimientoCompraForm({
     centroCostoId: defaultValues?.centroCostoId
       ? Number(defaultValues.centroCostoId)
       : 14,
+    unidadNegocioId: defaultValues?.unidadNegocioId // ✅ AGREGAR ESTA LÍNEA
+      ? Number(defaultValues.unidadNegocioId) // ✅ AGREGAR ESTA LÍNEA
+      : null, // ✅ AGREGAR ESTA LÍNEA
     porcentajeIGV: defaultValues?.porcentajeIGV || null,
     esExoneradoAlIGV: defaultValues?.esExoneradoAlIGV || false,
 
@@ -209,6 +212,9 @@ export default function RequerimientoCompraForm({
         centroCostoId: defaultValues?.centroCostoId
           ? Number(defaultValues.centroCostoId)
           : 14,
+        unidadNegocioId: defaultValues?.unidadNegocioId // ✅ AGREGAR ESTA LÍNEA
+          ? Number(defaultValues.unidadNegocioId) // ✅ AGREGAR ESTA LÍNEA
+          : null, // ✅ AGREGAR ESTA LÍNEA
         porcentajeIGV: defaultValues?.porcentajeIGV || null,
         esExoneradoAlIGV: defaultValues?.esExoneradoAlIGV || false,
 
@@ -685,6 +691,10 @@ export default function RequerimientoCompraForm({
       actualizadoPor: formData.actualizadoPor
         ? Number(formData.actualizadoPor)
         : null,
+      unidadNegocioId: formData.unidadNegocioId
+        ? Number(formData.unidadNegocioId)
+        : null, // ✅ AGREGAR
+
       porcentajeIGV: formData.porcentajeIGV,
       esExoneradoAlIGV: formData.esExoneradoAlIGV,
     };
@@ -1027,68 +1037,88 @@ export default function RequerimientoCompraForm({
       >
         {/* Botones izquierda: Aprobar, Anular, Autorizar Compra */}
         <div style={{ display: "flex", gap: 8 }}>
-          {/* Mostrar Aprobar siempre en edición, deshabilitado si ya está aprobado */}
-          {isEdit && (
-            <Button
-              label="Aprobar"
-              icon="pi pi-check"
-              className="p-button-success"
-              onClick={handleAprobarClick}
-              disabled={
-                !estaPendiente || readOnly || loading || !permisos.puedeEditar
-              }
-              tooltip={
-                !estaPendiente
+          {/* Botón Aprobar - SIEMPRE VISIBLE */}
+          <Button
+            label="Aprobar"
+            icon="pi pi-check"
+            className="p-button-success"
+            onClick={handleAprobarClick}
+            disabled={
+              !isEdit ||
+              !estaPendiente ||
+              readOnly ||
+              loading ||
+              !permisos.puedeEditar
+            }
+            tooltip={
+              !isEdit
+                ? "Solo disponible en modo edición"
+                : !estaPendiente
                   ? "Ya fue aprobado"
                   : readOnly
                     ? "Modo solo lectura"
                     : !permisos.puedeEditar
                       ? "No tiene permisos para aprobar"
-                      : ""
-              }
-            />
-          )}
+                      : "Aprobar requerimiento de compra"
+            }
+          />
 
-          {/* PENDIENTE o APROBADO: Mostrar Anular */}
-          {(estaPendiente || estaAprobado) && isEdit && (
-            <Button
-              label="Anular"
-              icon="pi pi-ban"
-              className="p-button-danger"
-              onClick={handleAnularClick}
-              disabled={readOnly || loading || !permisos.puedeEliminar}
-              tooltip={
-                readOnly
-                  ? "Modo solo lectura"
-                  : !permisos.puedeEliminar
-                    ? "No tiene permisos para anular"
-                    : ""
-              }
-            />
-          )}
+          {/* Botón Anular - SIEMPRE VISIBLE */}
+          <Button
+            label="Anular"
+            icon="pi pi-ban"
+            className="p-button-danger"
+            onClick={handleAnularClick}
+            disabled={
+              !isEdit ||
+              (!estaPendiente && !estaAprobado) ||
+              readOnly ||
+              loading ||
+              !permisos.puedeEliminar
+            }
+            tooltip={
+              !isEdit
+                ? "Solo disponible en modo edición"
+                : !estaPendiente && !estaAprobado
+                  ? "Solo se puede anular si está Pendiente o Aprobado"
+                  : readOnly
+                    ? "Modo solo lectura"
+                    : !permisos.puedeEliminar
+                      ? "No tiene permisos para anular"
+                      : "Anular requerimiento de compra"
+            }
+          />
 
-          {/* APROBADO: Mostrar Autorizar Compra */}
-          {estaAprobado && isEdit && (
-            <Button
-              label="Autorizar Compra"
-              icon="pi pi-lock"
-              className="p-button-warning"
-              onClick={handleAutorizarCompraClick}
-              disabled={readOnly || loading || !permisos.puedeEditar}
-              style={{
-                whiteSpace: "nowrap",
-                width: "auto",
-                minWidth: "fit-content",
-              }}
-              tooltip={
-                readOnly
-                  ? "Modo solo lectura"
-                  : !permisos.puedeEditar
-                    ? "No tiene permisos para autorizar"
-                    : ""
-              }
-            />
-          )}
+          {/* Botón Autorizar Compra - SIEMPRE VISIBLE */}
+          <Button
+            label="Autorizar Compra"
+            icon="pi pi-lock"
+            className="p-button-warning"
+            onClick={handleAutorizarCompraClick}
+            disabled={
+              !isEdit ||
+              !estaAprobado ||
+              readOnly ||
+              loading ||
+              !permisos.puedeEditar
+            }
+            style={{
+              whiteSpace: "nowrap",
+              width: "auto",
+              minWidth: "fit-content",
+            }}
+            tooltip={
+              !isEdit
+                ? "Solo disponible en modo edición"
+                : !estaAprobado
+                  ? "Solo disponible cuando está Aprobado"
+                  : readOnly
+                    ? "Modo solo lectura"
+                    : !permisos.puedeEditar
+                      ? "No tiene permisos para autorizar"
+                      : "Autorizar compra y generar órdenes de Compra"
+            }
+          />
         </div>
 
         {/* Botones derecha: Guardar y Cancelar */}

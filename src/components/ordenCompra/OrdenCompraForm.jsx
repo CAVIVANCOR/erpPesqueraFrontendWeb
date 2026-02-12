@@ -99,6 +99,9 @@ export default function OrdenCompraForm({
   const [centroCostoId, setCentroCostoId] = useState(
     defaultValues?.centroCostoId || null,
   );
+  const [unidadNegocioId, setUnidadNegocioId] = useState(
+    defaultValues?.unidadNegocioId || null,
+  );
   const [movIngresoAlmacenId, setMovIngresoAlmacenId] = useState(
     defaultValues?.movIngresoAlmacenId || null,
   );
@@ -218,6 +221,11 @@ export default function OrdenCompraForm({
       setCentroCostoId(
         defaultValues.centroCostoId
           ? Number(defaultValues.centroCostoId)
+          : null,
+      );
+      setUnidadNegocioId(
+        defaultValues.unidadNegocioId
+          ? Number(defaultValues.unidadNegocioId)
           : null,
       );
       setMovIngresoAlmacenId(
@@ -438,6 +446,7 @@ export default function OrdenCompraForm({
       aprobadoPorId: setAprobadoPorId,
       estadoId: setEstadoId,
       centroCostoId: setCentroCostoId,
+      unidadNegocioId: setUnidadNegocioId,
       movIngresoAlmacenId: setMovIngresoAlmacenId,
       observaciones: setObservaciones,
       porcentajeIGV: setPorcentajeIGV,
@@ -477,6 +486,7 @@ export default function OrdenCompraForm({
       aprobadoPorId: aprobadoPorId ? Number(aprobadoPorId) : null,
       estadoId: estadoId ? Number(estadoId) : null,
       centroCostoId: centroCostoId ? Number(centroCostoId) : null,
+      unidadNegocioId: unidadNegocioId ? Number(unidadNegocioId) : null,
       movIngresoAlmacenId: movIngresoAlmacenId
         ? Number(movIngresoAlmacenId)
         : null,
@@ -589,6 +599,7 @@ export default function OrdenCompraForm({
     aprobadoPorId,
     estadoId,
     centroCostoId,
+    unidadNegocioId,
     movIngresoAlmacenId,
     observaciones,
     porcentajeIGV,

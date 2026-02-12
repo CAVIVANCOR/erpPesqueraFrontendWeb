@@ -18,7 +18,9 @@ import { Toast } from "primereact/toast";
 import {
   crearDescargaFaenaConsumo,
   actualizarDescargaFaenaConsumo,
+  finalizarDescargaConsumoConMovimientos,
 } from "../../api/descargaFaenaConsumo";
+import { confirmDialog } from "primereact/confirmdialog";
 import {
   capturarGPS,
   descomponerDMS,
@@ -46,6 +48,7 @@ import {
  * - motoristaId: ID de motorista (valor fijo desde FaenaPescaConsumo)
  * - patronId: ID de patrón (valor fijo desde FaenaPescaConsumo)
  * - faenaPescaConsumoId: ID de faena de pesca consumo (valor fijo desde FaenaPescaConsumo)
+ * - novedadPescaConsumoId: ID de novedad de pesca consumo (requerido para finalización)
  */
 export default function DescargaFaenaConsumoForm({
   detalle,
@@ -58,11 +61,13 @@ export default function DescargaFaenaConsumoForm({
   motoristaId = null,
   patronId = null,
   faenaPescaConsumoId = null,
+  novedadPescaConsumoId = null,
   onGuardadoExitoso,
   onCancelar,
 }) {
   // Estados para loading
   const [loading, setLoading] = useState(false);
+  const [finalizandoDescarga, setFinalizandoDescarga] = useState(false);
 
   // Ref para rastrear la especie anterior y evitar sobrescribir precio editado manualmente
   const especieAnteriorRef = useRef(null);
@@ -577,6 +582,100 @@ export default function DescargaFaenaConsumoForm({
   };
 
   const toast = useRef(null);
+
+  /**
+   * Maneja la finalización de descarga con generación de movimientos de almacén
+   */
+  const handleFinalizarDescarga = () => {
+    // Prevenir si ya está procesando
+    if (finalizandoDescarga) {
+      return;
+    }
+
+    // Validar que la descarga esté guardada
+    if (!detalle?.id) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe guardar la descarga antes de finalizarla",
+        life: 4000,
+      });
+      return;
+    }
+
+    // Validar que exista novedadPescaConsumoId
+    if (!novedadPescaConsumoId) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se encontró la novedad de pesca consumo asociada",
+        life: 4000,
+      });
+      return;
+    }
+
+    confirmDialog({
+      message:
+        "¿Está seguro de finalizar esta descarga? Esta acción generará automáticamente los movimientos de almacén (ingreso y salida) con sus respectivos kardex y PreFactura.",
+      header: "Confirmar Finalización de Descarga",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-info",
+      rejectClassName: "p-button-secondary",
+      acceptLabel: "Sí, Finalizar y Generar Movimientos",
+      rejectLabel: "Cancelar",
+      accept: async () => {
+        setFinalizandoDescarga(true);
+
+        try {
+          // Mostrar mensaje de inicio
+          toast.current?.show({
+            severity: "info",
+            summary: "Procesando",
+            detail: "Generando movimientos de almacén y PreFactura...",
+            life: 3000,
+          });
+
+          // Llamar al backend para finalizar y generar movimientos de almacén
+          const resultado = await finalizarDescargaConsumoConMovimientos(
+            detalle.id,
+            novedadPescaConsumoId
+          );
+
+          // Mostrar mensaje de éxito con detalles
+          const mensajeDetalle = resultado.preFactura
+            ? `Movimientos generados: Ingreso (${resultado.movimientoIngreso.numeroDocumento}) y Salida (${resultado.movimientoSalida.numeroDocumento}). PreFactura: ${resultado.preFactura.codigo}`
+            : `Movimientos generados: Ingreso (${resultado.movimientoIngreso.numeroDocumento}) y Salida (${resultado.movimientoSalida.numeroDocumento})`;
+
+          toast.current?.show({
+            severity: "success",
+            summary: "Descarga Finalizada",
+            detail: mensajeDetalle,
+            life: 6000,
+          });
+
+          // Notificar al padre para refrescar datos
+          if (onGuardadoExitoso) {
+            onGuardadoExitoso(resultado);
+          }
+        } catch (error) {
+          console.error("Error al finalizar descarga:", error);
+          const mensajeError =
+            error.response?.data?.error ||
+            error.response?.data?.message ||
+            error.message ||
+            "Error al finalizar la descarga";
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: mensajeError,
+            life: 5000,
+          });
+        } finally {
+          setFinalizandoDescarga(false);
+        }
+      },
+    });
+  };
 
   /**
    * Maneja la captura de GPS usando las funciones genéricas
@@ -2079,32 +2178,56 @@ export default function DescargaFaenaConsumoForm({
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           gap: 8,
           marginTop: 18,
         }}
       >
+        {/* Botón Finalizar Descarga - Lado izquierdo */}
         <Button
           type="button"
-          label="Cancelar"
-          icon="pi pi-times"
-          className="p-button-warning"
-          onClick={onCancelar}
-          disabled={loading}
-          severity="warning"
+          label={finalizandoDescarga ? "Finalizando..." : "Finalizar Descarga"}
+          icon={
+            finalizandoDescarga ? "pi pi-spin pi-spinner" : "pi pi-check-circle"
+          }
+          severity="info"
+          onClick={handleFinalizarDescarga}
+          disabled={!detalle?.id || loading || finalizandoDescarga}
+          loading={finalizandoDescarga}
           raised
           size="small"
+          tooltip={
+            !detalle?.id
+              ? "Debe guardar la descarga antes de finalizarla"
+              : "Finalizar descarga y generar movimientos de almacén"
+          }
+          tooltipOptions={{ position: "top" }}
         />
-        <Button
-          onClick={handleGuardar}
-          label={detalle?.id ? "Actualizar" : "Guardar"}
-          icon="pi pi-check"
-          loading={loading}
-          className="p-button-success"
-          severity="success"
-          raised
-          size="small"
-        />
+
+        {/* Botones Cancelar y Guardar - Lado derecho */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button
+            type="button"
+            label="Cancelar"
+            icon="pi pi-times"
+            className="p-button-warning"
+            onClick={onCancelar}
+            disabled={loading}
+            severity="warning"
+            raised
+            size="small"
+          />
+          <Button
+            onClick={handleGuardar}
+            label={detalle?.id ? "Actualizar" : "Guardar"}
+            icon="pi pi-check"
+            loading={loading}
+            className="p-button-success"
+            severity="success"
+            raised
+            size="small"
+          />
+        </div>
       </div>
     </div>
   );

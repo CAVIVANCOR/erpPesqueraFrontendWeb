@@ -471,12 +471,16 @@ export default function DetEntregaRendirPescaIndustrial({
           dataKey="id"
           loading={loading}
           paginator
-          rows={5}
-          rowsPerPageOptions={[5, 10, 25]}
-          className="p-datatable-sm"
+          rows={10}
+          rowsPerPageOptions={[10, 20, 40]}
           emptyMessage="No hay movimientos registrados"
           style={{ fontSize: getResponsiveFontSize(), cursor: "pointer" }}
           rowClassName={() => "p-selectable-row"}
+          size="small"
+          stripedRows
+          showGridlines
+          sortField="id"
+          sortOrder={-1}
           header={
             <div>
               <div
@@ -600,6 +604,7 @@ export default function DetEntregaRendirPescaIndustrial({
             selectionMode="single"
             headerStyle={{ width: "3rem" }}
           ></Column>
+          <Column field="id" header="Id" sortable />
           <Column
             field="fechaMovimiento"
             header="Fecha"

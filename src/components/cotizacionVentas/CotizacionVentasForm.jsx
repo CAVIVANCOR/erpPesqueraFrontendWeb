@@ -240,6 +240,9 @@ const CotizacionVentasForm = ({
     centroCostoId: defaultValues?.centroCostoId
       ? Number(defaultValues.centroCostoId)
       : null,
+    unidadNegocioId: defaultValues?.unidadNegocioId
+      ? Number(defaultValues.unidadNegocioId)
+      : null,
     creadoPor: defaultValues?.creadoPor
       ? Number(defaultValues.creadoPor)
       : null,
@@ -747,7 +750,7 @@ const CotizacionVentasForm = ({
         appendTo={document.body}
         style={{ zIndex: 99999 }}
       />
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="p-fluid">
         <TabView
           activeIndex={activeCard}
           onTabChange={handleTabChange}
@@ -850,7 +853,7 @@ const CotizacionVentasForm = ({
             disabled={!isEdit}
           >
             <EntregaARendirCard
-              cotizacionVentas={formData}
+              cotizacionVentas={defaultValues}
               personal={personalOptions}
               centrosCosto={centrosCosto}
               tiposMovimiento={tiposMovimiento}
@@ -872,54 +875,68 @@ const CotizacionVentasForm = ({
             />
           </TabPanel>
         </TabView>
-        <div className="flex justify-content-end gap-2 mt-4">
-          <Button
-            type="button"
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-secondary"
-            onClick={handleCancel}
-            disabled={loading || loadingProp}
-          />
-          <Button
-            type="submit"
-            label={defaultValues ? "Actualizar" : "Guardar"}
-            icon="pi pi-save"
-            className="p-button-primary"
-            loading={loading || loadingProp}
-            disabled={readOnly || !permisos.puedeEditar}
-            tooltip={
-              readOnly
-                ? "Modo solo lectura"
-                : !permisos.puedeEditar
-                  ? "No tiene permisos para editar"
-                  : ""
-            }
-          />
-          {/* Botón Aprobar Cotización */}
-          {formData.estadoId !== 42 &&
-            permisos.puedeAprobarDocs &&
-            defaultValues?.id && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          {/* Contenedor izquierdo: Botón Aprobar Cotización o Estado Aprobado */}
+          <div style={{ display: "flex", gap: 8 }}>
+            {/* Botón Aprobar Cotización */}
+            {formData.estadoId !== 42 &&
+              permisos.puedeAprobarDocs &&
+              defaultValues?.id && (
+                <Button
+                  type="button"
+                  label="Aprobar Cotización"
+                  icon="pi pi-check"
+                  className="p-button-success"
+                  onClick={handleAprobarCotizacion}
+                  loading={loadingAprobar}
+                  disabled={loading || loadingProp || loadingAprobar}
+                />
+              )}
+            {/* Indicador de estado aprobado */}
+            {formData.estadoId === 42 && (
               <Button
                 type="button"
-                label="Aprobar Cotización"
-                icon="pi pi-check"
+                label="APROBADO"
+                icon="pi pi-check-circle"
                 className="p-button-success"
-                onClick={handleAprobarCotizacion}
-                loading={loadingAprobar}
-                disabled={loading || loadingProp || loadingAprobar}
+                disabled
               />
             )}
-          {/* Indicador de estado aprobado */}
-          {formData.estadoId === 42 && (
+          </div>
+
+          {/* Contenedor derecho: Botones Cancelar y Guardar/Actualizar */}
+          <div style={{ display: "flex", gap: 8 }}>
             <Button
               type="button"
-              label="APROBADO"
-              icon="pi pi-check-circle"
-              className="p-button-success"
-              disabled
+              label="Cancelar"
+              icon="pi pi-times"
+              className="p-button-secondary"
+              onClick={handleCancel}
+              disabled={loading || loadingProp}
             />
-          )}
+            <Button
+              type="submit"
+              label={defaultValues ? "Actualizar" : "Guardar"}
+              icon="pi pi-save"
+              className="p-button-primary"
+              loading={loading || loadingProp}
+              disabled={readOnly || !permisos.puedeEditar}
+              tooltip={
+                readOnly
+                  ? "Modo solo lectura"
+                  : !permisos.puedeEditar
+                    ? "No tiene permisos para editar"
+                    : ""
+              }
+            />
+          </div>
         </div>
       </form>
     </div>

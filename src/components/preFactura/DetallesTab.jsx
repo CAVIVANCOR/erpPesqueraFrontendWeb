@@ -22,6 +22,12 @@ export default function DetallesTab({
   toast,
   onCountChange,
   readOnly = false,
+  subtotal = 0,
+  totalIGV = 0,
+  total = 0,
+  porcentajeIGV = 0,
+  monedaId = null,
+  monedas = [],
 }) {
   const [detalles, setDetalles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -228,7 +234,7 @@ export default function DetallesTab({
     return (
       <div>
         <div style={{ fontWeight: "500" }}>
-          {rowData.producto?.nombre || "N/A"}
+          {rowData.producto?.descripcionArmada || rowData.producto?.descripcion || rowData.producto?.nombre || "N/A"}
         </div>
         <div style={{ fontSize: "0.85rem", color: "#666" }}>
           Código: {rowData.producto?.codigo || "N/A"}
@@ -249,9 +255,10 @@ export default function DetallesTab({
   };
 
   const precioTemplate = (rowData) => {
+    const codigoMoneda = getCodigoMoneda();
     return (
       <div style={{ textAlign: "right", fontWeight: "bold" }}>
-        S/{" "}
+        {codigoMoneda}{" "}
         {new Intl.NumberFormat("es-PE", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
@@ -261,10 +268,11 @@ export default function DetallesTab({
   };
 
   const subtotalTemplate = (rowData) => {
+    const codigoMoneda = getCodigoMoneda();
     const subtotal = Number(rowData.cantidad) * Number(rowData.precioUnitario);
     return (
       <div style={{ textAlign: "right", fontWeight: "bold", color: "#2196F3" }}>
-        S/{" "}
+        {codigoMoneda}{" "}
         {new Intl.NumberFormat("es-PE", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
@@ -314,23 +322,103 @@ export default function DetallesTab({
     </div>
   );
 
+  // Helper para obtener código de moneda (ISO)
+  const getCodigoMoneda = () => {
+    if (!monedaId) return "PEN";
+    const moneda = monedas.find((m) => Number(m.id) === Number(monedaId));
+    return moneda?.codigoSunat || "PEN";
+  };
+
   return (
     <div>
-      {/* Botón para agregar nuevo detalle */}
-      <div style={{ marginBottom: "1rem" }}>
-        <Button
-          label="Agregar Producto"
-          icon="pi pi-plus"
-          onClick={abrirDialogoNuevo}
-          disabled={!puedeEditar || readOnly || !preFacturaId}
-          tooltip={
-            !preFacturaId
-              ? "Debe guardar la pre-factura primero"
-              : readOnly
-              ? "Modo solo lectura"
-              : ""
-          }
-        />
+      {/* FILA: BOTÓN AGREGAR Y TOTALES */}
+      <div
+        style={{
+          alignItems: "end",
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+          marginBottom: 5,
+          padding: "5px",
+          backgroundColor: "#f8f9fa",
+          borderRadius: "8px",
+          border: "2px solid #dee2e6",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label style={{ opacity: 0 }}>.</label>
+          <Button
+            label="Agregar Producto"
+            icon="pi pi-plus"
+            className="p-button-success"
+            onClick={abrirDialogoNuevo}
+            disabled={!puedeEditar || readOnly || !preFacturaId}
+            style={{ width: "100%", fontWeight: "bold" }}
+            tooltip={
+              !preFacturaId
+                ? "Debe guardar la pre-factura primero"
+                : readOnly
+                ? "Modo solo lectura"
+                : ""
+            }
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontWeight: "bold" }}>Subtotal</label>
+          <InputNumber
+            value={subtotal || 0}
+            mode="currency"
+            currency={getCodigoMoneda()}
+            locale="es-PE"
+            minFractionDigits={2}
+            disabled
+            inputStyle={{
+              fontWeight: "bold",
+              fontSize: "1.1rem",
+              backgroundColor: "#fff",
+              textAlign: "right",
+            }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontWeight: "bold" }}>
+            IGV ({porcentajeIGV || 0}%)
+          </label>
+          <InputNumber
+            value={totalIGV || 0}
+            mode="currency"
+            currency={getCodigoMoneda()}
+            locale="es-PE"
+            minFractionDigits={2}
+            disabled
+            inputStyle={{
+              fontWeight: "bold",
+              fontSize: "1.1rem",
+              backgroundColor: "#fff",
+              textAlign: "right",
+            }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontWeight: "bold", color: "#2196F3" }}>
+            TOTAL
+          </label>
+          <InputNumber
+            value={total || 0}
+            mode="currency"
+            currency={getCodigoMoneda()}
+            locale="es-PE"
+            minFractionDigits={2}
+            disabled
+            inputStyle={{
+              fontWeight: "bold",
+              fontSize: "1.2rem",
+              backgroundColor: "#e3f2fd",
+              color: "#1976D2",
+              textAlign: "right",
+            }}
+          />
+        </div>
       </div>
 
       {/* Tabla de detalles */}
@@ -352,18 +440,21 @@ export default function DetallesTab({
           field="cantidad"
           header="Cantidad"
           body={cantidadTemplate}
-          style={{ width: "120px" }}
+          style={{ width: "100px", textAlign: "right" }}
+          bodyStyle={{ textAlign: "right" }}
         />
         <Column
           field="precioUnitario"
           header="Precio Unit."
           body={precioTemplate}
-          style={{ width: "130px" }}
+          style={{ width: "140px", textAlign: "right" }}
+          bodyStyle={{ textAlign: "right" }}
         />
         <Column
           header="Subtotal"
           body={subtotalTemplate}
-          style={{ width: "130px" }}
+          style={{ width: "140px", textAlign: "right" }}
+          bodyStyle={{ textAlign: "right" }}
         />
         <Column
           header="Acciones"
@@ -423,11 +514,12 @@ export default function DetallesTab({
               onValueChange={(e) =>
                 setDetalleActual({ ...detalleActual, precioUnitario: e.value })
               }
-              mode="decimal"
+              mode="currency"
+              currency={getCodigoMoneda()}
+              locale="es-PE"
               minFractionDigits={2}
               maxFractionDigits={6}
               min={0}
-              prefix="S/ "
               disabled={loading}
               inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
@@ -453,7 +545,7 @@ export default function DetallesTab({
               >
                 <span>Subtotal:</span>
                 <span style={{ color: "#2196F3" }}>
-                  S/{" "}
+                  {getCodigoMoneda()}{" "}
                   {new Intl.NumberFormat("es-PE", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,

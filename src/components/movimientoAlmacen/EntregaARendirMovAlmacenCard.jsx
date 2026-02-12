@@ -516,7 +516,7 @@ export default function EntregaARendirMovAlmacenCard({
           style={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "end",
+            alignItems: "flex-start",
             gap: 10,
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
@@ -716,6 +716,7 @@ export default function EntregaARendirMovAlmacenCard({
               monedas={monedas}
               tiposDocumento={tiposDocumento}
               productos={productos}
+              movimientoAlmacen={movimientoAlmacen}
               movimientoAlmacenAprobado={true}
               onDataChange={cargarMovimientos}
               permisos={permisos}

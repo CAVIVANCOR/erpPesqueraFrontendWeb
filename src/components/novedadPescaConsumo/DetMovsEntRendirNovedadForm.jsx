@@ -730,6 +730,7 @@ const DetMovsEntRendirNovedadForm = ({
                 </div>
               )}
             </div>
+            
             {tipoMovimientoId !== 1 && tipoMovimientoId !== 2 && (
               <div
                 style={{

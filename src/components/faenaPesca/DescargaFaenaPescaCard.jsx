@@ -419,6 +419,8 @@ const DescargaFaenaPescaCard = ({
             : "Nueva Descarga de Faena"
         }
         modal
+        maximizable
+        maximized={true}
         className="p-fluid"
         onHide={hideDialog}
         breakpoints={{ "960px": "90vw", "641px": "95vw" }}

@@ -414,6 +414,8 @@ const DescargaFaenaConsumoCard = ({
             : "Nueva Descarga de Faena"
         }
         modal
+        maximizable
+        maximized={true}
         className="p-fluid"
         onHide={hideDialog}
         breakpoints={{ "960px": "90vw", "641px": "95vw" }}
@@ -430,6 +432,7 @@ const DescargaFaenaConsumoCard = ({
             motoristaId={faenaData?.motoristaId ? Number(faenaData.motoristaId) : null}
             patronId={faenaData?.patronId ? Number(faenaData.patronId) : null}
             faenaPescaConsumoId={faenaPescaConsumoId ? Number(faenaPescaConsumoId) : null}
+            novedadPescaConsumoId={novedadData?.id ? Number(novedadData.id) : null}
             onGuardadoExitoso={() => {
               cargarDescargas();
               if (onDescargaChange) {

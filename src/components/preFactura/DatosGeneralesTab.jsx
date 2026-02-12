@@ -16,6 +16,10 @@ export default function DatosGeneralesTab({
   formData,
   onChange,
   onSerieChange,
+  onIrAPreFacturaOrigen, // Agregar después de onSerieChange
+  onIrAMovimientoAlmacen, // Agregar después de onIrAPreFacturaOrigen
+  onIrACotizacionVenta, // Agregar después de onIrAMovimientoAlmacen
+  onIrAContratoServicio, // Agregar después de onIrACotizacionVenta
   empresasOptions,
   tiposDocumentoOptions,
   clientesOptions,
@@ -79,29 +83,6 @@ export default function DatosGeneralesTab({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          {isEdit && formData.codigo && (
-            <div style={{ flex: 0.5 }}>
-              <label
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-                htmlFor="codigo"
-              >
-                Código PreFactura
-              </label>
-              <InputText
-                id="codigo"
-                value={formData.codigo || ""}
-                disabled
-                style={{
-                  fontWeight: "bold",
-                  textTransform: "uppercase",
-                  backgroundColor: "#f0f0f0",
-                }}
-              />
-            </div>
-          )}
           <div style={{ flex: 1.5 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -121,7 +102,7 @@ export default function DatosGeneralesTab({
               disabled={isEdit || !puedeEditar || readOnly}
             />
           </div>
-          <div style={{ flex: 0.5 }}>
+          <div style={{ flex: 0.7 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="fechaDocumento"
@@ -138,7 +119,7 @@ export default function DatosGeneralesTab({
               inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
-          <div style={{ flex: 0.5 }}>
+          <div style={{ flex: 0.7 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="fechaVencimiento"
@@ -155,31 +136,48 @@ export default function DatosGeneralesTab({
               inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
-          <div style={{ flex: 0.5 }}>
+          <div style={{ flex: 1.5 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="esGerencial"
+              htmlFor="estadoId"
             >
-              Tipo de Facturación
+              Estado*
             </label>
-            <Button
-              id="esGerencial"
-              label={formData.esGerencial ? "GERENCIAL" : "NO GERENCIAL"}
-              icon={
-                formData.esGerencial
-                  ? "pi pi-times-circle"
-                  : "pi pi-check-circle"
+            <Dropdown
+              id="estadoId"
+              value={formData.estadoId}
+              options={estadosPreFacturaOptions}
+              onChange={(e) => onChange("estadoId", e.value)}
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccionar estado"
+              disabled={!puedeEditar || readOnly}
+              style={{ fontWeight: "bold", textTransform: "uppercase" }}
+            />
+          </div>
+          <div style={{ flex: 1.5 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="unidadNegocioId"
+            >
+              Unidad de Negocio*
+            </label>
+            <Dropdown
+              id="unidadNegocioId"
+              value={
+                formData.unidadNegocioId
+                  ? Number(formData.unidadNegocioId)
+                  : null
               }
-              severity={formData.esGerencial ? "warning" : "success"}
-              onClick={() => onChange("esGerencial", !formData.esGerencial)}
-              disabled={!puedeEditar || readOnly || formData.facturado}
-              outlined
-              style={{
-                width: "100%",
-                fontWeight: "bold",
-                justifyContent: "center",
-                color: "#000",
-              }}
+              options={unidadesNegocioOptions}
+              onChange={(e) => onChange("unidadNegocioId", e.value)}
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccionar unidad de negocio"
+              filter
+              showClear
+              style={{ fontWeight: "bold", textTransform: "uppercase" }}
+              disabled={!puedeEditar || readOnly}
             />
           </div>
         </div>
@@ -282,51 +280,63 @@ export default function DatosGeneralesTab({
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
-
-          <div style={{ flex: 1.5 }}>
+          <div style={{ flex: 1 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="estadoId"
+              htmlFor="esGerencial"
             >
-              Estado*
+              Tipo de Facturación
             </label>
-            <Dropdown
-              id="estadoId"
-              value={formData.estadoId}
-              options={estadosPreFacturaOptions}
-              onChange={(e) => onChange("estadoId", e.value)}
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Seleccionar estado"
-              disabled={!puedeEditar || readOnly}
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-          <div style={{ flex: 1.5 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="unidadNegocioId"
-            >
-              Unidad de Negocio*
-            </label>
-            <Dropdown
-              id="unidadNegocioId"
-              value={
-                formData.unidadNegocioId
-                  ? Number(formData.unidadNegocioId)
-                  : null
+            <Button
+              id="esGerencial"
+              label={formData.esGerencial ? "GERENCIAL" : "NO GERENCIAL"}
+              icon={
+                formData.esGerencial
+                  ? "pi pi-times-circle"
+                  : "pi pi-check-circle"
               }
-              options={unidadesNegocioOptions}
-              onChange={(e) => onChange("unidadNegocioId", e.value)}
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Seleccionar unidad de negocio"
-              filter
-              showClear
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-              disabled={!puedeEditar || readOnly}
+              severity={formData.esGerencial ? "warning" : "success"}
+              onClick={() => onChange("esGerencial", !formData.esGerencial)}
+              disabled={!puedeEditar || readOnly || formData.facturado}
+              style={{
+                width: "100%",
+                fontWeight: "bold",
+                justifyContent: "center",
+                color: "#000",
+              }}
             />
           </div>
+          {/* PREFACTURA ORIGEN - Botón para ir al origen */}
+          {formData.preFacturaOrigenId && (
+            <div style={{ flex: 1 }}>
+              <label
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+                htmlFor="preFacturaOrigen"
+              >
+                PreFactura Origen
+              </label>
+              <Button
+                id="preFacturaOrigen"
+                label={`ID: ${formData.preFacturaOrigenId}`}
+                icon="pi pi-external-link"
+                severity="info"
+                onClick={() =>
+                  onIrAPreFacturaOrigen &&
+                  onIrAPreFacturaOrigen(formData.preFacturaOrigenId)
+                }
+                outlined
+                style={{
+                  width: "100%",
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                }}
+                disabled={readOnly}
+              />
+            </div>
+          )}
         </div>
 
         {/* FILA 3: Estado, Fecha Aprobación (si está aprobada) */}
@@ -563,6 +573,99 @@ export default function DatosGeneralesTab({
               inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
+          {/* MOVIMIENTO DE ALMACÉN - Botón para ir al movimiento */}
+          {formData.movSalidaAlmacenId && (
+            <div style={{ flex: 1 }}>
+              <label
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+                htmlFor="movAlmacen"
+              >
+                Movimiento de Almacén (Kardex)
+              </label>
+              <Button
+                id="movAlmacen"
+                label={`ID: ${formData.movSalidaAlmacenId}`}
+                icon="pi pi-box"
+                severity="success"
+                onClick={() =>
+                  onIrAMovimientoAlmacen &&
+                  onIrAMovimientoAlmacen(formData.movSalidaAlmacenId)
+                }
+                outlined
+                style={{
+                  width: "100%",
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                }}
+                disabled={readOnly}
+              />
+            </div>
+          )}
+          {/* COTIZACIÓN VENTA - Botón para ir a la cotización */}
+          {formData.cotizacionVentaId && (
+            <div style={{ flex: 1 }}>
+              <label
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+                htmlFor="cotizacionVenta"
+              >
+                Cotización de Venta
+              </label>
+              <Button
+                id="cotizacionVenta"
+                label={`ID: ${formData.cotizacionVentaId}`}
+                icon="pi pi-file-edit"
+                severity="warning"
+                onClick={() =>
+                  onIrACotizacionVenta &&
+                  onIrACotizacionVenta(formData.cotizacionVentaId)
+                }
+                outlined
+                style={{
+                  width: "100%",
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                }}
+                disabled={readOnly}
+              />
+            </div>
+          )}
+          {/* CONTRATO SERVICIO - Botón para ir al contrato */}
+          {formData.contratoServicioId && (
+            <div style={{ flex: 1 }}>
+              <label
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+                htmlFor="contratoServicio"
+              >
+                Contrato de Servicio
+              </label>
+              <Button
+                id="contratoServicio"
+                label={`ID: ${formData.contratoServicioId}`}
+                icon="pi pi-file-check"
+                severity="help"
+                onClick={() =>
+                  onIrAContratoServicio &&
+                  onIrAContratoServicio(formData.contratoServicioId)
+                }
+                outlined
+                style={{
+                  width: "100%",
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                }}
+                disabled={readOnly}
+              />
+            </div>
+          )}
         </div>
 
         {/* FILA 2: Moneda, Tipo Cambio, % IGV, Exonerado IGV */}
@@ -718,6 +821,34 @@ export default function DatosGeneralesTab({
             marginTop: "1rem",
           }}
         ></div>
+      </Panel>
+
+      {/* ============================================ */}
+      {/* SECCIÓN 7: DETALLES DE PRODUCTOS */}
+      {/* ============================================ */}
+      <Panel
+        header={`📦 Detalles de Productos ${
+          detallesCount > 0 ? `(${detallesCount})` : ""
+        }`}
+        toggleable
+        collapsed={false}
+        style={{ marginTop: "1rem" }}
+      >
+        <DetallesTab
+          preFacturaId={preFacturaId}
+          productos={productos}
+          empresaId={empresaId}
+          puedeEditar={puedeEditarDetalles}
+          toast={toast}
+          onCountChange={onCountChange}
+          readOnly={readOnly}
+          subtotal={subtotal}
+          totalIGV={totalIGV}
+          total={total}
+          porcentajeIGV={formData.porcentajeIgv || 0}
+          monedaId={formData.monedaId}
+          monedas={monedasOptions}
+        />
       </Panel>
 
       {/* ============================================ */}
@@ -1188,104 +1319,6 @@ export default function DatosGeneralesTab({
           style={{ fontWeight: "bold" }}
           placeholder="Ingrese observaciones adicionales..."
         />
-      </Panel>
-
-      {/* ============================================ */}
-      {/* SECCIÓN 7: DETALLES DE PRODUCTOS */}
-      {/* ============================================ */}
-      <Panel
-        header={`📦 Detalles de Productos ${
-          detallesCount > 0 ? `(${detallesCount})` : ""
-        }`}
-        toggleable
-        collapsed={false}
-        style={{ marginTop: "1rem" }}
-      >
-        <DetallesTab
-          preFacturaId={preFacturaId}
-          productos={productos}
-          empresaId={empresaId}
-          puedeEditar={puedeEditarDetalles}
-          toast={toast}
-          onCountChange={onCountChange}
-          readOnly={readOnly}
-        />
-      </Panel>
-
-      {/* ============================================ */}
-      {/* SECCIÓN 8: RESUMEN DE MONTOS */}
-      {/* ============================================ */}
-      <Panel
-        header="💰 Resumen de Montos"
-        toggleable
-        collapsed={false}
-        style={{ marginTop: "1rem" }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.5rem",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "0.5rem",
-              fontSize: "1.1rem",
-            }}
-          >
-            <div>
-              <strong>Subtotal:</strong>
-            </div>
-            <div style={{ fontWeight: "bold" }}>
-              {simboloMoneda}{" "}
-              {new Intl.NumberFormat("es-PE", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              }).format(subtotal)}
-            </div>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "0.5rem",
-              fontSize: "1.1rem",
-            }}
-          >
-            <div>
-              <strong>IGV ({formData.porcentajeIgv || 0}%):</strong>
-            </div>
-            <div style={{ fontWeight: "bold" }}>
-              {simboloMoneda}{" "}
-              {new Intl.NumberFormat("es-PE", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              }).format(totalIGV)}
-            </div>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "0.5rem",
-              fontSize: "1.3rem",
-              fontWeight: "bold",
-              borderTop: "2px solid #dee2e6",
-            }}
-          >
-            <div>TOTAL:</div>
-            <div style={{ color: "#2196F3" }}>
-              {simboloMoneda}{" "}
-              {new Intl.NumberFormat("es-PE", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              }).format(total)}
-            </div>
-          </div>
-        </div>
       </Panel>
     </div>
   );

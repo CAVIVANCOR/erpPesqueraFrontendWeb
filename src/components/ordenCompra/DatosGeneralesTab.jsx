@@ -104,7 +104,7 @@ export default function DatosGeneralesTab({
             disabled={isEdit || !puedeEditar || readOnly}
           />
         </div>
-        <div style={{ flex: 0.5 }}>
+        <div style={{ flex: 0.6 }}>
           {/* FECHA DOCUMENTO */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -166,7 +166,7 @@ export default function DatosGeneralesTab({
             }}
           />
         </div>
-        <div style={{ flex: 0.5 }}>
+        <div style={{ flex: 0.6 }}>
           {/* FECHA ENTREGA */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -182,48 +182,6 @@ export default function DatosGeneralesTab({
             showIcon
             disabled={!puedeEditar || readOnly}
             inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-
-        <div style={{ flex: 0.5 }}>
-          {/* FECHA RECEPCIÓN */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="fechaRecepcion"
-          >
-            Fecha Recepción
-          </label>
-          <Calendar
-            id="fechaRecepcion"
-            value={formData.fechaRecepcion}
-            onChange={(e) => onChange("fechaRecepcion", e.value)}
-            dateFormat="dd/mm/yy"
-            showIcon
-            disabled={!puedeEditar || readOnly}
-            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-        <div style={{ flex: 0.5 }}>
-          {/* ESTADO */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="estadoId"
-          >
-            Estado*
-          </label>
-          <Dropdown
-            id="estadoId"
-            value={formData.estadoId ? Number(formData.estadoId) : null}
-            options={estadosOrdenOptions || []}
-            onChange={(e) => onChange("estadoId", e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar estado"
-            disabled={true}
-            style={{
-              fontWeight: "bold",
-              backgroundColor: "#f0f0f0",
-            }}
           />
         </div>
 
@@ -252,6 +210,29 @@ export default function DatosGeneralesTab({
               textTransform: "uppercase",
             }}
             disabled={!puedeEditar || readOnly}
+          />
+        </div>
+        <div style={{ flex: 0.5 }}>
+          {/* ESTADO */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="estadoId"
+          >
+            Estado*
+          </label>
+          <Dropdown
+            id="estadoId"
+            value={formData.estadoId ? Number(formData.estadoId) : null}
+            options={estadosOrdenOptions || []}
+            onChange={(e) => onChange("estadoId", e.value)}
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccionar estado"
+            disabled={true}
+            style={{
+              fontWeight: "bold",
+              backgroundColor: "#f0f0f0",
+            }}
           />
         </div>
       </div>
@@ -448,198 +429,6 @@ export default function DatosGeneralesTab({
             style={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
-        {/* ⭐ NUEVO: CONTACTO DEL PROVEEDOR */}
-        <div style={{ flex: 1.5 }}>
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="contactoProveedorId"
-          >
-            Contacto del Proveedor
-          </label>
-          <Dropdown
-            id="contactoProveedorId"
-            value={contactoProveedorId ? Number(contactoProveedorId) : null}
-            options={contactosProveedor.map((c) => ({
-              label: c.nombres,
-              value: Number(c.id),
-            }))}
-            onChange={(e) => onContactoProveedorChange(e.value)}
-            placeholder="Seleccionar contacto"
-            disabled={!puedeEditar || readOnly}
-            showClear
-            filter
-            filterBy="label"
-            style={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-        <div style={{ flex: 2 }}>
-          {/* FORMA DE PAGO */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="formaPagoId"
-          >
-            Forma de Pago
-          </label>
-          <Dropdown
-            id="formaPagoId"
-            value={formData.formaPagoId ? Number(formData.formaPagoId) : null}
-            options={formasPago.map((f) => ({
-              label: f.nombre,
-              value: Number(f.id),
-            }))}
-            onChange={(e) => onChange("formaPagoId", e.value)}
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Seleccionar forma de pago"
-            disabled={!puedeEditar || readOnly}
-            showClear
-            style={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-
-        <div style={{ flex: 1.5 }}>
-          {/* OBSERVACIONES */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="observaciones"
-          >
-            Observaciones
-          </label>
-          <InputText
-            id="observaciones"
-            value={formData.observaciones}
-            onChange={(e) => onChange("observaciones", e.target.value)}
-            disabled={!puedeEditar || readOnly}
-            style={{
-              color: "red",
-              fontStyle: "italic",
-              fontWeight: "bold",
-              textTransform: "uppercase",
-            }}
-          />
-        </div>
-      </div>
-
-      {/* ⭐ SECCIÓN: CAMPOS DE FACTURACIÓN */}
-      <div
-        style={{
-          alignItems: "end",
-          display: "flex",
-          gap: 5,
-          marginTop: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 0.5 }}>
-          {/* FACTURADO */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="facturado"
-          >
-            Facturado
-          </label>
-          <Button
-            id="facturado"
-            label={facturado ? "SÍ" : "NO"}
-            icon={facturado ? "pi pi-check-circle" : "pi pi-times-circle"}
-            severity={facturado ? "success" : "danger"}
-            onClick={() => onFacturadoChange && onFacturadoChange(!facturado)}
-            disabled={!puedeEditar || readOnly}
-            outlined
-            style={{
-              width: "100%",
-              fontWeight: "bold",
-              justifyContent: "center",
-              color: "#000",
-            }}
-          />
-        </div>
-
-        <div style={{ flex: 0.75 }}>
-          {/* FECHA FACTURACIÓN */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="fechaFacturacion"
-          >
-            Fecha Facturación
-          </label>
-          <Calendar
-            id="fechaFacturacion"
-            value={fechaFacturacion}
-            onChange={(e) =>
-              onFechaFacturacionChange && onFechaFacturacionChange(e.value)
-            }
-            dateFormat="dd/mm/yy"
-            showIcon
-            disabled={!puedeEditar || readOnly}
-            showButtonBar
-            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
-          />
-        </div>
-
-        <div style={{ flex: 0.5 }}>
-          {/* ES GERENCIAL */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="esGerencial"
-          >
-            Es Gerencial
-          </label>
-          <Button
-            id="esGerencial"
-            label={esGerencial ? "SÍ" : "NO"}
-            icon={esGerencial ? "pi pi-check-circle" : "pi pi-times-circle"}
-            severity={esGerencial ? "success" : "danger"}
-            onClick={() =>
-              onEsGerencialChange && onEsGerencialChange(!esGerencial)
-            }
-            disabled={!puedeEditar || readOnly}
-            outlined
-            style={{
-              width: "100%",
-              fontWeight: "bold",
-              justifyContent: "center",
-              color: "#000",
-            }}
-          />
-        </div>
-
-        <div style={{ flex: 0.5 }}>
-          {/* ES PARTICIONADA */}
-          <label
-            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-            htmlFor="esParticionada"
-          >
-            Es Particionada
-          </label>
-          <Button
-            id="esParticionada"
-            label={esParticionada ? "SÍ" : "NO"}
-            icon={esParticionada ? "pi pi-check-circle" : "pi pi-times-circle"}
-            severity={esParticionada ? "info" : "secondary"}
-            onClick={() =>
-              onEsParticionadaChange && onEsParticionadaChange(!esParticionada)
-            }
-            disabled={!puedeEditar || readOnly}
-            outlined
-            style={{
-              width: "100%",
-              fontWeight: "bold",
-              justifyContent: "center",
-              color: "#000",
-            }}
-          />
-        </div>
-      </div>
-
-      <div
-        style={{
-          alignItems: "end",
-          display: "flex",
-          gap: 5,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
         {/* ⭐ NUEVO: DIRECCIÓN DE RECEPCIÓN EN ALMACÉN */}
         <div style={{ flex: 2 }}>
           <label
@@ -668,8 +457,198 @@ export default function DatosGeneralesTab({
             style={{ fontWeight: "bold", textTransform: "uppercase" }}
           />
         </div>
+        {/* ⭐ NUEVO: CONTACTO DEL PROVEEDOR */}
+        <div style={{ flex: 1.5 }}>
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="contactoProveedorId"
+          >
+            Contacto del Proveedor
+          </label>
+          <Dropdown
+            id="contactoProveedorId"
+            value={contactoProveedorId ? Number(contactoProveedorId) : null}
+            options={contactosProveedor.map((c) => ({
+              label: c.nombres,
+              value: Number(c.id),
+            }))}
+            onChange={(e) => onContactoProveedorChange(e.value)}
+            placeholder="Seleccionar contacto"
+            disabled={!puedeEditar || readOnly}
+            showClear
+            filter
+            filterBy="label"
+            style={{ fontWeight: "bold", textTransform: "uppercase" }}
+          />
+        </div>
+        <div style={{ flex: 0.6 }}>
+          {/* FECHA RECEPCIÓN */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="fechaRecepcion"
+          >
+            Fecha Recepción
+          </label>
+          <Calendar
+            id="fechaRecepcion"
+            value={formData.fechaRecepcion}
+            onChange={(e) => onChange("fechaRecepcion", e.value)}
+            dateFormat="dd/mm/yy"
+            showIcon
+            disabled={!puedeEditar || readOnly}
+            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+          />
+        </div>
+      </div>
+
+      {/* ⭐ SECCIÓN: CAMPOS DE FACTURACIÓN */}
+      <div
+        style={{
+          alignItems: "end",
+          display: "flex",
+          gap: 5,
+          marginTop: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 2 }}>
+          {/* FORMA DE PAGO */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="formaPagoId"
+          >
+            Forma de Pago
+          </label>
+          <Dropdown
+            id="formaPagoId"
+            value={formData.formaPagoId ? Number(formData.formaPagoId) : null}
+            options={formasPago.map((f) => ({
+              label: f.nombre,
+              value: Number(f.id),
+            }))}
+            onChange={(e) => onChange("formaPagoId", e.value)}
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Seleccionar forma de pago"
+            disabled={!puedeEditar || readOnly}
+            showClear
+            style={{ fontWeight: "bold", textTransform: "uppercase" }}
+          />
+        </div>
+        <div style={{ flex: 0.5 }}>
+          {/* FACTURADO */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="facturado"
+          >
+            Facturado
+          </label>
+          <Button
+            id="facturado"
+            label={facturado ? "FACTURADO" : "FACTURADO"}
+            icon={facturado ? "pi pi-check-circle" : "pi pi-times-circle"}
+            severity={facturado ? "success" : "secondary"}
+            onClick={() => onFacturadoChange && onFacturadoChange(!facturado)}
+            disabled={!puedeEditar || readOnly}
+            style={{ width: "100%" }}
+          />
+        </div>
+
+        <div style={{ flex: 0.75 }}>
+          {/* FECHA FACTURACIÓN */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="fechaFacturacion"
+          >
+            Fecha Facturación
+          </label>
+          <Calendar
+            id="fechaFacturacion"
+            value={fechaFacturacion}
+            onChange={(e) =>
+              onFechaFacturacionChange && onFechaFacturacionChange(e.value)
+            }
+            dateFormat="dd/mm/yy"
+            showIcon
+            disabled={!puedeEditar || readOnly}
+            showButtonBar
+            inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
+          />
+        </div>
 
         <div style={{ flex: 0.25 }}>
+          {/* ES GERENCIAL */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="esGerencial"
+          >
+            Es Gerencial
+          </label>
+          <Button
+            id="esGerencial"
+            label={esGerencial ? "GERENCIAL" : "GERENCIAL"}
+            icon={esGerencial ? "pi pi-check-circle" : "pi pi-times-circle"}
+            severity={esGerencial ? "success" : "secondary"}
+            onClick={() =>
+              onEsGerencialChange && onEsGerencialChange(!esGerencial)
+            }
+            disabled={!puedeEditar || readOnly}
+            style={{ width: "100%" }}
+          />
+        </div>
+
+        <div style={{ flex: 0.25 }}>
+          {/* ES PARTICIONADA */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="esParticionada"
+          >
+            Es Particionada
+          </label>
+          <Button
+            id="esParticionada"
+            label={esParticionada ? "PARTICIONADA" : "PARTICIONADA"}
+            icon={esParticionada ? "pi pi-check-circle" : "pi pi-times-circle"}
+            severity={esParticionada ? "info" : "secondary"}
+            onClick={() =>
+              onEsParticionadaChange && onEsParticionadaChange(!esParticionada)
+            }
+            disabled={!puedeEditar || readOnly}
+            style={{ width: "100%" }}
+          />
+        </div>
+      </div>
+
+      <div
+        style={{
+          alignItems: "end",
+          display: "flex",
+          gap: 5,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 2 }}>
+          {/* OBSERVACIONES */}
+          <label
+            style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+            htmlFor="observaciones"
+          >
+            Observaciones
+          </label>
+          <InputText
+            id="observaciones"
+            value={formData.observaciones}
+            onChange={(e) => onChange("observaciones", e.target.value)}
+            disabled={!puedeEditar || readOnly}
+            style={{
+              color: "red",
+              fontStyle: "italic",
+              fontWeight: "bold",
+              textTransform: "uppercase",
+            }}
+          />
+        </div>
+        <div style={{ flex: 0.50 }}>
           {/* MONEDA */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -696,7 +675,7 @@ export default function DatosGeneralesTab({
           />
         </div>
 
-        <div style={{ flex: 0.25 }}>
+        <div style={{ flex: 0.50 }}>
           {/* TIPO CAMBIO */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -715,7 +694,7 @@ export default function DatosGeneralesTab({
           />
         </div>
 
-        <div style={{ flex: 0.3 }}>
+        <div style={{ flex: 0.50 }}>
           {/* PORCENTAJE IGV */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -737,7 +716,7 @@ export default function DatosGeneralesTab({
           />
         </div>
 
-        <div style={{ flex: 0.3 }}>
+        <div style={{ flex: 0.5 }}>
           {/* ES EXONERADO AL IGV */}
           <label
             style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
@@ -769,7 +748,7 @@ export default function DatosGeneralesTab({
         </div>
         {/* REQUERIMIENTO ASOCIADO - Botón para ir al origen */}
         {formData.requerimientoCompraId && (
-          <div style={{ flex: 0.75 }}>
+          <div style={{ flex: 1 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="irAlOrigen"

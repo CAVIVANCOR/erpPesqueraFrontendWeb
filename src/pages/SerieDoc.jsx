@@ -254,6 +254,9 @@ export default function SerieDoc() {
         dataKey="id"
         paginator
         rows={10}
+        stripedRows
+        showGridlines
+        size="small"
         onRowClick={(e) => handleEdit(e.data)}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         header={

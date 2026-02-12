@@ -46,6 +46,10 @@ export default function PreFacturaForm({
   toast,
   permisos = {},
   readOnly = false,
+  onIrAPreFacturaOrigen,
+  onIrAMovimientoAlmacen,
+  onIrACotizacionVenta,
+  onIrAContratoServicio,
 }) {
   const { usuario } = useAuthStore();
   // Estado único para todos los campos del formulario (patrón eficiente)
@@ -134,6 +138,9 @@ export default function PreFacturaForm({
     tipoCambio: defaultValues?.tipoCambio || 3.75,
     centroCostoId: defaultValues?.centroCostoId
       ? Number(defaultValues.centroCostoId)
+      : null,
+    unidadNegocioId: defaultValues?.unidadNegocioId
+      ? Number(defaultValues.unidadNegocioId)
       : null,
 
     // Montos
@@ -315,6 +322,9 @@ export default function PreFacturaForm({
         tipoCambio: defaultValues?.tipoCambio || 3.75,
         centroCostoId: defaultValues?.centroCostoId
           ? Number(defaultValues.centroCostoId)
+          : null,
+        unidadNegocioId: defaultValues?.unidadNegocioId
+          ? Number(defaultValues.unidadNegocioId)
           : null,
 
         // Montos
@@ -730,6 +740,9 @@ export default function PreFacturaForm({
       totalIGV: totales.igv,
       total: totales.total,
       estadoId: formData.estadoId ? Number(formData.estadoId) : null,
+      preFacturaOrigenId: formData.preFacturaOrigenId
+        ? Number(formData.preFacturaOrigenId)
+        : null,
       cotizacionVentaId: formData.cotizacionVentaId
         ? Number(formData.cotizacionVentaId)
         : null,
@@ -1108,6 +1121,10 @@ export default function PreFacturaForm({
             total={totales.total}
             monedaPreFactura={defaultValues?.moneda}
             readOnly={readOnly}
+            onIrAPreFacturaOrigen={onIrAPreFacturaOrigen}
+            onIrAMovimientoAlmacen={onIrAMovimientoAlmacen}
+            onIrACotizacionVenta={onIrACotizacionVenta}
+            onIrAContratoServicio={onIrAContratoServicio}
           />
         </TabPanel>
         {/* TAB 2: IMPRESION PDF */}

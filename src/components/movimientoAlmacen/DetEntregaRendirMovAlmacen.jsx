@@ -29,6 +29,7 @@ export default function DetEntregaRendirMovAlmacen({
   monedas = [],
   tiposDocumento = [],
   productos = [],
+  movimientoAlmacen = null,
   movimientoAlmacenAprobado = false,
   loading = false,
   selectedMovimientos = [],
@@ -80,10 +81,13 @@ export default function DetEntregaRendirMovAlmacen({
     return movimientosFiltrados;
   };
   // Filtrar movimientos que son asignaciones (inicial o adicional) y forman parte del cálculo
+  // Excluir el movimiento en edición para evitar auto-referencia
   const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
     (mov) =>
-      (mov.tipoMovimientoId === 1 || mov.tipoMovimientoId === 2) &&
-      mov.formaParteCalculoEntregaARendir === true,
+      (Number(mov.tipoMovimientoId) === 1 ||
+        Number(mov.tipoMovimientoId) === 2) &&
+      mov.formaParteCalculoEntregaARendir === true &&
+      (!editingMovimiento || Number(mov.id) !== Number(editingMovimiento.id)),
   );
   const limpiarFiltros = () => {
     setFiltroTipoMovimiento(null);
@@ -399,12 +403,16 @@ export default function DetEntregaRendirMovAlmacen({
           dataKey="id"
           loading={loading}
           paginator
-          rows={5}
-          rowsPerPageOptions={[5, 10, 25]}
-          className="p-datatable-sm"
+          rows={10}
+          rowsPerPageOptions={[10, 20, 40]}
+          size="small"
           emptyMessage="No hay movimientos registrados"
           style={{ fontSize: getResponsiveFontSize(), cursor: "pointer" }}
           rowClassName={() => "p-selectable-row"}
+          stripedRows
+          showGridlines
+          sortField="id"
+          sortOrder={-1}
           header={
             <div>
               <div
@@ -412,7 +420,7 @@ export default function DetEntregaRendirMovAlmacen({
                   display: "flex",
                   gap: 8,
                   padding: 8,
-                  alignItems: "end",
+                  alignItems: "flex-start",
                   marginTop: 18,
                 }}
               >
@@ -525,6 +533,7 @@ export default function DetEntregaRendirMovAlmacen({
             selectionMode="single"
             headerStyle={{ width: "3rem" }}
           ></Column>
+          <Column field="id" header="Id" sortable />
           <Column
             field="fechaMovimiento"
             header="Fecha"
@@ -595,6 +604,7 @@ export default function DetEntregaRendirMovAlmacen({
         <DetMovsEntregaRendirMovAlmacenForm
           movimiento={editingMovimiento}
           entregaARendirMovAlmacenId={entregaARendir?.id}
+          movimientoAlmacen={movimientoAlmacen}
           personal={personal}
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}

@@ -28,6 +28,7 @@ export default function DetEntregaRendirVentas({
   monedas = [],
   tiposDocumento = [],
   productos = [], // Nueva prop para productos (gastos)
+  cotizacionVentas = null,
   cotizacionVentasAprobada = false,
   loading = false,
   selectedMovimientos = [],
@@ -77,10 +78,13 @@ export default function DetEntregaRendirVentas({
     return movimientosFiltrados;
   };
   // Filtrar movimientos que son asignaciones (inicial o adicional) y forman parte del cálculo
+  // Excluir el movimiento en edición para evitar auto-referencia
   const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
     (mov) =>
-      (mov.tipoMovimientoId === 1 || mov.tipoMovimientoId === 2) &&
-      mov.formaParteCalculoEntregaARendir === true,
+      (Number(mov.tipoMovimientoId) === 1 ||
+        Number(mov.tipoMovimientoId) === 2) &&
+      mov.formaParteCalculoEntregaARendir === true &&
+      (!editingMovimiento || Number(mov.id) !== Number(editingMovimiento.id)),
   );
   const limpiarFiltros = () => {
     setFiltroTipoMovimiento(null);
@@ -387,12 +391,16 @@ export default function DetEntregaRendirVentas({
           dataKey="id"
           loading={loading}
           paginator
-          rows={5}
-          rowsPerPageOptions={[5, 10, 25]}
-          className="p-datatable-sm"
+          rows={10}
+          stripedRows
+          showGridlines
+          rowsPerPageOptions={[10, 20, 40]}
+          size="small"
           emptyMessage="No hay movimientos registrados"
           style={{ fontSize: getResponsiveFontSize(), cursor: "pointer" }}
           rowClassName={() => "p-selectable-row"}
+          sortField="id"
+          sortOrder={-1}
           header={
             <div>
               <div
@@ -464,7 +472,6 @@ export default function DetEntregaRendirVentas({
                   />
                 </div>
               </div>
-
               <div
                 style={{
                   display: "flex",
@@ -509,6 +516,7 @@ export default function DetEntregaRendirVentas({
             selectionMode="single"
             headerStyle={{ width: "3rem" }}
           ></Column>
+          <Column field="id" header="Id" sortable />
           <Column
             field="fechaMovimiento"
             header="Fecha"
@@ -568,6 +576,8 @@ export default function DetEntregaRendirVentas({
         style={{ width: "1300px" }}
         header={editingMovimiento ? "Editar Movimiento" : "Nuevo Movimiento"}
         modal
+        maximizable
+        maximized={true}
         className="p-fluid"
         onHide={() => {
           setShowMovimientoForm(false);
@@ -577,6 +587,7 @@ export default function DetEntregaRendirVentas({
         <DetMovsEntregaRendirVentasForm
           movimiento={editingMovimiento}
           entregaARendirPVentasId={entregaARendir?.id}
+          cotizacionVentas={cotizacionVentas}
           personal={personal}
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}

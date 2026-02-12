@@ -88,3 +88,24 @@ export async function getDescargaPorFaena(faenaPescaConsumoId) {
     (d) => Number(d.faenaPescaConsumoId) === Number(faenaPescaConsumoId)
   );
 }
+
+/**
+ * Finaliza una descarga de consumo y genera automáticamente:
+ * - Movimiento de INGRESO (De MEGUI a Almacén)
+ * - Movimiento de SALIDA (De Almacén a Cliente)
+ * - PreFactura (si existe precio configurado)
+ * - Kardex para ambos movimientos
+ * 
+ * @param {number} descargaId - ID de la descarga a finalizar
+ * @param {number} novedadPescaConsumoId - ID de la novedad de pesca consumo
+ * @returns {Promise<Object>} Resultado con movimientos y PreFactura generados
+ */
+export async function finalizarDescargaConsumoConMovimientos(descargaId, novedadPescaConsumoId) {
+  const API_FINALIZAR = `${import.meta.env.VITE_API_URL}/pesca/descargas-faena-consumo/${descargaId}/finalizar`;
+  const res = await axios.post(
+    API_FINALIZAR,
+    { novedadPescaConsumoId },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
