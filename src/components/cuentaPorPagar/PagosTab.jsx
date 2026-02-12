@@ -368,6 +368,7 @@ export default function PagosTab({
         onHide={cerrarDialogo}
         onSave={handleGuardar}
         loading={loading}
+        readOnly={readOnly || !puedeEditar}
       />
     </div>
   );

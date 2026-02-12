@@ -1,5 +1,6 @@
 // src/pages/CuentaPorPagar.jsx
 import React, { useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -33,11 +34,17 @@ import { getMonedas } from "../api/moneda";
 import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { getOrdenesCompra } from "../api/ordenCompra";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { usePermissions } from "../hooks/usePermissions";
 
-export default function CuentaPorPagar() {
+export default function CuentaPorPagar({ ruta }) {
+  const { usuario } = useAuthStore();
+  const permisos = usePermissions(ruta);
+
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
   const toast = useRef(null);
-  const usuario = useAuthStore((state) => state.usuario);
-
   // Estados principales
   const [cuentas, setCuentas] = useState([]);
   const [empresas, setEmpresas] = useState([]);
@@ -63,14 +70,6 @@ export default function CuentaPorPagar() {
   const [filtroTipo, setFiltroTipo] = useState("TODAS"); // TODAS, PENDIENTES, VENCIDAS
   const [filtroEsGerencial, setFiltroEsGerencial] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
-
-  // Permisos
-  const permisos = {
-    crear: true,
-    editar: true,
-    eliminar: true,
-    ver: true,
-  };
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -267,6 +266,17 @@ export default function CuentaPorPagar() {
   };
 
   const handleDelete = (cuenta) => {
+    // Validar permisos de eliminación
+    if (!permisos.puedeEliminar) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar",
+        life: 3000,
+      });
+      return;
+    }
+
     confirmDialog({
       message: `¿Está seguro de eliminar la cuenta por pagar ${cuenta.numeroOrdenCompra}?`,
       header: "Confirmar Eliminación",
@@ -300,6 +310,28 @@ export default function CuentaPorPagar() {
   };
 
   const handleFormSubmit = async (data) => {
+    const esEdicion = isEdit && selectedCuenta;
+
+    // Validar permisos antes de guardar
+    if (esEdicion && !permisos.puedeEditar) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para editar",
+        life: 3000,
+      });
+      return;
+    }
+    if (!esEdicion && !permisos.puedeCrear) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear",
+        life: 3000,
+      });
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -392,27 +424,25 @@ export default function CuentaPorPagar() {
     return <Tag value="FORMAL (BLANCA)" severity="success" />;
   };
 
-  const accionesTemplate = (rowData) => {
+  const actionBodyTemplate = (rowData) => {
     return (
-      <div style={{ display: "flex", gap: 4 }}>
-        {permisos.editar && (
-          <Button
-            icon="pi pi-pencil"
-            className="p-button-rounded p-button-warning p-button-sm"
-            onClick={() => handleEdit(rowData)}
-            tooltip="Editar"
-            tooltipOptions={{ position: "top" }}
-          />
-        )}
-        {permisos.eliminar && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-rounded p-button-danger p-button-sm"
-            onClick={() => handleDelete(rowData)}
-            tooltip="Eliminar"
-            tooltipOptions={{ position: "top" }}
-          />
-        )}
+      <div style={{ display: "flex", gap: "0.5rem" }}>
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-rounded p-button-success p-button-sm"
+          onClick={() => handleEdit(rowData)}
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
+          tooltipOptions={{ position: "top" }}
+        />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-rounded p-button-danger p-button-sm"
+          onClick={() => handleDelete(rowData)}
+          disabled={!permisos.puedeEliminar}
+          tooltip="Eliminar"
+          tooltipOptions={{ position: "top" }}
+        />
       </div>
     );
   };
@@ -442,6 +472,7 @@ export default function CuentaPorPagar() {
               label="Nueva Cuenta por Pagar"
               icon="pi pi-plus"
               onClick={handleAdd}
+              disabled={!permisos.puedeCrear || loading}
             />
           )}
         </div>
@@ -592,15 +623,23 @@ export default function CuentaPorPagar() {
       <DataTable
         value={cuentas}
         loading={loading}
-        header={header}
-        paginator
-        rows={20}
-        rowsPerPageOptions={[10, 20, 50, 100]}
         globalFilter={globalFilter}
         emptyMessage="No se encontraron cuentas por pagar"
-        responsiveLayout="scroll"
         stripedRows
+        showGridlines
+        paginator
+        rows={50}
+        rowsPerPageOptions={[50, 100, 200, 500]}
         size="small"
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => handleEdit(e.data)
+            : undefined
+        }
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+        }}
       >
         <Column field="id" header="ID" sortable style={{ minWidth: "80px" }} />
         <Column
@@ -682,7 +721,7 @@ export default function CuentaPorPagar() {
         />
         <Column
           header="Acciones"
-          body={accionesTemplate}
+          body={actionBodyTemplate}
           style={{ minWidth: "120px" }}
         />
       </DataTable>
@@ -706,9 +745,10 @@ export default function CuentaPorPagar() {
               monedas={monedas}
               estados={estados}
               ordenesCompra={ordenesCompra}
-              onSubmit={guardarCuenta}
+              onSubmit={handleFormSubmit}
               onCancel={() => setDialogVisible(false)}
               loading={loading}
+              readOnly={!!isEdit && !permisos.puedeEditar}
             />
           </TabPanel>
 
@@ -726,7 +766,7 @@ export default function CuentaPorPagar() {
               bancos={bancos}
               cuentasCorrientes={cuentasCorrientes}
               estados={estados}
-              puedeEditar={true}
+              puedeEditar={permisos.puedeEditar}
               toast={toast}
               onPagoRegistrado={cargarDatos}
             />

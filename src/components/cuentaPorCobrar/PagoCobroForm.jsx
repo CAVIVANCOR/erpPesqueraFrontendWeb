@@ -21,6 +21,7 @@ export default function PagoCobroForm({
   onHide,
   onSave,
   loading,
+  readOnly = false,
 }) {
   const [formData, setFormData] = useState({
     fechaPago: new Date(),
@@ -65,6 +66,8 @@ export default function PagoCobroForm({
     }
   }, [pago, isEdit, monedaId, visible]);
 
+  const puedeEditar = !readOnly && !loading;
+
   const handleSubmit = () => {
     onSave(formData);
   };
@@ -107,6 +110,7 @@ export default function PagoCobroForm({
         icon="pi pi-check"
         onClick={handleSubmit}
         loading={loading}
+        disabled={!puedeEditar}
       />
     </div>
   );
@@ -131,6 +135,7 @@ export default function PagoCobroForm({
             onChange={(e) => setFormData({ ...formData, fechaPago: e.value })}
             dateFormat="dd/mm/yy"
             showIcon
+            disabled={!puedeEditar}
           />
         </div>
 
@@ -147,6 +152,7 @@ export default function PagoCobroForm({
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={2}
+            disabled={!puedeEditar}
           />
           <small>
             Saldo pendiente: {Number(saldoPendiente || 0).toFixed(2)}
@@ -163,6 +169,7 @@ export default function PagoCobroForm({
             options={monedasOptions}
             onChange={(e) => setFormData({ ...formData, monedaId: e.value })}
             placeholder="Seleccione moneda"
+            disabled={!puedeEditar}
           />
         </div>
 
@@ -177,6 +184,7 @@ export default function PagoCobroForm({
             mode="decimal"
             minFractionDigits={4}
             maxFractionDigits={4}
+            disabled={!puedeEditar}
           />
         </div>
 
@@ -188,10 +196,9 @@ export default function PagoCobroForm({
             id="medioPagoId"
             value={formData.medioPagoId}
             options={mediosPagoOptions}
-            onChange={(e) =>
-              setFormData({ ...formData, medioPagoId: e.value })
-            }
+            onChange={(e) => setFormData({ ...formData, medioPagoId: e.value })}
             placeholder="Seleccione medio de pago"
+            disabled={!puedeEditar}
           />
         </div>
 
@@ -203,6 +210,7 @@ export default function PagoCobroForm({
             onChange={(e) =>
               setFormData({ ...formData, numeroOperacion: e.target.value })
             }
+            disabled={!puedeEditar}
           />
         </div>
 
@@ -215,6 +223,7 @@ export default function PagoCobroForm({
             onChange={(e) => setFormData({ ...formData, bancoId: e.value })}
             placeholder="Seleccione banco"
             showClear
+            disabled={!puedeEditar}
           />
         </div>
 
@@ -229,6 +238,7 @@ export default function PagoCobroForm({
             }
             placeholder="Seleccione cuenta bancaria"
             showClear
+            disabled={!puedeEditar}
           />
         </div>
 
@@ -241,6 +251,7 @@ export default function PagoCobroForm({
               setFormData({ ...formData, observaciones: e.target.value })
             }
             rows={3}
+            disabled={!puedeEditar}
           />
         </div>
       </div>

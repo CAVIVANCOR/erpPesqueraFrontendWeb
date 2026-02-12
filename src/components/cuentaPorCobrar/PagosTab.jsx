@@ -125,7 +125,7 @@ export default function PagosTab({
       const estadoPagoId = estados?.find(
         (e) =>
           e.nombre?.toUpperCase().includes("PAGADO") ||
-          e.nombre?.toUpperCase().includes("COBRADO")
+          e.nombre?.toUpperCase().includes("COBRADO"),
       )?.id;
 
       const dataParaGrabacion = {
@@ -231,14 +231,14 @@ export default function PagosTab({
 
   const monedaBodyTemplate = (rowData) => {
     const moneda = monedas?.find(
-      (m) => Number(m.id) === Number(rowData.monedaId)
+      (m) => Number(m.id) === Number(rowData.monedaId),
     );
     return moneda?.codigoSunat || "-";
   };
 
   const medioPagoBodyTemplate = (rowData) => {
     const medio = mediosPago?.find(
-      (m) => Number(m.id) === Number(rowData.medioPagoId)
+      (m) => Number(m.id) === Number(rowData.medioPagoId),
     );
     return medio?.nombre || "-";
   };
@@ -268,7 +268,7 @@ export default function PagosTab({
 
   const totalPagado = pagos.reduce(
     (sum, p) => sum + Number(p.montoPago || 0),
-    0
+    0,
   );
 
   return (
@@ -283,7 +283,9 @@ export default function PagosTab({
       >
         <div>
           <strong>Saldo Pendiente: </strong>
-          <span style={{ color: "red", fontSize: "1.2rem", fontWeight: "bold" }}>
+          <span
+            style={{ color: "red", fontSize: "1.2rem", fontWeight: "bold" }}
+          >
             {new Intl.NumberFormat("es-PE", {
               style: "decimal",
               minimumFractionDigits: 2,
@@ -368,6 +370,7 @@ export default function PagosTab({
         onHide={cerrarDialogo}
         onSave={handleGuardar}
         loading={loading}
+        readOnly={readOnly || !puedeEditar}
       />
     </div>
   );

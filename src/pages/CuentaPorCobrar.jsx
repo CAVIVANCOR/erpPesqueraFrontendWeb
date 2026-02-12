@@ -1,5 +1,6 @@
 // src/pages/CuentaPorCobrar.jsx
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -30,11 +31,18 @@ import { getMonedas } from "../api/moneda";
 import { getEstadosMultiFuncion } from "../api/estadoMultiFuncion";
 import { getPreFacturas } from "../api/preFactura";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { getResponsiveFontSize } from "../utils/utils";
+import { usePermissions } from "../hooks/usePermissions";
 
-export default function CuentaPorCobrar() {
+export default function CuentaPorCobrar({ ruta }) {
+  const { usuario } = useAuthStore();
+  const permisos = usePermissions(ruta);
+  // Verificar acceso al módulo
+  if (!permisos.tieneAcceso || !permisos.puedeVer) {
+    return <Navigate to="/sin-acceso" replace />;
+  }
+
   const toast = useRef(null);
-  const usuario = useAuthStore((state) => state.usuario);
-
   const [cuentas, setCuentas] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -151,10 +159,32 @@ export default function CuentaPorCobrar() {
     }
   };
   const saveCuenta = async (data) => {
+    const esEdicion = isEdit && selectedCuenta;
+
+    // Validar permisos antes de guardar
+    if (esEdicion && !permisos.puedeEditar) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para editar",
+        life: 3000,
+      });
+      return;
+    }
+    if (!esEdicion && !permisos.puedeCrear) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear",
+        life: 3000,
+      });
+      return;
+    }
+
     try {
       setLoading(true);
 
-      if (isEdit && selectedCuenta) {
+      if (esEdicion) {
         await updateCuentaPorCobrar(selectedCuenta.id, data);
         toast.current?.show({
           severity: "success",
@@ -189,6 +219,16 @@ export default function CuentaPorCobrar() {
   };
 
   const confirmDeleteCuenta = (cuenta) => {
+    // Validar permisos de eliminación
+    if (!permisos.puedeEliminar) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar",
+        life: 3000,
+      });
+      return;
+    }
     setSelectedCuenta(cuenta);
     setDeleteCuentaDialog(true);
   };
@@ -301,13 +341,15 @@ export default function CuentaPorCobrar() {
           icon="pi pi-pencil"
           className="p-button-rounded p-button-success p-button-sm"
           onClick={() => editCuenta(rowData)}
-          tooltip="Editar"
+          disabled={!permisos.puedeVer && !permisos.puedeEditar}
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
           tooltipOptions={{ position: "top" }}
         />
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-danger p-button-sm"
           onClick={() => confirmDeleteCuenta(rowData)}
+          disabled={!permisos.puedeEliminar}
           tooltip="Eliminar"
           tooltipOptions={{ position: "top" }}
         />
@@ -322,6 +364,8 @@ export default function CuentaPorCobrar() {
           icon="pi pi-plus"
           className="p-button-success"
           onClick={openNew}
+          disabled={!permisos.puedeCrear || loading}
+          tooltip={!permisos.puedeCrear ? "No tiene permisos para crear" : ""}
         />
         <Button
           label="Actualizar"
@@ -382,12 +426,22 @@ export default function CuentaPorCobrar() {
         loading={loading}
         globalFilter={globalFilter}
         emptyMessage="No se encontraron cuentas por cobrar"
-        paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
-        responsiveLayout="scroll"
         stripedRows
+        showGridlines
+        paginator
+        rows={50}
+        rowsPerPageOptions={[50, 100, 200, 500]}
         size="small"
+        onRowClick={
+          permisos.puedeVer || permisos.puedeEditar
+            ? (e) => editCuenta(e.data)
+            : undefined
+        }
+        style={{
+          cursor:
+            permisos.puedeVer || permisos.puedeEditar ? "pointer" : "default",
+          fontSize: getResponsiveFontSize(),
+        }}
       >
         <Column field="id" header="ID" sortable style={{ minWidth: "80px" }} />
         <Column
@@ -466,12 +520,13 @@ export default function CuentaPorCobrar() {
 
       <Dialog
         visible={cuentaDialog}
-        style={{ width: "90vw", maxWidth: "1200px" }}
+        style={{ width: "1300px" }}
+        maximizable
+        maximized={true}
         header={isEdit ? "Editar Cuenta por Cobrar" : "Nueva Cuenta por Cobrar"}
         modal
         className="p-fluid"
         onHide={hideDialog}
-        maximizable
       >
         <TabView>
           <TabPanel header="Datos Generales">
@@ -486,6 +541,7 @@ export default function CuentaPorCobrar() {
               onSubmit={saveCuenta}
               onCancel={hideDialog}
               loading={loading}
+              readOnly={!!isEdit && !permisos.puedeEditar}
             />
           </TabPanel>
 
@@ -503,7 +559,7 @@ export default function CuentaPorCobrar() {
               bancos={bancos}
               cuentasCorrientes={cuentasCorrientes}
               estados={estados}
-              puedeEditar={true}
+              puedeEditar={permisos.puedeEditar}
               toast={toast}
               onPagoRegistrado={loadData}
             />
