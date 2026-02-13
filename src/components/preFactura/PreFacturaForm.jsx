@@ -14,6 +14,7 @@ import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 import {
   partirPreFactura,
   facturarPreFacturaNegra,
+  facturarPreFacturaBlanca,
 } from "../../api/preFactura";
 import { Dialog } from "primereact/dialog";
 import { InputNumber } from "primereact/inputnumber";
@@ -779,6 +780,7 @@ export default function PreFacturaForm({
       movSalidaAlmacenId: formData.movSalidaAlmacenId
         ? Number(formData.movSalidaAlmacenId)
         : null,
+      esGerencial: formData.esGerencial || false,
       creadoPor: formData.creadoPor ? Number(formData.creadoPor) : null,
       actualizadoPor: formData.actualizadoPor
         ? Number(formData.actualizadoPor)
@@ -845,48 +847,37 @@ export default function PreFacturaForm({
     onAnular(defaultValues.id);
   };
 
-  // Handler para partir PreFactura (Caso 2: Mixto Blanco/Negro)
+  // Handler para particionar PreFactura (Clona en 2 copias idénticas)
   const [showPartirDialog, setShowPartirDialog] = useState(false);
-  const [porcentajeNegro, setPorcentajeNegro] = useState(40);
-  const [porcentajeBlanco, setPorcentajeBlanco] = useState(60);
 
   const handlePartirClick = () => {
     setShowPartirDialog(true);
   };
 
   const handlePartirPreFactura = async () => {
-    if (porcentajeNegro + porcentajeBlanco !== 100) {
-      toast?.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "La suma de porcentajes debe ser 100%",
-        life: 3000,
-      });
-      return;
-    }
-
     try {
-      const resultado = await partirPreFactura(defaultValues.id, {
-        porcentajeNegro,
-        porcentajeBlanco,
-      });
+      const resultado = await partirPreFactura(defaultValues.id);
 
       toast?.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: `PreFactura partida: ${porcentajeNegro}% Negro + ${porcentajeBlanco}% Blanco`,
+        detail: resultado.mensaje || "PreFactura particionada exitosamente en 2 copias idénticas",
         life: 5000,
       });
 
       setShowPartirDialog(false);
-      onComprobanteGenerado?.();
+      
+      // Cerrar el diálogo del formulario para que se recargue la lista
+      if (onCancel) {
+        onCancel();
+      }
     } catch (error) {
-      console.error("Error al partir PreFactura:", error);
+      console.error("Error al particionar PreFactura:", error);
       toast?.current?.show({
         severity: "error",
         summary: "Error",
         detail:
-          error.response?.data?.mensaje || "No se pudo partir la PreFactura",
+          error.response?.data?.mensaje || "No se pudo particionar la PreFactura",
         life: 3000,
       });
     }
@@ -913,6 +904,32 @@ export default function PreFacturaForm({
         detail:
           error.response?.data?.mensaje ||
           "No se pudo facturar la PreFactura negra",
+        life: 3000,
+      });
+    }
+  };
+
+  // Handler para facturar blanca (Caso 2: Comprobante SUNAT)
+  const handleFacturarBlancaClick = async () => {
+    try {
+      const resultado = await facturarPreFacturaBlanca(defaultValues.id);
+
+      toast?.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "CxC Blanca y Comprobante Electrónico generados exitosamente",
+        life: 5000,
+      });
+
+      onComprobanteGenerado?.();
+    } catch (error) {
+      console.error("Error al facturar blanca:", error);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.mensaje ||
+          "No se pudo emitir el comprobante",
         life: 3000,
       });
     }
@@ -1206,19 +1223,31 @@ export default function PreFacturaForm({
               className="p-button-warning"
               onClick={handlePartirClick}
               disabled={readOnly || loading || !permisos.puedeEditar}
-              tooltip="Dividir en Blanca (Formal) y Negra (Gerencial)"
+              tooltip="Mantener la Original y Crear Dos Copias Identicas Editables"
             />
           )}
 
-          {/* Botón Facturar Negra - Solo visible si está APROBADA y es GERENCIAL */}
+          {/* Botón Generar Venta - Solo visible si está APROBADA y es GERENCIAL */}
           {estaAprobada && isEdit && formData.esGerencial && (
             <Button
-              label="Facturar Negra"
+              label="Generar Venta"
               icon="pi pi-file"
               className="p-button-help"
               onClick={handleFacturarNegraClick}
               disabled={readOnly || loading || !permisos.puedeEditar}
               tooltip="Generar CxC Negra (Gerencial) sin comprobante"
+            />
+          )}
+
+          {/* Botón Emitir Comprobante - Solo visible si está APROBADA y NO es GERENCIAL */}
+          {estaAprobada && isEdit && !formData.esGerencial && (
+            <Button
+              label="Emitir Comprobante"
+              icon="pi pi-file-check"
+              className="p-button-success"
+              onClick={handleFacturarBlancaClick}
+              disabled={readOnly || loading || !permisos.puedeEditar}
+              tooltip="Generar CxC Blanca y Comprobante Electrónico SUNAT"
             />
           )}
         </div>
@@ -1248,67 +1277,25 @@ export default function PreFacturaForm({
         </div>
       </div>
 
-      {/* Dialog para Partir PreFactura */}
+      {/* Dialog para Particionar PreFactura */}
       <Dialog
         visible={showPartirDialog}
-        style={{ width: "450px" }}
-        header="Partir PreFactura (Blanca + Negra)"
+        style={{ width: "500px" }}
+        header="Particionar PreFactura"
         modal
         onHide={() => setShowPartirDialog(false)}
       >
         <div className="p-fluid">
-          <div className="mb-3">
-            <label htmlFor="porcentajeNegro" className="block mb-2 font-bold">
-              % Negra (Gerencial) ⚫
-            </label>
-            <InputNumber
-              id="porcentajeNegro"
-              value={porcentajeNegro}
-              onValueChange={(e) => {
-                setPorcentajeNegro(e.value);
-                setPorcentajeBlanco(100 - e.value);
-              }}
-              mode="decimal"
-              min={0}
-              max={100}
-              suffix="%"
-              showButtons
-              step={5}
-            />
-          </div>
-          <div className="mb-3">
-            <label htmlFor="porcentajeBlanco" className="block mb-2 font-bold">
-              % Blanca (Formal) ⚪
-            </label>
-            <InputNumber
-              id="porcentajeBlanco"
-              value={porcentajeBlanco}
-              onValueChange={(e) => {
-                setPorcentajeBlanco(e.value);
-                setPorcentajeNegro(100 - e.value);
-              }}
-              mode="decimal"
-              min={0}
-              max={100}
-              suffix="%"
-              showButtons
-              step={5}
-            />
-          </div>
-          <div
-            className="mb-3 p-3"
-            style={{ backgroundColor: "#f8f9fa", borderRadius: "4px" }}
-          >
-            <p className="m-0 text-sm">
-              <strong>Total:</strong> {porcentajeNegro + porcentajeBlanco}%
+          <div className="mb-4">
+            <i className="pi pi-info-circle" style={{ fontSize: "3rem", color: "#2196F3" }}></i>
+            <p className="mt-3 mb-0" style={{ fontSize: "16px", lineHeight: "1.6" }}>
+              Esta acción creará <strong>DOS copias idénticas</strong> de esta PreFactura con estado <strong>PARTICIONADA</strong>.
             </p>
-            <p className="m-0 text-sm mt-2">
-              <strong>Monto Negra:</strong> S/{" "}
-              {(((formData.total || 0) * porcentajeNegro) / 100).toFixed(2)}
+            <p className="mt-2 mb-0" style={{ fontSize: "14px", color: "#666" }}>
+              Ambas copias conservarán todos los datos de cabecera y detalles, permitiéndote editarlas independientemente.
             </p>
-            <p className="m-0 text-sm">
-              <strong>Monto Blanca:</strong> S/{" "}
-              {(((formData.total || 0) * porcentajeBlanco) / 100).toFixed(2)}
+            <p className="mt-2 mb-0" style={{ fontSize: "14px", color: "#666" }}>
+              Las <strong>3 PreFacturas</strong> (original + 2 copias) quedarán con estado <strong>PARTICIONADA</strong> para identificarlas.
             </p>
           </div>
           <div
@@ -1326,8 +1313,8 @@ export default function PreFacturaForm({
               onClick={() => setShowPartirDialog(false)}
             />
             <Button
-              label="Partir"
-              icon="pi pi-check"
+              label="Particionar"
+              icon="pi pi-clone"
               className="p-button-warning"
               onClick={handlePartirPreFactura}
             />

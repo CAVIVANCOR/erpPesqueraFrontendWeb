@@ -82,6 +82,7 @@ const PreFactura = ({ ruta }) => {
   const [fechaInicio, setFechaInicio] = useState(null);
   const [fechaFin, setFechaFin] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
+  const [filtroParticionadas, setFiltroParticionadas] = useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [clientesUnicos, setClientesUnicos] = useState([]);
   const [preFacturas, setPreFacturas] = useState([]);
@@ -98,6 +99,7 @@ const PreFactura = ({ ruta }) => {
   const [showContratoServicioDialog, setShowContratoServicioDialog] =
     useState(false); // ⬅️ AGREGAR
   const [contratoServicioOrigen, setContratoServicioOrigen] = useState(null); // ⬅️ AGREGAR
+  const [navigationStack, setNavigationStack] = useState([]); // Stack para navegación de PreFacturas
   const toast = useRef(null);
 
   useEffect(() => {
@@ -240,6 +242,17 @@ const PreFactura = ({ ruta }) => {
       );
     }
 
+    // Filtro por tipo de particionadas
+    if (filtroParticionadas === "originales") {
+      filtrados = filtrados.filter((item) => item.esParticionada === true);
+    } else if (filtroParticionadas === "copias") {
+      filtrados = filtrados.filter(
+        (item) =>
+          item.preFacturaOrigenId !== null &&
+          item.preFacturaOrigenId !== undefined,
+      );
+    }
+
     setItemsFiltrados(filtrados);
   }, [
     empresaSeleccionada,
@@ -247,18 +260,41 @@ const PreFactura = ({ ruta }) => {
     fechaInicio,
     fechaFin,
     estadoSeleccionado,
+    filtroParticionadas,
     items,
   ]);
-  const handleIrAPreFacturaOrigen = (preFacturaOrigenId) => {
-    // Cargar la PreFactura origen en el formulario
-    const preFacturaOrigen = preFacturas.find(
+  const handleIrAPreFacturaOrigen = async (preFacturaOrigenId) => {
+    // Guardar la PreFactura actual en el stack antes de navegar
+    if (selectedPreFactura) {
+      setNavigationStack(prev => [...prev, selectedPreFactura]);
+    }
+
+    // Primero buscar en el array local
+    let preFacturaOrigen = preFacturas.find(
       (pf) => Number(pf.id) === Number(preFacturaOrigenId),
     );
 
+    // Si no está en el array local, buscar en el backend
+    if (!preFacturaOrigen) {
+      try {
+        const response = await getPreFacturaById(preFacturaOrigenId);
+        preFacturaOrigen = response.data;
+      } catch (error) {
+        console.error("Error al buscar PreFactura Origen:", error);
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudo cargar la PreFactura Origen",
+          life: 3000,
+        });
+        return;
+      }
+    }
+
     if (preFacturaOrigen) {
-      setPreFacturaSeleccionada(preFacturaOrigen);
+      setSelectedPreFactura(preFacturaOrigen);
       setDialogVisible(true);
-      setIsEdit(true);
+      setIsEditing(true);
     } else {
       toast.current.show({
         severity: "warn",
@@ -345,6 +381,7 @@ const PreFactura = ({ ruta }) => {
   };
 
   const abrirDialogoEdicion = (preFactura) => {
+    setNavigationStack([]); // Limpiar el stack al abrir desde la lista
     setSelectedPreFactura(preFactura);
     setIsEditing(true);
     setDialogVisible(true);
@@ -452,9 +489,20 @@ const PreFactura = ({ ruta }) => {
   };
 
   const cerrarDialogo = () => {
-    setDialogVisible(false);
-    setSelectedPreFactura(null);
-    setIsEditing(false);
+    // Si hay una PreFactura en el stack de navegación, volver a ella
+    if (navigationStack.length > 0) {
+      const previousPreFactura = navigationStack[navigationStack.length - 1];
+      setNavigationStack(prev => prev.slice(0, -1)); // Remover del stack
+      setSelectedPreFactura(previousPreFactura);
+      setDialogVisible(true);
+      setIsEditing(true);
+    } else {
+      // Si no hay stack, cerrar el diálogo normalmente
+      setDialogVisible(false);
+      setSelectedPreFactura(null);
+      setIsEditing(false);
+      cargarDatos(); // Recargar la lista para reflejar cambios
+    }
   };
 
   const handleAprobarPreFactura = async (preFacturaId) => {
@@ -470,25 +518,33 @@ const PreFactura = ({ ruta }) => {
 
     setLoading(true);
     try {
-      // TODO: Implementar API de aprobación cuando esté disponible
-      // await aprobarPreFactura(preFacturaId);
+      const { aprobarPreFactura } = await import("../api/preFactura");
+      const preFacturaAprobada = await aprobarPreFactura(preFacturaId);
 
       toast.current.show({
-        severity: "info",
-        summary: "Función en desarrollo",
-        detail:
-          "La función de aprobar pre-factura estará disponible próximamente.",
+        severity: "success",
+        summary: "Aprobado",
+        detail: "Pre-factura aprobada exitosamente.",
         life: 3000,
       });
 
-      // cargarPreFacturas();
-      // cerrarDialogo();
+      // Actualizar el formulario con los datos aprobados
+      setSelectedPreFactura(preFacturaAprobada);
+      setRefreshKey((prev) => prev + 1);
+
+      // Recargar la lista en segundo plano
+      cargarDatos();
     } catch (err) {
       console.error("Error al aprobar pre-factura:", err);
+      const errorMsg =
+        err.response?.data?.mensaje ||
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        "No se pudo aprobar la pre-factura.";
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo aprobar la pre-factura.",
+        detail: errorMsg,
         life: 3000,
       });
     } finally {
@@ -716,6 +772,7 @@ const PreFactura = ({ ruta }) => {
     setFechaInicio(null);
     setFechaFin(null);
     setEstadoSeleccionado(null);
+    setFiltroParticionadas(null);
   };
 
   return (
@@ -884,6 +941,59 @@ const PreFactura = ({ ruta }) => {
                     disabled={loading}
                   />
                 </div>
+                {/* Filtro de Particionadas - Botón único que cicla */}
+                <div style={{ flex: 1 }}>
+                  <Button
+                    label={
+                      filtroParticionadas === null
+                        ? "Todas"
+                        : filtroParticionadas === "originales"
+                          ? "Particionadas Originales"
+                          : "Particionadas Copias"
+                    }
+                    icon={
+                      filtroParticionadas === null
+                        ? "pi pi-list"
+                        : filtroParticionadas === "originales"
+                          ? "pi pi-clone"
+                          : "pi pi-copy"
+                    }
+                    severity={
+                      filtroParticionadas === null
+                        ? "info"
+                        : filtroParticionadas === "originales"
+                          ? "warning"
+                          : "success"
+                    }
+                    onClick={() => {
+                      if (filtroParticionadas === null) {
+                        setFiltroParticionadas("originales");
+                      } else if (filtroParticionadas === "originales") {
+                        setFiltroParticionadas("copias");
+                      } else {
+                        setFiltroParticionadas(null);
+                      }
+                    }}
+                    badge={
+                      filtroParticionadas === "originales"
+                        ? items
+                            .filter((i) => i.esParticionada === true)
+                            .length.toString()
+                        : filtroParticionadas === "copias"
+                          ? items
+                              .filter(
+                                (i) =>
+                                  i.preFacturaOrigenId !== null &&
+                                  i.preFacturaOrigenId !== undefined,
+                              )
+                              .length.toString()
+                          : undefined
+                    }
+                    disabled={loading}
+                    tooltip="Click para cambiar filtro: Todas → Originales → Copias → Todas"
+                    tooltipOptions={{ position: "top" }}
+                  />
+                </div>
               </div>
             </div>
           }
@@ -938,6 +1048,30 @@ const PreFactura = ({ ruta }) => {
             sortable
           />
           <Column
+            header="Origen"
+            body={(rowData) => {
+              if (rowData.preFacturaOrigenId) {
+                return (
+                  <Tag
+                    severity="info"
+                    value="COPIA"
+                    icon="pi pi-copy"
+                    style={{ cursor: "pointer" }}
+                    onClick={() =>
+                      handleIrAPreFacturaOrigen(rowData.preFacturaOrigenId)
+                    }
+                  />
+                );
+              } else if (rowData.esParticionada) {
+                return (
+                  <Tag severity="warning" value="ORIGINAL" icon="pi pi-clone" />
+                );
+              }
+              return null;
+            }}
+            style={{ width: 120, textAlign: "center" }}
+          />
+          <Column
             field="esExoneradoAlIGV"
             header="IGV"
             body={igvTemplate}
@@ -973,6 +1107,7 @@ const PreFactura = ({ ruta }) => {
           onCancel={cerrarDialogo}
           onAprobar={handleAprobarPreFactura}
           onAnular={handleAnularPreFactura}
+          onIrAPreFacturaOrigen={handleIrAPreFacturaOrigen}
           loading={loading}
           toast={toast}
           permisos={permisos}
@@ -996,10 +1131,9 @@ const PreFactura = ({ ruta }) => {
           incoterms={incoterms}
           tiposContenedor={tiposContenedor}
           empresaFija={empresaSeleccionada}
-          onIrAPreFacturaOrigen={handleIrAPreFacturaOrigen}
-          onIrAMovimientoAlmacen={handleIrAMovimientoAlmacen} // Agregar después de onIrAPreFacturaOrigen
-          onIrACotizacionVenta={handleIrACotizacionVenta} // Agregar después de onIrAMovimientoAlmacen
-          onIrAContratoServicio={handleIrAContratoServicio} // ⬅️ AGREGAR
+          onIrAMovimientoAlmacen={handleIrAMovimientoAlmacen}
+          onIrACotizacionVenta={handleIrACotizacionVenta}
+          onIrAContratoServicio={handleIrAContratoServicio}
         />
       </Dialog>
 

@@ -220,14 +220,14 @@ export async function generarBoletaDesdePreFactura(preFacturaId, datosBoleta) {
 }
 
 /**
- * Partir PreFactura en Blanca y Negra
+ * Particionar PreFactura: Clona en DOS copias idénticas con estado PENDIENTE
  */
-export async function partirPreFactura(preFacturaId, datos) {
+export async function partirPreFactura(preFacturaId) {
   try {
-    const response = await axios.post(`${API_URL}/${preFacturaId}/partir`, datos, { headers: getAuthHeaders() });
+    const response = await axios.put(`${API_URL}/${preFacturaId}/partir`, {}, { headers: getAuthHeaders() });
     return response.data;
   } catch (error) {
-    console.error("Error al partir pre-factura:", error);
+    console.error("Error al particionar pre-factura:", error);
     throw error;
   }
 }
@@ -241,6 +241,34 @@ export async function facturarPreFacturaNegra(preFacturaId) {
     return response.data;
   } catch (error) {
     console.error("Error al facturar pre-factura negra:", error);
+    throw error;
+  }
+}
+
+/**
+ * Facturar PreFactura Blanca (SUNAT)
+ */
+export async function facturarPreFacturaBlanca(preFacturaId) {
+  try {
+    const response = await axios.post(`${API_URL}/${preFacturaId}/facturar-blanca`, {}, { headers: getAuthHeaders() });
+    return response.data;
+  } catch (error) {
+    console.error("Error al facturar pre-factura blanca:", error);
+    throw error;
+  }
+}
+
+/**
+ * Aprobar una pre-factura
+ * @param {number} id - ID de la pre-factura
+ * @returns {Promise<Object>} Pre-factura aprobada
+ */
+export async function aprobarPreFactura(id) {
+  try {
+    const response = await axios.put(`${API_URL}/${id}/aprobar`, {}, { headers: getAuthHeaders() });
+    return response.data;
+  } catch (error) {
+    console.error("Error al aprobar pre-factura:", error);
     throw error;
   }
 }

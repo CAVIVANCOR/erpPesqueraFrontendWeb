@@ -285,3 +285,26 @@ export const DASHBOARD_TYPES = [
   { label: "Dashboard por Módulos", value: "modular" },
   { label: "Dashboard por Unidades de Negocio", value: "unidades" }
 ];
+
+/**
+ * Estados OSE para ComprobanteElectronico
+ * Representan el estado del comprobante en el OSE (Operador de Servicios Electrónicos)
+ */
+export const ESTADOS_OSE = {
+  PENDIENTE: 50,   // Comprobante creado, pendiente de envío al OSE
+  ENVIADO: 51,     // Enviado al OSE, esperando respuesta
+  ACEPTADO: 52,    // Aceptado por el OSE
+  RECHAZADO: 53,   // Rechazado por el OSE
+  ERROR: 54        // Error en el proceso de envío
+};
+
+/**
+ * Estados SUNAT para ComprobanteElectronico
+ * Representan el estado del comprobante en SUNAT
+ */
+export const ESTADOS_SUNAT = {
+  ACTIVO: 60,           // Comprobante activo y válido
+  ANULADO: 61,          // Comprobante anulado
+  BAJA: 62,             // Comprobante en proceso de baja
+  BAJA_ACEPTADA: 63     // Baja aceptada por SUNAT
+};

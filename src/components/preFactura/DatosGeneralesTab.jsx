@@ -306,7 +306,7 @@ export default function DatosGeneralesTab({
               }}
             />
           </div>
-          {/* PREFACTURA ORIGEN - Botón para ir al origen */}
+          {/* PREFACTURA ORIGEN - Botón para ir al origen (para copias) */}
           {formData.preFacturaOrigenId && (
             <div style={{ flex: 1 }}>
               <label
@@ -318,22 +318,50 @@ export default function DatosGeneralesTab({
               >
                 PreFactura Origen
               </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Button
+                  id="preFacturaOrigen"
+                  label={`ID: ${formData.preFacturaOrigenId}`}
+                  icon="pi pi-external-link"
+                  severity="info"
+                  onClick={() =>
+                    onIrAPreFacturaOrigen &&
+                    onIrAPreFacturaOrigen(formData.preFacturaOrigenId)
+                  }
+                  outlined
+                  style={{
+                    flex: 1,
+                    fontWeight: "bold",
+                    textTransform: "uppercase",
+                  }}
+                />
+                <Button
+                  label="P/C"
+                  severity="info"
+                  disabled
+                  style={{
+                    width: '60px',
+                    fontWeight: "bold",
+                  }}
+                  tooltip="Partición/Copia"
+                  tooltipOptions={{ position: 'top' }}
+                />
+              </div>
+            </div>
+          )}
+          {/* INDICADOR P/O - Para PreFacturas originales particionadas */}
+          {formData.esParticionada && !formData.preFacturaOrigenId && (
+            <div style={{ flex: 1 }}>
               <Button
-                id="preFacturaOrigen"
-                label={`ID: ${formData.preFacturaOrigenId}`}
-                icon="pi pi-external-link"
-                severity="info"
-                onClick={() =>
-                  onIrAPreFacturaOrigen &&
-                  onIrAPreFacturaOrigen(formData.preFacturaOrigenId)
-                }
-                outlined
+                label="P/O"
+                severity="warning"
+                disabled
                 style={{
-                  width: "100%",
+                  width: '60px',
                   fontWeight: "bold",
-                  textTransform: "uppercase",
                 }}
-                disabled={readOnly}
+                tooltip="Partición/Original"
+                tooltipOptions={{ position: 'top' }}
               />
             </div>
           )}

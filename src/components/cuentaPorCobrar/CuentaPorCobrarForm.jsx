@@ -10,8 +10,7 @@ import { Checkbox } from "primereact/checkbox";
 import { Panel } from "primereact/panel";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { getResponsiveFontSize } from "../../utils/utils";
-
+import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 export default function CuentaPorCobrarForm({
   isEdit,
   defaultValues,
@@ -59,33 +58,81 @@ export default function CuentaPorCobrarForm({
   );
   const [monedaId, setMonedaId] = useState(defaultValues?.monedaId || null);
   const [esContado, setEsContado] = useState(defaultValues?.esContado || false);
-  const [estadoId, setEstadoId] = useState(defaultValues?.estadoId || null);
+  const [estadoId, setEstadoId] = useState(defaultValues?.estadoId || 100);
   const [observaciones, setObservaciones] = useState(
     defaultValues?.observaciones || "",
   );
+  // Nuevos estados para detracción, retención y percepción
+  const [tieneDetraccion, setTieneDetraccion] = useState(
+    defaultValues?.tieneDetraccion || false,
+  );
+  const [montoDetraccion, setMontoDetraccion] = useState(
+    defaultValues?.montoDetraccion || 0,
+  );
+  const [porcentajeDetraccion, setPorcentajeDetraccion] = useState(
+    defaultValues?.porcentajeDetraccion || 0,
+  );
+  const [numeroConstanciaDetraccion, setNumeroConstanciaDetraccion] = useState(
+    defaultValues?.numeroConstanciaDetraccion || "",
+  );
+  const [fechaDetraccion, setFechaDetraccion] = useState(
+    defaultValues?.fechaDetraccion
+      ? new Date(defaultValues.fechaDetraccion)
+      : null,
+  );
 
+  const [tieneRetencion, setTieneRetencion] = useState(
+    defaultValues?.tieneRetencion || false,
+  );
+  const [montoRetencion, setMontoRetencion] = useState(
+    defaultValues?.montoRetencion || 0,
+  );
+  const [numeroComprobanteRetencion, setNumeroComprobanteRetencion] = useState(
+    defaultValues?.numeroComprobanteRetencion || "",
+  );
+  const [fechaRetencion, setFechaRetencion] = useState(
+    defaultValues?.fechaRetencion
+      ? new Date(defaultValues.fechaRetencion)
+      : null,
+  );
+
+  const [tienePercepcion, setTienePercepcion] = useState(
+    defaultValues?.tienePercepcion || false,
+  );
+  const [montoPercepcion, setMontoPercepcion] = useState(
+    defaultValues?.montoPercepcion || 0,
+  );
+  const [porcentajePercepcion, setPorcentajePercepcion] = useState(
+    defaultValues?.porcentajePercepcion || 0,
+  );
+  const [numeroComprobantePercepcion, setNumeroComprobantePercepcion] =
+    useState(defaultValues?.numeroComprobantePercepcion || "");
+  const [fechaPercepcion, setFechaPercepcion] = useState(
+    defaultValues?.fechaPercepcion
+      ? new Date(defaultValues.fechaPercepcion)
+      : null,
+  );
   const [clientesFiltrados, setClientesFiltrados] = useState([]);
   const [preFacturasFiltradas, setPreFacturasFiltradas] = useState([]);
   const [selectedPreFactura, setSelectedPreFactura] = useState(null);
-
   useEffect(() => {
     if (preFacturas && preFacturas.length > 0 && empresaId) {
-      const preFacturasPendientes = preFacturas.filter((pf) => {
-        const tieneSaldoPendiente =
-          pf.saldoPendiente && Number(pf.saldoPendiente) > 0;
+      const preFacturasAprobadas = preFacturas.filter((pf) => {
         const perteneceEmpresa = Number(pf.empresaId) === Number(empresaId);
-        return tieneSaldoPendiente && perteneceEmpresa;
+        const estadoValido = pf.estadoId && Number(pf.estadoId) > 45;
+        return perteneceEmpresa && estadoValido;
       });
 
-      const clientesConDocumentosPendientes = clientes.filter((c) => {
-        const tieneDocumentosPendientes = preFacturasPendientes.some(
-          (pf) => Number(pf.clienteId) === Number(c.id),
-        );
-        const perteneceEmpresa = Number(c.empresaId) === Number(empresaId);
-        return tieneDocumentosPendientes && perteneceEmpresa;
-      });
+      const clientesConFacturasAprobadas =
+        clientes?.filter((c) => {
+          const tieneFacturasAprobadas = preFacturasAprobadas.some(
+            (pf) => Number(pf.clienteId) === Number(c.id),
+          );
+          const perteneceEmpresa = Number(c.empresaId) === Number(empresaId);
+          return tieneFacturasAprobadas && perteneceEmpresa;
+        }) || [];
 
-      setClientesFiltrados(clientesConDocumentosPendientes);
+      setClientesFiltrados(clientesConFacturasAprobadas);
     } else {
       setClientesFiltrados([]);
     }
@@ -96,9 +143,8 @@ export default function CuentaPorCobrarForm({
       const preFacturasPorCliente = preFacturas.filter((pf) => {
         const perteneceCliente = Number(pf.clienteId) === Number(clienteId);
         const perteneceEmpresa = Number(pf.empresaId) === Number(empresaId);
-        const tieneSaldoPendiente =
-          pf.saldoPendiente && Number(pf.saldoPendiente) > 0;
-        return perteneceCliente && perteneceEmpresa && tieneSaldoPendiente;
+        const estadoValido = pf.estadoId && Number(pf.estadoId) > 45;
+        return perteneceCliente && perteneceEmpresa && estadoValido;
       });
       setPreFacturasFiltradas(preFacturasPorCliente);
     } else {
@@ -141,6 +187,42 @@ export default function CuentaPorCobrarForm({
         defaultValues.estadoId ? Number(defaultValues.estadoId) : null,
       );
       setObservaciones(defaultValues.observaciones || "");
+
+      // Nuevos campos
+      setTieneDetraccion(defaultValues.tieneDetraccion || false);
+      setMontoDetraccion(defaultValues.montoDetraccion || 0);
+      setPorcentajeDetraccion(defaultValues.porcentajeDetraccion || 0);
+      setNumeroConstanciaDetraccion(
+        defaultValues.numeroConstanciaDetraccion || "",
+      );
+      setFechaDetraccion(
+        defaultValues.fechaDetraccion
+          ? new Date(defaultValues.fechaDetraccion)
+          : null,
+      );
+
+      setTieneRetencion(defaultValues.tieneRetencion || false);
+      setMontoRetencion(defaultValues.montoRetencion || 0);
+      setNumeroComprobanteRetencion(
+        defaultValues.numeroComprobanteRetencion || "",
+      );
+      setFechaRetencion(
+        defaultValues.fechaRetencion
+          ? new Date(defaultValues.fechaRetencion)
+          : null,
+      );
+
+      setTienePercepcion(defaultValues.tienePercepcion || false);
+      setMontoPercepcion(defaultValues.montoPercepcion || 0);
+      setPorcentajePercepcion(defaultValues.porcentajePercepcion || 0);
+      setNumeroComprobantePercepcion(
+        defaultValues.numeroComprobantePercepcion || "",
+      );
+      setFechaPercepcion(
+        defaultValues.fechaPercepcion
+          ? new Date(defaultValues.fechaPercepcion)
+          : null,
+      );
     }
   }, [defaultValues]);
 
@@ -170,19 +252,21 @@ export default function CuentaPorCobrarForm({
       preFactura.numeroDocumento || preFactura.codigo || `PF-${preFactura.id}`,
     );
     setFechaEmision(
-      preFactura.fechaEmision ? new Date(preFactura.fechaEmision) : new Date(),
+      preFactura.fechaDocumento
+        ? new Date(preFactura.fechaDocumento)
+        : new Date(),
     );
     setFechaVencimiento(
       preFactura.fechaVencimiento
         ? new Date(preFactura.fechaVencimiento)
         : new Date(),
     );
-    setMontoTotal(Number(preFactura.montoTotal || 0));
+    setMontoTotal(Number(preFactura.total || 0));
     setMontoPagado(Number(preFactura.montoPagado || 0));
-    setSaldoPendiente(Number(preFactura.saldoPendiente || 0));
-    setMonedaId(
-      preFactura.monedaId ? Number(preFactura.monedaId) : monedaId,
+    setSaldoPendiente(
+      Number(preFactura.saldoPendiente || preFactura.total || 0),
     );
+    setMonedaId(preFactura.monedaId ? Number(preFactura.monedaId) : monedaId);
   };
 
   const handleSubmit = () => {
@@ -202,6 +286,28 @@ export default function CuentaPorCobrarForm({
       esContado,
       estadoId: estadoId ? Number(estadoId) : null,
       observaciones,
+
+      // Nuevos campos
+      tieneDetraccion,
+      montoDetraccion: Number(montoDetraccion),
+      porcentajeDetraccion: porcentajeDetraccion
+        ? Number(porcentajeDetraccion)
+        : null,
+      numeroConstanciaDetraccion,
+      fechaDetraccion,
+
+      tieneRetencion,
+      montoRetencion: Number(montoRetencion),
+      numeroComprobanteRetencion,
+      fechaRetencion,
+
+      tienePercepcion,
+      montoPercepcion: Number(montoPercepcion),
+      porcentajePercepcion: porcentajePercepcion
+        ? Number(porcentajePercepcion)
+        : null,
+      numeroComprobantePercepcion,
+      fechaPercepcion,
     };
 
     if (!dataParaGrabacion.empresaId || !dataParaGrabacion.clienteId) {
@@ -227,6 +333,28 @@ export default function CuentaPorCobrarForm({
     if (!value) return "";
     const date = new Date(value);
     return date.toLocaleDateString("es-PE");
+  };
+
+  const getEstadoDescripcion = (estadoId) => {
+    if (!estadoId) return "SIN ESTADO";
+    const estado = estados?.find((e) => Number(e.id) === Number(estadoId));
+    return estado?.descripcion || "DESCONOCIDO";
+  };
+
+  const getEstadoSeverity = (estadoId) => {
+    if (!estadoId) return "info";
+    const estado = estados?.find((e) => Number(e.id) === Number(estadoId));
+    return estado?.severityColor || "info";
+  };
+
+  const handleAnular = () => {
+    if (!puedeEditar) return;
+    setEstadoId(104);
+  };
+
+  const handleCanjear = () => {
+    if (!puedeEditar) return;
+    setEstadoId(105);
   };
 
   const puedeEditar = !readOnly && !loading;
@@ -285,28 +413,6 @@ export default function CuentaPorCobrarForm({
             />
           </div>
           <div style={{ flex: 0.5 }}>
-            <label
-              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
-              htmlFor="estadoId"
-            >
-              Estado*
-            </label>
-            <Dropdown
-              id="estadoId"
-              value={estadoId}
-              options={
-                estados?.map((e) => ({
-                  label: e.nombre,
-                  value: Number(e.id),
-                })) || []
-              }
-              onChange={(e) => setEstadoId(e.value)}
-              placeholder="Estado"
-              disabled={!puedeEditar}
-              style={{ fontWeight: "bold", textTransform: "uppercase" }}
-            />
-          </div>
-          <div style={{ flex: 0.5 }}>
             <Button
               id="esGerencial"
               label={esGerencial ? "GERENCIAL" : "GERENCIAL"}
@@ -314,6 +420,18 @@ export default function CuentaPorCobrarForm({
               severity={esGerencial ? "success" : "secondary"}
               onClick={() => setEsGerencial(!esGerencial)}
               disabled={!puedeEditar}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              label={`Estado: ${getEstadoDescripcion(estadoId)}`}
+              severity={getEstadoSeverity(estadoId)}
+              style={{
+                fontWeight: "bold",
+                textTransform: "uppercase",
+                pointerEvents: "none",
+              }}
+              disabled
             />
           </div>
         </div>
@@ -351,9 +469,14 @@ export default function CuentaPorCobrarForm({
                 style={{ fontWeight: "bold" }}
               ></Column>
               <Column
-                field="fechaEmision"
+                field="fechaDocumento"
                 header="Fecha Emisión"
-                body={(rowData) => formatDate(rowData.fechaEmision)}
+                body={(rowData) => formatDate(rowData.fechaDocumento)}
+              ></Column>
+              <Column
+                field="fechaVencimiento"
+                header="Fecha Vencimiento"
+                body={(rowData) => formatDate(rowData.fechaVencimiento)}
               ></Column>
               <Column
                 field="monedaId"
@@ -366,10 +489,10 @@ export default function CuentaPorCobrarForm({
                 }}
               ></Column>
               <Column
-                field="montoTotal"
+                field="total"
                 header="Monto Total"
                 body={(rowData) =>
-                  formatCurrency(rowData.montoTotal, rowData.monedaId)
+                  formatCurrency(rowData.total, rowData.monedaId)
                 }
                 style={{ textAlign: "right", fontWeight: "bold" }}
               ></Column>
@@ -425,15 +548,34 @@ export default function CuentaPorCobrarForm({
             <Dropdown
               id="preFacturaId"
               value={preFacturaId}
-              options={preFacturas.map((pf) => ({
-                label: pf.codigo || pf.numeroDocumento || `PF-${pf.id}`,
-                value: Number(pf.id),
-              }))}
-              onChange={(e) => setPreFacturaId(e.value)}
+              options={preFacturasFiltradas.map((pf) => {
+                const moneda = monedas?.find(
+                  (m) => Number(m.id) === Number(pf.monedaId),
+                );
+                const monedaCodigo = moneda?.codigoSunat || "";
+                const numero = pf.numeroDocumento || `PF-${pf.id}`;
+                const fecha = pf.fechaDocumento
+                  ? new Date(pf.fechaDocumento).toLocaleDateString("es-PE")
+                  : "";
+                const monto = Number(pf.total || 0).toFixed(2);
+
+                return {
+                  label: `${numero} - ${fecha} - ${monedaCodigo} ${formatearNumero(monto)}`,
+                  value: Number(pf.id),
+                };
+              })}
+              onChange={(e) => {
+                const pfSeleccionada = preFacturasFiltradas.find(
+                  (pf) => Number(pf.id) === Number(e.value),
+                );
+                if (pfSeleccionada) {
+                  handleSeleccionarPreFactura(pfSeleccionada);
+                }
+              }}
               placeholder="Seleccionar PreFactura"
               filter
               showClear
-              disabled={isEdit || !puedeEditar}
+              disabled={!clienteId || !puedeEditar}
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
@@ -585,14 +727,359 @@ export default function CuentaPorCobrarForm({
           </div>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 20,
-            marginBottom: 15,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        ></div>
+        {/* PANEL DE IMPUESTOS SUNAT */}
+        <Panel
+          header="Impuestos SUNAT"
+          className="mb-3"
+          toggleable
+          collapsed={true}
+        >
+          {/* DETRACCIÓN */}
+          <div
+            style={{
+              marginBottom: 15,
+              padding: 10,
+              backgroundColor: "#f9f9f9",
+              borderRadius: 5,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 10,
+              }}
+            >
+              <Checkbox
+                inputId="tieneDetraccion"
+                checked={tieneDetraccion}
+                onChange={(e) => setTieneDetraccion(e.checked)}
+                disabled={!puedeEditar}
+              />
+              <label
+                htmlFor="tieneDetraccion"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
+                Tiene Detracción SPOT
+              </label>
+            </div>
+
+            {tieneDetraccion && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: getResponsiveFontSize(),
+                    }}
+                  >
+                    Monto Detracción
+                  </label>
+                  <InputNumber
+                    value={montoDetraccion}
+                    onValueChange={(e) => setMontoDetraccion(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled={!puedeEditar}
+                    style={{ fontWeight: "bold" }}
+                  />
+                </div>
+                <div style={{ flex: 0.5 }}>
+                  <label
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: getResponsiveFontSize(),
+                    }}
+                  >
+                    % Detracción
+                  </label>
+                  <InputNumber
+                    value={porcentajeDetraccion}
+                    onValueChange={(e) => setPorcentajeDetraccion(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    suffix="%"
+                    disabled={!puedeEditar}
+                    style={{ fontWeight: "bold" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: getResponsiveFontSize(),
+                    }}
+                  >
+                    N° Constancia
+                  </label>
+                  <InputText
+                    value={numeroConstanciaDetraccion}
+                    onChange={(e) =>
+                      setNumeroConstanciaDetraccion(e.target.value)
+                    }
+                    disabled={!puedeEditar}
+                    style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                  />
+                </div>
+                <div style={{ flex: 0.7 }}>
+                  <label
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: getResponsiveFontSize(),
+                    }}
+                  >
+                    Fecha Detracción
+                  </label>
+                  <Calendar
+                    value={fechaDetraccion}
+                    onChange={(e) => setFechaDetraccion(e.value)}
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    showButtonBar
+                    disabled={!puedeEditar}
+                    style={{ fontWeight: "bold" }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* RETENCIÓN */}
+          <div
+            style={{
+              marginBottom: 15,
+              padding: 10,
+              backgroundColor: "#f9f9f9",
+              borderRadius: 5,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 10,
+              }}
+            >
+              <Checkbox
+                inputId="tieneRetencion"
+                checked={tieneRetencion}
+                onChange={(e) => setTieneRetencion(e.checked)}
+                disabled={!puedeEditar}
+              />
+              <label
+                htmlFor="tieneRetencion"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
+                Tiene Retención (3% IGV)
+              </label>
+            </div>
+
+            {tieneRetencion && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: getResponsiveFontSize(),
+                    }}
+                  >
+                    Monto Retención
+                  </label>
+                  <InputNumber
+                    value={montoRetencion}
+                    onValueChange={(e) => setMontoRetencion(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled={!puedeEditar}
+                    style={{ fontWeight: "bold" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: getResponsiveFontSize(),
+                    }}
+                  >
+                    N° Comprobante
+                  </label>
+                  <InputText
+                    value={numeroComprobanteRetencion}
+                    onChange={(e) =>
+                      setNumeroComprobanteRetencion(e.target.value)
+                    }
+                    disabled={!puedeEditar}
+                    style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                  />
+                </div>
+                <div style={{ flex: 0.7 }}>
+                  <label
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: getResponsiveFontSize(),
+                    }}
+                  >
+                    Fecha Retención
+                  </label>
+                  <Calendar
+                    value={fechaRetencion}
+                    onChange={(e) => setFechaRetencion(e.value)}
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    showButtonBar
+                    disabled={!puedeEditar}
+                    style={{ fontWeight: "bold" }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* PERCEPCIÓN */}
+          <div
+            style={{
+              marginBottom: 15,
+              padding: 10,
+              backgroundColor: "#f9f9f9",
+              borderRadius: 5,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 10,
+              }}
+            >
+              <Checkbox
+                inputId="tienePercepcion"
+                checked={tienePercepcion}
+                onChange={(e) => setTienePercepcion(e.checked)}
+                disabled={!puedeEditar}
+              />
+              <label
+                htmlFor="tienePercepcion"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
+                Tiene Percepción (Empresa es agente)
+              </label>
+            </div>
+
+            {tienePercepcion && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: getResponsiveFontSize(),
+                    }}
+                  >
+                    Monto Percepción
+                  </label>
+                  <InputNumber
+                    value={montoPercepcion}
+                    onValueChange={(e) => setMontoPercepcion(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    disabled={!puedeEditar}
+                    style={{ fontWeight: "bold" }}
+                  />
+                </div>
+                <div style={{ flex: 0.5 }}>
+                  <label
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: getResponsiveFontSize(),
+                    }}
+                  >
+                    % Percepción
+                  </label>
+                  <InputNumber
+                    value={porcentajePercepcion}
+                    onValueChange={(e) => setPorcentajePercepcion(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    suffix="%"
+                    disabled={!puedeEditar}
+                    style={{ fontWeight: "bold" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: getResponsiveFontSize(),
+                    }}
+                  >
+                    N° Comprobante
+                  </label>
+                  <InputText
+                    value={numeroComprobantePercepcion}
+                    onChange={(e) =>
+                      setNumeroComprobantePercepcion(e.target.value)
+                    }
+                    disabled={!puedeEditar}
+                    style={{ fontWeight: "bold", textTransform: "uppercase" }}
+                  />
+                </div>
+                <div style={{ flex: 0.7 }}>
+                  <label
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: getResponsiveFontSize(),
+                    }}
+                  >
+                    Fecha Percepción
+                  </label>
+                  <Calendar
+                    value={fechaPercepcion}
+                    onChange={(e) => setFechaPercepcion(e.value)}
+                    dateFormat="dd/mm/yy"
+                    showIcon
+                    showButtonBar
+                    disabled={!puedeEditar}
+                    style={{ fontWeight: "bold" }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </Panel>
 
         <div style={{ marginBottom: 15 }}>
           <label
@@ -616,28 +1103,49 @@ export default function CuentaPorCobrarForm({
       <div
         style={{
           display: "flex",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
+          alignItems: "center",
           gap: 10,
           marginTop: 20,
         }}
       >
-        <Button
-          label="Cancelar"
-          icon="pi pi-times"
-          className="p-button-secondary"
-          onClick={onCancel}
-          disabled={loading}
-          type="button"
-        />
-        <Button
-          label={isEdit ? "Actualizar" : "Guardar"}
-          icon="pi pi-check"
-          className="p-button-success"
-          onClick={handleSubmit}
-          loading={loading}
-          disabled={!puedeEditar}
-          type="button"
-        />
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <Button
+            label="Anular"
+            icon="pi pi-ban"
+            severity="secondary"
+            onClick={handleAnular}
+            disabled={!puedeEditar || estadoId === 104}
+            type="button"
+          />
+          <Button
+            label="Canjear"
+            icon="pi pi-sync"
+            severity="contrast"
+            onClick={handleCanjear}
+            disabled={!puedeEditar || estadoId === 105}
+            type="button"
+          />
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Button
+            label="Cancelar"
+            icon="pi pi-times"
+            className="p-button-secondary"
+            onClick={onCancel}
+            disabled={loading}
+            type="button"
+          />
+          <Button
+            label={isEdit ? "Actualizar" : "Guardar"}
+            icon="pi pi-check"
+            className="p-button-success"
+            onClick={handleSubmit}
+            loading={loading}
+            disabled={!puedeEditar}
+            type="button"
+          />
+        </div>
       </div>
     </div>
   );
