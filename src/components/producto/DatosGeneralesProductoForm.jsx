@@ -935,7 +935,8 @@ export default function DatosGeneralesProductoForm({
                 render={({ field, fieldState }) => (
                   <InputNumber
                     id="porcentajeDetraccion"
-                    {...field}
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
                     className={classNames({
                       "p-invalid": fieldState.error,
                     })}

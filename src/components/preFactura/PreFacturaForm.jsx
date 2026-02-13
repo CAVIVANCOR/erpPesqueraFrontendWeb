@@ -895,7 +895,9 @@ export default function PreFacturaForm({
         life: 5000,
       });
 
+      // Cerrar diálogo y recargar lista
       onComprobanteGenerado?.();
+      onCancel?.(); // Cerrar el formulario
     } catch (error) {
       console.error("Error al facturar negra:", error);
       toast?.current?.show({
@@ -921,7 +923,9 @@ export default function PreFacturaForm({
         life: 5000,
       });
 
+      // Cerrar diálogo y recargar lista
       onComprobanteGenerado?.();
+      onCancel?.(); // Cerrar el formulario
     } catch (error) {
       console.error("Error al facturar blanca:", error);
       toast?.current?.show({
