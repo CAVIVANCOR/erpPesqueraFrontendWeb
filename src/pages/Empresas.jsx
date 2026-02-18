@@ -115,6 +115,7 @@ export default function Empresas({ ruta }) {
         porcentajeIgv: data.porcentajeIgv,
         porcentajeRetencion: data.porcentajeRetencion,
         montoMinimoRetencion: data.montoMinimoRetencion,
+        montoMinimoDetraccion: data.montoMinimoDetraccion,
         representantelegalId: data.representantelegalId,
         entidadComercialId: data.entidadComercialId,
         logo: data.logo,
@@ -124,28 +125,30 @@ export default function Empresas({ ruta }) {
         // Campos de liquidación
         porcentajeBaseLiqPesca: data.porcentajeBaseLiqPesca,
         porcentajeComisionPatron: data.porcentajeComisionPatron,
-        cantPersonalCalcComisionMotorista: data.cantPersonalCalcComisionMotorista,
-        cantDivisoriaCalcComisionMotorista: data.cantDivisoriaCalcComisionMotorista,
+        cantPersonalCalcComisionMotorista:
+          data.cantPersonalCalcComisionMotorista,
+        cantDivisoriaCalcComisionMotorista:
+          data.cantDivisoriaCalcComisionMotorista,
         porcentajeCalcComisionPanguero: data.porcentajeCalcComisionPanguero,
         monedaCalculosLiqId: data.monedaCalculosLiqId,
         // Campos Nubefact
         nubefactUrl: data.nubefactUrl,
         nubefactToken: data.nubefactToken,
       };
-      
+
       if (modoEdicion && empresaEdit) {
         await actualizarEmpresa(empresaEdit.id, payload);
         mostrarToast(
           "success",
           "Empresa actualizada",
-          `La empresa fue actualizada correctamente.`
+          `La empresa fue actualizada correctamente.`,
         );
       } else {
         await crearEmpresa(payload);
         mostrarToast(
           "success",
           "Empresa creada",
-          `La empresa fue registrada correctamente.`
+          `La empresa fue registrada correctamente.`,
         );
       }
       setMostrarDialogo(false);
@@ -184,7 +187,7 @@ export default function Empresas({ ruta }) {
       mostrarToast(
         "success",
         "Empresa eliminada",
-        `La empresa fue eliminada correctamente.`
+        `La empresa fue eliminada correctamente.`,
       );
       cargarEmpresas();
     } catch (err) {
@@ -252,8 +255,8 @@ export default function Empresas({ ruta }) {
         value={empresas}
         loading={loading}
         paginator
-        rows={5}
-        rowsPerPageOptions={[5, 10, 15, 20]}
+        rows={20}
+        rowsPerPageOptions={[20, 40, 80, 100]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} empresas"
         size="small"
@@ -318,16 +321,17 @@ export default function Empresas({ ruta }) {
           "cuentaDetraccion",
         ]}
       >
-        <Column field="id" header="ID" />
-        <Column field="razonSocial" header="Razón Social" />
-        <Column field="nombreComercial" header="Nombre Comercial" />
-        <Column field="ruc" header="RUC" />
-        <Column field="telefono" header="Teléfono" />
-        <Column field="email" header="Email" />
+        <Column field="id" header="ID" sortable />
+        <Column field="razonSocial" header="Razón Social" sortable />
+        <Column field="nombreComercial" header="Nombre Comercial" sortable />
+        <Column field="ruc" header="RUC" sortable />
+        <Column field="telefono" header="Teléfono" sortable />
+        <Column field="email" header="Email" sortable />
         <Column
           field="cesado"
           header="¿Cesada?"
           body={(rowData) => (rowData.cesado ? "Sí" : "No")}
+          sortable
         />
         <Column
           header="Acciones"
@@ -347,6 +351,8 @@ export default function Empresas({ ruta }) {
         style={{ width: 1300 }}
         modal
         onHide={() => setMostrarDialogo(false)}
+        maximizable
+        maximized={true}
       >
         {/*
           Se asegura que defaultValues siempre tenga empresaId, ya que el combo de personal lo requiere.

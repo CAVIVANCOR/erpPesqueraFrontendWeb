@@ -25,6 +25,7 @@ import { FileUpload } from "primereact/fileupload";
 import { Toast } from "primereact/toast";
 import { subirFotoProducto } from "../../api/producto";
 import { Panel } from "primereact/panel";
+import { Tag } from "primereact/tag";
 
 export default function DatosGeneralesProductoForm({
   control,
@@ -48,6 +49,15 @@ export default function DatosGeneralesProductoForm({
   defaultValues = {},
   readOnly = false,
 }) {
+  // Watch del porcentaje de detracción para sincronizar sujetoDetraccion
+  const porcentajeDetraccionWatch = watch("porcentajeDetraccion");
+
+  // Efecto para sincronizar automáticamente sujetoDetraccion con porcentajeDetraccion
+  useEffect(() => {
+    if (porcentajeDetraccionWatch !== undefined && porcentajeDetraccionWatch !== null) {
+      setValue("sujetoDetraccion", porcentajeDetraccionWatch > 0, { shouldValidate: true });
+    }
+  }, [porcentajeDetraccionWatch, setValue]);
   const familiaIdWatch = watch("familiaId");
   const empresaIdWatch = watch("empresaId");
 
@@ -928,6 +938,13 @@ export default function DatosGeneralesProductoForm({
             <div style={{ flex: 1 }}>
               <label htmlFor="porcentajeDetraccion" className="font-bold">
                 Detracción (%)
+                {porcentajeDetraccionWatch !== undefined && porcentajeDetraccionWatch !== null && (
+                  <Tag 
+                    value={porcentajeDetraccionWatch > 0 ? "SUJETO" : "NO SUJETO"} 
+                    severity={porcentajeDetraccionWatch > 0 ? "success" : "secondary"} 
+                    style={{ marginLeft: 8, fontSize: '0.75rem' }} 
+                  />
+                )}
               </label>
               <Controller
                 name="porcentajeDetraccion"
@@ -936,7 +953,13 @@ export default function DatosGeneralesProductoForm({
                   <InputNumber
                     id="porcentajeDetraccion"
                     value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
+                    onValueChange={(e) => {
+                      field.onChange(e.value);
+                      // Sincronizar automáticamente sujetoDetraccion
+                      if (e.value !== undefined && e.value !== null) {
+                        setValue("sujetoDetraccion", e.value > 0, { shouldValidate: true });
+                      }
+                    }}
                     className={classNames({
                       "p-invalid": fieldState.error,
                     })}
@@ -952,6 +975,31 @@ export default function DatosGeneralesProductoForm({
               {errors.porcentajeDetraccion && (
                 <small className="p-error">
                   {errors.porcentajeDetraccion.message}
+                </small>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label className="font-bold">Exonerado de Retención</label>
+              <Controller
+                name="exoneradoRetencion"
+                control={control}
+                render={({ field }) => (
+                  <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
+                    <Checkbox
+                      inputId="exoneradoRetencion"
+                      checked={field.value || false}
+                      onChange={(e) => field.onChange(e.checked)}
+                      disabled={readOnly}
+                    />
+                    <label htmlFor="exoneradoRetencion" style={{ marginLeft: 8, fontWeight: 'normal' }}>
+                      {field.value ? 'Sí, está exonerado' : 'No, aplica retención'}
+                    </label>
+                  </div>
+                )}
+              />
+              {errors.exoneradoRetencion && (
+                <small className="p-error">
+                  {errors.exoneradoRetencion.message}
                 </small>
               )}
             </div>

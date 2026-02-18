@@ -41,6 +41,7 @@ const schema = Yup.object().shape({
   porcentajeIgv: Yup.number().nullable(),
   porcentajeRetencion: Yup.number().nullable(),
   montoMinimoRetencion: Yup.number().nullable(),
+  montoMinimoDetraccion: Yup.number().nullable(),
   cuentaDetraccion: Yup.string().nullable(),
   soyAgenteRetencion: Yup.boolean(),
   soyAgentePercepcion: Yup.boolean(),
@@ -228,9 +229,23 @@ export default function EmpresaForm({
     cargarMonedas();
   }, []);
 
-  // Reset al abrir en modo edición o alta
+   // Reset al abrir en modo edición o alta
   useEffect(() => {
-    reset({ ...defaultValues, cesado: defaultValues.cesado ?? false });
+    reset({ 
+      ...defaultValues, 
+      cesado: defaultValues.cesado ?? false,
+      porcentajeIgv: defaultValues.porcentajeIgv ?? null,
+      porcentajeRetencion: defaultValues.porcentajeRetencion ?? null,
+      montoMinimoRetencion: defaultValues.montoMinimoRetencion ?? null,
+      montoMinimoDetraccion: defaultValues.montoMinimoDetraccion ?? null,
+      margenMinimoPermitido: defaultValues.margenMinimoPermitido ?? null,
+      margenUtilidadObjetivo: defaultValues.margenUtilidadObjetivo ?? null,
+      porcentajeBaseLiqPesca: defaultValues.porcentajeBaseLiqPesca ?? null,
+      porcentajeComisionPatron: defaultValues.porcentajeComisionPatron ?? null,
+      cantPersonalCalcComisionMotorista: defaultValues.cantPersonalCalcComisionMotorista ?? null,
+      cantDivisoriaCalcComisionMotorista: defaultValues.cantDivisoriaCalcComisionMotorista ?? null,
+      porcentajeCalcComisionPanguero: defaultValues.porcentajeCalcComisionPanguero ?? null,
+    });
     // Actualiza el preview del logo si cambia la empresa
     /**
      * Construye la URL profesional del logo usando la nueva variable de entorno general para uploads.
@@ -742,6 +757,35 @@ export default function EmpresaForm({
                     prefix="S/ "
                     placeholder="0.00"
                     className={errors.montoMinimoRetencion ? "p-invalid" : ""}
+                    disabled={readOnly}
+                    inputStyle={{ fontWeight: "bold" }}
+                  />
+                )}
+              />
+            </div>
+
+            <div style={{ flex: 0.5 }}>
+              <label htmlFor="montoMinimoDetraccion">
+                Monto Mínimo Detracción
+              </label>
+              <Controller
+                name="montoMinimoDetraccion"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="montoMinimoDetraccion"
+                    value={
+                      field.value === undefined || field.value === null
+                        ? null
+                        : Number(field.value)
+                    }
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    prefix="S/ "
+                    placeholder="700.00"
+                    className={errors.montoMinimoDetraccion ? "p-invalid" : ""}
                     disabled={readOnly}
                     inputStyle={{ fontWeight: "bold" }}
                   />

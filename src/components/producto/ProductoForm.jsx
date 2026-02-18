@@ -419,7 +419,7 @@ export default function ProductoForm({
         porcentajeDetraccion: data.porcentajeDetraccion,
         exoneradoIgv: data.exoneradoIgv,
         exoneradoRetencion: data.exoneradoRetencion,
-        sujetoDetraccion: data.sujetoDetraccion,
+        sujetoDetraccion: data.porcentajeDetraccion > 0, // Forzar sincronización con porcentajeDetraccion
         aplicaSubfamilia: data.aplicaSubfamilia,
         aplicaUnidadMedida: data.aplicaUnidadMedida,
         aplicaTipoAlmacenamiento: data.aplicaTipoAlmacenamiento,
@@ -431,13 +431,25 @@ export default function ProductoForm({
         urlFichaTecnica: data.urlFichaTecnica,
         urlFotoProducto: data.urlFotoProducto,
       };
-      // Eliminar propiedades que son null o undefined (pero mantener false)
+      // Eliminar propiedades que son null o undefined (pero mantener false y 0)
       Object.keys(datosParaEnviar).forEach((key) => {
         const value = datosParaEnviar[key];
+        // Solo eliminar si es null o undefined, mantener false, 0 y strings vacíos
         if (value === null || value === undefined) {
           delete datosParaEnviar[key];
         }
       });
+      
+      // Asegurar que los campos booleanos críticos siempre se envíen
+      if (datosParaEnviar.exoneradoRetencion === undefined) {
+        datosParaEnviar.exoneradoRetencion = false;
+      }
+      if (datosParaEnviar.sujetoDetraccion === undefined) {
+        datosParaEnviar.sujetoDetraccion = data.porcentajeDetraccion > 0;
+      }
+      if (datosParaEnviar.exoneradoIgv === undefined) {
+        datosParaEnviar.exoneradoIgv = false;
+      }
       await onGuardar(datosParaEnviar);
 
       toast.current.show({
