@@ -48,6 +48,8 @@ import { getBancos } from "../api/banco";
 import { getAllFormaTransaccion } from "../api/formaTransaccion";
 import { getAllModoDespachoRecepcion } from "../api/modoDespachoRecepcion";
 import { getTiposContenedor } from "../api/tipoContenedor";
+import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
+import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 import { getDocRequeridaVentasActivos } from "../api/docRequeridaVentas";
 import { usePermissions } from "../hooks/usePermissions";
 import { Calendar } from "primereact/calendar";
@@ -110,6 +112,9 @@ const CotizacionVentas = ({ ruta }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const toast = useRef(null);
+
+  // Filtrado automático por Unidad de Negocio
+  const { datosFiltrados: cotizacionesFiltradas, unidadActiva } = useUnidadNegocioFilter(cotizaciones);
 
   useEffect(() => {
     cargarCotizaciones();
@@ -734,7 +739,7 @@ const CotizacionVentas = ({ ruta }) => {
         </div>
 
         <DataTable
-          value={cotizaciones}
+          value={cotizacionesFiltradas}
           loading={loading}
           dataKey="id"
           paginator
@@ -839,6 +844,10 @@ const CotizacionVentas = ({ ruta }) => {
                     onClick={limpiarFiltros}
                     disabled={loading}
                   />
+                </div>
+                <div style={{ flex: 1 }}>
+                  {/* Filtro de Unidad de Negocio - Compacto */}
+                  <UnidadNegocioFilter />
                 </div>
               </div>
               <div

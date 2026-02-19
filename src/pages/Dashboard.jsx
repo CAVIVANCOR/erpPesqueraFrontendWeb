@@ -2,6 +2,7 @@
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useModulo } from "../context/ModuloContext";
+import { useDashboardStore } from "../shared/stores/useDashboardStore";
 
 /**
  * Dashboard - Bento Grid con animaciones profesionales
@@ -9,10 +10,10 @@ import { useModulo } from "../context/ModuloContext";
  */
 export default function Dashboard() {
   const { abrirModulo } = useModulo();
+  const { searchQuery } = useDashboardStore();
   const [hoveredCard, setHoveredCard] = useState(null);
   const [expandedCard, setExpandedCard] = useState(null);
   const [reorderedModulos, setReorderedModulos] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const containerRef = useRef(null);
 
   // Configuración de módulos con colores del logo Megui y sus submenús
@@ -25,7 +26,6 @@ export default function Dashboard() {
       icono: "pi-shield",
       modulos: 6,
       color: "#5DADE2",
-      size: "medium",
       submenu: [
         {
           label: "Movimientos Acceso",
@@ -59,7 +59,6 @@ export default function Dashboard() {
       icono: "pi-compass",
       modulos: 13,
       color: "#2874A6",
-      size: "large",
       submenu: [
         {
           label: "Pesca Industrial",
@@ -115,7 +114,6 @@ export default function Dashboard() {
       icono: "pi-shopping-cart",
       modulos: 7,
       color: "#1E8449",
-      size: "large",
       submenu: [
         {
           label: "Requerimiento Compra",
@@ -153,7 +151,6 @@ export default function Dashboard() {
       icono: "pi-dollar",
       modulos: 8,
       color: "#5DADE2",
-      size: "large",
       submenu: [
         {
           label: "Cotización Ventas",
@@ -197,7 +194,6 @@ export default function Dashboard() {
       icono: "pi-box",
       modulos: 12,
       color: "#2874A6",
-      size: "medium",
       submenu: [
         {
           label: "Movimientos Almacén",
@@ -248,7 +244,6 @@ export default function Dashboard() {
       icono: "pi-wrench",
       modulos: 3,
       color: "#1E8449",
-      size: "small",
       submenu: [
         {
           label: "Órdenes de Trabajo",
@@ -275,7 +270,6 @@ export default function Dashboard() {
       icono: "pi-wallet",
       modulos: 12,
       color: "#5DADE2",
-      size: "medium",
       submenu: [
         {
           label: "Movimientos de Caja",
@@ -338,7 +332,6 @@ export default function Dashboard() {
       icono: "pi-wallet",
       modulos: 10,
       color: "#8E44AD",
-      size: "medium",
       submenu: [
         {
           label: "Cuenta Por Cobrar",
@@ -390,7 +383,6 @@ export default function Dashboard() {
       icono: "pi-calculator",
       modulos: 10,
       color: "#E74C3C",
-      size: "large",
       submenu: [
         { label: "Plan Contable", key: "planCuentasContable", icon: "pi-list" },
         {
@@ -427,7 +419,6 @@ export default function Dashboard() {
       icono: "pi-database",
       modulos: 33,
       color: "#2874A6",
-      size: "small",
       submenu: [
         { label: "Empresas", key: "empresas", icon: "pi-building" },
         { label: "Sedes Empresa", key: "sedesEmpresa", icon: "pi-map-marker" },
@@ -508,6 +499,41 @@ export default function Dashboard() {
           icon: "pi-arrow-right",
         },
         { label: "Monedas", key: "monedas", icon: "pi-dollar" },
+      ],
+    },
+    {
+      id: "administracion",
+      titulo: "ADMINISTRACIÓN",
+      descripcion: "Gestión de usuarios, accesos y configuración del sistema",
+      icono: "pi-users",
+      modulos: 5,
+      color: "#8B5CF6",
+      submenu: [
+        {
+          label: "Usuarios del Sistema",
+          key: "usuarios",
+          icon: "pi-user",
+        },
+        {
+          label: "Accesos Usuario",
+          key: "accesosUsuario",
+          icon: "pi-lock",
+        },
+        {
+          label: "Módulos Sistema",
+          key: "modulosSistema",
+          icon: "pi-th-large",
+        },
+        {
+          label: "Submódulos Sistema",
+          key: "SubmodulosSistema",
+          icon: "pi-sitemap",
+        },
+        {
+          label: "Unidades de Negocio",
+          key: "unidadesNegocio",
+          icon: "pi-briefcase",
+        },
       ],
     },
   ];
@@ -628,100 +654,12 @@ export default function Dashboard() {
         style={{
           position: "relative",
           zIndex: 1,
-          maxWidth: "1400px",
+          maxWidth: "1800px",
           margin: "0 auto",
+          marginTop:"1rem",
           padding: "60px 40px",
         }}
       >
-        {/* Barra de búsqueda */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          style={{
-            marginBottom: "40px",
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            style={{
-              position: "relative",
-              width: "100%",
-              maxWidth: "600px",
-            }}
-          >
-            <i
-              className="pi pi-search"
-              style={{
-                position: "absolute",
-                left: "20px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#64748b",
-                fontSize: "18px",
-                zIndex: 2,
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Buscar módulos, procesos o funcionalidades..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "16px 20px 16px 52px",
-                background: "rgba(15, 23, 42, 0.6)",
-                backdropFilter: "blur(20px)",
-                border: "1px solid rgba(93, 173, 226, 0.3)",
-                borderRadius: "16px",
-                color: "#ffffff",
-                fontSize: "1rem",
-                outline: "none",
-                transition: "all 0.3s ease",
-              }}
-              onFocus={(e) => {
-                e.target.style.border = "1px solid #5DADE2";
-                e.target.style.boxShadow = "0 0 0 3px rgba(93, 173, 226, 0.1)";
-              }}
-              onBlur={(e) => {
-                e.target.style.border = "1px solid rgba(93, 173, 226, 0.3)";
-                e.target.style.boxShadow = "none";
-              }}
-            />
-            {searchQuery && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                onClick={() => setSearchQuery("")}
-                style={{
-                  position: "absolute",
-                  right: "12px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "rgba(93, 173, 226, 0.2)",
-                  border: "none",
-                  borderRadius: "8px",
-                  width: "32px",
-                  height: "32px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  color: "#5DADE2",
-                  transition: "all 0.2s ease",
-                }}
-                whileHover={{
-                  background: "rgba(93, 173, 226, 0.3)",
-                  scale: 1.1,
-                }}
-              >
-                <i className="pi pi-times" style={{ fontSize: "14px" }} />
-              </motion.button>
-            )}
-          </div>
-        </motion.div>
-
         {/* Mensaje de resultados */}
         {searchQuery && (
           <motion.div
@@ -750,15 +688,41 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        {/* Bento Grid */}
+        {/* Bento Grid - Responsive: Desktop (6 cols), Laptop (4 cols), Tablet HD (3 cols) */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-            gap: "24px",
-            gridAutoFlow: "dense",
+            gridTemplateColumns: "repeat(6, 1fr)",
+            gap: "12px",
+            gridAutoRows: "minmax(180px, auto)",
           }}
+          className="dashboard-grid"
         >
+          <style>{`
+            /* Desktop y Laptop: 6 columnas (≥1280px) */
+            @media (min-width: 1280px) {
+              .dashboard-grid {
+                grid-template-columns: repeat(6, 1fr) !important;
+                gap: 10px !important;
+              }
+              .dashboard-grid .card-content h3 {
+                font-size: 0.75rem !important;
+              }
+              .dashboard-grid .card-content p {
+                font-size: 0.65rem !important;
+              }
+              .dashboard-grid .card-content .modulo-count {
+                font-size: 0.65rem !important;
+              }
+            }
+            
+            /* Tablet HD: 3 columnas (768px - 1279px) */
+            @media (min-width: 768px) and (max-width: 1279px) {
+              .dashboard-grid {
+                grid-template-columns: repeat(3, 1fr) !important;
+              }
+            }
+          `}</style>
           <AnimatePresence mode="popLayout">
             {modulosConfig.map((modulo, index) => (
               <motion.div
@@ -787,6 +751,7 @@ export default function Dashboard() {
                       ? "span 1"
                       : "span 1",
                   position: "relative",
+                  zIndex: expandedCard === modulo.id ? 10 : 1,
                 }}
               >
                 {/* Card principal */}
@@ -810,14 +775,10 @@ export default function Dashboard() {
                         ? modulo.color
                         : "rgba(51, 65, 85, 0.5)"
                     }`,
-                    borderRadius: "24px",
-                    padding: "32px",
-                    minHeight:
-                      expandedCard === modulo.id
-                        ? "auto"
-                        : modulo.size === "large"
-                        ? "280px"
-                        : "220px",
+                    borderRadius: "12px",
+                    padding: "10px",
+                    minHeight: expandedCard === modulo.id ? "auto" : "180px",
+                    maxHeight: expandedCard === modulo.id ? "none" : "180px",
                     display: "flex",
                     flexDirection: "column",
                     position: "relative",
@@ -857,7 +818,7 @@ export default function Dashboard() {
                       zIndex: 1,
                       display: "flex",
                       alignItems: "flex-start",
-                      gap: "20px",
+                      gap: "8px",
                     }}
                   >
                     {/* Icono */}
@@ -872,9 +833,9 @@ export default function Dashboard() {
                       }
                       transition={{ duration: 0.5 }}
                       style={{
-                        width: "64px",
-                        height: "64px",
-                        borderRadius: "16px",
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "10px",
                         background: `linear-gradient(135deg, ${modulo.color}30, ${modulo.color}10)`,
                         display: "flex",
                         alignItems: "center",
@@ -886,21 +847,22 @@ export default function Dashboard() {
                       <i
                         className={`pi ${modulo.icono}`}
                         style={{
-                          fontSize: "28px",
+                          fontSize: "18px",
                           color: modulo.color,
                         }}
                       />
                     </motion.div>
 
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1 }} className="card-content">
                       {/* Título */}
                       <h3
                         style={{
-                          fontSize: "1.4rem",
+                          fontSize: "0.85rem",
                           fontWeight: "700",
                           color: "#ffffff",
-                          marginBottom: "8px",
+                          marginBottom: "3px",
                           letterSpacing: "-0.01em",
+                          lineHeight: "1.2",
                         }}
                       >
                         {modulo.titulo}
@@ -909,10 +871,10 @@ export default function Dashboard() {
                       {/* Descripción */}
                       <p
                         style={{
-                          fontSize: "0.95rem",
+                          fontSize: "0.7rem",
                           color: "#94a3b8",
-                          lineHeight: "1.6",
-                          marginBottom: "12px",
+                          lineHeight: "1.3",
+                          marginBottom: "6px",
                         }}
                       >
                         {modulo.descripcion}
@@ -920,15 +882,16 @@ export default function Dashboard() {
 
                       {/* Contador de módulos */}
                       <div
+                        className="modulo-count"
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "8px",
-                          fontSize: "0.9rem",
+                          gap: "4px",
+                          fontSize: "0.7rem",
                           color: "#64748b",
                         }}
                       >
-                        <i className="pi pi-box" style={{ fontSize: "14px" }} />
+                        <i className="pi pi-box" style={{ fontSize: "11px" }} />
                         <span>{modulo.modulos} módulos</span>
                         <motion.i
                           className={`pi ${
@@ -937,7 +900,7 @@ export default function Dashboard() {
                               : "pi-chevron-down"
                           }`}
                           style={{
-                            fontSize: "14px",
+                            fontSize: "12px",
                             marginLeft: "auto",
                             color: modulo.color,
                           }}
@@ -961,8 +924,8 @@ export default function Dashboard() {
                         style={{
                           position: "relative",
                           zIndex: 1,
-                          marginTop: "24px",
-                          paddingTop: "24px",
+                          marginTop: "12px",
+                          paddingTop: "12px",
                           borderTop: `1px solid ${modulo.color}30`,
                         }}
                       >
@@ -970,8 +933,8 @@ export default function Dashboard() {
                           style={{
                             display: "grid",
                             gridTemplateColumns:
-                              "repeat(auto-fill, minmax(250px, 1fr))",
-                            gap: "12px",
+                              "repeat(auto-fill, minmax(180px, 1fr))",
+                            gap: "8px",
                           }}
                         >
                           {modulo.submenu.map((item, idx) => (
@@ -989,12 +952,12 @@ export default function Dashboard() {
                                 backgroundColor: "rgba(15, 23, 42, 0.8)",
                               }}
                               style={{
-                                padding: "12px 16px",
+                                padding: "8px 12px",
                                 background: "rgba(15, 23, 42, 0.4)",
                                 border: `1px solid ${modulo.color}20`,
-                                borderRadius: "12px",
+                                borderRadius: "8px",
                                 color: "#cbd5e1",
-                                fontSize: "0.9rem",
+                                fontSize: "0.75rem",
                                 textAlign: "left",
                                 cursor: "pointer",
                                 display: "flex",
@@ -1007,7 +970,7 @@ export default function Dashboard() {
                                 className={`pi ${item.icon}`}
                                 style={{
                                   color: modulo.color,
-                                  fontSize: "16px",
+                                  fontSize: "14px",
                                 }}
                               />
                               <span>{item.label}</span>

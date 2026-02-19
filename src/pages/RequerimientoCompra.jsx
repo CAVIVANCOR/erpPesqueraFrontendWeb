@@ -38,6 +38,8 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 import { Calendar } from "primereact/calendar";
+import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
+import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 /**
  * Pantalla profesional para gestión de Requerimientos de Compra.
  */
@@ -77,6 +79,9 @@ export default function RequerimientoCompra({ ruta }) {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
   const [proveedoresUnicos, setProveedoresUnicos] = useState([]);
+
+  // Filtrado automático por Unidad de Negocio
+  const { datosFiltrados: requerimientosFiltrados } = useUnidadNegocioFilter(items);
 
   useEffect(() => {
     cargarDatos();
@@ -586,7 +591,7 @@ export default function RequerimientoCompra({ ruta }) {
       {/* ConfirmDialog global para confirmDialog() de componentes hijos */}
       <ConfirmDialog />
       <DataTable
-        value={itemsFiltrados}
+        value={requerimientosFiltrados}
         loading={loading}
         dataKey="id"
         paginator
@@ -689,6 +694,10 @@ export default function RequerimientoCompra({ ruta }) {
                   onClick={limpiarFiltros}
                   disabled={loading}
                 />
+              </div>
+              <div style={{ flex: 1 }}>
+                {/* Filtro de Unidad de Negocio - Compacto */}
+                <UnidadNegocioFilter />
               </div>
             </div>
             <div

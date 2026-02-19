@@ -5,8 +5,7 @@ import { Button } from 'primereact/button';
 import { Tooltip } from 'primereact/tooltip';
 import { motion } from 'framer-motion';
 import { useModulo } from '../../../context/ModuloContext';
-import { getMenuConfig } from './menuConfig';
-import MegaMenu from './MegaMenu';
+import { useDashboardStore } from '../../../shared/stores/useDashboardStore';
 import UserAvatar from './UserAvatar';
 import NotificationBell from './NotificationBell';
 import { useAuthStore } from '../../../shared/stores/useAuthStore';
@@ -18,8 +17,8 @@ export default function AppHeader() {
   const { abrirModulo, volverAlDashboard } = useModulo();
   const { usuario, logout: logoutStore } = useAuthStore();
 
-  // Configuración del menú
-  const menuConfig = getMenuConfig(abrirModulo);
+  // Store de dashboard
+  const { vistaActual, cambiarAModular, cambiarAUnidades, searchQuery, setSearchQuery } = useDashboardStore();
 
   // Manejar logout
   const handleLogout = () => {
@@ -35,6 +34,17 @@ export default function AppHeader() {
   // Manejar click en avatar de Jitsi - abrir videoconferencias
   const handleJitsiClick = () => {
     abrirModulo("videoconferencia", "Videoconferencias");
+  };
+  // Manejar cambio a dashboard modular
+  const handleDashboardModular = () => {
+    cambiarAModular();
+    volverAlDashboard();
+  };
+
+  // Manejar cambio a dashboard por unidades
+  const handleDashboardUnidades = () => {
+    cambiarAUnidades();
+    volverAlDashboard();
   };
 
   return (
@@ -83,8 +93,105 @@ export default function AppHeader() {
           />
         </motion.div>
 
-        {/* Mega Menu */}
-        <MegaMenu menuConfig={menuConfig} />
+         {/* Botones de Dashboard y Búsqueda */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '16px',
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          maxWidth: '900px'
+        }}>
+          <Button
+            label="Dashboard Modular"
+            icon="pi pi-th-large"
+            onClick={handleDashboardModular}
+            severity={vistaActual === 'modular' ? 'info' : 'secondary'}
+            outlined={vistaActual !== 'modular'}
+            style={{
+              fontWeight: vistaActual === 'modular' ? 'bold' : 'normal',
+              minWidth: '180px'
+            }}
+          />
+          <Button
+            label="Dashboard Unidades"
+            icon="pi pi-building"
+            onClick={handleDashboardUnidades}
+            severity={vistaActual === 'unidades' ? 'info' : 'secondary'}
+            outlined={vistaActual !== 'unidades'}
+            style={{
+              fontWeight: vistaActual === 'unidades' ? 'bold' : 'normal',
+              minWidth: '180px'
+            }}
+          />
+          
+          {/* Campo de Búsqueda - Visible en ambas vistas */}
+          <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+              <i
+                className="pi pi-search"
+                style={{
+                  position: 'absolute',
+                  left: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#64748b',
+                  fontSize: '14px',
+                  zIndex: 2,
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Buscar módulos, procesos o funcionalidades..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 36px 8px 36px',
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  border: '1px solid rgba(93, 173, 226, 0.3)',
+                  borderRadius: '8px',
+                  color: '#ffffff',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                  transition: 'all 0.3s ease',
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'rgba(93, 173, 226, 0.6)';
+                  e.target.style.background = 'rgba(15, 23, 42, 0.8)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'rgba(93, 173, 226, 0.3)';
+                  e.target.style.background = 'rgba(15, 23, 42, 0.6)';
+                }}
+              />
+              {searchQuery && (
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setSearchQuery('')}
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(93, 173, 226, 0.2)',
+                    border: 'none',
+                    borderRadius: '4px',
+                    width: '24px',
+                    height: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: '#5DADE2',
+                    zIndex: 2,
+                  }}
+                >
+                  <i className="pi pi-times" style={{ fontSize: '12px' }} />
+                </motion.button>
+              )}
+            </div>
+        </div>
 
         {/* User Area */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

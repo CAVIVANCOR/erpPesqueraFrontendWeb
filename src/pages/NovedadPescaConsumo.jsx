@@ -19,6 +19,8 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
+import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
+import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 import {
   getAllNovedadPescaConsumo,
   deleteNovedadPescaConsumo,
@@ -46,6 +48,10 @@ const NovedadPescaConsumo = ({ ruta }) => {
   }
   // Estados principales de la tabla
   const [novedades, setNovedades] = useState([]);
+  
+  // Filtrado automático por Unidad de Negocio
+  const { datosFiltrados: novedadesFiltradas } = useUnidadNegocioFilter(novedades);
+  
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
 
@@ -724,7 +730,7 @@ const NovedadPescaConsumo = ({ ruta }) => {
       <ConfirmDialog />
       <div className="card">
         <DataTable
-          value={novedades}
+          value={novedadesFiltradas}
           loading={loading}
           paginator
           rows={10}
@@ -876,6 +882,10 @@ const NovedadPescaConsumo = ({ ruta }) => {
                     tooltip="Limpiar todos los filtros y mostrar todas las novedades"
                     tooltipOptions={{ position: "bottom" }}
                   />
+                </div>
+                <div style={{ flex: 0.5 }}>
+                  {/* Filtro de Unidad de Negocio - Compacto */}
+                  <UnidadNegocioFilter />
                 </div>
               </div>
             </div>

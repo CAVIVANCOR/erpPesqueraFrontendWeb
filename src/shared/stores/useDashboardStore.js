@@ -10,6 +10,7 @@ export const useDashboardStore = create((set) => ({
   // Estado inicial
   vistaActual: 'modular', // Por defecto vista modular
   unidadSeleccionada: null,
+  searchQuery: '', // Query de búsqueda para filtrar módulos
   
   // Cambiar a vista modular (global)
   cambiarAModular: () => set({ 
@@ -31,5 +32,10 @@ export const useDashboardStore = create((set) => ({
   // Limpiar unidad seleccionada
   limpiarUnidad: () => set({
     unidadSeleccionada: null
+  }),
+  
+  // Actualizar query de búsqueda
+  setSearchQuery: (query) => set({
+    searchQuery: query
   })
 }));

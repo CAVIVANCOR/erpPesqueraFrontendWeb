@@ -32,8 +32,6 @@ import { Tooltip } from "primereact/tooltip";
 import { FilterMatchMode } from "primereact/api";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
-import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
-import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 import {
   getTemporadasPesca,
   getTemporadaPescaPorId,
@@ -67,10 +65,6 @@ const TemporadaPesca = ({ ruta }) => {
 
   // Estados principales
   const [temporadas, setTemporadas] = useState([]);
-
-  // Filtrado automático por Unidad de Negocio
-  const { datosFiltrados: temporadasFiltradas } =
-    useUnidadNegocioFilter(temporadas);
   const [loading, setLoading] = useState(true);
   const [globalFilterValue, setGlobalFilterValue] = useState("");
   const [filters, setFilters] = useState({
@@ -729,7 +723,7 @@ const TemporadaPesca = ({ ruta }) => {
       <div className="card">
         <DataTable
           ref={dt}
-          value={temporadasFiltradas}
+          value={temporadas}
           loading={loading}
           dataKey="id"
           paginator
@@ -892,10 +886,6 @@ const TemporadaPesca = ({ ruta }) => {
                     tooltip="Limpiar todos los filtros y mostrar todas las temporadas"
                     tooltipOptions={{ position: "bottom" }}
                   />
-                </div>
-                <div style={{ flex: 0.5 }}>
-                  {/* Filtro de Unidad de Negocio - Compacto */}
-                  <UnidadNegocioFilter />
                 </div>
               </div>
             </div>

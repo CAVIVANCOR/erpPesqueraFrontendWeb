@@ -47,6 +47,8 @@ import { usePermissions } from "../hooks/usePermissions";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import ColorTag from "../components/shared/ColorTag";
+import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
+import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 /**
  * Componente PreFactura
  * Gestión CRUD de pre-facturas con patrón profesional ERP Megui
@@ -89,6 +91,9 @@ const PreFactura = ({ ruta }) => {
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [selectedPreFactura, setSelectedPreFactura] = useState(null);
+
+  // Filtrado automático por Unidad de Negocio
+  const { datosFiltrados: preFacturasFiltradas } = useUnidadNegocioFilter(preFacturas);
   const [isEditing, setIsEditing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showCotizacionDialog, setShowCotizacionDialog] = useState(false); // ⬅️ AGREGAR
@@ -781,7 +786,7 @@ const PreFactura = ({ ruta }) => {
       <ConfirmDialog />
       <div className="card">
         <DataTable
-          value={itemsFiltrados}
+          value={preFacturasFiltradas}
           loading={loading}
           dataKey="id"
           paginator
@@ -862,6 +867,10 @@ const PreFactura = ({ ruta }) => {
                     onClick={limpiarFiltros}
                     disabled={loading}
                   />
+                </div>
+                <div style={{ flex: 1 }}>
+                  {/* Filtro de Unidad de Negocio - Compacto */}
+                  <UnidadNegocioFilter />
                 </div>
               </div>
               <div

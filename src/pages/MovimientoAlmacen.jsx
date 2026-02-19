@@ -42,6 +42,8 @@ import { getSeriesDoc } from "../api/serieDoc";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 import { usePermissions } from "../hooks/usePermissions";
+import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
+import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 import { Navigate } from "react-router-dom";
 
 /**
@@ -62,6 +64,10 @@ export default function MovimientoAlmacen({ ruta }) {
 
   const toast = useRef(null);
   const [items, setItems] = useState([]);
+  
+  // Filtrado automático por Unidad de Negocio
+  const { datosFiltrados: movimientosFiltrados } = useUnidadNegocioFilter(items);
+  
   const [empresas, setEmpresas] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
@@ -725,7 +731,7 @@ export default function MovimientoAlmacen({ ruta }) {
         reject={() => setShowConfirm(false)}
       />
       <DataTable
-        value={itemsFiltrados}
+        value={movimientosFiltrados}
         loading={loading}
         dataKey="id"
         paginator
@@ -840,6 +846,10 @@ export default function MovimientoAlmacen({ ruta }) {
                   onClick={limpiarFiltros}
                   disabled={loading}
                 />
+              </div>
+              <div style={{ flex: 1 }}>
+                {/* Filtro de Unidad de Negocio - Compacto */}
+                <UnidadNegocioFilter />
               </div>
             </div>
             {/* Segunda fila */}

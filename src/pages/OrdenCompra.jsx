@@ -45,6 +45,8 @@ import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
+import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
+import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 
 export default function OrdenCompra({ ruta }) {
   const { usuario } = useAuthStore();
@@ -54,6 +56,10 @@ export default function OrdenCompra({ ruta }) {
   }
   const toast = useRef(null);
   const [items, setItems] = useState([]);
+  
+  // Filtrado automático por Unidad de Negocio
+  const { datosFiltrados: ordenesFiltradas } = useUnidadNegocioFilter(items);
+  
   const [empresas, setEmpresas] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [formasPago, setFormasPago] = useState([]);
@@ -769,7 +775,7 @@ export default function OrdenCompra({ ruta }) {
         reject={() => setShowConfirm(false)}
       />
       <DataTable
-        value={itemsFiltrados}
+        value={ordenesFiltradas}
         loading={loading}
         dataKey="id"
         paginator
@@ -852,6 +858,10 @@ export default function OrdenCompra({ ruta }) {
                   onClick={limpiarFiltros}
                   disabled={loading}
                 />
+              </div>
+              <div style={{ flex: 1 }}>
+                {/* Filtro de Unidad de Negocio - Compacto */}
+                <UnidadNegocioFilter />
               </div>
             </div>
             <div

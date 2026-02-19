@@ -40,6 +40,9 @@ import { usePermissions } from "../hooks/usePermissions";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import ColorTag from "../components/shared/ColorTag";
+import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
+import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
+
 /**
  * Componente ContratoServicio
  * Gestión CRUD de contratos de servicio con patrón profesional ERP Megui
@@ -52,6 +55,11 @@ const ContratoServicio = ({ ruta }) => {
     return <Navigate to="/sin-acceso" replace />;
   }
   const [contratos, setContratos] = useState([]);
+  const [itemsFiltrados, setItemsFiltrados] = useState([]);
+  
+  // Filtrado automático por Unidad de Negocio sobre los items ya filtrados
+  const { datosFiltrados: contratosFiltrados } = useUnidadNegocioFilter(itemsFiltrados);
+
   const [empresas, setEmpresas] = useState([]);
   const [sedes, setSedes] = useState([]);
   const [activos, setActivos] = useState([]);
@@ -76,7 +84,6 @@ const ContratoServicio = ({ ruta }) => {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [fechaInicio, setFechaInicio] = useState(null);
   const [fechaFin, setFechaFin] = useState(null);
-  const [contratosFiltrados, setContratosFiltrados] = useState([]);
   const toast = useRef(null);
 
   useEffect(() => {
@@ -247,7 +254,7 @@ const ContratoServicio = ({ ruta }) => {
       });
     }
 
-    setContratosFiltrados(filtrados);
+    setItemsFiltrados(filtrados);
   }, [
     empresaSeleccionada,
     clienteSeleccionado,
@@ -663,6 +670,10 @@ const ContratoServicio = ({ ruta }) => {
             className="p-button-secondary"
             style={{ width: "100%" }}
           />
+        </div>
+        <div style={{ display: "flex", alignItems: "flex-end" }}>
+          {/* Filtro de Unidad de Negocio - Compacto */}
+          <UnidadNegocioFilter />
         </div>
       </div>
 
