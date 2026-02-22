@@ -106,7 +106,7 @@ export default function Almacen({ ruta }) {
   const centrosFiltrados = React.useMemo(() => {
     if (!empresaSeleccionada) return centrosAlmacen;
     return centrosAlmacen.filter(
-      (centro) => Number(centro.empresaId) === Number(empresaSeleccionada)
+      (centro) => Number(centro.empresaId) === Number(empresaSeleccionada),
     );
   }, [centrosAlmacen, empresaSeleccionada]);
 
@@ -158,7 +158,7 @@ export default function Almacen({ ruta }) {
       filtrados = filtrados.filter((almacen) => almacen.seLlevaKardex === true);
     } else if (filtroKardex === "no") {
       filtrados = filtrados.filter(
-        (almacen) => almacen.seLlevaKardex === false
+        (almacen) => almacen.seLlevaKardex === false,
       );
     }
 
@@ -289,7 +289,7 @@ export default function Almacen({ ruta }) {
   const empresaTemplate = (rowData) => {
     if (!rowData.centroAlmacen?.empresaId) return "-";
     const empresa = empresas.find(
-      (e) => Number(e.id) === Number(rowData.centroAlmacen.empresaId)
+      (e) => Number(e.id) === Number(rowData.centroAlmacen.empresaId),
     );
     return empresa ? empresa.razonSocial : "-";
   };
@@ -326,7 +326,16 @@ export default function Almacen({ ruta }) {
         loading={loading}
         dataKey="id"
         paginator
-        rows={10}
+        size="small"
+        showGridlines
+        stripedRows
+        rows={20}
+        rowsPerPageOptions={[20, 40, 80, 160]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} almacenes"
+        emptyMessage="No hay almacenes registrados"
+        sortField="id"
+        sortOrder={-1}
         onRowClick={(e) => handleEdit(e.data)}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         header={
@@ -480,22 +489,22 @@ export default function Almacen({ ruta }) {
                     filtroKardex === "todos"
                       ? "Todos"
                       : filtroKardex === "si"
-                      ? "Lleva Kardex"
-                      : "No lleva Kardex"
+                        ? "Lleva Kardex"
+                        : "No lleva Kardex"
                   }
                   icon={
                     filtroKardex === "todos"
                       ? "pi pi-list"
                       : filtroKardex === "si"
-                      ? "pi pi-check"
-                      : "pi pi-times"
+                        ? "pi pi-check"
+                        : "pi pi-times"
                   }
                   className={
                     filtroKardex === "todos"
                       ? "p-button-secondary"
                       : filtroKardex === "si"
-                      ? "p-button-success"
-                      : "p-button-danger"
+                        ? "p-button-success"
+                        : "p-button-danger"
                   }
                   onClick={() => {
                     if (filtroKardex === "todos") setFiltroKardex("si");
@@ -520,22 +529,22 @@ export default function Almacen({ ruta }) {
                     filtroActivo === "todos"
                       ? "Todos"
                       : filtroActivo === "si"
-                      ? "Activos"
-                      : "Inactivos"
+                        ? "Activos"
+                        : "Inactivos"
                   }
                   icon={
                     filtroActivo === "todos"
                       ? "pi pi-list"
                       : filtroActivo === "si"
-                      ? "pi pi-check"
-                      : "pi pi-times"
+                        ? "pi pi-check"
+                        : "pi pi-times"
                   }
                   className={
                     filtroActivo === "todos"
                       ? "p-button-secondary"
                       : filtroActivo === "si"
-                      ? "p-button-success"
-                      : "p-button-danger"
+                        ? "p-button-success"
+                        : "p-button-danger"
                   }
                   onClick={() => {
                     if (filtroActivo === "todos") setFiltroActivo("si");
@@ -549,33 +558,43 @@ export default function Almacen({ ruta }) {
           </div>
         }
       >
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="nombre" header="Nombre" />
-        <Column body={empresaTemplate} header="Empresa" />
+        <Column field="id" header="ID" style={{ width: 80 }} sortable />
+        <Column body={empresaTemplate} header="Empresa" sortable />
         <Column
           field="centroAlmacenId"
           header="Centro Almacén"
           body={centroNombre}
+          sortable
+        />
+        <Column
+          field="nombre"
+          header="Almacen Nombre"
+          sortable
+          style={{ fontWeight: "bold" }}
         />
         <Column
           field="tipoAlmacenamientoId"
           header="Tipo Almacenamiento"
           body={tipoAlmacenamientoNombre}
+          sortable
         />
         <Column
           field="tipoAlmacenId"
           header="Tipo Almacén"
           body={tipoAlmacenNombre}
+          sortable
         />
         <Column
           field="seLlevaKardex"
           header="Lleva Kardex"
           body={(rowData) => booleanTemplate(rowData, "seLlevaKardex")}
+          sortable
         />
         <Column
           field="activo"
           header="Activo"
           body={(rowData) => booleanTemplate(rowData, "activo")}
+          sortable
         />
         <Column
           body={actionBody}

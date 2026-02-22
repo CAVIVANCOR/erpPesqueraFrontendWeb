@@ -1,9 +1,10 @@
 // src/pages/tesoreria/ReporteLineasDisponibles.jsx
 import React from 'react';
-import ReporteLineasDisponibles from '../../components/tesoreria/ReporteLineasDisponibles';
+import ReporteLineasDisponiblesECharts from '../../components/tesoreria/ReporteLineasDisponiblesECharts';
 
 /**
  * Página wrapper para el Reporte de Líneas de Crédito Disponibles
+ * Versión mejorada con Apache ECharts para visualizaciones avanzadas
  */
 export default function ReporteLineasDisponiblesPage() {
   return (
@@ -21,11 +22,11 @@ export default function ReporteLineasDisponiblesPage() {
             Reporte de Líneas de Crédito Disponibles
           </h2>
           <p style={{ margin: '0.5rem 0 0 0', opacity: 0.9, fontSize: '0.95rem' }}>
-            Visualiza el estado y disponibilidad de las líneas de crédito por empresa
+            Visualiza el estado y disponibilidad de las líneas de crédito por empresa con gráficos interactivos
           </p>
         </div>
         
-        <ReporteLineasDisponibles />
+        <ReporteLineasDisponiblesECharts />
       </div>
     </div>
   );

@@ -20,6 +20,8 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
+    "echarts": "^6.0.0",
+    "echarts-for-react": "^3.0.6",
     "erp-pesquera-frontend-shared": "file:../erp-pesquera-frontend-shared",
     "flat-color-icons": "^1.1.0",
     "framer-motion": "^12.23.25",

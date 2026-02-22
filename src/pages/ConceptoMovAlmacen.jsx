@@ -403,7 +403,14 @@ export default function ConceptoMovAlmacen({ ruta }) {
         loading={loading}
         dataKey="id"
         paginator
-        rows={10}
+        size="small"
+        showGridlines
+        stripedRows
+        rows={20}
+        rowsPerPageOptions={[20, 40, 80, 160]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} almacenes"
+        emptyMessage="No hay almacenes registrados"
         onRowClick={(e) => handleEdit(e.data)}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         sortField="id"

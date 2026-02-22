@@ -22,15 +22,8 @@ export const modulosPorUnidad = {
         tablas: [
           { id: "detCuotaPesca", titulo: "Detalle Cuotas Pesca", icono: "pi-percentage" },
           { id: "accionesPreviasFaena", titulo: "Acciones Previas Faena", icono: "pi-list" },
-          { id: "embarcacion", titulo: "Embarcaciones", icono: "pi-compass" },
-          { id: "tipoEmbarcacion", titulo: "Tipo Embarcación", icono: "pi-tag" },
-          { id: "bolicheRed", titulo: "Boliche de Red", icono: "pi-circle" },
           { id: "documentoPesca", titulo: "Documentación Pesca", icono: "pi-file" },
           { id: "documentacionEmbarcacion", titulo: "Documentación Embarcación", icono: "pi-file-edit" },
-          { id: "documentacionPersonal", titulo: "Documentación Personal", icono: "pi-id-card" },
-          { id: "especie", titulo: "Especies", icono: "pi-star" },
-          { id: "katanaTripulacion", titulo: "Katana Tripulación", icono: "pi-users" },
-          { id: "puertoPesca", titulo: "Puerto de Pesca", icono: "pi-map-marker" },
         ],
       },
       {

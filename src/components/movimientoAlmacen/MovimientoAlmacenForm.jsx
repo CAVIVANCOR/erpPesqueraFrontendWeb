@@ -1144,6 +1144,7 @@ export default function MovimientoAlmacenForm({
                 optionLabel="label"
                 optionValue="value"
                 placeholder="Seleccionar entidad"
+                filter
                 disabled={loading || detalles.length > 0}
                 style={{
                   fontWeight: "bold",

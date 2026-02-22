@@ -43,10 +43,10 @@ export default function CentrosAlmacen({ ruta }) {
   const [editing, setEditing] = useState(null);
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
-  const [filtroExterno, setFiltroExterno] = useState('todos'); // 'todos', 'si', 'no'
-  const [filtroPropio, setFiltroPropio] = useState('todos'); // 'todos', 'si', 'no'
-  const [filtroProduccion, setFiltroProduccion] = useState('todos'); // 'todos', 'si', 'no'
-  const [filtroActivo, setFiltroActivo] = useState('todos'); // 'todos', 'si', 'no'
+  const [filtroExterno, setFiltroExterno] = useState("todos"); // 'todos', 'si', 'no'
+  const [filtroPropio, setFiltroPropio] = useState("todos"); // 'todos', 'si', 'no'
+  const [filtroProduccion, setFiltroProduccion] = useState("todos"); // 'todos', 'si', 'no'
+  const [filtroActivo, setFiltroActivo] = useState("todos"); // 'todos', 'si', 'no'
 
   useEffect(() => {
     cargarDatos();
@@ -89,59 +89,77 @@ export default function CentrosAlmacen({ ruta }) {
   // Filtrar centros de almacén por todos los criterios
   const centrosFiltrados = React.useMemo(() => {
     let filtrados = items;
-    
+
     // Filtrar por empresa
     if (empresaSeleccionada) {
-      filtrados = filtrados.filter(centro => {
+      filtrados = filtrados.filter((centro) => {
         return Number(centro.empresaId) === Number(empresaSeleccionada);
       });
     }
-    
+
     // Filtrar por proveedor (entidad comercial)
     if (proveedorSeleccionado) {
-      filtrados = filtrados.filter(centro => {
-        return Number(centro.entidadComercialId) === Number(proveedorSeleccionado);
+      filtrados = filtrados.filter((centro) => {
+        return (
+          Number(centro.entidadComercialId) === Number(proveedorSeleccionado)
+        );
       });
     }
-    
+
     // Filtrar por centro externo
-    if (filtroExterno !== 'todos') {
-      filtrados = filtrados.filter(centro => {
-        return filtroExterno === 'si' ? centro.esCentroExterno === true : centro.esCentroExterno === false;
+    if (filtroExterno !== "todos") {
+      filtrados = filtrados.filter((centro) => {
+        return filtroExterno === "si"
+          ? centro.esCentroExterno === true
+          : centro.esCentroExterno === false;
       });
     }
-    
+
     // Filtrar por centro propio sede
-    if (filtroPropio !== 'todos') {
-      filtrados = filtrados.filter(centro => {
-        return filtroPropio === 'si' ? centro.esCentroPropioSede === true : centro.esCentroPropioSede === false;
+    if (filtroPropio !== "todos") {
+      filtrados = filtrados.filter((centro) => {
+        return filtroPropio === "si"
+          ? centro.esCentroPropioSede === true
+          : centro.esCentroPropioSede === false;
       });
     }
-    
+
     // Filtrar por centro producción
-    if (filtroProduccion !== 'todos') {
-      filtrados = filtrados.filter(centro => {
-        return filtroProduccion === 'si' ? centro.esCentroProduccion === true : centro.esCentroProduccion === false;
+    if (filtroProduccion !== "todos") {
+      filtrados = filtrados.filter((centro) => {
+        return filtroProduccion === "si"
+          ? centro.esCentroProduccion === true
+          : centro.esCentroProduccion === false;
       });
     }
-    
+
     // Filtrar por activo
-    if (filtroActivo !== 'todos') {
-      filtrados = filtrados.filter(centro => {
-        return filtroActivo === 'si' ? centro.activo === true : centro.activo === false;
+    if (filtroActivo !== "todos") {
+      filtrados = filtrados.filter((centro) => {
+        return filtroActivo === "si"
+          ? centro.activo === true
+          : centro.activo === false;
       });
     }
-    
+
     return filtrados;
-  }, [items, empresaSeleccionada, proveedorSeleccionado, filtroExterno, filtroPropio, filtroProduccion, filtroActivo]);
+  }, [
+    items,
+    empresaSeleccionada,
+    proveedorSeleccionado,
+    filtroExterno,
+    filtroPropio,
+    filtroProduccion,
+    filtroActivo,
+  ]);
 
   const limpiarFiltros = () => {
     setEmpresaSeleccionada(null);
     setProveedorSeleccionado(null);
-    setFiltroExterno('todos');
-    setFiltroPropio('todos');
-    setFiltroProduccion('todos');
-    setFiltroActivo('todos');
+    setFiltroExterno("todos");
+    setFiltroPropio("todos");
+    setFiltroProduccion("todos");
+    setFiltroActivo("todos");
   };
 
   const handleEdit = (rowData) => {
@@ -240,7 +258,7 @@ export default function CentrosAlmacen({ ruta }) {
   const proveedorTemplate = (rowData) => {
     if (!rowData.proveedorId) return "-";
     const proveedor = proveedores.find(
-      (p) => Number(p.id) === Number(rowData.proveedorId)
+      (p) => Number(p.id) === Number(rowData.proveedorId),
     );
     return proveedor ? proveedor.razonSocial : "-";
   };
@@ -277,7 +295,16 @@ export default function CentrosAlmacen({ ruta }) {
         loading={loading}
         dataKey="id"
         paginator
-        rows={10}
+        size="small"
+        showGridlines
+        stripedRows
+        rows={20}
+        rowsPerPageOptions={[20, 40, 80, 160]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} centros"
+        emptyMessage="No hay centros de almacén registrados"
+        sortField="id"
+        sortOrder={-1}
         onRowClick={(e) => handleEdit(e.data)}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         header={
@@ -380,24 +407,30 @@ export default function CentrosAlmacen({ ruta }) {
                 </label>
                 <Button
                   label={
-                    filtroExterno === 'todos' ? 'Todos' :
-                    filtroExterno === 'si' ? 'Sí' :
-                    'No'
+                    filtroExterno === "todos"
+                      ? "Todos"
+                      : filtroExterno === "si"
+                        ? "Sí"
+                        : "No"
                   }
                   icon={
-                    filtroExterno === 'todos' ? 'pi pi-list' :
-                    filtroExterno === 'si' ? 'pi pi-check' :
-                    'pi pi-times'
+                    filtroExterno === "todos"
+                      ? "pi pi-list"
+                      : filtroExterno === "si"
+                        ? "pi pi-check"
+                        : "pi pi-times"
                   }
                   className={
-                    filtroExterno === 'todos' ? 'p-button-secondary' :
-                    filtroExterno === 'si' ? 'p-button-success' :
-                    'p-button-danger'
+                    filtroExterno === "todos"
+                      ? "p-button-secondary"
+                      : filtroExterno === "si"
+                        ? "p-button-success"
+                        : "p-button-danger"
                   }
                   onClick={() => {
-                    if (filtroExterno === 'todos') setFiltroExterno('si');
-                    else if (filtroExterno === 'si') setFiltroExterno('no');
-                    else setFiltroExterno('todos');
+                    if (filtroExterno === "todos") setFiltroExterno("si");
+                    else if (filtroExterno === "si") setFiltroExterno("no");
+                    else setFiltroExterno("todos");
                   }}
                   style={{ width: "100%" }}
                 />
@@ -414,24 +447,30 @@ export default function CentrosAlmacen({ ruta }) {
                 </label>
                 <Button
                   label={
-                    filtroPropio === 'todos' ? 'Todos' :
-                    filtroPropio === 'si' ? 'Sí' :
-                    'No'
+                    filtroPropio === "todos"
+                      ? "Todos"
+                      : filtroPropio === "si"
+                        ? "Sí"
+                        : "No"
                   }
                   icon={
-                    filtroPropio === 'todos' ? 'pi pi-list' :
-                    filtroPropio === 'si' ? 'pi pi-check' :
-                    'pi pi-times'
+                    filtroPropio === "todos"
+                      ? "pi pi-list"
+                      : filtroPropio === "si"
+                        ? "pi pi-check"
+                        : "pi pi-times"
                   }
                   className={
-                    filtroPropio === 'todos' ? 'p-button-secondary' :
-                    filtroPropio === 'si' ? 'p-button-success' :
-                    'p-button-danger'
+                    filtroPropio === "todos"
+                      ? "p-button-secondary"
+                      : filtroPropio === "si"
+                        ? "p-button-success"
+                        : "p-button-danger"
                   }
                   onClick={() => {
-                    if (filtroPropio === 'todos') setFiltroPropio('si');
-                    else if (filtroPropio === 'si') setFiltroPropio('no');
-                    else setFiltroPropio('todos');
+                    if (filtroPropio === "todos") setFiltroPropio("si");
+                    else if (filtroPropio === "si") setFiltroPropio("no");
+                    else setFiltroPropio("todos");
                   }}
                   style={{ width: "100%" }}
                 />
@@ -448,24 +487,31 @@ export default function CentrosAlmacen({ ruta }) {
                 </label>
                 <Button
                   label={
-                    filtroProduccion === 'todos' ? 'Todos' :
-                    filtroProduccion === 'si' ? 'Sí' :
-                    'No'
+                    filtroProduccion === "todos"
+                      ? "Todos"
+                      : filtroProduccion === "si"
+                        ? "Sí"
+                        : "No"
                   }
                   icon={
-                    filtroProduccion === 'todos' ? 'pi pi-list' :
-                    filtroProduccion === 'si' ? 'pi pi-check' :
-                    'pi pi-times'
+                    filtroProduccion === "todos"
+                      ? "pi pi-list"
+                      : filtroProduccion === "si"
+                        ? "pi pi-check"
+                        : "pi pi-times"
                   }
                   className={
-                    filtroProduccion === 'todos' ? 'p-button-secondary' :
-                    filtroProduccion === 'si' ? 'p-button-success' :
-                    'p-button-danger'
+                    filtroProduccion === "todos"
+                      ? "p-button-secondary"
+                      : filtroProduccion === "si"
+                        ? "p-button-success"
+                        : "p-button-danger"
                   }
                   onClick={() => {
-                    if (filtroProduccion === 'todos') setFiltroProduccion('si');
-                    else if (filtroProduccion === 'si') setFiltroProduccion('no');
-                    else setFiltroProduccion('todos');
+                    if (filtroProduccion === "todos") setFiltroProduccion("si");
+                    else if (filtroProduccion === "si")
+                      setFiltroProduccion("no");
+                    else setFiltroProduccion("todos");
                   }}
                   style={{ width: "100%" }}
                 />
@@ -482,24 +528,30 @@ export default function CentrosAlmacen({ ruta }) {
                 </label>
                 <Button
                   label={
-                    filtroActivo === 'todos' ? 'Todos' :
-                    filtroActivo === 'si' ? 'Activos' :
-                    'Inactivos'
+                    filtroActivo === "todos"
+                      ? "Todos"
+                      : filtroActivo === "si"
+                        ? "Activos"
+                        : "Inactivos"
                   }
                   icon={
-                    filtroActivo === 'todos' ? 'pi pi-list' :
-                    filtroActivo === 'si' ? 'pi pi-check' :
-                    'pi pi-times'
+                    filtroActivo === "todos"
+                      ? "pi pi-list"
+                      : filtroActivo === "si"
+                        ? "pi pi-check"
+                        : "pi pi-times"
                   }
                   className={
-                    filtroActivo === 'todos' ? 'p-button-secondary' :
-                    filtroActivo === 'si' ? 'p-button-success' :
-                    'p-button-danger'
+                    filtroActivo === "todos"
+                      ? "p-button-secondary"
+                      : filtroActivo === "si"
+                        ? "p-button-success"
+                        : "p-button-danger"
                   }
                   onClick={() => {
-                    if (filtroActivo === 'todos') setFiltroActivo('si');
-                    else if (filtroActivo === 'si') setFiltroActivo('no');
-                    else setFiltroActivo('todos');
+                    if (filtroActivo === "todos") setFiltroActivo("si");
+                    else if (filtroActivo === "si") setFiltroActivo("no");
+                    else setFiltroActivo("todos");
                   }}
                   style={{ width: "100%" }}
                 />
@@ -508,29 +560,33 @@ export default function CentrosAlmacen({ ruta }) {
           </div>
         }
       >
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="nombre" header="Nombre" />
-        <Column field="descripcion" header="Descripción" />
-        <Column body={proveedorTemplate} header="Proveedor" />
+        <Column field="id" header="ID" style={{ width: 80 }} sortable />
+        <Column field="nombre" header="Nombre" sortable />
+        <Column field="descripcion" header="Descripción" sortable />
+        <Column body={proveedorTemplate} header="Proveedor" sortable />
         <Column
           field="esCentroExterno"
           header="Centro Externo"
           body={(rowData) => booleanTemplate(rowData, "esCentroExterno")}
+          sortable
         />
         <Column
           field="esCentroPropioSede"
           header="Centro Propio Sede"
           body={(rowData) => booleanTemplate(rowData, "esCentroPropioSede")}
+          sortable
         />
         <Column
           field="esCentroProduccion"
           header="Centro Producción"
           body={(rowData) => booleanTemplate(rowData, "esCentroProduccion")}
+          sortable
         />
         <Column
           field="activo"
           header="Activo"
           body={(rowData) => booleanTemplate(rowData, "activo")}
+          sortable
         />
         <Column
           body={actionBody}
