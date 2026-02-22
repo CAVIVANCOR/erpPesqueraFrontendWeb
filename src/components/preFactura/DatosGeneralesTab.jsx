@@ -11,6 +11,7 @@ import { Panel } from "primereact/panel";
 import { Badge } from "primereact/badge";
 import DetallesTab from "./DetallesTab";
 import { getResponsiveFontSize } from "../../utils/utils";
+import { useAuthStore } from "../../shared/stores/useAuthStore"; // ← AGREGAR ESTA LÍNEA
 
 export default function DatosGeneralesTab({
   formData,
@@ -60,6 +61,7 @@ export default function DatosGeneralesTab({
 }) {
   // Determinar si es exportación para mostrar campos adicionales
   const esExportacion = formData.paisDestinoId || formData.incotermId;
+  const { usuario } = useAuthStore(); // ← AGREGAR ESTA LÍNEA
 
   // Obtener la moneda seleccionada dinámicamente del estado
   const monedaSeleccionada = monedasOptions.find(
@@ -83,7 +85,7 @@ export default function DatosGeneralesTab({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          <div style={{ flex: 1.5 }}>
+          <div style={{ flex: 1 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="empresaId"
@@ -136,7 +138,7 @@ export default function DatosGeneralesTab({
               inputStyle={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
-          <div style={{ flex: 1.5 }}>
+          <div style={{ flex: 1 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="estadoId"
@@ -155,7 +157,45 @@ export default function DatosGeneralesTab({
               style={{ fontWeight: "bold", textTransform: "uppercase" }}
             />
           </div>
-          <div style={{ flex: 1.5 }}>
+          <div style={{ flex: 0.5 }}>
+            <label
+              style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
+              htmlFor="nroLiquidacionFacturacion"
+            >
+              N°Liquidación
+              {!usuario?.esSuperUsuario && (
+                <i
+                  className="pi pi-lock"
+                  style={{
+                    marginLeft: "0.5rem",
+                    fontSize: "0.8rem",
+                    color: "#999",
+                  }}
+                  title="Solo editable por SuperUsuario"
+                />
+              )}
+            </label>
+            <InputText
+              id="nroLiquidacionFacturacion"
+              value={formData.nroLiquidacionFacturacion || ""}
+              onChange={(e) =>
+                onChange(
+                  "nroLiquidacionFacturacion",
+                  e.target.value.toUpperCase(),
+                )
+              }
+              maxLength={40}
+              disabled={readOnly || !usuario?.esSuperUsuario}
+              style={{ fontWeight: "bold" }}
+              placeholder={
+                usuario?.esSuperUsuario
+                  ? "N° Liquidación"
+                  : "Solo SuperUsuario puede editar"
+              }
+              className={!usuario?.esSuperUsuario ? "p-disabled" : ""}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
             <label
               style={{ fontWeight: "bold", fontSize: getResponsiveFontSize() }}
               htmlFor="unidadNegocioId"
@@ -318,7 +358,7 @@ export default function DatosGeneralesTab({
               >
                 PreFactura Origen
               </label>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: "flex", gap: "8px" }}>
                 <Button
                   id="preFacturaOrigen"
                   label={`ID: ${formData.preFacturaOrigenId}`}
@@ -340,11 +380,11 @@ export default function DatosGeneralesTab({
                   severity="info"
                   disabled
                   style={{
-                    width: '60px',
+                    width: "60px",
                     fontWeight: "bold",
                   }}
                   tooltip="Partición/Copia"
-                  tooltipOptions={{ position: 'top' }}
+                  tooltipOptions={{ position: "top" }}
                 />
               </div>
             </div>
@@ -357,11 +397,11 @@ export default function DatosGeneralesTab({
                 severity="warning"
                 disabled
                 style={{
-                  width: '60px',
+                  width: "60px",
                   fontWeight: "bold",
                 }}
                 tooltip="Partición/Original"
-                tooltipOptions={{ position: 'top' }}
+                tooltipOptions={{ position: "top" }}
               />
             </div>
           )}

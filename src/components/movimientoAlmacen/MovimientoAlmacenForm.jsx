@@ -54,6 +54,7 @@ export default function MovimientoAlmacenForm({
   tiposMovimiento = [], // Para entregas a rendir
   monedas = [], // Para entregas a rendir
   unidadesNegocio = [],
+  ubicacionesFisicas = [],  // ← AGREGAR AQUÍ
   onSubmit,
   onCancel,
   onCerrar,
@@ -1628,6 +1629,7 @@ export default function MovimientoAlmacenForm({
             }}
             estadosMercaderia={estadosMercaderia}
             estadosCalidad={estadosCalidad}
+            ubicacionesFisicas={ubicacionesFisicas}  // ← AGREGAR AQUÍ
             readOnly={documentoCerrado || readOnly || !permisos.puedeEditar}
             onSave={async (detalleData) => {
               if (defaultValues?.id) {

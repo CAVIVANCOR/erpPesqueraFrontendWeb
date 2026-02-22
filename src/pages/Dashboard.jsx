@@ -192,7 +192,7 @@ export default function Dashboard() {
       titulo: "INVENTARIOS",
       descripcion: "Gestión de almacenes, kardex y movimientos",
       icono: "pi-box",
-      modulos: 12,
+      modulos: 13,
       color: "#2874A6",
       submenu: [
         {
@@ -234,6 +234,11 @@ export default function Dashboard() {
           icon: "pi-sitemap",
         },
         { label: "Almacenes", key: "almacen", icon: "pi-warehouse" },
+        {
+          label: "Ubicaciones Físicas",
+          key: "ubicacionFisica",
+          icon: "pi-map-marker",
+        },
         { label: "Series de Documento", key: "serieDoc", icon: "pi-hashtag" },
       ],
     },

@@ -13,12 +13,15 @@ import { Tag } from "primereact/tag";
 import { Divider } from "primereact/divider";
 import ProductoSelectorDialog from "./ProductoSelectorDialog";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
-import { crearDetalleMovimiento, actualizarDetalleMovimiento } from "../../api/movimientoAlmacen";
+import {
+  crearDetalleMovimiento,
+  actualizarDetalleMovimiento,
+} from "../../api/movimientoAlmacen";
 
 /**
  * Formulario para agregar/editar detalles de movimiento
  * Maneja automáticamente la lógica según tipo de movimiento (ingreso/egreso/transferencia)
- * 
+ *
  * @param {boolean} visible - Visibilidad del diálogo
  * @param {function} onHide - Callback al cerrar
  * @param {function} onSave - Callback al guardar (data) => void
@@ -37,18 +40,23 @@ export default function DetalleMovimientoForm({
   movimientoAlmacen,
   estadosMercaderia = [],
   estadosCalidad = [],
+  ubicacionesFisicas = [], // ← AGREGAR AQUÍ
   loading = false,
   readOnly = false,
 }) {
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
-
+  
+  // DEBUG: Verificar ubicacionesFisicas
+  console.log('ubicacionesFisicas recibidas:', ubicacionesFisicas);
+  
   // Estados del formulario
   const [productoId, setProductoId] = useState(null);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [cantidad, setCantidad] = useState(0);
   const [peso, setPeso] = useState(null);
   const [lote, setLote] = useState("");
+  const [ubicacionFisicaId, setUbicacionFisicaId] = useState(1); // Por defecto: ubicación física ID 1
   const [fechaProduccion, setFechaProduccion] = useState(null);
   const [fechaVencimiento, setFechaVencimiento] = useState(null);
   const [fechaIngreso, setFechaIngreso] = useState(null);
@@ -59,16 +67,14 @@ export default function DetalleMovimientoForm({
   const [observaciones, setObservaciones] = useState("");
   const [costoUnitario, setCostoUnitario] = useState(null);
   const [saldoOriginal, setSaldoOriginal] = useState(null);
-
   // Control del selector de productos
   const [showProductoSelector, setShowProductoSelector] = useState(false);
-
   // Determinar tipo de movimiento
   const conceptoMovAlmacen = movimientoAlmacen?.conceptoMovAlmacen;
   const llevaKardexOrigen = conceptoMovAlmacen?.llevaKardexOrigen || false;
   const llevaKardexDestino = conceptoMovAlmacen?.llevaKardexDestino || false;
   const esCustodia = movimientoAlmacen?.esCustodia || false;
-  
+
   // Determinar modo
   let modo = "ingreso";
   if (llevaKardexOrigen && !llevaKardexDestino) {
@@ -89,14 +95,27 @@ export default function DetalleMovimientoForm({
       setCantidad(detalle.cantidad || 0);
       setPeso(detalle.peso || null);
       setLote(detalle.lote || "");
-      setFechaProduccion(detalle.fechaProduccion ? new Date(detalle.fechaProduccion) : null);
-      setFechaVencimiento(detalle.fechaVencimiento ? new Date(detalle.fechaVencimiento) : null);
-      setFechaIngreso(detalle.fechaIngreso ? new Date(detalle.fechaIngreso) : null);
+      setUbicacionFisicaId(
+        detalle.ubicacionFisicaId ? Number(detalle.ubicacionFisicaId) : null,
+      ); // ← AGREGAR AQUÍ
+      setFechaProduccion(
+        detalle.fechaProduccion ? new Date(detalle.fechaProduccion) : null,
+      );
+      setFechaVencimiento(
+        detalle.fechaVencimiento ? new Date(detalle.fechaVencimiento) : null,
+      );
+      setFechaIngreso(
+        detalle.fechaIngreso ? new Date(detalle.fechaIngreso) : null,
+      );
       setNroSerie(detalle.nroSerie || "");
       setNroContenedor(detalle.nroContenedor || "");
       // Convertir a números para que los Dropdown los reconozcan
-      setEstadoMercaderiaId(detalle.estadoMercaderiaId ? Number(detalle.estadoMercaderiaId) : 6);
-      setEstadoCalidadId(detalle.estadoCalidadId ? Number(detalle.estadoCalidadId) : 10);
+      setEstadoMercaderiaId(
+        detalle.estadoMercaderiaId ? Number(detalle.estadoMercaderiaId) : 6,
+      );
+      setEstadoCalidadId(
+        detalle.estadoCalidadId ? Number(detalle.estadoCalidadId) : 10,
+      );
       setObservaciones(detalle.observaciones || "");
       setCostoUnitario(detalle.costoUnitario || null);
     } else {
@@ -120,6 +139,7 @@ export default function DetalleMovimientoForm({
     setObservaciones("");
     setCostoUnitario(null);
     setSaldoOriginal(null);
+    setUbicacionFisicaId(1); // Por defecto: ubicación física ID 1
   };
 
   const handleProductoSeleccionado = (data) => {
@@ -127,11 +147,12 @@ export default function DetalleMovimientoForm({
       // INGRESO: Producto seleccionado
       setProductoId(data.productoId);
       setProductoSeleccionado(data.producto);
-      
+
       // Limpiar campos para ingreso manual
       setCantidad(0);
       setPeso(null);
       setLote("");
+      setUbicacionFisicaId(1); // Por defecto: ubicación física ID 1
       setFechaProduccion(null);
       setFechaVencimiento(null);
       // fechaIngreso = fechaDocumento del movimiento
@@ -157,13 +178,18 @@ export default function DetalleMovimientoForm({
       setProductoId(data.productoId);
       setProductoSeleccionado(data.producto);
       setSaldoOriginal(saldo);
-      
+
       // Cargar datos del saldo
       setCantidad(Number(saldo.saldoCantidad));
       setPeso(Number(saldo.saldoPeso) || null);
       setLote(saldo.lote || "");
-      setFechaProduccion(saldo.fechaProduccion ? new Date(saldo.fechaProduccion) : null);
-      setFechaVencimiento(saldo.fechaVencimiento ? new Date(saldo.fechaVencimiento) : null);
+      setUbicacionFisicaId(saldo.ubicacionFisicaId ? Number(saldo.ubicacionFisicaId) : null);
+      setFechaProduccion(
+        saldo.fechaProduccion ? new Date(saldo.fechaProduccion) : null,
+      );
+      setFechaVencimiento(
+        saldo.fechaVencimiento ? new Date(saldo.fechaVencimiento) : null,
+      );
       setFechaIngreso(saldo.fechaIngreso ? new Date(saldo.fechaIngreso) : null);
       setNroSerie(saldo.nroSerie || "");
       setNroContenedor(saldo.numContenedor || "");
@@ -180,10 +206,11 @@ export default function DetalleMovimientoForm({
 
   const handleCantidadChange = (value) => {
     setCantidad(value);
-    
+
     // Calcular peso automáticamente si hay producto seleccionado
     if (productoSeleccionado && productoSeleccionado.unidadMedida) {
-      const factorConversion = productoSeleccionado.unidadMedida.factorConversion;
+      const factorConversion =
+        productoSeleccionado.unidadMedida.factorConversion;
       if (factorConversion) {
         const pesoCalculado = value * factorConversion;
         setPeso(pesoCalculado);
@@ -232,27 +259,37 @@ export default function DetalleMovimientoForm({
     }
 
     // Validar factor de conversión
-    if (productoSeleccionado?.unidadMedida && !productoSeleccionado.unidadMedida.factorConversion) {
+    if (
+      productoSeleccionado?.unidadMedida &&
+      !productoSeleccionado.unidadMedida.factorConversion
+    ) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "El producto no tiene factor de conversión definido en su unidad de medida",
+        detail:
+          "El producto no tiene factor de conversión definido en su unidad de medida",
       });
       return;
     }
 
     // Normalizar fechas a medianoche (00:00:00)
-    const fechaProduccionNormalizada = fechaProduccion ? new Date(fechaProduccion) : null;
+    const fechaProduccionNormalizada = fechaProduccion
+      ? new Date(fechaProduccion)
+      : null;
     if (fechaProduccionNormalizada) {
       fechaProduccionNormalizada.setHours(0, 0, 0, 0);
     }
 
-    const fechaVencimientoNormalizada = fechaVencimiento ? new Date(fechaVencimiento) : null;
+    const fechaVencimientoNormalizada = fechaVencimiento
+      ? new Date(fechaVencimiento)
+      : null;
     if (fechaVencimientoNormalizada) {
       fechaVencimientoNormalizada.setHours(0, 0, 0, 0);
     }
 
-    const fechaIngresoNormalizada = fechaIngreso ? new Date(fechaIngreso) : null;
+    const fechaIngresoNormalizada = fechaIngreso
+      ? new Date(fechaIngreso)
+      : null;
     if (fechaIngresoNormalizada) {
       fechaIngresoNormalizada.setHours(0, 0, 0, 0);
     }
@@ -264,15 +301,18 @@ export default function DetalleMovimientoForm({
       cantidad: Number(cantidad),
       peso: peso ? Number(peso) : null,
       lote: lote || null,
+      ubicacionFisicaId: ubicacionFisicaId ? Number(ubicacionFisicaId) : null, // ← AGREGAR AQUÍ
       fechaProduccion: fechaProduccionNormalizada,
       fechaVencimiento: fechaVencimientoNormalizada,
       fechaIngreso: fechaIngresoNormalizada,
       nroSerie: nroSerie || null,
       nroContenedor: nroContenedor || null,
-      estadoMercaderiaId: estadoMercaderiaId ? Number(estadoMercaderiaId) : null,
+      estadoMercaderiaId: estadoMercaderiaId
+        ? Number(estadoMercaderiaId)
+        : null,
       estadoCalidadId: estadoCalidadId ? Number(estadoCalidadId) : null,
-      entidadComercialId: esCustodia 
-        ? Number(movimientoAlmacen?.entidadComercialId) 
+      entidadComercialId: esCustodia
+        ? Number(movimientoAlmacen?.entidadComercialId)
         : Number(movimientoAlmacen?.empresa?.entidadComercialId),
       esCustodia: esCustodia,
       empresaId: Number(movimientoAlmacen?.empresaId),
@@ -300,15 +340,18 @@ export default function DetalleMovimientoForm({
       // Agregar movimientoAlmacenId
       const detalleConMovimiento = {
         ...detalleData,
-        movimientoAlmacenId: movimientoAlmacen.id
+        movimientoAlmacenId: movimientoAlmacen.id,
       };
-      
+
       // Verificar si es edición: detalle.id debe existir y ser un número válido
       const esEdicion = detalle?.id && !isNaN(Number(detalle.id));
-      
+
       if (esEdicion) {
         // Actualizar detalle existente en BD
-        await actualizarDetalleMovimiento(Number(detalle.id), detalleConMovimiento);
+        await actualizarDetalleMovimiento(
+          Number(detalle.id),
+          detalleConMovimiento,
+        );
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -323,13 +366,13 @@ export default function DetalleMovimientoForm({
           detail: "Detalle guardado correctamente",
         });
       }
-      
+
       // Notificar al padre para que recargue los detalles
       onSave(detalleData);
       limpiarFormulario();
       onHide();
     } catch (error) {
-      console.error('Error al guardar detalle:', error);
+      console.error("Error al guardar detalle:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -361,7 +404,9 @@ export default function DetalleMovimientoForm({
         label="Guardar"
         icon="pi pi-check"
         onClick={handleSubmit}
-        disabled={loading || !productoId || !cantidad || cantidad <= 0 || readOnly}
+        disabled={
+          loading || !productoId || !cantidad || cantidad <= 0 || readOnly
+        }
       />
     </div>
   );
@@ -384,7 +429,11 @@ export default function DetalleMovimientoForm({
               <Tag
                 value={modo.toUpperCase()}
                 severity={
-                  modo === "ingreso" ? "success" : modo === "egreso" ? "danger" : "info"
+                  modo === "ingreso"
+                    ? "success"
+                    : modo === "egreso"
+                      ? "danger"
+                      : "info"
                 }
               />
               <Tag
@@ -402,18 +451,43 @@ export default function DetalleMovimientoForm({
 
           {/* Selección de Producto */}
           <div style={{ marginBottom: "16px" }}>
-            <label style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>
+            <label
+              style={{
+                fontWeight: "bold",
+                display: "block",
+                marginBottom: "8px",
+              }}
+            >
               Producto *
             </label>
             {productoSeleccionado ? (
               <Panel>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
                   <div>
-                    <div style={{ fontWeight: "bold", color: "#1976d2", fontSize: "1.1em" }}>
+                    <div
+                      style={{
+                        fontWeight: "bold",
+                        color: "#1976d2",
+                        fontSize: "1.1em",
+                      }}
+                    >
                       {productoSeleccionado.descripcionArmada}
                     </div>
-                    <div style={{ fontSize: "0.9em", color: "#666", marginTop: "4px" }}>
-                      <strong>Unidad:</strong> {productoSeleccionado.unidadMedida?.nombre || "-"}
+                    <div
+                      style={{
+                        fontSize: "0.9em",
+                        color: "#666",
+                        marginTop: "4px",
+                      }}
+                    >
+                      <strong>Unidad:</strong>{" "}
+                      {productoSeleccionado.unidadMedida?.nombre || "-"}
                       {productoSeleccionado.unidadMedida?.factorConversion && (
                         <span style={{ marginLeft: "16px" }}>
                           <strong>Factor Conv.:</strong>{" "}
@@ -422,7 +496,13 @@ export default function DetalleMovimientoForm({
                       )}
                     </div>
                     {saldoOriginal && (
-                      <div style={{ fontSize: "0.9em", color: "#d32f2f", marginTop: "4px" }}>
+                      <div
+                        style={{
+                          fontSize: "0.9em",
+                          color: "#d32f2f",
+                          marginTop: "4px",
+                        }}
+                      >
                         <strong>Saldo Disponible:</strong>{" "}
                         {Number(saldoOriginal.saldoCantidad).toFixed(2)}{" "}
                         {productoSeleccionado.unidadMedida?.nombre || ""}
@@ -459,7 +539,14 @@ export default function DetalleMovimientoForm({
           <Divider />
 
           {/* Cantidad y Peso */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "16px",
+              marginBottom: "16px",
+            }}
+          >
             <div>
               <label htmlFor="cantidad" style={{ fontWeight: "bold" }}>
                 Cantidad *
@@ -472,7 +559,11 @@ export default function DetalleMovimientoForm({
                 minFractionDigits={2}
                 maxFractionDigits={2}
                 min={0}
-                max={saldoOriginal ? Number(saldoOriginal.saldoCantidad) : undefined}
+                max={
+                  saldoOriginal
+                    ? Number(saldoOriginal.saldoCantidad)
+                    : undefined
+                }
                 required
                 disabled={loading || readOnly}
               />
@@ -502,7 +593,13 @@ export default function DetalleMovimientoForm({
 
           {/* Variables de Control */}
           <Panel header="Variables de Control" toggleable collapsed={false}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "16px",
+              }}
+            >
               <div>
                 <label htmlFor="lote" style={{ fontWeight: "bold" }}>
                   Lote
@@ -528,7 +625,28 @@ export default function DetalleMovimientoForm({
                   style={{ width: "100%", textTransform: "uppercase" }}
                 />
               </div>
-
+              <div>
+                <label
+                  htmlFor="ubicacionFisicaId"
+                  style={{ fontWeight: "bold" }}
+                >
+                  Ubicación Física
+                </label>
+                <Dropdown
+                  id="ubicacionFisicaId"
+                  value={ubicacionFisicaId ? Number(ubicacionFisicaId) : null}
+                  options={ubicacionesFisicas.map((u) => ({
+                    label: u.descripcion,
+                    value: Number(u.id),
+                  }))}
+                  onChange={(e) => setUbicacionFisicaId(e.value)}
+                  placeholder="Seleccione ubicación"
+                  disabled={!camposEditables || readOnly}
+                  filter
+                  showClear
+                  style={{ width: "100%" }}
+                />
+              </div>
               <div>
                 <label htmlFor="nroContenedor" style={{ fontWeight: "bold" }}>
                   Nro. Contenedor
@@ -536,7 +654,9 @@ export default function DetalleMovimientoForm({
                 <InputText
                   id="nroContenedor"
                   value={nroContenedor}
-                  onChange={(e) => setNroContenedor(e.target.value.toUpperCase())}
+                  onChange={(e) =>
+                    setNroContenedor(e.target.value.toUpperCase())
+                  }
                   disabled={!camposEditables || readOnly}
                   style={{ width: "100%", textTransform: "uppercase" }}
                 />
@@ -557,7 +677,10 @@ export default function DetalleMovimientoForm({
               </div>
 
               <div>
-                <label htmlFor="fechaVencimiento" style={{ fontWeight: "bold" }}>
+                <label
+                  htmlFor="fechaVencimiento"
+                  style={{ fontWeight: "bold" }}
+                >
                   Fecha Vencimiento
                 </label>
                 <Calendar
@@ -589,9 +712,19 @@ export default function DetalleMovimientoForm({
           <Divider />
 
           {/* Estados */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "16px",
+              marginBottom: "16px",
+            }}
+          >
             <div>
-              <label htmlFor="estadoMercaderiaId" style={{ fontWeight: "bold" }}>
+              <label
+                htmlFor="estadoMercaderiaId"
+                style={{ fontWeight: "bold" }}
+              >
                 Estado Mercadería
               </label>
               <Dropdown
@@ -620,7 +753,14 @@ export default function DetalleMovimientoForm({
           </div>
 
           {/* Costo Unitario y Observaciones */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "16px", marginBottom: "16px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 2fr",
+              gap: "16px",
+              marginBottom: "16px",
+            }}
+          >
             <div>
               <label htmlFor="costoUnitario" style={{ fontWeight: "bold" }}>
                 Costo Unitario

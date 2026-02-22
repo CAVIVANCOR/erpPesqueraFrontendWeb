@@ -107,6 +107,7 @@ import TipoMovimientoAlmacen from "../../pages/TipoMovimientoAlmacen";
 import TipoAlmacen from "../../pages/TipoAlmacen";
 import CentrosAlmacen from "../../pages/CentrosAlmacen";
 import Almacen from "../../pages/Almacen";
+import UbicacionFisica from "../../pages/UbicacionFisica";
 import SerieDoc from "../../pages/SerieDoc";
 import OTMantenimiento from "../../pages/OTMantenimiento";
 import Videoconferencia from "../../pages/Videoconferencia";
@@ -326,6 +327,10 @@ export default function BaseLayout({ children, onLogout }) {
       componente: <CentrosAlmacen ruta="centrosAlmacen" />,
     },
     almacen: { label: "Almacenes", componente: <Almacen ruta="almacen" /> },
+    ubicacionFisica: {
+      label: "Ubicaciones Físicas",
+      componente: <UbicacionFisica ruta="ubicacionFisica" />,
+    },
     serieDoc: {
       label: "Series de Documento",
       componente: <SerieDoc ruta="serieDoc" />,

@@ -228,6 +228,7 @@ export default function PreFacturaForm({
     actualizadoPor: defaultValues?.actualizadoPor
       ? Number(defaultValues.actualizadoPor)
       : null,
+    nroLiquidacionFacturacion: defaultValues?.nroLiquidacionFacturacion || "",
   });
 
   // Handler genérico para cambios en cualquier campo
@@ -412,6 +413,8 @@ export default function PreFacturaForm({
         actualizadoPor: defaultValues?.actualizadoPor
           ? Number(defaultValues.actualizadoPor)
           : null,
+        nroLiquidacionFacturacion:
+          defaultValues?.nroLiquidacionFacturacion || "",
       });
     }
   }, [defaultValues, empresaFija]);
@@ -785,6 +788,8 @@ export default function PreFacturaForm({
       actualizadoPor: formData.actualizadoPor
         ? Number(formData.actualizadoPor)
         : null,
+      nroLiquidacionFacturacion:
+        formData.nroLiquidacionFacturacion?.trim() || null,
     };
 
     // Validaciones
@@ -861,12 +866,14 @@ export default function PreFacturaForm({
       toast?.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: resultado.mensaje || "PreFactura particionada exitosamente en 2 copias idénticas",
+        detail:
+          resultado.mensaje ||
+          "PreFactura particionada exitosamente en 2 copias idénticas",
         life: 5000,
       });
 
       setShowPartirDialog(false);
-      
+
       // Cerrar el diálogo del formulario para que se recargue la lista
       if (onCancel) {
         onCancel();
@@ -877,7 +884,8 @@ export default function PreFacturaForm({
         severity: "error",
         summary: "Error",
         detail:
-          error.response?.data?.mensaje || "No se pudo particionar la PreFactura",
+          error.response?.data?.mensaje ||
+          "No se pudo particionar la PreFactura",
         life: 3000,
       });
     }
@@ -932,8 +940,7 @@ export default function PreFacturaForm({
         severity: "error",
         summary: "Error",
         detail:
-          error.response?.data?.mensaje ||
-          "No se pudo emitir el comprobante",
+          error.response?.data?.mensaje || "No se pudo emitir el comprobante",
         life: 3000,
       });
     }
@@ -1291,15 +1298,30 @@ export default function PreFacturaForm({
       >
         <div className="p-fluid">
           <div className="mb-4">
-            <i className="pi pi-info-circle" style={{ fontSize: "3rem", color: "#2196F3" }}></i>
-            <p className="mt-3 mb-0" style={{ fontSize: "16px", lineHeight: "1.6" }}>
-              Esta acción creará <strong>DOS copias idénticas</strong> de esta PreFactura con estado <strong>PARTICIONADA</strong>.
+            <i
+              className="pi pi-info-circle"
+              style={{ fontSize: "3rem", color: "#2196F3" }}
+            ></i>
+            <p
+              className="mt-3 mb-0"
+              style={{ fontSize: "16px", lineHeight: "1.6" }}
+            >
+              Esta acción creará <strong>DOS copias idénticas</strong> de esta
+              PreFactura con estado <strong>PARTICIONADA</strong>.
             </p>
-            <p className="mt-2 mb-0" style={{ fontSize: "14px", color: "#666" }}>
-              Ambas copias conservarán todos los datos de cabecera y detalles, permitiéndote editarlas independientemente.
+            <p
+              className="mt-2 mb-0"
+              style={{ fontSize: "14px", color: "#666" }}
+            >
+              Ambas copias conservarán todos los datos de cabecera y detalles,
+              permitiéndote editarlas independientemente.
             </p>
-            <p className="mt-2 mb-0" style={{ fontSize: "14px", color: "#666" }}>
-              Las <strong>3 PreFacturas</strong> (original + 2 copias) quedarán con estado <strong>PARTICIONADA</strong> para identificarlas.
+            <p
+              className="mt-2 mb-0"
+              style={{ fontSize: "14px", color: "#666" }}
+            >
+              Las <strong>3 PreFacturas</strong> (original + 2 copias) quedarán
+              con estado <strong>PARTICIONADA</strong> para identificarlas.
             </p>
           </div>
           <div

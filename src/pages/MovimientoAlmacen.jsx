@@ -45,6 +45,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
 import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
 import { Navigate } from "react-router-dom";
+import { getUbicacionesFisicas } from "../api/ubicacionFisica"; // ← AGREGAR AQUÍ
 
 /**
  * Pantalla profesional para gestión de Movimientos de Almacén.
@@ -64,10 +65,11 @@ export default function MovimientoAlmacen({ ruta }) {
 
   const toast = useRef(null);
   const [items, setItems] = useState([]);
-  
+
   // Filtrado automático por Unidad de Negocio
-  const { datosFiltrados: movimientosFiltrados } = useUnidadNegocioFilter(items);
-  
+  const { datosFiltrados: movimientosFiltrados } =
+    useUnidadNegocioFilter(items);
+
   const [empresas, setEmpresas] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
@@ -76,6 +78,7 @@ export default function MovimientoAlmacen({ ruta }) {
   const [personalOptions, setPersonalOptions] = useState([]);
   const [estadosMercaderia, setEstadosMercaderia] = useState([]);
   const [estadosCalidad, setEstadosCalidad] = useState([]);
+  const [ubicacionesFisicas, setUbicacionesFisicas] = useState([]); // ← AGREGAR AQUÍ
   const [centrosCosto, setCentrosCosto] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [monedas, setMonedas] = useState([]);
@@ -267,6 +270,7 @@ export default function MovimientoAlmacen({ ruta }) {
         productosData,
         personalData,
         estadosData,
+        ubicacionesData,
         centrosCostoData,
         tiposMovimientoData,
         monedasData,
@@ -283,6 +287,7 @@ export default function MovimientoAlmacen({ ruta }) {
         getProductos(),
         getPersonal(),
         getEstadosMultiFuncion(),
+        getUbicacionesFisicas(), // ← AGREGAR AQUÍ
         getCentrosCosto(),
         getAllTipoMovEntregaRendir(),
         getMonedas(),
@@ -316,6 +321,7 @@ export default function MovimientoAlmacen({ ruta }) {
         (e) => Number(e.tipoProvieneDeId) === 10 && !e.cesado,
       );
       setEstadosCalidad(estadosCalidadFiltrados);
+      setUbicacionesFisicas(ubicacionesData); // ← AGREGAR AQUÍ
 
       // Establecer datos para entregas a rendir
       setCentrosCosto(centrosCostoData);
@@ -1123,6 +1129,7 @@ export default function MovimientoAlmacen({ ruta }) {
           personalOptions={personalOptions}
           estadosMercaderia={estadosMercaderia}
           estadosCalidad={estadosCalidad}
+          ubicacionesFisicas={ubicacionesFisicas}  // ← AGREGAR AQUÍ
           empresaFija={empresaSeleccionada}
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
