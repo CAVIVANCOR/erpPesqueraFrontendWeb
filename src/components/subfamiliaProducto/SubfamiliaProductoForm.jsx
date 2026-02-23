@@ -36,6 +36,7 @@ const esquemaValidacion = yup.object().shape({
     .number()
     .required("La familia de producto es obligatoria")
     .typeError("Debe seleccionar una familia de producto"),
+  llevaKardex: yup.boolean().default(false),
 });
 
 /**
@@ -66,6 +67,7 @@ const SubfamiliaProductoForm = ({
     defaultValues: {
       nombre: "",
       familiaId: null,
+      llevaKardex: false,
     },
   });
 
@@ -79,8 +81,9 @@ const SubfamiliaProductoForm = ({
         "familiaId",
         Number(subfamiliaProducto.familiaId) || null
       );
+      setValue("llevaKardex", subfamiliaProducto.llevaKardex || false);
     } else {
-      reset({ nombre: "", familiaId: null });
+      reset({ nombre: "", familiaId: null, llevaKardex: false });
     }
   }, [subfamiliaProducto, modoEdicion, setValue, reset]);
 
@@ -102,6 +105,7 @@ const SubfamiliaProductoForm = ({
       const datosNormalizados = {
         nombre: data.nombre.toUpperCase().trim(),
         familiaId: Number(data.familiaId),
+        llevaKardex: Boolean(data.llevaKardex),
       };
 
       if (modoEdicion) {
@@ -197,6 +201,22 @@ const SubfamiliaProductoForm = ({
           {errors.nombre && (
             <small className="p-error">{errors.nombre.message}</small>
           )}
+        </div>
+
+        {/* Campo Lleva Kardex */}
+        <div className="field">
+          <label htmlFor="llevaKardex" className="font-bold">
+            ¿Lleva Kardex?
+          </label>
+          <Button
+            type="button"
+            label={watch("llevaKardex") ? "SÍ LLEVA KARDEX" : "NO LLEVA KARDEX"}
+            icon={watch("llevaKardex") ? "pi pi-check" : "pi pi-times"}
+            className={watch("llevaKardex") ? "p-button-success" : "p-button-danger"}
+            onClick={() => setValue("llevaKardex", !watch("llevaKardex"))}
+            disabled={isSubmitting || readOnly}
+            style={{ width: "100%" }}
+          />
         </div>
 
         {/* Botones de acción */}

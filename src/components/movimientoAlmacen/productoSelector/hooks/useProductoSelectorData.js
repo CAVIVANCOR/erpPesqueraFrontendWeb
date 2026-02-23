@@ -71,6 +71,11 @@ export const useProductoSelectorData = ({
     };
     const productosData = await getProductos(filtrosProductos);
 
+    // 1.1. Filtrar solo productos cuya subfamilia lleva kardex
+    const productosFiltrados = productosData.filter(
+      (producto) => producto.subfamilia?.llevaKardex === true
+    );
+
     // 2. Cargar saldos generales desde SaldosProductoCliente (consolidado por producto)
     const filtrosSaldos = {
       empresaId,
@@ -80,7 +85,7 @@ export const useProductoSelectorData = ({
     const saldosData = await getSaldosProductoClienteConFiltros(filtrosSaldos);
 
     // 3. Mapear productos con stock consolidado
-    const productosConStock = productosData.map((producto) => {
+    const productosConStock = productosFiltrados.map((producto) => {
       // Buscar todos los saldos de este producto en todos los almacenes
       const saldosProducto = saldosData.filter(
         (s) => Number(s.productoId) === Number(producto.id)

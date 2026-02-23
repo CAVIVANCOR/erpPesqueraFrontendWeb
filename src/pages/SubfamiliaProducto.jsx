@@ -71,6 +71,7 @@ const SubfamiliaProducto = ({ ruta }) => {
         ...subfamilia,
         id: Number(subfamilia.id),
         familiaProductoId: Number(subfamilia.familiaProductoId),
+        llevaKardex: Boolean(subfamilia.llevaKardex),
       }));
 
       setSubfamiliasProducto(subfamiliasNormalizadas);
@@ -218,6 +219,21 @@ const SubfamiliaProducto = ({ ruta }) => {
       <span style={{ fontWeight: "500", color: "#495057" }}>
         {familia?.nombre || "N/A"}
       </span>
+    );
+  };
+
+  /**
+   * Template para mostrar si lleva kardex
+   */
+  const llevaKardexTemplate = (rowData) => {
+    return (
+      <Button
+        label={rowData.llevaKardex ? "SÍ" : "NO"}
+        icon={rowData.llevaKardex ? "pi pi-check" : "pi pi-times"}
+        className={rowData.llevaKardex ? "p-button-success" : "p-button-danger"}
+        size="small"
+        style={{ width: "100%", pointerEvents: "none" }}
+      />
     );
   };
 
@@ -405,6 +421,13 @@ const SubfamiliaProducto = ({ ruta }) => {
           body={familiaTemplate}
           sortable
           style={{ minWidth: "180px" }}
+        />
+        <Column
+          field="llevaKardex"
+          header="¿Lleva Kardex?"
+          body={llevaKardexTemplate}
+          sortable
+          style={{ minWidth: "150px" }}
         />
         <Column
           body={accionesTemplate}
