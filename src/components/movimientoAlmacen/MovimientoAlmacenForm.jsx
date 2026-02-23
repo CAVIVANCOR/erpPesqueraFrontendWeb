@@ -1258,6 +1258,9 @@ export default function MovimientoAlmacenForm({
             <DetalleMovimientoList
               detalles={detalles}
               productos={productos}
+              conceptoMovAlmacen={conceptosMovAlmacen.find(
+                (c) => Number(c.id) === Number(conceptoMovAlmacenId)
+              )}
               readOnly={documentoCerrado || !permisos.puedeEditar}
               onEdit={(detalle) => {
                 setEditingDetalle(detalle);

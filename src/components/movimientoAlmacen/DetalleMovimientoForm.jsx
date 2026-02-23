@@ -47,16 +47,14 @@ export default function DetalleMovimientoForm({
   const toast = useRef(null);
   const usuario = useAuthStore((state) => state.usuario);
   
-  // DEBUG: Verificar ubicacionesFisicas
-  console.log('ubicacionesFisicas recibidas:', ubicacionesFisicas);
-  
   // Estados del formulario
   const [productoId, setProductoId] = useState(null);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [cantidad, setCantidad] = useState(0);
   const [peso, setPeso] = useState(null);
   const [lote, setLote] = useState("");
-  const [ubicacionFisicaId, setUbicacionFisicaId] = useState(1); // Por defecto: ubicación física ID 1
+  const [ubicacionFisicaOrigenId, setUbicacionFisicaOrigenId] = useState(1); // Por defecto: ubicación física ID 1
+  const [ubicacionFisicaDestinoId, setUbicacionFisicaDestinoId] = useState(1); // Por defecto: ubicación física ID 1
   const [fechaProduccion, setFechaProduccion] = useState(null);
   const [fechaVencimiento, setFechaVencimiento] = useState(null);
   const [fechaIngreso, setFechaIngreso] = useState(null);
@@ -95,9 +93,12 @@ export default function DetalleMovimientoForm({
       setCantidad(detalle.cantidad || 0);
       setPeso(detalle.peso || null);
       setLote(detalle.lote || "");
-      setUbicacionFisicaId(
-        detalle.ubicacionFisicaId ? Number(detalle.ubicacionFisicaId) : null,
-      ); // ← AGREGAR AQUÍ
+      setUbicacionFisicaOrigenId(
+        detalle.ubicacionFisicaOrigenId ? Number(detalle.ubicacionFisicaOrigenId) : 1,
+      );
+      setUbicacionFisicaDestinoId(
+        detalle.ubicacionFisicaDestinoId ? Number(detalle.ubicacionFisicaDestinoId) : 1,
+      );
       setFechaProduccion(
         detalle.fechaProduccion ? new Date(detalle.fechaProduccion) : null,
       );
@@ -139,7 +140,8 @@ export default function DetalleMovimientoForm({
     setObservaciones("");
     setCostoUnitario(null);
     setSaldoOriginal(null);
-    setUbicacionFisicaId(1); // Por defecto: ubicación física ID 1
+    setUbicacionFisicaOrigenId(1); // Por defecto: ubicación física ID 1
+    setUbicacionFisicaDestinoId(1); // Por defecto: ubicación física ID 1
   };
 
   const handleProductoSeleccionado = (data) => {
@@ -152,7 +154,8 @@ export default function DetalleMovimientoForm({
       setCantidad(0);
       setPeso(null);
       setLote("");
-      setUbicacionFisicaId(1); // Por defecto: ubicación física ID 1
+      setUbicacionFisicaOrigenId(1); // Por defecto: ubicación física ID 1
+      setUbicacionFisicaDestinoId(1); // Por defecto: ubicación física ID 1
       setFechaProduccion(null);
       setFechaVencimiento(null);
       // fechaIngreso = fechaDocumento del movimiento
@@ -183,7 +186,8 @@ export default function DetalleMovimientoForm({
       setCantidad(Number(saldo.saldoCantidad));
       setPeso(Number(saldo.saldoPeso) || null);
       setLote(saldo.lote || "");
-      setUbicacionFisicaId(saldo.ubicacionFisicaId ? Number(saldo.ubicacionFisicaId) : null);
+      setUbicacionFisicaOrigenId(saldo.ubicacionFisicaId ? Number(saldo.ubicacionFisicaId) : 1);
+      setUbicacionFisicaDestinoId(1); // Por defecto: ubicación física ID 1
       setFechaProduccion(
         saldo.fechaProduccion ? new Date(saldo.fechaProduccion) : null,
       );
@@ -301,7 +305,8 @@ export default function DetalleMovimientoForm({
       cantidad: Number(cantidad),
       peso: peso ? Number(peso) : null,
       lote: lote || null,
-      ubicacionFisicaId: ubicacionFisicaId ? Number(ubicacionFisicaId) : null, // ← AGREGAR AQUÍ
+      ubicacionFisicaOrigenId: ubicacionFisicaOrigenId ? Number(ubicacionFisicaOrigenId) : null,
+      ubicacionFisicaDestinoId: ubicacionFisicaDestinoId ? Number(ubicacionFisicaDestinoId) : null,
       fechaProduccion: fechaProduccionNormalizada,
       fechaVencimiento: fechaVencimientoNormalizada,
       fechaIngreso: fechaIngresoNormalizada,
@@ -625,28 +630,87 @@ export default function DetalleMovimientoForm({
                   style={{ width: "100%", textTransform: "uppercase" }}
                 />
               </div>
-              <div>
-                <label
-                  htmlFor="ubicacionFisicaId"
-                  style={{ fontWeight: "bold" }}
-                >
-                  Ubicación Física
-                </label>
-                <Dropdown
-                  id="ubicacionFisicaId"
-                  value={ubicacionFisicaId ? Number(ubicacionFisicaId) : null}
-                  options={ubicacionesFisicas.map((u) => ({
-                    label: u.descripcion,
-                    value: Number(u.id),
-                  }))}
-                  onChange={(e) => setUbicacionFisicaId(e.value)}
-                  placeholder="Seleccione ubicación"
-                  disabled={!camposEditables || readOnly}
-                  filter
-                  showClear
-                  style={{ width: "100%" }}
-                />
-              </div>
+              {/* Ubicación Física Origen (solo si llevaKardexOrigen) */}
+              {llevaKardexOrigen && (
+                <div>
+                  <label
+                    htmlFor="ubicacionFisicaOrigenId"
+                    style={{ fontWeight: "bold" }}
+                  >
+                    Ubicación Física Origen
+                  </label>
+                  <Dropdown
+                    id="ubicacionFisicaOrigenId"
+                    value={ubicacionFisicaOrigenId ? Number(ubicacionFisicaOrigenId) : null}
+                    options={(() => {
+                      const ubicacionDefault = ubicacionesFisicas.find(u => Number(u.id) === 1);
+                      const filtradas = ubicacionesFisicas.filter(u => 
+                        conceptoMovAlmacen?.almacenOrigenId 
+                          ? Number(u.almacenId) === Number(conceptoMovAlmacen.almacenOrigenId) 
+                          : true
+                      );
+                      
+                      // Incluir siempre la ubicación con ID 1 si existe y no está ya en las filtradas
+                      const opciones = [...filtradas];
+                      if (ubicacionDefault && !opciones.find(u => Number(u.id) === 1)) {
+                        opciones.unshift(ubicacionDefault);
+                      }
+                      
+                      return opciones.map((u) => ({
+                        label: u.descripcion,
+                        value: Number(u.id),
+                      }));
+                    })()}
+                    onChange={(e) => setUbicacionFisicaOrigenId(e.value)}
+                    placeholder="Seleccione ubicación origen"
+                    disabled={readOnly}
+                    filter
+                    showClear
+                    style={{ width: "100%" }}
+                  />
+                </div>
+              )}
+              
+              {/* Ubicación Física Destino (solo si llevaKardexDestino) */}
+              {llevaKardexDestino && (
+                <div>
+                  <label
+                    htmlFor="ubicacionFisicaDestinoId"
+                    style={{ fontWeight: "bold" }}
+                  >
+                    Ubicación Física Destino
+                  </label>
+                  <Dropdown
+                    id="ubicacionFisicaDestinoId"
+                    value={ubicacionFisicaDestinoId ? Number(ubicacionFisicaDestinoId) : null}
+                    options={(() => {
+                      const ubicacionDefault = ubicacionesFisicas.find(u => Number(u.id) === 1);
+                      const filtradas = ubicacionesFisicas.filter(u => 
+                        conceptoMovAlmacen?.almacenDestinoId 
+                          ? Number(u.almacenId) === Number(conceptoMovAlmacen.almacenDestinoId) 
+                          : true
+                      );
+                      
+                      // Incluir siempre la ubicación con ID 1 si existe y no está ya en las filtradas
+                      const opciones = [...filtradas];
+                      if (ubicacionDefault && !opciones.find(u => Number(u.id) === 1)) {
+                        opciones.unshift(ubicacionDefault);
+                      }
+                      
+                      return opciones.map((u) => ({
+                        label: u.descripcion,
+                        value: Number(u.id),
+                      }));
+                    })()}
+                    onChange={(e) => setUbicacionFisicaDestinoId(e.value)}
+                    placeholder="Seleccione ubicación destino"
+                    disabled={!camposEditables || readOnly}
+                    filter
+                    showClear
+                    style={{ width: "100%" }}
+                  />
+                </div>
+              )}
               <div>
                 <label htmlFor="nroContenedor" style={{ fontWeight: "bold" }}>
                   Nro. Contenedor

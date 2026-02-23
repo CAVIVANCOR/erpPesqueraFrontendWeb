@@ -12,6 +12,7 @@ export default function DetalleMovimientoList({
   onVerKardex,
   readOnly = false,
   permisos = {},
+  conceptoMovAlmacen = null,
 }) {
   const productoTemplate = (rowData) => {
     return rowData.producto?.descripcionArmada || `ID: ${rowData.productoId}`;
@@ -22,7 +23,7 @@ export default function DetalleMovimientoList({
   };
 
   const cantidadTemplate = (rowData) => {
-    return rowData.cantidad?.toLocaleString("es-PE", {
+    return Number(rowData.cantidad).toLocaleString("es-PE", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
@@ -212,6 +213,47 @@ export default function DetalleMovimientoList({
     return items.length > 0 ? <div>{items}</div> : "-";
   };
 
+  const ubicacionFisicaTemplate = (rowData) => {
+    const items = [];
+    const llevaKardexOrigen = conceptoMovAlmacen?.llevaKardexOrigen || false;
+    const llevaKardexDestino = conceptoMovAlmacen?.llevaKardexDestino || false;
+    
+    if (llevaKardexOrigen && rowData.ubicacionFisicaOrigen?.descripcion) {
+      items.push(
+        <div 
+          key="origen" 
+          style={{ 
+            marginBottom: "4px",
+            backgroundColor: "#ffebee",
+            padding: "4px 8px",
+            borderRadius: "4px",
+            fontSize: "0.85em"
+          }}
+        >
+          <strong>Origen:</strong> {rowData.ubicacionFisicaOrigen.descripcion}
+        </div>
+      );
+    }
+    
+    if (llevaKardexDestino && rowData.ubicacionFisicaDestino?.descripcion) {
+      items.push(
+        <div 
+          key="destino" 
+          style={{ 
+            backgroundColor: "#e8f5e9",
+            padding: "4px 8px",
+            borderRadius: "4px",
+            fontSize: "0.85em"
+          }}
+        >
+          <strong>Destino:</strong> {rowData.ubicacionFisicaDestino.descripcion}
+        </div>
+      );
+    }
+    
+    return items.length > 0 ? <div>{items}</div> : "-";
+  };
+
   const nroItemTemplate = (rowData, options) => {
     return <span style={{ fontWeight: "bold" }}>{options.rowIndex + 1}</span>;
   };
@@ -307,6 +349,11 @@ export default function DetalleMovimientoList({
           header="Peso"
           body={pesoTemplate}
           style={{ width: "100px", textAlign: "right", fontWeight: "bold" }}
+        />
+        <Column
+          header="Ubicación Física"
+          body={ubicacionFisicaTemplate}
+          style={{ width: "180px", fontWeight: "bold" }}
         />
         <Column
           header="Lote / Contenedor / Serie"
