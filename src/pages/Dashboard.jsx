@@ -200,21 +200,7 @@ export default function Dashboard() {
           key: "movimientoAlmacen",
           icon: "pi-arrows-h",
         },
-        {
-          label: "Kardex Almacén",
-          key: "kardexAlmacen",
-          icon: "pi-chart-line",
-        },
-        {
-          label: "Saldos Productos-Cliente",
-          key: "saldosProductoCliente",
-          icon: "pi-chart-bar",
-        },
-        {
-          label: "Saldos Productos-Cliente Variables",
-          key: "saldosDetProductoCliente",
-          icon: "pi-list",
-        },
+        
         {
           label: "Conceptos Movimientos",
           key: "conceptoMovAlmacen",

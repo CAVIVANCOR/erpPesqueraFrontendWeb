@@ -20,10 +20,11 @@ export const modulosPorUnidad = {
         icono: "pi-calendar",
         color: "#1E40AF",
         tablas: [
-          { id: "detCuotaPesca", titulo: "Detalle Cuotas Pesca", icono: "pi-percentage" },
-          { id: "accionesPreviasFaena", titulo: "Acciones Previas Faena", icono: "pi-list" },
-          { id: "documentoPesca", titulo: "Documentación Pesca", icono: "pi-file" },
-          { id: "documentacionEmbarcacion", titulo: "Documentación Embarcación", icono: "pi-file-edit" },
+          {
+            id: "detCuotaPesca",
+            titulo: "Detalle Cuotas Pesca",
+            icono: "pi-percentage",
+          },
         ],
       },
       {
@@ -32,11 +33,7 @@ export const modulosPorUnidad = {
         descripcion: "Mantenimiento",
         icono: "pi-wrench",
         color: "#DC2626",
-        tablas: [
-          { id: "activo", titulo: "Activos", icono: "pi-cog" },
-          { id: "tipoActivo", titulo: "Tipos de Activo", icono: "pi-tag" },
-          { id: "tipoMantenimiento", titulo: "Tipos de Mantenimiento", icono: "pi-wrench" },
-        ],
+        tablas: [],
       },
       {
         id: "requerimientoCompra",
@@ -45,11 +42,13 @@ export const modulosPorUnidad = {
         icono: "pi-file-edit",
         color: "#1E8449",
         tablas: [
-          { id: "tipoProducto", titulo: "Tipo Producto", icono: "pi-tag" },
-          { id: "tipoEstadoProducto", titulo: "Tipo Estado Producto", icono: "pi-circle" },
-          { id: "destinoProducto", titulo: "Destino Producto", icono: "pi-map-marker" },
+          { id: "producto", titulo: "Producto", icono: "pi-box" },
+          {
+            id: "entidadComercial",
+            titulo: "Entidades Comerciales",
+            icono: "pi-building",
+          },
           { id: "formaPago", titulo: "Forma de Pago", icono: "pi-credit-card" },
-          { id: "modoDespachoRecepcion", titulo: "Modo Despacho/Recepción", icono: "pi-truck" },
         ],
       },
       {
@@ -58,10 +57,7 @@ export const modulosPorUnidad = {
         descripcion: "Órdenes aprobadas",
         icono: "pi-shopping-cart",
         color: "#1E8449",
-        tablas: [
-          { id: "producto", titulo: "Producto", icono: "pi-box" },
-          { id: "entidadComercial", titulo: "Entidades Comerciales", icono: "pi-building" },
-        ],
+        tablas: [],
       },
       {
         id: "movimientoAlmacen",
@@ -70,15 +66,32 @@ export const modulosPorUnidad = {
         icono: "pi-box",
         color: "#2874A6",
         tablas: [
-          { id: "conceptoMovAlmacen", titulo: "Conceptos Movimientos", icono: "pi-tags" },
-          { id: "tipoDocumento", titulo: "Tipos de Documento", icono: "pi-file" },
-          { id: "tipoConcepto", titulo: "Tipos de Concepto", icono: "pi-tag" },
-          { id: "tipoMovimientoAlmacen", titulo: "Tipos de Movimiento", icono: "pi-arrows-h" },
-          { id: "tipoAlmacen", titulo: "Tipos de Almacén", icono: "pi-building" },
-          { id: "centrosAlmacen", titulo: "Centros de Almacén", icono: "pi-sitemap" },
+          {
+            id: "conceptoMovAlmacen",
+            titulo: "Conceptos Movimientos",
+            icono: "pi-tags",
+          },
+          {
+            id: "tipoAlmacen",
+            titulo: "Tipos de Almacén",
+            icono: "pi-building",
+          },
+          {
+            id: "centrosAlmacen",
+            titulo: "Centros de Almacén",
+            icono: "pi-sitemap",
+          },
           { id: "almacen", titulo: "Almacenes", icono: "pi-warehouse" },
-          { id: "ubicacionFisica", titulo: "Ubicaciones Físicas", icono: "pi-map-marker" },
-          { id: "serieDoc", titulo: "Series de Documento", icono: "pi-hashtag" },
+          {
+            id: "ubicacionFisica",
+            titulo: "Ubicaciones Físicas",
+            icono: "pi-map-marker",
+          },
+          {
+            id: "unidadMedida",
+            titulo: "Unidad Medida",
+            icono: "pi-chart-bar",
+          },
         ],
       },
       {
@@ -87,13 +100,7 @@ export const modulosPorUnidad = {
         descripcion: "Pre-facturas de exportación",
         icono: "pi-file",
         color: "#5DADE2",
-        tablas: [
-          { id: "incoterm", titulo: "Incoterms", icono: "pi-globe" },
-          { id: "docRequeridaVentas", titulo: "Documentos Requeridos Ventas", icono: "pi-file-check" },
-          { id: "requisitoDocPorPais", titulo: "Requisitos Doc. por País", icono: "pi-flag" },
-          { id: "tipoContenedor", titulo: "Tipo Contenedor", icono: "pi-box" },
-          { id: "formaTransaccion", titulo: "Formas Transacción", icono: "pi-credit-card" },
-        ],
+        tablas: [],
       },
     ],
   },
@@ -110,14 +117,11 @@ export const modulosPorUnidad = {
         icono: "pi-file-edit",
         color: "#059669",
         tablas: [
-          { id: "embarcacion", titulo: "Embarcaciones", icono: "pi-compass" },
-          { id: "tipoEmbarcacion", titulo: "Tipo Embarcación", icono: "pi-tag" },
-          { id: "documentoPesca", titulo: "Documentación Pesca", icono: "pi-file" },
-          { id: "documentacionEmbarcacion", titulo: "Documentación Embarcación", icono: "pi-file-edit" },
-          { id: "documentacionPersonal", titulo: "Documentación Personal", icono: "pi-id-card" },
-          { id: "especie", titulo: "Especies", icono: "pi-star" },
-          { id: "katanaTripulacion", titulo: "Katana Tripulación", icono: "pi-users" },
-          { id: "puertoPesca", titulo: "Puerto de Pesca", icono: "pi-map-marker" },
+          {
+            id: "katanaTripulacion",
+            titulo: "Katana Tripulación",
+            icono: "pi-users",
+          },
         ],
       },
       {
@@ -126,11 +130,7 @@ export const modulosPorUnidad = {
         descripcion: "Mantenimiento",
         icono: "pi-wrench",
         color: "#DC2626",
-        tablas: [
-          { id: "activo", titulo: "Activos", icono: "pi-cog" },
-          { id: "tipoActivo", titulo: "Tipos de Activo", icono: "pi-tag" },
-          { id: "tipoMantenimiento", titulo: "Tipos de Mantenimiento", icono: "pi-wrench" },
-        ],
+        tablas: [],
       },
       {
         id: "requerimientoCompra",
@@ -139,11 +139,13 @@ export const modulosPorUnidad = {
         icono: "pi-file-edit",
         color: "#1E8449",
         tablas: [
-          { id: "tipoProducto", titulo: "Tipo Producto", icono: "pi-tag" },
-          { id: "tipoEstadoProducto", titulo: "Tipo Estado Producto", icono: "pi-circle" },
-          { id: "destinoProducto", titulo: "Destino Producto", icono: "pi-map-marker" },
+          { id: "producto", titulo: "Producto", icono: "pi-box" },
+          {
+            id: "entidadComercial",
+            titulo: "Entidades Comerciales",
+            icono: "pi-building",
+          },
           { id: "formaPago", titulo: "Forma de Pago", icono: "pi-credit-card" },
-          { id: "modoDespachoRecepcion", titulo: "Modo Despacho/Recepción", icono: "pi-truck" },
         ],
       },
       {
@@ -152,10 +154,7 @@ export const modulosPorUnidad = {
         descripcion: "Órdenes aprobadas",
         icono: "pi-shopping-cart",
         color: "#1E8449",
-        tablas: [
-          { id: "producto", titulo: "Producto", icono: "pi-box" },
-          { id: "entidadComercial", titulo: "Entidades Comerciales", icono: "pi-building" },
-        ],
+        tablas: [],
       },
       {
         id: "movimientoAlmacen",
@@ -164,15 +163,32 @@ export const modulosPorUnidad = {
         icono: "pi-box",
         color: "#2874A6",
         tablas: [
-          { id: "conceptoMovAlmacen", titulo: "Conceptos Movimientos", icono: "pi-tags" },
-          { id: "tipoDocumento", titulo: "Tipos de Documento", icono: "pi-file" },
-          { id: "tipoConcepto", titulo: "Tipos de Concepto", icono: "pi-tag" },
-          { id: "tipoMovimientoAlmacen", titulo: "Tipos de Movimiento", icono: "pi-arrows-h" },
-          { id: "tipoAlmacen", titulo: "Tipos de Almacén", icono: "pi-building" },
-          { id: "centrosAlmacen", titulo: "Centros de Almacén", icono: "pi-sitemap" },
+          {
+            id: "conceptoMovAlmacen",
+            titulo: "Conceptos Movimientos",
+            icono: "pi-tags",
+          },
+          {
+            id: "tipoAlmacen",
+            titulo: "Tipos de Almacén",
+            icono: "pi-building",
+          },
+          {
+            id: "centrosAlmacen",
+            titulo: "Centros de Almacén",
+            icono: "pi-sitemap",
+          },
           { id: "almacen", titulo: "Almacenes", icono: "pi-warehouse" },
-          { id: "ubicacionFisica", titulo: "Ubicaciones Físicas", icono: "pi-map-marker" },
-          { id: "serieDoc", titulo: "Series de Documento", icono: "pi-hashtag" },
+          {
+            id: "ubicacionFisica",
+            titulo: "Ubicaciones Físicas",
+            icono: "pi-map-marker",
+          },
+          {
+            id: "unidadMedida",
+            titulo: "Unidad Medida",
+            icono: "pi-chart-bar",
+          },
         ],
       },
       {
@@ -181,17 +197,7 @@ export const modulosPorUnidad = {
         descripcion: "Pre-facturas de exportación",
         icono: "pi-file",
         color: "#5DADE2",
-        tablas: [
-          { id: "moneda", titulo: "Monedas", icono: "pi-money-bill" },
-          { id: "tipoEntidad", titulo: "Tipos Entidad", icono: "pi-briefcase" },
-          { id: "agrupacionEntidad", titulo: "Agrupaciones Entidad", icono: "pi-sitemap" },
-          { id: "unidadMedida", titulo: "Unidad Medida", icono: "pi-chart-bar" },
-          { id: "personal", titulo: "Personal", icono: "pi-users" },
-          { id: "cargoPersonal", titulo: "Cargos Personal", icono: "pi-id-card" },
-          { id: "pais", titulo: "País", icono: "pi-flag" },
-          { id: "familiaProducto", titulo: "Familia Producto", icono: "pi-th-large" },
-          { id: "subfamiliaProducto", titulo: "Subfamilia Producto", icono: "pi-list" },
-        ],
+        tablas: [],
       },
     ],
   },
@@ -209,7 +215,12 @@ export const modulosPorUnidad = {
         color: "#1E8449",
         tablas: [
           { id: "producto", titulo: "Producto", icono: "pi-box" },
-          { id: "entidadComercial", titulo: "Entidades Comerciales", icono: "pi-building" },
+          {
+            id: "entidadComercial",
+            titulo: "Entidades Comerciales",
+            icono: "pi-building",
+          },
+          { id: "formaPago", titulo: "Forma de Pago", icono: "pi-credit-card" },
         ],
       },
       {
@@ -219,11 +230,7 @@ export const modulosPorUnidad = {
         icono: "pi-shopping-cart",
         color: "#1E8449",
         tablas: [
-          { id: "tipoProducto", titulo: "Tipo Producto", icono: "pi-tag" },
-          { id: "tipoEstadoProducto", titulo: "Tipo Estado Producto", icono: "pi-circle" },
-          { id: "destinoProducto", titulo: "Destino Producto", icono: "pi-map-marker" },
-          { id: "formaPago", titulo: "Forma de Pago", icono: "pi-credit-card" },
-          { id: "modoDespachoRecepcion", titulo: "Modo Despacho/Recepción", icono: "pi-truck" },
+
         ],
       },
       {
@@ -233,15 +240,32 @@ export const modulosPorUnidad = {
         icono: "pi-box",
         color: "#2874A6",
         tablas: [
-          { id: "conceptoMovAlmacen", titulo: "Conceptos Movimientos", icono: "pi-tags" },
-          { id: "tipoDocumento", titulo: "Tipos de Documento", icono: "pi-file" },
-          { id: "tipoConcepto", titulo: "Tipos de Concepto", icono: "pi-tag" },
-          { id: "tipoMovimientoAlmacen", titulo: "Tipos de Movimiento", icono: "pi-arrows-h" },
-          { id: "tipoAlmacen", titulo: "Tipos de Almacén", icono: "pi-building" },
-          { id: "centrosAlmacen", titulo: "Centros de Almacén", icono: "pi-sitemap" },
+           {
+            id: "conceptoMovAlmacen",
+            titulo: "Conceptos Movimientos",
+            icono: "pi-tags",
+          },
+          {
+            id: "tipoAlmacen",
+            titulo: "Tipos de Almacén",
+            icono: "pi-building",
+          },
+          {
+            id: "centrosAlmacen",
+            titulo: "Centros de Almacén",
+            icono: "pi-sitemap",
+          },
           { id: "almacen", titulo: "Almacenes", icono: "pi-warehouse" },
-          { id: "ubicacionFisica", titulo: "Ubicaciones Físicas", icono: "pi-map-marker" },
-          { id: "serieDoc", titulo: "Series de Documento", icono: "pi-hashtag" },
+          {
+            id: "ubicacionFisica",
+            titulo: "Ubicaciones Físicas",
+            icono: "pi-map-marker",
+          },
+          {
+            id: "unidadMedida",
+            titulo: "Unidad Medida",
+            icono: "pi-chart-bar",
+          },
         ],
       },
       {
@@ -251,11 +275,7 @@ export const modulosPorUnidad = {
         icono: "pi-dollar",
         color: "#8E44AD",
         tablas: [
-          { id: "incoterm", titulo: "Incoterms", icono: "pi-globe" },
-          { id: "docRequeridaVentas", titulo: "Documentos Requeridos Ventas", icono: "pi-file-check" },
-          { id: "requisitoDocPorPais", titulo: "Requisitos Doc. por País", icono: "pi-flag" },
-          { id: "tipoContenedor", titulo: "Tipo Contenedor", icono: "pi-box" },
-          { id: "formaTransaccion", titulo: "Formas Transacción", icono: "pi-credit-card" },
+          
         ],
       },
       {
@@ -265,15 +285,7 @@ export const modulosPorUnidad = {
         icono: "pi-file",
         color: "#5DADE2",
         tablas: [
-          { id: "moneda", titulo: "Monedas", icono: "pi-money-bill" },
-          { id: "tipoEntidad", titulo: "Tipos Entidad", icono: "pi-briefcase" },
-          { id: "agrupacionEntidad", titulo: "Agrupaciones Entidad", icono: "pi-sitemap" },
-          { id: "unidadMedida", titulo: "Unidad Medida", icono: "pi-chart-bar" },
-          { id: "personal", titulo: "Personal", icono: "pi-users" },
-          { id: "cargoPersonal", titulo: "Cargos Personal", icono: "pi-id-card" },
-          { id: "pais", titulo: "País", icono: "pi-flag" },
-          { id: "familiaProducto", titulo: "Familia Producto", icono: "pi-th-large" },
-          { id: "subfamiliaProducto", titulo: "Subfamilia Producto", icono: "pi-list" },
+          
         ],
       },
     ],
@@ -291,8 +303,13 @@ export const modulosPorUnidad = {
         icono: "pi-file-edit",
         color: "#1E8449",
         tablas: [
-          { id: "producto", titulo: "Producto", icono: "pi-box" },
-          { id: "entidadComercial", titulo: "Entidades Comerciales", icono: "pi-building" },
+           { id: "producto", titulo: "Producto", icono: "pi-box" },
+          {
+            id: "entidadComercial",
+            titulo: "Entidades Comerciales",
+            icono: "pi-building",
+          },
+          { id: "formaPago", titulo: "Forma de Pago", icono: "pi-credit-card" },
         ],
       },
       {
@@ -302,11 +319,7 @@ export const modulosPorUnidad = {
         icono: "pi-shopping-cart",
         color: "#1E8449",
         tablas: [
-          { id: "formaPago", titulo: "Forma de Pago", icono: "pi-credit-card" },
-          { id: "tipoProducto", titulo: "Tipo Producto", icono: "pi-tag" },
-          { id: "tipoEstadoProducto", titulo: "Tipo Estado Producto", icono: "pi-circle" },
-          { id: "destinoProducto", titulo: "Destino Producto", icono: "pi-map-marker" },
-          { id: "modoDespachoRecepcion", titulo: "Modo Despacho/Recepción", icono: "pi-truck" },
+         
         ],
       },
       {
@@ -316,15 +329,32 @@ export const modulosPorUnidad = {
         icono: "pi-box",
         color: "#2874A6",
         tablas: [
-          { id: "conceptoMovAlmacen", titulo: "Conceptos Movimientos", icono: "pi-tags" },
-          { id: "tipoDocumento", titulo: "Tipos de Documento", icono: "pi-file" },
-          { id: "tipoConcepto", titulo: "Tipos de Concepto", icono: "pi-tag" },
-          { id: "tipoMovimientoAlmacen", titulo: "Tipos de Movimiento", icono: "pi-arrows-h" },
-          { id: "tipoAlmacen", titulo: "Tipos de Almacén", icono: "pi-building" },
-          { id: "centrosAlmacen", titulo: "Centros de Almacén", icono: "pi-sitemap" },
+          {
+            id: "conceptoMovAlmacen",
+            titulo: "Conceptos Movimientos",
+            icono: "pi-tags",
+          },
+          {
+            id: "tipoAlmacen",
+            titulo: "Tipos de Almacén",
+            icono: "pi-building",
+          },
+          {
+            id: "centrosAlmacen",
+            titulo: "Centros de Almacén",
+            icono: "pi-sitemap",
+          },
           { id: "almacen", titulo: "Almacenes", icono: "pi-warehouse" },
-          { id: "ubicacionFisica", titulo: "Ubicaciones Físicas", icono: "pi-map-marker" },
-          { id: "serieDoc", titulo: "Series de Documento", icono: "pi-hashtag" },
+          {
+            id: "ubicacionFisica",
+            titulo: "Ubicaciones Físicas",
+            icono: "pi-map-marker",
+          },
+          {
+            id: "unidadMedida",
+            titulo: "Unidad Medida",
+            icono: "pi-chart-bar",
+          },
         ],
       },
       {
@@ -334,11 +364,7 @@ export const modulosPorUnidad = {
         icono: "pi-dollar",
         color: "#8E44AD",
         tablas: [
-          { id: "incoterm", titulo: "Incoterms", icono: "pi-globe" },
-          { id: "docRequeridaVentas", titulo: "Documentos Requeridos Ventas", icono: "pi-file-check" },
-          { id: "requisitoDocPorPais", titulo: "Requisitos Doc. por País", icono: "pi-flag" },
-          { id: "tipoContenedor", titulo: "Tipo Contenedor", icono: "pi-box" },
-          { id: "formaTransaccion", titulo: "Formas Transacción", icono: "pi-credit-card" },
+          
         ],
       },
       {
@@ -348,15 +374,7 @@ export const modulosPorUnidad = {
         icono: "pi-file",
         color: "#5DADE2",
         tablas: [
-          { id: "moneda", titulo: "Monedas", icono: "pi-money-bill" },
-          { id: "tipoEntidad", titulo: "Tipos Entidad", icono: "pi-briefcase" },
-          { id: "agrupacionEntidad", titulo: "Agrupaciones Entidad", icono: "pi-sitemap" },
-          { id: "personal", titulo: "Personal", icono: "pi-users" },
-          { id: "cargoPersonal", titulo: "Cargos Personal", icono: "pi-id-card" },
-          { id: "pais", titulo: "País", icono: "pi-flag" },
-          { id: "familiaProducto", titulo: "Familia Producto", icono: "pi-th-large" },
-          { id: "subfamiliaProducto", titulo: "Subfamilia Producto", icono: "pi-list" },
-          { id: "unidadMedida", titulo: "Unidad Medida", icono: "pi-chart-bar" },
+          
         ],
       },
     ],
@@ -375,7 +393,12 @@ export const modulosPorUnidad = {
         color: "#1E8449",
         tablas: [
           { id: "producto", titulo: "Producto", icono: "pi-box" },
-          { id: "entidadComercial", titulo: "Entidades Comerciales", icono: "pi-building" },
+          {
+            id: "entidadComercial",
+            titulo: "Entidades Comerciales",
+            icono: "pi-building",
+          },
+          { id: "formaPago", titulo: "Forma de Pago", icono: "pi-credit-card" },
         ],
       },
       {
@@ -385,11 +408,7 @@ export const modulosPorUnidad = {
         icono: "pi-shopping-cart",
         color: "#1E8449",
         tablas: [
-          { id: "formaPago", titulo: "Forma de Pago", icono: "pi-credit-card" },
-          { id: "tipoProducto", titulo: "Tipo Producto", icono: "pi-tag" },
-          { id: "tipoEstadoProducto", titulo: "Tipo Estado Producto", icono: "pi-circle" },
-          { id: "destinoProducto", titulo: "Destino Producto", icono: "pi-map-marker" },
-          { id: "modoDespachoRecepcion", titulo: "Modo Despacho/Recepción", icono: "pi-truck" },
+         
         ],
       },
       {
@@ -399,15 +418,32 @@ export const modulosPorUnidad = {
         icono: "pi-box",
         color: "#2874A6",
         tablas: [
-          { id: "conceptoMovAlmacen", titulo: "Conceptos Movimientos", icono: "pi-tags" },
-          { id: "tipoDocumento", titulo: "Tipos de Documento", icono: "pi-file" },
-          { id: "tipoConcepto", titulo: "Tipos de Concepto", icono: "pi-tag" },
-          { id: "tipoMovimientoAlmacen", titulo: "Tipos de Movimiento", icono: "pi-arrows-h" },
-          { id: "tipoAlmacen", titulo: "Tipos de Almacén", icono: "pi-building" },
-          { id: "centrosAlmacen", titulo: "Centros de Almacén", icono: "pi-sitemap" },
+          {
+            id: "conceptoMovAlmacen",
+            titulo: "Conceptos Movimientos",
+            icono: "pi-tags",
+          },
+          {
+            id: "tipoAlmacen",
+            titulo: "Tipos de Almacén",
+            icono: "pi-building",
+          },
+          {
+            id: "centrosAlmacen",
+            titulo: "Centros de Almacén",
+            icono: "pi-sitemap",
+          },
           { id: "almacen", titulo: "Almacenes", icono: "pi-warehouse" },
-          { id: "ubicacionFisica", titulo: "Ubicaciones Físicas", icono: "pi-map-marker" },
-          { id: "serieDoc", titulo: "Series de Documento", icono: "pi-hashtag" },
+          {
+            id: "ubicacionFisica",
+            titulo: "Ubicaciones Físicas",
+            icono: "pi-map-marker",
+          },
+          {
+            id: "unidadMedida",
+            titulo: "Unidad Medida",
+            icono: "pi-chart-bar",
+          },
         ],
       },
       {
@@ -417,11 +453,7 @@ export const modulosPorUnidad = {
         icono: "pi-dollar",
         color: "#8E44AD",
         tablas: [
-          { id: "incoterm", titulo: "Incoterms", icono: "pi-globe" },
-          { id: "docRequeridaVentas", titulo: "Documentos Requeridos Ventas", icono: "pi-file-check" },
-          { id: "requisitoDocPorPais", titulo: "Requisitos Doc. por País", icono: "pi-flag" },
-          { id: "tipoContenedor", titulo: "Tipo Contenedor", icono: "pi-box" },
-          { id: "formaTransaccion", titulo: "Formas Transacción", icono: "pi-credit-card" },
+          
         ],
       },
       {
@@ -431,16 +463,7 @@ export const modulosPorUnidad = {
         icono: "pi-file",
         color: "#5DADE2",
         tablas: [
-          { id: "moneda", titulo: "Monedas", icono: "pi-money-bill" },
-          { id: "tipoEntidad", titulo: "Tipos Entidad", icono: "pi-briefcase" },
-          { id: "agrupacionEntidad", titulo: "Agrupaciones Entidad", icono: "pi-sitemap" },
-          { id: "unidadMedida", titulo: "Unidad Medida", icono: "pi-chart-bar" },
-          { id: "personal", titulo: "Personal", icono: "pi-users" },
-          { id: "cargoPersonal", titulo: "Cargos Personal", icono: "pi-id-card" },
-          { id: "pais", titulo: "País", icono: "pi-flag" },
-          { id: "tipoContrato", titulo: "Tipo Contrato", icono: "pi-file-edit" },
-          { id: "familiaProducto", titulo: "Familia Producto", icono: "pi-th-large" },
-          { id: "subfamiliaProducto", titulo: "Subfamilia Producto", icono: "pi-list" },
+          
         ],
       },
     ],
@@ -459,8 +482,16 @@ export const modulosPorUnidad = {
         color: "#E67E22",
         tablas: [
           { id: "producto", titulo: "Producto", icono: "pi-box" },
-          { id: "entidadComercial", titulo: "Entidades Comerciales", icono: "pi-building" },
-          { id: "tipoContrato", titulo: "Tipo Contrato", icono: "pi-file-edit" },
+          {
+            id: "entidadComercial",
+            titulo: "Entidades Comerciales",
+            icono: "pi-building",
+          },
+          {
+            id: "tipoContrato",
+            titulo: "Tipo Contrato",
+            icono: "pi-file-edit",
+          },
         ],
       },
       {
@@ -470,16 +501,7 @@ export const modulosPorUnidad = {
         icono: "pi-file",
         color: "#5DADE2",
         tablas: [
-          { id: "moneda", titulo: "Monedas", icono: "pi-money-bill" },
-          { id: "tipoEntidad", titulo: "Tipos Entidad", icono: "pi-briefcase" },
-          { id: "agrupacionEntidad", titulo: "Agrupaciones Entidad", icono: "pi-sitemap" },
-          { id: "personal", titulo: "Personal", icono: "pi-users" },
-          { id: "cargoPersonal", titulo: "Cargos Personal", icono: "pi-id-card" },
-          { id: "pais", titulo: "País", icono: "pi-flag" },
-          { id: "tipoContrato", titulo: "Tipo Contrato", icono: "pi-file-edit" },
-          { id: "familiaProducto", titulo: "Familia Producto", icono: "pi-th-large" },
-          { id: "subfamiliaProducto", titulo: "Subfamilia Producto", icono: "pi-list" },
-          { id: "unidadMedida", titulo: "Unidad Medida", icono: "pi-chart-bar" },
+         
         ],
       },
       {
@@ -489,15 +511,32 @@ export const modulosPorUnidad = {
         icono: "pi-box",
         color: "#2874A6",
         tablas: [
-          { id: "conceptoMovAlmacen", titulo: "Conceptos Movimientos", icono: "pi-tags" },
-          { id: "tipoDocumento", titulo: "Tipos de Documento", icono: "pi-file" },
-          { id: "tipoConcepto", titulo: "Tipos de Concepto", icono: "pi-tag" },
-          { id: "tipoMovimientoAlmacen", titulo: "Tipos de Movimiento", icono: "pi-arrows-h" },
-          { id: "tipoAlmacen", titulo: "Tipos de Almacén", icono: "pi-building" },
-          { id: "centrosAlmacen", titulo: "Centros de Almacén", icono: "pi-sitemap" },
+          {
+            id: "conceptoMovAlmacen",
+            titulo: "Conceptos Movimientos",
+            icono: "pi-tags",
+          },
+          {
+            id: "tipoAlmacen",
+            titulo: "Tipos de Almacén",
+            icono: "pi-building",
+          },
+          {
+            id: "centrosAlmacen",
+            titulo: "Centros de Almacén",
+            icono: "pi-sitemap",
+          },
           { id: "almacen", titulo: "Almacenes", icono: "pi-warehouse" },
-          { id: "ubicacionFisica", titulo: "Ubicaciones Físicas", icono: "pi-map-marker" },
-          { id: "serieDoc", titulo: "Series de Documento", icono: "pi-hashtag" },
+          {
+            id: "ubicacionFisica",
+            titulo: "Ubicaciones Físicas",
+            icono: "pi-map-marker",
+          },
+          {
+            id: "unidadMedida",
+            titulo: "Unidad Medida",
+            icono: "pi-chart-bar",
+          },
         ],
       },
       {
@@ -507,9 +546,7 @@ export const modulosPorUnidad = {
         icono: "pi-wrench",
         color: "#DC2626",
         tablas: [
-          { id: "activo", titulo: "Activos", icono: "pi-cog" },
-          { id: "tipoActivo", titulo: "Tipos de Activo", icono: "pi-tag" },
-          { id: "tipoMantenimiento", titulo: "Tipos de Mantenimiento", icono: "pi-wrench" },
+
         ],
       },
       {
@@ -519,10 +556,13 @@ export const modulosPorUnidad = {
         icono: "pi-file-edit",
         color: "#1E8449",
         tablas: [
-          { id: "tipoProducto", titulo: "Tipo Producto", icono: "pi-tag" },
-          { id: "tipoEstadoProducto", titulo: "Tipo Estado Producto", icono: "pi-circle" },
-          { id: "destinoProducto", titulo: "Destino Producto", icono: "pi-map-marker" },
-          { id: "modoDespachoRecepcion", titulo: "Modo Despacho/Recepción", icono: "pi-truck" },
+         { id: "producto", titulo: "Producto", icono: "pi-box" },
+          {
+            id: "entidadComercial",
+            titulo: "Entidades Comerciales",
+            icono: "pi-building",
+          },
+          { id: "formaPago", titulo: "Forma de Pago", icono: "pi-credit-card" },
         ],
       },
       {
@@ -532,7 +572,6 @@ export const modulosPorUnidad = {
         icono: "pi-shopping-cart",
         color: "#1E8449",
         tablas: [
-          { id: "formaPago", titulo: "Forma de Pago", icono: "pi-credit-card" },
         ],
       },
     ],
@@ -594,12 +633,13 @@ export const unidadesNegocio = [
 export const calcularModulosPorUnidad = (unidadId) => {
   const unidad = modulosPorUnidad[unidadId];
   if (!unidad) return 0;
-  
+
   const totalProcesos = unidad.procesosPrincipales?.length || 0;
-  const totalTablas = unidad.procesosPrincipales?.reduce(
-    (acc, proceso) => acc + (proceso.tablas?.length || 0),
-    0
-  ) || 0;
-  
+  const totalTablas =
+    unidad.procesosPrincipales?.reduce(
+      (acc, proceso) => acc + (proceso.tablas?.length || 0),
+      0,
+    ) || 0;
+
   return totalProcesos + totalTablas;
 };
