@@ -37,6 +37,7 @@ import DocPrestamoPrincipal from "./DocPrestamoPrincipal";
 import DocPrestamoAdicional from "./DocPrestamoAdicional";
 import { getTipoPrestamoActivos } from "../../api/tesoreria/tipoPrestamo";
 import { obtenerTipoCambio } from "../../api/tesoreria/lineaCredito";
+import { getSublineasCreditoPorLinea } from "../../api/tesoreria/sublineaCredito";
 
 const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   {
@@ -67,6 +68,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   const [prestamos, setPrestamos] = useState([]);
   const [tiposPrestamo, setTiposPrestamo] = useState([]);
   const [lineasCredito, setLineasCredito] = useState([]);
+  const [sublineasCredito, setSublineasCredito] = useState([]);
   const [prestamosParaRefinanciar, setPrestamosParaRefinanciar] = useState([]);
 
   const {
@@ -87,6 +89,9 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       bancoId: defaultValues?.bancoId ? Number(defaultValues.bancoId) : null,
       lineaCreditoId: defaultValues?.lineaCreditoId
         ? Number(defaultValues.lineaCreditoId)
+        : null,
+      sublineaCreditoId: defaultValues?.sublineaCreditoId
+        ? Number(defaultValues.sublineaCreditoId)
         : null,
       cuentaCorrienteId: defaultValues?.cuentaCorrienteId
         ? Number(defaultValues.cuentaCorrienteId)
@@ -158,6 +163,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   const bancoIdWatch = watch("bancoId");
   const monedaIdWatch = watch("monedaId");
   const fechaDesembolsoWatch = watch("fechaDesembolso");
+  const lineaCreditoIdWatch = watch("lineaCreditoId");
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -292,6 +298,27 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
       console.error("Error al cargar líneas de crédito:", error);
     }
   };
+  const cargarSublineasCredito = async (lineaCreditoId) => {
+    if (!lineaCreditoId) {
+      setSublineasCredito([]);
+      return;
+    }
+
+    try {
+      const sublineas = await getSublineasCreditoPorLinea(lineaCreditoId);
+      const sublineasActivas = sublineas.filter((sub) => sub.activo === true);
+      setSublineasCredito(sublineasActivas);
+    } catch (error) {
+      console.error("Error al cargar sublíneas de crédito:", error);
+      setSublineasCredito([]);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar sublíneas de crédito",
+        life: 3000,
+      });
+    }
+  };
 
   useEffect(() => {
     const currentEmpresa = getValues("empresaId");
@@ -308,6 +335,16 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
     }
   }, [empresaIdWatch, bancoIdWatch, monedaIdWatch, setValue, getValues]);
 
+  // Cargar sublíneas cuando cambie la línea de crédito
+  useEffect(() => {
+    if (lineaCreditoIdWatch) {
+      cargarSublineasCredito(lineaCreditoIdWatch);
+    } else {
+      setSublineasCredito([]);
+      setValue("sublineaCreditoId", null);
+    }
+  }, [lineaCreditoIdWatch]);
+
   useImperativeHandle(ref, () => ({
     getFormData: () => getValues(),
     setFormData: (data) => {
@@ -323,6 +360,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
         empresaId: data.empresaId,
         bancoId: data.bancoId,
         lineaCreditoId: data.lineaCreditoId,
+        sublineaCreditoId: data.sublineaCreditoId,
         cuentaCorrienteId: data.cuentaCorrienteId,
         numeroPrestamo: data.numeroPrestamo,
         numeroContrato: data.numeroContrato,
@@ -511,6 +549,24 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
     }));
   }, [lineasCredito]);
 
+  const sublineasCreditoOptions = useMemo(() => {
+    return sublineasCredito.map((sublinea) => ({
+      label: `${sublinea.tipoPrestamo?.descripcion || "Sin tipo"} - ${new Intl.NumberFormat(
+        "es-PE",
+        {
+          style: "currency",
+          currency: sublinea.lineaCredito?.moneda?.codigoSunat || "USD",
+        },
+      ).format(
+        parseFloat(sublinea.montoAsignado || 0),
+      )} - Disponible: ${new Intl.NumberFormat("es-PE", {
+        style: "currency",
+        currency: sublinea.lineaCredito?.moneda?.codigoSunat || "USD",
+      }).format(parseFloat(sublinea.montoDisponible || 0))}`,
+      value: Number(sublinea.id),
+    }));
+  }, [sublineasCredito]);
+
   const prestamosRefinanciarOptions = useMemo(() => {
     return prestamosParaRefinanciar
       .filter((p) => Number(p.id) !== Number(defaultValues?.id))
@@ -650,6 +706,37 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
             </div>
             <div style={{ flex: 1 }}>
               <label
+                htmlFor="sublineaCreditoId"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
+                Sublínea de Crédito
+              </label>
+              <Controller
+                name="sublineaCreditoId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="sublineaCreditoId"
+                    value={field.value}
+                    options={sublineasCreditoOptions}
+                    onChange={(e) => field.onChange(e.value)}
+                    placeholder="Seleccione sublínea"
+                    optionLabel="label"
+                    optionValue="value"
+                    filter
+                    showClear
+                    disabled={readOnly || !lineaCreditoIdWatch}
+                    style={{ width: "100%" }}
+                    emptyMessage="No hay sublíneas disponibles"
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
                 htmlFor="cuentaCorrienteId"
                 style={{
                   fontWeight: "bold",
@@ -737,33 +824,6 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
             </div>
             <div style={{ flex: 1 }}>
               <label
-                htmlFor="numeroContrato"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Número de Contrato *
-              </label>
-              <Controller
-                name="numeroContrato"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="numeroContrato"
-                    value={field.value}
-                    onChange={(e) =>
-                      field.onChange(e.target.value.toUpperCase())
-                    }
-                    placeholder="Ej: CONT-2024-001"
-                    disabled={readOnly}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label
                 htmlFor="tipoPrestamo"
                 style={{
                   fontWeight: "bold",
@@ -788,6 +848,32 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                     style={{ width: "100%" }}
                     filter
                     showClear
+                  />
+                )}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="refNroProformaVentaExportacion"
+                style={{
+                  fontWeight: "bold",
+                  fontSize: getResponsiveFontSize(),
+                }}
+              >
+                N°Proforma / N°Factura
+              </label>
+              <Controller
+                name="refNroProformaVentaExportacion"
+                control={control}
+                render={({ field }) => (
+                  <InputText
+                    id="refNroProformaVentaExportacion"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    placeholder="Ej: PF-EXP-2024-001"
+                    disabled={readOnly}
+                    style={{ width: "100%", textTransform: "uppercase" }}
+                    maxLength={100}
                   />
                 )}
               />
@@ -1113,31 +1199,6 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
-            <div style={{ flex: 0.5 }}>
-              <label
-                htmlFor="periodoGracia"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                Período de Gracia
-              </label>
-              <Controller
-                name="periodoGracia"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="periodoGracia"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    min={0}
-                    disabled={readOnly}
-                    style={{ width: "100%" }}
-                  />
-                )}
-              />
-            </div>
           </div>
 
           <div style={{ display: "flex", gap: 5, marginBottom: 10 }}>
@@ -1445,32 +1506,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
                 )}
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="refNroProformaVentaExportacion"
-                style={{
-                  fontWeight: "bold",
-                  fontSize: getResponsiveFontSize(),
-                }}
-              >
-                N° Proforma Venta Exportacion
-              </label>
-              <Controller
-                name="refNroProformaVentaExportacion"
-                control={control}
-                render={({ field }) => (
-                  <InputText
-                    id="refNroProformaVentaExportacion"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    placeholder="Ej: PF-EXP-2024-001"
-                    disabled={readOnly}
-                    style={{ width: "100%", textTransform: "uppercase" }}
-                    maxLength={100}
-                  />
-                )}
-              />
-            </div>
+
             <div style={{ flex: 1 }}>
               <label
                 htmlFor="fechaEmision"

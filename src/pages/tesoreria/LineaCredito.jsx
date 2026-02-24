@@ -17,7 +17,6 @@ import { getEmpresas } from "../../api/empresa";
 import { getAllBancos } from "../../api/banco";
 import { getAllMonedas } from "../../api/moneda";
 import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFuncion";
-import { getEnumsTesoreria } from "../../api/tesoreria/enumsTesoreria";
 import LineaCreditoForm from "../../components/tesoreria/LineaCreditoForm";
 import ReporteLineasDisponibles from "../../components/tesoreria/ReporteLineasDisponibles";
 import { getResponsiveFontSize } from "../../utils/utils";
@@ -49,7 +48,6 @@ const LineaCredito = ({ ruta }) => {
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
   const [bancoSeleccionado, setBancoSeleccionado] = useState(null);
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
-  const [tipoLineaSeleccionado, setTipoLineaSeleccionado] = useState(null);
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
   const [loading, setLoading] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -57,9 +55,7 @@ const LineaCredito = ({ ruta }) => {
   // Estados para catálogos filtrados dinámicamente
   const [bancosFiltrados, setBancosFiltrados] = useState([]);
   const [estadosFiltrados, setEstadosFiltrados] = useState([]);
-  const [tiposLineaFiltrados, setTiposLineaFiltrados] = useState([]);
   const [monedasFiltradas, setMonedasFiltradas] = useState([]);
-  const [enums, setEnums] = useState({ tiposLineaCredito: [] });
 
   // Cargar datos al montar el componente
   useEffect(() => {
@@ -88,12 +84,6 @@ const LineaCredito = ({ ruta }) => {
       );
     }
 
-    if (tipoLineaSeleccionado) {
-      filtradas = filtradas.filter(
-        (linea) => linea.tipoLinea === tipoLineaSeleccionado,
-      );
-    }
-
     if (monedaSeleccionada) {
       filtradas = filtradas.filter(
         (linea) => Number(linea.monedaId) === Number(monedaSeleccionada),
@@ -105,7 +95,6 @@ const LineaCredito = ({ ruta }) => {
     empresaSeleccionada,
     bancoSeleccionado,
     estadoSeleccionado,
-    tipoLineaSeleccionado,
     monedaSeleccionada,
     lineas,
   ]);
@@ -133,12 +122,6 @@ const LineaCredito = ({ ruta }) => {
       );
     }
 
-    if (tipoLineaSeleccionado) {
-      lineasFiltradas = lineasFiltradas.filter(
-        (linea) => linea.tipoLinea === tipoLineaSeleccionado,
-      );
-    }
-
     if (monedaSeleccionada) {
       lineasFiltradas = lineasFiltradas.filter(
         (linea) => Number(linea.monedaId) === Number(monedaSeleccionada),
@@ -152,9 +135,6 @@ const LineaCredito = ({ ruta }) => {
     const estadosIds = [
       ...new Set(lineasFiltradas.map((l) => Number(l.estadoId))),
     ];
-    const tiposLinea = [
-      ...new Set(lineasFiltradas.map((l) => l.tipoLinea).filter(Boolean)),
-    ];
     const monedasIds = [
       ...new Set(lineasFiltradas.map((l) => Number(l.monedaId))),
     ];
@@ -164,9 +144,6 @@ const LineaCredito = ({ ruta }) => {
     setEstadosFiltrados(
       estados.filter((e) => estadosIds.includes(Number(e.id))),
     );
-    setTiposLineaFiltrados(
-      enums.tiposLineaCredito.filter((t) => tiposLinea.includes(t.value)),
-    );
     setMonedasFiltradas(
       monedas.filter((m) => monedasIds.includes(Number(m.id))),
     );
@@ -174,39 +151,34 @@ const LineaCredito = ({ ruta }) => {
     empresaSeleccionada,
     bancoSeleccionado,
     estadoSeleccionado,
-    tipoLineaSeleccionado,
     monedaSeleccionada,
     lineas,
     bancos,
     estados,
     monedas,
-    enums,
   ]);
 
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const [
+     const [
         lineasData,
         empresasData,
         bancosData,
         monedasData,
         estadosData,
-        enumsData,
       ] = await Promise.all([
         getAllLineaCredito(),
         getEmpresas(),
         getAllBancos(),
         getAllMonedas(),
         getEstadosMultiFuncionPorTipoProviene(22),
-        getEnumsTesoreria(),
       ]);
       setLineas(lineasData);
       setEmpresas(empresasData);
       setBancos(bancosData);
       setMonedas(monedasData);
       setEstados(estadosData);
-      setEnums(enumsData);
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -280,14 +252,12 @@ const LineaCredito = ({ ruta }) => {
     setEmpresaSeleccionada(null);
     setBancoSeleccionado(null);
     setEstadoSeleccionado(null);
-    setTipoLineaSeleccionado(null);
     setMonedaSeleccionada(null);
     setGlobalFilter("");
-
+ 
     // Resetear catálogos filtrados a sus valores completos
     setBancosFiltrados(bancos);
     setEstadosFiltrados(estados);
-    setTiposLineaFiltrados(enums.tiposLineaCredito);
     setMonedasFiltradas(monedas);
   };
 
@@ -312,16 +282,6 @@ const LineaCredito = ({ ruta }) => {
 
   const bancoBodyTemplate = (rowData) => {
     return rowData.banco?.nombre || "";
-  };
-
-  const tipoLineaBodyTemplate = (rowData) => {
-    const tipoLabels = {
-      REVOLVENTE: "Revolvente",
-      CARTA_CREDITO: "Carta de Crédito",
-      GARANTIA_BANCARIA: "Garantía Bancaria",
-      SOBREGIRO: "Sobregiro",
-    };
-    return tipoLabels[rowData.tipoLinea] || rowData.tipoLinea;
   };
 
   const montoBodyTemplate = (rowData) => {
@@ -583,26 +543,6 @@ const LineaCredito = ({ ruta }) => {
         </div>
         <div style={{ flex: 1 }}>
           <label
-            htmlFor="tipoLineaFiltro"
-            style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
-          >
-            Tipo Línea
-          </label>
-          <Dropdown
-            id="tipoLineaFiltro"
-            value={tipoLineaSeleccionado}
-            options={tiposLineaFiltrados}
-            onChange={(e) => setTipoLineaSeleccionado(e.value)}
-            placeholder="Todos"
-            optionLabel="label"
-            optionValue="value"
-            showClear
-            disabled={loading}
-            style={{ width: "100%" }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label
             htmlFor="monedaFiltro"
             style={{ fontWeight: "bold", display: "block", marginBottom: 5 }}
           >
@@ -674,7 +614,6 @@ const LineaCredito = ({ ruta }) => {
         <Column field="numeroLinea" header="Número" sortable />
         <Column body={empresaBodyTemplate} header="Empresa" sortable />
         <Column body={bancoBodyTemplate} header="Banco" sortable />
-        <Column body={tipoLineaBodyTemplate} header="Tipo" sortable />
         <Column body={montoBodyTemplate} header="Límite" sortable />
         <Column body={utilizadoBodyTemplate} header="Utilizado" sortable />
         <Column body={disponibleBodyTemplate} header="Disponible" sortable />

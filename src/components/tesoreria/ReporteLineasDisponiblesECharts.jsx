@@ -566,7 +566,6 @@ export default function ReporteLineasDisponiblesECharts() {
                   emptyMessage="No hay líneas de crédito"
                 >
                   <Column field="numeroLinea" header="Número Línea" sortable />
-                  <Column field="tipoLinea" header="Tipo Línea" sortable />
                   <Column field="moneda" header="Moneda" sortable />
                   <Column
                     field="limite"

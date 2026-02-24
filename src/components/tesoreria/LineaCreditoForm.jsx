@@ -24,6 +24,7 @@ import {
   createLineaCredito,
   updateLineaCredito,
 } from "../../api/tesoreria/lineaCredito";
+import SublineaCreditoList from './SublineaCreditoList';
 
 const LineaCreditoForm = forwardRef(
   (
@@ -35,12 +36,9 @@ const LineaCreditoForm = forwardRef(
       empresaId: empresaFija ? Number(empresaFija) : null,
       bancoId: null,
       numeroLinea: "",
-      tipoLinea: null,
       montoAprobado: 0,
       monedaId: null,
       tasaInteres: 0,
-      comisionMantenimiento: null,
-      comisionUtilizacion: null,
       fechaAprobacion: null,
       fechaVencimiento: null,
       estadoId: null,
@@ -53,14 +51,6 @@ const LineaCreditoForm = forwardRef(
     const [monedas, setMonedas] = useState([]);
     const [estados, setEstados] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [prestamos, setPrestamos] = useState([]);
-
-    const tiposLinea = [
-      { label: "Revolvente", value: "REVOLVENTE" },
-      { label: "Carta de Crédito", value: "CARTA_CREDITO" },
-      { label: "Garantía Bancaria", value: "GARANTIA_BANCARIA" },
-      { label: "Sobregiro", value: "SOBREGIRO" },
-    ];
 
     useEffect(() => {
       cargarDatos();
@@ -76,16 +66,9 @@ const LineaCreditoForm = forwardRef(
               : null,
           bancoId: lineaCredito.bancoId,
           numeroLinea: lineaCredito.numeroLinea || "",
-          tipoLinea: lineaCredito.tipoLinea,
           montoAprobado: parseFloat(lineaCredito.montoAprobado) || 0,
           monedaId: lineaCredito.monedaId,
           tasaInteres: parseFloat(lineaCredito.tasaInteres) || 0,
-          comisionMantenimiento: lineaCredito.comisionMantenimiento
-            ? parseFloat(lineaCredito.comisionMantenimiento)
-            : null,
-          comisionUtilizacion: lineaCredito.comisionUtilizacion
-            ? parseFloat(lineaCredito.comisionUtilizacion)
-            : null,
           fechaAprobacion: lineaCredito.fechaAprobacion
             ? new Date(lineaCredito.fechaAprobacion)
             : null,
@@ -96,11 +79,6 @@ const LineaCreditoForm = forwardRef(
           observaciones: lineaCredito.observaciones || "",
           urlDocumentoPDF: lineaCredito.urlDocumentoPDF || "",
         });
-
-        // Cargar préstamos asociados si existe la línea de crédito
-        if (lineaCredito?.prestamos) {
-          setPrestamos(lineaCredito.prestamos);
-        }
       }
     }, [lineaCredito]);
 
@@ -209,15 +187,6 @@ const LineaCreditoForm = forwardRef(
         });
         return false;
       }
-      if (!formData.tipoLinea) {
-        toast.current?.show({
-          severity: "warn",
-          summary: "Advertencia",
-          detail: "Seleccione el tipo de línea",
-          life: 3000,
-        });
-        return false;
-      }
       if (!formData.montoAprobado || formData.montoAprobado <= 0) {
         toast.current?.show({
           severity: "warn",
@@ -314,16 +283,6 @@ const LineaCreditoForm = forwardRef(
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label htmlFor="tipoLinea">Tipo de Línea *</label>
-            <Dropdown
-              id="tipoLinea"
-              value={formData.tipoLinea}
-              options={tiposLinea}
-              onChange={(e) => setFormData({ ...formData, tipoLinea: e.value })}
-              placeholder="Seleccione tipo de línea"
-            />
-          </div>
-          <div style={{ flex: 1 }}>
             <label htmlFor="monedaId">Moneda *</label>
             <Dropdown
               id="monedaId"
@@ -370,37 +329,6 @@ const LineaCreditoForm = forwardRef(
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label htmlFor="comisionMantenimiento">
-              Comisión Mantenimiento
-            </label>
-            <InputNumber
-              id="comisionMantenimiento"
-              value={formData.comisionMantenimiento}
-              onValueChange={(e) =>
-                setFormData({ ...formData, comisionMantenimiento: e.value })
-              }
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={2}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="comisionUtilizacion">
-              Comisión Utilización (%)
-            </label>
-            <InputNumber
-              id="comisionUtilizacion"
-              value={formData.comisionUtilizacion}
-              onValueChange={(e) =>
-                setFormData({ ...formData, comisionUtilizacion: e.value })
-              }
-              mode="decimal"
-              minFractionDigits={2}
-              maxFractionDigits={4}
-              suffix="%"
-            />
-          </div>
-          <div style={{ flex: 1 }}>
             <label htmlFor="fechaAprobacion">Fecha de Aprobación *</label>
             <Calendar
               id="fechaAprobacion"
@@ -435,411 +363,21 @@ const LineaCreditoForm = forwardRef(
             />
           </div>
         </div>
-        <div className="grid">
-          <div className="col-12 md:col-6"></div>
 
-          <div className="col-12 md:col-6"></div>
-
-          <div className="col-12">
-            <div className="field">
-              <label htmlFor="observaciones">Observaciones</label>
-              <InputTextarea
-                id="observaciones"
-                value={formData.observaciones}
-                onChange={(e) =>
-                  setFormData({ ...formData, observaciones: e.target.value })
-                }
-                rows={2}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Sección de Préstamos Asociados - Solo en modo edición */}
-        {lineaCredito && prestamos && prestamos.length > 0 && (
-          <Panel
-            header={
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <i className="pi pi-list" style={{ fontSize: "1.2rem" }}></i>
-                <span style={{ fontWeight: "bold" }}>
-                  Préstamos Asociados a esta Línea de Crédito (
-                  {prestamos.length})
-                </span>
-              </div>
-            }
-            toggleable
-            collapsed={false}
-            style={{ marginTop: 20, marginBottom: 20 }}
-          >
-            <DataTable
-              value={[...prestamos].sort((a, b) => {
-                const fechaA = a.fechaDesembolso
-                  ? new Date(a.fechaDesembolso)
-                  : new Date(0);
-                const fechaB = b.fechaDesembolso
-                  ? new Date(b.fechaDesembolso)
-                  : new Date(0);
-                return fechaB - fechaA; // Más reciente primero por defecto
-              })}
-              size="small"
-              stripedRows
-              showGridlines
-              emptyMessage="No hay préstamos asociados"
-              paginator={prestamos.length > 10}
-              rows={30}
-              rowsPerPageOptions={[30, 60, 90]}
-              sortMode="multiple"
-              removableSort
-            >
-              <Column
-                field="numeroPrestamo"
-                header="Número Préstamo"
-                style={{ fontWeight: "bold", minWidth: "150px" }}
-                sortable
-              />
-              <Column
-                field="moneda.codigoSunat"
-                header="Moneda"
-                body={(rowData) => (
-                  <Tag
-                    value={rowData.moneda?.codigoSunat || "N/A"}
-                    severity={
-                      rowData.moneda?.codigoSunat === "USD" ? "success" : "info"
-                    }
-                  />
-                )}
-                style={{ minWidth: "100px" }}
-                sortable
-                sortField="moneda.codigoSunat"
-              />
-              <Column
-                field="montoDesembolsado"
-                header="Monto Desembolsado"
-                body={(rowData) => {
-                  const moneda = rowData.moneda?.codigoSunat || "USD";
-                  const monto = parseFloat(rowData.montoDesembolsado || 0);
-                  return new Intl.NumberFormat("es-PE", {
-                    style: "currency",
-                    currency: moneda === "PEN" ? "PEN" : "USD",
-                    minimumFractionDigits: 2,
-                  }).format(monto);
-                }}
-                style={{
-                  textAlign: "right",
-                  fontWeight: "bold",
-                  minWidth: "150px",
-                }}
-                sortable
-              />
-              <Column
-                header={`Monto en ${lineaCredito.moneda?.codigoSunat || "USD"}`}
-                body={(rowData) => {
-                  const monedaLinea = lineaCredito.moneda?.codigoSunat || "USD";
-                  const monedaPrestamo = rowData.moneda?.codigoSunat || "USD";
-                  const monto = parseFloat(rowData.montoDesembolsado || 0);
-
-                  // Si es la misma moneda, no hay conversión
-                  if (monedaLinea === monedaPrestamo) {
-                    return new Intl.NumberFormat("es-PE", {
-                      style: "currency",
-                      currency: monedaLinea === "PEN" ? "PEN" : "USD",
-                      minimumFractionDigits: 2,
-                    }).format(monto);
-                  }
-
-                  // Si necesita conversión, usar TC 3.8 (default)
-                  const tc = 3.8;
-                  let montoConvertido = monto;
-
-                  if (monedaLinea === "USD" && monedaPrestamo === "PEN") {
-                    montoConvertido = monto / tc;
-                  } else if (
-                    monedaLinea === "PEN" &&
-                    monedaPrestamo === "USD"
-                  ) {
-                    montoConvertido = monto * tc;
-                  }
-
-                  return new Intl.NumberFormat("es-PE", {
-                    style: "currency",
-                    currency: monedaLinea === "PEN" ? "PEN" : "USD",
-                    minimumFractionDigits: 2,
-                  }).format(montoConvertido);
-                }}
-                style={{
-                  textAlign: "right",
-                  fontWeight: "bold",
-                  minWidth: "180px",
-                  backgroundColor: "#e3f2fd",
-                }}
-                sortable
-                sortField="montoDesembolsado"
-                footer={() => {
-                  const monedaLinea = lineaCredito.moneda?.codigoSunat || "USD";
-                  let total = 0;
-
-                  prestamos.forEach((prestamo) => {
-                    const monedaPrestamo =
-                      prestamo.moneda?.codigoSunat || "USD";
-                    const monto = parseFloat(prestamo.montoDesembolsado || 0);
-                    const tc = 3.8;
-
-                    if (monedaLinea === monedaPrestamo) {
-                      total += monto;
-                    } else if (
-                      monedaLinea === "USD" &&
-                      monedaPrestamo === "PEN"
-                    ) {
-                      total += monto / tc;
-                    } else if (
-                      monedaLinea === "PEN" &&
-                      monedaPrestamo === "USD"
-                    ) {
-                      total += monto * tc;
-                    }
-                  });
-
-                  return (
-                    <div
-                      style={{
-                        textAlign: "right",
-                        fontWeight: "bold",
-                        fontSize: "1.1rem",
-                        color: "#1976d2",
-                      }}
-                    >
-                      {new Intl.NumberFormat("es-PE", {
-                        style: "currency",
-                        currency: monedaLinea === "PEN" ? "PEN" : "USD",
-                        minimumFractionDigits: 2,
-                      }).format(total)}
-                    </div>
-                  );
-                }}
-              />
-              <Column
-                header="TC Usado"
-                body={(rowData) => {
-                  const monedaLinea = lineaCredito.moneda?.codigoSunat || "USD";
-                  const monedaPrestamo = rowData.moneda?.codigoSunat || "USD";
-
-                  // Si es la misma moneda, no hay TC
-                  if (monedaLinea === monedaPrestamo) {
-                    return <Tag value="N/A" severity="secondary" />;
-                  }
-
-                  // Obtener TC del préstamo (debe venir del backend)
-                  const tc = rowData.tipoCambioUsado || 3.75;
-
-                  return (
-                    <Tag
-                      value={tc.toFixed(4)}
-                      severity="warning"
-                      style={{ fontWeight: "bold" }}
-                    />
-                  );
-                }}
-                style={{ textAlign: "center", minWidth: "100px" }}
-              />
-              <Column
-                field="fechaDesembolso"
-                header="Fecha Desembolso"
-                body={(rowData) => {
-                  if (!rowData.fechaDesembolso) return "N/A";
-                  return new Date(rowData.fechaDesembolso).toLocaleDateString(
-                    "es-PE",
-                    {
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                    },
-                  );
-                }}
-                style={{ minWidth: "120px" }}
-                sortable
-              />
-              <Column
-                field="fechaContrato"
-                header="Fecha Contrato"
-                body={(rowData) => {
-                  if (!rowData.fechaContrato) return "N/A";
-                  return new Date(rowData.fechaContrato).toLocaleDateString(
-                    "es-PE",
-                    {
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                    },
-                  );
-                }}
-                style={{ minWidth: "120px" }}
-                sortable
-              />
-            </DataTable>
-
-            {/* Resumen de totales */}
-            <div
-              style={{
-                marginTop: 15,
-                padding: 15,
-                backgroundColor: "#f8f9fa",
-                borderRadius: 5,
+        {/* Sublíneas de Crédito - Solo mostrar si la línea ya existe */}
+        {lineaCredito && lineaCredito.id && (
+          <div className="col-12 mt-4">
+            <SublineaCreditoList
+              lineaCreditoId={lineaCredito.id}
+              lineaCredito={lineaCredito}
+              onSublineasChange={(sublineas) => {
+                // Opcional: actualizar estado si necesitas hacer algo con las sublíneas
+                console.log("Sublíneas actualizadas:", sublineas);
               }}
-            >
-              {/* Totales por moneda */}
-              <div
-                style={{
-                  display: "flex",
-                  gap: 20,
-                  flexWrap: "wrap",
-                  marginBottom: 15,
-                  paddingBottom: 15,
-                  borderBottom: "2px solid #dee2e6",
-                }}
-              >
-                <div style={{ flex: 1, minWidth: "200px" }}>
-                  <small style={{ color: "#666", fontWeight: "bold" }}>
-                    Total Préstamos en SOLES (PEN):
-                  </small>
-                  <div
-                    style={{
-                      fontSize: "1.1rem",
-                      fontWeight: "bold",
-                      color: "#00897B",
-                    }}
-                  >
-                    {new Intl.NumberFormat("es-PE", {
-                      style: "currency",
-                      currency: "PEN",
-                      minimumFractionDigits: 2,
-                    }).format(
-                      prestamos
-                        .filter((p) => p.moneda?.codigoSunat === "PEN")
-                        .reduce(
-                          (sum, p) =>
-                            sum + parseFloat(p.montoDesembolsado || 0),
-                          0,
-                        ),
-                    )}
-                  </div>
-                </div>
-                <div style={{ flex: 1, minWidth: "200px" }}>
-                  <small style={{ color: "#666", fontWeight: "bold" }}>
-                    Total Préstamos en DÓLARES (USD):
-                  </small>
-                  <div
-                    style={{
-                      fontSize: "1.1rem",
-                      fontWeight: "bold",
-                      color: "#1976D2",
-                    }}
-                  >
-                    {new Intl.NumberFormat("es-PE", {
-                      style: "currency",
-                      currency: "USD",
-                      minimumFractionDigits: 2,
-                    }).format(
-                      prestamos
-                        .filter((p) => p.moneda?.codigoSunat === "USD")
-                        .reduce(
-                          (sum, p) =>
-                            sum + parseFloat(p.montoDesembolsado || 0),
-                          0,
-                        ),
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Totales de la línea de crédito */}
-              <div
-                style={{
-                  display: "flex",
-                  gap: 20,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ flex: 1, minWidth: "200px" }}>
-                  <small style={{ color: "#666" }}>
-                    Total Desembolsado en{" "}
-                    {lineaCredito.moneda?.codigoSunat || "USD"}:
-                  </small>
-                  <div
-                    style={{
-                      fontSize: "1.2rem",
-                      fontWeight: "bold",
-                      color: "#2196F3",
-                    }}
-                  >
-                    {new Intl.NumberFormat("es-PE", {
-                      style: "currency",
-                      currency:
-                        lineaCredito.moneda?.codigoSunat === "PEN"
-                          ? "PEN"
-                          : "USD",
-                      minimumFractionDigits: 2,
-                    }).format(lineaCredito.montoUtilizado || 0)}
-                  </div>
-                </div>
-                <div style={{ flex: 1, minWidth: "200px" }}>
-                  <small style={{ color: "#666" }}>Monto Aprobado:</small>
-                  <div
-                    style={{
-                      fontSize: "1.2rem",
-                      fontWeight: "bold",
-                      color: "#4CAF50",
-                    }}
-                  >
-                    {new Intl.NumberFormat("es-PE", {
-                      style: "currency",
-                      currency:
-                        lineaCredito.moneda?.codigoSunat === "PEN"
-                          ? "PEN"
-                          : "USD",
-                      minimumFractionDigits: 2,
-                    }).format(parseFloat(lineaCredito.montoAprobado || 0))}
-                  </div>
-                </div>
-                <div style={{ flex: 1, minWidth: "200px" }}>
-                  <small style={{ color: "#666" }}>Disponible:</small>
-                  <div
-                    style={{
-                      fontSize: "1.2rem",
-                      fontWeight: "bold",
-                      color: "#FF9800",
-                    }}
-                  >
-                    {new Intl.NumberFormat("es-PE", {
-                      style: "currency",
-                      currency:
-                        lineaCredito.moneda?.codigoSunat === "PEN"
-                          ? "PEN"
-                          : "USD",
-                      minimumFractionDigits: 2,
-                    }).format(lineaCredito.montoDisponible || 0)}
-                  </div>
-                </div>
-                <div style={{ flex: 1, minWidth: "200px" }}>
-                  <small style={{ color: "#666" }}>% Utilizado:</small>
-                  <div
-                    style={{
-                      fontSize: "1.2rem",
-                      fontWeight: "bold",
-                      color: "#E91E63",
-                    }}
-                  >
-                    {(
-                      (lineaCredito.montoUtilizado /
-                        parseFloat(lineaCredito.montoAprobado || 1)) *
-                      100
-                    ).toFixed(2)}
-                    %
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Panel>
+            />
+          </div>
         )}
+
 
         {/* Botones de acción */}
         <div

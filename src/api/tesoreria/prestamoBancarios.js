@@ -61,8 +61,38 @@ export async function recalcularCuotasPrestamo(id) {
 }
 
 
-export const getPrestamoBancarioSimple = async () => {
+export async function getPrestamoBancarioSimple () {
   const res = await axios.get(`${API_URL}/lista-simple`, { headers: getAuthHeaders() });
   return res.data;
 };
 
+export async function getPrestamoBancariosPorSublinea(sublineaCreditoId) {
+  const res = await axios.get(`${API_URL}/sublinea/${sublineaCreditoId}`, { 
+    headers: getAuthHeaders() 
+  });
+  return res.data;
+}
+
+export async function getPrestamosDisponiblesParaSublinea(lineaCreditoId, tipoPrestamoId) {
+  const res = await axios.get(`${API_URL}/disponibles-sublinea`, { 
+    params: { lineaCreditoId, tipoPrestamoId },
+    headers: getAuthHeaders() 
+  });
+  return res.data;
+}
+
+export async function asignarPrestamoASublinea(prestamoId, sublineaCreditoId) {
+  const res = await axios.patch(`${API_URL}/${prestamoId}/asignar-sublinea`, 
+    { sublineaCreditoId }, 
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
+
+export async function desvincularPrestamoDeSublinea(prestamoId) {
+  const res = await axios.patch(`${API_URL}/${prestamoId}/desvincular-sublinea`, 
+    {}, 
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
