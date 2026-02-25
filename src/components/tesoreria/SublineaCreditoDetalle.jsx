@@ -36,6 +36,7 @@ const SublineaCreditoDetalle = ({
     descripcion: "",
     montoAsignado: 0,
     activo: true,
+    excluirDeCalculo: false,
     observaciones: "",
   });
   const [errors, setErrors] = useState({});
@@ -56,6 +57,7 @@ const SublineaCreditoDetalle = ({
         descripcion: sublinea.descripcion || "",
         montoAsignado: parseFloat(sublinea.montoAsignado),
         activo: sublinea.activo,
+        excluirDeCalculo: sublinea.excluirDeCalculo || false,
         observaciones: sublinea.observaciones || "",
       });
       cargarPrestamosAsignados();
@@ -452,6 +454,24 @@ const SublineaCreditoDetalle = ({
               onChange={handleChange}
               placeholder="Observaciones"
               style={{ textTransform: "uppercase" }}
+            />
+          </div>
+
+          <div style={{ flex: 0.5 }}>
+            <label htmlFor="excluirDeCalculo">Excluir del Cálculo</label>
+            <Button
+              type="button"
+              label={formData.excluirDeCalculo ? "EXCLUIDA" : "INCLUIDA"}
+              className={
+                formData.excluirDeCalculo ? "p-button-warning" : "p-button-info"
+              }
+              icon={
+                formData.excluirDeCalculo ? "pi pi-ban" : "pi pi-calculator"
+              }
+              onClick={() =>
+                setFormData((prev) => ({ ...prev, excluirDeCalculo: !prev.excluirDeCalculo }))
+              }
+              style={{ width: "100%" }}
             />
           </div>
         </div>

@@ -434,15 +434,17 @@ const SublineaCreditoList = ({
   };
 
   const calcularTotales = () => {
-    // Agrupar sublíneas por descripción
-    const gruposPorDescripcion = sublineas.reduce((grupos, sublinea) => {
-      const descripcion = sublinea.descripcion || "Sin descripción";
-      if (!grupos[descripcion]) {
-        grupos[descripcion] = [];
-      }
-      grupos[descripcion].push(sublinea);
-      return grupos;
-    }, {});
+    // Agrupar sublíneas por descripción (excluir las marcadas como excluirDeCalculo)
+    const gruposPorDescripcion = sublineas
+      .filter(s => !s.excluirDeCalculo)
+      .reduce((grupos, sublinea) => {
+        const descripcion = sublinea.descripcion || "Sin descripción";
+        if (!grupos[descripcion]) {
+          grupos[descripcion] = [];
+        }
+        grupos[descripcion].push(sublinea);
+        return grupos;
+      }, {});
 
     // Calcular totales sumando solo el máximo de cada grupo
     let totalAsignado = 0;
@@ -464,15 +466,20 @@ const SublineaCreditoList = ({
     return { totalAsignado, totalUtilizado, totalDisponible };
   };
   const esFilaSumada = (rowData) => {
-    // Agrupar sublíneas por descripción
-    const gruposPorDescripcion = sublineas.reduce((grupos, sublinea) => {
-      const descripcion = sublinea.descripcion || "Sin descripción";
-      if (!grupos[descripcion]) {
-        grupos[descripcion] = [];
-      }
-      grupos[descripcion].push(sublinea);
-      return grupos;
-    }, {});
+    // Si está excluida del cálculo, no marcarla
+    if (rowData.excluirDeCalculo) return false;
+
+    // Agrupar sublíneas por descripción (excluir las marcadas como excluirDeCalculo)
+    const gruposPorDescripcion = sublineas
+      .filter(s => !s.excluirDeCalculo)
+      .reduce((grupos, sublinea) => {
+        const descripcion = sublinea.descripcion || "Sin descripción";
+        if (!grupos[descripcion]) {
+          grupos[descripcion] = [];
+        }
+        grupos[descripcion].push(sublinea);
+        return grupos;
+      }, {});
 
     // Verificar si esta fila es la que tiene el máximo monto en su grupo
     const descripcion = rowData.descripcion || "Sin descripción";

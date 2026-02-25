@@ -115,7 +115,7 @@ const LineaCreditoForm = forwardRef(
       }
     };
 
-    const handleSubmit = async () => {
+        const handleSubmit = async () => {
       if (!validarFormulario()) return;
 
       setLoading(true);
@@ -126,8 +126,9 @@ const LineaCreditoForm = forwardRef(
           fechaVencimiento: formData.fechaVencimiento?.toISOString(),
         };
 
+        let lineaGuardada;
         if (lineaCredito?.id) {
-          await updateLineaCredito(lineaCredito.id, dataToSend);
+          lineaGuardada = await updateLineaCredito(lineaCredito.id, dataToSend);
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
@@ -135,7 +136,7 @@ const LineaCreditoForm = forwardRef(
             life: 3000,
           });
         } else {
-          await createLineaCredito(dataToSend);
+          lineaGuardada = await createLineaCredito(dataToSend);
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
@@ -144,7 +145,8 @@ const LineaCreditoForm = forwardRef(
           });
         }
 
-        if (onSave) onSave();
+        // Pasar el ID de la línea guardada al callback
+        if (onSave) onSave(lineaGuardada?.id || lineaCredito?.id);
       } catch (error) {
         toast.current?.show({
           severity: "error",

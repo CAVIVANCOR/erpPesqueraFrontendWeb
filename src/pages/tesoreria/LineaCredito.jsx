@@ -11,6 +11,7 @@ import { Tag } from "primereact/tag";
 import { ProgressBar } from "primereact/progressbar";
 import {
   getAllLineaCredito,
+    getLineaCreditoById,  // ✅ Agregar este import
   deleteLineaCredito,
 } from "../../api/tesoreria/lineaCredito";
 import { getEmpresas } from "../../api/empresa";
@@ -203,11 +204,30 @@ const LineaCredito = ({ ruta }) => {
     setVisible(true);
   };
 
-  const handleSave = () => {
-    setVisible(false);
-    setLineaSeleccionada(null);
-    setEmpresaFija(null);
-    cargarDatos();
+  const handleSave = async (lineaId) => {
+    // Recargar solo la línea editada para mantener el formulario abierto con datos actualizados
+    if (lineaId) {
+      try {
+        const lineaActualizada = await getLineaCreditoById(lineaId);
+        setLineaSeleccionada(lineaActualizada);
+        // Recargar también la lista en segundo plano
+        cargarDatos();
+      } catch (error) {
+        console.error("Error al recargar línea:", error);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al recargar datos de la línea",
+          life: 3000,
+        });
+      }
+    } else {
+      // Si es nueva línea, cerrar el dialog y recargar lista
+      setVisible(false);
+      setLineaSeleccionada(null);
+      setEmpresaFija(null);
+      cargarDatos();
+    }
   };
 
   const handleCancel = () => {
