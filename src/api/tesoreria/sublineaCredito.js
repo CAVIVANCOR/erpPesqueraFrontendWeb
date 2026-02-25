@@ -122,3 +122,83 @@ export const actualizarMontoUtilizado = async (id) => {
     throw error;
   }
 };
+
+
+// ============================================
+// GESTIÓN DE SOBREGIROS
+// ============================================
+
+export const crearSobregiro = async (sublineaId, data) => {
+  try {
+    const token = useAuthStore.getState().token;
+    const response = await axios.post(`${API_URL}/tesoreria/sublineas-credito/${sublineaId}/sobregiros`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al crear sobregiro:', error);
+    throw error;
+  }
+};
+
+export const actualizarSobregiro = async (sobregiroid, data) => {
+  try {
+    const token = useAuthStore.getState().token;
+    const response = await axios.put(`${API_URL}/tesoreria/sublineas-credito/sobregiros/${sobregiroid}`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al actualizar sobregiro:', error);
+    throw error;
+  }
+};
+
+export const cancelarSobregiro = async (sobregiroid) => {
+  try {
+    const token = useAuthStore.getState().token;
+    const response = await axios.delete(`${API_URL}/tesoreria/sublineas-credito/sobregiros/${sobregiroid}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al cancelar sobregiro:', error);
+    throw error;
+  }
+};
+
+export const obtenerSobregiros = async (sublineaId) => {
+  try {
+    const token = useAuthStore.getState().token;
+    const response = await axios.get(`${API_URL}/tesoreria/sublineas-credito/${sublineaId}/sobregiros`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener sobregiros:', error);
+    throw error;
+  }
+};
+
+export const obtenerSobregiosVigentes = async (sublineaId) => {
+  try {
+    const token = useAuthStore.getState().token;
+    const response = await axios.get(`${API_URL}/tesoreria/sublineas-credito/${sublineaId}/sobregiros/vigentes`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener sobregiros vigentes:', error);
+    throw error;
+  }
+};

@@ -11,6 +11,10 @@ import { Divider } from "primereact/divider";
 import {
   createSublineaCredito,
   updateSublineaCredito,
+  obtenerSobregiros,
+  crearSobregiro,
+  actualizarSobregiro,
+  cancelarSobregiro,
 } from "../../api/tesoreria/sublineaCredito";
 import {
   getPrestamoBancariosPorSublinea,
@@ -19,6 +23,7 @@ import {
   desvincularPrestamoDeSublinea,
 } from "../../api/tesoreria/prestamoBancarios";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { Calendar } from "primereact/calendar";
 
 const SublineaCreditoDetalle = ({
   sublinea,
@@ -49,6 +54,20 @@ const SublineaCreditoDetalle = ({
   const [loadingPrestamos, setLoadingPrestamos] = useState(false);
   const [dialogAgregarVisible, setDialogAgregarVisible] = useState(false);
 
+  // Estados para sobregiros
+  const [sobregiros, setSobregiros] = useState([]);
+  const [loadingSobregiros, setLoadingSobregiros] = useState(false);
+  const [dialogSobregirosVisible, setDialogSobregirosVisible] = useState(false);
+  const [sobregirosFormData, setSobregirosFormData] = useState({
+    montoAutorizado: 0,
+    fechaSolicitud: new Date(),
+    fechaAprobacion: null,
+    autorizadoPorBanco: "",
+    numeroAutorizacionBanco: "",
+    motivoSolicitud: "",
+  });
+  const [sobregirosEditando, setSobregirosEditando] = useState(null);
+
   useEffect(() => {
     if (sublinea) {
       setFormData({
@@ -61,6 +80,7 @@ const SublineaCreditoDetalle = ({
         observaciones: sublinea.observaciones || "",
       });
       cargarPrestamosAsignados();
+      cargarSobregiros(); // ✅ AGREGAR ESTA LÍNEA
     }
   }, [sublinea]);
 
@@ -84,6 +104,26 @@ const SublineaCreditoDetalle = ({
     }
   };
 
+  const cargarSobregiros = async () => {
+    if (!sublinea?.id) return;
+
+    try {
+      setLoadingSobregiros(true);
+      const data = await obtenerSobregiros(sublinea.id);
+      setSobregiros(data);
+    } catch (error) {
+      console.error("Error al cargar sobregiros:", error);
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar los sobregiros",
+        life: 3000,
+      });
+    } finally {
+      setLoadingSobregiros(false);
+    }
+  };
+
   const cargarPrestamosDisponibles = async () => {
     if (!lineaCreditoId || !formData.tipoPrestamoId) return;
 
@@ -91,7 +131,7 @@ const SublineaCreditoDetalle = ({
       setLoadingPrestamos(true);
       const data = await getPrestamosDisponiblesParaSublinea(
         lineaCreditoId,
-        formData.tipoPrestamoId
+        formData.tipoPrestamoId,
       );
       setPrestamosDisponibles(data);
       setPrestamosSeleccionados([]);
@@ -172,6 +212,102 @@ const SublineaCreditoDetalle = ({
       console.error("Error al desvincular préstamo:", error);
       const mensaje =
         error.response?.data?.message || "Error al desvincular el préstamo";
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: mensaje,
+        life: 5000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+    const abrirDialogSobregiro = (sobregiro = null) => {
+    if (sobregiro) {
+      setSobregirosEditando(sobregiro);
+      setSobregirosFormData({
+        montoAutorizado: parseFloat(sobregiro.montoAutorizado),
+        fechaSolicitud: sobregiro.fechaSolicitud ? new Date(sobregiro.fechaSolicitud) : new Date(),
+        fechaAprobacion: sobregiro.fechaAprobacion ? new Date(sobregiro.fechaAprobacion) : null,
+        autorizadoPorBanco: sobregiro.autorizadoPorBanco || "",
+        numeroAutorizacionBanco: sobregiro.numeroAutorizacionBanco || "",
+        motivoSolicitud: sobregiro.motivoSolicitud || "",
+      });
+    } else {
+      setSobregirosEditando(null);
+      setSobregirosFormData({
+        montoAutorizado: 0,
+        fechaSolicitud: new Date(),
+        fechaAprobacion: null,
+        autorizadoPorBanco: "",
+        numeroAutorizacionBanco: "",
+        motivoSolicitud: "",
+      });
+    }
+    setDialogSobregirosVisible(true);
+  };
+
+  const handleGuardarSobregiro = async () => {
+    try {
+      setLoading(true);
+
+      const dataToSend = {
+        ...sobregirosFormData,
+        fechaSolicitud: sobregirosFormData.fechaSolicitud?.toISOString(),
+        fechaAprobacion: sobregirosFormData.fechaAprobacion?.toISOString() || null,
+        creadoPor: user?.personalId ? Number(user.personalId) : null,
+        actualizadoPor: user?.personalId ? Number(user.personalId) : null,
+      };
+
+      if (sobregirosEditando) {
+        await actualizarSobregiro(sobregirosEditando.id, dataToSend);
+        toast?.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Sobregiro actualizado correctamente",
+          life: 3000,
+        });
+      } else {
+        await crearSobregiro(sublinea.id, dataToSend);
+        toast?.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Sobregiro registrado correctamente",
+          life: 3000,
+        });
+      }
+
+      setDialogSobregirosVisible(false);
+      await cargarSobregiros();
+    } catch (error) {
+      console.error("Error al guardar sobregiro:", error);
+      const mensaje = error.response?.data?.message || "Error al guardar el sobregiro";
+      toast?.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: mensaje,
+        life: 5000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelarSobregiro = async (sobregiroid) => {
+    try {
+      setLoading(true);
+      await cancelarSobregiro(sobregiroid);
+      toast?.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Sobregiro cancelado correctamente",
+        life: 3000,
+      });
+      await cargarSobregiros();
+    } catch (error) {
+      console.error("Error al cancelar sobregiro:", error);
+      const mensaje = error.response?.data?.message || "Error al cancelar el sobregiro";
       toast?.current?.show({
         severity: "error",
         summary: "Error",
@@ -286,12 +422,11 @@ const SublineaCreditoDetalle = ({
     }
   };
 
-  // Templates para DataTable de préstamos asignados
   const montoTemplate = (rowData) => {
     return new Intl.NumberFormat("es-PE", {
       style: "currency",
       currency: lineaCredito?.moneda?.codigoSunat || "PEN",
-    }).format(rowData.monto || 0);
+    }).format(rowData.saldoCapital || 0);
   };
 
   const fechaTemplate = (rowData) => {
@@ -326,6 +461,72 @@ const SublineaCreditoDetalle = ({
       ? new Date(rowData.fechaDesembolso).toLocaleDateString("es-PE")
       : "-";
   };
+
+    // Templates para sobregiros
+  const montoSobregirosTemplate = (rowData) => {
+    return new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: lineaCredito?.moneda?.codigoSunat || "PEN",
+    }).format(rowData.montoAutorizado || 0);
+  };
+
+  const fechaSobregirosTemplate = (rowData, field) => {
+    const fecha = rowData[field];
+    return fecha ? new Date(fecha).toLocaleDateString("es-PE") : "-";
+  };
+
+  const estadoSobregirosTemplate = (rowData) => {
+    if (!rowData.activo) {
+      return <span className="text-red-500 font-bold">CANCELADO</span>;
+    }
+    if (rowData.fechaAprobacion) {
+      return <span className="text-green-500 font-bold">APROBADO</span>;
+    }
+    return <span className="text-yellow-500 font-bold">SOLICITADO</span>;
+  };
+
+  const accionesSobregirosTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
+        {rowData.activo && (
+          <>
+            <Button
+              icon="pi pi-pencil"
+              className="p-button-rounded p-button-info p-button-text"
+              onClick={() => abrirDialogSobregiro(rowData)}
+              tooltip="Editar"
+              tooltipOptions={{ position: "top" }}
+              type="button"
+            />
+            <Button
+              icon="pi pi-times"
+              className="p-button-rounded p-button-danger p-button-text"
+              onClick={() => handleCancelarSobregiro(rowData.id)}
+              tooltip="Cancelar sobregiro"
+              tooltipOptions={{ position: "top" }}
+              type="button"
+            />
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const headerSobregiros = (
+    <div className="flex justify-content-between align-items-center">
+      <span className="text-xl font-bold">Sobregiros Autorizados</span>
+      {sublinea && (
+        <Button
+          label="Registrar Sobregiro"
+          icon="pi pi-plus"
+          className="p-button-danger p-button-sm"
+          onClick={() => abrirDialogSobregiro()}
+          type="button"
+          disabled={loadingSobregiros}
+        />
+      )}
+    </div>
+  );
 
   const headerPrestamos = (
     <div className="flex justify-content-between align-items-center">
@@ -469,7 +670,10 @@ const SublineaCreditoDetalle = ({
                 formData.excluirDeCalculo ? "pi pi-ban" : "pi pi-calculator"
               }
               onClick={() =>
-                setFormData((prev) => ({ ...prev, excluirDeCalculo: !prev.excluirDeCalculo }))
+                setFormData((prev) => ({
+                  ...prev,
+                  excluirDeCalculo: !prev.excluirDeCalculo,
+                }))
               }
               style={{ width: "100%" }}
             />
@@ -519,7 +723,63 @@ const SublineaCreditoDetalle = ({
             </DataTable>
           </div>
         )}
+        {/* DIVIDER */}
+        {sublinea && <Divider />}
 
+        {/* LISTA DE SOBREGIROS */}
+        {sublinea && (
+          <div className="mt-3">
+            <DataTable
+              value={sobregiros}
+              loading={loadingSobregiros}
+              header={headerSobregiros}
+              emptyMessage="No hay sobregiros registrados"
+              stripedRows
+              size="small"
+              showGridlines
+              style={{ fontSize: "12px" }}
+            >
+              <Column
+                field="montoAutorizado"
+                header="Monto Autorizado"
+                body={montoSobregirosTemplate}
+                sortable
+              />
+              <Column
+                field="fechaSolicitud"
+                header="Fecha Solicitud"
+                body={(rowData) => fechaSobregirosTemplate(rowData, "fechaSolicitud")}
+                sortable
+              />
+              <Column
+                field="fechaAprobacion"
+                header="Fecha Aprobación"
+                body={(rowData) => fechaSobregirosTemplate(rowData, "fechaAprobacion")}
+                sortable
+              />
+              <Column
+                field="autorizadoPorBanco"
+                header="Autorizado Por"
+                sortable
+              />
+              <Column
+                field="numeroAutorizacionBanco"
+                header="Nº Autorización"
+                sortable
+              />
+              <Column
+                header="Estado"
+                body={estadoSobregirosTemplate}
+                style={{ width: "120px" }}
+              />
+              <Column
+                header="Acciones"
+                body={accionesSobregirosTemplate}
+                style={{ width: "100px" }}
+              />
+            </DataTable>
+          </div>
+        )}
         {/* DIALOG PARA AGREGAR PRÉSTAMOS CON DATATABLE Y CHECKBOXES */}
         <Dialog
           visible={dialogAgregarVisible}
@@ -542,15 +802,8 @@ const SublineaCreditoDetalle = ({
             showGridlines
             style={{ fontSize: "12px" }}
           >
-            <Column
-              selectionMode="multiple"
-              headerStyle={{ width: "3rem" }}
-            />
-            <Column
-              field="numeroPrestamo"
-              header="Número Préstamo"
-              sortable
-            />
+            <Column selectionMode="multiple" headerStyle={{ width: "3rem" }} />
+            <Column field="numeroPrestamo" header="Número Préstamo" sortable />
             <Column
               field="fechaDesembolso"
               header="Fecha Desembolso"
@@ -588,7 +841,112 @@ const SublineaCreditoDetalle = ({
             />
           </div>
         </Dialog>
+        {/* DIALOG PARA CREAR/EDITAR SOBREGIRO */}
+        <Dialog
+          visible={dialogSobregirosVisible}
+          style={{ width: "600px" }}
+          header={sobregirosEditando ? "Editar Sobregiro" : "Registrar Sobregiro"}
+          modal
+          onHide={() => setDialogSobregirosVisible(false)}
+        >
+          <div className="p-fluid">
+            <div className="field">
+              <label htmlFor="montoAutorizado">Monto Autorizado *</label>
+              <InputNumber
+                id="montoAutorizado"
+                value={sobregirosFormData.montoAutorizado}
+                onValueChange={(e) =>
+                  setSobregirosFormData({ ...sobregirosFormData, montoAutorizado: e.value })
+                }
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                min={0}
+              />
+            </div>
 
+            <div className="field">
+              <label htmlFor="fechaSolicitud">Fecha Solicitud</label>
+              <Calendar
+                id="fechaSolicitud"
+                value={sobregirosFormData.fechaSolicitud}
+                onChange={(e) =>
+                  setSobregirosFormData({ ...sobregirosFormData, fechaSolicitud: e.value })
+                }
+                dateFormat="dd/mm/yy"
+                showIcon
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="fechaAprobacion">Fecha Aprobación</label>
+              <Calendar
+                id="fechaAprobacion"
+                value={sobregirosFormData.fechaAprobacion}
+                onChange={(e) =>
+                  setSobregirosFormData({ ...sobregirosFormData, fechaAprobacion: e.value })
+                }
+                dateFormat="dd/mm/yy"
+                showIcon
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="autorizadoPorBanco">Autorizado Por (Banco)</label>
+              <InputText
+                id="autorizadoPorBanco"
+                value={sobregirosFormData.autorizadoPorBanco}
+                onChange={(e) =>
+                  setSobregirosFormData({ ...sobregirosFormData, autorizadoPorBanco: e.target.value })
+                }
+                style={{ textTransform: "uppercase" }}
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="numeroAutorizacionBanco">Número Autorización Banco</label>
+              <InputText
+                id="numeroAutorizacionBanco"
+                value={sobregirosFormData.numeroAutorizacionBanco}
+                onChange={(e) =>
+                  setSobregirosFormData({ ...sobregirosFormData, numeroAutorizacionBanco: e.target.value })
+                }
+                style={{ textTransform: "uppercase" }}
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="motivoSolicitud">Motivo de Solicitud</label>
+              <InputTextarea
+                id="motivoSolicitud"
+                value={sobregirosFormData.motivoSolicitud}
+                onChange={(e) =>
+                  setSobregirosFormData({ ...sobregirosFormData, motivoSolicitud: e.target.value })
+                }
+                rows={3}
+                style={{ textTransform: "uppercase" }}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-content-end gap-2 mt-4">
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              className="p-button-text"
+              onClick={() => setDialogSobregirosVisible(false)}
+              type="button"
+            />
+            <Button
+              label="Guardar"
+              icon="pi pi-check"
+              onClick={handleGuardarSobregiro}
+              loading={loading}
+              type="button"
+              className="p-button-success"
+            />
+          </div>
+        </Dialog>
         {/* Botones de acción */}
         <div
           style={{

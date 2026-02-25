@@ -341,34 +341,72 @@ const SublineaCreditoList = ({
   };
 
   const montoAsignadoTemplate = (rowData) => {
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: lineaCredito?.moneda?.codigoSunat || "PEN",
-      minimumFractionDigits: 2,
-    }).format(rowData.montoAsignado || 0);
+    return (
+      <span style={{ fontWeight: "bold", fontSize: "0.95rem", color: "#003366" }}>
+        {new Intl.NumberFormat("es-PE", {
+          style: "currency",
+          currency: lineaCredito?.moneda?.codigoSunat || "PEN",
+          minimumFractionDigits: 2,
+        }).format(rowData.montoAsignado || 0)}
+      </span>
+    );
   };
 
   const montoUtilizadoTemplate = (rowData) => {
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: lineaCredito?.moneda?.codigoSunat || "PEN",
-      minimumFractionDigits: 2,
-    }).format(rowData.montoUtilizado || 0);
+    return (
+      <span style={{ fontWeight: "bold", fontSize: "0.95rem", color: "#006400" }}>
+        {new Intl.NumberFormat("es-PE", {
+          style: "currency",
+          currency: lineaCredito?.moneda?.codigoSunat || "PEN",
+          minimumFractionDigits: 2,
+        }).format(rowData.montoUtilizado || 0)}
+      </span>
+    );
   };
 
   const montoDisponibleTemplate = (rowData) => {
-    return new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: lineaCredito?.moneda?.codigoSunat || "PEN",
-      minimumFractionDigits: 2,
-    }).format(rowData.montoDisponible || 0);
+    return (
+      <span style={{ fontWeight: "bold", fontSize: "0.95rem", color: "#4682B4" }}>
+        {new Intl.NumberFormat("es-PE", {
+          style: "currency",
+          currency: lineaCredito?.moneda?.codigoSunat || "PEN",
+          minimumFractionDigits: 2,
+        }).format(rowData.montoDisponible || 0)}
+      </span>
+    );
   };
 
+  const sobregirosTemplate = (rowData) => {
+    const totalSobregiros = parseFloat(rowData.totalSobregiros || 0);
+
+    if (totalSobregiros === 0) {
+      return <span style={{ color: "#6c757d" }}>-</span>;
+    }
+
+    return (
+      <span
+        style={{
+          color: "#dc3545",
+          fontWeight: "bold",
+          fontSize: "0.95rem",
+        }}
+      >
+        {new Intl.NumberFormat("es-PE", {
+          style: "currency",
+          currency: lineaCredito?.moneda?.codigoSunat || "PEN",
+          minimumFractionDigits: 2,
+        }).format(totalSobregiros)}
+      </span>
+    );
+  };
   const porcentajeUtilizadoTemplate = (rowData) => {
+    const montoAsignado = parseFloat(rowData.montoAsignado || 0);
+    const totalSobregiros = parseFloat(rowData.totalSobregiros || 0);
+    const montoUtilizado = parseFloat(rowData.montoUtilizado || 0);
+    const montoTotal = montoAsignado + totalSobregiros;
+
     const porcentaje =
-      rowData.montoAsignado > 0
-        ? ((rowData.montoUtilizado / rowData.montoAsignado) * 100).toFixed(2)
-        : 0;
+      montoTotal > 0 ? ((montoUtilizado / montoTotal) * 100).toFixed(2) : 0;
 
     let severity = "success";
     if (porcentaje >= 90) severity = "danger";
@@ -376,7 +414,12 @@ const SublineaCreditoList = ({
 
     return (
       <div className="flex align-items-center gap-2">
-        <span className={`text-${severity}`}>{porcentaje}%</span>
+        <span
+          className={`text-${severity}`}
+          style={{ fontWeight: "bold", fontSize: "0.95rem" }}
+        >
+          {porcentaje}%
+        </span>
         <div
           className="w-full bg-gray-200"
           style={{ height: "8px", borderRadius: "4px" }}
@@ -436,7 +479,7 @@ const SublineaCreditoList = ({
   const calcularTotales = () => {
     // Agrupar sublíneas por descripción (excluir las marcadas como excluirDeCalculo)
     const gruposPorDescripcion = sublineas
-      .filter(s => !s.excluirDeCalculo)
+      .filter((s) => !s.excluirDeCalculo)
       .reduce((grupos, sublinea) => {
         const descripcion = sublinea.descripcion || "Sin descripción";
         if (!grupos[descripcion]) {
@@ -446,11 +489,13 @@ const SublineaCreditoList = ({
         return grupos;
       }, {});
 
-    // Calcular totales sumando solo el máximo de cada grupo
+    // Calcular totales
     let totalAsignado = 0;
     let totalUtilizado = 0;
     let totalDisponible = 0;
+    let totalSobregiros = 0;
 
+    // Para Monto Asignado y Disponible: sumar solo el máximo de cada grupo
     Object.values(gruposPorDescripcion).forEach((grupo) => {
       // Ordenar por monto descendente y tomar el primero
       const sublineaMaxima = grupo.sort(
@@ -459,19 +504,28 @@ const SublineaCreditoList = ({
       )[0];
 
       totalAsignado += parseFloat(sublineaMaxima.montoAsignado || 0);
-      totalUtilizado += parseFloat(sublineaMaxima.montoUtilizado || 0);
       totalDisponible += parseFloat(sublineaMaxima.montoDisponible || 0);
     });
 
-    return { totalAsignado, totalUtilizado, totalDisponible };
+    // Para Monto Utilizado y Sobregiros: sumar TODAS las sublíneas sin excepción (no excluidas del cálculo)
+    sublineas
+      .filter((s) => !s.excluirDeCalculo)
+      .forEach((sublinea) => {
+        totalUtilizado += parseFloat(sublinea.montoUtilizado || 0);
+        totalSobregiros += parseFloat(sublinea.totalSobregiros || 0);
+      });
+
+    return { totalAsignado, totalUtilizado, totalDisponible, totalSobregiros };
   };
+
+
   const esFilaSumada = (rowData) => {
     // Si está excluida del cálculo, no marcarla
     if (rowData.excluirDeCalculo) return false;
 
     // Agrupar sublíneas por descripción (excluir las marcadas como excluirDeCalculo)
     const gruposPorDescripcion = sublineas
-      .filter(s => !s.excluirDeCalculo)
+      .filter((s) => !s.excluirDeCalculo)
       .reduce((grupos, sublinea) => {
         const descripcion = sublinea.descripcion || "Sin descripción";
         if (!grupos[descripcion]) {
@@ -495,7 +549,7 @@ const SublineaCreditoList = ({
   };
 
   const rowClassName = (rowData) => {
-    return esFilaSumada(rowData) ? 'fila-sumada' : '';
+    return esFilaSumada(rowData) ? "fila-sumada" : "";
   };
 
   const footerGroup = (
@@ -505,7 +559,7 @@ const SublineaCreditoList = ({
         <Column
           footer="TOTALES:"
           colSpan={2}
-          footerStyle={{ textAlign: "right", fontWeight: "bold" }}
+          footerStyle={{ textAlign: "right", fontWeight: "bold", fontSize: "0.95rem" }}
         />
         <Column
           footer={new Intl.NumberFormat("es-PE", {
@@ -513,7 +567,7 @@ const SublineaCreditoList = ({
             currency: lineaCredito?.moneda?.codigoSunat || "PEN",
             minimumFractionDigits: 2,
           }).format(calcularTotales().totalAsignado)}
-          footerStyle={{ fontWeight: "bold" }}
+          footerStyle={{ fontWeight: "bold", fontSize: "0.95rem", color: "#003366", textAlign: "right" }}
         />
         <Column
           footer={new Intl.NumberFormat("es-PE", {
@@ -521,7 +575,7 @@ const SublineaCreditoList = ({
             currency: lineaCredito?.moneda?.codigoSunat || "PEN",
             minimumFractionDigits: 2,
           }).format(calcularTotales().totalUtilizado)}
-          footerStyle={{ fontWeight: "bold" }}
+          footerStyle={{ fontWeight: "bold", fontSize: "0.95rem", color: "#006400", textAlign: "right" }}
         />
         <Column
           footer={new Intl.NumberFormat("es-PE", {
@@ -529,7 +583,15 @@ const SublineaCreditoList = ({
             currency: lineaCredito?.moneda?.codigoSunat || "PEN",
             minimumFractionDigits: 2,
           }).format(calcularTotales().totalDisponible)}
-          footerStyle={{ fontWeight: "bold" }}
+          footerStyle={{ fontWeight: "bold", fontSize: "0.95rem", color: "#4682B4", textAlign: "right" }}
+        />
+        <Column
+          footer={new Intl.NumberFormat("es-PE", {
+            style: "currency",
+            currency: lineaCredito?.moneda?.codigoSunat || "PEN",
+            minimumFractionDigits: 2,
+          }).format(calcularTotales().totalSobregiros)}
+          footerStyle={{ fontWeight: "bold", fontSize: "0.95rem", color: "#dc3545", textAlign: "right" }}
         />
         <Column footer="" />
         <Column footer="" />
@@ -655,20 +717,30 @@ const SublineaCreditoList = ({
           header="Monto Asignado"
           body={montoAsignadoTemplate}
           sortable
+          style={{ textAlign: "right" }}
         />
         <Column
           field="montoUtilizado"
           header="Monto Utilizado"
           body={montoUtilizadoTemplate}
           sortable
+          style={{ textAlign: "right" }}
         />
         <Column
           field="montoDisponible"
           header="Monto Disponible"
           body={montoDisponibleTemplate}
           sortable
+          style={{ textAlign: "right" }}
         />
-        <Column header="% Utilizado" body={porcentajeUtilizadoTemplate} />
+        <Column
+          field="totalSobregiros"
+          header="Sobregiro"
+          body={sobregirosTemplate}
+          sortable
+          style={{ textAlign: "right" }}
+        />
+        <Column header="% Utilizado" body={porcentajeUtilizadoTemplate} style={{ textAlign: "right" }}/>
         <Column field="activo" header="Activo" body={activoTemplate} sortable />
         <Column
           header="Acciones"

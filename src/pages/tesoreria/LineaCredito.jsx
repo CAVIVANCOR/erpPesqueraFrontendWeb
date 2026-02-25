@@ -11,7 +11,7 @@ import { Tag } from "primereact/tag";
 import { ProgressBar } from "primereact/progressbar";
 import {
   getAllLineaCredito,
-    getLineaCreditoById,  // ✅ Agregar este import
+  getLineaCreditoById, // ✅ Agregar este import
   deleteLineaCredito,
 } from "../../api/tesoreria/lineaCredito";
 import { getEmpresas } from "../../api/empresa";
@@ -162,19 +162,14 @@ const LineaCredito = ({ ruta }) => {
   const cargarDatos = async () => {
     setLoading(true);
     try {
-     const [
-        lineasData,
-        empresasData,
-        bancosData,
-        monedasData,
-        estadosData,
-      ] = await Promise.all([
-        getAllLineaCredito(),
-        getEmpresas(),
-        getAllBancos(),
-        getAllMonedas(),
-        getEstadosMultiFuncionPorTipoProviene(22),
-      ]);
+      const [lineasData, empresasData, bancosData, monedasData, estadosData] =
+        await Promise.all([
+          getAllLineaCredito(),
+          getEmpresas(),
+          getAllBancos(),
+          getAllMonedas(),
+          getEstadosMultiFuncionPorTipoProviene(22),
+        ]);
       setLineas(lineasData);
       setEmpresas(empresasData);
       setBancos(bancosData);
@@ -274,7 +269,7 @@ const LineaCredito = ({ ruta }) => {
     setEstadoSeleccionado(null);
     setMonedaSeleccionada(null);
     setGlobalFilter("");
- 
+
     // Resetear catálogos filtrados a sus valores completos
     setBancosFiltrados(bancos);
     setEstadosFiltrados(estados);
@@ -317,6 +312,21 @@ const LineaCredito = ({ ruta }) => {
   const disponibleBodyTemplate = (rowData) => {
     const moneda = rowData.moneda?.codigo || "USD";
     return formatCurrency(rowData.montoDisponible || 0, moneda);
+  };
+
+  const sobregirosBodyTemplate = (rowData) => {
+    const totalSobregiros = parseFloat(rowData.totalSobregiros || 0);
+    const moneda = rowData.moneda?.codigo || "USD";
+
+    if (totalSobregiros === 0) {
+      return <span style={{ color: "#6c757d" }}>-</span>;
+    }
+
+    return (
+      <span style={{ color: "#dc3545", fontWeight: "bold" }}>
+        {formatCurrency(totalSobregiros, moneda)}
+      </span>
+    );
   };
 
   const porcentajeBodyTemplate = (rowData) => {
@@ -636,6 +646,7 @@ const LineaCredito = ({ ruta }) => {
         <Column body={bancoBodyTemplate} header="Banco" sortable />
         <Column body={montoBodyTemplate} header="Límite" sortable />
         <Column body={utilizadoBodyTemplate} header="Utilizado" sortable />
+        <Column body={sobregirosBodyTemplate} header="Sobregiro" sortable />
         <Column body={disponibleBodyTemplate} header="Disponible" sortable />
         <Column body={porcentajeBodyTemplate} header="% Utilizado" />
         <Column
@@ -652,7 +663,7 @@ const LineaCredito = ({ ruta }) => {
       </DataTable>
 
       {/* Dialog con Formulario */}
-           <Dialog
+      <Dialog
         header={
           lineaSeleccionada
             ? permisos.puedeEditar
