@@ -434,9 +434,9 @@ const SublineaCreditoList = ({
   };
 
   const calcularTotales = () => {
-    // Agrupar sublíneas por descripción y obtener el máximo de cada grupo
+    // Agrupar sublíneas por descripción
     const gruposPorDescripcion = sublineas.reduce((grupos, sublinea) => {
-      const descripcion = sublinea.descripcion || 'Sin descripción';
+      const descripcion = sublinea.descripcion || "Sin descripción";
       if (!grupos[descripcion]) {
         grupos[descripcion] = [];
       }
@@ -449,26 +449,24 @@ const SublineaCreditoList = ({
     let totalUtilizado = 0;
     let totalDisponible = 0;
 
-    Object.values(gruposPorDescripcion).forEach(grupo => {
-      // Obtener el máximo monto asignado del grupo
-      const maxAsignado = Math.max(...grupo.map(s => parseFloat(s.montoAsignado || 0)));
-      totalAsignado += maxAsignado;
+    Object.values(gruposPorDescripcion).forEach((grupo) => {
+      // Ordenar por monto descendente y tomar el primero
+      const sublineaMaxima = grupo.sort(
+        (a, b) =>
+          parseFloat(b.montoAsignado || 0) - parseFloat(a.montoAsignado || 0),
+      )[0];
 
-      // Para utilizado y disponible, sumar el correspondiente a la sublínea con máximo asignado
-      const sublineaMaxAsignado = grupo.find(s => parseFloat(s.montoAsignado || 0) === maxAsignado);
-      if (sublineaMaxAsignado) {
-        totalUtilizado += parseFloat(sublineaMaxAsignado.montoUtilizado || 0);
-        totalDisponible += parseFloat(sublineaMaxAsignado.montoDisponible || 0);
-      }
+      totalAsignado += parseFloat(sublineaMaxima.montoAsignado || 0);
+      totalUtilizado += parseFloat(sublineaMaxima.montoUtilizado || 0);
+      totalDisponible += parseFloat(sublineaMaxima.montoDisponible || 0);
     });
 
     return { totalAsignado, totalUtilizado, totalDisponible };
   };
-
   const esFilaSumada = (rowData) => {
     // Agrupar sublíneas por descripción
     const gruposPorDescripcion = sublineas.reduce((grupos, sublinea) => {
-      const descripcion = sublinea.descripcion || 'Sin descripción';
+      const descripcion = sublinea.descripcion || "Sin descripción";
       if (!grupos[descripcion]) {
         grupos[descripcion] = [];
       }
@@ -477,10 +475,16 @@ const SublineaCreditoList = ({
     }, {});
 
     // Verificar si esta fila es la que tiene el máximo monto en su grupo
-    const descripcion = rowData.descripcion || 'Sin descripción';
+    const descripcion = rowData.descripcion || "Sin descripción";
     const grupo = gruposPorDescripcion[descripcion] || [];
-    const maxAsignado = Math.max(...grupo.map(s => parseFloat(s.montoAsignado || 0)));
-    return parseFloat(rowData.montoAsignado || 0) === maxAsignado;
+
+    // Ordenar por monto descendente y tomar el primero
+    const sublineaMaxima = grupo.sort(
+      (a, b) =>
+        parseFloat(b.montoAsignado || 0) - parseFloat(a.montoAsignado || 0),
+    )[0];
+
+    return rowData.id === sublineaMaxima?.id;
   };
 
   const rowClassName = (rowData) => {
