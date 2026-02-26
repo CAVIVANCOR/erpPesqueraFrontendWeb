@@ -48,16 +48,16 @@ export default function DatosGeneralesTemporadaForm({
   readOnly = false,
 }) {
   const detalleFaenasRef = useRef(null);
-
+  // Ref para controlar si el usuario está editando manualmente el nombre
+  const nombreEditadoManualmente = useRef(false);
   // Estado para controlar actualizaciones de faenas
   const [faenasUpdateTrigger, setFaenasUpdateTrigger] = useState(0);
-
   const empresaWatched = watch("empresaId");
   const limiteMaximoCapturaTnWatched = watch("limiteMaximoCapturaTn");
-
   // Watch para generar nombre automáticamente
   const idWatched = watch("id");
   const numeroResolucionWatched = watch("numeroResolucion");
+  const nombreWatched = watch("nombre");
 
   // Watch para toneladas capturadas
   const toneladasCapturadasTemporada = watch("toneladasCapturadasTemporada");
@@ -76,21 +76,31 @@ export default function DatosGeneralesTemporadaForm({
     }
   }, [empresaWatched, setValue, bahiasComerciales]);
 
-  // Generar nombre automáticamente cuando cambien id o numeroResolucion
+   // Generar nombre automáticamente SOLO si no ha sido editado manualmente
   useEffect(() => {
-    if (idWatched && numeroResolucionWatched) {
-      const nombreGenerado = `Temporada Pesca - ${idWatched} - ${numeroResolucionWatched}`;
-      setValue("nombre", nombreGenerado);
-    } else if (numeroResolucionWatched && numeroResolucionWatched.trim()) {
-      // Para nuevas temporadas sin ID, usar solo numeroResolucion
-      const nombreGenerado = `Temporada Pesca - ${numeroResolucionWatched}`;
-      setValue("nombre", nombreGenerado);
-    } else if (idWatched) {
-      const nombreGenerado = `Temporada Pesca - ${idWatched}`;
-      setValue("nombre", nombreGenerado);
-    } else {
+    // Si hay un ID y un nombre ya cargado, marcar como editado manualmente (carga inicial)
+    if (idWatched && nombreWatched && nombreWatched.trim() !== '') {
+      nombreEditadoManualmente.current = true;
+      return; // No regenerar
     }
-  }, [idWatched, numeroResolucionWatched, setValue]);
+
+    // Solo generar automáticamente si el usuario NO ha editado manualmente
+    if (!nombreEditadoManualmente.current) {
+      if (idWatched && numeroResolucionWatched) {
+        const nombreGenerado = `Temporada Pesca - ${idWatched} - ${numeroResolucionWatched}`;
+        setValue("nombre", nombreGenerado);
+      } else if (numeroResolucionWatched && numeroResolucionWatched.trim()) {
+        // Para nuevas temporadas sin ID, usar solo numeroResolucion
+        const nombreGenerado = `Temporada Pesca - ${numeroResolucionWatched}`;
+        setValue("nombre", nombreGenerado);
+      } else if (idWatched) {
+        const nombreGenerado = `Temporada Pesca - ${idWatched}`;
+        setValue("nombre", nombreGenerado);
+      }
+    }
+  }, [idWatched, numeroResolucionWatched, nombreWatched, setValue]);
+
+
 
   // Calcular cuotas automáticamente cuando cambien empresa o límite máximo
   useEffect(() => {
@@ -414,8 +424,41 @@ export default function DatosGeneralesTemporadaForm({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          {/* Fecha de Inicio */}
+          {/* Nombre de Temporada - EDITABLE */}
           <div style={{ flex: 1 }}>
+            <label htmlFor="nombre" className="font-semibold">
+              Nombre de Temporada *
+            </label>
+            <Controller
+              name="nombre"
+              control={control}
+              rules={{ required: "El nombre de la temporada es obligatorio" }}
+              render={({ field }) => (
+                <InputText
+                  id="nombre"
+                  {...field}
+                  value={field.value || ""}
+                  onChange={(e) => {
+                    // Marcar que el usuario está editando manualmente
+                    nombreEditadoManualmente.current = true;
+                    field.onChange(e.target.value);
+                    setValue("nombre", e.target.value);
+                  }}
+                  placeholder="Se genera automáticamente o puede editarlo"
+                  disabled={readOnly}
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({
+                    "p-invalid": errors.nombre,
+                  })}
+                />
+              )}
+            />
+            {errors.nombre && (
+              <Message severity="error" text={errors.nombre.message} />
+            )}
+          </div>
+          {/* Fecha de Inicio */}
+          <div style={{ flex: 0.7 }}>
             <label htmlFor="fechaInicio" className="font-semibold">
               Fecha de Inicio *
             </label>
@@ -457,7 +500,7 @@ export default function DatosGeneralesTemporadaForm({
           </div>
 
           {/* Fecha de Fin */}
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 0.7 }}>
             <label htmlFor="fechaFin" className="font-semibold">
               Fecha de Fin *
             </label>

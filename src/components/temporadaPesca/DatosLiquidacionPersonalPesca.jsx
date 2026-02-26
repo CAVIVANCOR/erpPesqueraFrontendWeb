@@ -869,6 +869,78 @@ useEffect(() => {
               )}
             </div>
           </div>
+
+          {/* DIVIDER PARA REPORTES */}
+          <Divider />
+
+          {/* SECCIÓN DE REPORTES */}
+          <h3
+            style={{
+              marginTop: "1rem",
+              marginBottom: "1rem",
+              fontSize: "1rem",
+              fontWeight: 600,
+              color: "#495057",
+            }}
+          >
+            <i
+              className="pi pi-file-pdf"
+              style={{ marginRight: "0.5rem" }}
+            ></i>
+            Reportes de Temporada
+          </h3>
+
+          {/* GRILLA DE BOTONES 4 COLUMNAS x 2 FILAS */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: "10px",
+              marginBottom: "1rem",
+            }}
+          >
+            {/* FILA 1 - CELDA 1: Distribución Temporada */}
+            <Button
+              label="Distribución Temporada"
+              icon="pi pi-file"
+              className="p-button-outlined p-button-secondary"
+              onClick={() => {
+                // TODO: Implementar lógica de reporte
+                console.log("Generar reporte: Distribución Temporada");
+              }}
+              disabled={readOnly || !watch("id")}
+              tooltip="Generar reporte de distribución de temporada"
+              tooltipOptions={{ position: "top" }}
+              style={{
+                height: "60px",
+                fontSize: "0.85rem",
+                padding: "0.5rem",
+              }}
+            />
+
+            {/* FILA 1 - CELDA 2: Vacía */}
+            <div></div>
+
+            {/* FILA 1 - CELDA 3: Vacía */}
+            <div></div>
+
+            {/* FILA 1 - CELDA 4: Vacía */}
+            <div></div>
+
+            {/* FILA 2 - CELDA 1: Vacía */}
+            <div></div>
+
+            {/* FILA 2 - CELDA 2: Vacía */}
+            <div></div>
+
+            {/* FILA 2 - CELDA 3: Vacía */}
+            <div></div>
+
+            {/* FILA 2 - CELDA 4: Vacía */}
+            <div></div>
+          </div>
+
+
         </div>
       </Card>
     </>
