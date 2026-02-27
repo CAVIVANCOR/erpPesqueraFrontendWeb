@@ -46,6 +46,7 @@ export default function DatosGeneralesTemporadaForm({
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
   onFaenasChange, // Callback para notificar cambios en faenas
   readOnly = false,
+  toast = null, // ← AGREGAR ESTA LÍNEA
 }) {
   const detalleFaenasRef = useRef(null);
   // Ref para controlar si el usuario está editando manualmente el nombre
@@ -58,7 +59,7 @@ export default function DatosGeneralesTemporadaForm({
   const idWatched = watch("id");
   const numeroResolucionWatched = watch("numeroResolucion");
   const nombreWatched = watch("nombre");
-
+const zonaWatched = watch("zona");
   // Watch para toneladas capturadas
   const toneladasCapturadasTemporada = watch("toneladasCapturadasTemporada");
 
@@ -76,10 +77,10 @@ export default function DatosGeneralesTemporadaForm({
     }
   }, [empresaWatched, setValue, bahiasComerciales]);
 
-   // Generar nombre automáticamente SOLO si no ha sido editado manualmente
+  // Generar nombre automáticamente SOLO si no ha sido editado manualmente
   useEffect(() => {
     // Si hay un ID y un nombre ya cargado, marcar como editado manualmente (carga inicial)
-    if (idWatched && nombreWatched && nombreWatched.trim() !== '') {
+    if (idWatched && nombreWatched && nombreWatched.trim() !== "") {
       nombreEditadoManualmente.current = true;
       return; // No regenerar
     }
@@ -100,32 +101,54 @@ export default function DatosGeneralesTemporadaForm({
     }
   }, [idWatched, numeroResolucionWatched, nombreWatched, setValue]);
 
-
-
-  // Calcular cuotas automáticamente cuando cambien empresa o límite máximo
+     // Calcular cuotas automáticamente cuando cambien empresa, zona o límite máximo
   useEffect(() => {
     const calcularCuotas = async () => {
       if (!empresaWatched || !limiteMaximoCapturaTnWatched) {
-        // Si no hay empresa o límite, limpiar cuotas
         setValue("cuotaPropiaTon", null);
         setValue("cuotaAlquiladaTon", null);
         return;
       }
 
       try {
-        // Obtener detalles de cuota activos de la empresa
+        // Obtener detalles de cuota de la empresa
         const detalles = await getDetallesCuotaPesca({
-          empresaId: empresaWatched,
+          empresaId: empresaWatched
         });
-        const detallesActivos = detalles.filter((d) => d.activo);
+        
+        // Filtrar: activo + solo PESCA (esAlquiler=false)
+        let detallesFiltrados = detalles
+          .filter((d) => d.activo)
+          .filter((d) => d.esAlquiler === false);
+        
+        // Filtrar por zona (si existe)
+        if (zonaWatched) {
+          detallesFiltrados = detallesFiltrados.filter((d) => d.zona === zonaWatched);
+        }
+
+        // VALIDACIÓN CRÍTICA: ¿Existen cuotas para esta zona?
+        if (detallesFiltrados.length === 0) {
+          setValue("cuotaPropiaTon", null);
+          setValue("cuotaAlquiladaTon", null);
+          
+          // Mostrar error al usuario
+          toast?.current?.show({
+            severity: "error",
+            summary: "Sin Cuotas de Pesca",
+            detail: `No existen Cuotas de Pesca activas para la zona ${zonaWatched}. No se puede crear la Temporada de Pesca.`,
+            life: 5000,
+          });
+          
+          return;
+        }
 
         // Sumar porcentajes de cuotas propias
-        const totalPropiaPorcentaje = detallesActivos
+        const totalPropiaPorcentaje = detallesFiltrados
           .filter((d) => d.cuotaPropia)
           .reduce((sum, d) => sum + Number(d.porcentajeCuota), 0);
 
         // Sumar porcentajes de cuotas alquiladas
-        const totalAlquiladaPorcentaje = detallesActivos
+        const totalAlquiladaPorcentaje = detallesFiltrados
           .filter((d) => !d.cuotaPropia)
           .reduce((sum, d) => sum + Number(d.porcentajeCuota), 0);
 
@@ -134,18 +157,24 @@ export default function DatosGeneralesTemporadaForm({
         const cuotaPropia = limite * (totalPropiaPorcentaje / 100);
         const cuotaAlquilada = limite * (totalAlquiladaPorcentaje / 100);
 
-        // Actualizar campos
         setValue("cuotaPropiaTon", cuotaPropia);
         setValue("cuotaAlquiladaTon", cuotaAlquilada);
       } catch (error) {
         console.error("Error al calcular cuotas:", error);
         setValue("cuotaPropiaTon", null);
         setValue("cuotaAlquiladaTon", null);
+        
+        toast?.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al calcular las cuotas de pesca.",
+          life: 3000,
+        });
       }
     };
 
     calcularCuotas();
-  }, [empresaWatched, limiteMaximoCapturaTnWatched, setValue]);
+  }, [empresaWatched, zonaWatched, limiteMaximoCapturaTnWatched, setValue]);
 
   const cargarDatos = async () => {
     try {
@@ -225,6 +254,11 @@ export default function DatosGeneralesTemporadaForm({
     label: unidad.nombre,
     value: Number(unidad.id),
   }));
+  // Opciones para zona de pesca
+  const zonaPescaOptions = [
+    { label: "NORTE", value: "NORTE" },
+    { label: "SUR", value: "SUR" },
+  ];
 
   return (
     <Card
@@ -455,6 +489,37 @@ export default function DatosGeneralesTemporadaForm({
             />
             {errors.nombre && (
               <Message severity="error" text={errors.nombre.message} />
+            )}
+          </div>
+          {/* Zona de Pesca */}
+          <div style={{ flex: 0.5 }}>
+            <label htmlFor="zona" className="font-semibold">
+              Zona
+            </label>
+            <Controller
+              name="zona"
+              control={control}
+              render={({ field }) => (
+                <Dropdown
+                  id="zona"
+                  {...field}
+                  value={field.value || "NORTE"}
+                  onChange={(e) => {
+                    field.onChange(e.value);
+                    setValue("zona", e.value);
+                  }}
+                  options={zonaPescaOptions}
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Seleccione zona"
+                  disabled={readOnly}
+                  style={{ fontWeight: "bold" }}
+                  className={classNames({ "p-invalid": errors.zona })}
+                />
+              )}
+            />
+            {errors.zona && (
+              <Message severity="error" text={errors.zona.message} />
             )}
           </div>
           {/* Fecha de Inicio */}

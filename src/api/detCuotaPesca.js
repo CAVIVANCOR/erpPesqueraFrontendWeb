@@ -13,14 +13,20 @@ function getAuthHeader() {
 
 /**
  * Obtiene todos los detalles de cuota de pesca.
- * Puede filtrar por empresaId si se proporciona.
- * @param {Object} filtros - Filtros opcionales { empresaId }
+ * Puede filtrar por empresaId, zona y esAlquiler si se proporcionan.
+ * @param {Object} filtros - Filtros opcionales { empresaId, zona, esAlquiler }
  * @returns {Promise<Array>} Lista de detalles de cuota
  */
 export const getDetallesCuotaPesca = async (filtros = {}) => {
   const params = new URLSearchParams();
   if (filtros.empresaId) {
     params.append('empresaId', filtros.empresaId);
+  }
+  if (filtros.zona) {
+    params.append('zona', filtros.zona);
+  }
+  if (filtros.esAlquiler !== undefined && filtros.esAlquiler !== null) {
+    params.append('esAlquiler', filtros.esAlquiler);
   }
   const queryString = params.toString();
   const url = queryString ? `${API_URL}?${queryString}` : API_URL;

@@ -142,6 +142,10 @@ const TemporadaPescaForm = ({
       liqComisionMotoristaReal: null,
       liqComisionPangueroReal: null,
       liqTotalPescaReal: null,
+      // Nuevos campos para zona y alquiler cuota sur
+      zona: "NORTE",
+      ingresosPorAlquilerCuotaSur: null,
+      precioPorTonDolares: null, // ← AGREGAR ESTA LÍNEA
     },
   });
 
@@ -348,9 +352,7 @@ const TemporadaPescaForm = ({
       empresaId: Number(data.empresaId),
       BahiaId: Number(data.BahiaId),
       estadoTemporadaId: Number(data.estadoTemporadaId),
-      unidadNegocioId: data.unidadNegocioId
-        ? Number(data.unidadNegocioId)
-        : 1,
+      unidadNegocioId: data.unidadNegocioId ? Number(data.unidadNegocioId) : 1,
       nombre: data.nombre?.trim().toUpperCase() || "",
       fechaInicio: data.fechaInicio.toISOString(),
       fechaFin: data.fechaFin.toISOString(),
@@ -365,7 +367,8 @@ const TemporadaPescaForm = ({
         ? Number(data.cuotaAlquiladaTon)
         : null,
       fechaActualizacion: new Date().toISOString(),
-      toneladasCapturadasTemporada: data.toneladasCapturadasTemporada || null,
+      // ⚠️ NO ENVIAR toneladasCapturadasTemporada - se calcula en el backend
+      // toneladasCapturadasTemporada: data.toneladasCapturadasTemporada || null,
 
       // Campos de liquidación - Parámetros de comisiones
       porcentajeBaseLiqPesca: data.porcentajeBaseLiqPesca
@@ -421,6 +424,15 @@ const TemporadaPescaForm = ({
       liqTotalPescaReal: data.liqTotalPescaReal
         ? Number(data.liqTotalPescaReal)
         : null,
+
+      // Nuevos campos para zona y alquiler cuota sur
+      zona: data.zona || "NORTE",
+      ingresosPorAlquilerCuotaSur: data.ingresosPorAlquilerCuotaSur
+        ? Number(data.ingresosPorAlquilerCuotaSur)
+        : null,
+      precioPorTonDolares: data.precioPorTonDolares // ← AGREGAR ESTAS 2 LÍNEAS
+        ? Number(data.precioPorTonDolares)
+        : null,
     };
 
     // Solo incluir ID si existe y no es null (para edición)
@@ -430,18 +442,53 @@ const TemporadaPescaForm = ({
 
     try {
       const resultado = await onSave(formData);
-      // Si es una nueva temporada y se obtuvo un ID, re-verificar registros
-      if (resultado && resultado.id && !editingItem?.id) {
-        // Forzar re-verificación de registros con el nuevo ID
+
+      // ⭐ RECARGAR DATOS ACTUALIZADOS DESDE EL BACKEND
+      if (resultado && resultado.id) {
+        // Esperar un momento para que el backend termine el recálculo
         setTimeout(async () => {
-          await verificarTemporadaIniciada(resultado.id);
-        }, 100);
-      } else if (resultado && resultado.id) {
-        // Si es actualización de temporada existente, también verificar
-        setTimeout(async () => {
-          await verificarTemporadaIniciada(resultado.id);
-        }, 100);
+          try {
+            // Obtener los datos actualizados de la temporada
+            const temporadaActualizada = await getTemporadaPescaPorId(
+              resultado.id,
+            );
+            // Actualizar el formulario con los datos recalculados
+            if (temporadaActualizada) {
+              // Convertir el objeto de BD al formato que espera el formulario
+              const datosCompletos = {
+                ...temporadaActualizada,
+                unidadNegocioId: Number(
+                  temporadaActualizada.unidadNegocioId ||
+                    temporadaActualizada.unidadNegocio?.id ||
+                    1,
+                ),
+                empresaId: Number(temporadaActualizada.empresaId),
+                BahiaId: Number(temporadaActualizada.BahiaId),
+                estadoTemporadaId: Number(
+                  temporadaActualizada.estadoTemporadaId,
+                ),
+                fechaInicio: temporadaActualizada.fechaInicio
+                  ? new Date(temporadaActualizada.fechaInicio)
+                  : null,
+                fechaFin: temporadaActualizada.fechaFin
+                  ? new Date(temporadaActualizada.fechaFin)
+                  : null,
+              };
+
+              reset(datosCompletos);
+              console.log(
+                `✅ Datos actualizados - Toneladas: ${temporadaActualizada.toneladasCapturadasTemporada}, UnidadNegocio: ${datosCompletos.unidadNegocioId}`,
+              );
+            }
+
+            // Verificar temporada iniciada
+            await verificarTemporadaIniciada(resultado.id);
+          } catch (reloadError) {
+            console.error("Error al recargar datos actualizados:", reloadError);
+          }
+        }, 500); // Esperar 500ms para que el backend complete el recálculo
       }
+
       setValidandoSuperposicion(false);
     } catch (error) {
       console.error("Error en handleFormSubmit:", error);
@@ -449,7 +496,6 @@ const TemporadaPescaForm = ({
       throw error;
     }
   };
-
   /**
    * Manejar cierre del diálogo
    */
@@ -918,12 +964,15 @@ const TemporadaPescaForm = ({
           editingItem.liqComisionPangueroEstimado || null,
         liqTotalPescaEstimada: editingItem.liqTotalPescaEstimada || null,
         liqComisionAlquilerCuota: editingItem.liqComisionAlquilerCuota || null,
+        ingresosPorAlquilerCuotaSur:
+          editingItem.ingresosPorAlquilerCuotaSur || null,
         // Campos de liquidación - Reales
         liqTripulantesPescaReal: editingItem.liqTripulantesPescaReal || null,
         liqComisionPatronReal: editingItem.liqComisionPatronReal || null,
         liqComisionMotoristaReal: editingItem.liqComisionMotoristaReal || null,
         liqComisionPangueroReal: editingItem.liqComisionPangueroReal || null,
         liqTotalPescaReal: editingItem.liqTotalPescaReal || null,
+        precioPorTonDolares: editingItem.precioPorTonDolares || null,
       });
     } else {
       reset({
@@ -954,12 +1003,14 @@ const TemporadaPescaForm = ({
         liqComisionPangueroEstimado: null,
         liqTotalPescaEstimada: null,
         liqComisionAlquilerCuota: null,
+        ingresosPorAlquilerCuotaSur: null,
         // Campos de liquidación - Reales
         liqTripulantesPescaReal: null,
         liqComisionPatronReal: null,
         liqComisionMotoristaReal: null,
         liqComisionPangueroReal: null,
         liqTotalPescaReal: null,
+        precioPorTonDolares: null,
       });
     }
   }, [editingItem, reset, estadoDefaultId]);
@@ -1030,6 +1081,7 @@ const TemporadaPescaForm = ({
               temporadaData={editingItem}
               onTemporadaDataChange={onTemporadaDataChange}
               readOnly={readOnly}
+              toast={toast}
             />
           )}
 

@@ -12,7 +12,6 @@
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@egjs/react-flicking": "^4.14.0",
-    "@fortune-sheet/react": "^1.0.4",
     "@hookform/resolvers": "^5.1.1",
     "@tanstack/react-query": "^5.82.0",
     "@tanstack/react-router": "^1.125.6",
@@ -24,6 +23,7 @@
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.6",
     "erp-pesquera-frontend-shared": "file:../erp-pesquera-frontend-shared",
+    "exceljs": "^4.4.0",
     "flat-color-icons": "^1.1.0",
     "framer-motion": "^12.23.25",
     "pdf-lib": "^1.17.1",

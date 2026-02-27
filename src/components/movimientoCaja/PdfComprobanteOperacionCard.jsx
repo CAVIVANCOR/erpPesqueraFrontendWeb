@@ -23,7 +23,7 @@ const PdfComprobanteOperacionCard = ({
 }) => {
   return (
     <PDFDocumentManager
-      moduleName="movimiento-caja-comprobante"
+      moduleName="movimiento-caja-operacion"
       fieldName="urlComprobanteOperacionMovCaja"
       entityId={movimientoId}
       title="Comprobante de Operación (Voucher, Recibo, etc.)"

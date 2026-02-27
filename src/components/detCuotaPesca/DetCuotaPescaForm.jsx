@@ -3,15 +3,15 @@
 // Usa react-hook-form y Yup para validación profesional.
 // Documentado en español técnico.
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as Yup from "yup";
 import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
-import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import AuditInfo from "../shared/AuditInfo";
+import { Dropdown } from "primereact/dropdown";
 
 // Esquema de validación profesional con Yup
 const schema = Yup.object().shape({
@@ -24,8 +24,9 @@ const schema = Yup.object().shape({
   precioPorTonDolares: Yup.number()
     .min(0, "El precio no puede ser negativo")
     .nullable(),
-  cuotaPropia: Yup.boolean(),
-  activo: Yup.boolean(),
+  zona: Yup.string()
+    .required("La zona es obligatoria")
+    .oneOf(["NORTE", "SUR"], "La zona debe ser NORTE o SUR"),
 });
 
 /**
@@ -46,6 +47,11 @@ export default function DetCuotaPescaForm({
   loading = false,
   readOnly = false,
 }) {
+  // Estados para campos booleanos
+  const [esAlquiler, setEsAlquiler] = useState(defaultValues.esAlquiler ?? false);
+  const [cuotaPropia, setCuotaPropia] = useState(defaultValues.cuotaPropia ?? false);
+  const [activo, setActivo] = useState(defaultValues.activo ?? true);
+
   const {
     register,
     handleSubmit,
@@ -59,8 +65,7 @@ export default function DetCuotaPescaForm({
       nombre: defaultValues.nombre || "",
       porcentajeCuota: defaultValues.porcentajeCuota || 0,
       precioPorTonDolares: defaultValues.precioPorTonDolares || 0,
-      cuotaPropia: defaultValues.cuotaPropia ?? false,
-      activo: defaultValues.activo ?? true,
+      zona: defaultValues.zona || "NORTE",
     },
   });
 
@@ -71,9 +76,11 @@ export default function DetCuotaPescaForm({
       nombre: defaultValues.nombre || "",
       porcentajeCuota: defaultValues.porcentajeCuota || 0,
       precioPorTonDolares: defaultValues.precioPorTonDolares || 0,
-      cuotaPropia: defaultValues.cuotaPropia ?? false,
-      activo: defaultValues.activo ?? true,
+      zona: defaultValues.zona || "NORTE",
     });
+    setEsAlquiler(defaultValues.esAlquiler ?? false);
+    setCuotaPropia(defaultValues.cuotaPropia ?? false);
+    setActivo(defaultValues.activo ?? true);
   }, [defaultValues, reset]);
 
   // Maneja el submit interno
@@ -83,8 +90,10 @@ export default function DetCuotaPescaForm({
       nombre: data.nombre.trim().toUpperCase(),
       porcentajeCuota: Number(data.porcentajeCuota),
       precioPorTonDolares: data.precioPorTonDolares !== null && data.precioPorTonDolares !== undefined ? Number(data.precioPorTonDolares) : 0,
-      cuotaPropia: !!data.cuotaPropia,
-      activo: !!data.activo,
+      zona: data.zona,
+      esAlquiler: esAlquiler,
+      cuotaPropia: cuotaPropia,
+      activo: activo,
       idPersonaActualiza: Number(defaultValues.idPersonaActualiza),
     };
     onSubmit(payload);
@@ -141,9 +150,7 @@ export default function DetCuotaPescaForm({
 
         {/* Precio por tonelada en dólares */}
         <div className="field">
-          <label htmlFor="precioPorTonDolares">
-            Precio por Tonelada (USD)
-          </label>
+          <label htmlFor="precioPorTonDolares">Precio por Tonelada (USD)</label>
           <Controller
             name="precioPorTonDolares"
             control={control}
@@ -164,46 +171,83 @@ export default function DetCuotaPescaForm({
             )}
           />
           {errors.precioPorTonDolares && (
-            <small className="p-error">{errors.precioPorTonDolares.message}</small>
+            <small className="p-error">
+              {errors.precioPorTonDolares.message}
+            </small>
           )}
         </div>
 
-        {/* Checkbox: ¿Es cuota propia? */}
-        <div className="field-checkbox">
+        {/* Zona */}
+        <div className="field">
+          <label htmlFor="zona">
+            Zona <span style={{ color: "red" }}>*</span>
+          </label>
           <Controller
-            name="cuotaPropia"
+            name="zona"
             control={control}
             render={({ field }) => (
-              <Checkbox
-                inputId="cuotaPropia"
-                checked={field.value}
-                onChange={(e) => field.onChange(e.checked)}
+              <Dropdown
+                id="zona"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={[
+                  { label: "NORTE", value: "NORTE" },
+                  { label: "SUR", value: "SUR" },
+                ]}
                 disabled={readOnly}
+                placeholder="Seleccione zona"
+                className={errors.zona ? "p-invalid" : ""}
               />
             )}
           />
-          <label htmlFor="cuotaPropia" style={{ marginLeft: 8 }}>
-            ¿Es Cuota Propia? (Si no, es Cuota Alquilada)
-          </label>
+          {errors.zona && (
+            <small className="p-error">{errors.zona.message}</small>
+          )}
         </div>
 
-        {/* Checkbox: Activo */}
-        <div className="field-checkbox">
-          <Controller
-            name="activo"
-            control={control}
-            render={({ field }) => (
-              <Checkbox
-                inputId="activo"
-                checked={field.value}
-                onChange={(e) => field.onChange(e.checked)}
-                disabled={readOnly}
-              />
-            )}
-          />
-          <label htmlFor="activo" style={{ marginLeft: 8 }}>
-            Activo
-          </label>
+        {/* Botones booleanos en grilla 2x2 */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: "1rem" }}>
+          {/* Estado de Operación (esAlquiler) */}
+          <div className="field">
+            <label htmlFor="esAlquiler">Estado de Operación</label>
+            <Button
+              type="button"
+              label={esAlquiler ? "ALQUILER" : "PESCA"}
+              className={esAlquiler ? "p-button-warning" : "p-button-info"}
+              icon={esAlquiler ? "pi pi-dollar" : "pi pi-anchor"}
+              onClick={() => setEsAlquiler(!esAlquiler)}
+              disabled={readOnly}
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          {/* Tipo de Cuota (cuotaPropia) */}
+          <div className="field">
+            <label htmlFor="cuotaPropia">Tipo de Cuota</label>
+            <Button
+              type="button"
+              label={cuotaPropia ? "CUOTA PROPIA" : "CUOTA ALQUILADA"}
+              className={cuotaPropia ? "p-button-success" : "p-button-secondary"}
+              icon={cuotaPropia ? "pi pi-home" : "pi pi-building"}
+              onClick={() => setCuotaPropia(!cuotaPropia)}
+              disabled={readOnly}
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          {/* Estado (activo) */}
+          <div className="field">
+            <label htmlFor="activo">Estado</label>
+            <Button
+              type="button"
+              label={activo ? "ACTIVO" : "INACTIVO"}
+              className={activo ? "p-button-success" : "p-button-danger"}
+              icon={activo ? "pi pi-check-circle" : "pi pi-times-circle"}
+              onClick={() => setActivo(!activo)}
+              disabled={readOnly}
+              style={{ width: "100%" }}
+            />
+          </div>
         </div>
 
         {/* Información de Auditoría */}

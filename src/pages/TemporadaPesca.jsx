@@ -22,6 +22,7 @@ import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { Dialog } from "primereact/dialog";
 import { Toolbar } from "primereact/toolbar";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
@@ -91,7 +92,17 @@ const TemporadaPesca = ({ ruta }) => {
   const [filtroEstado, setFiltroEstado] = useState(null);
   const [fechaDesde, setFechaDesde] = useState(null);
   const [fechaHasta, setFechaHasta] = useState(null);
-
+  // Constante con todas las zonas disponibles (escalable)
+  const ZONAS_DISPONIBLES = [
+    { value: "NORTE", label: "NORTE", color: "#3b82f6", icon: "pi-arrow-up" },
+    { value: "SUR", label: "SUR", color: "#10b981", icon: "pi-arrow-down" },
+    // Agregar más zonas aquí en el futuro:
+    // { value: "CENTRO", label: "CENTRO", color: "#f59e0b", icon: "pi-circle" },
+    // { value: "ESTE", label: "ESTE", color: "#8b5cf6", icon: "pi-arrow-right" },
+  ];
+  // Estados para diálogo de selección de zona
+  const [showZonaDialog, setShowZonaDialog] = useState(false);
+  const [zonaIndex, setZonaIndex] = useState(0); // Índice de la zona actual
   // Referencias
   const toast = useRef(null);
   const dt = useRef(null);
@@ -257,21 +268,68 @@ const TemporadaPesca = ({ ruta }) => {
   };
 
   /**
-   * Abrir formulario para nueva temporada
+   * Abrir diálogo de selección de zona antes de crear nueva temporada
    */
   const openNew = () => {
-    setEditingItem({ empresaId: filtroEmpresa });
+    setZonaIndex(0); // Resetear a primera zona (NORTE)
+    setShowZonaDialog(true);
+  };
+
+  /**
+   * Permutar a la siguiente zona
+   */
+  const permutarZona = () => {
+    setZonaIndex((prevIndex) => (prevIndex + 1) % ZONAS_DISPONIBLES.length);
+  };
+
+  /**
+   * Confirmar zona y abrir formulario de nueva temporada
+   */
+  const confirmarZonaYAbrirFormulario = () => {
+    const zonaSeleccionada = ZONAS_DISPONIBLES[zonaIndex].value;
+    setShowZonaDialog(false);
+    setEditingItem({
+      empresaId: filtroEmpresa,
+      zona: zonaSeleccionada,
+    });
     setIsEdit(false);
     setShowForm(true);
   };
 
-  /**
+   /**
    * Editar temporada (clic en fila - regla transversal ERP Megui)
+   * ⚠️ CRÍTICO: Obtiene datos FRESCOS de la BD para garantizar integridad de datos
    */
-  const editItem = (temporada) => {
-    setEditingItem(temporada);
-    setIsEdit(true);
-    setShowForm(true);
+  const editItem = async (temporada) => {
+    try {
+      setLoading(true);
+      
+      // Obtener datos 100% REALES Y ACTUALIZADOS de la base de datos
+      const temporadaActualizada = await getTemporadaPescaPorId(temporada.id);
+      
+      if (temporadaActualizada) {
+        setEditingItem(temporadaActualizada);
+        setIsEdit(true);
+        setShowForm(true);
+      } else {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudo cargar la temporada desde la base de datos",
+          life: 3000,
+        });
+      }
+    } catch (error) {
+      console.error("Error al cargar temporada desde BD:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al obtener datos actualizados de la base de datos",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   /**
@@ -989,6 +1047,136 @@ const TemporadaPesca = ({ ruta }) => {
           />
         </DataTable>
       </div>
+      {/* Diálogo de selección de zona con botón permutante */}
+      <Dialog
+        visible={showZonaDialog}
+        onHide={() => setShowZonaDialog(false)}
+        header="Seleccionar Zona de Temporada"
+        modal
+        style={{ width: "500px" }}
+        closable={false}
+      >
+        <div className="p-fluid" style={{ padding: "1rem" }}>
+          {/* Pregunta */}
+          <div style={{ marginBottom: "1.5rem", textAlign: "center" }}>
+            <h3
+              style={{
+                fontSize: "1.2rem",
+                fontWeight: "bold",
+                color: "#495057",
+                margin: 0,
+              }}
+            >
+              ¿A qué zona pertenece la temporada?
+            </h3>
+            <small
+              style={{
+                color: "#6c757d",
+                display: "block",
+                marginTop: "0.5rem",
+              }}
+            >
+              Haga clic en el botón para cambiar de zona
+            </small>
+          </div>
+
+          {/* Botón permutante de zona */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: "1.5rem",
+            }}
+          >
+            <Button
+              label={ZONAS_DISPONIBLES[zonaIndex].label}
+              icon={`pi ${ZONAS_DISPONIBLES[zonaIndex].icon}`}
+              onClick={permutarZona}
+              style={{
+                width: "280px",
+                height: "100px",
+                fontSize: "1.5rem",
+                fontWeight: "bold",
+                backgroundColor: ZONAS_DISPONIBLES[zonaIndex].color,
+                borderColor: ZONAS_DISPONIBLES[zonaIndex].color,
+                color: "#ffffff",
+                transition: "all 0.3s ease",
+                boxShadow: `0 6px 12px ${ZONAS_DISPONIBLES[zonaIndex].color}40`,
+                transform: "scale(1)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "scale(1.05)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+            />
+          </div>
+
+          {/* Indicador de zona actual */}
+          <div
+            style={{
+              textAlign: "center",
+              marginBottom: "1.5rem",
+              padding: "1rem",
+              backgroundColor: "#f8f9fa",
+              borderRadius: "8px",
+              border: `2px solid ${ZONAS_DISPONIBLES[zonaIndex].color}`,
+            }}
+          >
+            <div style={{ marginBottom: "0.5rem" }}>
+              <strong style={{ color: "#495057", fontSize: "0.9rem" }}>
+                Zona seleccionada:
+              </strong>
+            </div>
+            <div
+              style={{
+                color: ZONAS_DISPONIBLES[zonaIndex].color,
+                fontWeight: "bold",
+                fontSize: "1.3rem",
+              }}
+            >
+              {ZONAS_DISPONIBLES[zonaIndex].label}
+            </div>
+            <small
+              style={{
+                color: "#6c757d",
+                display: "block",
+                marginTop: "0.5rem",
+              }}
+            >
+              {ZONAS_DISPONIBLES.length > 1 &&
+                `(${zonaIndex + 1} de ${ZONAS_DISPONIBLES.length} zonas disponibles)`}
+            </small>
+          </div>
+
+          {/* Botones de acción */}
+          <div
+            style={{
+              display: "flex",
+              gap: "0.5rem",
+              justifyContent: "flex-end",
+            }}
+          >
+            <Button
+              label="Cancelar"
+              icon="pi pi-times"
+              onClick={() => setShowZonaDialog(false)}
+              className="p-button-text p-button-secondary"
+            />
+            <Button
+              label="PROCEDER"
+              icon="pi pi-check"
+              onClick={confirmarZonaYAbrirFormulario}
+              className="p-button-success"
+              style={{
+                fontWeight: "bold",
+                minWidth: "140px",
+              }}
+            />
+          </div>
+        </div>
+      </Dialog>
       {/* Formulario de temporada */}
       <TemporadaPescaForm
         visible={showForm}

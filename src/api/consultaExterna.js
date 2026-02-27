@@ -136,8 +136,12 @@ export const consultarTipoCambioSunat = async (params = {}) => {
       switch (error.response.status) {
         case 400:
           throw new Error('Parámetros de fecha no válidos');
+        case 401:
+          throw new Error('Token de API SUNAT vencido o inválido. Contacte al administrador del sistema para renovar el token.');
+        case 404:
+          return null;
         case 500:
-          throw new Error('Servicio de consulta tipo de cambio no disponible');
+          return null;
         default:
           throw new Error(`Error ${error.response.status}: ${error.response.data?.error || 'Error desconocido'}`);
       }

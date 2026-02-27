@@ -289,9 +289,11 @@ export default function MovimientoCajaForm({
         : "",
     );
     setUrlComprobanteOperacionMovCaja(
-      defaultValues.urlComprobanteOperacionMovCaja || "",
-    );
-    setUrlDocumentoMovCaja(defaultValues.urlDocumentoMovCaja || "");
+  defaultValues.urlComprobanteOperacionMovCaja || "",
+);
+setUrlDocumentoMovCaja(defaultValues.urlDocumentoMovCaja || "");
+setValue("urlComprobanteOperacionMovCaja", defaultValues.urlComprobanteOperacionMovCaja || "");
+setValue("urlDocumentoMovCaja", defaultValues.urlDocumentoMovCaja || "");
   }, [defaultValues]);
 
   const cuentasOrigenFiltradas = React.useMemo(() => {
@@ -367,8 +369,8 @@ export default function MovimientoCajaForm({
         : null,
       fechaOperacionMovCaja: new Date(),
       operacionSinFactura,
-      urlComprobanteOperacionMovCaja: urlComprobanteOperacionMovCaja || null,
-      urlDocumentoMovCaja: urlDocumentoMovCaja || null,
+urlComprobanteOperacionMovCaja: getValues("urlComprobanteOperacionMovCaja") || null,
+urlDocumentoMovCaja: getValues("urlDocumentoMovCaja") || null,
       cuentaDestinoEntidadComercialId: cuentaDestinoEntidadComercialId
         ? Number(cuentaDestinoEntidadComercialId)
         : null,
@@ -383,7 +385,7 @@ export default function MovimientoCajaForm({
   // Función para validar que existan los PDFs antes de validar el movimiento
   const handleValidarMovimiento = () => {
     // Validar que exista el comprobante de operación
-    if (!urlComprobanteOperacionMovCaja) {
+if (!getValues("urlComprobanteOperacionMovCaja")) {
       toast.current?.show({
         severity: "warn",
         summary: "Validación Requerida",
@@ -396,7 +398,7 @@ export default function MovimientoCajaForm({
     }
 
     // Validar que exista el documento afecto
-    if (!urlDocumentoMovCaja) {
+if (!getValues("urlDocumentoMovCaja")) {
       toast.current?.show({
         severity: "warn",
         summary: "Validación Requerida",

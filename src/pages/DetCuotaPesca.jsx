@@ -240,21 +240,39 @@ export default function DetCuotaPesca({ ruta }) {
     return `${rowData.personaActualiza.nombres} ${rowData.personaActualiza.apellidos}`;
   };
 
+    // Template para mostrar zona
+  const zonaTemplate = (rowData) => {
+    return rowData.zona === "SUR" ? (
+      <span style={{ color: "#9C27B0", fontWeight: "bold" }}>SUR</span>
+    ) : (
+      <span style={{ color: "#2196F3", fontWeight: "bold" }}>NORTE</span>
+    );
+  };
+
+  // Template para mostrar estado de operación (esAlquiler)
+  const estadoOperacionTemplate = (rowData) => {
+    return rowData.esAlquiler ? (
+      <span style={{ color: "#FF9800", fontWeight: "bold" }}>ALQUILER</span>
+    ) : (
+      <span style={{ color: "#00BCD4", fontWeight: "bold" }}>PESCA</span>
+    );
+  };
+
   // Template para mostrar tipo de cuota
   const tipoCuotaTemplate = (rowData) => {
     return rowData.cuotaPropia ? (
-      <span style={{ color: "#2196F3", fontWeight: "bold" }}>PROPIA</span>
+      <span style={{ color: "#4CAF50", fontWeight: "bold" }}>PROPIA</span>
     ) : (
-      <span style={{ color: "#FF9800", fontWeight: "bold" }}>ALQUILADA</span>
+      <span style={{ color: "#757575", fontWeight: "bold" }}>ALQUILADA</span>
     );
   };
 
   // Template para mostrar estado activo
   const activoTemplate = (rowData) => {
     return rowData.activo ? (
-      <span style={{ color: "#4CAF50" }}>Sí</span>
+      <span style={{ color: "#4CAF50", fontWeight: "bold" }}>ACTIVO</span>
     ) : (
-      <span style={{ color: "#F44336" }}>No</span>
+      <span style={{ color: "#F44336", fontWeight: "bold" }}>INACTIVO</span>
     );
   };
 
@@ -384,42 +402,55 @@ export default function DetCuotaPesca({ ruta }) {
           permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
         }
         globalFilterFields={["nombre", "empresa.razonSocial"]}
-      >
+           >
         <Column field="id" header="ID" style={{ width: "80px" }} />
         <Column
           field="empresa.razonSocial"
           header="Empresa"
           style={{ width: "200px" }}
         />
-        <Column field="nombre" header="Nombre" />
+        <Column field="nombre" header="Nombre" style={{ minWidth: "200px" }} />
+        <Column
+          field="zona"
+          header="Zona"
+          body={zonaTemplate}
+          style={{ width: "100px", textAlign: "center" }}
+        />
         <Column
           field="porcentajeCuota"
           header="Porcentaje"
           body={porcentajeTemplate}
-          style={{ width: "120px" }}
+          style={{ width: "120px", textAlign: "right" }}
         />
         <Column
           field="precioPorTonDolares"
           header="Precio/Ton (USD)"
           body={precioTemplate}
-          style={{ width: "140px" }}
+          style={{ width: "140px", textAlign: "right" }}
+        />
+        <Column
+          field="esAlquiler"
+          header="Estado Operación"
+          body={estadoOperacionTemplate}
+          style={{ width: "140px", textAlign: "center" }}
         />
         <Column
           field="cuotaPropia"
-          header="Tipo"
+          header="Tipo Cuota"
           body={tipoCuotaTemplate}
-          style={{ width: "120px" }}
+          style={{ width: "130px", textAlign: "center" }}
+        />
+        <Column
+          field="activo"
+          header="Estado"
+          body={activoTemplate}
+          style={{ width: "100px", textAlign: "center" }}
         />
         <Column
           field="personaActualiza"
           header="Actualizado Por"
           body={personaTemplate}
-        />
-        <Column
-          field="activo"
-          header="Activo"
-          body={activoTemplate}
-          style={{ width: "100px" }}
+          style={{ minWidth: "180px" }}
         />
         <Column
           header="Acciones"
