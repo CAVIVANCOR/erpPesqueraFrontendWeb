@@ -146,6 +146,7 @@ const TemporadaPescaForm = ({
       zona: "NORTE",
       ingresosPorAlquilerCuotaSur: null,
       precioPorTonDolares: null, // ← AGREGAR ESTA LÍNEA
+      precioPorTonAlquilerDolares: null,
     },
   });
 
@@ -432,6 +433,9 @@ const TemporadaPescaForm = ({
         : null,
       precioPorTonDolares: data.precioPorTonDolares // ← AGREGAR ESTAS 2 LÍNEAS
         ? Number(data.precioPorTonDolares)
+        : null,
+      precioPorTonAlquilerDolares: data.precioPorTonAlquilerDolares
+        ? Number(data.precioPorTonAlquilerDolares)
         : null,
     };
 
@@ -973,6 +977,7 @@ const TemporadaPescaForm = ({
         liqComisionPangueroReal: editingItem.liqComisionPangueroReal || null,
         liqTotalPescaReal: editingItem.liqTotalPescaReal || null,
         precioPorTonDolares: editingItem.precioPorTonDolares || null,
+        precioPorTonAlquilerDolares: editingItem.precioPorTonAlquilerDolares || null,
       });
     } else {
       reset({
@@ -1011,6 +1016,7 @@ const TemporadaPescaForm = ({
         liqComisionPangueroReal: null,
         liqTotalPescaReal: null,
         precioPorTonDolares: null,
+        precioPorTonAlquilerDolares: null,
       });
     }
   }, [editingItem, reset, estadoDefaultId]);

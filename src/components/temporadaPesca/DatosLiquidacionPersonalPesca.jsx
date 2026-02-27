@@ -138,6 +138,16 @@ export default function DatosLiquidacionPersonalPesca({
         setValue("precioPorTonDolares", Number(cuotaPropia.precioPorTonDolares || 0));
       }
 
+      const cuotaAlquilada = cuotas.find(
+        (c) =>
+          c.cuotaPropia === false &&
+          c.esAlquiler === false &&
+          c.zona === zona,
+      );
+      if (cuotaAlquilada) {
+        setValue("precioPorTonAlquilerDolares", Number(cuotaAlquilada.precioPorTonDolares || 0));
+      }
+
       toast.current?.show({
         severity: "success",
         summary: "Parámetros Cargados",
@@ -728,7 +738,7 @@ export default function DatosLiquidacionPersonalPesca({
                 htmlFor="precioPorTonDolares"
                 className="block mb-2"
               >
-                Precio por Ton. US$
+                Precio por Ton. US$ (Propia)
               </label>
               <Controller
                 name="precioPorTonDolares"
@@ -755,6 +765,41 @@ export default function DatosLiquidacionPersonalPesca({
               {errors.precioPorTonDolares && (
                 <small className="p-error">
                   {errors.precioPorTonDolares.message}
+                </small>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="precioPorTonAlquilerDolares"
+                className="block mb-2"
+              >
+                Precio por Ton. US$ (Alquiler)
+              </label>
+              <Controller
+                name="precioPorTonAlquilerDolares"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="precioPorTonAlquilerDolares"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    min={0}
+                    prefix="$ "
+                    placeholder="$ 0.00"
+                    className={classNames({
+                      "p-invalid": errors.precioPorTonAlquilerDolares,
+                    })}
+                    disabled={readOnly}
+                    inputStyle={{ fontWeight: "bold" }}
+                  />
+                )}
+              />
+              {errors.precioPorTonAlquilerDolares && (
+                <small className="p-error">
+                  {errors.precioPorTonAlquilerDolares.message}
                 </small>
               )}
             </div>
