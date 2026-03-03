@@ -90,6 +90,7 @@ const DetMovsEntregaRendirForm = ({
       asignacionOrigenId: null,
       formaParteCalculoLiquidacionTripulantes: false,
       formaParteCalculoEntregaARendir: false,
+      formaParteCalculoLiqAlquilerCuota: false,
     },
   });
   const urlComprobanteMovimiento = watch("urlComprobanteMovimiento");
@@ -100,6 +101,9 @@ const DetMovsEntregaRendirForm = ({
   );
   const formaParteCalculoEntregaARendir = watch(
     "formaParteCalculoEntregaARendir",
+  );
+  const formaParteCalculoLiqAlquilerCuota = watch(
+    "formaParteCalculoLiqAlquilerCuota",
   );
   const fechaOperacionMovCaja = watch("fechaOperacionMovCaja");
   const operacionMovCajaId = watch("operacionMovCajaId");
@@ -163,6 +167,8 @@ const DetMovsEntregaRendirForm = ({
           movimiento.formaParteCalculoLiquidacionTripulantes ?? false,
         formaParteCalculoEntregaARendir:
           movimiento.formaParteCalculoEntregaARendir ?? false,
+        formaParteCalculoLiqAlquilerCuota:
+          movimiento.formaParteCalculoLiqAlquilerCuota ?? false,
       });
     } else {
       setValue("entregaARendirId", Number(entregaARendirId));
@@ -330,6 +336,20 @@ const DetMovsEntregaRendirForm = ({
       detail: !valorActual
         ? "Incluido en cálculo de liquidación de tripulantes"
         : "Excluido de cálculo de liquidación de tripulantes",
+      life: 2000,
+    });
+  };
+
+  const handleToggleCalculoLiqAlquilerCuota = () => {
+    const valorActual = getValues("formaParteCalculoLiqAlquilerCuota");
+    setValue("formaParteCalculoLiqAlquilerCuota", !valorActual);
+
+    toast.current?.show({
+      severity: "info",
+      summary: "Estado Actualizado",
+      detail: !valorActual
+        ? "Incluido en cálculo de liquidación alquiler cuota"
+        : "Excluido de cálculo de liquidación alquiler cuota",
       life: 2000,
     });
   };
@@ -1038,6 +1058,33 @@ const DetMovsEntregaRendirForm = ({
                       : "p-button-secondary"
                   }
                   onClick={handleToggleCalculoLiquidacion}
+                  size="small"
+                  style={{ width: "100%" }}
+                  disabled={formularioDeshabilitado}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Liq. Alquiler Cuota
+                </label>
+                <Button
+                  type="button"
+                  label={
+                    formaParteCalculoLiqAlquilerCuota
+                      ? "INCLUIDO"
+                      : "EXCLUIDO"
+                  }
+                  icon={
+                    formaParteCalculoLiqAlquilerCuota
+                      ? "pi pi-check-circle"
+                      : "pi pi-times-circle"
+                  }
+                  className={
+                    formaParteCalculoLiqAlquilerCuota
+                      ? "p-button-success"
+                      : "p-button-secondary"
+                  }
+                  onClick={handleToggleCalculoLiqAlquilerCuota}
                   size="small"
                   style={{ width: "100%" }}
                   disabled={formularioDeshabilitado}

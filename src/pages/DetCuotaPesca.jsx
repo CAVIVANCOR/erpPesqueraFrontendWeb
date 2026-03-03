@@ -281,6 +281,11 @@ export default function DetCuotaPesca({ ruta }) {
     return `${Number(rowData.porcentajeCuota).toFixed(6)}%`;
   };
 
+  // Template para entidad empresarial
+  const entidadEmpresarialTemplate = (rowData) => {
+    return rowData.entidadEmpresarial?.razonSocial || "-";
+  };
+
   // Template para precio por tonelada
   const precioTemplate = (rowData) => {
     const precio = Number(rowData.precioPorTonDolares || 0);
@@ -401,7 +406,7 @@ export default function DetCuotaPesca({ ruta }) {
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
         }
-        globalFilterFields={["nombre", "empresa.razonSocial"]}
+        globalFilterFields={["nombre", "empresa.razonSocial", "entidadEmpresarial.razonSocial"]}
            >
         <Column field="id" header="ID" style={{ width: "80px" }} />
         <Column
@@ -447,9 +452,9 @@ export default function DetCuotaPesca({ ruta }) {
           style={{ width: "100px", textAlign: "center" }}
         />
         <Column
-          field="personaActualiza"
-          header="Actualizado Por"
-          body={personaTemplate}
+          field="entidadEmpresarial.razonSocial"
+          header="Entidad Empresarial"
+          body={entidadEmpresarialTemplate}
           style={{ minWidth: "180px" }}
         />
         <Column

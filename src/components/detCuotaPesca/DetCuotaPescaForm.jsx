@@ -12,6 +12,7 @@ import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
 import AuditInfo from "../shared/AuditInfo";
 import { Dropdown } from "primereact/dropdown";
+import { getEntidadesComerciales } from "../../api/entidadComercial";
 
 // Esquema de validación profesional con Yup
 const schema = Yup.object().shape({
@@ -48,9 +49,14 @@ export default function DetCuotaPescaForm({
   readOnly = false,
 }) {
   // Estados para campos booleanos
-  const [esAlquiler, setEsAlquiler] = useState(defaultValues.esAlquiler ?? false);
-  const [cuotaPropia, setCuotaPropia] = useState(defaultValues.cuotaPropia ?? false);
+  const [esAlquiler, setEsAlquiler] = useState(
+    defaultValues.esAlquiler ?? false,
+  );
+  const [cuotaPropia, setCuotaPropia] = useState(
+    defaultValues.cuotaPropia ?? false,
+  );
   const [activo, setActivo] = useState(defaultValues.activo ?? true);
+  const [entidades, setEntidades] = useState([]);
 
   const {
     register,
@@ -66,8 +72,24 @@ export default function DetCuotaPescaForm({
       porcentajeCuota: defaultValues.porcentajeCuota || 0,
       precioPorTonDolares: defaultValues.precioPorTonDolares || 0,
       zona: defaultValues.zona || "NORTE",
+      entidadEmpresarialId: defaultValues.entidadEmpresarialId || null,
     },
   });
+
+  // Cargar entidades comerciales filtradas por empresa
+  useEffect(() => {
+    const empresaId = defaultValues.empresaId;
+    if (!empresaId) return;
+    getEntidadesComerciales()
+      .then((data) => {
+        const todas = Array.isArray(data) ? data : [];
+        const filtradas = todas.filter(
+          (e) => Number(e.empresaId) === Number(empresaId),
+        );
+        setEntidades(filtradas);
+      })
+      .catch(() => setEntidades([]));
+  }, [defaultValues.empresaId]);
 
   // Resetear formulario cuando cambian defaultValues
   useEffect(() => {
@@ -77,6 +99,9 @@ export default function DetCuotaPescaForm({
       porcentajeCuota: defaultValues.porcentajeCuota || 0,
       precioPorTonDolares: defaultValues.precioPorTonDolares || 0,
       zona: defaultValues.zona || "NORTE",
+      entidadEmpresarialId: defaultValues.entidadEmpresarialId
+        ? Number(defaultValues.entidadEmpresarialId)
+        : null,
     });
     setEsAlquiler(defaultValues.esAlquiler ?? false);
     setCuotaPropia(defaultValues.cuotaPropia ?? false);
@@ -89,12 +114,19 @@ export default function DetCuotaPescaForm({
       empresaId: Number(data.empresaId),
       nombre: data.nombre.trim().toUpperCase(),
       porcentajeCuota: Number(data.porcentajeCuota),
-      precioPorTonDolares: data.precioPorTonDolares !== null && data.precioPorTonDolares !== undefined ? Number(data.precioPorTonDolares) : 0,
+      precioPorTonDolares:
+        data.precioPorTonDolares !== null &&
+        data.precioPorTonDolares !== undefined
+          ? Number(data.precioPorTonDolares)
+          : 0,
       zona: data.zona,
       esAlquiler: esAlquiler,
       cuotaPropia: cuotaPropia,
       activo: activo,
       idPersonaActualiza: Number(defaultValues.idPersonaActualiza),
+      entidadEmpresarialId: data.entidadEmpresarialId
+        ? Number(data.entidadEmpresarialId)
+        : null,
     };
     onSubmit(payload);
   };
@@ -113,6 +145,7 @@ export default function DetCuotaPescaForm({
             disabled={readOnly}
             className={errors.nombre ? "p-invalid" : ""}
             placeholder="Ej: Cuota Propia Principal, Cuota Alquilada Secundaria"
+            style={{ fontWeight: "bold" }}
           />
           {errors.nombre && (
             <small className="p-error">{errors.nombre.message}</small>
@@ -136,6 +169,7 @@ export default function DetCuotaPescaForm({
                 mode="decimal"
                 minFractionDigits={2}
                 maxFractionDigits={6}
+                inputStyle={{ fontWeight: "bold" }}
                 min={0}
                 max={100}
                 suffix="%"
@@ -163,6 +197,7 @@ export default function DetCuotaPescaForm({
                 mode="currency"
                 currency="USD"
                 locale="en-US"
+                inputStyle={{ fontWeight: "bold" }}
                 minFractionDigits={2}
                 maxFractionDigits={2}
                 min={0}
@@ -195,6 +230,7 @@ export default function DetCuotaPescaForm({
                   { label: "SUR", value: "SUR" },
                 ]}
                 disabled={readOnly}
+                style={{ fontWeight: "bold" }}
                 placeholder="Seleccione zona"
                 className={errors.zona ? "p-invalid" : ""}
               />
@@ -205,8 +241,41 @@ export default function DetCuotaPescaForm({
           )}
         </div>
 
+        {/* Entidad Empresarial */}
+        <div className="field">
+          <label htmlFor="entidadEmpresarialId">Entidad Empresarial</label>
+          <Controller
+            name="entidadEmpresarialId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="entidadEmpresarialId"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={entidades.map((e) => ({
+                  label: e.razonSocial,
+                  value: Number(e.id),
+                }))}
+                style={{ fontWeight: "bold" }}
+                disabled={readOnly}
+                placeholder="Seleccione entidad (opcional)"
+                filter
+                showClear
+                filterPlaceholder="Buscar entidad..."
+              />
+            )}
+          />
+        </div>
+
         {/* Botones booleanos en grilla 2x2 */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: "1rem" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "1rem",
+            marginTop: "1rem",
+          }}
+        >
           {/* Estado de Operación (esAlquiler) */}
           <div className="field">
             <label htmlFor="esAlquiler">Estado de Operación</label>
@@ -227,7 +296,9 @@ export default function DetCuotaPescaForm({
             <Button
               type="button"
               label={cuotaPropia ? "CUOTA PROPIA" : "CUOTA ALQUILADA"}
-              className={cuotaPropia ? "p-button-success" : "p-button-secondary"}
+              className={
+                cuotaPropia ? "p-button-success" : "p-button-secondary"
+              }
               icon={cuotaPropia ? "pi pi-home" : "pi pi-building"}
               onClick={() => setCuotaPropia(!cuotaPropia)}
               disabled={readOnly}
