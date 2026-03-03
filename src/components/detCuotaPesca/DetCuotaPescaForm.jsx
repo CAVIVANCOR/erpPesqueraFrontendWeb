@@ -25,6 +25,9 @@ const schema = Yup.object().shape({
   precioPorTonDolares: Yup.number()
     .min(0, "El precio no puede ser negativo")
     .nullable(),
+  precioPorTonComisionAlquiler: Yup.number()
+    .min(0, "El precio de comisión no puede ser negativo")
+    .nullable(),
   zona: Yup.string()
     .required("La zona es obligatoria")
     .oneOf(["NORTE", "SUR"], "La zona debe ser NORTE o SUR"),
@@ -73,6 +76,8 @@ export default function DetCuotaPescaForm({
       precioPorTonDolares: defaultValues.precioPorTonDolares || 0,
       zona: defaultValues.zona || "NORTE",
       entidadEmpresarialId: defaultValues.entidadEmpresarialId || null,
+      precioPorTonComisionAlquiler: defaultValues.precioPorTonComisionAlquiler || 0,
+      entidadComercialComisionistaAlquiler: defaultValues.entidadComercialComisionistaAlquiler || null,
     },
   });
 
@@ -102,6 +107,10 @@ export default function DetCuotaPescaForm({
       entidadEmpresarialId: defaultValues.entidadEmpresarialId
         ? Number(defaultValues.entidadEmpresarialId)
         : null,
+      precioPorTonComisionAlquiler: defaultValues.precioPorTonComisionAlquiler || 0,
+      entidadComercialComisionistaAlquiler: defaultValues.entidadComercialComisionistaAlquiler
+        ? Number(defaultValues.entidadComercialComisionistaAlquiler)
+        : null,
     });
     setEsAlquiler(defaultValues.esAlquiler ?? false);
     setCuotaPropia(defaultValues.cuotaPropia ?? false);
@@ -126,6 +135,14 @@ export default function DetCuotaPescaForm({
       idPersonaActualiza: Number(defaultValues.idPersonaActualiza),
       entidadEmpresarialId: data.entidadEmpresarialId
         ? Number(data.entidadEmpresarialId)
+        : null,
+      precioPorTonComisionAlquiler:
+        data.precioPorTonComisionAlquiler !== null &&
+        data.precioPorTonComisionAlquiler !== undefined
+          ? Number(data.precioPorTonComisionAlquiler)
+          : 0,
+      entidadComercialComisionistaAlquiler: data.entidadComercialComisionistaAlquiler
+        ? Number(data.entidadComercialComisionistaAlquiler)
         : null,
     };
     onSubmit(payload);
@@ -259,6 +276,66 @@ export default function DetCuotaPescaForm({
                 style={{ fontWeight: "bold" }}
                 disabled={readOnly}
                 placeholder="Seleccione entidad (opcional)"
+                filter
+                showClear
+                filterPlaceholder="Buscar entidad..."
+              />
+            )}
+          />
+        </div>
+
+        {/* Precio Comisión Alquiler */}
+        <div className="field">
+          <label htmlFor="precioPorTonComisionAlquiler">
+            Precio Comisión Alquiler (USD/Ton)
+          </label>
+          <Controller
+            name="precioPorTonComisionAlquiler"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="precioPorTonComisionAlquiler"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                disabled={readOnly}
+                mode="currency"
+                currency="USD"
+                locale="en-US"
+                inputStyle={{ fontWeight: "bold" }}
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                min={0}
+                className={errors.precioPorTonComisionAlquiler ? "p-invalid" : ""}
+              />
+            )}
+          />
+          {errors.precioPorTonComisionAlquiler && (
+            <small className="p-error">
+              {errors.precioPorTonComisionAlquiler.message}
+            </small>
+          )}
+        </div>
+
+        {/* Entidad Comisionista Alquiler */}
+        <div className="field">
+          <label htmlFor="entidadComercialComisionistaAlquiler">
+            Entidad Comisionista Alquiler
+          </label>
+          <Controller
+            name="entidadComercialComisionistaAlquiler"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="entidadComercialComisionistaAlquiler"
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={entidades.map((e) => ({
+                  label: e.razonSocial,
+                  value: Number(e.id),
+                }))}
+                style={{ fontWeight: "bold" }}
+                disabled={readOnly}
+                placeholder="Seleccione comisionista (opcional)"
                 filter
                 showClear
                 filterPlaceholder="Buscar entidad..."

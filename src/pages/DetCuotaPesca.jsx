@@ -297,6 +297,22 @@ export default function DetCuotaPesca({ ruta }) {
     }).format(precio);
   };
 
+  // Template para precio comisión alquiler
+  const precioComisionTemplate = (rowData) => {
+    const precio = Number(rowData.precioPorTonComisionAlquiler || 0);
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(precio);
+  };
+
+  // Template para entidad comisionista
+  const entidadComisionistaTemplate = (rowData) => {
+    return rowData.entidadComercialComisionista?.razonSocial || "-";
+  };
+
   // Preparar opciones de empresas
   const empresasOptions = empresas.map((e) => ({
     label: e.razonSocial,
@@ -406,7 +422,12 @@ export default function DetCuotaPesca({ ruta }) {
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar ? onRowClick : undefined
         }
-        globalFilterFields={["nombre", "empresa.razonSocial", "entidadEmpresarial.razonSocial"]}
+        globalFilterFields={[
+          "nombre", 
+          "empresa.razonSocial", 
+          "entidadEmpresarial.razonSocial",
+          "entidadComercialComisionista.razonSocial"
+        ]}
            >
         <Column field="id" header="ID" style={{ width: "80px" }} />
         <Column
@@ -455,6 +476,18 @@ export default function DetCuotaPesca({ ruta }) {
           field="entidadEmpresarial.razonSocial"
           header="Entidad Empresarial"
           body={entidadEmpresarialTemplate}
+          style={{ minWidth: "180px" }}
+        />
+        <Column
+          field="precioPorTonComisionAlquiler"
+          header="Comisión Alq. (USD/Ton)"
+          body={precioComisionTemplate}
+          style={{ width: "160px", textAlign: "right" }}
+        />
+        <Column
+          field="entidadComercialComisionista.razonSocial"
+          header="Comisionista Alquiler"
+          body={entidadComisionistaTemplate}
           style={{ minWidth: "180px" }}
         />
         <Column
