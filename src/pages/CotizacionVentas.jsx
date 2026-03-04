@@ -145,18 +145,12 @@ const CotizacionVentas = ({ ruta }) => {
   };
 
   // ✅ NUEVO: Función para recargar clientes después de crear uno nuevo
-  const recargarClientes = async () => {
+   const recargarClientes = async () => {
     try {
       const clientesData = await getEntidadesComerciales();
       setClientes(clientesData);
-      toast.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: "Listado de clientes actualizado",
-        life: 3000,
-      });
-    } catch (error) {
-      console.error("Error al recargar clientes:", error);
+    } catch (err) {
+      console.error("🔴 [CotizacionVentas] Error al recargar clientes:", err);
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -373,11 +367,14 @@ const CotizacionVentas = ({ ruta }) => {
         }
       }
 
-      // Crear objeto inicial con autorizaVentaId y unidadNegocioId pre-cargados
+      // Crear objeto inicial con valores por defecto pre-cargados
       const cotizacionInicial = {
         autorizaVentaId,
-        // ✅ NUEVO: Auto-seleccionar unidadNegocioId desde Dashboard de Unidades
+        // ✅ Auto-seleccionar unidadNegocioId desde Dashboard de Unidades
         ...(unidadActiva && { unidadNegocioId: unidadActiva.id }),
+        // ✅ NUEVO: Auto-asignar valores por defecto de Destino y Estado Producto
+        destinoProductoId: 1, // Mercado Local
+        tipoEstadoProductoId: 1, // S/E Sin Estado
       };
 
       setSelectedCotizacion(cotizacionInicial);

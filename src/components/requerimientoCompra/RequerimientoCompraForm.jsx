@@ -11,6 +11,8 @@ import { getEstadosMultiFuncionPorTipoProviene } from "../../api/estadoMultiFunc
 import { getParametrosAprobadorPorModulo } from "../../api/parametroAprobador";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import VerImpresionRequerimientoCompraPDF from "./VerImpresionRequerimientoCompraPDF";
+import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
+
 export default function RequerimientoCompraForm({
   isEdit,
   defaultValues,
@@ -95,7 +97,6 @@ export default function RequerimientoCompraForm({
     ordenTrabajoId: defaultValues?.ordenTrabajoId
       ? Number(defaultValues.ordenTrabajoId)
       : null,
-
     // Comerciales - CONVERTIDOS A NUMBER PARA DROPDOWNS
     esConCotizacion: defaultValues?.esConCotizacion || false,
     formaPagoId: defaultValues?.formaPagoId
@@ -150,7 +151,10 @@ export default function RequerimientoCompraForm({
 
   // Handler genérico para cambios en cualquier campo
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value };
+      return newData;
+    });
   };
 
   // Actualizar formData cuando cambian los defaultValues (modo edición)
@@ -824,10 +828,11 @@ export default function RequerimientoCompraForm({
 
   const seriesDocOptions = seriesDoc.map((s) => {
     const correlativoActual = Number(s.correlativo);
+    const descripcionSerie = getDescripcionSerie(s.serie);
     return {
       ...s,
       id: Number(s.id),
-      label: `${s.serie} (Correlativo: ${correlativoActual})`,
+      label: `${descripcionSerie} (N: ${correlativoActual})`,
       value: Number(s.id),
     };
   });

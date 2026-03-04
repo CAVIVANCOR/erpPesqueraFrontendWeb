@@ -8,6 +8,7 @@ import ContratoServicioPdfCard from "./ContratoServicioPdfCard";
 import EntregaARendirContratoCard from "./EntregaARendirContratoCard";
 import { getSeriesDoc } from "../../api/contratoServicio";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
+import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 
 const ContratoServicioForm = ({
   contrato = null,
@@ -304,13 +305,17 @@ const ContratoServicioForm = ({
     }
   };
 
-  // Crear opciones de series con formato: "001 (Correlativo: 5)"
-  const seriesDocOptions = seriesDoc.map((s) => ({
-    ...s,
-    id: Number(s.id),
-    label: `${s.serie} (Correlativo: ${Number(s.correlativo)})`,
-    value: Number(s.id),
-  }));
+  // Crear opciones de series con formato: "001 - MATERIA PRIMA (N: 5)"
+  const seriesDocOptions = seriesDoc.map((s) => {
+    const correlativoActual = Number(s.correlativo);
+    const descripcionSerie = getDescripcionSerie(s.serie);
+    return {
+      ...s,
+      id: Number(s.id),
+      label: `${descripcionSerie} (N: ${correlativoActual})`,
+      value: Number(s.id),
+    };
+  });
 
   const unidadesNegocioOptions = unidadesNegocio.map((unidad) => ({
     label: unidad.nombre,

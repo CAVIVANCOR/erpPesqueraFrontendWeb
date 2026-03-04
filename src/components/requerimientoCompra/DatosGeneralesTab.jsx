@@ -68,24 +68,27 @@ export default function DatosGeneralesTab({
     setShowEntidadDialog(false);
   };
 
-    // ✅ MEJORADO: Callback cuando se guarda exitosamente una entidad
-  const handleEntidadGuardada = (entidad) => {
+  // ✅ MEJORADO: Callback cuando se guarda exitosamente una entidad
+  const handleEntidadGuardada = async (entidad) => {
     // Cerrar el Dialog
     setShowEntidadDialog(false);
 
-    // ✅ NUEVO: Auto-seleccionar el nuevo proveedor en formData
-    if (entidad && entidad.id) {
-      handleChange({
-        target: {
-          name: "proveedorId",
-          value: entidad.id
-        }
-      });
+    // ✅ PRIMERO: Recargar proveedores (esperar a que termine)
+    if (onProveedorCreado && typeof onProveedorCreado === "function") {
+      await onProveedorCreado(entidad);
     }
 
-    // Recargar proveedores si hay callback
-    if (onProveedorCreado && typeof onProveedorCreado === "function") {
-      onProveedorCreado(entidad);
+    // ✅ SEGUNDO: Auto-seleccionar el nuevo proveedor DESPUÉS de recargar
+    if (entidad && entidad.id) {
+      // Usar setTimeout para asegurar que el dropdown se haya actualizado
+      setTimeout(() => {
+        const proveedorIdNumber = Number(entidad.id);
+        onChange("proveedorId", proveedorIdNumber);
+      }, 100);
+    } else {
+      console.log(
+        "🔴 [DatosGeneralesTab] NO se puede auto-seleccionar - entidad o id faltante",
+      );
     }
 
     // Mostrar mensaje de éxito
@@ -97,6 +100,7 @@ export default function DatosGeneralesTab({
         life: 4000,
       });
     }
+
   };
 
   // Helper para obtener nombre completo del personal por ID

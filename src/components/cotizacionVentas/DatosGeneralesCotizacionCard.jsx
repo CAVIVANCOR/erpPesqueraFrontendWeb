@@ -104,18 +104,24 @@ const DatosGeneralesCotizacionCard = ({
     setShowEntidadDialog(false);
   };
 
-  const handleEntidadGuardada = async (nuevaEntidad) => {
+   const handleEntidadGuardada = async (nuevaEntidad) => {
     // Cerrar el dialog
     handleCerrarEntidadDialog();
 
-    // ✅ NUEVO: Auto-seleccionar el nuevo cliente en formData
+    // ✅ PRIMERO: Recargar clientes (esperar a que termine)
+    if (onClienteCreado) {
+      await onClienteCreado();
+    }
+
+    // ✅ SEGUNDO: Auto-seleccionar el nuevo cliente DESPUÉS de recargar
     if (nuevaEntidad && nuevaEntidad.id) {
-      handleChange({
-        target: {
-          name: "clienteId",
-          value: nuevaEntidad.id,
-        },
-      });
+      // Usar setTimeout para asegurar que el dropdown se haya actualizado
+      setTimeout(() => {
+        const clienteIdNumber = Number(nuevaEntidad.id);
+        handleChange("clienteId", clienteIdNumber);
+      }, 100);
+    } else {
+      console.log("🔴 [DatosGeneralesCotizacionCard] NO se puede auto-seleccionar - entidad o id faltante");
     }
 
     // Mostrar mensaje de éxito
@@ -126,10 +132,6 @@ const DatosGeneralesCotizacionCard = ({
       life: 3000,
     });
 
-    // Ejecutar callback para recargar clientes
-    if (onClienteCreado) {
-      await onClienteCreado();
-    }
   };
   // Cargar todas las entidades comerciales (clientes Y proveedores) cuando cambie la empresa
   useEffect(() => {

@@ -15,6 +15,25 @@ export const MESES = [
   { label: "Noviembre", value: 11 },
   { label: "Diciembre", value: 12 },
 ];
+/**
+ * Constante global con las series de documentos estándar del sistema
+ * Usar en todos los módulos que manejen series: RequerimientoCompra, OrdenCompra, 
+ * CotizacionVentas, PreFactura, MovimientoAlmacen, etc.
+ */
+export const SERIES_DOCUMENTO = [
+  { value: "001", label: "001 - MATERIA PRIMA" },
+  { value: "002", label: "002 - PRODUCTO FINAL - SERVICIOS" }
+];
+
+/**
+ * Función helper para obtener la descripción de una serie
+ * @param {string} serie - Número de serie (ej: "001")
+ * @returns {string} Descripción completa (ej: "001 - MATERIA PRIMA")
+ */
+export const getDescripcionSerie = (serie) => {
+  const serieEncontrada = SERIES_DOCUMENTO.find(s => s.value === serie);
+  return serieEncontrada ? serieEncontrada.label : serie;
+};
 
 export const getResponsiveFontSize = () => {
     const width = window.innerWidth;

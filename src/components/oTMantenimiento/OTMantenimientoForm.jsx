@@ -17,6 +17,7 @@ import PdfFotosAntesCard from "./PdfFotosAntesCard";
 import PdfFotosDespuesCard from "./PdfFotosDespuesCard";
 import VerImpresionOTMantenimientoPDF from "./VerImpresionOTMantenimientoPDF";
 import EntregaARendirOTMantenimientoCard from "./EntregaARendirOTMantenimientoCard";
+import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 
 const OTMantenimientoForm = ({
   isEdit,
@@ -374,10 +375,14 @@ const OTMantenimientoForm = ({
                 <Dropdown
                   id="serieDocId"
                   value={formData.serieDocId}
-                  options={seriesDoc.map((s) => ({
-                    label: `${s.serie} (Correlativo: ${Number(s.correlativo)})`,
-                    value: Number(s.id),
-                  }))}
+                  options={seriesDoc.map((s) => {
+                    const correlativoActual = Number(s.correlativo);
+                    const descripcionSerie = getDescripcionSerie(s.serie);
+                    return {
+                      label: `${descripcionSerie} (N: ${correlativoActual})`,
+                      value: Number(s.id),
+                    };
+                  })}
                   onChange={(e) => handleSerieDocChange(e.value)}
                   placeholder="Seleccionar serie"
                   disabled={!formData.empresaId || !!formData.serieDocId}

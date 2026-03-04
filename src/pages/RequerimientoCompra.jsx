@@ -113,7 +113,10 @@ export default function RequerimientoCompra({ ruta }) {
       const proveedoresData = await getEntidadesComerciales();
       setProveedores(proveedoresData);
     } catch (err) {
-      console.error("Error al recargar proveedores:", err);
+      console.error(
+        "🔴 [RequerimientoCompra] Error al recargar proveedores:",
+        err,
+      );
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -449,9 +452,11 @@ export default function RequerimientoCompra({ ruta }) {
       ...(usuario?.personalId && {
         supervisorCampoId: Number(usuario.personalId),
         solicitanteId: Number(usuario.personalId),
+        destinoProductoId: 1, // ✅ Explícitamente incluido
+        tipoEstadoProductoId: 1, // ✅ Explícitamente incluido
       }),
     };
-    
+
     setEditing(valoresIniciales);
     setShowDialog(true);
   };

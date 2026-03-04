@@ -14,6 +14,7 @@ import { getDocumentosPorCotizacion } from "../../api/detDocsReqCotizaVentas";
 import { obtenerContactosPorEntidad } from "../../api/contactoEntidad";
 import { obtenerDireccionesPorEntidad } from "../../api/direccionEntidad";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
+import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 
 const CotizacionVentasForm = ({
   isEdit,
@@ -221,9 +222,9 @@ const CotizacionVentasForm = ({
     usuarioConversionId: defaultValues?.usuarioConversionId
       ? Number(defaultValues.usuarioConversionId)
       : null,
-    destinoProductoId: defaultValues?.destinoProductoId
+     destinoProductoId: defaultValues?.destinoProductoId
       ? Number(defaultValues.destinoProductoId)
-      : null,
+      : 1, // ✅ DEFAULT: 1 (Mercado Local)
     formaTransaccionId: defaultValues?.formaTransaccionId
       ? Number(defaultValues.formaTransaccionId)
       : null,
@@ -232,7 +233,7 @@ const CotizacionVentasForm = ({
       : null,
     tipoEstadoProductoId: defaultValues?.tipoEstadoProductoId
       ? Number(defaultValues.tipoEstadoProductoId)
-      : null,
+      : 1, // ✅ DEFAULT: 1 (S/E Sin Estado)
     observaciones: defaultValues?.observaciones || "",
     observacionesInternas: defaultValues?.observacionesInternas || "",
     urlCotizacionPdf: defaultValues?.urlCotizacionPdf || null,
@@ -262,12 +263,14 @@ const CotizacionVentasForm = ({
     }
   }, [defaultValues]);
 
-  const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    const handleChange = (field, value) => {
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value };
+      return newData;
+    });
   };
 
   const { empresaId, tipoDocumentoId, fechaDocumento } = formData;
-
   // Guardar fecha inicial para evitar carga automática en mount
   useEffect(() => {
     if (fechaDocumento && fechaDocumentoInicial === null) {
@@ -717,12 +720,16 @@ const CotizacionVentasForm = ({
     value: Number(e.id),
   }));
 
-  const seriesDocOptions = seriesDoc.map((s) => ({
-    ...s,
-    id: Number(s.id),
-    label: `${s.serie} (Correlativo: ${Number(s.correlativo)})`,
-    value: Number(s.id),
-  }));
+  const seriesDocOptions = seriesDoc.map((s) => {
+    const correlativoActual = Number(s.correlativo);
+    const descripcionSerie = getDescripcionSerie(s.serie);
+    return {
+      ...s,
+      id: Number(s.id),
+      label: `${descripcionSerie} (N: ${correlativoActual})`,
+      value: Number(s.id),
+    };
+  });
 
   // Opciones de contactos del cliente
   const contactosClienteOptions = (contactosCliente || []).map((c) => ({

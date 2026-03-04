@@ -18,6 +18,7 @@ import {
 } from "../../api/preFactura";
 import { Dialog } from "primereact/dialog";
 import { InputNumber } from "primereact/inputnumber";
+import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 
 export default function PreFacturaForm({
   isEdit,
@@ -972,10 +973,11 @@ export default function PreFacturaForm({
 
   const seriesDocOptions = seriesDoc.map((s) => {
     const correlativoActual = Number(s.correlativo);
+    const descripcionSerie = getDescripcionSerie(s.serie);
     return {
       ...s,
       id: Number(s.id),
-      label: `${s.serie} (Correlativo: ${correlativoActual})`,
+      label: `${descripcionSerie} (N: ${correlativoActual})`,
       value: Number(s.id),
     };
   });

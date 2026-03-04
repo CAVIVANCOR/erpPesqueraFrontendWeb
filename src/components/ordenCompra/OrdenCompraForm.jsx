@@ -10,6 +10,7 @@ import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 import { obtenerDireccionesPorEntidad } from "../../api/direccionEntidad";
 import { obtenerContactosPorEntidad } from "../../api/contactoEntidad";
+import { SERIES_DOCUMENTO, getDescripcionSerie } from "../../utils/utils";
 
 export default function OrdenCompraForm({
   isEdit,
@@ -265,7 +266,6 @@ export default function OrdenCompraForm({
   useEffect(() => {
     if (!isEdit && usuario?.personalId && !solicitanteId) {
       setSolicitanteId(Number(usuario.personalId));
-
       if (toast?.current) {
         setTimeout(() => {
           toast.current.show({
@@ -623,10 +623,11 @@ export default function OrdenCompraForm({
 
   const seriesDocOptions = (seriesDoc || []).map((s) => {
     const correlativoActual = Number(s.correlativo);
+    const descripcionSerie = getDescripcionSerie(s.serie);
     return {
       ...s,
       id: Number(s.id),
-      label: `${s.serie} (Correlativo: ${correlativoActual})`,
+      label: `${descripcionSerie} (N: ${correlativoActual})`,
       value: Number(s.id),
     };
   });
