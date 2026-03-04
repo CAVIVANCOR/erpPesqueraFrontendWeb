@@ -39,12 +39,30 @@ export default function DetalleDialog({
 
   // Obtener entidadComercialId de la empresa seleccionada
   const empresaSeleccionada = empresas?.find(
-    (e) => Number(e.id) === Number(empresaId)
+    (e) => Number(e.id) === Number(empresaId),
   );
   const entidadComercialId = empresaSeleccionada?.entidadComercialId;
 
-  // Obtener código de moneda de la cabecera (datosGenerales.moneda)
+    // Obtener código de moneda de la cabecera (datosGenerales.moneda)
   const codigoMoneda = datosGenerales?.moneda?.codigoSunat || "PEN";
+  
+  // ✅ CORRECCIÓN: Obtener familiaId desde tipoProductoId
+  // OPCIÓN 1: Si tipoProducto incluye subfamilia (ideal, cuando backend lo envíe)
+  let familiaProductoId = datosGenerales?.tipoProducto?.subfamilia?.familiaId || null;
+  
+  // OPCIÓN 2: Mapeo temporal mientras el backend no incluya la relación completa
+  if (!familiaProductoId && datosGenerales?.tipoProductoId) {
+    const tipoProductoIdNumber = Number(datosGenerales.tipoProductoId);
+    
+    // Mapeo de tipoProductoId a familiaId
+    // TODO: Esto debe venir del backend con la relación completa
+    const mapaTemporalTipoProductoAFamilia = {
+      9: 5, // SERVICIO CONTRATISTA (subfamilia 24) → SERVICIOS
+      // Agrega aquí otros tipos de producto de SERVICIOS si existen
+    };
+    
+    familiaProductoId = mapaTemporalTipoProductoAFamilia[tipoProductoIdNumber] || null;
+  }
 
   useEffect(() => {
     if (detalle) {
@@ -57,7 +75,7 @@ export default function DetalleDialog({
       });
       // Buscar el producto seleccionado
       const producto = productos.find(
-        (p) => Number(p.id) === Number(detalle.productoId)
+        (p) => Number(p.id) === Number(detalle.productoId),
       );
       setProductoSeleccionado(producto || null);
     } else {
@@ -220,10 +238,13 @@ export default function DetalleDialog({
             </div>
           </Panel>
         ) : (
-          <Panel header="Seleccionar Producto" style={{ marginBottom: "1rem" }}>
+          <Panel
+            header="Seleccionar Producto ó Servicio"
+            style={{ marginBottom: "1rem" }}
+          >
             <Button
               type="button"
-              label="Seleccionar Producto"
+              label="Seleccionar Producto / Servicio"
               icon="pi pi-search"
               className="p-button-primary"
               severity="primary"
@@ -242,6 +263,7 @@ export default function DetalleDialog({
           empresaId={empresaId}
           clienteId={entidadComercialId} // Usar entidadComercialId calculado
           esCustodia={false} // Requerimiento de compra siempre es mercadería propia
+          familiaProductoId={familiaProductoId} // ✅ PASAR familiaId
         />
         {/* Primera fila: Cantidad y Unidad */}
         <div

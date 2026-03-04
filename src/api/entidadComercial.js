@@ -99,6 +99,26 @@ export async function getClientesPorEmpresa(empresaId) {
 }
 
 /**
+ * Obtiene entidades comerciales filtradas por empresa para dropdown de Personal.
+ * Filtra por: empresaId y estado=true
+ * @param {number} empresaId - ID de la empresa para filtrar
+ * @returns {Promise<Array>} Lista de entidades comerciales activas con estructura para dropdown
+ */
+export async function getEntidadesComercialesPorEmpresa(empresaId) {
+  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+  const entidadesFiltradas = res.data.filter(entidad => 
+    Number(entidad.empresaId) === Number(empresaId) &&
+    entidad.estado === true
+  );
+  
+  return entidadesFiltradas.map(entidad => ({
+    ...entidad,
+    label: entidad.razonSocial || entidad.nombreComercial,
+    value: Number(entidad.id)
+  }));
+}
+
+/**
  * Obtiene plantas industriales filtradas (tipoEntidadId=18)
  * @returns {Promise<Array>} Lista de plantas industriales activas con estructura para dropdown
  */

@@ -114,7 +114,8 @@ const CotizacionVentas = ({ ruta }) => {
   const toast = useRef(null);
 
   // Filtrado automático por Unidad de Negocio
-  const { datosFiltrados: cotizacionesFiltradas, unidadActiva } = useUnidadNegocioFilter(cotizaciones);
+  const { datosFiltrados: cotizacionesFiltradas, unidadActiva } =
+    useUnidadNegocioFilter(cotizaciones);
 
   useEffect(() => {
     cargarCotizaciones();
@@ -140,6 +141,28 @@ const CotizacionVentas = ({ ruta }) => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ✅ NUEVO: Función para recargar clientes después de crear uno nuevo
+  const recargarClientes = async () => {
+    try {
+      const clientesData = await getEntidadesComerciales();
+      setClientes(clientesData);
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Listado de clientes actualizado",
+        life: 3000,
+      });
+    } catch (error) {
+      console.error("Error al recargar clientes:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo recargar el listado de clientes",
+        life: 3000,
+      });
     }
   };
 
@@ -350,9 +373,11 @@ const CotizacionVentas = ({ ruta }) => {
         }
       }
 
-      // Crear objeto inicial con autorizaVentaId pre-cargado
+      // Crear objeto inicial con autorizaVentaId y unidadNegocioId pre-cargados
       const cotizacionInicial = {
         autorizaVentaId,
+        // ✅ NUEVO: Auto-seleccionar unidadNegocioId desde Dashboard de Unidades
+        ...(unidadActiva && { unidadNegocioId: unidadActiva.id }),
       };
 
       setSelectedCotizacion(cotizacionInicial);
@@ -1053,6 +1078,7 @@ const CotizacionVentas = ({ ruta }) => {
           }))}
           empresaFija={empresaSeleccionada}
           onRecargarRegistro={recargarCotizacionActual}
+          onClienteCreado={recargarClientes} // ✅ AGREGAR ESTA LÍNEA
         />
       </Dialog>
     </div>

@@ -374,7 +374,6 @@ const LineaCreditoForm = forwardRef(
               lineaCredito={lineaCredito}
               onSublineasChange={(sublineas) => {
                 // Opcional: actualizar estado si necesitas hacer algo con las sublíneas
-                console.log("Sublíneas actualizadas:", sublineas);
               }}
             />
           </div>

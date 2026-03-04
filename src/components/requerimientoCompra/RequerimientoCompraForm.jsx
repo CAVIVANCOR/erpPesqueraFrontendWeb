@@ -38,6 +38,9 @@ export default function RequerimientoCompraForm({
   toast,
   permisos = {},
   readOnly = false,
+  abrirModulo, // ✅ AGREGAR ESTA LÍNEA
+  onCloseDialog, // ✅ AGREGAR ESTA LÍNEA
+  onProveedorCreado, // ✅ AGREGAR ESTA LÍNEA
 }) {
   const { usuario } = useAuthStore();
 
@@ -79,13 +82,15 @@ export default function RequerimientoCompraForm({
       : null,
     tipoEstadoProductoId: defaultValues?.tipoEstadoProductoId
       ? Number(defaultValues.tipoEstadoProductoId)
-      : null,
+      : 1, // ✅ DEFAULT: 1 (S/E Sin Estado)
     destinoProductoId: defaultValues?.destinoProductoId
       ? Number(defaultValues.destinoProductoId)
-      : null,
+      : 1, // ✅ DEFAULT: 1 (Mercado Local)
     solicitanteId: defaultValues?.solicitanteId
       ? Number(defaultValues.solicitanteId)
-      : null,
+      : usuario?.personalId
+        ? Number(usuario.personalId)
+        : null, // ✅ DEFAULT: Usuario que registra
     estadoId: defaultValues?.estadoId ? Number(defaultValues.estadoId) : 34,
     ordenTrabajoId: defaultValues?.ordenTrabajoId
       ? Number(defaultValues.ordenTrabajoId)
@@ -105,9 +110,9 @@ export default function RequerimientoCompraForm({
     centroCostoId: defaultValues?.centroCostoId
       ? Number(defaultValues.centroCostoId)
       : 14,
-    unidadNegocioId: defaultValues?.unidadNegocioId // ✅ AGREGAR ESTA LÍNEA
-      ? Number(defaultValues.unidadNegocioId) // ✅ AGREGAR ESTA LÍNEA
-      : null, // ✅ AGREGAR ESTA LÍNEA
+    unidadNegocioId: defaultValues?.unidadNegocioId
+      ? Number(defaultValues.unidadNegocioId)
+      : null,
     porcentajeIGV: defaultValues?.porcentajeIGV || null,
     esExoneradoAlIGV: defaultValues?.esExoneradoAlIGV || false,
 
@@ -123,7 +128,9 @@ export default function RequerimientoCompraForm({
       : null,
     supervisorCampoId: defaultValues?.supervisorCampoId
       ? Number(defaultValues.supervisorCampoId)
-      : null,
+      : usuario?.personalId
+        ? Number(usuario.personalId)
+        : null, // ✅ DEFAULT: Usuario que registra
     aprobadoPorId: defaultValues?.aprobadoPorId
       ? Number(defaultValues.aprobadoPorId)
       : null,
@@ -968,6 +975,9 @@ export default function RequerimientoCompraForm({
             total={totales.total}
             monedaRequerimiento={defaultValues?.moneda}
             readOnly={readOnly}
+            abrirModulo={abrirModulo} // ✅ AGREGAR ESTA LÍNEA
+            onCloseDialog={onCloseDialog} // ✅ AGREGAR ESTA LÍNEA
+            onProveedorCreado={onProveedorCreado} // ✅ AGREGAR ESTA LÍNEA
           />
         </TabPanel>
 

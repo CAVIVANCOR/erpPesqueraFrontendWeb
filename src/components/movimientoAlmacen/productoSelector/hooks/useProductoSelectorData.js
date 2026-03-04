@@ -15,6 +15,7 @@ export const useProductoSelectorData = ({
   almacenId,
   modo,
   esCustodia,
+  familiaProductoId = null, // ✅ CAMBIAR: Recibir familiaId en lugar de tipoProductoId
   toast,
 }) => {
   const [items, setItems] = useState([]);
@@ -25,7 +26,7 @@ export const useProductoSelectorData = ({
     if (visible && empresaId && clienteId) {
       cargarDatos();
     }
-  }, [visible, empresaId, clienteId, almacenId, modo, esCustodia]);
+  }, [visible, empresaId, clienteId, almacenId, modo, esCustodia, familiaProductoId]);
 
   /**
    * Carga datos con sistema de 3 niveles profesional:
@@ -71,10 +72,33 @@ export const useProductoSelectorData = ({
     };
     const productosData = await getProductos(filtrosProductos);
 
-    // 1.1. Filtrar solo productos cuya subfamilia lleva kardex
-    const productosFiltrados = productosData.filter(
-      (producto) => producto.subfamilia?.llevaKardex === true
-    );
+       // 1.1. Filtrar productos según configuración
+    let productosFiltrados = productosData;
+
+    if (familiaProductoId) {
+      
+      // Filtrar por familia específica
+      if (Number(familiaProductoId) === 5) {
+        // SERVICIOS: Mostrar todos los productos de familia SERVICIOS (sin filtro de kardex)
+        productosFiltrados = productosData.filter(
+          (producto) => Number(producto.subfamilia?.familiaId) === 5,
+        );
+      } else {
+        // OTRAS FAMILIAS: Aplicar filtro de kardex + filtro de familia
+        productosFiltrados = productosData.filter(
+          (producto) =>
+            producto.subfamilia?.llevaKardex === true &&
+            Number(producto.subfamilia?.familiaId) ===
+              Number(familiaProductoId),
+        );
+      }
+    } else {
+      // Sin familia especificada: aplicar solo filtro de kardex (comportamiento original)
+      productosFiltrados = productosData.filter(
+        (producto) => producto.subfamilia?.llevaKardex === true,
+      );
+    }
+    
 
     // 2. Cargar saldos generales desde SaldosProductoCliente (consolidado por producto)
     const filtrosSaldos = {
@@ -88,23 +112,23 @@ export const useProductoSelectorData = ({
     const productosConStock = productosFiltrados.map((producto) => {
       // Buscar todos los saldos de este producto en todos los almacenes
       const saldosProducto = saldosData.filter(
-        (s) => Number(s.productoId) === Number(producto.id)
+        (s) => Number(s.productoId) === Number(producto.id),
       );
 
       // Consolidar stock de todos los almacenes
       const stockTotal = saldosProducto.reduce(
         (sum, s) => sum + Number(s.saldoCantidad || 0),
-        0
+        0,
       );
       const pesoTotal = saldosProducto.reduce(
         (sum, s) => sum + Number(s.saldoPeso || 0),
-        0
+        0,
       );
       const costoPromedio =
         saldosProducto.length > 0
           ? saldosProducto.reduce(
               (sum, s) => sum + Number(s.costoUnitarioPromedio || 0),
-              0
+              0,
             ) / saldosProducto.length
           : 0;
 
@@ -124,6 +148,42 @@ export const useProductoSelectorData = ({
    * NIVEL 1 (Egresos): Carga solo productos con stock disponible
    */
   const cargarProductosConStock = async () => {
+    
+    // CASO 1: Si es familia SERVICIOS (5), cargar desde catálogo de productos
+    if (familiaProductoId && Number(familiaProductoId) === 5) {
+      
+      const filtrosProductos = {
+        empresaId,
+        clienteId,
+        cesado: false,
+      };
+      const productosData = await getProductos(filtrosProductos);
+      
+      // Filtrar solo productos de familia SERVICIOS
+      const servicios = productosData.filter(
+        (producto) => Number(producto.subfamilia?.familiaId) === 5
+      );
+      
+      
+      // Convertir a formato compatible con saldos (sin stock)
+      const serviciosFormateados = servicios.map((producto) => ({
+        producto: producto,
+        productoId: producto.id,
+        stockDisponible: 0, // Los servicios no tienen stock
+        pesoDisponible: 0,
+        costoUnitarioPromedio: 0,
+        // Campos necesarios para compatibilidad
+        empresaId,
+        clienteId,
+        almacenId,
+      }));
+      
+      setItems(serviciosFormateados);
+      return;
+    }
+    
+    // CASO 2: Productos físicos con saldo (comportamiento normal)
+    
     const filtros = {
       empresaId,
       almacenId,
@@ -131,7 +191,15 @@ export const useProductoSelectorData = ({
       custodia: esCustodia,
       soloConSaldo: true,
     };
-    const saldosData = await getSaldosProductoClienteConFiltros(filtros);
+    
+    let saldosData = await getSaldosProductoClienteConFiltros(filtros);
+    // CASO 3: Si hay filtro de familia (que NO sea SERVICIOS), aplicar filtro
+    if (familiaProductoId && Number(familiaProductoId) !== 5) {
+      saldosData = saldosData.filter((saldo) => {
+        const familiaId = saldo.producto?.subfamilia?.familiaId;
+        return Number(familiaId) === Number(familiaProductoId);
+      });
+    }
     setItems(saldosData);
   };
 

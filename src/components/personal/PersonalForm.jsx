@@ -22,6 +22,7 @@ import { getTiposContrato } from "../../api/tiposContrato"; // API profesional d
 import { getSedes } from "../../api/sedes"; // API profesional de sedes
 import { getAreasFisicas } from "../../api/areasFisicas"; // API profesional de áreas físicas
 import { subirFotoPersonal } from "../../api/personal"; // API profesional de subida de foto personal
+import { getEntidadesComerciales } from "../../api/entidadComercial"; // API profesional de entidades comerciales
 
 // Esquema de validación profesional con Yup
 const schema = Yup.object().shape({
@@ -41,6 +42,7 @@ const schema = Yup.object().shape({
   cargoId: Yup.number(),
   areaFisicaId: Yup.number(),
   sedeEmpresaId: Yup.number(),
+  enlaceEntidadComercialId: Yup.number().nullable(),
 });
 
 /**
@@ -80,6 +82,9 @@ export default function PersonalForm({
       : null,
     sedeEmpresaId: defaultValues.sedeEmpresaId
       ? Number(defaultValues.sedeEmpresaId)
+      : null,
+    enlaceEntidadComercialId: defaultValues.enlaceEntidadComercialId
+      ? Number(defaultValues.enlaceEntidadComercialId)
       : null,
     sexo: typeof defaultValues.sexo === "boolean" ? defaultValues.sexo : null,
     paraTemporadaPesca: typeof defaultValues.paraTemporadaPesca === "boolean" ? defaultValues.paraTemporadaPesca : false,
@@ -122,6 +127,7 @@ export default function PersonalForm({
 
   const [areasFisicas, setAreasFisicas] = useState([]);
   const [sedesEmpresa, setSedesEmpresa] = useState([]);
+  const [entidadesComerciales, setEntidadesComerciales] = useState([]);
 
   // Reset profesional y actualización de preview de foto al abrir en modo edición o alta
   useEffect(() => {
@@ -231,6 +237,7 @@ export default function PersonalForm({
         const tiposContratoPromise = getTiposContrato();
         const areasFisicasPromise = getAreasFisicas();
         const sedesPromise = getSedes();
+        const entidadesComercialesPromise = getEntidadesComerciales();
         /**
          * Refactor profesional: Promise.allSettled para que los errores de un combo no bloqueen el resto.
          * Así garantizamos máxima robustez y experiencia de usuario, incluso si un endpoint falla.
@@ -242,6 +249,7 @@ export default function PersonalForm({
           tiposContratoPromise,
           areasFisicasPromise,
           sedesPromise,
+          entidadesComercialesPromise,
         ]);
         const [
           empresasRes,
@@ -250,6 +258,7 @@ export default function PersonalForm({
           tiposContratoRes,
           areasFisicasRes,
           sedesRes,
+          entidadesComercialesRes,
         ] = resultados;
 
         // Normalización profesional: ids de empresa como number para evitar bugs de selección en PrimeReact Dropdown
@@ -309,6 +318,15 @@ export default function PersonalForm({
               }))
             : [];
         setSedesEmpresa(sedesEmpresaData);
+        const entidadesComercialesData =
+          entidadesComercialesRes.status === "fulfilled"
+            ? entidadesComercialesRes.value.map((e) => ({
+                ...e,
+                id: Number(e.id),
+                label: e.razonSocial || e.nombreComercial,
+              }))
+            : [];
+        setEntidadesComerciales(entidadesComercialesData);
 
         reset({ ...defaultValues });
       } catch (err) {
@@ -318,6 +336,7 @@ export default function PersonalForm({
         setTiposContrato([]);
         setAreasFisicas([]);
         setSedesEmpresa([]);
+        setEntidadesComerciales([]);
       }
     }
     cargarCombos();
@@ -353,6 +372,8 @@ export default function PersonalForm({
 
   // Estado local para las áreas físicas filtradas según sede seleccionada
   const [areasFisicasFiltradas, setAreasFisicasFiltradas] = useState([]);
+  // Estado local para las entidades comerciales filtradas según empresa seleccionada
+  const [entidadesComercialesFiltradas, setEntidadesComercialesFiltradas] = useState([]);
   useEffect(() => {
     // Solo filtra si hay sede seleccionada y áreas físicas cargadas
     const sedeId = watch("sedeEmpresaId");
@@ -376,6 +397,29 @@ export default function PersonalForm({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watch("sedeEmpresaId"), areasFisicas]);
+  // Efecto: Filtrar entidades comerciales por empresa seleccionada
+  useEffect(() => {
+    const empresaId = watch("empresaId");
+    if (empresaId && entidadesComerciales.length > 0) {
+      const empresaIdNum = Number(empresaId);
+      const filtradas = entidadesComerciales.filter(
+        (e) => Number(e.empresaId) === empresaIdNum
+      );
+      setEntidadesComercialesFiltradas(filtradas);
+
+      // Si la entidad seleccionada no pertenece a la empresa, límpiala
+      if (
+        watch("enlaceEntidadComercialId") &&
+        !filtradas.some((e) => Number(e.id) === Number(watch("enlaceEntidadComercialId")))
+      ) {
+        setValue("enlaceEntidadComercialId", null);
+      }
+    } else {
+      setEntidadesComercialesFiltradas([]);
+      setValue("enlaceEntidadComercialId", null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watch("empresaId"), entidadesComerciales]);
   // --- Normalización profesional de opciones de combos para evitar errores de tipo ---
   // Se fuerza que todos los id de las opciones sean numéricos, para que coincidan con los valores del formulario (también numéricos).
   const empresasNorm = (typeof empresas !== "undefined" ? empresas : []).map(
@@ -399,30 +443,38 @@ export default function PersonalForm({
   ).map((e) => ({ ...e, id: Number(e.id) }));
   // Transforma IDs a number y fechas a string ISO antes de enviar el payload
   const onSubmitWithLog = (data) => {
-    // Construcción profesional del payload: sedeId eliminado, solo se envía sedeEmpresaId
+    // Construcción profesional del payload: solo IDs y campos primitivos, sin objetos de relaciones
     const payload = {
-      ...data,
+      id: data.id,
       empresaId: data.empresaId ? Number(data.empresaId) : null,
       tipoDocumentoId: data.tipoDocumentoId
         ? Number(data.tipoDocumentoId)
         : null,
-      tipoContratoId: data.tipoContratoId
-        ? Number(data.tipoContratoId)
-        : null,
-      cargoId: data.cargoId ? Number(data.cargoId) : null,
-      areaFisicaId: data.areaFisicaId ? Number(data.areaFisicaId) : null,
-      sedeEmpresaId: data.sedeEmpresaId ? Number(data.sedeEmpresaId) : null,
+      numeroDocumento: data.numeroDocumento || null,
+      nombres: data.nombres || null,
+      apellidos: data.apellidos || null,
+      direccion: data.direccion || null,
+      ubigeoId: data.ubigeoId ? Number(data.ubigeoId) : null,
+      telefono: data.telefono || null,
+      correo: data.correo || null,
       fechaNacimiento: data.fechaNacimiento
         ? new Date(data.fechaNacimiento).toISOString()
         : null,
       fechaIngreso: data.fechaIngreso
         ? new Date(data.fechaIngreso).toISOString()
         : null,
-      telefono: data.telefono || null,
-      correo: data.correo || null,
-      urlFotoPersona: data.urlFotoPersona || null,
-      // Campo obligatorio según modelo Prisma: siempre enviar sexo booleano
+      fechaCese: data.fechaCese
+        ? new Date(data.fechaCese).toISOString()
+        : null,
       sexo: typeof data.sexo === "boolean" ? data.sexo : false,
+      tipoContratoId: data.tipoContratoId
+        ? Number(data.tipoContratoId)
+        : null,
+      cargoId: data.cargoId ? Number(data.cargoId) : null,
+      areaFisicaId: data.areaFisicaId ? Number(data.areaFisicaId) : null,
+      sedeEmpresaId: data.sedeEmpresaId ? Number(data.sedeEmpresaId) : null,
+      enlaceEntidadComercialId: data.enlaceEntidadComercialId ? Number(data.enlaceEntidadComercialId) : null,
+      urlFotoPersona: data.urlFotoPersona || null,
       esVendedor:
         typeof data.esVendedor === "boolean" ? data.esVendedor : false,
       cesado: typeof data.cesado === "boolean" ? data.cesado : false,
@@ -834,6 +886,34 @@ export default function PersonalForm({
                 )}
               />
               <small className="p-error">{errors.cargoId?.message}</small>
+            </div>
+            {/* Entidad Comercial Enlazada */}
+            <div style={{ flex: 1 }}>
+              <label>Entidad Comercial Enlazada</label>
+              <Controller
+                name="enlaceEntidadComercialId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="enlaceEntidadComercialId"
+                    value={field.value ? Number(field.value) : null}
+                    options={entidadesComercialesFiltradas.map((e) => ({
+                      ...e,
+                      id: Number(e.id),
+                    }))}
+                    optionLabel="label"
+                    optionValue="id"
+                    placeholder="Seleccione una entidad comercial"
+                    className={errors.enlaceEntidadComercialId ? "p-invalid" : ""}
+                    style={{ fontWeight: "bold" }}
+                    filter
+                    showClear
+                    onChange={(e) => field.onChange(e.value)}
+                    disabled={readOnly || loading}
+                  />
+                )}
+              />
+              <small className="p-error">{errors.enlaceEntidadComercialId?.message}</small>
             </div>
           </div>
 

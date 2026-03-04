@@ -35,10 +35,10 @@ import { getResponsiveFontSize } from "../utils/utils";
 import { InputText } from "primereact/inputtext";
 import { usePermissions } from "../hooks/usePermissions";
 import { Navigate } from "react-router-dom";
+import { useNavigateWithReturn } from "../shared/hooks/useNavigateWithReturn";
 
 const EntidadComercial = ({ ruta }) => {
   const permisos = usePermissions(ruta);
-
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
@@ -190,6 +190,17 @@ const EntidadComercial = ({ ruta }) => {
 
   const onGuardarExitoso = (entidad) => {
     cargarEntidadesComerciales();
+    
+    // ✅ MARCAR ACCIÓN COMPLETADA PARA RETORNO
+    const { markActionCompleted } = useNavigateWithReturn();
+    
+    // Verificar si es creación nueva (entidad sin id previo o recién creada)
+    const esNuevaEntidad = entidad && entidad.id && !modoEdicion;
+    
+    if (esNuevaEntidad) {
+      // Marcar que se completó la creación de proveedor
+      markActionCompleted('proveedorCreado', { id: entidad.id });
+    }
     
     // Mostrar mensaje de éxito sin cerrar el diálogo
     toast.current.show({

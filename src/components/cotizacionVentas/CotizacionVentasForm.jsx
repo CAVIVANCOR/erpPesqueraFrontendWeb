@@ -51,6 +51,7 @@ const CotizacionVentasForm = ({
   loading: loadingProp = false,
   toast: toastProp,
   onRecargarRegistro,
+  onClienteCreado, // ✅ NUEVO: Callback para recargar clientes
 }) => {
   const [activeCard, setActiveCard] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -810,6 +811,7 @@ const CotizacionVentasForm = ({
               contactosClienteOptions={contactosClienteOptions}
               direccionesClienteOptions={direccionesClienteOptions}
               readOnly={readOnly}
+              onClienteCreado={onClienteCreado} // ✅ AGREGAR ESTA LÍNEA
             />
           </TabPanel>
           <TabPanel header="Costos Exportación" leftIcon="pi pi-dollar">

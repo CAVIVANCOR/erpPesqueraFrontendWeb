@@ -492,9 +492,6 @@ const TemporadaPescaForm = ({
               };
 
               reset(datosCompletos);
-              console.log(
-                `✅ Datos actualizados - Toneladas: ${temporadaActualizada.toneladasCapturadasTemporada}, UnidadNegocio: ${datosCompletos.unidadNegocioId}`,
-              );
             }
 
             // Verificar temporada iniciada

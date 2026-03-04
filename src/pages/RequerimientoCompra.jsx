@@ -40,6 +40,9 @@ import { getResponsiveFontSize, formatearFecha } from "../utils/utils";
 import { Calendar } from "primereact/calendar";
 import UnidadNegocioFilter from "../components/common/UnidadNegocioFilter";
 import { useUnidadNegocioFilter } from "../hooks/useUnidadNegocioFilter";
+import { useNavigateWithReturn } from "../shared/hooks/useNavigateWithReturn";
+import { useModulo } from "../context/ModuloContext"; // ✅ AGREGAR ESTA LÍNEA
+
 /**
  * Pantalla profesional para gestión de Requerimientos de Compra.
  */
@@ -81,7 +84,44 @@ export default function RequerimientoCompra({ ruta }) {
   const [proveedoresUnicos, setProveedoresUnicos] = useState([]);
 
   // Filtrado automático por Unidad de Negocio
-  const { datosFiltrados: requerimientosFiltrados } = useUnidadNegocioFilter(items);
+  const { datosFiltrados: requerimientosFiltrados, unidadActiva } =
+    useUnidadNegocioFilter(items);
+
+  // Hook para detectar retorno desde otros módulos
+  const { detectReturn, markActionCompleted } = useNavigateWithReturn();
+  const { abrirModulo } = useModulo(); // ✅ AGREGAR ESTA LÍNEA
+
+  // Detectar retorno desde Entidad Comercial
+  detectReturn("requerimientoCompra", (returnContext) => {
+    if (returnContext.reloadAction === "reloadProveedores") {
+      // Recargar solo proveedores
+      recargarProveedores();
+
+      // Mostrar mensaje de éxito
+      toast.current?.show({
+        severity: "success",
+        summary: "Proveedor Actualizado",
+        detail: "El listado de proveedores ha sido actualizado.",
+        life: 3000,
+      });
+    }
+  });
+
+  // Función para recargar solo proveedores
+  const recargarProveedores = async () => {
+    try {
+      const proveedoresData = await getEntidadesComerciales();
+      setProveedores(proveedoresData);
+    } catch (err) {
+      console.error("Error al recargar proveedores:", err);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudo recargar el listado de proveedores",
+        life: 3000,
+      });
+    }
+  };
 
   useEffect(() => {
     cargarDatos();
@@ -401,7 +441,18 @@ export default function RequerimientoCompra({ ruta }) {
   };
 
   const handleAdd = () => {
-    setEditing(null); // null para indicar que es creación, no edición
+    // ✅ MEJORADO: Auto-seleccionar unidadNegocioId, supervisorCampoId y solicitanteId
+    const valoresIniciales = {
+      // Auto-seleccionar unidadNegocioId desde Dashboard de Unidades
+      ...(unidadActiva && { unidadNegocioId: unidadActiva.id }),
+      // Auto-asignar supervisorCampoId y solicitanteId del usuario logueado
+      ...(usuario?.personalId && {
+        supervisorCampoId: Number(usuario.personalId),
+        solicitanteId: Number(usuario.personalId),
+      }),
+    };
+    
+    setEditing(valoresIniciales);
     setShowDialog(true);
   };
 
@@ -865,6 +916,9 @@ export default function RequerimientoCompra({ ruta }) {
           readOnly={
             !!editing && !!editing.numeroDocumento && !permisos.puedeEditar
           }
+          abrirModulo={abrirModulo} // ✅ AGREGAR ESTA LÍNEA
+          onCloseDialog={() => setShowDialog(false)} // ✅ AGREGAR ESTA LÍNEA
+          onProveedorCreado={recargarProveedores} // ✅ AGREGAR ESTA LÍNEA
         />
       </Dialog>
     </div>

@@ -563,26 +563,33 @@ export default function BaseLayout({ children, onLogout }) {
    * @param {string} key - Identificador único del módulo
    * @param {string} label - Etiqueta visible de la pestaña (opcional)
    */
-  const abrirModulo = (key, label) => {
+    const abrirModulo = (key, label) => {
+    
     // Verificar si el módulo ya está abierto
     const existe = tabs.findIndex((t) => t.key === key);
+    
     if (existe !== -1) {
       // Si ya existe, solo activar esa pestaña
       setActiveIndex(existe);
     } else {
       // Buscar el módulo en el catálogo
       const moduloConfig = modulos[key];
+      
       if (moduloConfig) {
         // Si existe en el catálogo, agregar nueva pestaña
-        setTabs([
-          ...tabs,
-          {
-            key,
-            label: moduloConfig.label || label,
-            content: moduloConfig.componente,
-          },
-        ]);
-        setActiveIndex(tabs.length); // Activar la nueva pestaña
+        const nuevaTab = {
+          key,
+          label: moduloConfig.label || label,
+          content: moduloConfig.componente,
+        };
+        
+        const nuevasTabs = [...tabs, nuevaTab];
+        
+        setTabs(nuevasTabs);
+        
+        const nuevoIndice = tabs.length;
+        
+        setActiveIndex(nuevoIndice);
       } else {
         // Si no existe, mostrar mensaje "Próximamente"
         setTabs([

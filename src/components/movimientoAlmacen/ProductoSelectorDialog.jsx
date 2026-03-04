@@ -44,11 +44,11 @@ export default function ProductoSelectorDialog({
   almacenId,
   estadoMercaderiaDefault = 6,
   estadoCalidadDefault = 10,
+  familiaProductoId = null, // ✅ CAMBIAR: Recibir familiaId
   onSelect,
 }) {
   const toast = useRef(null);
   const esIngreso = modo === "ingreso";
-
   // Custom Hooks
   const catalogos = useCatalogos(visible, toast);
   const { items, loading, cargarDatos } = useProductoSelectorData({
@@ -58,6 +58,7 @@ export default function ProductoSelectorDialog({
     almacenId,
     modo,
     esCustodia,
+    familiaProductoId, // ✅ PASAR familiaId
     toast,
   });
 
@@ -98,7 +99,7 @@ export default function ProductoSelectorDialog({
    */
   const handleRowClick = (e) => {
     const rowData = e.data;
-    
+
     if (esIngreso) {
       // INGRESO: Abrir Nivel 2 si tiene stock en algún almacén
       if (rowData.stockDisponible > 0 && rowData.cantidadAlmacenes > 0) {
@@ -168,20 +169,25 @@ export default function ProductoSelectorDialog({
    */
   const handleNuevoProducto = async () => {
     try {
-      const [empresasData, clientesData, coloresData, estadosData, unidadesMetricasData] =
-        await Promise.all([
-          getEmpresas(),
-          getEntidadesComerciales(),
-          getColores(),
-          getEstadosMultiFuncion(),
-          getUnidadesMedida(),
-        ]);
+      const [
+        empresasData,
+        clientesData,
+        coloresData,
+        estadosData,
+        unidadesMetricasData,
+      ] = await Promise.all([
+        getEmpresas(),
+        getEntidadesComerciales(),
+        getColores(),
+        getEstadosMultiFuncion(),
+        getUnidadesMedida(),
+      ]);
 
       setEmpresas(empresasData);
       setClientes(clientesData);
       setColores(coloresData);
       const estadosProducto = estadosData.filter(
-        (e) => Number(e.tipoProvieneDeId) === 2 && !e.cesado
+        (e) => Number(e.tipoProvieneDeId) === 2 && !e.cesado,
       );
       setEstadosIniciales(estadosProducto);
       setUnidadesMetricas(unidadesMetricasData);

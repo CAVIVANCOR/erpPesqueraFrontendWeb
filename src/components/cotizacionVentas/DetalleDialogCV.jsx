@@ -77,17 +77,37 @@ export default function DetalleDialogCV({
 
   // Obtener entidadComercialId de la empresa seleccionada
   const empresaSeleccionada = empresas?.find(
-    (e) => Number(e.id) === Number(empresaId)
+    (e) => Number(e.id) === Number(empresaId),
   );
   const entidadComercialId = empresaSeleccionada?.entidadComercialId;
 
   // Helper para obtener código de moneda
   const getCodigoMoneda = () => {
     const moneda = monedasOptions.find(
-      (m) => Number(m.value) === Number(monedaId)
+      (m) => Number(m.value) === Number(monedaId),
     );
     return moneda?.codigoSunat || "PEN";
   };
+
+  // ✅ CORRECCIÓN: Obtener familiaId desde tipoProductoId (patrón RequerimientoCompra)
+  // OPCIÓN 1: Si tipoProducto incluye subfamilia (ideal, cuando backend lo envíe)
+  let familiaProductoId =
+    datosGenerales?.tipoProducto?.subfamilia?.familiaId || null;
+
+  // OPCIÓN 2: Mapeo temporal mientras el backend no incluya la relación completa
+  if (!familiaProductoId && datosGenerales?.tipoProductoId) {
+    const tipoProductoIdNumber = Number(datosGenerales.tipoProductoId);
+
+    // Mapeo de tipoProductoId a familiaId
+    // TODO: Esto debe venir del backend con la relación completa
+    const mapaTemporalTipoProductoAFamilia = {
+      9: 5, // SERVICIO CONTRATISTA (subfamilia 24) → SERVICIOS
+      // Agrega aquí otros tipos de producto de SERVICIOS si existen
+    };
+
+    familiaProductoId =
+      mapaTemporalTipoProductoAFamilia[tipoProductoIdNumber] || null;
+  }
 
   /**
    * Consulta el stock disponible actual en tiempo real desde la base de datos
@@ -115,24 +135,23 @@ export default function DetalleDialogCV({
         custodia: false, // Mercadería propia de la empresa
       };
 
-      const saldosData = await getSaldosProductoClienteConFiltros(
-        filtrosSaldos
-      );
+      const saldosData =
+        await getSaldosProductoClienteConFiltros(filtrosSaldos);
 
       // Filtrar saldos de este producto específico
       const saldosProducto = saldosData.filter(
-        (s) => Number(s.productoId) === Number(productoId)
+        (s) => Number(s.productoId) === Number(productoId),
       );
 
       if (saldosProducto.length > 0) {
         // Consolidar stock de todos los almacenes (igual que ProductoSelectorDialog)
         const stockTotal = saldosProducto.reduce(
           (sum, s) => sum + Number(s.saldoCantidad || 0),
-          0
+          0,
         );
         const pesoTotal = saldosProducto.reduce(
           (sum, s) => sum + Number(s.saldoPeso || 0),
-          0
+          0,
         );
 
         setStockDisponible(stockTotal);
@@ -196,7 +215,7 @@ export default function DetalleDialogCV({
       });
       // Buscar el producto seleccionado
       const producto = productos.find(
-        (p) => Number(p.id) === Number(detalle.productoId)
+        (p) => Number(p.id) === Number(detalle.productoId),
       );
       setProductoSeleccionado(producto || null);
 
@@ -346,10 +365,10 @@ export default function DetalleDialogCV({
       const mensaje =
         stockDisponible === 0
           ? `No hay stock disponible para este producto. La cantidad ingresada es ${value.toFixed(
-              3
+              3,
             )}.`
           : `La cantidad ingresada (${value.toFixed(
-              3
+              3,
             )}) supera el stock disponible (${stockDisponible.toFixed(3)}).`;
 
       // Usar toast con posición top-center para que sea visible sobre el Dialog
@@ -410,7 +429,7 @@ export default function DetalleDialogCV({
         if (entidadComercialId && producto.id) {
           const precioEspecial = await obtenerPrecioEspecialActivo(
             entidadComercialId,
-            producto.id
+            producto.id,
           );
 
           if (precioEspecial) {
@@ -442,7 +461,7 @@ export default function DetalleDialogCV({
       // Usar función genérica para calcular precios y márgenes
       const datosCalculados = calcularPrecios(
         datosIniciales,
-        "margenUtilidadObjetivo"
+        "margenUtilidadObjetivo",
       );
 
       // Actualizar formData con todos los cálculos
@@ -453,7 +472,6 @@ export default function DetalleDialogCV({
   };
 
   const handleSave = async () => {
-
     // Validación de cotizacionId
     if (!cotizacionId) {
       toast?.current?.show({
@@ -490,12 +508,12 @@ export default function DetalleDialogCV({
       const mensaje =
         stockDisponible === 0
           ? `No hay stock disponible para este producto. La cantidad cotizada es ${formData.cantidad.toFixed(
-              3
+              3,
             )}. Se permite guardar pero considere la disponibilidad real.`
           : `La cantidad cotizada (${formData.cantidad.toFixed(
-              3
+              3,
             )}) supera el stock disponible (${stockDisponible.toFixed(
-              3
+              3,
             )}). Se permite guardar pero considere la disponibilidad real.`;
 
       toast?.current?.show({
@@ -1048,6 +1066,7 @@ export default function DetalleDialogCV({
           empresaId={empresaId}
           clienteId={entidadComercialId}
           esCustodia={false}
+          familiaProductoId={familiaProductoId} // ✅ AGREGAR ESTA LÍNEA
         />
 
         {/* SECCIÓN: CANTIDADES Y PESOS */}
@@ -1468,7 +1487,7 @@ export default function DetalleDialogCV({
                 <Message
                   severity="warn"
                   text={`⚠️ El margen calculado (${formData.margenUtilidadReal.toFixed(
-                    2
+                    2,
                   )}%) es menor al mínimo permitido (${
                     formData.margenMinimoPermitido
                   }%)`}

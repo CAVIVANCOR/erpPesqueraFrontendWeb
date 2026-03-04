@@ -195,25 +195,25 @@ export default function PersonalPage({ ruta }) {
     // Filtrar por empresa
     if (empresaFilter) {
       personalesFiltrados = personalesFiltrados.filter(
-        (personal) => Number(personal.empresaId) === Number(empresaFilter)
+        (personal) => Number(personal.empresaId) === Number(empresaFilter),
       );
     }
 
     // Filtrar por cargo
     if (cargoFilter) {
       personalesFiltrados = personalesFiltrados.filter(
-        (personal) => Number(personal.cargoId) === Number(cargoFilter)
+        (personal) => Number(personal.cargoId) === Number(cargoFilter),
       );
     }
 
     // Filtrar por estado (cesado)
     if (filtroEstado === "activos") {
       personalesFiltrados = personalesFiltrados.filter(
-        (personal) => personal.cesado === false
+        (personal) => personal.cesado === false,
       );
     } else if (filtroEstado === "cesados") {
       personalesFiltrados = personalesFiltrados.filter(
-        (personal) => personal.cesado === true
+        (personal) => personal.cesado === true,
       );
     }
     // Si filtroEstado === "todos", no filtramos por cesado
@@ -225,13 +225,13 @@ export default function PersonalPage({ ruta }) {
     } else if (filtroTipoPesca === "temporada") {
       // Filtrar solo registros con paraTemporadaPesca = true
       personalesFiltrados = personalesFiltrados.filter(
-        (personal) => personal.paraTemporadaPesca === true
+        (personal) => personal.paraTemporadaPesca === true,
       );
       setFilteredPersonales(personalesFiltrados);
     } else if (filtroTipoPesca === "consumo") {
       // Filtrar solo registros con paraPescaConsumo = true
       personalesFiltrados = personalesFiltrados.filter(
-        (personal) => personal.paraPescaConsumo === true
+        (personal) => personal.paraPescaConsumo === true,
       );
       setFilteredPersonales(personalesFiltrados);
     }
@@ -377,7 +377,7 @@ export default function PersonalPage({ ruta }) {
       if (err?.response?.data) {
         console.error(
           "[PersonalPage] Error backend al eliminar:",
-          JSON.stringify(err.response.data)
+          JSON.stringify(err.response.data),
         );
         toast?.show({
           severity: "error",
@@ -440,6 +440,9 @@ export default function PersonalPage({ ruta }) {
         telefono: data.telefono || null,
         correo: data.correo || null,
         urlFotoPersona: data.urlFotoPersona || null,
+        enlaceEntidadComercialId: data.enlaceEntidadComercialId
+          ? Number(data.enlaceEntidadComercialId)
+          : null,
         tipoContratoId: data.tipoContratoId
           ? Number(data.tipoContratoId)
           : null,
@@ -482,7 +485,7 @@ export default function PersonalPage({ ruta }) {
       if (err?.response?.data) {
         console.error(
           "[PersonalPage] Respuesta de error backend:",
-          JSON.stringify(err.response.data)
+          JSON.stringify(err.response.data),
         );
       }
       toast?.show({
@@ -678,7 +681,8 @@ export default function PersonalPage({ ruta }) {
                   toast.current?.show({
                     severity: "success",
                     summary: "Actualizado",
-                    detail: "Datos actualizados correctamente desde el servidor",
+                    detail:
+                      "Datos actualizados correctamente desde el servidor",
                     life: 3000,
                   });
                 }}
@@ -754,7 +758,7 @@ export default function PersonalPage({ ruta }) {
               );
             } else {
               const iniciales = `${nombres.charAt(0)}${apellidos.charAt(
-                0
+                0,
               )}`.toUpperCase();
               return (
                 <span data-pr-tooltip={nombreCompleto} data-pr-position="right">

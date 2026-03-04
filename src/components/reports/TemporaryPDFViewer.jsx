@@ -57,7 +57,6 @@ const TemporaryPDFViewer = ({
     return () => {
       if (blobUrl) {
         URL.revokeObjectURL(blobUrl);
-        console.log('✅ PDF temporal eliminado');
       }
       setPdfUrl(null);
     };

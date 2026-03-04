@@ -6,7 +6,7 @@
  * @version 2.0.0 - Refactorización profesional
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { InputNumber } from "primereact/inputnumber";
@@ -15,6 +15,8 @@ import { Checkbox } from "primereact/checkbox";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { confirmDialog } from "primereact/confirmdialog";
+import { Dialog } from "primereact/dialog";
+import { Toast } from "primereact/toast";
 import {
   getClientesPorEmpresa,
   getEntidadesComerciales,
@@ -23,6 +25,7 @@ import { getSeriesDoc } from "../../api/cotizacionVentas";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import DetCotizacionVentasCard from "./DetCotizacionVentasCard";
 import { Panel } from "primereact/panel";
+import EntidadComercialForm from "../entidadComercial/EntidadComercialForm";
 
 const DatosGeneralesCotizacionCard = ({
   // Props profesionales (patrón ERP Megui)
@@ -80,13 +83,54 @@ const DatosGeneralesCotizacionCard = ({
   monedasOptions = [],
   contactosClienteOptions = [],
   direccionesClienteOptions = [],
+  // ✅ NUEVO: Props para Dialog de Crear Cliente
+  onClienteCreado,
 }) => {
   // Obtener la moneda seleccionada dinámicamente del estado
   const monedaSeleccionada = monedasOptions.find(
     (m) => m.value === formData.monedaId,
   );
   const simboloMoneda = monedaSeleccionada?.simbolo || "S/";
+  // ✅ NUEVO: Estado para Dialog de Crear Cliente
+  const [showEntidadDialog, setShowEntidadDialog] = useState(false);
+  const toastLocal = useRef(null);
 
+  // ✅ NUEVO: Funciones para manejar Dialog de Crear Cliente
+  const handleAbrirEntidadComercial = () => {
+    setShowEntidadDialog(true);
+  };
+
+  const handleCerrarEntidadDialog = () => {
+    setShowEntidadDialog(false);
+  };
+
+  const handleEntidadGuardada = async (nuevaEntidad) => {
+    // Cerrar el dialog
+    handleCerrarEntidadDialog();
+
+    // ✅ NUEVO: Auto-seleccionar el nuevo cliente en formData
+    if (nuevaEntidad && nuevaEntidad.id) {
+      handleChange({
+        target: {
+          name: "clienteId",
+          value: nuevaEntidad.id,
+        },
+      });
+    }
+
+    // Mostrar mensaje de éxito
+    toastLocal.current?.show({
+      severity: "success",
+      summary: "Éxito",
+      detail: "Cliente creado y seleccionado exitosamente",
+      life: 3000,
+    });
+
+    // Ejecutar callback para recargar clientes
+    if (onClienteCreado) {
+      await onClienteCreado();
+    }
+  };
   // Cargar todas las entidades comerciales (clientes Y proveedores) cuando cambie la empresa
   useEffect(() => {
     const cargarEntidadesComerciales = async () => {
@@ -391,20 +435,34 @@ const DatosGeneralesCotizacionCard = ({
       >
         <div style={{ flex: 3 }}>
           <label htmlFor="clienteId">Cliente *</label>
-          <Dropdown
-            id="clienteId"
-            value={formData.clienteId ? Number(formData.clienteId) : null}
-            options={clientes.map((c) => ({
-              label: c.razonSocial,
-              value: Number(c.id),
-            }))}
-            onChange={(e) => handleChange("clienteId", e.value)}
-            placeholder="Seleccionar cliente"
-            style={{ width: "100%", fontWeight: "bold" }}
-            filter
-            showClear
-            disabled={disabled || readOnly || !formData.empresaId}
-          />
+          <div
+            style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}
+          >
+            <Dropdown
+              id="clienteId"
+              value={formData.clienteId ? Number(formData.clienteId) : null}
+              options={clientes.map((c) => ({
+                label: c.razonSocial,
+                value: Number(c.id),
+              }))}
+              onChange={(e) => handleChange("clienteId", e.value)}
+              placeholder="Seleccionar cliente"
+              style={{ width: "100%", fontWeight: "bold" }}
+              filter
+              showClear
+              disabled={disabled || readOnly || !formData.empresaId}
+            />
+            <Button
+              type="button"
+              icon="pi pi-plus"
+              label="Crear Cliente"
+              className="p-button-success"
+              onClick={handleAbrirEntidadComercial}
+              disabled={disabled || readOnly || !formData.empresaId}
+              tooltip="Crear nuevo cliente"
+              tooltipOptions={{ position: "top" }}
+            />
+          </div>
         </div>
         <div style={{ flex: 1 }}>
           <label htmlFor="fechaEntregaEstimada">Fecha Entrega Estimada *</label>
@@ -661,7 +719,7 @@ const DatosGeneralesCotizacionCard = ({
       ></div>
 
       {/* SECCIÓN: DETALLES */}
-      {isEdit && cotizacionId && (
+      {cotizacionId && (
         <div style={{ marginTop: "0.5rem" }}>
           <DetCotizacionVentasCard
             cotizacionId={cotizacionId}
@@ -1099,6 +1157,27 @@ const DatosGeneralesCotizacionCard = ({
           </div>
         </div>
       </Panel>
+
+      {/* ✅ DIALOG MODAL PARA CREAR CLIENTE */}
+      <Toast ref={toastLocal} />
+      <Dialog
+        header="Crear Nuevo Cliente"
+        visible={showEntidadDialog}
+        style={{ width: "95vw", maxWidth: "1400px" }}
+        onHide={handleCerrarEntidadDialog}
+        modal
+        maximizable
+        blockScroll
+      >
+        <Toast ref={toastLocal} />
+        <EntidadComercialForm
+          entidadComercial={null}
+          onGuardar={handleEntidadGuardada}
+          onCancelar={handleCerrarEntidadDialog}
+          toast={toastLocal}
+          permisos={{ puedeCrear: true, puedeEditar: true, puedeVer: true }}
+        />
+      </Dialog>
     </div>
   );
 };
