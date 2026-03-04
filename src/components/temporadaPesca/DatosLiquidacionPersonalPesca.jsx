@@ -36,8 +36,13 @@ import { getAllDescargaFaenaPesca } from "../../api/descargaFaenaPesca";
 
 import { generarLiquidacionTripulantesPDF } from "./reports/generarLiquidacionTripulantesPDF";
 import { generarLiquidacionTripulantesExcel } from "./reports/generarLiquidacionTripulantesExcel";
+import { generarLiquidacionArmadoresPDF } from "./reports/generarLiquidacionArmadoresPDF";
+import { generarLiquidacionArmadoresExcel } from "./reports/generarLiquidacionArmadoresExcel";
+import { generarLiquidacionComisionistaPDF } from "./reports/generarLiquidacionComisionistaPDF";
+import { generarLiquidacionComisionistaExcel } from "./reports/generarLiquidacionComisionistaExcel";
 import { getAllEntregaARendir } from "../../api/entregaARendir";
 import { getAllDetMovsEntregaRendir } from "../../api/detMovsEntregaRendir";
+import { getEntidadesComerciales } from "../../api/entidadComercial";
 
 export default function DatosLiquidacionPersonalPesca({
   control,
@@ -73,6 +78,75 @@ export default function DatosLiquidacionPersonalPesca({
     useState(false);
   const [reportDataLiqTripulantes, setReportDataLiqTripulantes] =
     useState(null);
+  const [showFormatSelectorLiqArmadores, setShowFormatSelectorLiqArmadores] =
+    useState(false);
+  const [showPDFViewerLiqArmadores, setShowPDFViewerLiqArmadores] =
+    useState(false);
+  const [showExcelViewerLiqArmadores, setShowExcelViewerLiqArmadores] =
+    useState(false);
+  const [reportDataLiqArmadores, setReportDataLiqArmadores] = useState(null);
+  const [entidadesComerciales, setEntidadesComerciales] = useState([]);
+  const [
+    showFormatSelectorLiqComisionista,
+    setShowFormatSelectorLiqComisionista,
+  ] = useState(false);
+  const [showPDFViewerLiqComisionista, setShowPDFViewerLiqComisionista] =
+    useState(false);
+  const [showExcelViewerLiqComisionista, setShowExcelViewerLiqComisionista] =
+    useState(false);
+  const [reportDataLiqComisionista, setReportDataLiqComisionista] =
+    useState(null);
+  // Cargar entidades comerciales al montar el componente
+  useEffect(() => {
+    const cargarEntidades = async () => {
+      try {
+        const entidades = await getEntidadesComerciales();
+        setEntidadesComerciales(
+          entidades.map((e) => ({
+            ...e,
+            label: e.razonSocial || e.nombreComercial,
+            value: Number(e.id),
+          })),
+        );
+      } catch (error) {
+        console.error("Error al cargar entidades comerciales:", error);
+      }
+    };
+    cargarEntidades();
+  }, []);
+
+  // Asegurar que los valores de los dropdowns sean Number cuando cambien
+  useEffect(() => {
+    const entidadEmpresarialAlquiladaId = watch(
+      "entidadEmpresarialAlquiladaId",
+    );
+    const entidadComercialComisionistaAlquiler = watch(
+      "entidadComercialComisionistaAlquiler",
+    );
+
+    if (
+      entidadEmpresarialAlquiladaId &&
+      typeof entidadEmpresarialAlquiladaId === "string"
+    ) {
+      setValue(
+        "entidadEmpresarialAlquiladaId",
+        Number(entidadEmpresarialAlquiladaId),
+      );
+    }
+
+    if (
+      entidadComercialComisionistaAlquiler &&
+      typeof entidadComercialComisionistaAlquiler === "string"
+    ) {
+      setValue(
+        "entidadComercialComisionistaAlquiler",
+        Number(entidadComercialComisionistaAlquiler),
+      );
+    }
+  }, [
+    watch("entidadEmpresarialAlquiladaId"),
+    watch("entidadComercialComisionistaAlquiler"),
+  ]);
 
   // Calcular liquidaciones automáticamente al cargar la temporada
   useEffect(() => {
@@ -130,22 +204,49 @@ export default function DatosLiquidacionPersonalPesca({
       const cuotas = await getDetallesCuotaPesca({ empresaId, activo: true });
       const cuotaPropia = cuotas.find(
         (c) =>
-          c.cuotaPropia === true &&
-          c.esAlquiler === false &&
-          c.zona === zona,
+          c.cuotaPropia === true && c.esAlquiler === false && c.zona === zona,
       );
       if (cuotaPropia) {
-        setValue("precioPorTonDolares", Number(cuotaPropia.precioPorTonDolares || 0));
+        setValue(
+          "precioPorTonDolares",
+          Number(cuotaPropia.precioPorTonDolares || 0),
+        );
       }
 
       const cuotaAlquilada = cuotas.find(
         (c) =>
-          c.cuotaPropia === false &&
-          c.esAlquiler === false &&
-          c.zona === zona,
+          c.cuotaPropia === false && c.esAlquiler === false && c.zona === zona,
       );
       if (cuotaAlquilada) {
-        setValue("precioPorTonAlquilerDolares", Number(cuotaAlquilada.precioPorTonDolares || 0));
+        setValue(
+          "precioPorTonAlquilerDolares",
+          Number(cuotaAlquilada.precioPorTonDolares || 0),
+        );
+      }
+
+      // Cargar nuevos campos desde cuota alquilada
+      const cuotaAlquilerComision = cuotas.find(
+        (c) =>
+          c.cuotaPropia === false && c.esAlquiler === false && c.zona === zona,
+      );
+
+      if (cuotaAlquilerComision) {
+        setValue(
+          "precioPorTonComisionAlquilerDolares",
+          Number(cuotaAlquilerComision.precioPorTonComisionAlquiler || 0),
+        );
+        setValue(
+          "entidadEmpresarialAlquiladaId",
+          cuotaAlquilerComision.entidadEmpresarialId
+            ? Number(cuotaAlquilerComision.entidadEmpresarialId)
+            : null,
+        );
+        setValue(
+          "entidadComercialComisionistaAlquiler",
+          cuotaAlquilerComision.entidadComercialComisionistaAlquiler
+            ? Number(cuotaAlquilerComision.entidadComercialComisionistaAlquiler)
+            : null,
+        );
       }
 
       toast.current?.show({
@@ -476,7 +577,9 @@ export default function DatosLiquidacionPersonalPesca({
           (d) =>
             Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
             d.formaParteCalculoLiquidacionTripulantes === true &&
-            d.validadoTesoreria === true,
+            d.validadoTesoreria === true &&
+            d.producto?.descripcionBase === "ADELANTO" &&
+            d.producto?.descripcionExtendida === "SUELDOS",
         );
       }
 
@@ -498,6 +601,208 @@ export default function DatosLiquidacionPersonalPesca({
       });
     }
   };
+
+  const handleLiquidacionArmadores = async () => {
+    const temporadaId = watch("id");
+    const empresaId = watch("empresaId");
+    const entidadEmpresarialAlquiladaId = watch(
+      "entidadEmpresarialAlquiladaId",
+    );
+
+    if (!temporadaId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe guardar la temporada antes de generar el reporte",
+        life: 3000,
+      });
+      return;
+    }
+
+    if (!entidadEmpresarialAlquiladaId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "No hay entidad empresarial alquilada configurada",
+        life: 3000,
+      });
+      return;
+    }
+
+    try {
+      // Obtener datos completos de la temporada
+      const temporadaCompleta =
+        await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
+
+      // Obtener cuotas ALQUILADAS (cuotaPropia = false) filtradas por zona
+      const cuotas = await getDetallesCuotaPesca({
+        empresaId: empresaId,
+        activo: true,
+      });
+      const cuotasAlquiladas = cuotas.filter(
+        (c) => c.zona === temporadaCompleta.zona && c.cuotaPropia === false,
+      );
+
+      if (!cuotasAlquiladas || cuotasAlquiladas.length === 0) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Sin datos",
+          detail: `No hay cuotas alquiladas en la zona ${temporadaCompleta.zona}`,
+          life: 3000,
+        });
+        return;
+      }
+
+      // Obtener descargas
+      const todasFaenas = await getFaenasPesca();
+      const faenasTemporada = todasFaenas.filter(
+        (f) => Number(f.temporadaId) === Number(temporadaId),
+      );
+      const todasDescargas = await getAllDescargaFaenaPesca();
+      const faenaIds = faenasTemporada.map((f) => Number(f.id));
+      const descargasTemporada = todasDescargas.filter((d) =>
+        faenaIds.includes(Number(d.faenaPescaId)),
+      );
+
+      // Obtener adelantos: EntregaARendir de esta temporada → DetMovsEntregaRendir filtrados
+      const todasEntregas = await getAllEntregaARendir();
+      const entregaTemporada = todasEntregas.find(
+        (e) => Number(e.temporadaPescaId) === Number(temporadaId),
+      );
+      let adelantos = [];
+      if (entregaTemporada) {
+        const todosDetMovs = await getAllDetMovsEntregaRendir();
+        adelantos = todosDetMovs.filter(
+          (d) =>
+            Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
+            d.formaParteCalculoLiqAlquilerCuota === true &&
+            d.validadoTesoreria === true &&
+            Number(d.entidadComercialId) ===
+              Number(entidadEmpresarialAlquiladaId) &&
+            d.producto?.descripcionBase === "ADELANTO" &&
+            d.producto?.descripcionExtendida === "ALQUILERES",
+        );
+      }
+
+      setReportDataLiqArmadores({
+        temporada: temporadaCompleta,
+        cuotas: cuotasAlquiladas,
+        descargas: descargasTemporada,
+        adelantos,
+      });
+
+      setShowFormatSelectorLiqArmadores(true);
+    } catch (error) {
+      console.error("Error al preparar liquidación armadores:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al preparar el reporte de liquidación armadores",
+        life: 3000,
+      });
+    }
+  };
+  const handleLiquidacionComisionista = async () => {
+    const temporadaId = watch("id");
+    const empresaId = watch("empresaId");
+    const entidadComercialComisionistaAlquiler = watch(
+      "entidadComercialComisionistaAlquiler",
+    );
+
+    if (!temporadaId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe guardar la temporada antes de generar el reporte",
+        life: 3000,
+      });
+      return;
+    }
+
+    if (!entidadComercialComisionistaAlquiler) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "No hay entidad comercial comisionista configurada",
+        life: 3000,
+      });
+      return;
+    }
+
+    try {
+      // Obtener datos completos de la temporada
+      const temporadaCompleta =
+        await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
+
+      // Obtener cuotas ALQUILADAS (cuotaPropia = false) filtradas por zona
+      const cuotas = await getDetallesCuotaPesca({
+        empresaId: empresaId,
+        activo: true,
+      });
+      const cuotasAlquiladas = cuotas.filter(
+        (c) => c.zona === temporadaCompleta.zona && c.cuotaPropia === false,
+      );
+
+      if (!cuotasAlquiladas || cuotasAlquiladas.length === 0) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Sin datos",
+          detail: `No hay cuotas alquiladas en la zona ${temporadaCompleta.zona}`,
+          life: 3000,
+        });
+        return;
+      }
+
+      // Obtener descargas
+      const todasFaenas = await getFaenasPesca();
+      const faenasTemporada = todasFaenas.filter(
+        (f) => Number(f.temporadaId) === Number(temporadaId),
+      );
+      const todasDescargas = await getAllDescargaFaenaPesca();
+      const faenaIds = faenasTemporada.map((f) => Number(f.id));
+      const descargasTemporada = todasDescargas.filter((d) =>
+        faenaIds.includes(Number(d.faenaPescaId)),
+      );
+
+      // Obtener movimientos: EntregaARendir de esta temporada → DetMovsEntregaRendir filtrados
+      const todasEntregas = await getAllEntregaARendir();
+      const entregaTemporada = todasEntregas.find(
+        (e) => Number(e.temporadaPescaId) === Number(temporadaId),
+      );
+      let movimientos = [];
+      if (entregaTemporada) {
+        const todosDetMovs = await getAllDetMovsEntregaRendir();
+        movimientos = todosDetMovs.filter(
+          (d) =>
+            Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
+            d.formaParteCalculoLiqAlquilerCuota === true &&
+            d.validadoTesoreria === true &&
+            Number(d.entidadComercialId) ===
+              Number(entidadComercialComisionistaAlquiler) &&
+            d.producto?.descripcionBase === "ADELANTO" &&
+            d.producto?.descripcionExtendida === "COMISIONES",
+        );
+      }
+
+      setReportDataLiqComisionista({
+        temporada: temporadaCompleta,
+        cuotas: cuotasAlquiladas,
+        descargas: descargasTemporada,
+        movimientos,
+      });
+
+      setShowFormatSelectorLiqComisionista(true);
+    } catch (error) {
+      console.error("Error al preparar liquidación comisionista:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al preparar el reporte de liquidación comisionista",
+        life: 3000,
+      });
+    }
+  };
+
   return (
     <>
       <Toast ref={toast} position="top-right" />
@@ -734,10 +1039,7 @@ export default function DatosLiquidacionPersonalPesca({
               )}
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                htmlFor="precioPorTonDolares"
-                className="block mb-2"
-              >
+              <label htmlFor="precioPorTonDolares" className="block mb-2">
                 Precio por Ton. US$ (Propia)
               </label>
               <Controller
@@ -768,6 +1070,14 @@ export default function DatosLiquidacionPersonalPesca({
                 </small>
               )}
             </div>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
             <div style={{ flex: 1 }}>
               <label
                 htmlFor="precioPorTonAlquilerDolares"
@@ -800,6 +1110,112 @@ export default function DatosLiquidacionPersonalPesca({
               {errors.precioPorTonAlquilerDolares && (
                 <small className="p-error">
                   {errors.precioPorTonAlquilerDolares.message}
+                </small>
+              )}
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="entidadEmpresarialAlquiladaId"
+                className="block mb-2"
+              >
+                Entidad Empresarial Alquilada
+              </label>
+              <Controller
+                name="entidadEmpresarialAlquiladaId"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="entidadEmpresarialAlquiladaId"
+                    value={field.value}
+                    options={entidadesComerciales}
+                    onChange={(e) => field.onChange(e.value)}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Seleccione entidad"
+                    filter
+                    showClear
+                    className={classNames({
+                      "p-invalid": errors.entidadEmpresarialAlquiladaId,
+                    })}
+                    disabled={true}
+                    style={{ fontWeight: "bold" }}
+                  />
+                )}
+              />
+              {errors.entidadEmpresarialAlquiladaId && (
+                <small className="p-error">
+                  {errors.entidadEmpresarialAlquiladaId.message}
+                </small>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="precioPorTonComisionAlquilerDolares"
+                className="block mb-2"
+              >
+                Precio por Ton. US$ (Comisión Alquiler)
+              </label>
+              <Controller
+                name="precioPorTonComisionAlquilerDolares"
+                control={control}
+                render={({ field }) => (
+                  <InputNumber
+                    id="precioPorTonComisionAlquilerDolares"
+                    value={field.value}
+                    onValueChange={(e) => field.onChange(e.value)}
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={2}
+                    min={0}
+                    prefix="$ "
+                    placeholder="$ 0.00"
+                    className={classNames({
+                      "p-invalid": errors.precioPorTonComisionAlquilerDolares,
+                    })}
+                    disabled={readOnly}
+                    inputStyle={{ fontWeight: "bold" }}
+                  />
+                )}
+              />
+              {errors.precioPorTonComisionAlquilerDolares && (
+                <small className="p-error">
+                  {errors.precioPorTonComisionAlquilerDolares.message}
+                </small>
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="entidadComercialComisionistaAlquiler"
+                className="block mb-2"
+              >
+                Entidad Comisionista Alquiler
+              </label>
+              <Controller
+                name="entidadComercialComisionistaAlquiler"
+                control={control}
+                render={({ field }) => (
+                  <Dropdown
+                    id="entidadComercialComisionistaAlquiler"
+                    value={field.value}
+                    options={entidadesComerciales}
+                    onChange={(e) => field.onChange(e.value)}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Seleccione entidad"
+                    filter
+                    showClear
+                    className={classNames({
+                      "p-invalid": errors.entidadComercialComisionistaAlquiler,
+                    })}
+                    disabled={true}
+                    style={{ fontWeight: "bold" }}
+                  />
+                )}
+              />
+              {errors.entidadComercialComisionistaAlquiler && (
+                <small className="p-error">
+                  {errors.entidadComercialComisionistaAlquiler.message}
                 </small>
               )}
             </div>
@@ -1355,11 +1771,47 @@ export default function DatosLiquidacionPersonalPesca({
               }}
             />
 
-            {/* FILA 1 - CELDA 4: Vacía */}
-            <div></div>
+            {/* FILA 1 - CELDA 4: Liquidación Armadores */}
+            <Button
+              label="Liq. Armadores"
+              icon="pi pi-briefcase"
+              className="p-button-outlined p-button-info"
+              type="button"
+              onClick={handleLiquidacionArmadores}
+              disabled={
+                readOnly ||
+                !watch("id") ||
+                !watch("entidadEmpresarialAlquiladaId")
+              }
+              tooltip="Generar liquidación de pesca armadores"
+              tooltipOptions={{ position: "top" }}
+              style={{
+                height: "60px",
+                fontSize: "0.85rem",
+                padding: "0.5rem",
+              }}
+            />
 
-            {/* FILA 2 - CELDA 1: Vacía */}
-            <div></div>
+            {/* FILA 2 - CELDA 1: Liquidación Comisionista */}
+            <Button
+              label="Liq. Comisionista"
+              icon="pi pi-dollar"
+              className="p-button-outlined p-button-success"
+              type="button"
+              onClick={handleLiquidacionComisionista}
+              disabled={
+                readOnly ||
+                !watch("id") ||
+                !watch("entidadComercialComisionistaAlquiler")
+              }
+              tooltip="Generar liquidación alquiler comisionista"
+              tooltipOptions={{ position: "top" }}
+              style={{
+                height: "60px",
+                fontSize: "0.85rem",
+                padding: "0.5rem",
+              }}
+            />
 
             {/* FILA 2 - CELDA 2: Vacía */}
             <div></div>
@@ -1433,7 +1885,6 @@ export default function DatosLiquidacionPersonalPesca({
           fileName={`reporte_pesca_${reportDataPesca?.temporada?.nombre || "temporada"}.xlsx`}
         />
 
-
         {/* Selector de formato para Liquidación Tripulantes */}
         <ReportFormatSelector
           visible={showFormatSelectorLiqTripulantes}
@@ -1467,7 +1918,75 @@ export default function DatosLiquidacionPersonalPesca({
           fileName={`liq_tripulantes_${reportDataLiqTripulantes?.temporada?.nombre || "temporada"}.xlsx`}
         />
 
+        {/* Selector de formato para Liquidación Armadores */}
+        <ReportFormatSelector
+          visible={showFormatSelectorLiqArmadores}
+          onHide={() => setShowFormatSelectorLiqArmadores(false)}
+          onSelectPDF={() => setShowPDFViewerLiqArmadores(true)}
+          onSelectExcel={() => setShowExcelViewerLiqArmadores(true)}
+          title="Liquidación de Pesca Armadores"
+        />
 
+        {/* Visor PDF para Liquidación Armadores */}
+        <TemporaryPDFViewer
+          visible={showPDFViewerLiqArmadores}
+          onHide={() => {
+            setShowPDFViewerLiqArmadores(false);
+            setShowFormatSelectorLiqArmadores(false);
+          }}
+          data={reportDataLiqArmadores}
+          generatePDF={generarLiquidacionArmadoresPDF}
+          fileName={`liq_armadores_${reportDataLiqArmadores?.temporada?.nombre || "temporada"}.pdf`}
+        />
+
+        {/* Visor Excel para Liquidación Armadores */}
+        <TemporaryExcelViewer
+          visible={showExcelViewerLiqArmadores}
+          onHide={() => {
+            setShowExcelViewerLiqArmadores(false);
+            setShowFormatSelectorLiqArmadores(false);
+          }}
+          data={reportDataLiqArmadores}
+          generateExcel={generarLiquidacionArmadoresExcel}
+          fileName={`liq_armadores_${reportDataLiqArmadores?.temporada?.nombre || "temporada"}.xlsx`}
+        />
+
+
+
+
+                {/* Selector de formato para Liquidación Comisionista */}
+        <ReportFormatSelector
+          visible={showFormatSelectorLiqComisionista}
+          onHide={() => setShowFormatSelectorLiqComisionista(false)}
+          onSelectPDF={() => setShowPDFViewerLiqComisionista(true)}
+          onSelectExcel={() => setShowExcelViewerLiqComisionista(true)}
+          title="Liquidación Alquiler Comisionista"
+        />
+
+        {/* Visor PDF para Liquidación Comisionista */}
+        <TemporaryPDFViewer
+          visible={showPDFViewerLiqComisionista}
+          onHide={() => {
+            setShowPDFViewerLiqComisionista(false);
+            setShowFormatSelectorLiqComisionista(false);
+          }}
+          data={reportDataLiqComisionista}
+          generatePDF={generarLiquidacionComisionistaPDF}
+          fileName={`liq_comisionista_${reportDataLiqComisionista?.temporada?.nombre || "temporada"}.pdf`}
+        />
+
+        {/* Visor Excel para Liquidación Comisionista */}
+        <TemporaryExcelViewer
+          visible={showExcelViewerLiqComisionista}
+          onHide={() => {
+            setShowExcelViewerLiqComisionista(false);
+            setShowFormatSelectorLiqComisionista(false);
+          }}
+          data={reportDataLiqComisionista}
+          generateExcel={generarLiquidacionComisionistaExcel}
+          fileName={`liq_comisionista_${reportDataLiqComisionista?.temporada?.nombre || "temporada"}.xlsx`}
+        />
+        
       </Card>
     </>
   );

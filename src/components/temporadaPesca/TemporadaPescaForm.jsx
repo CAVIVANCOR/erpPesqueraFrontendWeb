@@ -145,8 +145,11 @@ const TemporadaPescaForm = ({
       // Nuevos campos para zona y alquiler cuota sur
       zona: "NORTE",
       ingresosPorAlquilerCuotaSur: null,
-      precioPorTonDolares: null, // ← AGREGAR ESTA LÍNEA
+      precioPorTonDolares: null,
       precioPorTonAlquilerDolares: null,
+      precioPorTonComisionAlquilerDolares: null,
+      entidadEmpresarialAlquiladaId: null,
+      entidadComercialComisionistaAlquiler: null,
     },
   });
 
@@ -431,11 +434,20 @@ const TemporadaPescaForm = ({
       ingresosPorAlquilerCuotaSur: data.ingresosPorAlquilerCuotaSur
         ? Number(data.ingresosPorAlquilerCuotaSur)
         : null,
-      precioPorTonDolares: data.precioPorTonDolares // ← AGREGAR ESTAS 2 LÍNEAS
+      precioPorTonDolares: data.precioPorTonDolares
         ? Number(data.precioPorTonDolares)
         : null,
       precioPorTonAlquilerDolares: data.precioPorTonAlquilerDolares
         ? Number(data.precioPorTonAlquilerDolares)
+        : null,
+      precioPorTonComisionAlquilerDolares: data.precioPorTonComisionAlquilerDolares
+        ? Number(data.precioPorTonComisionAlquilerDolares)
+        : null,
+      entidadEmpresarialAlquiladaId: data.entidadEmpresarialAlquiladaId
+        ? Number(data.entidadEmpresarialAlquiladaId)
+        : null,
+      entidadComercialComisionistaAlquiler: data.entidadComercialComisionistaAlquiler
+        ? Number(data.entidadComercialComisionistaAlquiler)
         : null,
     };
 
@@ -978,6 +990,9 @@ const TemporadaPescaForm = ({
         liqTotalPescaReal: editingItem.liqTotalPescaReal || null,
         precioPorTonDolares: editingItem.precioPorTonDolares || null,
         precioPorTonAlquilerDolares: editingItem.precioPorTonAlquilerDolares || null,
+        precioPorTonComisionAlquilerDolares: editingItem.precioPorTonComisionAlquilerDolares || null,
+        entidadEmpresarialAlquiladaId: editingItem.entidadEmpresarialAlquiladaId ? Number(editingItem.entidadEmpresarialAlquiladaId) : null,
+        entidadComercialComisionistaAlquiler: editingItem.entidadComercialComisionistaAlquiler ? Number(editingItem.entidadComercialComisionistaAlquiler) : null,
       });
     } else {
       reset({
@@ -1017,6 +1032,9 @@ const TemporadaPescaForm = ({
         liqTotalPescaReal: null,
         precioPorTonDolares: null,
         precioPorTonAlquilerDolares: null,
+        precioPorTonComisionAlquilerDolares: null,
+        entidadEmpresarialAlquiladaId: null,
+        entidadComercialComisionistaAlquiler: null,
       });
     }
   }, [editingItem, reset, estadoDefaultId]);

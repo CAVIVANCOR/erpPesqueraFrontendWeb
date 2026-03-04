@@ -33,13 +33,13 @@ export async function generarReportePescaPDF(data) {
 
   // Función helper para dibujar headers de tabla de descarga
   const dibujarHeadersDescarga = (pg, yPos, descargaColWidths, descargaHeaders, descargaTableWidth, descargaTableStartX) => {
-    pg.drawRectangle({
-      x: descargaTableStartX,
-      y: yPos - 3,
-      width: descargaTableWidth,
-      height: 20,
-      color: rgb(0.68, 0.85, 0.9),
-    });
+pg.drawRectangle({
+  x: descargaTableStartX,
+  y: yPos - 3,
+  width: descargaTableWidth,
+  height: 20,
+  color: rgb(0.72, 0.87, 0.97),
+});
 
     let xPos = descargaTableStartX;
     descargaHeaders.forEach((header, i) => {
@@ -76,7 +76,7 @@ export async function generarReportePescaPDF(data) {
     yPosition = headerHelper.dibujarEncabezadoCompleto(page, temporada, cuotas, totalLimiteTon, avanceTotal);
   }
 
-  const detalleTexto = "DETALLE DE DESCARGA EN TN";
+  const detalleTexto = "DETALLE DE DESCARGA EN TONELADAS";
   const detalleWidth = fontBold.widthOfTextAtSize(detalleTexto, 10);
   page.drawText(detalleTexto, {
     x: (width - detalleWidth) / 2,
@@ -235,13 +235,13 @@ export async function generarReportePescaPDF(data) {
     yPosition -= 5;
 
     // Fila TOTALES con fondo celeste
-    page.drawRectangle({
-      x: descargaTableStartX,
-      y: yPosition - 3,
-      width: descargaTableWidth,
-      height: 20,
-      color: rgb(0.68, 0.85, 0.9),
-    });
+page.drawRectangle({
+  x: descargaTableStartX,
+  y: yPosition - 3,
+  width: descargaTableWidth,
+  height: 20,
+  color: rgb(0.72, 0.87, 0.97),
+});
 
     // "TOTALES" centrado bajo columna Observaciones (índice 5)
     const xInicioObs = descargaColWidths.slice(0, 5).reduce((a, b) => a + b, 0);
