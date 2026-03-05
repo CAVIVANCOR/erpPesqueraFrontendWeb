@@ -417,6 +417,7 @@ const DatosGeneralesEntidad = ({
                   style={{ fontWeight: "bold" }}
                   className={getFieldClass("empresaId")}
                   disabled={readOnly || loading}
+                  filter
                 />
               )}
             />
@@ -436,6 +437,7 @@ const DatosGeneralesEntidad = ({
                   style={{ fontWeight: "bold" }}
                   className={getFieldClass("agrupacionEntidadId")}
                   disabled={readOnly || loading}
+                  filter
                 />
               )}
             />
@@ -457,6 +459,7 @@ const DatosGeneralesEntidad = ({
                   style={{ fontWeight: "bold" }}
                   className={getFieldClass("tipoEntidadId")}
                   disabled={readOnly || loading}
+                  filter
                 />
               )}
             />
@@ -485,6 +488,7 @@ const DatosGeneralesEntidad = ({
                   className={getFieldClass("formaPagoId")}
                   showClear
                   disabled={readOnly || loading}
+                  filter
                 />
               )}
             />
@@ -525,6 +529,7 @@ const DatosGeneralesEntidad = ({
                   style={{ fontWeight: "bold" }}
                   className={getFieldClass("tipoDocumentoId")}
                   disabled={readOnly || loading}
+                  filter
                 />
               )}
             />

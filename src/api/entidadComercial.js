@@ -26,13 +26,31 @@ export async function getEntidadComercialPorId(id) {
 }
 
 export async function crearEntidadComercial(data) {
-  const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
-  return res.data;
+  try {
+    const res = await axios.post(API_URL, data, { headers: getAuthHeaders() });
+    return res.data;
+  } catch (error) {
+    // Re-lanzar el error con la estructura correcta para que el formulario lo capture
+    throw {
+      response: error.response,
+      status: error.response?.status,
+      message: error.response?.data?.message || error.message
+    };
+  }
 }
 
 export async function actualizarEntidadComercial(id, data) {
-  const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
-  return res.data;
+  try {
+    const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeaders() });
+    return res.data;
+  } catch (error) {
+    // Re-lanzar el error con la estructura correcta para que el formulario lo capture
+    throw {
+      response: error.response,
+      status: error.response?.status,
+      message: error.response?.data?.message || error.message
+    };
+  }
 }
 
 export async function eliminarEntidadComercial(id) {

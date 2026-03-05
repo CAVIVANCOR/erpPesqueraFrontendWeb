@@ -33,6 +33,7 @@ export default function DatosGeneralesTemporadaForm({
   bahiasComerciales = [],
   motoristas = [],
   patrones = [],
+  pangueros = [], // ⭐ AGREGAR ESTA LÍNEA
   estadosTemporada = [],
   empresaSeleccionada,
   defaultValues = {},
@@ -59,7 +60,7 @@ export default function DatosGeneralesTemporadaForm({
   const idWatched = watch("id");
   const numeroResolucionWatched = watch("numeroResolucion");
   const nombreWatched = watch("nombre");
-const zonaWatched = watch("zona");
+  const zonaWatched = watch("zona");
   // Watch para toneladas capturadas
   const toneladasCapturadasTemporada = watch("toneladasCapturadasTemporada");
 
@@ -101,7 +102,7 @@ const zonaWatched = watch("zona");
     }
   }, [idWatched, numeroResolucionWatched, nombreWatched, setValue]);
 
-     // Calcular cuotas automáticamente cuando cambien empresa, zona o límite máximo
+  // Calcular cuotas automáticamente cuando cambien empresa, zona o límite máximo
   useEffect(() => {
     const calcularCuotas = async () => {
       if (!empresaWatched || !limiteMaximoCapturaTnWatched) {
@@ -113,24 +114,26 @@ const zonaWatched = watch("zona");
       try {
         // Obtener detalles de cuota de la empresa
         const detalles = await getDetallesCuotaPesca({
-          empresaId: empresaWatched
+          empresaId: empresaWatched,
         });
-        
+
         // Filtrar: activo + solo PESCA (esAlquiler=false)
         let detallesFiltrados = detalles
           .filter((d) => d.activo)
           .filter((d) => d.esAlquiler === false);
-        
+
         // Filtrar por zona (si existe)
         if (zonaWatched) {
-          detallesFiltrados = detallesFiltrados.filter((d) => d.zona === zonaWatched);
+          detallesFiltrados = detallesFiltrados.filter(
+            (d) => d.zona === zonaWatched,
+          );
         }
 
         // VALIDACIÓN CRÍTICA: ¿Existen cuotas para esta zona?
         if (detallesFiltrados.length === 0) {
           setValue("cuotaPropiaTon", null);
           setValue("cuotaAlquiladaTon", null);
-          
+
           // Mostrar error al usuario
           toast?.current?.show({
             severity: "error",
@@ -138,7 +141,7 @@ const zonaWatched = watch("zona");
             detail: `No existen Cuotas de Pesca activas para la zona ${zonaWatched}. No se puede crear la Temporada de Pesca.`,
             life: 5000,
           });
-          
+
           return;
         }
 
@@ -163,7 +166,7 @@ const zonaWatched = watch("zona");
         console.error("Error al calcular cuotas:", error);
         setValue("cuotaPropiaTon", null);
         setValue("cuotaAlquiladaTon", null);
-        
+
         toast?.current?.show({
           severity: "error",
           summary: "Error",
@@ -739,6 +742,7 @@ const zonaWatched = watch("zona");
           bahiasComerciales={bahiasComerciales}
           motoristas={motoristas}
           patrones={patrones}
+          pangueros={pangueros}  // ⭐ AGREGAR ESTA LÍNEA
           temporadaData={temporadaData}
           onTemporadaDataChange={onTemporadaDataChange} // Callback para notificar cambios en datos de temporada
           onFaenasChange={onFaenasChange} // Callback para notificar cambios en faenas

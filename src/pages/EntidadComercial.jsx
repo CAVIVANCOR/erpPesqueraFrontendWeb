@@ -64,6 +64,7 @@ const EntidadComercial = ({ ruta }) => {
 
   const toast = useRef(null);
   const { usuario } = useAuthStore();
+  const { markActionCompleted } = useNavigateWithReturn();
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -130,28 +131,28 @@ const EntidadComercial = ({ ruta }) => {
     // Filtro por empresa
     if (filtroEmpresa !== null) {
       resultado = resultado.filter(
-        (e) => Number(e.empresaId) === Number(filtroEmpresa)
+        (e) => Number(e.empresaId) === Number(filtroEmpresa),
       );
     }
 
     // Filtro por tipo de entidad
     if (filtroTipoEntidad !== null) {
       resultado = resultado.filter(
-        (e) => Number(e.tipoEntidadId) === Number(filtroTipoEntidad)
+        (e) => Number(e.tipoEntidadId) === Number(filtroTipoEntidad),
       );
     }
 
     // Filtro por forma de pago
     if (filtroFormaPago !== null) {
       resultado = resultado.filter(
-        (e) => Number(e.formaPagoId) === Number(filtroFormaPago)
+        (e) => Number(e.formaPagoId) === Number(filtroFormaPago),
       );
     }
 
     // Filtro por agente de retención
     if (filtroAgenteRetencion !== null) {
       resultado = resultado.filter(
-        (e) => e.esAgenteRetencion === filtroAgenteRetencion
+        (e) => e.esAgenteRetencion === filtroAgenteRetencion,
       );
     }
 
@@ -190,25 +191,26 @@ const EntidadComercial = ({ ruta }) => {
 
   const onGuardarExitoso = (entidad) => {
     cargarEntidadesComerciales();
-    
+
     // ✅ MARCAR ACCIÓN COMPLETADA PARA RETORNO
-    const { markActionCompleted } = useNavigateWithReturn();
-    
+    // const { markActionCompleted } = useNavigateWithReturn(); Eliminado
+
     // Verificar si es creación nueva (entidad sin id previo o recién creada)
     const esNuevaEntidad = entidad && entidad.id && !modoEdicion;
-    
+
     if (esNuevaEntidad) {
       // Marcar que se completó la creación de proveedor
-      markActionCompleted('proveedorCreado', { id: entidad.id });
+      markActionCompleted("proveedorCreado", { id: entidad.id });
     }
-    
+
     // Mostrar mensaje de éxito sin cerrar el diálogo
     toast.current.show({
       severity: "success",
       summary: "Éxito",
-      detail: entidad && entidad.id
-        ? "Entidad comercial actualizada correctamente"
-        : "Entidad comercial creada correctamente",
+      detail:
+        entidad && entidad.id
+          ? "Entidad comercial actualizada correctamente"
+          : "Entidad comercial creada correctamente",
       life: 3000,
     });
   };
@@ -223,8 +225,8 @@ const EntidadComercial = ({ ruta }) => {
       await eliminarEntidadComercial(entidadAEliminar.id);
       setEntidadesComerciales(
         entidadesComerciales.filter(
-          (e) => Number(e.id) !== Number(entidadAEliminar.id)
-        )
+          (e) => Number(e.id) !== Number(entidadAEliminar.id),
+        ),
       );
       toast.current.show({
         severity: "success",
@@ -254,7 +256,11 @@ const EntidadComercial = ({ ruta }) => {
   };
 
   const razonSocialTemplate = (rowData) => {
-    return <span style={{fontSize: "small", fontWeight: "bold" }}>{rowData.razonSocial}</span>;
+    return (
+      <span style={{ fontSize: "small", fontWeight: "bold" }}>
+        {rowData.razonSocial}
+      </span>
+    );
   };
 
   const tipoTemplate = (rowData) => {
@@ -455,6 +461,7 @@ const EntidadComercial = ({ ruta }) => {
             placeholder="Filtrar por Tipo Entidad"
             showClear
             className="w-full"
+            filter
           />
         </div>
         <div style={{ flex: 1 }}>
@@ -468,6 +475,7 @@ const EntidadComercial = ({ ruta }) => {
             placeholder="Filtrar por Forma Pago"
             showClear
             className="w-full"
+            filter
           />
         </div>
         <div style={{ flex: 1, alignItems: "center", flexDirection: "column" }}>
@@ -480,6 +488,7 @@ const EntidadComercial = ({ ruta }) => {
             optionValue="value"
             placeholder="Agente Retención"
             className="w-full"
+            filter
           />
         </div>
       </div>
@@ -529,7 +538,7 @@ const EntidadComercial = ({ ruta }) => {
           field="tipoEntidadId"
           header="Tipo Entidad"
           body={tipoEntidadTemplate}
-          style={{width:"5rem"}}
+          style={{ width: "5rem" }}
           sortable
         />
         <Column
@@ -542,7 +551,7 @@ const EntidadComercial = ({ ruta }) => {
           field="razonSocial"
           header="Razón Social"
           body={razonSocialTemplate}
-          style={{width:"15rem"}}
+          style={{ width: "15rem" }}
           sortable
         />
         <Column header="Tipo" body={tipoTemplate} sortable />

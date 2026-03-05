@@ -29,6 +29,7 @@ const DatosGeneralesFaenaPesca = ({
   bahias,
   motoristas,
   patrones,
+  pangueros, // ⭐ AGREGAR
   puertos,
   embarcaciones,
   boliches,
@@ -51,9 +52,12 @@ const DatosGeneralesFaenaPesca = ({
         try {
           const faenaActualizada = await getFaenaPescaPorId(faenaPescaId);
           // Actualizar solo el campo toneladasCapturadasFaena
-          setValue("toneladasCapturadasFaena", faenaActualizada.toneladasCapturadasFaena || 0);          
+          setValue(
+            "toneladasCapturadasFaena",
+            faenaActualizada.toneladasCapturadasFaena || 0,
+          );
         } catch (error) {
-          console.error('❌ Error recargando datos de faena:', error);
+          console.error("❌ Error recargando datos de faena:", error);
         }
       }
     };
@@ -61,7 +65,7 @@ const DatosGeneralesFaenaPesca = ({
   }, [calasUpdateTrigger, faenaPescaId, setValue]);
   // Función para notificar cambios en calas
   const handleCalasChange = () => {
-    setCalasUpdateTrigger(prev => prev + 1);
+    setCalasUpdateTrigger((prev) => prev + 1);
   };
   // Transformar estadosFaena a formato options
   const estadosFaenaOptions = estadosFaena.map((estado) => ({
@@ -100,20 +104,14 @@ const DatosGeneralesFaenaPesca = ({
   const isReadOnlyState = Number(estadoFaenaId) === 19; // FINALIZADA
   const isReadOnly = isReadOnlyState || loading;
 
-// Verificar si todos los campos requeridos están completos para finalizar faena
-const allRequiredFieldsComplete = useMemo(() => {
-  const requiredFields = [
-    fechaSalida,
-    puertoSalidaId,
-  ];
+  // Verificar si todos los campos requeridos están completos para finalizar faena
+  const allRequiredFieldsComplete = useMemo(() => {
+    const requiredFields = [fechaSalida, puertoSalidaId];
 
-  return requiredFields.every(
-    (field) => field !== null && field !== undefined && field !== ""
-  );
-}, [
-  fechaSalida,
-  puertoSalidaId,
-]);
+    return requiredFields.every(
+      (field) => field !== null && field !== undefined && field !== "",
+    );
+  }, [fechaSalida, puertoSalidaId]);
 
   // Habilitar botón "Fin de Faena" solo cuando estado es EN PROCESO (18) y todos los campos están completos
   const canFinalizarFaena =
@@ -241,8 +239,8 @@ const allRequiredFieldsComplete = useMemo(() => {
               finalizandoFaena
                 ? "Procesando finalización de faena..."
                 : !canFinalizarFaena
-                ? "Complete Fecha de Salida y Puerto de Salida, y asegúrese que el estado sea EN PROCESO"
-                : "Finalizar faena (solo actualiza estado a FINALIZADA)"
+                  ? "Complete Fecha de Salida y Puerto de Salida, y asegúrese que el estado sea EN PROCESO"
+                  : "Finalizar faena (solo actualiza estado a FINALIZADA)"
             }
             tooltipOptions={{ position: "top" }}
           />
@@ -336,6 +334,32 @@ const allRequiredFieldsComplete = useMemo(() => {
             <Message severity="error" text={errors.patronId.message} />
           )}
         </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="pangueroId">Panguero</label>
+          <Controller
+            name="pangueroId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="pangueroId"
+                {...field}
+                value={field.value}
+                options={pangueros}
+                optionLabel="label"
+                optionValue="value"
+                style={{ fontWeight: "bold" }}
+                placeholder="Seleccione panguero"
+                disabled={loading}
+                className={classNames({
+                  "p-invalid": errors.pangueroId,
+                })}
+              />
+            )}
+          />
+          {errors.pangueroId && (
+            <Message severity="error" text={errors.pangueroId.message} />
+          )}
+        </div>
       </div>
 
       <div
@@ -413,20 +437,26 @@ const allRequiredFieldsComplete = useMemo(() => {
             render={({ field }) => (
               <InputText
                 id="fechaDescarga"
-                value={field.value ? 
-                  new Date(field.value).toLocaleString("es-PE", {
-                    day: "2-digit",
-                    month: "2-digit", 
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false
-                  }) : ""
+                value={
+                  field.value
+                    ? new Date(field.value).toLocaleString("es-PE", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })
+                    : ""
                 }
                 showTime
                 readOnly
                 disabled
-                style={{ fontWeight: "bold", color: "#21962e", backgroundColor: "#f8f9fa" }}
+                style={{
+                  fontWeight: "bold",
+                  color: "#21962e",
+                  backgroundColor: "#f8f9fa",
+                }}
                 className={classNames({
                   "p-invalid": errors.fechaDescarga,
                 })}
@@ -446,14 +476,20 @@ const allRequiredFieldsComplete = useMemo(() => {
             name="puertoDescargaId"
             control={control}
             render={({ field }) => {
-              const puertoSeleccionado = puertos.find(p => Number(p.value) === Number(field.value));
+              const puertoSeleccionado = puertos.find(
+                (p) => Number(p.value) === Number(field.value),
+              );
               return (
                 <InputText
                   id="puertoDescargaId"
                   value={puertoSeleccionado ? puertoSeleccionado.label : ""}
                   readOnly
                   disabled
-                  style={{ fontWeight: "bold", color: "#21962e", backgroundColor: "#f8f9fa" }}
+                  style={{
+                    fontWeight: "bold",
+                    color: "#21962e",
+                    backgroundColor: "#f8f9fa",
+                  }}
                   className={classNames({
                     "p-invalid": errors.puertoDescargaId,
                   })}
@@ -476,20 +512,26 @@ const allRequiredFieldsComplete = useMemo(() => {
             render={({ field }) => (
               <InputText
                 id="fechaHoraFondeo"
-                value={field.value ? 
-                  new Date(field.value).toLocaleString("es-PE", {
-                    day: "2-digit",
-                    month: "2-digit", 
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false
-                  }) : ""
+                value={
+                  field.value
+                    ? new Date(field.value).toLocaleString("es-PE", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })
+                    : ""
                 }
                 showTime
                 readOnly
                 disabled
-                style={{ fontWeight: "bold", color: "#c61515", backgroundColor: "#f8f9fa" }}
+                style={{
+                  fontWeight: "bold",
+                  color: "#c61515",
+                  backgroundColor: "#f8f9fa",
+                }}
                 className={classNames({
                   "p-invalid": errors.fechaHoraFondeo,
                 })}
@@ -509,14 +551,20 @@ const allRequiredFieldsComplete = useMemo(() => {
             name="puertoFondeoId"
             control={control}
             render={({ field }) => {
-              const puertoSeleccionado = puertos.find(p => Number(p.value) === Number(field.value));
+              const puertoSeleccionado = puertos.find(
+                (p) => Number(p.value) === Number(field.value),
+              );
               return (
                 <InputText
                   id="puertoFondeoId"
                   value={puertoSeleccionado ? puertoSeleccionado.label : ""}
                   readOnly
                   disabled
-                  style={{ fontWeight: "bold", color: "#c61515", backgroundColor: "#f8f9fa" }}
+                  style={{
+                    fontWeight: "bold",
+                    color: "#c61515",
+                    backgroundColor: "#f8f9fa",
+                  }}
                   className={classNames({
                     "p-invalid": errors.puertoFondeoId,
                   })}

@@ -29,6 +29,7 @@ import {
   getBahiasComerciales,
   getMotoristas,
   getPatrones,
+  getPangueros, // ⭐ AGREGAR
 } from "../../api/personal";
 import {
   iniciarTemporada,
@@ -72,6 +73,7 @@ const TemporadaPescaForm = ({
   const [bahiasComerciales, setBahiasComerciales] = useState([]);
   const [motoristas, setMotoristas] = useState([]);
   const [patrones, setPatrones] = useState([]);
+  const [pangueros, setPangueros] = useState([]); // ⭐ AGREGAR
   const [estadosTemporada, setEstadosTemporada] = useState([]);
   const [embarcaciones, setEmbarcaciones] = useState([]);
   const [boliches, setBoliches] = useState([]);
@@ -227,15 +229,18 @@ const TemporadaPescaForm = ({
         const empresaId = editingItem?.empresaId || empresasList[0]?.id || null;
 
         if (empresaId) {
-          const [bahiasData, motoristasData, patronesData] = await Promise.all([
-            getBahiasComerciales(Number(empresaId), "BAHIA COMERCIAL"),
-            getMotoristas(Number(empresaId), "MOTORISTA EMBARCACION"),
-            getPatrones(Number(empresaId), "PATRON EMBARCACION"),
-          ]);
+          const [bahiasData, motoristasData, patronesData, panguerosData] =
+            await Promise.all([
+              getBahiasComerciales(Number(empresaId), "BAHIA COMERCIAL"),
+              getMotoristas(Number(empresaId), "MOTORISTA EMBARCACION"),
+              getPatrones(Number(empresaId), "PATRON EMBARCACION"),
+              getPangueros(Number(empresaId), "PANGUERO EMBARCACION"), // ⭐ AGREGAR
+            ]);
 
           setBahiasComerciales(bahiasData);
           setMotoristas(motoristasData);
           setPatrones(patronesData);
+          setPangueros(panguerosData); // ⭐ AGREGAR
         }
       } catch (error) {
         console.error("Error cargando responsables de faena:", error);
@@ -440,15 +445,17 @@ const TemporadaPescaForm = ({
       precioPorTonAlquilerDolares: data.precioPorTonAlquilerDolares
         ? Number(data.precioPorTonAlquilerDolares)
         : null,
-      precioPorTonComisionAlquilerDolares: data.precioPorTonComisionAlquilerDolares
-        ? Number(data.precioPorTonComisionAlquilerDolares)
-        : null,
+      precioPorTonComisionAlquilerDolares:
+        data.precioPorTonComisionAlquilerDolares
+          ? Number(data.precioPorTonComisionAlquilerDolares)
+          : null,
       entidadEmpresarialAlquiladaId: data.entidadEmpresarialAlquiladaId
         ? Number(data.entidadEmpresarialAlquiladaId)
         : null,
-      entidadComercialComisionistaAlquiler: data.entidadComercialComisionistaAlquiler
-        ? Number(data.entidadComercialComisionistaAlquiler)
-        : null,
+      entidadComercialComisionistaAlquiler:
+        data.entidadComercialComisionistaAlquiler
+          ? Number(data.entidadComercialComisionistaAlquiler)
+          : null,
     };
 
     // Solo incluir ID si existe y no es null (para edición)
@@ -986,10 +993,17 @@ const TemporadaPescaForm = ({
         liqComisionPangueroReal: editingItem.liqComisionPangueroReal || null,
         liqTotalPescaReal: editingItem.liqTotalPescaReal || null,
         precioPorTonDolares: editingItem.precioPorTonDolares || null,
-        precioPorTonAlquilerDolares: editingItem.precioPorTonAlquilerDolares || null,
-        precioPorTonComisionAlquilerDolares: editingItem.precioPorTonComisionAlquilerDolares || null,
-        entidadEmpresarialAlquiladaId: editingItem.entidadEmpresarialAlquiladaId ? Number(editingItem.entidadEmpresarialAlquiladaId) : null,
-        entidadComercialComisionistaAlquiler: editingItem.entidadComercialComisionistaAlquiler ? Number(editingItem.entidadComercialComisionistaAlquiler) : null,
+        precioPorTonAlquilerDolares:
+          editingItem.precioPorTonAlquilerDolares || null,
+        precioPorTonComisionAlquilerDolares:
+          editingItem.precioPorTonComisionAlquilerDolares || null,
+        entidadEmpresarialAlquiladaId: editingItem.entidadEmpresarialAlquiladaId
+          ? Number(editingItem.entidadEmpresarialAlquiladaId)
+          : null,
+        entidadComercialComisionistaAlquiler:
+          editingItem.entidadComercialComisionistaAlquiler
+            ? Number(editingItem.entidadComercialComisionistaAlquiler)
+            : null,
       });
     } else {
       reset({
@@ -1092,6 +1106,7 @@ const TemporadaPescaForm = ({
               bahiasComerciales={bahiasComerciales}
               motoristas={motoristas}
               patrones={patrones}
+              pangueros={pangueros} // ⭐ AGREGAR ESTA LÍNEA
               estadosTemporada={estadosTemporada}
               empresaSeleccionada={empresaSeleccionada}
               defaultValues={getValues()}

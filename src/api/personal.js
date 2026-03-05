@@ -187,7 +187,19 @@ export const getPatrones = async (empresaId,descripcionCargo) => {
   const patrones = res.data.filter(persona => !persona.cesado);
   return patrones;
 };
-
+/**
+ * Obtener pangueros por empresa
+ * @param {number} empresaId - ID de la empresa para filtrar
+ * @param {string} descripcionCargo - Descripción del cargo
+ * @returns {Promise<Array>} Lista de pangueros activos
+ */
+export const getPangueros = async (empresaId, descripcionCargo) => {
+  const res = await axios.get(`${API_URL}/personalxdescripcioncargo/${empresaId}/${descripcionCargo}`, { 
+    headers: getAuthHeader() 
+  });
+  const pangueros = res.data.filter(persona => !persona.cesado);
+  return pangueros;
+};
 /**
  * Obtiene el único personal de Bahía Comercial para una empresa específica
  * Valida que hay exactamente 1 registro activo con paraPescaConsumo=true

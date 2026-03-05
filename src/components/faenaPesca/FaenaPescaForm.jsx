@@ -46,6 +46,7 @@ export default function FaenaPescaForm({
   bahiasComercialesOptions = [],
   motoristasOptions = [],
   patronesOptions = [],
+  panguerosOptions = [], // ⭐ AGREGAR ESTA LÍNEA
   puertosOptions = [],
   onDataChange, // Callback para notificar cambios en los datos
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
@@ -76,6 +77,7 @@ export default function FaenaPescaForm({
   const [bahias, setBahias] = useState(bahiasComercialesOptions);
   const [motoristas, setMotoristas] = useState(motoristasOptions);
   const [patrones, setPatrones] = useState(patronesOptions);
+  const [pangueros, setPangueros] = useState(panguerosOptions); // ⭐ AGREGAR
   const [embarcaciones, setEmbarcaciones] = useState(embarcacionesOptions);
   const [boliches, setBoliches] = useState(bolichesOptions);
   const [puertos, setPuertos] = useState(puertosOptions);
@@ -98,6 +100,7 @@ export default function FaenaPescaForm({
       bolicheRedId: null,
       patronId: null,
       motoristaId: null,
+      pangueroId: null, // ⭐ AGREGAR
       bahiaId: null,
       fechaInicio: null,
       fechaFin: null,
@@ -123,6 +126,7 @@ export default function FaenaPescaForm({
     setBahias(bahiasComercialesOptions);
     setMotoristas(motoristasOptions);
     setPatrones(patronesOptions);
+    setPangueros(panguerosOptions); // ⭐ AGREGAR
     setEmbarcaciones(embarcacionesOptions);
     setBoliches(bolichesOptions);
     setPuertos(puertosOptions);
@@ -175,6 +179,7 @@ export default function FaenaPescaForm({
     bahiasComercialesOptions,
     motoristasOptions,
     patronesOptions,
+    panguerosOptions, // ⭐ AGREGAR
     embarcacionesOptions,
     bolichesOptions,
     puertosOptions,
@@ -717,6 +722,7 @@ export default function FaenaPescaForm({
             bahias={bahias}
             motoristas={motoristas}
             patrones={patrones}
+            pangueros={pangueros}  // ⭐ AGREGAR
             puertos={puertos}
             embarcaciones={embarcaciones}
             boliches={boliches}

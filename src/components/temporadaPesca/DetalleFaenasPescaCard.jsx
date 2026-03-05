@@ -83,13 +83,14 @@ const DetalleFaenasPescaCard = forwardRef(
       bahiasComerciales = [],
       motoristas = [],
       patrones = [],
+      pangueros = [], // ⭐ AGREGAR ESTA LÍNEA
       temporadaData = null,
       onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
       onFaenasChange, // Callback para notificar cambios en faenas
       faenasUpdateTrigger,
       setFaenasUpdateTrigger,
     },
-    ref
+    ref,
   ) => {
     // Estados principales
     const [faenas, setFaenas] = useState([]);
@@ -144,7 +145,7 @@ const DetalleFaenasPescaCard = forwardRef(
         const data = await getFaenasPesca();
         // Filtrar por temporada
         const faenasFiltradas = data.filter(
-          (f) => f.temporadaId === temporadaPescaId
+          (f) => f.temporadaId === temporadaPescaId,
         );
         setFaenas(faenasFiltradas);
       } catch (error) {
@@ -236,7 +237,7 @@ const DetalleFaenasPescaCard = forwardRef(
         window.dispatchEvent(
           new CustomEvent("refreshFaenas", {
             detail: { temporadaId: temporadaPescaId },
-          })
+          }),
         );
       } catch (error) {
         console.error("Error creando faena completa:", error);
@@ -412,7 +413,7 @@ const DetalleFaenasPescaCard = forwardRef(
         sortable: true,
         body: (rowData) => {
           const embarcacion = embarcaciones.find(
-            (e) => Number(e.id) === Number(rowData.embarcacionId)
+            (e) => Number(e.id) === Number(rowData.embarcacionId),
           );
           return embarcacion
             ? embarcacion.activo?.nombre || embarcacion.nombre || "Sin nombre"
@@ -425,7 +426,7 @@ const DetalleFaenasPescaCard = forwardRef(
         sortable: true,
         body: (rowData) => {
           const boliche = boliches.find(
-            (b) => Number(b.id) === Number(rowData.bolicheRedId)
+            (b) => Number(b.id) === Number(rowData.bolicheRedId),
           );
           return boliche ? boliche.descripcion : "N/A";
         },
@@ -436,7 +437,7 @@ const DetalleFaenasPescaCard = forwardRef(
         sortable: true,
         body: (rowData) => {
           const bahia = bahiasComerciales.find(
-            (b) => Number(b.id) === Number(rowData.bahiaId)
+            (b) => Number(b.id) === Number(rowData.bahiaId),
           );
           return bahia ? `${bahia.nombres} ${bahia.apellidos}` : "N/A";
         },
@@ -447,7 +448,7 @@ const DetalleFaenasPescaCard = forwardRef(
         sortable: true,
         body: (rowData) => {
           const patron = patrones.find(
-            (p) => Number(p.id) === Number(rowData.patronId)
+            (p) => Number(p.id) === Number(rowData.patronId),
           );
           return patron ? `${patron.nombres} ${patron.apellidos}` : "N/A";
         },
@@ -458,7 +459,7 @@ const DetalleFaenasPescaCard = forwardRef(
         sortable: true,
         body: (rowData) => {
           const motorista = motoristas.find(
-            (m) => Number(m.id) === Number(rowData.motoristaId)
+            (m) => Number(m.id) === Number(rowData.motoristaId),
           );
           return motorista
             ? `${motorista.nombres} ${motorista.apellidos}`
@@ -590,7 +591,7 @@ const DetalleFaenasPescaCard = forwardRef(
                 style={{ minWidth: "10rem" }}
                 body={(rowData) => {
                   const puerto = puertosData.find(
-                    (p) => p.id === rowData.puertoDescargaId
+                    (p) => p.id === rowData.puertoDescargaId,
                   );
                   return puerto ? puerto.nombre : "N/A";
                 }}
@@ -956,7 +957,7 @@ const DetalleFaenasPescaCard = forwardRef(
             } catch (error) {
               console.error(
                 `Error cargando calas para faena ${faena.id}:`,
-                error
+                error,
               );
               return { faenaId: faena.id, calas: [] };
             }
@@ -973,7 +974,7 @@ const DetalleFaenasPescaCard = forwardRef(
             } catch (error) {
               console.error(
                 `Error cargando descargas para faena ${faena.id}:`,
-                error
+                error,
               );
               return { faenaId: faena.id, descargas: [] };
             }
@@ -1014,10 +1015,10 @@ const DetalleFaenasPescaCard = forwardRef(
                   .catch((error) => {
                     console.error(
                       `Error cargando especies para cala ${cala.id}:`,
-                      error
+                      error,
                     );
                     return { calaId: cala.id, especies: [] };
-                  })
+                  }),
               );
             }
           });
@@ -1097,10 +1098,10 @@ const DetalleFaenasPescaCard = forwardRef(
               !temporadaPescaId
                 ? "Guarde la temporada para crear faenas"
                 : !temporadaData?.temporadaPescaIniciada
-                ? "Debe iniciar la temporada antes de crear faenas"
-                : creandoFaenaCompleta
-                ? "Creando faena con todos sus registros..."
-                : "Crear nueva faena con todos sus registros asociados"
+                  ? "Debe iniciar la temporada antes de crear faenas"
+                  : creandoFaenaCompleta
+                    ? "Creando faena con todos sus registros..."
+                    : "Crear nueva faena con todos sus registros asociados"
             }
             tooltipOptions={{ position: "bottom" }}
             className="p-button-success"
@@ -1164,10 +1165,10 @@ const DetalleFaenasPescaCard = forwardRef(
                 !temporadaPescaId
                   ? "Guarde la temporada para crear faenas"
                   : !temporadaData?.temporadaPescaIniciada
-                  ? "Debe iniciar la temporada antes de crear faenas"
-                  : creandoFaenaCompleta
-                  ? "Creando faena con todos sus registros..."
-                  : "Crear nueva faena con todos sus registros asociados"
+                    ? "Debe iniciar la temporada antes de crear faenas"
+                    : creandoFaenaCompleta
+                      ? "Creando faena con todos sus registros..."
+                      : "Crear nueva faena con todos sus registros asociados"
               }
               tooltipOptions={{ position: "bottom" }}
             />
@@ -1186,7 +1187,7 @@ const DetalleFaenasPescaCard = forwardRef(
       const templateData = createPorcentajeTemplate(
         rowData.porcentajeJuveniles,
         null,
-        { decimales: 2 }
+        { decimales: 2 },
       );
 
       if (!templateData) return "-";
@@ -1284,6 +1285,11 @@ const DetalleFaenasPescaCard = forwardRef(
             label: `${p.nombres} ${p.apellidos}`,
             value: p.id,
           }))}
+          panguerosOptions={pangueros.map((p) => ({
+            // ⭐ AGREGAR ESTAS 4 LÍNEAS
+            label: `${p.nombres} ${p.apellidos}`,
+            value: p.id,
+          }))}
           puertosOptions={puertosData.map((p) => ({
             label: p.nombre,
             value: p.id,
@@ -1300,7 +1306,7 @@ const DetalleFaenasPescaCard = forwardRef(
         />
       </div>
     );
-  }
+  },
 );
 
 DetalleFaenasPescaCard.displayName = "DetalleFaenasPescaCard";
