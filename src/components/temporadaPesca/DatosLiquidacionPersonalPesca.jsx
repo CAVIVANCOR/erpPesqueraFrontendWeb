@@ -8,7 +8,6 @@
  * @author ERP Megui
  * @version 1.0.0
  */
-
 import React, { useState, useRef, useEffect } from "react";
 import { Card } from "primereact/card";
 import { InputNumber } from "primereact/inputnumber";
@@ -21,7 +20,6 @@ import { Toast } from "primereact/toast";
 import { Message } from "primereact/message";
 import { getParametrosLiquidacion } from "../../api/empresa";
 import { calcularLiquidaciones as calcularLiquidacionesAPI } from "../../api/temporadaPesca";
-
 import ReportFormatSelector from "../reports/ReportFormatSelector";
 import TemporaryPDFViewer from "../reports/TemporaryPDFViewer";
 import TemporaryExcelViewer from "../reports/TemporaryExcelViewer";
@@ -33,13 +31,15 @@ import { generarReportePescaExcel } from "./reports/generarReportePescaExcel";
 import { generarReportePescaPDF } from "./reports/generarReportePescaPDF";
 import { getFaenasPesca } from "../../api/faenaPesca";
 import { getAllDescargaFaenaPesca } from "../../api/descargaFaenaPesca";
-
 import { generarLiquidacionTripulantesPDF } from "./reports/generarLiquidacionTripulantesPDF";
 import { generarLiquidacionTripulantesExcel } from "./reports/generarLiquidacionTripulantesExcel";
 import { generarLiquidacionArmadoresPDF } from "./reports/generarLiquidacionArmadoresPDF";
 import { generarLiquidacionArmadoresExcel } from "./reports/generarLiquidacionArmadoresExcel";
 import { generarLiquidacionComisionistaPDF } from "./reports/generarLiquidacionComisionistaPDF";
 import { generarLiquidacionComisionistaExcel } from "./reports/generarLiquidacionComisionistaExcel";
+import { generarComisionesPMMPDF } from "./reports/generarComisionesPMMPDF";
+import { generarComisionesPMMExcel } from "./reports/generarComisionesPMMExcel";
+import { getPersonal } from "../../api/personal";
 import { getAllEntregaARendir } from "../../api/entregaARendir";
 import { getAllDetMovsEntregaRendir } from "../../api/detMovsEntregaRendir";
 import { getEntidadesComerciales } from "../../api/entidadComercial";
@@ -67,7 +67,6 @@ export default function DatosLiquidacionPersonalPesca({
   const [showPDFViewerPesca, setShowPDFViewerPesca] = useState(false);
   const [showExcelViewerPesca, setShowExcelViewerPesca] = useState(false);
   const [reportDataPesca, setReportDataPesca] = useState(null);
-
   const [
     showFormatSelectorLiqTripulantes,
     setShowFormatSelectorLiqTripulantes,
@@ -96,6 +95,14 @@ export default function DatosLiquidacionPersonalPesca({
     useState(false);
   const [reportDataLiqComisionista, setReportDataLiqComisionista] =
     useState(null);
+  // Estados para reporte Comisiones PMM
+  const [showFormatSelectorComisionesPMM, setShowFormatSelectorComisionesPMM] =
+    useState(false);
+  const [showPDFViewerComisionesPMM, setShowPDFViewerComisionesPMM] =
+    useState(false);
+  const [showExcelViewerComisionesPMM, setShowExcelViewerComisionesPMM] =
+    useState(false);
+  const [reportDataComisionesPMM, setReportDataComisionesPMM] = useState(null);
   // Cargar entidades comerciales al montar el componente
   useEffect(() => {
     const cargarEntidades = async () => {
@@ -114,7 +121,6 @@ export default function DatosLiquidacionPersonalPesca({
     };
     cargarEntidades();
   }, []);
-
   // Asegurar que los valores de los dropdowns sean Number cuando cambien
   useEffect(() => {
     const entidadEmpresarialAlquiladaId = watch(
@@ -123,7 +129,6 @@ export default function DatosLiquidacionPersonalPesca({
     const entidadComercialComisionistaAlquiler = watch(
       "entidadComercialComisionistaAlquiler",
     );
-
     if (
       entidadEmpresarialAlquiladaId &&
       typeof entidadEmpresarialAlquiladaId === "string"
@@ -133,7 +138,6 @@ export default function DatosLiquidacionPersonalPesca({
         Number(entidadEmpresarialAlquiladaId),
       );
     }
-
     if (
       entidadComercialComisionistaAlquiler &&
       typeof entidadComercialComisionistaAlquiler === "string"
@@ -147,7 +151,6 @@ export default function DatosLiquidacionPersonalPesca({
     watch("entidadEmpresarialAlquiladaId"),
     watch("entidadComercialComisionistaAlquiler"),
   ]);
-
   // Calcular liquidaciones automáticamente al cargar la temporada
   useEffect(() => {
     const temporadaId = watch("id");
@@ -169,9 +172,7 @@ export default function DatosLiquidacionPersonalPesca({
       });
       return;
     }
-
     setCargandoParametros(true);
-
     try {
       const parametros = await getParametrosLiquidacion(empresaId);
       setValue(
@@ -802,7 +803,138 @@ export default function DatosLiquidacionPersonalPesca({
       });
     }
   };
+  const handleComisionesPMM = async () => {
+    const temporadaId = watch("id");
+    const empresaId = watch("empresaId");
 
+    if (!temporadaId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe guardar la temporada antes de generar el reporte",
+        life: 3000,
+      });
+      return;
+    }
+
+    try {
+      const temporadaCompleta = await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
+      const cuotas = await getDetallesCuotaPesca({ empresaId, activo: true });
+      const cuotasFiltradas = cuotas.filter(c => c.zona === temporadaCompleta.zona);
+      
+      if (!cuotasFiltradas || cuotasFiltradas.length === 0) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Sin datos",
+          detail: `No hay cuotas activas en la zona ${temporadaCompleta.zona}`,
+          life: 3000,
+        });
+        return;
+      }
+
+      const cuotasOrdenadas = cuotasFiltradas.sort((a, b) => {
+        if (a.zona !== b.zona) return a.zona.localeCompare(b.zona);
+        if (a.cuotaPropia !== b.cuotaPropia) return b.cuotaPropia ? 1 : -1;
+        if (a.esAlquiler !== b.esAlquiler) return a.esAlquiler ? 1 : -1;
+        return Number(a.id) - Number(b.id);
+      });
+
+      const todasFaenas = await getFaenasPesca();
+      const faenasTemporada = todasFaenas.filter(f => Number(f.temporadaId) === Number(temporadaId));
+      
+      if (!faenasTemporada || faenasTemporada.length === 0) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Sin datos",
+          detail: "No hay faenas registradas en esta temporada",
+          life: 3000,
+        });
+        return;
+      }
+
+      const primeraFaena = faenasTemporada.sort((a, b) => Number(a.id) - Number(b.id))[0];
+      const todosPersonal = await getPersonal();
+      
+      const patron = todosPersonal.find(p => Number(p.id) === Number(primeraFaena.patronId));
+      const motorista = todosPersonal.find(p => Number(p.id) === Number(primeraFaena.motoristaId));
+      const panguero = todosPersonal.find(p => Number(p.id) === Number(primeraFaena.pangueroId));
+
+      if (!patron || !motorista || !panguero) {
+        toast.current?.show({
+          severity: "warn",
+          summary: "Datos incompletos",
+          detail: "La primera faena no tiene Patrón, Motorista o Panguero asignado",
+          life: 3000,
+        });
+        return;
+      }
+
+      const entidadComercialPatron = patron.enlaceEntidadComercialId;
+      const entidadComercialMotorista = motorista.enlaceEntidadComercialId;
+      const entidadComercialPanguero = panguero.enlaceEntidadComercialId;
+
+      const todasDescargas = await getAllDescargaFaenaPesca();
+      const faenaIds = faenasTemporada.map(f => Number(f.id));
+      const descargasTemporada = todasDescargas.filter(d => faenaIds.includes(Number(d.faenaPescaId)));
+
+      const todasEntregas = await getAllEntregaARendir();
+      const entregaTemporada = todasEntregas.find(e => Number(e.temporadaPescaId) === Number(temporadaId));
+      
+      let descuentosPatron = [];
+      let descuentosMotorista = [];
+      let descuentosPanguero = [];
+
+      if (entregaTemporada) {
+        const todosDetMovs = await getAllDetMovsEntregaRendir();
+        
+        descuentosPatron = todosDetMovs.filter(d =>
+          Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
+          d.formaParteCalculoLiquidacionTripulantes === true &&
+          d.validadoTesoreria === true &&
+          Number(d.entidadComercialId) === Number(entidadComercialPatron) &&
+          d.producto?.descripcionBase === "ADELANTO" &&
+          d.producto?.descripcionExtendida === "COMISIONES"
+        );
+
+        descuentosMotorista = todosDetMovs.filter(d =>
+          Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
+          d.formaParteCalculoLiquidacionTripulantes === true &&
+          d.validadoTesoreria === true &&
+          Number(d.entidadComercialId) === Number(entidadComercialMotorista) &&
+          d.producto?.descripcionBase === "ADELANTO" &&
+          d.producto?.descripcionExtendida === "COMISIONES"
+        );
+
+        descuentosPanguero = todosDetMovs.filter(d =>
+          Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
+          d.formaParteCalculoLiquidacionTripulantes === true &&
+          d.validadoTesoreria === true &&
+          Number(d.entidadComercialId) === Number(entidadComercialPanguero) &&
+          d.producto?.descripcionBase === "ADELANTO" &&
+          d.producto?.descripcionExtendida === "COMISIONES"
+        );
+      }
+
+      setReportDataComisionesPMM({
+        temporada: temporadaCompleta,
+        cuotas: cuotasOrdenadas,
+        descargas: descargasTemporada,
+        patron: { personal: patron, descuentos: descuentosPatron },
+        motorista: { personal: motorista, descuentos: descuentosMotorista },
+        panguero: { personal: panguero, descuentos: descuentosPanguero }
+      });
+
+      setShowFormatSelectorComisionesPMM(true);
+    } catch (error) {
+      console.error("Error al preparar reporte comisiones PMM:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al preparar el reporte de comisiones",
+        life: 3000,
+      });
+    }
+  };
   return (
     <>
       <Toast ref={toast} position="top-right" />
@@ -1813,8 +1945,22 @@ export default function DatosLiquidacionPersonalPesca({
               }}
             />
 
-            {/* FILA 2 - CELDA 2: Vacía */}
-            <div></div>
+            {/* FILA 2 - CELDA 2: Comisiones Patrón Motorista Panguero */}
+            <Button
+              label="Comisiones PMM"
+              icon="pi pi-id-card"
+              className="p-button-outlined p-button-help"
+              type="button"
+              onClick={handleComisionesPMM}
+              disabled={readOnly || !watch("id")}
+              tooltip="Generar comisiones Patrón Motorista Panguero"
+              tooltipOptions={{ position: "top" }}
+              style={{
+                height: "60px",
+                fontSize: "0.85rem",
+                padding: "0.5rem",
+              }}
+            />
 
             {/* FILA 2 - CELDA 3: Vacía */}
             <div></div>
@@ -1951,10 +2097,7 @@ export default function DatosLiquidacionPersonalPesca({
           fileName={`liq_armadores_${reportDataLiqArmadores?.temporada?.nombre || "temporada"}.xlsx`}
         />
 
-
-
-
-                {/* Selector de formato para Liquidación Comisionista */}
+        {/* Selector de formato para Liquidación Comisionista */}
         <ReportFormatSelector
           visible={showFormatSelectorLiqComisionista}
           onHide={() => setShowFormatSelectorLiqComisionista(false)}
@@ -1985,6 +2128,40 @@ export default function DatosLiquidacionPersonalPesca({
           data={reportDataLiqComisionista}
           generateExcel={generarLiquidacionComisionistaExcel}
           fileName={`liq_comisionista_${reportDataLiqComisionista?.temporada?.nombre || "temporada"}.xlsx`}
+        />
+
+
+                {/* Selector de formato para Comisiones PMM */}
+        <ReportFormatSelector
+          visible={showFormatSelectorComisionesPMM}
+          onHide={() => setShowFormatSelectorComisionesPMM(false)}
+          onSelectPDF={() => setShowPDFViewerComisionesPMM(true)}
+          onSelectExcel={() => setShowExcelViewerComisionesPMM(true)}
+          title="Comisiones Patrón Motorista Panguero"
+        />
+
+        {/* Visor PDF para Comisiones PMM */}
+        <TemporaryPDFViewer
+          visible={showPDFViewerComisionesPMM}
+          onHide={() => {
+            setShowPDFViewerComisionesPMM(false);
+            setShowFormatSelectorComisionesPMM(false);
+          }}
+          data={reportDataComisionesPMM}
+          generatePDF={generarComisionesPMMPDF}
+          fileName={`comisiones_pmm_${reportDataComisionesPMM?.temporada?.nombre || "temporada"}.pdf`}
+        />
+
+        {/* Visor Excel para Comisiones PMM */}
+        <TemporaryExcelViewer
+          visible={showExcelViewerComisionesPMM}
+          onHide={() => {
+            setShowExcelViewerComisionesPMM(false);
+            setShowFormatSelectorComisionesPMM(false);
+          }}
+          data={reportDataComisionesPMM}
+          generateExcel={generarComisionesPMMExcel}
+          fileName={`comisiones_pmm_${reportDataComisionesPMM?.temporada?.nombre || "temporada"}.xlsx`}
         />
         
       </Card>

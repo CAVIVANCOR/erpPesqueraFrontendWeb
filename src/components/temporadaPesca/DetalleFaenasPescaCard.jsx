@@ -300,6 +300,7 @@ const DetalleFaenasPescaCard = forwardRef(
           bolicheRedId: data.bolicheRedId || null,
           patronId: data.patronId || null,
           motoristaId: data.motoristaId || null,
+          pangueroId: data.pangueroId || null, // ⭐ AGREGAR ESTA LÍNEA
           puertoSalidaId: data.puertoSalidaId || null,
           puertoFondeoId: data.puertoFondeoId || null,
           puertoDescargaId: data.puertoDescargaId || null,
