@@ -26,11 +26,12 @@ import {
 import { getUbigeos } from "../../api/ubigeo";
 import { getDepartamentos } from "../../api/departamento";
 import { getProvincias } from "../../api/provincia";
-import { 
-  crearDireccionEntidad, 
+import {
+  crearDireccionEntidad,
   actualizarDireccionEntidad,
-  getDireccionesEntidad 
+  getDireccionesEntidad,
 } from "../../api/direccionEntidad";
+import { InputNumber } from "primereact/inputnumber";
 
 /**
  * Componente DatosGeneralesEntidad
@@ -93,12 +94,17 @@ const DatosGeneralesEntidad = ({
       "estadoActivoSUNAT",
       "condicionHabidoSUNAT",
       "esAgenteRetencion",
+      "precioPorTonComisionFidelizacion",
     ],
   });
 
   // Observar cambios específicos en tipoDocumentoId y numeroDocumento
-  const tipoDocumentoId = watchedFields?.tipoDocumentoId || useWatch({ control, name: "tipoDocumentoId" });
-  const numeroDocumento = watchedFields?.numeroDocumento || useWatch({ control, name: "numeroDocumento" });
+  const tipoDocumentoId =
+    watchedFields?.tipoDocumentoId ||
+    useWatch({ control, name: "tipoDocumentoId" });
+  const numeroDocumento =
+    watchedFields?.numeroDocumento ||
+    useWatch({ control, name: "numeroDocumento" });
 
   /**
    * Buscar datos por DNI en RENIEC
@@ -113,8 +119,10 @@ const DatosGeneralesEntidad = ({
       const nombreCompleto = [
         datos.first_name,
         datos.first_last_name,
-        datos.second_last_name
-      ].filter(Boolean).join(' ');
+        datos.second_last_name,
+      ]
+        .filter(Boolean)
+        .join(" ");
 
       setValue("razonSocial", nombreCompleto || "");
 
@@ -151,23 +159,33 @@ const DatosGeneralesEntidad = ({
 
       // 1. Buscar ubigeo por código SUNAT
       const ubigeos = await getUbigeos();
-      const ubigeoEncontrado = ubigeos.find(u => u.codigo === datosSunat.ubigeo);
-      
+      const ubigeoEncontrado = ubigeos.find(
+        (u) => u.codigo === datosSunat.ubigeo,
+      );
+
       if (!ubigeoEncontrado) {
-        throw new Error(`No se encontró el ubigeo con código: ${datosSunat.ubigeo}`);
+        throw new Error(
+          `No se encontró el ubigeo con código: ${datosSunat.ubigeo}`,
+        );
       }
 
       // 2. Buscar departamento y provincia para construir direccionArmada
       const [departamentos, provincias] = await Promise.all([
         getDepartamentos(),
-        getProvincias()
+        getProvincias(),
       ]);
 
-      const departamento = departamentos.find(d => Number(d.id) === Number(ubigeoEncontrado.departamentoId));
-      const provincia = provincias.find(p => Number(p.id) === Number(ubigeoEncontrado.provinciaId));
+      const departamento = departamentos.find(
+        (d) => Number(d.id) === Number(ubigeoEncontrado.departamentoId),
+      );
+      const provincia = provincias.find(
+        (p) => Number(p.id) === Number(ubigeoEncontrado.provinciaId),
+      );
 
       if (!departamento || !provincia) {
-        throw new Error("No se encontraron datos completos de ubicación geográfica");
+        throw new Error(
+          "No se encontraron datos completos de ubicación geográfica",
+        );
       }
 
       // 3. Construir direccionArmada
@@ -175,8 +193,10 @@ const DatosGeneralesEntidad = ({
         datosSunat.direccion,
         ubigeoEncontrado.nombreDistrito || "",
         departamento.nombre,
-        provincia.nombre
-      ].filter(Boolean).join(", ");
+        provincia.nombre,
+      ]
+        .filter(Boolean)
+        .join(", ");
 
       // 4. Preparar datos para la dirección fiscal
       const datosDireccionFiscal = {
@@ -186,16 +206,14 @@ const DatosGeneralesEntidad = ({
         ubigeoId: Number(ubigeoEncontrado.id),
         fiscal: true,
         almacenPrincipal: false,
-        activo: true
+        activo: true,
       };
       return datosDireccionFiscal;
-      
     } catch (error) {
       console.error("Error en crearActualizarDireccionFiscal:", error);
       throw error;
     }
   };
-
 
   /**
    * Buscar datos por RUC en SUNAT
@@ -219,7 +237,8 @@ const DatosGeneralesEntidad = ({
       let direccionFiscalAutomatica = null;
       if (datos.direccion && datos.ubigeo) {
         try {
-          direccionFiscalAutomatica = await crearActualizarDireccionFiscal(datos);
+          direccionFiscalAutomatica =
+            await crearActualizarDireccionFiscal(datos);
         } catch (errorDireccion) {
           console.error("Error preparando dirección fiscal:", errorDireccion);
           toast?.current?.show({
@@ -238,27 +257,27 @@ const DatosGeneralesEntidad = ({
       });
 
       // Mostrar notificación de éxito
-      const estadoInfo = datos.estado === "ACTIVO" ? "✅ Activo" : "❌ Inactivo";
+      const estadoInfo =
+        datos.estado === "ACTIVO" ? "✅ Activo" : "❌ Inactivo";
       toast?.current?.show({
         severity: "success",
         summary: "Consulta SUNAT",
-        detail: `${datos.razon_social}\nEstado: ${estadoInfo}${direccionFiscalAutomatica ? '\nDirección fiscal preparada automáticamente' : ''}`,
+        detail: `${datos.razon_social}\nEstado: ${estadoInfo}${direccionFiscalAutomatica ? "\nDirección fiscal preparada automáticamente" : ""}`,
         life: 5000,
       });
-
     } catch (error) {
       console.error("Error consultando SUNAT:", error);
       toast?.current?.show({
         severity: "warn",
         summary: "Consulta SUNAT",
-        detail: error.message || "No se encontraron datos para el RUC ingresado",
+        detail:
+          error.message || "No se encontraron datos para el RUC ingresado",
         life: 4000,
       });
     } finally {
       setBuscandoDocumento(false);
     }
   };
-
 
   /**
    * Manejar búsqueda manual cuando el usuario hace clic en el botón
@@ -300,7 +319,6 @@ const DatosGeneralesEntidad = ({
     }
   };
 
-
   // Función estable para notificar cambios
   const notificarCambios = useCallback(
     (datos) => {
@@ -313,30 +331,44 @@ const DatosGeneralesEntidad = ({
         }
       }
     },
-    [onDatosGeneralesChange]
+    [onDatosGeneralesChange],
   );
 
   // Efecto para notificar cambios cuando los campos cambien
   useEffect(() => {
     const datos = {
       empresaId: watchedFields?.empresaId ?? getValues("empresaId"),
-      tipoDocumentoId: watchedFields?.tipoDocumentoId ?? getValues("tipoDocumentoId"),
+      tipoDocumentoId:
+        watchedFields?.tipoDocumentoId ?? getValues("tipoDocumentoId"),
       tipoEntidadId: watchedFields?.tipoEntidadId ?? getValues("tipoEntidadId"),
-      numeroDocumento: watchedFields?.numeroDocumento ?? getValues("numeroDocumento"),
+      numeroDocumento:
+        watchedFields?.numeroDocumento ?? getValues("numeroDocumento"),
       razonSocial: watchedFields?.razonSocial ?? getValues("razonSocial"),
-      nombreComercial: watchedFields?.nombreComercial ?? getValues("nombreComercial"),
+      nombreComercial:
+        watchedFields?.nombreComercial ?? getValues("nombreComercial"),
       formaPagoId: watchedFields?.formaPagoId ?? getValues("formaPagoId"),
-      agrupacionEntidadId: watchedFields?.agrupacionEntidadId ?? getValues("agrupacionEntidadId"),
+      agrupacionEntidadId:
+        watchedFields?.agrupacionEntidadId ?? getValues("agrupacionEntidadId"),
       esCliente: watchedFields?.esCliente ?? getValues("esCliente"),
       esProveedor: watchedFields?.esProveedor ?? getValues("esProveedor"),
       esCorporativo: watchedFields?.esCorporativo ?? getValues("esCorporativo"),
       estado: watchedFields?.estado ?? getValues("estado"),
-      codigoErpFinanciero: watchedFields?.codigoErpFinanciero ?? getValues("codigoErpFinanciero"),
-      sujetoRetencion: watchedFields?.sujetoRetencion ?? getValues("sujetoRetencion"),
-      sujetoPercepcion: watchedFields?.sujetoPercepcion ?? getValues("sujetoPercepcion"),
-      estadoActivoSUNAT: watchedFields?.estadoActivoSUNAT ?? getValues("estadoActivoSUNAT"),
-      condicionHabidoSUNAT: watchedFields?.condicionHabidoSUNAT ?? getValues("condicionHabidoSUNAT"),
-      esAgenteRetencion: watchedFields?.esAgenteRetencion ?? getValues("esAgenteRetencion"),
+      codigoErpFinanciero:
+        watchedFields?.codigoErpFinanciero ?? getValues("codigoErpFinanciero"),
+      sujetoRetencion:
+        watchedFields?.sujetoRetencion ?? getValues("sujetoRetencion"),
+      sujetoPercepcion:
+        watchedFields?.sujetoPercepcion ?? getValues("sujetoPercepcion"),
+      estadoActivoSUNAT:
+        watchedFields?.estadoActivoSUNAT ?? getValues("estadoActivoSUNAT"),
+      condicionHabidoSUNAT:
+        watchedFields?.condicionHabidoSUNAT ??
+        getValues("condicionHabidoSUNAT"),
+      esAgenteRetencion:
+        watchedFields?.esAgenteRetencion ?? getValues("esAgenteRetencion"),
+      precioPorTonComisionFidelizacion:
+        watchedFields?.precioPorTonComisionFidelizacion ??
+        getValues("precioPorTonComisionFidelizacion"),
     };
 
     notificarCambios(datos);
@@ -473,7 +505,7 @@ const DatosGeneralesEntidad = ({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 2 }}>
             <label htmlFor="formaPagoId">Forma de Pago</label>
             <Controller
               name="formaPagoId"
@@ -494,25 +526,7 @@ const DatosGeneralesEntidad = ({
             />
             {getFormErrorMessage("formaPagoId")}
           </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="codigoErpFinanciero">Cod. ERP Financiero</label>
-            <Controller
-              name="codigoErpFinanciero"
-              control={control}
-              render={({ field }) => (
-                <InputText
-                  id="codigoErpFinanciero"
-                  value={field.value}
-                  onChange={(e) => field.onChange(e.target.value)}
-                  className={getFieldClass("codigoErpFinanciero")}
-                  maxLength={20}
-                  style={{ fontWeight: "bold", textTransform: "uppercase" }}
-                  disabled={readOnly || loading}
-                />
-              )}
-            />
-            {getFormErrorMessage("codigoErpFinanciero")}
-          </div>
+
           <div style={{ flex: 1 }}>
             <label htmlFor="tipoDocumentoId">
               Tipo Documento <span className="p-error">*</span>
@@ -572,8 +586,8 @@ const DatosGeneralesEntidad = ({
                   manejarBusquedaManual();
                 }}
                 disabled={
-                  buscandoDocumento || 
-                  !numeroDocumento || 
+                  buscandoDocumento ||
+                  !numeroDocumento ||
                   !tipoDocumentoId ||
                   readOnly ||
                   loading
@@ -582,8 +596,8 @@ const DatosGeneralesEntidad = ({
                   Number(tipoDocumentoId) === 1
                     ? "Buscar en RENIEC"
                     : Number(tipoDocumentoId) === 2
-                    ? "Buscar en SUNAT"
-                    : "Seleccione tipo de documento"
+                      ? "Buscar en SUNAT"
+                      : "Seleccione tipo de documento"
                 }
                 tooltipOptions={{ position: "top" }}
                 style={{ minWidth: "40px" }}
@@ -610,7 +624,7 @@ const DatosGeneralesEntidad = ({
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
         >
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 2 }}>
             <label htmlFor="razonSocial">
               Razón Social <span className="p-error">*</span>
             </label>
@@ -649,6 +663,32 @@ const DatosGeneralesEntidad = ({
               )}
             />
             {getFormErrorMessage("nombreComercial")}
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="precioPorTonComisionFidelizacion">
+              Precio/Ton Com.Fidelización (US$)
+            </label>
+            <Controller
+              name="precioPorTonComisionFidelizacion"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  id="precioPorTonComisionFidelizacion"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  min={0}
+                  max={9999.99}
+                  className={getFieldClass("precioPorTonComisionFidelizacion")}
+                  disabled={readOnly || loading}
+                  prefix="$ "
+                  style={{ fontWeight: "bold" }}
+                />
+              )}
+            />
+            {getFormErrorMessage("precioPorTonComisionFidelizacion")}
           </div>
         </div>
         <div

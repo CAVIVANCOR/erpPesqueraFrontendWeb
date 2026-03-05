@@ -41,7 +41,7 @@ import { getFormasPago } from "../../api/formaPago";
 import { getAgrupacionesEntidad } from "../../api/agrupacionEntidad";
 import { getVendedoresPorEmpresa } from "../../api/personal";
 import { getMonedas } from "../../api/moneda";
-import { getUbigeos} from "../../api/ubigeo";
+import { getUbigeos } from "../../api/ubigeo";
 import { consultarSunatRucFull } from "../../api/consultaExterna";
 
 // Importar componentes de cards
@@ -111,7 +111,7 @@ const EntidadComercialForm = ({
   const [agenciasEnvio, setAgenciasEnvio] = useState([]);
   const [monedas, setMonedas] = useState([]);
 
-  const toast = useRef(null);
+  const toast = toastProp || useRef(null);
   const direccionesRef = useRef(null);
   const contactosRef = useRef(null);
   const vehiculosRef = useRef(null);
@@ -160,6 +160,7 @@ const EntidadComercialForm = ({
       controlFechaIngreso: false,
       controlSerie: false,
       controlEnvase: false,
+      precioPorTonComisionFidelizacion: 0.0,
     },
   });
 
@@ -247,6 +248,8 @@ const EntidadComercialForm = ({
         codigoErpFinanciero: entidadComercial.codigoErpFinanciero,
         sujetoRetencion: entidadComercial.sujetoRetencion,
         sujetoPercepcion: entidadComercial.sujetoPercepcion,
+        precioPorTonComisionFidelizacion:
+          entidadComercial.precioPorTonComisionFidelizacion || 0.0,
       };
       setDatosGenerales(generales);
 
@@ -285,30 +288,32 @@ const EntidadComercialForm = ({
         "formaPagoId",
         entidadComercial.formaPagoId
           ? Number(entidadComercial.formaPagoId)
-          : null
+          : null,
       );
       setValue(
         "vendedorId",
-        entidadComercial.vendedorId ? Number(entidadComercial.vendedorId) : null
+        entidadComercial.vendedorId
+          ? Number(entidadComercial.vendedorId)
+          : null,
       );
       setValue(
         "agenciaEnvioId",
         entidadComercial.agenciaEnvioId
           ? Number(entidadComercial.agenciaEnvioId)
-          : null
+          : null,
       );
       setValue(
         "agrupacionEntidadId",
         entidadComercial.agrupacionEntidadId
           ? Number(entidadComercial.agrupacionEntidadId)
-          : null
+          : null,
       );
       setValue("numeroDocumento", entidadComercial.numeroDocumento || "");
       setValue("razonSocial", entidadComercial.razonSocial || "");
       setValue("nombreComercial", entidadComercial.nombreComercial || "");
       setValue(
         "codigoErpFinanciero",
-        entidadComercial.codigoErpFinanciero || ""
+        entidadComercial.codigoErpFinanciero || "",
       );
       setValue("observaciones", entidadComercial.observaciones || "");
       setValue("esCliente", entidadComercial.esCliente);
@@ -327,6 +332,10 @@ const EntidadComercialForm = ({
       setValue("controlFechaIngreso", entidadComercial.controlFechaIngreso);
       setValue("controlSerie", entidadComercial.controlSerie);
       setValue("controlEnvase", entidadComercial.controlEnvase);
+      setValue(
+        "precioPorTonComisionFidelizacion",
+        entidadComercial.precioPorTonComisionFidelizacion || 0.0,
+      );
     }
   }, [entidadComercial, setValue]);
 
@@ -355,20 +364,23 @@ const EntidadComercialForm = ({
     setValue("estadoActivoSUNAT", datos.estadoActivoSUNAT);
     setValue("condicionHabidoSUNAT", datos.condicionHabidoSUNAT);
     setValue("esAgenteRetencion", datos.esAgenteRetencion);
-
+    setValue(
+      "precioPorTonComisionFidelizacion",
+      datos.precioPorTonComisionFidelizacion,
+    );
     // Manejar dirección fiscal automática de SUNAT
     if (datos.direccionFiscalAutomatica) {
       try {
         // Buscar si existe una dirección fiscal para la entidad comercial
         const direccionFiscalExistente = await obtenerDireccionFiscalPorEntidad(
-          Number(entidadComercial.id)
+          Number(entidadComercial.id),
         );
 
         if (direccionFiscalExistente) {
           // Actualizar la dirección fiscal existente
           const resultadoActualizacion = await actualizarDireccionEntidad(
             direccionFiscalExistente.id,
-            datos.direccionFiscalAutomatica
+            datos.direccionFiscalAutomatica,
           );
         } else {
           const datosNuevaDireccion = {
@@ -377,9 +389,8 @@ const EntidadComercialForm = ({
           };
 
           // Crear la dirección fiscal directamente en la base de datos
-          const resultadoCreacion = await crearDireccionEntidad(
-            datosNuevaDireccion
-          );
+          const resultadoCreacion =
+            await crearDireccionEntidad(datosNuevaDireccion);
         }
 
         // Notificar al componente de direcciones que recargue
@@ -395,7 +406,7 @@ const EntidadComercialForm = ({
       } catch (error) {
         console.error(
           "❌ [FRONTEND] Error al procesar dirección fiscal automática:",
-          error
+          error,
         );
         toast.current?.show({
           severity: "warn",
@@ -481,7 +492,7 @@ const EntidadComercialForm = ({
         esCliente: Boolean(data.esCliente),
         esProveedor: Boolean(data.esProveedor),
         esCorporativo: Boolean(data.esCorporativo),
-        estado: Boolean(data.estado),
+        estado: data.estado !== undefined && data.estado !== null ? Boolean(data.estado) : true,
         estadoActivoSUNAT: Boolean(data.estadoActivoSUNAT),
         condicionHabidoSUNAT: Boolean(data.condicionHabidoSUNAT),
         esAgenteRetencion: Boolean(data.esAgenteRetencion),
@@ -494,8 +505,9 @@ const EntidadComercialForm = ({
         controlEnvase: Boolean(data.controlEnvase),
         sujetoRetencion: Boolean(data.sujetoRetencion),
         sujetoPercepcion: Boolean(data.sujetoPercepcion),
+        precioPorTonComisionFidelizacion:
+          data.precioPorTonComisionFidelizacion || 0.0,
       };
-
       let resultado;
       if (esEdicion) {
         // Actualizar entidad existente
@@ -516,7 +528,7 @@ const EntidadComercialForm = ({
 
         resultado = await actualizarEntidadComercial(
           entidadComercial.id,
-          datosActualizacion
+          datosActualizacion,
         );
 
         toast.current?.show({
@@ -544,31 +556,36 @@ const EntidadComercialForm = ({
 
         resultado = await crearEntidadComercial(datosCreacion);
 
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Entidad comercial creada correctamente",
+          life: 3000,
+        });
+
         // Crear dirección fiscal automáticamente si es RUC
-        if (resultado?.id && Number(data.tipoDocumentoId) === 2 && data.numeroDocumento) {
+        if (
+          resultado?.id &&
+          Number(data.tipoDocumentoId) === 2 &&
+          data.numeroDocumento
+        ) {
           crearDireccionFiscalAutomatica(resultado.id, data.numeroDocumento);
         }
-      }
 
-      toast.current?.show({
-        severity: "success",
-        summary: "Éxito",
-        detail: esEdicion
-          ? "Entidad comercial actualizada correctamente"
-          : "Entidad comercial creada correctamente",
-        life: 3000,
-      });
-
-      if (onGuardar) {
-        onGuardar(resultado);
+        if (onGuardar) {
+          onGuardar(resultado);
+        }
       }
     } catch (error) {
       console.error("Error al guardar entidad comercial:", error);
-      
+
       // Detectar error 409 (conflicto - entidad duplicada)
       const status = error.response?.status || error.status;
-      const mensaje = error.response?.data?.message || error.message || "Error al guardar la entidad comercial";
-      
+      const mensaje =
+        error.response?.data?.message ||
+        error.message ||
+        "Error al guardar la entidad comercial";
+
       if (status === 409) {
         // Error de conflicto - mostrar toast warning (anaranjado)
         toast.current?.show({
@@ -600,7 +617,7 @@ const EntidadComercialForm = ({
     try {
       // 1. Consultar datos de SUNAT
       const datosSunat = await consultarSunatRucFull(ruc);
-      
+
       // Verificar que tenga dirección y ubigeo
       if (!datosSunat.direccion || !datosSunat.ubigeo) {
         console.warn("SUNAT no devolvió dirección o ubigeo");
@@ -609,23 +626,33 @@ const EntidadComercialForm = ({
 
       // 2. Buscar ubigeo por código SUNAT
       const ubigeos = await getUbigeos();
-      const ubigeoEncontrado = ubigeos.find(u => u.codigo === datosSunat.ubigeo);
-      
+      const ubigeoEncontrado = ubigeos.find(
+        (u) => u.codigo === datosSunat.ubigeo,
+      );
+
       if (!ubigeoEncontrado) {
-        throw new Error(`No se encontró el ubigeo con código: ${datosSunat.ubigeo}`);
+        throw new Error(
+          `No se encontró el ubigeo con código: ${datosSunat.ubigeo}`,
+        );
       }
 
       // 3. Buscar departamento y provincia para construir direccionArmada
       const [departamentos, provincias] = await Promise.all([
         getDepartamentos(),
-        getProvincias()
+        getProvincias(),
       ]);
 
-      const departamento = departamentos.find(d => Number(d.id) === Number(ubigeoEncontrado.departamentoId));
-      const provincia = provincias.find(p => Number(p.id) === Number(ubigeoEncontrado.provinciaId));
+      const departamento = departamentos.find(
+        (d) => Number(d.id) === Number(ubigeoEncontrado.departamentoId),
+      );
+      const provincia = provincias.find(
+        (p) => Number(p.id) === Number(ubigeoEncontrado.provinciaId),
+      );
 
       if (!departamento || !provincia) {
-        throw new Error("No se encontraron datos completos de ubicación geográfica");
+        throw new Error(
+          "No se encontraron datos completos de ubicación geográfica",
+        );
       }
 
       // 4. Construir direccionArmada
@@ -633,8 +660,10 @@ const EntidadComercialForm = ({
         datosSunat.direccion,
         ubigeoEncontrado.nombreDistrito || "",
         departamento.nombre,
-        provincia.nombre
-      ].filter(Boolean).join(", ");
+        provincia.nombre,
+      ]
+        .filter(Boolean)
+        .join(", ");
 
       // 5. Preparar datos para la dirección fiscal
       const datosDireccionFiscal = {
@@ -644,7 +673,7 @@ const EntidadComercialForm = ({
         ubigeoId: Number(ubigeoEncontrado.id),
         fiscal: true,
         almacenPrincipal: false,
-        activo: true
+        activo: true,
       };
 
       // 6. Crear la dirección en la base de datos
@@ -657,7 +686,6 @@ const EntidadComercialForm = ({
         detail: "Dirección fiscal agregada automáticamente desde SUNAT",
         life: 4000,
       });
-
     } catch (error) {
       console.error("Error creando dirección fiscal automática:", error);
       toast.current?.show({
@@ -722,7 +750,9 @@ const EntidadComercialForm = ({
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.message || "Error al clonar la entidad comercial",
+        detail:
+          error.response?.data?.message ||
+          "Error al clonar la entidad comercial",
         life: 3000,
       });
     } finally {
@@ -743,8 +773,6 @@ const EntidadComercialForm = ({
 
   return (
     <div className="entidad-comercial-form">
-      <Toast ref={toast} />
-
       {/* Mostrar Razón Social con Tag de PrimeReact */}
       <div className="flex justify-content-center mb-4">
         <Tag

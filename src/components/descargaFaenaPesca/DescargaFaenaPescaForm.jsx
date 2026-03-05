@@ -108,6 +108,7 @@ export default function DescargaFaenaPescaForm({
       latitudFondeo: 0,
       longitudFondeo: 0,
       puertoFondeoId: null,
+      precioPorTonComisionFidelizacion: 0.0,
     },
   });
 
@@ -195,6 +196,8 @@ export default function DescargaFaenaPescaForm({
         puertoFondeoId: detalle.puertoFondeoId
           ? Number(detalle.puertoFondeoId)
           : null,
+        precioPorTonComisionFidelizacion:
+          detalle.precioPorTonComisionFidelizacion || 0.0,
       });
     } else {
       // Resetear para nuevo registro con valores fijos de faena
@@ -229,6 +232,7 @@ export default function DescargaFaenaPescaForm({
         latitudFondeo: 0,
         longitudFondeo: 0,
         puertoFondeoId: null,
+        precioPorTonComisionFidelizacion: 0.0,
       });
     }
   }, [
@@ -405,6 +409,8 @@ export default function DescargaFaenaPescaForm({
         puertoFondeoId: data.puertoFondeoId
           ? Number(data.puertoFondeoId)
           : null,
+        precioPorTonComisionFidelizacion:
+          data.precioPorTonComisionFidelizacion || 0.0,
       };
 
       if (detalle?.id) {
@@ -1371,6 +1377,39 @@ export default function DescargaFaenaPescaForm({
           />
           {errors.toneladas && (
             <Message severity="error" text={errors.toneladas.message} />
+          )}
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="precioPorTonComisionFidelizacion">
+            Precio/Ton Com.Fidelización (US$)
+          </label>
+          <Controller
+            name="precioPorTonComisionFidelizacion"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="precioPorTonComisionFidelizacion"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                min={0}
+                max={9999.99}
+                prefix="$ "
+                inputStyle={{ fontWeight: "bold" }}
+                disabled={loading}
+                className={classNames({
+                  "p-invalid": errors.precioPorTonComisionFidelizacion,
+                })}
+              />
+            )}
+          />
+          {errors.precioPorTonComisionFidelizacion && (
+            <Message
+              severity="error"
+              text={errors.precioPorTonComisionFidelizacion.message}
+            />
           )}
         </div>
       </div>

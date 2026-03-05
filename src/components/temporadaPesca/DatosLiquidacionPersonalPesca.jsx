@@ -818,10 +818,13 @@ export default function DatosLiquidacionPersonalPesca({
     }
 
     try {
-      const temporadaCompleta = await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
+      const temporadaCompleta =
+        await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
       const cuotas = await getDetallesCuotaPesca({ empresaId, activo: true });
-      const cuotasFiltradas = cuotas.filter(c => c.zona === temporadaCompleta.zona);
-      
+      const cuotasFiltradas = cuotas.filter(
+        (c) => c.zona === temporadaCompleta.zona,
+      );
+
       if (!cuotasFiltradas || cuotasFiltradas.length === 0) {
         toast.current?.show({
           severity: "warn",
@@ -840,8 +843,10 @@ export default function DatosLiquidacionPersonalPesca({
       });
 
       const todasFaenas = await getFaenasPesca();
-      const faenasTemporada = todasFaenas.filter(f => Number(f.temporadaId) === Number(temporadaId));
-      
+      const faenasTemporada = todasFaenas.filter(
+        (f) => Number(f.temporadaId) === Number(temporadaId),
+      );
+
       if (!faenasTemporada || faenasTemporada.length === 0) {
         toast.current?.show({
           severity: "warn",
@@ -852,18 +857,27 @@ export default function DatosLiquidacionPersonalPesca({
         return;
       }
 
-      const primeraFaena = faenasTemporada.sort((a, b) => Number(a.id) - Number(b.id))[0];
+      const primeraFaena = faenasTemporada.sort(
+        (a, b) => Number(a.id) - Number(b.id),
+      )[0];
       const todosPersonal = await getPersonal();
-      
-      const patron = todosPersonal.find(p => Number(p.id) === Number(primeraFaena.patronId));
-      const motorista = todosPersonal.find(p => Number(p.id) === Number(primeraFaena.motoristaId));
-      const panguero = todosPersonal.find(p => Number(p.id) === Number(primeraFaena.pangueroId));
+
+      const patron = todosPersonal.find(
+        (p) => Number(p.id) === Number(primeraFaena.patronId),
+      );
+      const motorista = todosPersonal.find(
+        (p) => Number(p.id) === Number(primeraFaena.motoristaId),
+      );
+      const panguero = todosPersonal.find(
+        (p) => Number(p.id) === Number(primeraFaena.pangueroId),
+      );
 
       if (!patron || !motorista || !panguero) {
         toast.current?.show({
           severity: "warn",
           summary: "Datos incompletos",
-          detail: "La primera faena no tiene Patrón, Motorista o Panguero asignado",
+          detail:
+            "La primera faena no tiene Patrón, Motorista o Panguero asignado",
           life: 3000,
         });
         return;
@@ -874,44 +888,52 @@ export default function DatosLiquidacionPersonalPesca({
       const entidadComercialPanguero = panguero.enlaceEntidadComercialId;
 
       const todasDescargas = await getAllDescargaFaenaPesca();
-      const faenaIds = faenasTemporada.map(f => Number(f.id));
-      const descargasTemporada = todasDescargas.filter(d => faenaIds.includes(Number(d.faenaPescaId)));
+      const faenaIds = faenasTemporada.map((f) => Number(f.id));
+      const descargasTemporada = todasDescargas.filter((d) =>
+        faenaIds.includes(Number(d.faenaPescaId)),
+      );
 
       const todasEntregas = await getAllEntregaARendir();
-      const entregaTemporada = todasEntregas.find(e => Number(e.temporadaPescaId) === Number(temporadaId));
-      
+      const entregaTemporada = todasEntregas.find(
+        (e) => Number(e.temporadaPescaId) === Number(temporadaId),
+      );
+
       let descuentosPatron = [];
       let descuentosMotorista = [];
       let descuentosPanguero = [];
 
       if (entregaTemporada) {
         const todosDetMovs = await getAllDetMovsEntregaRendir();
-        
-        descuentosPatron = todosDetMovs.filter(d =>
-          Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
-          d.formaParteCalculoLiquidacionTripulantes === true &&
-          d.validadoTesoreria === true &&
-          Number(d.entidadComercialId) === Number(entidadComercialPatron) &&
-          d.producto?.descripcionBase === "ADELANTO" &&
-          d.producto?.descripcionExtendida === "COMISIONES"
+
+        descuentosPatron = todosDetMovs.filter(
+          (d) =>
+            Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
+            d.formaParteCalculoLiquidacionTripulantes === true &&
+            d.validadoTesoreria === true &&
+            Number(d.entidadComercialId) === Number(entidadComercialPatron) &&
+            d.producto?.descripcionBase === "ADELANTO" &&
+            d.producto?.descripcionExtendida === "COMISIONES",
         );
 
-        descuentosMotorista = todosDetMovs.filter(d =>
-          Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
-          d.formaParteCalculoLiquidacionTripulantes === true &&
-          d.validadoTesoreria === true &&
-          Number(d.entidadComercialId) === Number(entidadComercialMotorista) &&
-          d.producto?.descripcionBase === "ADELANTO" &&
-          d.producto?.descripcionExtendida === "COMISIONES"
+        descuentosMotorista = todosDetMovs.filter(
+          (d) =>
+            Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
+            d.formaParteCalculoLiquidacionTripulantes === true &&
+            d.validadoTesoreria === true &&
+            Number(d.entidadComercialId) ===
+              Number(entidadComercialMotorista) &&
+            d.producto?.descripcionBase === "ADELANTO" &&
+            d.producto?.descripcionExtendida === "COMISIONES",
         );
 
-        descuentosPanguero = todosDetMovs.filter(d =>
-          Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
-          d.formaParteCalculoLiquidacionTripulantes === true &&
-          d.validadoTesoreria === true &&
-          Number(d.entidadComercialId) === Number(entidadComercialPanguero) &&
-          d.producto?.descripcionBase === "ADELANTO" &&
-          d.producto?.descripcionExtendida === "COMISIONES"
+        descuentosPanguero = todosDetMovs.filter(
+          (d) =>
+            Number(d.entregaARendirId) === Number(entregaTemporada.id) &&
+            d.formaParteCalculoLiquidacionTripulantes === true &&
+            d.validadoTesoreria === true &&
+            Number(d.entidadComercialId) === Number(entidadComercialPanguero) &&
+            d.producto?.descripcionBase === "ADELANTO" &&
+            d.producto?.descripcionExtendida === "COMISIONES",
         );
       }
 
@@ -921,7 +943,7 @@ export default function DatosLiquidacionPersonalPesca({
         descargas: descargasTemporada,
         patron: { personal: patron, descuentos: descuentosPatron },
         motorista: { personal: motorista, descuentos: descuentosMotorista },
-        panguero: { personal: panguero, descuentos: descuentosPanguero }
+        panguero: { personal: panguero, descuentos: descuentosPanguero },
       });
 
       setShowFormatSelectorComisionesPMM(true);
@@ -947,49 +969,39 @@ export default function DatosLiquidacionPersonalPesca({
               justifyContent: "space-between",
               gap: "10px",
             }}
-          >
-            <Button
-              label="Cargar Parámetros Empresa"
-              icon={
-                cargandoParametros ? "pi pi-spin pi-spinner" : "pi pi-download"
-              }
-              onClick={cargarParametrosDesdeEmpresa}
-              disabled={readOnly || cargandoParametros}
-              className="p-button-info"
-              size="small"
-              tooltip="Cargar parámetros de liquidación desde la empresa"
-              tooltipOptions={{ position: "bottom" }}
-            />
-            <Button
-              label="Calcular Liquidaciones"
-              icon={calculando ? "pi pi-spin pi-spinner" : "pi pi-calculator"}
-              onClick={calcularLiquidaciones}
-              disabled={readOnly || calculando}
-              className="p-button-success"
-              size="small"
-              tooltip="Calcular todas las liquidaciones estimadas y reales"
-              tooltipOptions={{ position: "bottom" }}
-            />
-          </div>
+          ></div>
         }
         className="mb-3"
       >
         <div className="p-fluid">
-          <h3
+          <div
             style={{
-              marginTop: 0,
-              marginBottom: "1rem",
-              fontSize: "1rem",
-              fontWeight: 600,
-              color: "#495057",
+              display: "flex",
+              alignItems:"end",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
-            <i
-              className="pi pi-percentage"
-              style={{ marginRight: "0.5rem" }}
-            ></i>
-            Parámetros de Comisiones
-          </h3>
+            <div style={{ flex: 1 }}>
+              <h3>Parámetros de Comisiones</h3>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Cargar Parámetros Empresa"
+                icon={
+                  cargandoParametros
+                    ? "pi pi-spin pi-spinner"
+                    : "pi pi-download"
+                }
+                onClick={cargarParametrosDesdeEmpresa}
+                disabled={readOnly || cargandoParametros}
+                className="p-button-info"
+                size="small"
+                tooltip="Cargar parámetros de liquidación desde la empresa"
+                tooltipOptions={{ position: "bottom" }}
+              />
+            </div>
+          </div>
 
           <div
             style={{
@@ -1352,34 +1364,45 @@ export default function DatosLiquidacionPersonalPesca({
               )}
             </div>
           </div>
-          <h3
+
+          <div
             style={{
-              marginTop: "1rem",
-              marginBottom: "1rem",
-              fontSize: "1rem",
-              fontWeight: 600,
-              color: "#495057",
+              display: "flex",
+              gap: 10,
+              alignItems: "end",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
-            <i
-              className="pi pi-chart-line"
-              style={{ marginRight: "0.5rem" }}
-            ></i>
-            Liquidaciones Estimadas
-          </h3>
-          {/* Mostrar Base de Cálculo Estimada */}
-          <div style={{ marginBottom: "1rem" }}>
-            <Message
-              severity="info"
-              text={`Base de Cálculo Estimada: ${baseLiquidacionEstimada.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${codigoMonedaLiquidacion}`}
-              style={{
-                display: "block",
-                padding: "0.5rem 1rem",
-                fontSize: "0.9rem",
-                fontWeight: "600",
-              }}
-            />
+            <div style={{ flex: 1 }}>
+              <h3>Liquidaciones Estimadas</h3>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Calcular Liquidaciones"
+                icon={calculando ? "pi pi-spin pi-spinner" : "pi pi-calculator"}
+                onClick={calcularLiquidaciones}
+                disabled={readOnly || calculando}
+                className="p-button-success"
+                size="small"
+                tooltip="Calcular todas las liquidaciones estimadas y reales"
+                tooltipOptions={{ position: "bottom" }}
+              />
+            </div>
+            {/* Mostrar Base de Cálculo Estimada */}
+            <div style={{ flex: 1 }}>
+              <Message
+                severity="info"
+                text={`Base de Cálculo Estimada: ${baseLiquidacionEstimada.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${codigoMonedaLiquidacion}`}
+                style={{
+                  display: "block",
+                  padding: "0.5rem 1rem",
+                  fontSize: "0.9rem",
+                  fontWeight: "600",
+                }}
+              />
+            </div>
           </div>
+
           <div
             style={{
               display: "flex",
@@ -1847,12 +1870,12 @@ export default function DatosLiquidacionPersonalPesca({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
+              gridTemplateColumns: "repeat(7, 1fr)",
               gap: "10px",
               marginBottom: "1rem",
             }}
           >
-            {/* FILA 1 - CELDA 1: Distribución Temporada */}
+            {/* CELDA 1: Distribución Temporada */}
             <Button
               label="Distribución Temporada"
               icon="pi pi-file"
@@ -1869,7 +1892,7 @@ export default function DatosLiquidacionPersonalPesca({
               }}
             />
 
-            {/* FILA 1 - CELDA 2: Reporte Pesca */}
+            {/* CELDA 2: Reporte Pesca */}
             <Button
               label="Reporte Pesca"
               icon="pi pi-chart-bar"
@@ -1886,7 +1909,7 @@ export default function DatosLiquidacionPersonalPesca({
               }}
             />
 
-            {/* FILA 1 - CELDA 3: Liquidación Tripulantes */}
+            {/* CELDA 3: Liquidación Tripulantes */}
             <Button
               label="Liq. Tripulantes"
               icon="pi pi-users"
@@ -1903,7 +1926,7 @@ export default function DatosLiquidacionPersonalPesca({
               }}
             />
 
-            {/* FILA 1 - CELDA 4: Liquidación Armadores */}
+            {/* CELDA 4: Liquidación Armadores */}
             <Button
               label="Liq. Armadores"
               icon="pi pi-briefcase"
@@ -1924,7 +1947,7 @@ export default function DatosLiquidacionPersonalPesca({
               }}
             />
 
-            {/* FILA 2 - CELDA 1: Liquidación Comisionista */}
+            {/* CELDA 5: Liquidación Comisionista */}
             <Button
               label="Liq. Comisionista"
               icon="pi pi-dollar"
@@ -1945,7 +1968,7 @@ export default function DatosLiquidacionPersonalPesca({
               }}
             />
 
-            {/* FILA 2 - CELDA 2: Comisiones Patrón Motorista Panguero */}
+            {/* CELDA 6: Comisiones Patrón Motorista Panguero */}
             <Button
               label="Comisiones PMM"
               icon="pi pi-id-card"
@@ -1962,10 +1985,7 @@ export default function DatosLiquidacionPersonalPesca({
               }}
             />
 
-            {/* FILA 2 - CELDA 3: Vacía */}
-            <div></div>
-
-            {/* FILA 2 - CELDA 4: Vacía */}
+            {/* CELDA 7: Reporte Consolidado (Espacio reservado) */}
             <div></div>
           </div>
         </div>
@@ -2130,8 +2150,7 @@ export default function DatosLiquidacionPersonalPesca({
           fileName={`liq_comisionista_${reportDataLiqComisionista?.temporada?.nombre || "temporada"}.xlsx`}
         />
 
-
-                {/* Selector de formato para Comisiones PMM */}
+        {/* Selector de formato para Comisiones PMM */}
         <ReportFormatSelector
           visible={showFormatSelectorComisionesPMM}
           onHide={() => setShowFormatSelectorComisionesPMM(false)}
@@ -2163,7 +2182,6 @@ export default function DatosLiquidacionPersonalPesca({
           generateExcel={generarComisionesPMMExcel}
           fileName={`comisiones_pmm_${reportDataComisionesPMM?.temporada?.nombre || "temporada"}.xlsx`}
         />
-        
       </Card>
     </>
   );
