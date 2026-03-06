@@ -1054,7 +1054,7 @@ export default function RequerimientoCompraForm({
         <div style={{ display: "flex", gap: 8 }}>
           {/* Botón Aprobar - SIEMPRE VISIBLE */}
           <Button
-            label="Aprobar"
+            label="Concluido"
             icon="pi pi-check"
             className="p-button-success"
             onClick={handleAprobarClick}
@@ -1089,7 +1089,7 @@ export default function RequerimientoCompraForm({
               (!estaPendiente && !estaAprobado) ||
               readOnly ||
               loading ||
-              !permisos.puedeEliminar
+              !permisos.puedeRechazarDocs  
             }
             tooltip={
               !isEdit
@@ -1098,7 +1098,7 @@ export default function RequerimientoCompraForm({
                   ? "Solo se puede anular si está Pendiente o Aprobado"
                   : readOnly
                     ? "Modo solo lectura"
-                    : !permisos.puedeEliminar
+                    : !permisos.puedeRechazarDocs  
                       ? "No tiene permisos para anular"
                       : "Anular requerimiento de compra"
             }
@@ -1115,7 +1115,7 @@ export default function RequerimientoCompraForm({
               !estaAprobado ||
               readOnly ||
               loading ||
-              !permisos.puedeEditar
+              !permisos.puedeAprobarDocs  
             }
             style={{
               whiteSpace: "nowrap",
@@ -1129,7 +1129,7 @@ export default function RequerimientoCompraForm({
                   ? "Solo disponible cuando está Aprobado"
                   : readOnly
                     ? "Modo solo lectura"
-                    : !permisos.puedeEditar
+                    : !permisos.puedeAprobarDocs  
                       ? "No tiene permisos para autorizar"
                       : "Autorizar compra y generar órdenes de Compra"
             }

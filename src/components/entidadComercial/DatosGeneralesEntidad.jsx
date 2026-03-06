@@ -94,7 +94,6 @@ const DatosGeneralesEntidad = ({
       "estadoActivoSUNAT",
       "condicionHabidoSUNAT",
       "esAgenteRetencion",
-      "precioPorTonComisionFidelizacion",
     ],
   });
 
@@ -366,9 +365,6 @@ const DatosGeneralesEntidad = ({
         getValues("condicionHabidoSUNAT"),
       esAgenteRetencion:
         watchedFields?.esAgenteRetencion ?? getValues("esAgenteRetencion"),
-      precioPorTonComisionFidelizacion:
-        watchedFields?.precioPorTonComisionFidelizacion ??
-        getValues("precioPorTonComisionFidelizacion"),
     };
 
     notificarCambios(datos);
@@ -664,32 +660,7 @@ const DatosGeneralesEntidad = ({
             />
             {getFormErrorMessage("nombreComercial")}
           </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="precioPorTonComisionFidelizacion">
-              Precio/Ton Com.Fidelización (US$)
-            </label>
-            <Controller
-              name="precioPorTonComisionFidelizacion"
-              control={control}
-              render={({ field }) => (
-                <InputNumber
-                  id="precioPorTonComisionFidelizacion"
-                  value={field.value}
-                  onValueChange={(e) => field.onChange(e.value)}
-                  mode="decimal"
-                  minFractionDigits={2}
-                  maxFractionDigits={2}
-                  min={0}
-                  max={9999.99}
-                  className={getFieldClass("precioPorTonComisionFidelizacion")}
-                  disabled={readOnly || loading}
-                  prefix="$ "
-                  style={{ fontWeight: "bold" }}
-                />
-              )}
-            />
-            {getFormErrorMessage("precioPorTonComisionFidelizacion")}
-          </div>
+
         </div>
         <div
           style={{
@@ -702,19 +673,35 @@ const DatosGeneralesEntidad = ({
           }}
         >
           <ButtonGroup>
-            <Controller
+          
+          </ButtonGroup>
+        </div>
+
+        {/* Sexta fila: ToggleButton de Tipo */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginTop: 10,
+            gap: 5,
+            flexDirection: window.innerWidth < 768 ? "column" : "row",
+          }}
+        >
+          <ButtonGroup>
+              <Controller
               name="estado"
               control={control}
               render={({ field }) => (
                 <ToggleButton
                   id="estado"
                   onLabel="ACTIVO"
-                  offLabel="INACTIVO"
+                  offLabel="ACTIVO"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
-                  className={`${getFieldClass("estado")}`}
+                  className={`${getFieldClass("estado")} p-button-sm`}
                   disabled={readOnly || loading}
                 />
               )}
@@ -731,7 +718,7 @@ const DatosGeneralesEntidad = ({
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
-                  className={`${getFieldClass("esCliente")}`}
+                  className={`${getFieldClass("esCliente")} p-button-sm`}
                   disabled={readOnly || loading}
                 />
               )}
@@ -748,7 +735,7 @@ const DatosGeneralesEntidad = ({
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
-                  className={`${getFieldClass("esProveedor")}`}
+                  className={`${getFieldClass("esProveedor")} p-button-sm`}
                   disabled={readOnly || loading}
                 />
               )}
@@ -765,26 +752,11 @@ const DatosGeneralesEntidad = ({
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
-                  className={`${getFieldClass("esCorporativo")}`}
+                  className={`${getFieldClass("esCorporativo")} p-button-sm`}
                   disabled={readOnly || loading}
                 />
               )}
             />
-          </ButtonGroup>
-        </div>
-
-        {/* Sexta fila: ToggleButton de Tipo */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginTop: 10,
-            gap: 5,
-            flexDirection: window.innerWidth < 768 ? "column" : "row",
-          }}
-        >
-          <ButtonGroup>
             <Controller
               name="sujetoRetencion"
               control={control}
@@ -797,7 +769,7 @@ const DatosGeneralesEntidad = ({
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
-                  className={`${getFieldClass("sujetoRetencion")}`}
+                  className={`${getFieldClass("sujetoRetencion")} p-button-sm`}
                   disabled={readOnly || loading}
                 />
               )}
@@ -814,7 +786,7 @@ const DatosGeneralesEntidad = ({
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
-                  className={`${getFieldClass("sujetoPercepcion")}`}
+                  className={`${getFieldClass("sujetoPercepcion")} p-button-sm`}
                   disabled={readOnly || loading}
                 />
               )}
@@ -826,12 +798,12 @@ const DatosGeneralesEntidad = ({
                 <ToggleButton
                   id="estadoActivoSUNAT"
                   onLabel="SUNAT ACTIVO"
-                  offLabel="SUNAT INACTIVO"
+                  offLabel="SUNAT ACTIVO"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
-                  className={`${getFieldClass("estadoActivoSUNAT")}`}
+                  className={`${getFieldClass("estadoActivoSUNAT")} p-button-sm`}
                   disabled={readOnly || loading}
                 />
               )}
@@ -843,12 +815,12 @@ const DatosGeneralesEntidad = ({
                 <ToggleButton
                   id="condicionHabidoSUNAT"
                   onLabel="HABIDO"
-                  offLabel="NO HABIDO"
+                  offLabel="HABIDO"
                   onIcon="pi pi-check"
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
-                  className={`${getFieldClass("condicionHabidoSUNAT")}`}
+                  className={`${getFieldClass("condicionHabidoSUNAT")} p-button-sm`}
                   disabled={readOnly || loading}
                 />
               )}
@@ -865,7 +837,7 @@ const DatosGeneralesEntidad = ({
                   offIcon="pi pi-times"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.value)}
-                  className={`${getFieldClass("esAgenteRetencion")}`}
+                  className={`${getFieldClass("esAgenteRetencion")} p-button-sm`}
                   disabled={readOnly || loading}
                 />
               )}

@@ -69,6 +69,7 @@ export default function DatosGeneralesTab({
   };
 
   // ✅ MEJORADO: Callback cuando se guarda exitosamente una entidad
+  // ✅ MEJORADO: Callback cuando se guarda exitosamente una entidad
   const handleEntidadGuardada = async (entidad) => {
     // Cerrar el Dialog
     setShowEntidadDialog(false);
@@ -84,6 +85,12 @@ export default function DatosGeneralesTab({
       setTimeout(() => {
         const proveedorIdNumber = Number(entidad.id);
         onChange("proveedorId", proveedorIdNumber);
+
+        // ✅ TERCERO: Auto-copiar la forma de pago del proveedor al RequerimientoCompra
+        if (entidad.formaPagoId) {
+          const formaPagoIdNumber = Number(entidad.formaPagoId);
+          onChange("formaPagoId", formaPagoIdNumber);
+        }
       }, 100);
     } else {
       console.log(
@@ -100,7 +107,26 @@ export default function DatosGeneralesTab({
         life: 4000,
       });
     }
+  };
 
+  // ✅ NUEVO: Manejar cambio de proveedor y auto-copiar su forma de pago
+  const handleProveedorChange = (proveedorId) => {
+    // Actualizar el proveedor seleccionado
+    onChange("proveedorId", proveedorId);
+
+    // Buscar el proveedor en la lista de opciones para obtener su formaPagoId
+    const proveedorSeleccionado = proveedoresOptions.find(
+      (p) => Number(p.value) === Number(proveedorId),
+    );
+
+    if (proveedorSeleccionado && proveedorSeleccionado.formaPagoId) {
+      const formaPagoIdNumber = Number(proveedorSeleccionado.formaPagoId);
+      onChange("formaPagoId", formaPagoIdNumber);
+    } else {
+      console.log(
+        "⚠️ [DatosGeneralesTab] Proveedor sin forma de pago asignada",
+      );
+    }
   };
 
   // Helper para obtener nombre completo del personal por ID
@@ -422,7 +448,7 @@ export default function DatosGeneralesTab({
                   id="proveedorId"
                   value={formData.proveedorId}
                   options={proveedoresOptions}
-                  onChange={(e) => onChange("proveedorId", e.value)}
+                  onChange={(e) => handleProveedorChange(e.value)}
                   optionLabel="label"
                   optionValue="value"
                   placeholder="Seleccionar proveedor"
@@ -1097,7 +1123,11 @@ export default function DatosGeneralesTab({
       >
         <Toast ref={toastLocal} />
         <EntidadComercialForm
-          entidadComercial={null}
+          entidadComercial={{
+            empresaId: formData.empresaId, // ✅ Heredar empresa del RequerimientoCompra
+            agrupacionEntidadId: 1, // ✅ Default: 1 (S/A)
+            esProveedor: true, // ✅ Marcar como proveedor por defecto
+          }}
           onGuardar={handleEntidadGuardada}
           onCancelar={handleCerrarEntidadDialog}
           toast={toastLocal}

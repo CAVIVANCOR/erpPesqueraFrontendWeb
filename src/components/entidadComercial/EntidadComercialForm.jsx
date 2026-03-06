@@ -20,7 +20,7 @@ import { Button } from "primereact/button";
 import { ButtonGroup } from "primereact/buttongroup";
 import { Tag } from "primereact/tag";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
-
+import DetalleComisionFidelizacionEntidad from "./DetalleComisionFidelizacionEntidad";
 import {
   getEntidadesComerciales,
   getEntidadComercialPorId,
@@ -100,7 +100,6 @@ const EntidadComercialForm = ({
   const [activeCard, setActiveCard] = useState("datos-generales");
   const [datosGenerales, setDatosGenerales] = useState({});
   const [datosOperativos, setDatosOperativos] = useState({});
-
   // Estados para catálogos
   const [empresas, setEmpresas] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
@@ -110,13 +109,13 @@ const EntidadComercialForm = ({
   const [vendedores, setVendedores] = useState([]);
   const [agenciasEnvio, setAgenciasEnvio] = useState([]);
   const [monedas, setMonedas] = useState([]);
-
   const toast = toastProp || useRef(null);
   const direccionesRef = useRef(null);
   const contactosRef = useRef(null);
   const vehiculosRef = useRef(null);
   const lineasCreditoRef = useRef(null);
   const ctasCteRef = useRef(null);
+  const comisionesFidelizacionRef = useRef(null);
   const preciosRef = useRef(null);
   const esEdicion = !!(entidadComercial && entidadComercial.id);
   const usuario = useAuthStore((state) => state.usuario);
@@ -160,7 +159,6 @@ const EntidadComercialForm = ({
       controlFechaIngreso: false,
       controlSerie: false,
       controlEnvase: false,
-      precioPorTonComisionFidelizacion: 0.0,
     },
   });
 
@@ -248,8 +246,6 @@ const EntidadComercialForm = ({
         codigoErpFinanciero: entidadComercial.codigoErpFinanciero,
         sujetoRetencion: entidadComercial.sujetoRetencion,
         sujetoPercepcion: entidadComercial.sujetoPercepcion,
-        precioPorTonComisionFidelizacion:
-          entidadComercial.precioPorTonComisionFidelizacion || 0.0,
       };
       setDatosGenerales(generales);
 
@@ -332,10 +328,6 @@ const EntidadComercialForm = ({
       setValue("controlFechaIngreso", entidadComercial.controlFechaIngreso);
       setValue("controlSerie", entidadComercial.controlSerie);
       setValue("controlEnvase", entidadComercial.controlEnvase);
-      setValue(
-        "precioPorTonComisionFidelizacion",
-        entidadComercial.precioPorTonComisionFidelizacion || 0.0,
-      );
     }
   }, [entidadComercial, setValue]);
 
@@ -364,10 +356,6 @@ const EntidadComercialForm = ({
     setValue("estadoActivoSUNAT", datos.estadoActivoSUNAT);
     setValue("condicionHabidoSUNAT", datos.condicionHabidoSUNAT);
     setValue("esAgenteRetencion", datos.esAgenteRetencion);
-    setValue(
-      "precioPorTonComisionFidelizacion",
-      datos.precioPorTonComisionFidelizacion,
-    );
     // Manejar dirección fiscal automática de SUNAT
     if (datos.direccionFiscalAutomatica) {
       try {
@@ -492,7 +480,10 @@ const EntidadComercialForm = ({
         esCliente: Boolean(data.esCliente),
         esProveedor: Boolean(data.esProveedor),
         esCorporativo: Boolean(data.esCorporativo),
-        estado: data.estado !== undefined && data.estado !== null ? Boolean(data.estado) : true,
+        estado:
+          data.estado !== undefined && data.estado !== null
+            ? Boolean(data.estado)
+            : true,
         estadoActivoSUNAT: Boolean(data.estadoActivoSUNAT),
         condicionHabidoSUNAT: Boolean(data.condicionHabidoSUNAT),
         esAgenteRetencion: Boolean(data.esAgenteRetencion),
@@ -505,8 +496,6 @@ const EntidadComercialForm = ({
         controlEnvase: Boolean(data.controlEnvase),
         sujetoRetencion: Boolean(data.sujetoRetencion),
         sujetoPercepcion: Boolean(data.sujetoPercepcion),
-        precioPorTonComisionFidelizacion:
-          data.precioPorTonComisionFidelizacion || 0.0,
       };
       let resultado;
       if (esEdicion) {
@@ -889,6 +878,18 @@ const EntidadComercialForm = ({
               onClick={() => handleCardChange("ctas-cte")}
               type="button"
             />
+            <Button
+              icon="pi pi-money-bill"
+              tooltip="Comisiones Fidelización - Comisiones por personal"
+              tooltipOptions={{ position: "bottom" }}
+              className={
+                activeCard === "comisiones-fidelizacion"
+                  ? "p-button-success"
+                  : "p-button-outlined"
+              }
+              onClick={() => handleCardChange("comisiones-fidelizacion")}
+              type="button"
+            />
           </ButtonGroup>
         }
       />
@@ -979,6 +980,15 @@ const EntidadComercialForm = ({
           <DetalleCtasCteEntidad
             entidadComercialId={entidadComercial?.id}
             ref={ctasCteRef}
+            readOnly={readOnly}
+            permisos={permisos}
+          />
+        )}
+        {activeCard === "comisiones-fidelizacion" && (
+          <DetalleComisionFidelizacionEntidad
+            entidadComercialFidelizacionId={entidadComercial?.id}
+            entidadComercial={entidadComercial}
+            ref={comisionesFidelizacionRef}
             readOnly={readOnly}
             permisos={permisos}
           />

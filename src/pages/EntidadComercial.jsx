@@ -589,7 +589,7 @@ const EntidadComercial = ({ ruta }) => {
         }
         visible={dialogVisible}
         onHide={cerrarDialogo}
-        style={{ width:"1300px" }}
+        style={{ width:"1350px" }}
         modal
       >
         <EntidadComercialForm

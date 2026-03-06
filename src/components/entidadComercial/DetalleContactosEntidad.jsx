@@ -446,6 +446,8 @@ const DetalleContactosEntidad = forwardRef(
         <DataTable
           value={contactosData}
           loading={loading}
+          stripedRows
+          showGridlines
           paginator
           rows={10}
           rowsPerPageOptions={[5, 10, 25, 50]}

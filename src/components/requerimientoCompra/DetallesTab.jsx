@@ -191,15 +191,17 @@ export default function DetallesTab({
           border: "2px solid #dee2e6",
         }}
       >
-        <div style={{ flex: 1 }}>
+                <div style={{ flex: 1 }}>
           <label style={{ opacity: 0 }}>.</label>
           <Button
             label="Agregar Detalle"
             icon="pi pi-plus"
             className="p-button-success"
             onClick={handleAdd}
-            disabled={!puedeEditarDetalles}
+            disabled={!puedeEditarDetalles || !requerimientoId}
             style={{ width: "100%", fontWeight: "bold" }}
+            tooltip={!requerimientoId ? "Debe guardar el requerimiento primero" : ""}
+            tooltipOptions={{ position: "top" }}
           />
         </div>
         <div style={{ flex: 1 }}>

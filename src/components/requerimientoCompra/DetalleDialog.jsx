@@ -1,5 +1,5 @@
 // src/components/requerimientoCompra/DetalleDialog.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
 import { InputNumber } from "primereact/inputnumber";
@@ -36,32 +36,35 @@ export default function DetalleDialog({
   const [saving, setSaving] = useState(false);
   const [showProductoSelector, setShowProductoSelector] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
-
+  // ✅ NUEVO: Ref para el campo Precio Unit. Compra
+  const costoUnitarioInputRef = useRef(null);
   // Obtener entidadComercialId de la empresa seleccionada
   const empresaSeleccionada = empresas?.find(
     (e) => Number(e.id) === Number(empresaId),
   );
   const entidadComercialId = empresaSeleccionada?.entidadComercialId;
 
-    // Obtener código de moneda de la cabecera (datosGenerales.moneda)
+  // Obtener código de moneda de la cabecera (datosGenerales.moneda)
   const codigoMoneda = datosGenerales?.moneda?.codigoSunat || "PEN";
-  
+
   // ✅ CORRECCIÓN: Obtener familiaId desde tipoProductoId
   // OPCIÓN 1: Si tipoProducto incluye subfamilia (ideal, cuando backend lo envíe)
-  let familiaProductoId = datosGenerales?.tipoProducto?.subfamilia?.familiaId || null;
-  
+  let familiaProductoId =
+    datosGenerales?.tipoProducto?.subfamilia?.familiaId || null;
+
   // OPCIÓN 2: Mapeo temporal mientras el backend no incluya la relación completa
   if (!familiaProductoId && datosGenerales?.tipoProductoId) {
     const tipoProductoIdNumber = Number(datosGenerales.tipoProductoId);
-    
+
     // Mapeo de tipoProductoId a familiaId
     // TODO: Esto debe venir del backend con la relación completa
     const mapaTemporalTipoProductoAFamilia = {
       9: 5, // SERVICIO CONTRATISTA (subfamilia 24) → SERVICIOS
       // Agrega aquí otros tipos de producto de SERVICIOS si existen
     };
-    
-    familiaProductoId = mapaTemporalTipoProductoAFamilia[tipoProductoIdNumber] || null;
+
+    familiaProductoId =
+      mapaTemporalTipoProductoAFamilia[tipoProductoIdNumber] || null;
   }
 
   useEffect(() => {
@@ -105,17 +108,53 @@ export default function DetalleDialog({
     setFormData(newFormData);
   };
 
-  const handleProductoSelect = (data) => {
+   const handleProductoSelect = (data) => {
     if (data) {
       // ProductoSelectorDialog retorna un objeto con estructura {tipo, productoId, producto}
       const producto = data.producto || data; // Compatibilidad con ambos formatos
+
       setProductoSeleccionado(producto);
-      handleChange("productoId", Number(producto.id));
+
+      // ✅ NUEVO: Auto-poner cantidad = 1 cuando es un servicio
+      // Los servicios tienen familiaId = 5 (SERVICIOS)
+      const esFamiliaServicios =
+        Number(producto.subfamilia?.familiaId) === 5 ||
+        Number(producto.familia?.id) === 5;
+
+      if (esFamiliaServicios) {
+        
+        // ✅ CORRECCIÓN: Actualizar productoId y cantidad JUNTOS en una sola operación
+        setFormData((prev) => ({
+          ...prev,
+          productoId: Number(producto.id),
+          cantidad: 1,
+          subtotal: 1 * prev.costoUnitario,
+        }));
+
+        // ✅ NUEVO: Posicionar foco en Precio Unit. Compra después de un pequeño delay
+        setTimeout(() => {
+          if (costoUnitarioInputRef.current) {
+            const inputElement = costoUnitarioInputRef.current.getInput();
+            if (inputElement) {
+              inputElement.focus();
+              inputElement.select(); // Selecciona el texto para facilitar el reemplazo
+            }
+          }
+        }, 100);
+      } else {
+        console.log(
+          "⚠️ [DetalleDialog] NO es servicio, cantidad permanece en 0",
+        );
+        // Solo actualizar productoId si NO es servicio
+        handleChange("productoId", Number(producto.id));
+      }
+
       setShowProductoSelector(false);
     }
   };
 
   const handleSave = async () => {
+
     // Validaciones
     if (!formData.productoId) {
       toast.current.show({
@@ -314,6 +353,7 @@ export default function DetalleDialog({
           <div style={{ flex: 1 }}>
             <label htmlFor="costoUnitario">Precio Unit. Compra *</label>
             <InputNumber
+              ref={costoUnitarioInputRef}
               id="costoUnitario"
               value={formData.costoUnitario}
               onValueChange={(e) => handleChange("costoUnitario", e.value)}
