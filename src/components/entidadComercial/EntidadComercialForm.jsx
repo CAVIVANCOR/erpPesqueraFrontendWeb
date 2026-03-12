@@ -34,7 +34,7 @@ import {
   obtenerDireccionFiscalPorEntidad,
   actualizarDireccionEntidad,
 } from "../../api/direccionEntidad";
-import { getEmpresas } from "../../api/empresa";
+import { getEmpresas, getEmpresaPorId } from "../../api/empresa";
 import { getTiposDocIdentidad } from "../../api/tiposDocIdentidad";
 import { getTiposEntidad } from "../../api/tipoEntidad";
 import { getFormasPago } from "../../api/formaPago";
@@ -102,6 +102,7 @@ const EntidadComercialForm = ({
   const [datosOperativos, setDatosOperativos] = useState({});
   // Estados para catálogos
   const [empresas, setEmpresas] = useState([]);
+  const [empresaActual, setEmpresaActual] = useState(null);
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [tiposEntidad, setTiposEntidad] = useState([]);
   const [formasPago, setFormasPago] = useState([]);
@@ -273,6 +274,18 @@ const EntidadComercialForm = ({
           .catch((error) => {
             console.error("Error al cargar vendedores en modo edición:", error);
             setVendedores([]);
+          });
+      }
+
+      // AGREGAR DENTRO DEL useEffect QUE CARGA entidadComercial:
+      // Cargar información completa de la empresa
+      if (entidadComercial.empresaId) {
+        getEmpresaPorId(Number(entidadComercial.empresaId))
+          .then((empresaData) => {
+            setEmpresaActual(empresaData);
+          })
+          .catch((error) => {
+            console.error("Error al cargar empresa:", error);
           });
       }
 
@@ -949,6 +962,7 @@ const EntidadComercialForm = ({
           <DetallePreciosEntidad
             entidadComercialId={entidadComercial?.id}
             empresaId={entidadComercial?.empresaId}
+            empresaEntidadComercialId={empresaActual?.entidadComercialId}
             monedas={monedas}
             ref={preciosRef}
             readOnly={readOnly}

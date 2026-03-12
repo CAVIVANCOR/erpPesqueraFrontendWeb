@@ -111,7 +111,7 @@ export const ComisionesTable = ({ comisionesGeneradas, loadingComisiones }) => {
   // Header con título
   const header = (
     <div style={{ padding: "0.5rem" }}>
-      <h3 style={{ margin: 0 }}>Comisiones de Fidelización</h3>
+      <h3 style={{ margin: 0 }}>Bonificación de Fidelización</h3>
     </div>
   );
 

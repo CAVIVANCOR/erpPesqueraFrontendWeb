@@ -64,7 +64,7 @@ export const BotonesReportes = ({
           display: "grid",
           gridTemplateColumns: "repeat(4, 1fr)",
           gap: "10px",
-          marginBottom: "0.25rem",
+          marginTop: "0.25rem",
         }}
       >
         {reportes.map((reporte) => (

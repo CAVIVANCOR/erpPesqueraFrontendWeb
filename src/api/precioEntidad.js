@@ -55,3 +55,27 @@ export async function eliminarPrecioEntidad(id) {
   const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Obtiene el precio vigente para un producto en una fecha específica.
+ * Busca primero precio especial del cliente, luego precio global de la empresa.
+ * @param {number} empresaId - ID de la empresa
+ * @param {number} empresaEntidadComercialId - ID de la entidad comercial de la empresa
+ * @param {number} especieId - ID de la especie
+ * @param {number|null} clienteId - ID del cliente (null para precio global)
+ * @param {string} fechaDescarga - Fecha de descarga en formato ISO
+ * @returns {Promise<Object|null>} - Precio vigente o null
+ */
+export async function obtenerPrecioVigente(empresaId, empresaEntidadComercialId, especieId, clienteId, fechaDescarga) {
+  const params = new URLSearchParams({
+    empresaId,
+    empresaEntidadComercialId,
+    especieId,
+    fechaDescarga,
+  });
+  if (clienteId) {
+    params.append('clienteId', clienteId);
+  }
+  const res = await axios.get(`${API_URL}/precio-vigente?${params.toString()}`, { headers: getAuthHeaders() });
+  return res.data;
+}

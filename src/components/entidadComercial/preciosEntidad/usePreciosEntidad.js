@@ -18,7 +18,7 @@ import {
 } from "../../../api/precioEntidad";
 import { getProductosPorEntidadYEmpresa } from "../../../api/producto";
 
-export const usePreciosEntidad = (entidadComercialId, empresaId, monedas, toast) => {
+export const usePreciosEntidad = (entidadComercialId, empresaId, empresaEntidadComercialId, monedas, toast) => {
   const usuario = useAuthStore((state) => state.usuario);
   
   // Estados
@@ -42,12 +42,12 @@ export const usePreciosEntidad = (entidadComercialId, empresaId, monedas, toast)
    * Carga productos por entidad y empresa
    */
   const cargarProductos = useCallback(async () => {
-    if (!entidadComercialId || !empresaId) return;
+    if (!empresaEntidadComercialId || !empresaId) return;
 
     try {
       setLoadingProductos(true);
       const productosData = await getProductosPorEntidadYEmpresa(
-        entidadComercialId,
+        empresaEntidadComercialId,
         empresaId
       );
       setProductos(productosData || []);
@@ -63,7 +63,7 @@ export const usePreciosEntidad = (entidadComercialId, empresaId, monedas, toast)
     } finally {
       setLoadingProductos(false);
     }
-  }, [entidadComercialId, empresaId, toast]);
+  }, [empresaEntidadComercialId, empresaId, toast]);
 
   /**
    * Carga precios especiales desde la API

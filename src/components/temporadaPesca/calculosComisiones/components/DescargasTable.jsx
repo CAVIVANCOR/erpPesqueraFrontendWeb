@@ -78,7 +78,7 @@ export const DescargasTable = ({
         min={0}
         prefix="$ "
         disabled={readOnly || loadingDescargas}
-        inputStyle={{ fontWeight: "bold", width: "120px" }}
+        inputStyle={{ fontWeight: "bold", width: "80px" }}
       />
     );
   };
@@ -137,7 +137,7 @@ export const DescargasTable = ({
         header="Toneladas"
         body={toneladasBodyTemplate}
         sortable
-        style={{ width: "8%", textAlign:"right" }}
+        style={{ width: "7%", textAlign:"right" }}
       />
       <Column
         header="Cliente"
@@ -147,7 +147,7 @@ export const DescargasTable = ({
       <Column
         header="Precio/Ton Comisión (USD)"
         body={precioBodyTemplate}
-        style={{ width: "10%", textAlign:"right" }}
+        style={{ width: "8%", textAlign:"center" }}
       />
     </DataTable>
   );

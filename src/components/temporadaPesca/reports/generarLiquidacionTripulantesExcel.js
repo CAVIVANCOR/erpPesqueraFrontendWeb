@@ -15,8 +15,8 @@ export async function generarLiquidacionTripulantesExcel(data) {
   worksheet.getColumn(3).width = 20;
   worksheet.getColumn(4).width = 16;
   worksheet.getColumn(5).width = 16;
-  worksheet.getColumn(6).width = 18;
-  worksheet.getColumn(7).width = 12;
+  worksheet.getColumn(6).width = 16;
+  worksheet.getColumn(7).width = 18;
   worksheet.getColumn(8).width = 12;
   worksheet.getColumn(9).width = 12;
   worksheet.getColumn(10).width = 12;
@@ -45,6 +45,7 @@ export async function generarLiquidacionTripulantesExcel(data) {
   const fillAzul = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB8DCFA' } };
   const fillRojo = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAC8C8' } };
   const fillVerde = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBFEDCA' } };
+  const fillVerdeBienClaro = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9F2D9' } }; // ⭐ Verde claro para cuota propia
   const fillNone = { type: 'pattern', pattern: 'none' };
 
   const borderAzul = {
@@ -266,7 +267,7 @@ export async function generarLiquidacionTripulantesExcel(data) {
   // ─── TÍTULO INGRESOS ──────────────────────────────────────────────
   limpiarFila(currentRow);
   worksheet.getRow(currentRow).height = 22;
-  worksheet.mergeCells(currentRow, 1, currentRow, 6);
+  worksheet.mergeCells(currentRow, 1, currentRow, 7);
   const ingresosTituloCell = worksheet.getCell(currentRow, 1);
   ingresosTituloCell.value = "INGRESOS - DETALLE DE DESCARGAS";
   ingresosTituloCell.font = { bold: true, size: 13 };
@@ -277,8 +278,56 @@ export async function generarLiquidacionTripulantesExcel(data) {
   worksheet.getRow(currentRow).height = 6;
   currentRow++;
 
+  // ⭐ LÓGICA DE PARTICIÓN DE DESCARGAS POR CUOTA PROPIA
+  const precioPorTonPropia = Number(temporada.precioPorTonDolares || 0);
+  const precioPorTonAlternativo = Number(temporada.precioPorTonDolaresAlternativo || 0);
+  const cuotaPropiaTon = Number(temporada.cuotaPropiaTon || 0);
+  const descargasLista = descargas ?? [];
+
+  const descargasProcesadas = [];
+  let acumuladoToneladas = 0;
+
+  descargasLista.forEach((descarga) => {
+    const toneladasDescarga = Number(descarga.toneladas || 0);
+    const toneladasRestantesCuota = cuotaPropiaTon - acumuladoToneladas;
+
+    if (acumuladoToneladas < cuotaPropiaTon) {
+      if (toneladasDescarga <= toneladasRestantesCuota) {
+        descargasProcesadas.push({
+          ...descarga,
+          toneladas: toneladasDescarga,
+          precioPorTon: precioPorTonPropia,
+          dentroDeCuota: true,
+        });
+        acumuladoToneladas += toneladasDescarga;
+      } else {
+        descargasProcesadas.push({
+          ...descarga,
+          toneladas: toneladasRestantesCuota,
+          precioPorTon: precioPorTonPropia,
+          dentroDeCuota: true,
+        });
+        descargasProcesadas.push({
+          ...descarga,
+          toneladas: toneladasDescarga - toneladasRestantesCuota,
+          precioPorTon: precioPorTonAlternativo,
+          dentroDeCuota: false,
+        });
+        acumuladoToneladas += toneladasDescarga;
+      }
+    } else {
+      descargasProcesadas.push({
+        ...descarga,
+        toneladas: toneladasDescarga,
+        precioPorTon: precioPorTonAlternativo,
+        dentroDeCuota: false,
+      });
+      acumuladoToneladas += toneladasDescarga;
+    }
+  });
+
   // ─── HEADERS TABLA INGRESOS ───────────────────────────────────────
-  const ingresosHeaders = ["N°", "Fecha Descarga", "Especie", "Toneladas", "Precio/Ton US$", "Total a Pagar US$"];
+  const ingresosHeaders = ["N°", "Fecha Descarga", "Especie", "Toneladas", "Acumulado Ton.", "Precio/Ton US$", "Total US$"];
   ingresosHeaders.forEach((header, i) => {
     const cell = worksheet.getCell(currentRow, i + 1);
     cell.value = header;
@@ -297,23 +346,29 @@ export async function generarLiquidacionTripulantesExcel(data) {
   currentRow++;
 
   // ─── FILAS INGRESOS ───────────────────────────────────────────────
-  const precioPorTon = Number(temporada.precioPorTonDolares || 0);
-  const descargasLista = descargas ?? [];
   let totalToneladasIngresos = 0;
   let totalPagarIngresos = 0;
+  let acumuladoRenderizado = 0;
 
-  descargasLista.forEach((descarga, index) => {
+  descargasProcesadas.forEach((descarga, index) => {
     const fecha = descarga.fechaHoraFinDescarga
       ? new Date(descarga.fechaHoraFinDescarga).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
       : "-";
     const especie = descarga.especie?.nombre || "-";
     const toneladas = Number(descarga.toneladas || 0);
+    const precioPorTon = descarga.precioPorTon;
     const totalPagar = toneladas * precioPorTon;
+    
+    acumuladoRenderizado += toneladas;
     totalToneladasIngresos += toneladas;
     totalPagarIngresos += totalPagar;
 
-    const rowData = [index + 1, fecha, especie, toneladas, precioPorTon, totalPagar];
-    const bgColor = index % 2 === 0 ? 'FFF0F6F8' : 'FFFFFFFF';
+    const rowData = [index + 1, fecha, especie, toneladas, acumuladoRenderizado, precioPorTon, totalPagar];
+    
+    // ⭐ Fondo verde para filas dentro de cuota propia
+    const bgColor = descarga.dentroDeCuota 
+      ? 'FFD9F2D9'  // Verde claro para cuota propia
+      : (index % 2 === 0 ? 'FFF0F6F8' : 'FFFFFFFF'); // Alternado para excedente
 
     rowData.forEach((value, colIndex) => {
       const cell = worksheet.getCell(currentRow, colIndex + 1);
@@ -325,10 +380,10 @@ export async function generarLiquidacionTripulantesExcel(data) {
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
       } else if (colIndex === 1 || colIndex === 2) {
         cell.alignment = { horizontal: 'left', vertical: 'middle' };
-      } else if (colIndex === 3) {
+      } else if (colIndex === 3 || colIndex === 4) {
         cell.alignment = { horizontal: 'right', vertical: 'middle' };
         cell.numFmt = '#,##0.000';
-      } else if (colIndex === 4 || colIndex === 5) {
+      } else if (colIndex === 5 || colIndex === 6) {
         cell.alignment = { horizontal: 'right', vertical: 'middle' };
         cell.numFmt = '#,##0.00';
       }
@@ -344,7 +399,7 @@ export async function generarLiquidacionTripulantesExcel(data) {
   });
 
   // Fila TOTALES ingresos
-  for (let i = 1; i <= 6; i++) {
+  for (let i = 1; i <= 7; i++) {
     const cell = worksheet.getCell(currentRow, i);
     cell.fill = fillAzul;
     cell.font = { bold: true, size: 8 };
@@ -357,13 +412,13 @@ export async function generarLiquidacionTripulantesExcel(data) {
       cell.value = totalToneladasIngresos;
       cell.numFmt = '#,##0.000';
       cell.alignment = { horizontal: 'right', vertical: 'middle' };
-    } else if (i === 6) {
+    } else if (i === 7) {
       cell.value = totalPagarIngresos;
       cell.numFmt = '#,##0.00';
       cell.alignment = { horizontal: 'right', vertical: 'middle' };
     }
   }
-  for (let i = 7; i <= TOTAL_COLS; i++) {
+  for (let i = 8; i <= TOTAL_COLS; i++) {
     const cell = worksheet.getCell(currentRow, i);
     cell.fill = fillNone;
     cell.border = noBorder;

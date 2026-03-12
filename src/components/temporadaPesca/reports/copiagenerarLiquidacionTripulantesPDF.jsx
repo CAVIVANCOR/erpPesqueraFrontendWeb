@@ -16,8 +16,6 @@ export async function generarLiquidacionTripulantesPDF(data) {
   const azulClaro = rgb(0.72, 0.87, 0.97);
   const rojoClaro = rgb(0.98, 0.78, 0.78);
   const verdeClaro = rgb(0.75, 0.93, 0.78);
-  const verdeBienClaro = rgb(0.85, 0.95, 0.85);
-  const colorLineasGuia = rgb(0.3, 0.3, 0.3); // ⭐ Color para todas las líneas de grilla
 
   // Cargar logo
   let logoImage = null;
@@ -101,7 +99,7 @@ export async function generarLiquidacionTripulantesPDF(data) {
     });
     let lineX = cuotaTableStartX;
     for (let i = 0; i <= cuotaColWidths.length; i++) {
-      page.drawLine({ start: { x: lineX, y: yPos - 3 }, end: { x: lineX, y: yPos + 17 }, thickness: 0.5, color: colorLineasGuia });
+      page.drawLine({ start: { x: lineX, y: yPos - 3 }, end: { x: lineX, y: yPos + 17 }, thickness: 0.5, color: rgb(0.5, 0.7, 0.8) });
       if (i < cuotaColWidths.length) lineX += cuotaColWidths[i];
     }
     yPos -= 20;
@@ -141,10 +139,10 @@ export async function generarLiquidacionTripulantesPDF(data) {
       });
       lineX = cuotaTableStartX;
       for (let i = 0; i <= cuotaColWidths.length; i++) {
-        page.drawLine({ start: { x: lineX, y: yPos + 16 }, end: { x: lineX, y: yPos - 2 }, thickness: 0.3, color: colorLineasGuia });
+        page.drawLine({ start: { x: lineX, y: yPos + 16 }, end: { x: lineX, y: yPos - 2 }, thickness: 0.3, color: rgb(0.8, 0.8, 0.8) });
         if (i < cuotaColWidths.length) lineX += cuotaColWidths[i];
       }
-page.drawLine({ start: { x: cuotaTableStartX, y: yPos - 2 }, end: { x: cuotaTableStartX + cuotaTableWidth, y: yPos - 2 }, thickness: 0.5, color: colorLineasGuia });
+      page.drawLine({ start: { x: cuotaTableStartX, y: yPos - 2 }, end: { x: cuotaTableStartX + cuotaTableWidth, y: yPos - 2 }, thickness: 0.3, color: rgb(0.8, 0.8, 0.8) });
       yPos -= 18;
     });
 
@@ -160,7 +158,7 @@ page.drawLine({ start: { x: cuotaTableStartX, y: yPos - 2 }, end: { x: cuotaTabl
     page.drawText(totalCuotaText, { x: cuotaTableStartX + cuotaTableWidth - totalCuotaWidth - 2, y: yPos, size: 8, font: fontBold, color: rgb(0, 0, 0) });
     lineX = cuotaTableStartX;
     for (let i = 0; i <= cuotaColWidths.length; i++) {
-      page.drawLine({ start: { x: lineX, y: yPos - 3 }, end: { x: lineX, y: yPos + 17 }, thickness: 0.5, color: colorLineasGuia });
+      page.drawLine({ start: { x: lineX, y: yPos - 3 }, end: { x: lineX, y: yPos + 17 }, thickness: 0.5, color: rgb(0.5, 0.7, 0.8) });
       if (i < cuotaColWidths.length) lineX += cuotaColWidths[i];
     }
     yPos -= 20;
@@ -194,7 +192,7 @@ page.drawLine({ start: { x: cuotaTableStartX, y: yPos - 2 }, end: { x: cuotaTabl
     });
     let lineXRes = cuotaTableStartX;
     for (let i = 0; i <= resumenColWidths.length; i++) {
-      page.drawLine({ start: { x: lineXRes, y: yPos - 3 }, end: { x: lineXRes, y: yPos + 17 }, thickness: 0.5, color: colorLineasGuia });
+      page.drawLine({ start: { x: lineXRes, y: yPos - 3 }, end: { x: lineXRes, y: yPos + 17 }, thickness: 0.5, color: rgb(0.5, 0.7, 0.8) });
       if (i < resumenColWidths.length) lineXRes += resumenColWidths[i];
     }
     yPos -= 20;
@@ -207,10 +205,10 @@ page.drawLine({ start: { x: cuotaTableStartX, y: yPos - 2 }, end: { x: cuotaTabl
     });
     lineXRes = cuotaTableStartX;
     for (let i = 0; i <= resumenColWidths.length; i++) {
-      page.drawLine({ start: { x: lineXRes, y: yPos + 16 }, end: { x: lineXRes, y: yPos - 2 }, thickness: 0.3, color: colorLineasGuia });
+      page.drawLine({ start: { x: lineXRes, y: yPos + 16 }, end: { x: lineXRes, y: yPos - 2 }, thickness: 0.3, color: rgb(0.8, 0.8, 0.8) });
       if (i < resumenColWidths.length) lineXRes += resumenColWidths[i];
     }
-page.drawLine({ start: { x: cuotaTableStartX, y: yPos - 2 }, end: { x: cuotaTableStartX + cuotaTableWidth, y: yPos - 2 }, thickness: 0.5, color: colorLineasGuia });
+    page.drawLine({ start: { x: cuotaTableStartX, y: yPos - 2 }, end: { x: cuotaTableStartX + cuotaTableWidth, y: yPos - 2 }, thickness: 0.3, color: rgb(0.8, 0.8, 0.8) });
     yPos -= 25;
 
     return { yPos, cuotaTableStartX, cuotaTableWidth };
@@ -222,63 +220,12 @@ page.drawLine({ start: { x: cuotaTableStartX, y: yPos - 2 }, end: { x: cuotaTabl
   let { width } = page.getSize();
   let { yPos, cuotaTableStartX, cuotaTableWidth } = dibujarEncabezado(page);
 
-    // ─── SECCIÓN INGRESOS ──────────────────────────────────────────────────────
-  const precioPorTonPropia = Number(temporada.precioPorTonDolares || 0);
-  const precioPorTonAlternativo = Number(temporada.precioPorTonDolaresAlternativo || 0);
-  const cuotaPropiaTon = Number(temporada.cuotaPropiaTon || 0);
+  // ─── SECCIÓN INGRESOS ──────────────────────────────────────────────────────
+  const precioPorTon = Number(temporada.precioPorTonDolares || 0);
   const descargasLista = descargas ?? [];
 
-  // ⭐ NUEVA LÓGICA: Procesar descargas con asignación de precios por cuota
-  const descargasProcesadas = [];
-  let acumuladoToneladas = 0;
-
-  descargasLista.forEach((descarga) => {
-    const toneladasDescarga = Number(descarga.toneladas || 0);
-    const toneladasRestantesCuota = cuotaPropiaTon - acumuladoToneladas;
-
-    if (acumuladoToneladas < cuotaPropiaTon) {
-      // Aún hay cuota propia disponible
-      if (toneladasDescarga <= toneladasRestantesCuota) {
-        // Toda la descarga cabe en la cuota propia
-        descargasProcesadas.push({
-          ...descarga,
-          toneladas: toneladasDescarga,
-          precioPorTon: precioPorTonPropia,
-          dentroDeCuota: true,
-        });
-        acumuladoToneladas += toneladasDescarga;
-      } else {
-        // ⭐ DESCARGA DE QUIEBRE: Partir en dos registros
-        // Parte 1: Lo que cabe en la cuota propia
-        descargasProcesadas.push({
-          ...descarga,
-          toneladas: toneladasRestantesCuota,
-          precioPorTon: precioPorTonPropia,
-          dentroDeCuota: true,
-        });
-        // Parte 2: El excedente con precio alternativo
-        descargasProcesadas.push({
-          ...descarga,
-          toneladas: toneladasDescarga - toneladasRestantesCuota,
-          precioPorTon: precioPorTonAlternativo,
-          dentroDeCuota: false,
-        });
-        acumuladoToneladas += toneladasDescarga;
-      }
-    } else {
-      // Ya se cumplió la cuota propia, usar precio alternativo
-      descargasProcesadas.push({
-        ...descarga,
-        toneladas: toneladasDescarga,
-        precioPorTon: precioPorTonAlternativo,
-        dentroDeCuota: false,
-      });
-      acumuladoToneladas += toneladasDescarga;
-    }
-  });
-
-  const ingresosColWidths = [25, 70, 115, 80, 80, 80, 105];
-  const ingresosHeaders = ["N°", "Fecha Descarga", "Especie", "Toneladas", "Acumulado Ton.", "Precio/Ton US$", "Total US$"];
+  const ingresosColWidths = [25, 70, 175, 80, 80, 125];
+  const ingresosHeaders = ["N°", "Fecha Descarga", "Especie", "Toneladas", "Precio/Ton US$", "Total US$"];
   const ingresosTableWidth = ingresosColWidths.reduce((a, b) => a + b, 0);
   const ingresosTableStartX = cuotaTableStartX;
 
@@ -292,7 +239,7 @@ page.drawLine({ start: { x: cuotaTableStartX, y: yPos - 2 }, end: { x: cuotaTabl
     });
     let lx = ingresosTableStartX;
     for (let i = 0; i <= ingresosColWidths.length; i++) {
-      pg.drawLine({ start: { x: lx, y: y - 3 }, end: { x: lx, y: y + 17 }, thickness: 0.5, color: colorLineasGuia });
+      pg.drawLine({ start: { x: lx, y: y - 3 }, end: { x: lx, y: y + 17 }, thickness: 0.5, color: rgb(0.5, 0.7, 0.8) });
       if (i < ingresosColWidths.length) lx += ingresosColWidths[i];
     }
     return y - 20;
@@ -315,11 +262,10 @@ page.drawLine({ start: { x: cuotaTableStartX, y: yPos - 2 }, end: { x: cuotaTabl
 
   yPos = dibujarHeadersIngresos(page, yPos);
 
-   let totalToneladasIngresos = 0;
+  let totalToneladasIngresos = 0;
   let totalPagarIngresos = 0;
-  let acumuladoRenderizado = 0; // ⭐ Acumulado para mostrar en cada fila
 
-  descargasProcesadas.forEach((descarga, index) => {
+  descargasLista.forEach((descarga, index) => {
     if (yPos < 80) {
       page = pdfDoc.addPage([pageWidth, pageHeight]);
       paginas.push(page);
@@ -337,12 +283,7 @@ page.drawLine({ start: { x: cuotaTableStartX, y: yPos - 2 }, end: { x: cuotaTabl
       : "-";
     const especie = descarga.especie?.nombre || "-";
     const toneladas = Number(descarga.toneladas || 0);
-    const precioPorTon = descarga.precioPorTon;
     const totalPagar = toneladas * precioPorTon;
-    
-    // ⭐ Calcular acumulado para esta fila
-    acumuladoRenderizado += toneladas;
-    
     totalToneladasIngresos += toneladas;
     totalPagarIngresos += totalPagar;
 
@@ -351,16 +292,11 @@ page.drawLine({ start: { x: cuotaTableStartX, y: yPos - 2 }, end: { x: cuotaTabl
       fecha,
       especie,
       toneladas.toLocaleString('es-PE', { minimumFractionDigits: 3, maximumFractionDigits: 3 }),
-      acumuladoRenderizado.toLocaleString('es-PE', { minimumFractionDigits: 3, maximumFractionDigits: 3 }), // ⭐ Nueva columna
       precioPorTon.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
       totalPagar.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     ];
 
-    // ⭐ FONDO VERDE solo para filas dentro de cuota propia
-    const bgColor = descarga.dentroDeCuota 
-      ? verdeBienClaro  // Verde para cuota propia
-      : (index % 2 === 0 ? rgb(0.95, 0.97, 0.98) : rgb(1, 1, 1)); // Alternado para excedente
-    
+    const bgColor = index % 2 === 0 ? rgb(0.95, 0.97, 0.98) : rgb(1, 1, 1);
     page.drawRectangle({ x: ingresosTableStartX, y: yPos - 2, width: ingresosTableWidth, height: 18, color: bgColor });
 
     let xp = ingresosTableStartX;
@@ -370,8 +306,7 @@ page.drawLine({ start: { x: cuotaTableStartX, y: yPos - 2 }, end: { x: cuotaTabl
       while (fontNormal.widthOfTextAtSize(dv, 6.5) > maxW && dv.length > 3) dv = dv.substring(0, dv.length - 1);
       if (dv !== value && dv.length > 3) dv = dv.substring(0, dv.length - 3) + "...";
       let textX;
-      // ⭐ Alinear a la derecha: N°, Toneladas, Acumulado, Precio/Ton, Total
-      if (i === 0 || i === 3 || i === 4 || i === 5 || i === 6) {
+      if (i === 0 || i === 3 || i === 4 || i === 5) {
         textX = xp + ingresosColWidths[i] - fontNormal.widthOfTextAtSize(dv, 6.5) - 2;
       } else {
         textX = xp + 2;
@@ -382,10 +317,10 @@ page.drawLine({ start: { x: cuotaTableStartX, y: yPos - 2 }, end: { x: cuotaTabl
 
     let lx = ingresosTableStartX;
     for (let i = 0; i <= ingresosColWidths.length; i++) {
-      page.drawLine({ start: { x: lx, y: yPos + 16 }, end: { x: lx, y: yPos - 2 }, thickness: 0.3, color: colorLineasGuia });
+      page.drawLine({ start: { x: lx, y: yPos + 16 }, end: { x: lx, y: yPos - 2 }, thickness: 0.3, color: rgb(0.8, 0.8, 0.8) });
       if (i < ingresosColWidths.length) lx += ingresosColWidths[i];
     }
-page.drawLine({ start: { x: ingresosTableStartX, y: yPos - 2 }, end: { x: ingresosTableStartX + ingresosTableWidth, y: yPos - 2 }, thickness: 0.5, color: colorLineasGuia });
+    page.drawLine({ start: { x: ingresosTableStartX, y: yPos - 2 }, end: { x: ingresosTableStartX + ingresosTableWidth, y: yPos - 2 }, thickness: 0.3, color: rgb(0.8, 0.8, 0.8) });
     yPos -= 18;
   });
 
@@ -408,14 +343,14 @@ page.drawLine({ start: { x: ingresosTableStartX, y: yPos - 2 }, end: { x: ingres
   });
   const totalPagarText = totalPagarIngresos.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const totalPagarWidth = fontBold.widthOfTextAtSize(totalPagarText, 8);
-  const xInicioTotal = ingresosColWidths.slice(0, 6).reduce((a, b) => a + b, 0);
-page.drawText(totalPagarText, {
-  x: ingresosTableStartX + xInicioTotal + ingresosColWidths[6] - totalPagarWidth - 2,
-  y: yPos, size: 8, font: fontBold, color: rgb(0, 0, 0),
-});
+  const xInicioTotal = ingresosColWidths.slice(0, 5).reduce((a, b) => a + b, 0);
+  page.drawText(totalPagarText, {
+    x: ingresosTableStartX + xInicioTotal + ingresosColWidths[5] - totalPagarWidth - 2,
+    y: yPos, size: 8, font: fontBold, color: rgb(0, 0, 0),
+  });
   let lxTot = ingresosTableStartX;
   for (let i = 0; i <= ingresosColWidths.length; i++) {
-    page.drawLine({ start: { x: lxTot, y: yPos - 3 }, end: { x: lxTot, y: yPos + 17 }, thickness: 0.5, color: colorLineasGuia });
+    page.drawLine({ start: { x: lxTot, y: yPos - 3 }, end: { x: lxTot, y: yPos + 17 }, thickness: 0.5, color: rgb(0.5, 0.7, 0.8) });
     if (i < ingresosColWidths.length) lxTot += ingresosColWidths[i];
   }
   yPos -= 25;
@@ -478,7 +413,7 @@ page.drawText(totalPagarText, {
     });
     let lx = descTableStartX;
     for (let i = 0; i <= descColWidths.length; i++) {
-      pg.drawLine({ start: { x: lx, y: y - 3 }, end: { x: lx, y: y + 17 }, thickness: 0.5, color: colorLineasGuia });
+      pg.drawLine({ start: { x: lx, y: y - 3 }, end: { x: lx, y: y + 17 }, thickness: 0.5, color: rgb(0.5, 0.7, 0.8) });
       if (i < descColWidths.length) lx += descColWidths[i];
     }
     return y - 20;
@@ -564,10 +499,10 @@ page.drawText(totalPagarText, {
 
     let lx = descTableStartX;
     for (let i = 0; i <= descColWidths.length; i++) {
-      page.drawLine({ start: { x: lx, y: yPos + 16 }, end: { x: lx, y: yPos - 2 }, thickness: 0.3, color: colorLineasGuia });
+      page.drawLine({ start: { x: lx, y: yPos + 16 }, end: { x: lx, y: yPos - 2 }, thickness: 0.3, color: rgb(0.8, 0.8, 0.8) });
       if (i < descColWidths.length) lx += descColWidths[i];
     }
-page.drawLine({ start: { x: descTableStartX, y: yPos - 2 }, end: { x: descTableStartX + descTableWidth, y: yPos - 2 }, thickness: 0.5, color: colorLineasGuia });
+    page.drawLine({ start: { x: descTableStartX, y: yPos - 2 }, end: { x: descTableStartX + descTableWidth, y: yPos - 2 }, thickness: 0.3, color: rgb(0.8, 0.8, 0.8) });
     yPos -= 18;
   });
 
@@ -597,7 +532,7 @@ page.drawLine({ start: { x: descTableStartX, y: yPos - 2 }, end: { x: descTableS
   });
   let lxTotDesc = descTableStartX;
   for (let i = 0; i <= descColWidths.length; i++) {
-    page.drawLine({ start: { x: lxTotDesc, y: yPos - 3 }, end: { x: lxTotDesc, y: yPos + 17 }, thickness: 0.5, color: colorLineasGuia });
+    page.drawLine({ start: { x: lxTotDesc, y: yPos - 3 }, end: { x: lxTotDesc, y: yPos + 17 }, thickness: 0.5, color: rgb(0.5, 0.7, 0.8) });
     if (i < descColWidths.length) lxTotDesc += descColWidths[i];
   }
   yPos -= 30;
@@ -645,7 +580,7 @@ page.drawLine({ start: { x: descTableStartX, y: yPos - 2 }, end: { x: descTableS
   });
   let lxRes = resTableStartX;
   for (let i = 0; i <= resColWidths.length; i++) {
-    page.drawLine({ start: { x: lxRes, y: yPos - 3 }, end: { x: lxRes, y: yPos + 17 }, thickness: 0.5, color: colorLineasGuia });
+    page.drawLine({ start: { x: lxRes, y: yPos - 3 }, end: { x: lxRes, y: yPos + 17 }, thickness: 0.5, color: rgb(0.5, 0.7, 0.8) });
     if (i < resColWidths.length) lxRes += resColWidths[i];
   }
   yPos -= 20;
@@ -660,10 +595,10 @@ page.drawLine({ start: { x: descTableStartX, y: yPos - 2 }, end: { x: descTableS
   });
   lxRes = resTableStartX;
   for (let i = 0; i <= resColWidths.length; i++) {
-    page.drawLine({ start: { x: lxRes, y: yPos + 18 }, end: { x: lxRes, y: yPos - 2 }, thickness: 0.5, color: colorLineasGuia });
+    page.drawLine({ start: { x: lxRes, y: yPos + 18 }, end: { x: lxRes, y: yPos - 2 }, thickness: 0.5, color: rgb(0.5, 0.7, 0.8) });
     if (i < resColWidths.length) lxRes += resColWidths[i];
   }
-  page.drawLine({ start: { x: resTableStartX, y: yPos - 2 }, end: { x: resTableStartX + resTableWidth, y: yPos - 2 }, thickness: 0.5, color: colorLineasGuia });
+  page.drawLine({ start: { x: resTableStartX, y: yPos - 2 }, end: { x: resTableStartX + resTableWidth, y: yPos - 2 }, thickness: 0.5, color: rgb(0.5, 0.7, 0.8) });
   yPos -= 30;
 
   // Numeración de páginas

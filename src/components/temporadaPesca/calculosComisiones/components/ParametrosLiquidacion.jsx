@@ -8,6 +8,7 @@ import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
 import { Controller } from "react-hook-form";
 import { classNames } from "primereact/utils";
+import { getResponsiveFontSize } from "../../../../utils/utils";
 
 export const ParametrosLiquidacion = ({
   control,
@@ -28,12 +29,16 @@ export const ParametrosLiquidacion = ({
         }}
       >
         <div style={{ flex: 1 }}>
-          <h3>Parámetros de Comisiones</h3>
+          <h3 style={{ marginTop: "0", marginBottom: "0.5rem" }}>
+            Parámetros de Comisiones
+          </h3>
         </div>
         <div style={{ flex: 1 }}>
           <Button
             label="Cargar Parámetros Empresa"
-            icon={cargandoParametros ? "pi pi-spin pi-spinner" : "pi pi-download"}
+            icon={
+              cargandoParametros ? "pi pi-spin pi-spinner" : "pi pi-download"
+            }
             onClick={onCargarParametros}
             disabled={readOnly || cargandoParametros}
             className="p-button-info"
@@ -52,7 +57,7 @@ export const ParametrosLiquidacion = ({
         }}
       >
         <div style={{ flex: 1 }}>
-          <label htmlFor="porcentajeBaseLiqPesca" className="block mb-2">
+          <label style={{ fontSize: getResponsiveFontSize() }}>
             % Base Liquidación Pesca
           </label>
           <Controller
@@ -86,7 +91,7 @@ export const ParametrosLiquidacion = ({
         </div>
 
         <div style={{ flex: 1 }}>
-          <label htmlFor="porcentajeComisionPatron" className="block mb-2">
+          <label style={{ fontSize: getResponsiveFontSize() }}>
             % Comisión Patrón
           </label>
           <Controller
@@ -120,10 +125,7 @@ export const ParametrosLiquidacion = ({
         </div>
 
         <div style={{ flex: 1 }}>
-          <label
-            htmlFor="cantPersonalCalcComisionMotorista"
-            className="block mb-2"
-          >
+          <label style={{ fontSize: getResponsiveFontSize() }}>
             Cant. Personal C/Motorista
           </label>
           <Controller
@@ -155,10 +157,7 @@ export const ParametrosLiquidacion = ({
         </div>
 
         <div style={{ flex: 1 }}>
-          <label
-            htmlFor="cantDivisoriaCalcComisionMotorista"
-            className="block mb-2"
-          >
+          <label style={{ fontSize: getResponsiveFontSize() }}>
             Cant. Divisoria C/Motorista
           </label>
           <Controller
@@ -190,10 +189,7 @@ export const ParametrosLiquidacion = ({
         </div>
 
         <div style={{ flex: 1 }}>
-          <label
-            htmlFor="porcentajeCalcComisionPanguero"
-            className="block mb-2"
-          >
+          <label style={{ fontSize: getResponsiveFontSize() }}>
             % Comisión Panguero
           </label>
           <Controller
@@ -226,9 +222,9 @@ export const ParametrosLiquidacion = ({
           )}
         </div>
 
-        {/* ⭐ NUEVO CAMPO: Precio por Tonelada (Propia) */}
+        {/* ⭐ CAMPO: Precio por Tonelada (Propia) */}
         <div style={{ flex: 1 }}>
-          <label htmlFor="precioPorTonDolares" className="block mb-2">
+          <label style={{ fontSize: getResponsiveFontSize() }}>
             Precio por Ton. US$ (Propia)
           </label>
           <Controller
@@ -256,6 +252,40 @@ export const ParametrosLiquidacion = ({
           {errors.precioPorTonDolares && (
             <small className="p-error">
               {errors.precioPorTonDolares.message}
+            </small>
+          )}
+        </div>
+
+        {/* ⭐ NUEVO CAMPO: Precio por Tonelada Alternativo */}
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: getResponsiveFontSize() }}>
+            Precio x Ton. Alternativo US$
+          </label>
+          <Controller
+            name="precioPorTonDolaresAlternativo"
+            control={control}
+            render={({ field }) => (
+              <InputNumber
+                id="precioPorTonDolaresAlternativo"
+                value={field.value}
+                onValueChange={(e) => field.onChange(e.value)}
+                mode="decimal"
+                minFractionDigits={2}
+                maxFractionDigits={2}
+                min={0}
+                prefix="$ "
+                placeholder="$ 0.00"
+                className={classNames({
+                  "p-invalid": errors.precioPorTonDolaresAlternativo,
+                })}
+                disabled={readOnly}
+                inputStyle={{ fontWeight: "bold" }}
+              />
+            )}
+          />
+          {errors.precioPorTonDolaresAlternativo && (
+            <small className="p-error">
+              {errors.precioPorTonDolaresAlternativo.message}
             </small>
           )}
         </div>

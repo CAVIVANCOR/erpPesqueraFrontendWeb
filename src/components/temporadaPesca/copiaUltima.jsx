@@ -18,8 +18,6 @@ import { Divider } from "primereact/divider";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Message } from "primereact/message";
-import { Panel } from "primereact/panel";
-import { getResponsiveFontSize } from "../../utils/utils";
 
 // Imports de APIs
 import { getParametrosLiquidacion } from "../../api/empresa";
@@ -116,9 +114,9 @@ export default function DatosLiquidacionPersonalPesca({
   );
 
   const { reportStates } = useReportesTemporada();
+
   // Estados locales adicionales
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
-  const [temporada, setTemporada] = useState(null); // ⭐ NUEVO: Estado para temporada completa
 
   // Cargar entidades comerciales al montar
   useEffect(() => {
@@ -138,27 +136,6 @@ export default function DatosLiquidacionPersonalPesca({
     };
     cargarEntidades();
   }, []);
-
-  // ⭐ NUEVO: Cargar temporada completa cuando cambie temporadaId
-  useEffect(() => {
-    const cargarTemporada = async () => {
-      if (!temporadaId) {
-        setTemporada(null);
-        return;
-      }
-
-      try {
-        const temporadaCompleta =
-          await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
-        setTemporada(temporadaCompleta);
-      } catch (error) {
-        console.error("Error al cargar temporada completa:", error);
-        setTemporada(null);
-      }
-    };
-
-    cargarTemporada();
-  }, [temporadaId]);
 
   // Asegurar que los valores de los dropdowns sean Number
   useEffect(() => {
@@ -193,11 +170,11 @@ export default function DatosLiquidacionPersonalPesca({
   ]);
 
   // Calcular liquidaciones automáticamente al cargar la temporada
-  // useEffect(() => {
-  //   if (temporadaId && !readOnly) {
-  //     handleCalcularLiquidaciones();
-  //   }
-  // }, [temporadaId]);
+ // useEffect(() => {
+ //   if (temporadaId && !readOnly) {
+ //     handleCalcularLiquidaciones();
+ //   }
+ // }, [temporadaId]);
 
   /**
    * Función para cargar parámetros de liquidación desde la empresa
@@ -215,7 +192,7 @@ export default function DatosLiquidacionPersonalPesca({
 
     await cargarParametros();
 
-    // Cargar precio por tonelada desde la cuota propia activa de la temporada
+       // Cargar precio por tonelada desde la cuota propia activa de la temporada
     try {
       const temporadaCompleta = temporadaId
         ? await temporadaPescaService.getTemporadaPescaPorId(temporadaId)
@@ -230,7 +207,7 @@ export default function DatosLiquidacionPersonalPesca({
       );
       if (cuotaPropia) {
         const precioPropia = Number(cuotaPropia.precioPorTonDolares || 0);
-
+        
         // Asignar el MISMO valor a ambos campos
         setValue("precioPorTonDolares", precioPropia);
         setValue("precioPorTonDolaresAlternativo", precioPropia);
@@ -393,7 +370,7 @@ export default function DatosLiquidacionPersonalPesca({
       </div>
       <div style={{ flex: 1 }}>
         <Button
-          label="Generar Bonificación"
+          label="Generar Comisiones"
           icon="pi pi-calculator"
           severity="success"
           type="button"
@@ -402,7 +379,7 @@ export default function DatosLiquidacionPersonalPesca({
           disabled={
             !temporadaId || loadingDescargas || generandoComisiones || readOnly
           }
-          tooltip="Generar Bonificación de fidelización para esta temporada"
+          tooltip="Generar comisiones de fidelización para esta temporada"
           tooltipOptions={{ position: "top" }}
           size="small"
         />
@@ -966,11 +943,7 @@ export default function DatosLiquidacionPersonalPesca({
   return (
     <>
       <Toast ref={toast} position="top-right" />
-      <Card
-        pt={{
-          body: { style: { paddingTop: "0rem" } },
-        }}
-      >
+      <Card className="mb-3">
         <div className="p-fluid">
           {/* ⭐ COMPONENTE: Parámetros de Liquidación */}
           <ParametrosLiquidacion
@@ -991,7 +964,10 @@ export default function DatosLiquidacionPersonalPesca({
             }}
           >
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="precioPorTonAlquilerDolares"
+                className="block mb-2"
+              >
                 Precio por Ton. US$ (Alquiler)
               </label>
               <Controller
@@ -1024,7 +1000,10 @@ export default function DatosLiquidacionPersonalPesca({
             </div>
 
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="entidadEmpresarialAlquiladaId"
+                className="block mb-2"
+              >
                 Entidad Empresarial Alquilada
               </label>
               <Controller
@@ -1057,7 +1036,10 @@ export default function DatosLiquidacionPersonalPesca({
             </div>
 
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="precioPorTonComisionAlquilerDolares"
+                className="block mb-2"
+              >
                 Precio por Ton. US$ (Comisión Alquiler)
               </label>
               <Controller
@@ -1090,7 +1072,10 @@ export default function DatosLiquidacionPersonalPesca({
             </div>
 
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: getResponsiveFontSize() }}>
+              <label
+                htmlFor="entidadComercialComisionistaAlquiler"
+                className="block mb-2"
+              >
                 Entidad Comisionista Alquiler
               </label>
               <Controller
@@ -1122,82 +1107,40 @@ export default function DatosLiquidacionPersonalPesca({
               )}
             </div>
           </div>
-        </div>
-        <Panel
-          header="Distribucion y Calculo Bonificacion Fidelizacion"
-          toggleable
-          collapsed={true}
-          style={{ marginTop: "1rem" }}
-        >
-          {/* ⭐ CONTENEDOR: Tablas lado a lado */}
-          <div
-            style={{
-              marginTop: "2rem",
-              display: "flex",
-              gap: "1rem",
-              flexDirection: window.innerWidth < 1200 ? "column" : "row",
-            }}
-          >
-            {/* ⭐ COMPONENTE: Tabla de Descargas */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <DescargasTable
-                keyValue={`descargas-table-${clientes.length}`}
-                descargasData={descargasData}
-                loadingDescargas={loadingDescargas}
-                clientes={clientes}
-                onClienteChange={handleClienteChange}
-                onPrecioChange={handlePrecioChange}
-                onActualizarPrecio={handleActualizarPrecioIndividual}
-                readOnly={readOnly}
-                header={headerDescargas}
-              />
-            </div>
 
-            {/* ⭐ COMPONENTE: Tabla de Comisiones Generadas */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <ComisionesTable
-                comisionesGeneradas={comisionesGeneradas}
-                loadingComisiones={loadingComisionesGeneradas}
-              />
-            </div>
-          </div>
-        </Panel>
-        {/* ⭐ COMPONENTE: Resultados de Liquidación */}
-        <ResultadosLiquidacion
-          control={control}
-          errors={errors}
-          baseLiquidacionEstimada={baseLiquidacionEstimada}
-          baseLiquidacionReal={baseLiquidacionReal}
-          codigoMonedaLiquidacion={codigoMonedaLiquidacion}
-          onCalcularLiquidaciones={calcularLiquidaciones}
-          calculando={calculando}
-          readOnly={readOnly}
-          temporadaId={temporadaId}
-          cuotaPropiaTon={watch("cuotaPropiaTon") || 0}
-          cuotaAlquiladaTon={watch("cuotaAlquiladaTon") || 0}
-          precioPorTonDolares={watch("precioPorTonDolares") || 0}
-          porcentajeBaseLiqPesca={watch("porcentajeBaseLiqPesca") || 0}
-          toneladasReales={watch("toneladasReales") || 0}
-          toneladasCapturadasTemporada={
-            watch("toneladasCapturadasTemporada") || 0
-          }
-          precioPorTonComisionAlquilerDolares={
-            watch("precioPorTonComisionAlquilerDolares") || 0
-          }
-          descargas={descargasData}
-          precioPorTonDolaresAlternativo={
-            watch("precioPorTonDolaresAlternativo") || 0
-          }
-          temporada={temporada}
-          toast={toast}
-          comisionesGeneradas={comisionesGeneradas} // ⭐ NUEVO: Pasar comisiones
-        />
-        {/* ⭐ COMPONENTE: Botones de Reportes */}
-        <BotonesReportes
-          onGenerarReporte={handleGenerarReporte}
-          readOnly={readOnly}
-          temporadaId={temporadaId}
-        />
+          {/* ⭐ COMPONENTE: Resultados de Liquidación */}
+          <ResultadosLiquidacion
+            control={control}
+            errors={errors}
+            baseLiquidacionEstimada={baseLiquidacionEstimada}
+            baseLiquidacionReal={baseLiquidacionReal}
+            codigoMonedaLiquidacion={codigoMonedaLiquidacion}
+            onCalcularLiquidaciones={calcularLiquidaciones}
+            calculando={calculando}
+            readOnly={readOnly}
+            temporadaId={temporadaId}
+            cuotaPropiaTon={watch("cuotaPropiaTon") || 0}
+            cuotaAlquiladaTon={watch("cuotaAlquiladaTon") || 0}
+            precioPorTonDolares={watch("precioPorTonDolares") || 0}
+            porcentajeBaseLiqPesca={watch("porcentajeBaseLiqPesca") || 0}
+            toneladasReales={watch("toneladasReales") || 0}
+            toneladasCapturadasTemporada={
+              watch("toneladasCapturadasTemporada") || 0
+            }
+            precioPorTonComisionAlquilerDolares={
+              watch("precioPorTonComisionAlquilerDolares") || 0
+            }
+          />
+
+          <Divider />
+
+          {/* ⭐ COMPONENTE: Botones de Reportes */}
+          <BotonesReportes
+            onGenerarReporte={handleGenerarReporte}
+            readOnly={readOnly}
+            temporadaId={temporadaId}
+          />
+        </div>
         {/* Selectores y visores de reportes */}
         <ReportFormatSelector
           visible={reportStates.distribucion.showFormatSelector}
@@ -1380,6 +1323,38 @@ export default function DatosLiquidacionPersonalPesca({
           fileName={`comisiones_pmm_${reportStates.comisionesPMM.reportData?.temporada?.nombre || "temporada"}.xlsx`}
         />
 
+        {/* ⭐ CONTENEDOR: Tablas lado a lado */}
+        <div
+          style={{
+            marginTop: "2rem",
+            display: "flex",
+            gap: "1rem",
+            flexDirection: window.innerWidth < 1200 ? "column" : "row",
+          }}
+        >
+          {/* ⭐ COMPONENTE: Tabla de Descargas */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <DescargasTable
+              keyValue={`descargas-table-${clientes.length}`}
+              descargasData={descargasData}
+              loadingDescargas={loadingDescargas}
+              clientes={clientes}
+              onClienteChange={handleClienteChange}
+              onPrecioChange={handlePrecioChange}
+              onActualizarPrecio={handleActualizarPrecioIndividual}
+              readOnly={readOnly}
+              header={headerDescargas}
+            />
+          </div>
+
+          {/* ⭐ COMPONENTE: Tabla de Comisiones Generadas */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <ComisionesTable
+              comisionesGeneradas={comisionesGeneradas}
+              loadingComisiones={loadingComisionesGeneradas}
+            />
+          </div>
+        </div>
         <ConfirmDialog />
       </Card>
     </>

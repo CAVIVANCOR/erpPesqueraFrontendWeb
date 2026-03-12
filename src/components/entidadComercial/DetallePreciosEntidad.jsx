@@ -26,6 +26,7 @@ const DetallePreciosEntidad = forwardRef(
     {
       entidadComercialId,
       empresaId,
+      empresaEntidadComercialId,
       monedas = [],
       readOnly = false,
       permisos = {},
@@ -49,7 +50,7 @@ const DetallePreciosEntidad = forwardRef(
       actualizar,
       eliminar,
       recargar,
-    } = usePreciosEntidad(entidadComercialId, empresaId, monedas, toast);
+    } = usePreciosEntidad(entidadComercialId, empresaId, empresaEntidadComercialId, monedas, toast);
 
     // Exponer función recargar mediante ref
     useImperativeHandle(ref, () => ({

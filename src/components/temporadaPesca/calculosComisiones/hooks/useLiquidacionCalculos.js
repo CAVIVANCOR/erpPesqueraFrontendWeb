@@ -8,7 +8,7 @@ import { useState, useCallback } from "react";
 import { getParametrosLiquidacion } from "../../../../api/empresa";
 import { calcularLiquidaciones as calcularLiquidacionesAPI } from "../../../../api/temporadaPesca";
 
-export const useLiquidacionCalculos = (temporadaId, empresaId, setValue, toast, onGuardarTemporada) => {
+export const useLiquidacionCalculos = (temporadaId, empresaId, setValue, toast, onGuardarTemporada, getValues) => {
   const [calculando, setCalculando] = useState(false);
   const [cargandoParametros, setCargandoParametros] = useState(false);
   const [baseLiquidacionEstimada, setBaseLiquidacionEstimada] = useState(0);
@@ -72,6 +72,9 @@ export const useLiquidacionCalculos = (temporadaId, empresaId, setValue, toast, 
     setCalculando(true);
 
     try {
+      // ⭐ PRESERVAR precioPorTonDolaresAlternativo antes de guardar
+      const valorPreservado = getValues ? getValues("precioPorTonDolaresAlternativo") || 0 : 0;
+
       // ⭐ CRÍTICO: GUARDAR LA TEMPORADA PRIMERO ANTES DE CALCULAR
       if (onGuardarTemporada) {
         toast?.current?.show({
@@ -114,6 +117,11 @@ export const useLiquidacionCalculos = (temporadaId, empresaId, setValue, toast, 
 
       setValue("ingresosPorAlquilerCuotaSur", resultado.ingresosPorAlquilerCuotaSur || 0);
 
+      // ⭐ RESTAURAR precioPorTonDolaresAlternativo si se perdió
+      if (resultado.precioPorTonDolaresAlternativo === undefined || resultado.precioPorTonDolaresAlternativo === null) {
+        setValue("precioPorTonDolaresAlternativo", valorPreservado);
+      }
+
       toast?.current?.show({
         severity: "success",
         summary: "Liquidaciones Calculadas",
@@ -131,7 +139,7 @@ export const useLiquidacionCalculos = (temporadaId, empresaId, setValue, toast, 
     } finally {
       setCalculando(false);
     }
-  }, [temporadaId, setValue, toast, onGuardarTemporada]);
+  }, [temporadaId, setValue, toast, onGuardarTemporada, getValues]);
 
   return {
     calculando,

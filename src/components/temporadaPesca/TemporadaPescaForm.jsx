@@ -456,8 +456,11 @@ const TemporadaPescaForm = ({
         data.entidadComercialComisionistaAlquiler
           ? Number(data.entidadComercialComisionistaAlquiler)
           : null,
+      // ⭐ NUEVO CAMPO: Precio alternativo por tonelada
+      precioPorTonDolaresAlternativo: data.precioPorTonDolaresAlternativo
+        ? Number(data.precioPorTonDolaresAlternativo)
+        : null,
     };
-
     // Solo incluir ID si existe y no es null (para edición)
     if (data.id && editingItem?.id) {
       formData.id = data.id;
@@ -471,10 +474,28 @@ const TemporadaPescaForm = ({
         // Esperar un momento para que el backend termine el recálculo
         setTimeout(async () => {
           try {
+            // ⭐ PRESERVAR precioPorTonDolaresAlternativo ANTES de recargar
+            const valorPreservado =
+              getValues("precioPorTonDolaresAlternativo") || 0;
+
             // Obtener los datos actualizados de la temporada
             const temporadaActualizada = await getTemporadaPescaPorId(
               resultado.id,
             );
+
+            // ⭐ DIAGNÓSTICO: Verificar valor recibido del backend
+            console.log("📥 TEMPORADA RECIBIDA EN FRONTEND:", {
+              id: temporadaActualizada?.id,
+              precioPorTonDolares: temporadaActualizada?.precioPorTonDolares,
+              precioPorTonDolaresAlternativo:
+                temporadaActualizada?.precioPorTonDolaresAlternativo,
+              precioPorTonAlquilerDolares:
+                temporadaActualizada?.precioPorTonAlquilerDolares,
+              tipoDato:
+                typeof temporadaActualizada?.precioPorTonDolaresAlternativo,
+              valorPreservado: valorPreservado,
+            });
+
             // Actualizar el formulario con los datos recalculados
             if (temporadaActualizada) {
               // Convertir el objeto de BD al formato que espera el formulario
@@ -496,7 +517,24 @@ const TemporadaPescaForm = ({
                 fechaFin: temporadaActualizada.fechaFin
                   ? new Date(temporadaActualizada.fechaFin)
                   : null,
+                // ⭐ PRESERVAR precioPorTonDolaresAlternativo
+                precioPorTonDolaresAlternativo:
+                  temporadaActualizada.precioPorTonDolaresAlternativo !==
+                  undefined
+                    ? Number(
+                        temporadaActualizada.precioPorTonDolaresAlternativo,
+                      )
+                    : valorPreservado,
               };
+
+              // ⭐ DIAGNÓSTICO: Verificar datosCompletos antes del reset
+              console.log("🔄 DATOS COMPLETOS ANTES DE RESET:", {
+                precioPorTonDolares: datosCompletos.precioPorTonDolares,
+                precioPorTonDolaresAlternativo:
+                  datosCompletos.precioPorTonDolaresAlternativo,
+                precioPorTonAlquilerDolares:
+                  datosCompletos.precioPorTonAlquilerDolares,
+              });
 
               reset(datosCompletos);
             }
@@ -993,6 +1031,8 @@ const TemporadaPescaForm = ({
         liqComisionPangueroReal: editingItem.liqComisionPangueroReal || null,
         liqTotalPescaReal: editingItem.liqTotalPescaReal || null,
         precioPorTonDolares: editingItem.precioPorTonDolares || null,
+        precioPorTonDolaresAlternativo:
+          editingItem.precioPorTonDolaresAlternativo || null,
         precioPorTonAlquilerDolares:
           editingItem.precioPorTonAlquilerDolares || null,
         precioPorTonComisionAlquilerDolares:
@@ -1042,6 +1082,7 @@ const TemporadaPescaForm = ({
         liqComisionPangueroReal: null,
         liqTotalPescaReal: null,
         precioPorTonDolares: null,
+        precioPorTonDolaresAlternativo: null,
         precioPorTonAlquilerDolares: null,
         precioPorTonComisionAlquilerDolares: null,
         entidadEmpresarialAlquiladaId: null,
