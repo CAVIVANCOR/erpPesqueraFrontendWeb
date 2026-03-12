@@ -142,9 +142,7 @@ export default function DetalleDialog({
           }
         }, 100);
       } else {
-        console.log(
-          "⚠️ [DetalleDialog] NO es servicio, cantidad permanece en 0",
-        );
+
         // Solo actualizar productoId si NO es servicio
         handleChange("productoId", Number(producto.id));
       }

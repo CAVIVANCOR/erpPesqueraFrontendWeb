@@ -1,14 +1,13 @@
 /**
  * DatosLiquidacionPersonalPesca.jsx
  *
- * Componente Card para gestionar los parámetros y resultados de liquidación de personal de pesca.
- * Incluye campos de configuración de comisiones y cálculos estimados/reales de liquidación.
- * Sigue el patrón profesional ERP Megui con React Hook Form.
+ * Componente Card REFACTORIZADO para gestionar los parámetros y resultados de liquidación de personal de pesca.
+ * Ahora utiliza hooks personalizados y componentes modulares para mejor mantenibilidad.
  *
  * @author ERP Megui
- * @version 1.0.0
+ * @version 2.0.0 - Refactorizado
  */
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Card } from "primereact/card";
 import { InputNumber } from "primereact/inputnumber";
 import { Dropdown } from "primereact/dropdown";
@@ -17,20 +16,31 @@ import { classNames } from "primereact/utils";
 import { Controller } from "react-hook-form";
 import { Divider } from "primereact/divider";
 import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
 import { Message } from "primereact/message";
+
+// Imports de APIs
 import { getParametrosLiquidacion } from "../../api/empresa";
-import { calcularLiquidaciones as calcularLiquidacionesAPI } from "../../api/temporadaPesca";
+import { getDetallesCuotaPesca } from "../../api/detCuotaPesca";
+import * as temporadaPescaService from "../../api/temporadaPesca";
+import { getFaenasPesca } from "../../api/faenaPesca";
+import { getAllDescargaFaenaPesca } from "../../api/descargaFaenaPesca";
+import { getPersonal } from "../../api/personal";
+import { getAllEntregaARendir } from "../../api/entregaARendir";
+import { getAllDetMovsEntregaRendir } from "../../api/detMovsEntregaRendir";
+import { getEntidadesComerciales } from "../../api/entidadComercial";
+import { formatearNumero } from "../../utils/utils";
+
+// Imports de componentes de reportes
 import ReportFormatSelector from "../reports/ReportFormatSelector";
 import TemporaryPDFViewer from "../reports/TemporaryPDFViewer";
 import TemporaryExcelViewer from "../reports/TemporaryExcelViewer";
+
+// Imports de generadores de reportes
 import { generarDistribucionTemporadaPDF } from "./reports/generarDistribucionTemporadaPDF";
 import { generarDistribucionTemporadaExcel } from "./reports/generarDistribucionTemporadaExcel";
-import { getDetallesCuotaPesca } from "../../api/detCuotaPesca";
-import * as temporadaPescaService from "../../api/temporadaPesca";
 import { generarReportePescaExcel } from "./reports/generarReportePescaExcel";
 import { generarReportePescaPDF } from "./reports/generarReportePescaPDF";
-import { getFaenasPesca } from "../../api/faenaPesca";
-import { getAllDescargaFaenaPesca } from "../../api/descargaFaenaPesca";
 import { generarLiquidacionTripulantesPDF } from "./reports/generarLiquidacionTripulantesPDF";
 import { generarLiquidacionTripulantesExcel } from "./reports/generarLiquidacionTripulantesExcel";
 import { generarLiquidacionArmadoresPDF } from "./reports/generarLiquidacionArmadoresPDF";
@@ -39,10 +49,20 @@ import { generarLiquidacionComisionistaPDF } from "./reports/generarLiquidacionC
 import { generarLiquidacionComisionistaExcel } from "./reports/generarLiquidacionComisionistaExcel";
 import { generarComisionesPMMPDF } from "./reports/generarComisionesPMMPDF";
 import { generarComisionesPMMExcel } from "./reports/generarComisionesPMMExcel";
-import { getPersonal } from "../../api/personal";
-import { getAllEntregaARendir } from "../../api/entregaARendir";
-import { getAllDetMovsEntregaRendir } from "../../api/detMovsEntregaRendir";
-import { getEntidadesComerciales } from "../../api/entidadComercial";
+
+// ⭐ IMPORTS DE HOOKS PERSONALIZADOS
+import { useDescargasTemporada } from "./calculosComisiones/hooks/useDescargasTemporada";
+import { useComisionesFidelizacion } from "./calculosComisiones/hooks/useComisionesFidelizacion";
+import { useClientesTemporada } from "./calculosComisiones/hooks/useClientesTemporada";
+import { useLiquidacionCalculos } from "./calculosComisiones/hooks/useLiquidacionCalculos";
+import { useReportesTemporada } from "./calculosComisiones/hooks/useReportesTemporada";
+
+// ⭐ IMPORTS DE COMPONENTES UI
+import { DescargasTable } from "./calculosComisiones/components/DescargasTable";
+import { ComisionesTable } from "./calculosComisiones/components/ComisionesTable";
+import { ParametrosLiquidacion } from "./calculosComisiones/components/ParametrosLiquidacion";
+import { ResultadosLiquidacion } from "./calculosComisiones/components/ResultadosLiquidacion";
+import { BotonesReportes } from "./calculosComisiones/components/BotonesReportes";
 
 export default function DatosLiquidacionPersonalPesca({
   control,
@@ -51,59 +71,54 @@ export default function DatosLiquidacionPersonalPesca({
   watch,
   monedas = [],
   readOnly = false,
+  onGuardarTemporada,
 }) {
   const toast = useRef(null);
-  const [calculando, setCalculando] = useState(false);
-  const [cargandoParametros, setCargandoParametros] = useState(false);
-  const [baseLiquidacionEstimada, setBaseLiquidacionEstimada] = useState(0);
-  const [baseLiquidacionReal, setBaseLiquidacionReal] = useState(0);
-  const [codigoMonedaLiquidacion, setCodigoMonedaLiquidacion] = useState("USD");
-  // Estados para reportes
-  const [showFormatSelector, setShowFormatSelector] = useState(false);
-  const [showPDFViewer, setShowPDFViewer] = useState(false);
-  const [showExcelViewer, setShowExcelViewer] = useState(false);
-  const [reportData, setReportData] = useState(null);
-  const [showFormatSelectorPesca, setShowFormatSelectorPesca] = useState(false);
-  const [showPDFViewerPesca, setShowPDFViewerPesca] = useState(false);
-  const [showExcelViewerPesca, setShowExcelViewerPesca] = useState(false);
-  const [reportDataPesca, setReportDataPesca] = useState(null);
-  const [
-    showFormatSelectorLiqTripulantes,
-    setShowFormatSelectorLiqTripulantes,
-  ] = useState(false);
-  const [showPDFViewerLiqTripulantes, setShowPDFViewerLiqTripulantes] =
-    useState(false);
-  const [showExcelViewerLiqTripulantes, setShowExcelViewerLiqTripulantes] =
-    useState(false);
-  const [reportDataLiqTripulantes, setReportDataLiqTripulantes] =
-    useState(null);
-  const [showFormatSelectorLiqArmadores, setShowFormatSelectorLiqArmadores] =
-    useState(false);
-  const [showPDFViewerLiqArmadores, setShowPDFViewerLiqArmadores] =
-    useState(false);
-  const [showExcelViewerLiqArmadores, setShowExcelViewerLiqArmadores] =
-    useState(false);
-  const [reportDataLiqArmadores, setReportDataLiqArmadores] = useState(null);
+  const temporadaId = watch("id");
+  const empresaId = watch("empresaId");
+
+  // ⭐ USAR HOOKS PERSONALIZADOS
+  const { clientes, entidades } = useClientesTemporada(empresaId);
+
+  const {
+    descargasData,
+    loadingDescargas,
+    actualizandoPrecios,
+    cargarDescargas,
+    actualizarDescarga,
+    actualizarTodosPrecios,
+  } = useDescargasTemporada(temporadaId, empresaId, clientes, toast);
+
+  const {
+    comisionesGeneradas,
+    generandoComisiones,
+    loadingComisionesGeneradas,
+    generarComisiones,
+    cargarComisiones,
+  } = useComisionesFidelizacion(temporadaId, descargasData, toast);
+
+  const {
+    calculando,
+    cargandoParametros,
+    baseLiquidacionEstimada,
+    baseLiquidacionReal,
+    codigoMonedaLiquidacion,
+    calcularLiquidaciones,
+    cargarParametros,
+  } = useLiquidacionCalculos(
+    temporadaId,
+    empresaId,
+    setValue,
+    toast,
+    onGuardarTemporada,
+  );
+
+  const { reportStates } = useReportesTemporada();
+
+  // Estados locales adicionales
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
-  const [
-    showFormatSelectorLiqComisionista,
-    setShowFormatSelectorLiqComisionista,
-  ] = useState(false);
-  const [showPDFViewerLiqComisionista, setShowPDFViewerLiqComisionista] =
-    useState(false);
-  const [showExcelViewerLiqComisionista, setShowExcelViewerLiqComisionista] =
-    useState(false);
-  const [reportDataLiqComisionista, setReportDataLiqComisionista] =
-    useState(null);
-  // Estados para reporte Comisiones PMM
-  const [showFormatSelectorComisionesPMM, setShowFormatSelectorComisionesPMM] =
-    useState(false);
-  const [showPDFViewerComisionesPMM, setShowPDFViewerComisionesPMM] =
-    useState(false);
-  const [showExcelViewerComisionesPMM, setShowExcelViewerComisionesPMM] =
-    useState(false);
-  const [reportDataComisionesPMM, setReportDataComisionesPMM] = useState(null);
-  // Cargar entidades comerciales al montar el componente
+
+  // Cargar entidades comerciales al montar
   useEffect(() => {
     const cargarEntidades = async () => {
       try {
@@ -121,7 +136,8 @@ export default function DatosLiquidacionPersonalPesca({
     };
     cargarEntidades();
   }, []);
-  // Asegurar que los valores de los dropdowns sean Number cuando cambien
+
+  // Asegurar que los valores de los dropdowns sean Number
   useEffect(() => {
     const entidadEmpresarialAlquiladaId = watch(
       "entidadEmpresarialAlquiladaId",
@@ -129,6 +145,7 @@ export default function DatosLiquidacionPersonalPesca({
     const entidadComercialComisionistaAlquiler = watch(
       "entidadComercialComisionistaAlquiler",
     );
+
     if (
       entidadEmpresarialAlquiladaId &&
       typeof entidadEmpresarialAlquiladaId === "string"
@@ -151,18 +168,18 @@ export default function DatosLiquidacionPersonalPesca({
     watch("entidadEmpresarialAlquiladaId"),
     watch("entidadComercialComisionistaAlquiler"),
   ]);
+
   // Calcular liquidaciones automáticamente al cargar la temporada
   useEffect(() => {
-    const temporadaId = watch("id");
     if (temporadaId && !readOnly) {
-      calcularLiquidaciones();
+      handleCalcularLiquidaciones();
     }
-  }, [watch("id")]);
+  }, [temporadaId]);
+
   /**
    * Función para cargar parámetros de liquidación desde la empresa
    */
   const cargarParametrosDesdeEmpresa = async () => {
-    const empresaId = watch("empresaId");
     if (!empresaId) {
       toast.current?.show({
         severity: "warn",
@@ -172,37 +189,17 @@ export default function DatosLiquidacionPersonalPesca({
       });
       return;
     }
-    setCargandoParametros(true);
-    try {
-      const parametros = await getParametrosLiquidacion(empresaId);
-      setValue(
-        "porcentajeBaseLiqPesca",
-        parametros.porcentajeBaseLiqPesca || 0,
-      );
-      setValue(
-        "porcentajeComisionPatron",
-        parametros.porcentajeComisionPatron || 0,
-      );
-      setValue(
-        "cantPersonalCalcComisionMotorista",
-        parametros.cantPersonalCalcComisionMotorista || 0,
-      );
-      setValue(
-        "cantDivisoriaCalcComisionMotorista",
-        parametros.cantDivisoriaCalcComisionMotorista || 0,
-      );
-      setValue(
-        "porcentajeCalcComisionPanguero",
-        parametros.porcentajeCalcComisionPanguero || 0,
-      );
 
-      // Cargar precio por tonelada desde la cuota propia activa de la temporada
-      const temporadaId = watch("id");
+    await cargarParametros();
+
+    // Cargar precio por tonelada desde la cuota propia activa de la temporada
+    try {
       const temporadaCompleta = temporadaId
         ? await temporadaPescaService.getTemporadaPescaPorId(temporadaId)
         : null;
       const zona = temporadaCompleta?.zona || watch("zona");
       const cuotas = await getDetallesCuotaPesca({ empresaId, activo: true });
+
       const cuotaPropia = cuotas.find(
         (c) =>
           c.cuotaPropia === true && c.esAlquiler === false && c.zona === zona,
@@ -225,7 +222,6 @@ export default function DatosLiquidacionPersonalPesca({
         );
       }
 
-      // Cargar nuevos campos desde cuota alquilada
       const cuotaAlquilerComision = cuotas.find(
         (c) =>
           c.cuotaPropia === false && c.esAlquiler === false && c.zona === zona,
@@ -249,36 +245,15 @@ export default function DatosLiquidacionPersonalPesca({
             : null,
         );
       }
-
-      toast.current?.show({
-        severity: "success",
-        summary: "Parámetros Cargados",
-        detail:
-          "Los parámetros de liquidación se cargaron correctamente desde la empresa.",
-        life: 3000,
-      });
     } catch (error) {
-      console.error("Error al cargar parámetros de liquidación:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail:
-          error.response?.data?.error ||
-          "Ocurrió un error al cargar los parámetros de liquidación.",
-        life: 3000,
-      });
-    } finally {
-      setCargandoParametros(false);
+      console.error("Error al cargar cuotas:", error);
     }
   };
 
   /**
-   * Función para calcular las liquidaciones estimadas y reales
-   * TODO: Implementar las fórmulas de cálculo cuando estén definidas
+   * Wrapper para calcular liquidaciones con guardado previo
    */
-  const calcularLiquidaciones = async () => {
-    const temporadaId = watch("id");
-
+  const handleCalcularLiquidaciones = async () => {
     if (!temporadaId) {
       toast.current?.show({
         severity: "warn",
@@ -289,89 +264,134 @@ export default function DatosLiquidacionPersonalPesca({
       return;
     }
 
-    setCalculando(true);
-
-    try {
-      const resultado = await calcularLiquidacionesAPI(temporadaId);
-      // Guardar bases de cálculo
-      setBaseLiquidacionEstimada(resultado.baseLiquidacionEstimada || 0);
-      setBaseLiquidacionReal(resultado.baseLiquidacionReal || 0);
-      setCodigoMonedaLiquidacion(resultado.codigoMonedaLiquidacion || "USD");
-
-      // Actualizar todos los campos del formulario con los valores calculados
-      setValue(
-        "liqTripulantesPescaEstimado",
-        resultado.liqTripulantesPescaEstimado || 0,
-      );
-      setValue(
-        "liqTripulantesPescaReal",
-        resultado.liqTripulantesPescaReal || 0,
-      );
-
-      setValue(
-        "liqComisionPatronEstimado",
-        resultado.liqComisionPatronEstimado || 0,
-      );
-      setValue("liqComisionPatronReal", resultado.liqComisionPatronReal || 0);
-
-      setValue(
-        "liqComisionMotoristaEstimado",
-        resultado.liqComisionMotoristaEstimado || 0,
-      );
-      setValue(
-        "liqComisionMotoristaReal",
-        resultado.liqComisionMotoristaReal || 0,
-      );
-
-      setValue(
-        "liqComisionPangueroEstimado",
-        resultado.liqComisionPangueroEstimado || 0,
-      );
-      setValue(
-        "liqComisionPangueroReal",
-        resultado.liqComisionPangueroReal || 0,
-      );
-
-      setValue("liqTotalPescaEstimada", resultado.liqTotalPescaEstimada || 0);
-      setValue("liqTotalPescaReal", resultado.liqTotalPescaReal || 0);
-
-      setValue(
-        "liqComisionAlquilerCuota",
-        resultado.liqComisionAlquilerCuota || 0,
-      );
-
-      setValue(
-        "ingresosPorAlquilerCuotaSur",
-        resultado.ingresosPorAlquilerCuotaSur || 0,
-      );
-
+    // Guardar la temporada primero
+    if (onGuardarTemporada) {
       toast.current?.show({
-        severity: "success",
-        summary: "Liquidaciones Calculadas",
-        detail: "Todas las liquidaciones se calcularon correctamente.",
-        life: 3000,
+        severity: "info",
+        summary: "Guardando cambios",
+        detail: "Guardando la temporada antes de calcular...",
+        life: 2000,
       });
-    } catch (error) {
-      console.error("Error al calcular liquidaciones:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail:
-          error.response?.data?.error ||
-          "Ocurrió un error al calcular las liquidaciones.",
-        life: 3000,
-      });
-    } finally {
-      setCalculando(false);
+
+      await onGuardarTemporada();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    await calcularLiquidaciones();
+  };
+
+  /**
+   * Handlers para cambios en descargas
+   */
+  const handleClienteChange = async (descargaId, clienteId) => {
+    // Buscar el cliente seleccionado en el array de clientes
+    const clienteSeleccionado = clientes.find(
+      (c) => Number(c.value) === Number(clienteId),
+    );
+
+    // Preparar datos a actualizar
+    const dataActualizar = {
+      clienteId: clienteId,
+    };
+
+    // Si el cliente tiene precio configurado, también actualizar el precio
+    if (
+      clienteSeleccionado &&
+      clienteSeleccionado.precioPorTonComisionFidelizacion
+    ) {
+      dataActualizar.precioPorTonComisionFidelizacion = Number(
+        clienteSeleccionado.precioPorTonComisionFidelizacion,
+      );
+    }
+
+    // ⭐ El hook useDescargasTemporada maneja todo (loading, actualización, toast)
+    await actualizarDescarga(descargaId, dataActualizar);
+  };
+
+  const handlePrecioChange = async (descargaId, precio) => {
+    const dataActualizar = {
+      precioPorTonComisionFidelizacion: precio,
+    };
+
+    // ⭐ El hook useDescargasTemporada maneja todo (loading, actualización, toast)
+    await actualizarDescarga(descargaId, dataActualizar);
+  };
+
+  const handleActualizarPrecioIndividual = async (descargaId) => {
+    const descarga = descargasData.find((d) => d.id === descargaId);
+    if (descarga && descarga.clienteId) {
+      await handleClienteChange(descargaId, descarga.clienteId);
     }
   };
+
+  // ⭐ Header para tabla de descargas
+  const headerDescargas = (
+    <div
+      style={{
+        display: "flex",
+        gap: 10,
+        alignItems: "center",
+        flexDirection: window.innerWidth < 768 ? "column" : "row",
+      }}
+    >
+      <div style={{ flex: 1 }}>
+        <h3>Descargas de la Temporada</h3>
+      </div>
+      {/* ⭐ NUEVO: Visualización de Toneladas Capturadas */}
+      <div style={{ flex: 1 }}>
+        <Message
+          severity="success"
+          text={`${formatearNumero(watch("toneladasCapturadasTemporada"))} Ton.`}
+          style={{
+            display: "block",
+            padding: "0.5rem 1rem",
+            fontSize: "0.9rem",
+            fontWeight: "600",
+          }}
+        />
+      </div>
+      <div style={{ flex: 1 }}>
+        <Button
+          label="Actualizar Precios"
+          icon="pi pi-refresh"
+          severity="primary"
+          type="button"
+          onClick={actualizarTodosPrecios}
+          loading={actualizandoPrecios}
+          disabled={
+            !temporadaId ||
+            loadingDescargas ||
+            generandoComisiones ||
+            readOnly ||
+            descargasData.length === 0
+          }
+          tooltip="Actualizar precio de comisión desde cliente para TODAS las descargas"
+          tooltipOptions={{ position: "top" }}
+          size="small"
+        />
+      </div>
+      <div style={{ flex: 1 }}>
+        <Button
+          label="Generar Comisiones"
+          icon="pi pi-calculator"
+          severity="success"
+          type="button"
+          onClick={generarComisiones}
+          loading={generandoComisiones}
+          disabled={
+            !temporadaId || loadingDescargas || generandoComisiones || readOnly
+          }
+          tooltip="Generar comisiones de fidelización para esta temporada"
+          tooltipOptions={{ position: "top" }}
+          size="small"
+        />
+      </div>
+    </div>
+  );
   /**
-   * Función para generar reporte de distribución
+   * Funciones para generar reportes
    */
   const handleReporteDistribucion = async () => {
-    const temporadaId = watch("id");
-    const empresaId = watch("empresaId");
-
     if (!temporadaId) {
       toast.current?.show({
         severity: "warn",
@@ -383,15 +403,9 @@ export default function DatosLiquidacionPersonalPesca({
     }
 
     try {
-      // Obtener datos completos de la temporada (incluyendo empresa)
       const temporadaCompleta =
         await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
-
-      // Obtener cuotas activas de la empresa
-      const cuotas = await getDetallesCuotaPesca({
-        empresaId: empresaId,
-        activo: true,
-      });
+      const cuotas = await getDetallesCuotaPesca({ empresaId, activo: true });
 
       if (!cuotas || cuotas.length === 0) {
         toast.current?.show({
@@ -403,7 +417,6 @@ export default function DatosLiquidacionPersonalPesca({
         return;
       }
 
-      // Ordenar cuotas
       const cuotasOrdenadas = cuotas.sort((a, b) => {
         if (a.zona !== b.zona) return a.zona.localeCompare(b.zona);
         if (a.cuotaPropia !== b.cuotaPropia) return b.cuotaPropia ? 1 : -1;
@@ -411,12 +424,12 @@ export default function DatosLiquidacionPersonalPesca({
         return Number(a.id) - Number(b.id);
       });
 
-      setReportData({
-        temporada: temporadaCompleta, // Objeto completo con empresa
+      reportStates.distribucion.setReportData({
+        temporada: temporadaCompleta,
         cuotas: cuotasOrdenadas,
       });
 
-      setShowFormatSelector(true);
+      reportStates.distribucion.setShowFormatSelector(true);
     } catch (error) {
       console.error("Error al preparar reporte:", error);
       toast.current?.show({
@@ -427,16 +440,8 @@ export default function DatosLiquidacionPersonalPesca({
       });
     }
   };
-  /**
-   * Función para generar reporte de pesca
-   */
-  /**
-   * Función para generar reporte de pesca
-   */
-  const handleReportePesca = async () => {
-    const temporadaId = watch("id");
-    const empresaId = watch("empresaId");
 
+  const handleReportePesca = async () => {
     if (!temporadaId) {
       toast.current?.show({
         severity: "warn",
@@ -448,17 +453,9 @@ export default function DatosLiquidacionPersonalPesca({
     }
 
     try {
-      // Obtener datos completos de la temporada (incluyendo zona)
       const temporadaCompleta =
         await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
-
-      // Obtener cuotas activas de la empresa
-      const cuotas = await getDetallesCuotaPesca({
-        empresaId: empresaId,
-        activo: true,
-      });
-
-      // FILTRAR cuotas por zona de la temporada
+      const cuotas = await getDetallesCuotaPesca({ empresaId, activo: true });
       const cuotasFiltradas = cuotas.filter(
         (c) => c.zona === temporadaCompleta.zona,
       );
@@ -467,13 +464,12 @@ export default function DatosLiquidacionPersonalPesca({
         toast.current?.show({
           severity: "warn",
           summary: "Sin datos",
-          detail: `No hay cuotas activas en la zona ${temporadaCompleta.zona} para generar el reporte`,
+          detail: `No hay cuotas activas en la zona ${temporadaCompleta.zona}`,
           life: 3000,
         });
         return;
       }
 
-      // Ordenar cuotas (misma lógica que primer reporte)
       const cuotasOrdenadas = cuotasFiltradas.sort((a, b) => {
         if (a.zona !== b.zona) return a.zona.localeCompare(b.zona);
         if (a.cuotaPropia !== b.cuotaPropia) return b.cuotaPropia ? 1 : -1;
@@ -481,27 +477,25 @@ export default function DatosLiquidacionPersonalPesca({
         return Number(a.id) - Number(b.id);
       });
 
-      // PASO 1: Obtener faenas filtradas por temporadaId
       const todasFaenas = await getFaenasPesca();
       const faenasTemporada = todasFaenas.filter(
         (f) => Number(f.temporadaId) === Number(temporadaId),
       );
 
-      // PASO 2: Obtener todas las descargas y filtrar por faenaPescaId
       const todasDescargas = await getAllDescargaFaenaPesca();
       const faenaIds = faenasTemporada.map((f) => Number(f.id));
       const descargasTemporada = todasDescargas.filter((d) =>
         faenaIds.includes(Number(d.faenaPescaId)),
       );
 
-      setReportDataPesca({
+      reportStates.pesca.setReportData({
         temporada: temporadaCompleta,
         cuotas: cuotasOrdenadas,
         faenas: faenasTemporada,
-        descargas: descargasTemporada, // ⭐ NUEVO: Agregar descargas al objeto de datos
+        descargas: descargasTemporada,
       });
 
-      setShowFormatSelectorPesca(true);
+      reportStates.pesca.setShowFormatSelector(true);
     } catch (error) {
       console.error("Error al preparar reporte de pesca:", error);
       toast.current?.show({
@@ -512,10 +506,8 @@ export default function DatosLiquidacionPersonalPesca({
       });
     }
   };
-  const handleLiquidacionTripulantes = async () => {
-    const temporadaId = watch("id");
-    const empresaId = watch("empresaId");
 
+  const handleLiquidacionTripulantes = async () => {
     if (!temporadaId) {
       toast.current?.show({
         severity: "warn",
@@ -527,18 +519,13 @@ export default function DatosLiquidacionPersonalPesca({
     }
 
     try {
-      // Obtener datos completos de la temporada
       const temporadaCompleta =
         await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
-
-      // Obtener cuotas activas filtradas por zona
-      const cuotas = await getDetallesCuotaPesca({
-        empresaId: empresaId,
-        activo: true,
-      });
+      const cuotas = await getDetallesCuotaPesca({ empresaId, activo: true });
       const cuotasFiltradas = cuotas.filter(
         (c) => c.zona === temporadaCompleta.zona,
       );
+
       if (!cuotasFiltradas || cuotasFiltradas.length === 0) {
         toast.current?.show({
           severity: "warn",
@@ -548,6 +535,7 @@ export default function DatosLiquidacionPersonalPesca({
         });
         return;
       }
+
       const cuotasOrdenadas = cuotasFiltradas.sort((a, b) => {
         if (a.zona !== b.zona) return a.zona.localeCompare(b.zona);
         if (a.cuotaPropia !== b.cuotaPropia) return b.cuotaPropia ? 1 : -1;
@@ -555,7 +543,6 @@ export default function DatosLiquidacionPersonalPesca({
         return Number(a.id) - Number(b.id);
       });
 
-      // Obtener descargas
       const todasFaenas = await getFaenasPesca();
       const faenasTemporada = todasFaenas.filter(
         (f) => Number(f.temporadaId) === Number(temporadaId),
@@ -566,7 +553,6 @@ export default function DatosLiquidacionPersonalPesca({
         faenaIds.includes(Number(d.faenaPescaId)),
       );
 
-      // Obtener descuentos: EntregaARendir de esta temporada → DetMovsEntregaRendir filtrados
       const todasEntregas = await getAllEntregaARendir();
       const entregaTemporada = todasEntregas.find(
         (e) => Number(e.temporadaPescaId) === Number(temporadaId),
@@ -584,14 +570,14 @@ export default function DatosLiquidacionPersonalPesca({
         );
       }
 
-      setReportDataLiqTripulantes({
+      reportStates.liquidacionTripulantes.setReportData({
         temporada: temporadaCompleta,
         cuotas: cuotasOrdenadas,
         descargas: descargasTemporada,
         descuentos,
       });
 
-      setShowFormatSelectorLiqTripulantes(true);
+      reportStates.liquidacionTripulantes.setShowFormatSelector(true);
     } catch (error) {
       console.error("Error al preparar liquidación tripulantes:", error);
       toast.current?.show({
@@ -604,8 +590,6 @@ export default function DatosLiquidacionPersonalPesca({
   };
 
   const handleLiquidacionArmadores = async () => {
-    const temporadaId = watch("id");
-    const empresaId = watch("empresaId");
     const entidadEmpresarialAlquiladaId = watch(
       "entidadEmpresarialAlquiladaId",
     );
@@ -631,15 +615,9 @@ export default function DatosLiquidacionPersonalPesca({
     }
 
     try {
-      // Obtener datos completos de la temporada
       const temporadaCompleta =
         await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
-
-      // Obtener cuotas ALQUILADAS (cuotaPropia = false) filtradas por zona
-      const cuotas = await getDetallesCuotaPesca({
-        empresaId: empresaId,
-        activo: true,
-      });
+      const cuotas = await getDetallesCuotaPesca({ empresaId, activo: true });
       const cuotasAlquiladas = cuotas.filter(
         (c) => c.zona === temporadaCompleta.zona && c.cuotaPropia === false,
       );
@@ -654,7 +632,6 @@ export default function DatosLiquidacionPersonalPesca({
         return;
       }
 
-      // Obtener descargas
       const todasFaenas = await getFaenasPesca();
       const faenasTemporada = todasFaenas.filter(
         (f) => Number(f.temporadaId) === Number(temporadaId),
@@ -665,7 +642,6 @@ export default function DatosLiquidacionPersonalPesca({
         faenaIds.includes(Number(d.faenaPescaId)),
       );
 
-      // Obtener adelantos: EntregaARendir de esta temporada → DetMovsEntregaRendir filtrados
       const todasEntregas = await getAllEntregaARendir();
       const entregaTemporada = todasEntregas.find(
         (e) => Number(e.temporadaPescaId) === Number(temporadaId),
@@ -685,14 +661,14 @@ export default function DatosLiquidacionPersonalPesca({
         );
       }
 
-      setReportDataLiqArmadores({
+      reportStates.liquidacionArmadores.setReportData({
         temporada: temporadaCompleta,
         cuotas: cuotasAlquiladas,
         descargas: descargasTemporada,
         adelantos,
       });
 
-      setShowFormatSelectorLiqArmadores(true);
+      reportStates.liquidacionArmadores.setShowFormatSelector(true);
     } catch (error) {
       console.error("Error al preparar liquidación armadores:", error);
       toast.current?.show({
@@ -703,9 +679,8 @@ export default function DatosLiquidacionPersonalPesca({
       });
     }
   };
+
   const handleLiquidacionComisionista = async () => {
-    const temporadaId = watch("id");
-    const empresaId = watch("empresaId");
     const entidadComercialComisionistaAlquiler = watch(
       "entidadComercialComisionistaAlquiler",
     );
@@ -731,15 +706,9 @@ export default function DatosLiquidacionPersonalPesca({
     }
 
     try {
-      // Obtener datos completos de la temporada
       const temporadaCompleta =
         await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
-
-      // Obtener cuotas ALQUILADAS (cuotaPropia = false) filtradas por zona
-      const cuotas = await getDetallesCuotaPesca({
-        empresaId: empresaId,
-        activo: true,
-      });
+      const cuotas = await getDetallesCuotaPesca({ empresaId, activo: true });
       const cuotasAlquiladas = cuotas.filter(
         (c) => c.zona === temporadaCompleta.zona && c.cuotaPropia === false,
       );
@@ -754,7 +723,6 @@ export default function DatosLiquidacionPersonalPesca({
         return;
       }
 
-      // Obtener descargas
       const todasFaenas = await getFaenasPesca();
       const faenasTemporada = todasFaenas.filter(
         (f) => Number(f.temporadaId) === Number(temporadaId),
@@ -765,7 +733,6 @@ export default function DatosLiquidacionPersonalPesca({
         faenaIds.includes(Number(d.faenaPescaId)),
       );
 
-      // Obtener movimientos: EntregaARendir de esta temporada → DetMovsEntregaRendir filtrados
       const todasEntregas = await getAllEntregaARendir();
       const entregaTemporada = todasEntregas.find(
         (e) => Number(e.temporadaPescaId) === Number(temporadaId),
@@ -785,14 +752,14 @@ export default function DatosLiquidacionPersonalPesca({
         );
       }
 
-      setReportDataLiqComisionista({
+      reportStates.liquidacionComisionista.setReportData({
         temporada: temporadaCompleta,
         cuotas: cuotasAlquiladas,
         descargas: descargasTemporada,
         movimientos,
       });
 
-      setShowFormatSelectorLiqComisionista(true);
+      reportStates.liquidacionComisionista.setShowFormatSelector(true);
     } catch (error) {
       console.error("Error al preparar liquidación comisionista:", error);
       toast.current?.show({
@@ -803,10 +770,8 @@ export default function DatosLiquidacionPersonalPesca({
       });
     }
   };
-  const handleComisionesPMM = async () => {
-    const temporadaId = watch("id");
-    const empresaId = watch("empresaId");
 
+  const handleComisionesPMM = async () => {
     if (!temporadaId) {
       toast.current?.show({
         severity: "warn",
@@ -937,7 +902,7 @@ export default function DatosLiquidacionPersonalPesca({
         );
       }
 
-      setReportDataComisionesPMM({
+      reportStates.comisionesPMM.setReportData({
         temporada: temporadaCompleta,
         cuotas: cuotasOrdenadas,
         descargas: descargasTemporada,
@@ -946,7 +911,7 @@ export default function DatosLiquidacionPersonalPesca({
         panguero: { personal: panguero, descuentos: descuentosPanguero },
       });
 
-      setShowFormatSelectorComisionesPMM(true);
+      reportStates.comisionesPMM.setShowFormatSelector(true);
     } catch (error) {
       console.error("Error al preparar reporte comisiones PMM:", error);
       toast.current?.show({
@@ -957,264 +922,42 @@ export default function DatosLiquidacionPersonalPesca({
       });
     }
   };
+
+  /**
+   * Handler genérico para generar reportes
+   */
+  const handleGenerarReporte = (tipoReporte) => {
+    const reportHandlers = {
+      distribucion: handleReporteDistribucion,
+      pesca: handleReportePesca,
+      liquidacionTripulantes: handleLiquidacionTripulantes,
+      liquidacionArmadores: handleLiquidacionArmadores,
+      liquidacionComisionista: handleLiquidacionComisionista,
+      comisionesPMM: handleComisionesPMM,
+    };
+
+    const handler = reportHandlers[tipoReporte];
+    if (handler) {
+      handler();
+    }
+  };
+
   return (
     <>
       <Toast ref={toast} position="top-right" />
-      <Card
-        title={
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "10px",
-            }}
-          ></div>
-        }
-        className="mb-3"
-      >
+      <Card className="mb-3">
         <div className="p-fluid">
-          <div
-            style={{
-              display: "flex",
-              alignItems:"end",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <h3>Parámetros de Comisiones</h3>
-            </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                label="Cargar Parámetros Empresa"
-                icon={
-                  cargandoParametros
-                    ? "pi pi-spin pi-spinner"
-                    : "pi pi-download"
-                }
-                onClick={cargarParametrosDesdeEmpresa}
-                disabled={readOnly || cargandoParametros}
-                className="p-button-info"
-                size="small"
-                tooltip="Cargar parámetros de liquidación desde la empresa"
-                tooltipOptions={{ position: "bottom" }}
-              />
-            </div>
-          </div>
+          {/* ⭐ COMPONENTE: Parámetros de Liquidación */}
+          <ParametrosLiquidacion
+            control={control}
+            errors={errors}
+            onCargarParametros={cargarParametros} // ⬅️ Cambiar aquí
+            cargandoParametros={cargandoParametros}
+            readOnly={readOnly}
+            empresaId={empresaId}
+          />
 
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <label htmlFor="porcentajeBaseLiqPesca" className="block mb-2">
-                % Base Liquidación Pesca
-              </label>
-              <Controller
-                name="porcentajeBaseLiqPesca"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="porcentajeBaseLiqPesca"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    max={100}
-                    suffix=" %"
-                    placeholder="0.00 %"
-                    className={classNames({
-                      "p-invalid": errors.porcentajeBaseLiqPesca,
-                    })}
-                    disabled={readOnly}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.porcentajeBaseLiqPesca && (
-                <small className="p-error">
-                  {errors.porcentajeBaseLiqPesca.message}
-                </small>
-              )}
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="porcentajeComisionPatron" className="block mb-2">
-                % Comisión Patrón
-              </label>
-              <Controller
-                name="porcentajeComisionPatron"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="porcentajeComisionPatron"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    max={100}
-                    suffix=" %"
-                    placeholder="0.00 %"
-                    className={classNames({
-                      "p-invalid": errors.porcentajeComisionPatron,
-                    })}
-                    disabled={readOnly}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.porcentajeComisionPatron && (
-                <small className="p-error">
-                  {errors.porcentajeComisionPatron.message}
-                </small>
-              )}
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="cantPersonalCalcComisionMotorista"
-                className="block mb-2"
-              >
-                Cant. Personal C/Motorista
-              </label>
-              <Controller
-                name="cantPersonalCalcComisionMotorista"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="cantPersonalCalcComisionMotorista"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    className={classNames({
-                      "p-invalid": errors.cantPersonalCalcComisionMotorista,
-                    })}
-                    disabled={readOnly}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.cantPersonalCalcComisionMotorista && (
-                <small className="p-error">
-                  {errors.cantPersonalCalcComisionMotorista.message}
-                </small>
-              )}
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="cantDivisoriaCalcComisionMotorista"
-                className="block mb-2"
-              >
-                Cant. Divisoria C/Motorista
-              </label>
-              <Controller
-                name="cantDivisoriaCalcComisionMotorista"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="cantDivisoriaCalcComisionMotorista"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    className={classNames({
-                      "p-invalid": errors.cantDivisoriaCalcComisionMotorista,
-                    })}
-                    disabled={readOnly}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.cantDivisoriaCalcComisionMotorista && (
-                <small className="p-error">
-                  {errors.cantDivisoriaCalcComisionMotorista.message}
-                </small>
-              )}
-            </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="porcentajeCalcComisionPanguero"
-                className="block mb-2"
-              >
-                % Comisión Panguero
-              </label>
-              <Controller
-                name="porcentajeCalcComisionPanguero"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="porcentajeCalcComisionPanguero"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    max={100}
-                    suffix=" %"
-                    placeholder="0.00 %"
-                    className={classNames({
-                      "p-invalid": errors.porcentajeCalcComisionPanguero,
-                    })}
-                    disabled={readOnly}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.porcentajeCalcComisionPanguero && (
-                <small className="p-error">
-                  {errors.porcentajeCalcComisionPanguero.message}
-                </small>
-              )}
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="precioPorTonDolares" className="block mb-2">
-                Precio por Ton. US$ (Propia)
-              </label>
-              <Controller
-                name="precioPorTonDolares"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="precioPorTonDolares"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    prefix="$ "
-                    placeholder="$ 0.00"
-                    className={classNames({
-                      "p-invalid": errors.precioPorTonDolares,
-                    })}
-                    disabled={readOnly}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.precioPorTonDolares && (
-                <small className="p-error">
-                  {errors.precioPorTonDolares.message}
-                </small>
-              )}
-            </div>
-          </div>
+          {/* Campos adicionales de precios y entidades */}
           <div
             style={{
               display: "flex",
@@ -1293,6 +1036,7 @@ export default function DatosLiquidacionPersonalPesca({
                 </small>
               )}
             </div>
+
             <div style={{ flex: 1 }}>
               <label
                 htmlFor="precioPorTonComisionAlquilerDolares"
@@ -1328,6 +1072,7 @@ export default function DatosLiquidacionPersonalPesca({
                 </small>
               )}
             </div>
+
             <div style={{ flex: 1 }}>
               <label
                 htmlFor="entidadComercialComisionistaAlquiler"
@@ -1365,823 +1110,254 @@ export default function DatosLiquidacionPersonalPesca({
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "end",
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <h3>Liquidaciones Estimadas</h3>
-            </div>
-            <div style={{ flex: 1 }}>
-              <Button
-                label="Calcular Liquidaciones"
-                icon={calculando ? "pi pi-spin pi-spinner" : "pi pi-calculator"}
-                onClick={calcularLiquidaciones}
-                disabled={readOnly || calculando}
-                className="p-button-success"
-                size="small"
-                tooltip="Calcular todas las liquidaciones estimadas y reales"
-                tooltipOptions={{ position: "bottom" }}
-              />
-            </div>
-            {/* Mostrar Base de Cálculo Estimada */}
-            <div style={{ flex: 1 }}>
-              <Message
-                severity="info"
-                text={`Base de Cálculo Estimada: ${baseLiquidacionEstimada.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${codigoMonedaLiquidacion}`}
-                style={{
-                  display: "block",
-                  padding: "0.5rem 1rem",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
-              />
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="liqTripulantesPescaEstimado"
-                className="block mb-2"
-              >
-                Tripulantes Pesca
-              </label>
-              <Controller
-                name="liqTripulantesPescaEstimado"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="liqTripulantesPescaEstimado"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    className={classNames({
-                      "p-invalid": errors.liqTripulantesPescaEstimado,
-                    })}
-                    disabled={true}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.liqTripulantesPescaEstimado && (
-                <small className="p-error">
-                  {errors.liqTripulantesPescaEstimado.message}
-                </small>
-              )}
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <label htmlFor="liqComisionPatronEstimado" className="block mb-2">
-                Comisión Patrón
-              </label>
-              <Controller
-                name="liqComisionPatronEstimado"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="liqComisionPatronEstimado"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    className={classNames({
-                      "p-invalid": errors.liqComisionPatronEstimado,
-                    })}
-                    disabled={true}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.liqComisionPatronEstimado && (
-                <small className="p-error">
-                  {errors.liqComisionPatronEstimado.message}
-                </small>
-              )}
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="liqComisionMotoristaEstimado"
-                className="block mb-2"
-              >
-                Comisión Motorista
-              </label>
-              <Controller
-                name="liqComisionMotoristaEstimado"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="liqComisionMotoristaEstimado"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    className={classNames({
-                      "p-invalid": errors.liqComisionMotoristaEstimado,
-                    })}
-                    disabled={true}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.liqComisionMotoristaEstimado && (
-                <small className="p-error">
-                  {errors.liqComisionMotoristaEstimado.message}
-                </small>
-              )}
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="liqComisionPangueroEstimado"
-                className="block mb-2"
-              >
-                Comisión Panguero
-              </label>
-              <Controller
-                name="liqComisionPangueroEstimado"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="liqComisionPangueroEstimado"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    className={classNames({
-                      "p-invalid": errors.liqComisionPangueroEstimado,
-                    })}
-                    disabled={true}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.liqComisionPangueroEstimado && (
-                <small className="p-error">
-                  {errors.liqComisionPangueroEstimado.message}
-                </small>
-              )}
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <label htmlFor="liqTotalPescaEstimada" className="block mb-2">
-                Liq. Total Pesca
-              </label>
-              <Controller
-                name="liqTotalPescaEstimada"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="liqTotalPescaEstimada"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    className={classNames({
-                      "p-invalid": errors.liqTotalPescaEstimada,
-                    })}
-                    disabled={true}
-                    inputStyle={{
-                      fontWeight: "bold",
-                      backgroundColor: "#e3f2fd",
-                    }}
-                  />
-                )}
-              />
-              {errors.liqTotalPescaEstimada && (
-                <small className="p-error">
-                  {errors.liqTotalPescaEstimada.message}
-                </small>
-              )}
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <label htmlFor="liqComisionAlquilerCuota" className="block mb-2">
-                Liq. Alquiler Cuota
-              </label>
-              <Controller
-                name="liqComisionAlquilerCuota"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="liqComisionAlquilerCuota"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    className={classNames({
-                      "p-invalid": errors.liqComisionAlquilerCuota,
-                    })}
-                    disabled={true}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.liqComisionAlquilerCuota && (
-                <small className="p-error">
-                  {errors.liqComisionAlquilerCuota.message}
-                </small>
-              )}
-            </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="ingresosPorAlquilerCuotaSur"
-                className="block mb-2"
-              >
-                Ingresos Alq. Cuota Sur
-              </label>
-              <Controller
-                name="ingresosPorAlquilerCuotaSur"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="ingresosPorAlquilerCuotaSur"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    className={classNames({
-                      "p-invalid": errors.ingresosPorAlquilerCuotaSur,
-                    })}
-                    disabled={true}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.ingresosPorAlquilerCuotaSur && (
-                <small className="p-error">
-                  {errors.ingresosPorAlquilerCuotaSur.message}
-                </small>
-              )}
-            </div>
-          </div>
+          {/* ⭐ COMPONENTE: Resultados de Liquidación */}
+          <ResultadosLiquidacion
+            control={control}
+            errors={errors}
+            baseLiquidacionEstimada={baseLiquidacionEstimada}
+            baseLiquidacionReal={baseLiquidacionReal}
+            codigoMonedaLiquidacion={codigoMonedaLiquidacion}
+            onCalcularLiquidaciones={calcularLiquidaciones}
+            calculando={calculando}
+            readOnly={readOnly}
+            temporadaId={temporadaId}
+            cuotaPropiaTon={watch("cuotaPropiaTon") || 0}
+            cuotaAlquiladaTon={watch("cuotaAlquiladaTon") || 0}
+            precioPorTonDolares={watch("precioPorTonDolares") || 0}
+            porcentajeBaseLiqPesca={watch("porcentajeBaseLiqPesca") || 0}
+            toneladasReales={watch("toneladasReales") || 0}
+            toneladasCapturadasTemporada={
+              watch("toneladasCapturadasTemporada") || 0
+            }
+            precioPorTonComisionAlquilerDolares={
+              watch("precioPorTonComisionAlquilerDolares") || 0
+            }
+          />
 
           <Divider />
-          <h3
-            style={{
-              marginTop: "1rem",
-              marginBottom: "1rem",
-              fontSize: "1rem",
-              fontWeight: 600,
-              color: "#495057",
-            }}
-          >
-            <i
-              className="pi pi-check-circle"
-              style={{ marginRight: "0.5rem" }}
-            ></i>
-            Liquidaciones Reales
-          </h3>
-          {/* Mostrar Base de Cálculo Real */}
-          <div style={{ marginBottom: "1rem" }}>
-            <Message
-              severity="success"
-              text={`Base de Cálculo Real: ${baseLiquidacionReal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${codigoMonedaLiquidacion}`}
-              style={{
-                display: "block",
-                padding: "0.5rem 1rem",
-                fontSize: "0.9rem",
-                fontWeight: "600",
-              }}
-            />
-          </div>
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexDirection: window.innerWidth < 768 ? "column" : "row",
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <label htmlFor="liqTripulantesPescaReal" className="block mb-2">
-                Tripulantes Pesca
-              </label>
-              <Controller
-                name="liqTripulantesPescaReal"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="liqTripulantesPescaReal"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    className={classNames({
-                      "p-invalid": errors.liqTripulantesPescaReal,
-                    })}
-                    disabled={true}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.liqTripulantesPescaReal && (
-                <small className="p-error">
-                  {errors.liqTripulantesPescaReal.message}
-                </small>
-              )}
-            </div>
 
-            <div style={{ flex: 1 }}>
-              <label htmlFor="liqComisionPatronReal" className="block mb-2">
-                Comisión Patrón
-              </label>
-              <Controller
-                name="liqComisionPatronReal"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="liqComisionPatronReal"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    className={classNames({
-                      "p-invalid": errors.liqComisionPatronReal,
-                    })}
-                    disabled={true}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.liqComisionPatronReal && (
-                <small className="p-error">
-                  {errors.liqComisionPatronReal.message}
-                </small>
-              )}
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <label htmlFor="liqComisionMotoristaReal" className="block mb-2">
-                Comisión Motorista
-              </label>
-              <Controller
-                name="liqComisionMotoristaReal"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="liqComisionMotoristaReal"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    className={classNames({
-                      "p-invalid": errors.liqComisionMotoristaReal,
-                    })}
-                    disabled={true}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.liqComisionMotoristaReal && (
-                <small className="p-error">
-                  {errors.liqComisionMotoristaReal.message}
-                </small>
-              )}
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <label htmlFor="liqComisionPangueroReal" className="block mb-2">
-                Comisión Panguero
-              </label>
-              <Controller
-                name="liqComisionPangueroReal"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="liqComisionPangueroReal"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    className={classNames({
-                      "p-invalid": errors.liqComisionPangueroReal,
-                    })}
-                    disabled={true}
-                    inputStyle={{ fontWeight: "bold" }}
-                  />
-                )}
-              />
-              {errors.liqComisionPangueroReal && (
-                <small className="p-error">
-                  {errors.liqComisionPangueroReal.message}
-                </small>
-              )}
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <label htmlFor="liqTotalPescaReal" className="block mb-2">
-                Liq. Total Pesca
-              </label>
-              <Controller
-                name="liqTotalPescaReal"
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    id="liqTotalPescaReal"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    min={0}
-                    placeholder="0.00"
-                    className={classNames({
-                      "p-invalid": errors.liqTotalPescaReal,
-                    })}
-                    disabled={true}
-                    inputStyle={{
-                      fontWeight: "bold",
-                      backgroundColor: "#e8f5e9",
-                    }}
-                  />
-                )}
-              />
-              {errors.liqTotalPescaReal && (
-                <small className="p-error">
-                  {errors.liqTotalPescaReal.message}
-                </small>
-              )}
-            </div>
-          </div>
-
-          {/* DIVIDER PARA REPORTES */}
-          <Divider />
-
-          {/* SECCIÓN DE REPORTES */}
-          <h3
-            style={{
-              marginTop: "1rem",
-              marginBottom: "1rem",
-              fontSize: "1rem",
-              fontWeight: 600,
-              color: "#495057",
-            }}
-          >
-            <i className="pi pi-file-pdf" style={{ marginRight: "0.5rem" }}></i>
-            Reportes de Temporada
-          </h3>
-
-          {/* GRILLA DE BOTONES 4 COLUMNAS x 2 FILAS */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(7, 1fr)",
-              gap: "10px",
-              marginBottom: "1rem",
-            }}
-          >
-            {/* CELDA 1: Distribución Temporada */}
-            <Button
-              label="Distribución Temporada"
-              icon="pi pi-file"
-              className="p-button-outlined p-button-secondary"
-              type="button"
-              onClick={handleReporteDistribucion}
-              disabled={readOnly || !watch("id")}
-              tooltip="Generar reporte de distribución de temporada"
-              tooltipOptions={{ position: "top" }}
-              style={{
-                height: "60px",
-                fontSize: "0.85rem",
-                padding: "0.5rem",
-              }}
-            />
-
-            {/* CELDA 2: Reporte Pesca */}
-            <Button
-              label="Reporte Pesca"
-              icon="pi pi-chart-bar"
-              className="p-button-outlined p-button-info"
-              type="button"
-              onClick={handleReportePesca}
-              disabled={readOnly || !watch("id")}
-              tooltip="Generar reporte de pesca industrial"
-              tooltipOptions={{ position: "top" }}
-              style={{
-                height: "60px",
-                fontSize: "0.85rem",
-                padding: "0.5rem",
-              }}
-            />
-
-            {/* CELDA 3: Liquidación Tripulantes */}
-            <Button
-              label="Liq. Tripulantes"
-              icon="pi pi-users"
-              className="p-button-outlined p-button-warning"
-              type="button"
-              onClick={handleLiquidacionTripulantes}
-              disabled={readOnly || !watch("id")}
-              tooltip="Generar liquidación de tripulantes pesca industrial"
-              tooltipOptions={{ position: "top" }}
-              style={{
-                height: "60px",
-                fontSize: "0.85rem",
-                padding: "0.5rem",
-              }}
-            />
-
-            {/* CELDA 4: Liquidación Armadores */}
-            <Button
-              label="Liq. Armadores"
-              icon="pi pi-briefcase"
-              className="p-button-outlined p-button-info"
-              type="button"
-              onClick={handleLiquidacionArmadores}
-              disabled={
-                readOnly ||
-                !watch("id") ||
-                !watch("entidadEmpresarialAlquiladaId")
-              }
-              tooltip="Generar liquidación de pesca armadores"
-              tooltipOptions={{ position: "top" }}
-              style={{
-                height: "60px",
-                fontSize: "0.85rem",
-                padding: "0.5rem",
-              }}
-            />
-
-            {/* CELDA 5: Liquidación Comisionista */}
-            <Button
-              label="Liq. Comisionista"
-              icon="pi pi-dollar"
-              className="p-button-outlined p-button-success"
-              type="button"
-              onClick={handleLiquidacionComisionista}
-              disabled={
-                readOnly ||
-                !watch("id") ||
-                !watch("entidadComercialComisionistaAlquiler")
-              }
-              tooltip="Generar liquidación alquiler comisionista"
-              tooltipOptions={{ position: "top" }}
-              style={{
-                height: "60px",
-                fontSize: "0.85rem",
-                padding: "0.5rem",
-              }}
-            />
-
-            {/* CELDA 6: Comisiones Patrón Motorista Panguero */}
-            <Button
-              label="Comisiones PMM"
-              icon="pi pi-id-card"
-              className="p-button-outlined p-button-help"
-              type="button"
-              onClick={handleComisionesPMM}
-              disabled={readOnly || !watch("id")}
-              tooltip="Generar comisiones Patrón Motorista Panguero"
-              tooltipOptions={{ position: "top" }}
-              style={{
-                height: "60px",
-                fontSize: "0.85rem",
-                padding: "0.5rem",
-              }}
-            />
-
-            {/* CELDA 7: Reporte Consolidado (Espacio reservado) */}
-            <div></div>
-          </div>
+          {/* ⭐ COMPONENTE: Botones de Reportes */}
+          <BotonesReportes
+            onGenerarReporte={handleGenerarReporte}
+            readOnly={readOnly}
+            temporadaId={temporadaId}
+          />
         </div>
-        {/* Selector de formato de reporte */}
+        {/* Selectores y visores de reportes */}
         <ReportFormatSelector
-          visible={showFormatSelector}
-          onHide={() => setShowFormatSelector(false)}
-          onSelectPDF={() => setShowPDFViewer(true)}
-          onSelectExcel={() => setShowExcelViewer(true)}
+          visible={reportStates.distribucion.showFormatSelector}
+          onHide={() => reportStates.distribucion.setShowFormatSelector(false)}
+          onSelectPDF={() => reportStates.distribucion.setShowPDFViewer(true)}
+          onSelectExcel={() =>
+            reportStates.distribucion.setShowExcelViewer(true)
+          }
           title="Reporte Distribución Temporada"
         />
-
-        {/* Visor PDF temporal */}
         <TemporaryPDFViewer
-          visible={showPDFViewer}
-          onHide={() => setShowPDFViewer(false)}
+          visible={reportStates.distribucion.showPDFViewer}
+          onHide={() => reportStates.distribucion.setShowPDFViewer(false)}
           generatePDF={generarDistribucionTemporadaPDF}
-          data={reportData}
-          fileName={`distribucion-temporada-${watch("id") || "reporte"}.pdf`}
+          data={reportStates.distribucion.reportData}
+          fileName={`distribucion-temporada-${temporadaId || "reporte"}.pdf`}
           title="Distribución Embarcaciones Temporada Pesca"
         />
-
-        {/* Visor Excel temporal */}
         <TemporaryExcelViewer
-          visible={showExcelViewer}
-          onHide={() => setShowExcelViewer(false)}
+          visible={reportStates.distribucion.showExcelViewer}
+          onHide={() => reportStates.distribucion.setShowExcelViewer(false)}
           generateExcel={generarDistribucionTemporadaExcel}
-          data={reportData}
-          fileName={`distribucion-temporada-${watch("id") || "reporte"}.xlsx`}
+          data={reportStates.distribucion.reportData}
+          fileName={`distribucion-temporada-${temporadaId || "reporte"}.xlsx`}
           title="Distribución Embarcaciones Temporada Pesca"
         />
-
-        {/* Selector de formato para Reporte Pesca */}
         <ReportFormatSelector
-          visible={showFormatSelectorPesca}
-          onHide={() => setShowFormatSelectorPesca(false)}
-          onSelectPDF={() => setShowPDFViewerPesca(true)}
-          onSelectExcel={() => setShowExcelViewerPesca(true)}
+          visible={reportStates.pesca.showFormatSelector}
+          onHide={() => reportStates.pesca.setShowFormatSelector(false)}
+          onSelectPDF={() => reportStates.pesca.setShowPDFViewer(true)}
+          onSelectExcel={() => reportStates.pesca.setShowExcelViewer(true)}
           title="Reporte de Pesca Industrial"
         />
-
-        {/* Visor PDF para Reporte Pesca */}
         <TemporaryPDFViewer
-          visible={showPDFViewerPesca}
+          visible={reportStates.pesca.showPDFViewer}
           onHide={() => {
-            setShowPDFViewerPesca(false);
-            setShowFormatSelectorPesca(false);
+            reportStates.pesca.setShowPDFViewer(false);
+            reportStates.pesca.setShowFormatSelector(false);
           }}
-          data={reportDataPesca}
+          data={reportStates.pesca.reportData}
           generatePDF={generarReportePescaPDF}
-          fileName={`reporte_pesca_${reportDataPesca?.temporada?.nombre || "temporada"}.pdf`}
+          fileName={`reporte_pesca_${reportStates.pesca.reportData?.temporada?.nombre || "temporada"}.pdf`}
         />
-
-        {/* Visor Excel para Reporte Pesca */}
         <TemporaryExcelViewer
-          visible={showExcelViewerPesca}
+          visible={reportStates.pesca.showExcelViewer}
           onHide={() => {
-            setShowExcelViewerPesca(false);
-            setShowFormatSelectorPesca(false);
+            reportStates.pesca.setShowExcelViewer(false);
+            reportStates.pesca.setShowFormatSelector(false);
           }}
-          data={reportDataPesca}
+          data={reportStates.pesca.reportData}
           generateExcel={generarReportePescaExcel}
-          fileName={`reporte_pesca_${reportDataPesca?.temporada?.nombre || "temporada"}.xlsx`}
+          fileName={`reporte_pesca_${reportStates.pesca.reportData?.temporada?.nombre || "temporada"}.xlsx`}
         />
-
-        {/* Selector de formato para Liquidación Tripulantes */}
         <ReportFormatSelector
-          visible={showFormatSelectorLiqTripulantes}
-          onHide={() => setShowFormatSelectorLiqTripulantes(false)}
-          onSelectPDF={() => setShowPDFViewerLiqTripulantes(true)}
-          onSelectExcel={() => setShowExcelViewerLiqTripulantes(true)}
+          visible={reportStates.liquidacionTripulantes.showFormatSelector}
+          onHide={() =>
+            reportStates.liquidacionTripulantes.setShowFormatSelector(false)
+          }
+          onSelectPDF={() =>
+            reportStates.liquidacionTripulantes.setShowPDFViewer(true)
+          }
+          onSelectExcel={() =>
+            reportStates.liquidacionTripulantes.setShowExcelViewer(true)
+          }
           title="Liquidación de Pesca Tripulantes"
         />
-
-        {/* Visor PDF para Liquidación Tripulantes */}
         <TemporaryPDFViewer
-          visible={showPDFViewerLiqTripulantes}
+          visible={reportStates.liquidacionTripulantes.showPDFViewer}
           onHide={() => {
-            setShowPDFViewerLiqTripulantes(false);
-            setShowFormatSelectorLiqTripulantes(false);
+            reportStates.liquidacionTripulantes.setShowPDFViewer(false);
+            reportStates.liquidacionTripulantes.setShowFormatSelector(false);
           }}
-          data={reportDataLiqTripulantes}
+          data={reportStates.liquidacionTripulantes.reportData}
           generatePDF={generarLiquidacionTripulantesPDF}
-          fileName={`liq_tripulantes_${reportDataLiqTripulantes?.temporada?.nombre || "temporada"}.pdf`}
+          fileName={`liq_tripulantes_${reportStates.liquidacionTripulantes.reportData?.temporada?.nombre || "temporada"}.pdf`}
         />
-
-        {/* Visor Excel para Liquidación Tripulantes */}
         <TemporaryExcelViewer
-          visible={showExcelViewerLiqTripulantes}
+          visible={reportStates.liquidacionTripulantes.showExcelViewer}
           onHide={() => {
-            setShowExcelViewerLiqTripulantes(false);
-            setShowFormatSelectorLiqTripulantes(false);
+            reportStates.liquidacionTripulantes.setShowExcelViewer(false);
+            reportStates.liquidacionTripulantes.setShowFormatSelector(false);
           }}
-          data={reportDataLiqTripulantes}
+          data={reportStates.liquidacionTripulantes.reportData}
           generateExcel={generarLiquidacionTripulantesExcel}
-          fileName={`liq_tripulantes_${reportDataLiqTripulantes?.temporada?.nombre || "temporada"}.xlsx`}
+          fileName={`liq_tripulantes_${reportStates.liquidacionTripulantes.reportData?.temporada?.nombre || "temporada"}.xlsx`}
         />
-
-        {/* Selector de formato para Liquidación Armadores */}
         <ReportFormatSelector
-          visible={showFormatSelectorLiqArmadores}
-          onHide={() => setShowFormatSelectorLiqArmadores(false)}
-          onSelectPDF={() => setShowPDFViewerLiqArmadores(true)}
-          onSelectExcel={() => setShowExcelViewerLiqArmadores(true)}
+          visible={reportStates.liquidacionArmadores.showFormatSelector}
+          onHide={() =>
+            reportStates.liquidacionArmadores.setShowFormatSelector(false)
+          }
+          onSelectPDF={() =>
+            reportStates.liquidacionArmadores.setShowPDFViewer(true)
+          }
+          onSelectExcel={() =>
+            reportStates.liquidacionArmadores.setShowExcelViewer(true)
+          }
           title="Liquidación de Pesca Armadores"
         />
-
-        {/* Visor PDF para Liquidación Armadores */}
         <TemporaryPDFViewer
-          visible={showPDFViewerLiqArmadores}
+          visible={reportStates.liquidacionArmadores.showPDFViewer}
           onHide={() => {
-            setShowPDFViewerLiqArmadores(false);
-            setShowFormatSelectorLiqArmadores(false);
+            reportStates.liquidacionArmadores.setShowPDFViewer(false);
+            reportStates.liquidacionArmadores.setShowFormatSelector(false);
           }}
-          data={reportDataLiqArmadores}
+          data={reportStates.liquidacionArmadores.reportData}
           generatePDF={generarLiquidacionArmadoresPDF}
-          fileName={`liq_armadores_${reportDataLiqArmadores?.temporada?.nombre || "temporada"}.pdf`}
+          fileName={`liq_armadores_${reportStates.liquidacionArmadores.reportData?.temporada?.nombre || "temporada"}.pdf`}
         />
-
-        {/* Visor Excel para Liquidación Armadores */}
         <TemporaryExcelViewer
-          visible={showExcelViewerLiqArmadores}
+          visible={reportStates.liquidacionArmadores.showExcelViewer}
           onHide={() => {
-            setShowExcelViewerLiqArmadores(false);
-            setShowFormatSelectorLiqArmadores(false);
+            reportStates.liquidacionArmadores.setShowExcelViewer(false);
+            reportStates.liquidacionArmadores.setShowFormatSelector(false);
           }}
-          data={reportDataLiqArmadores}
+          data={reportStates.liquidacionArmadores.reportData}
           generateExcel={generarLiquidacionArmadoresExcel}
-          fileName={`liq_armadores_${reportDataLiqArmadores?.temporada?.nombre || "temporada"}.xlsx`}
+          fileName={`liq_armadores_${reportStates.liquidacionArmadores.reportData?.temporada?.nombre || "temporada"}.xlsx`}
         />
-
-        {/* Selector de formato para Liquidación Comisionista */}
         <ReportFormatSelector
-          visible={showFormatSelectorLiqComisionista}
-          onHide={() => setShowFormatSelectorLiqComisionista(false)}
-          onSelectPDF={() => setShowPDFViewerLiqComisionista(true)}
-          onSelectExcel={() => setShowExcelViewerLiqComisionista(true)}
+          visible={reportStates.liquidacionComisionista.showFormatSelector}
+          onHide={() =>
+            reportStates.liquidacionComisionista.setShowFormatSelector(false)
+          }
+          onSelectPDF={() =>
+            reportStates.liquidacionComisionista.setShowPDFViewer(true)
+          }
+          onSelectExcel={() =>
+            reportStates.liquidacionComisionista.setShowExcelViewer(true)
+          }
           title="Liquidación Alquiler Comisionista"
         />
-
-        {/* Visor PDF para Liquidación Comisionista */}
         <TemporaryPDFViewer
-          visible={showPDFViewerLiqComisionista}
+          visible={reportStates.liquidacionComisionista.showPDFViewer}
           onHide={() => {
-            setShowPDFViewerLiqComisionista(false);
-            setShowFormatSelectorLiqComisionista(false);
+            reportStates.liquidacionComisionista.setShowPDFViewer(false);
+            reportStates.liquidacionComisionista.setShowFormatSelector(false);
           }}
-          data={reportDataLiqComisionista}
+          data={reportStates.liquidacionComisionista.reportData}
           generatePDF={generarLiquidacionComisionistaPDF}
-          fileName={`liq_comisionista_${reportDataLiqComisionista?.temporada?.nombre || "temporada"}.pdf`}
+          fileName={`liq_comisionista_${reportStates.liquidacionComisionista.reportData?.temporada?.nombre || "temporada"}.pdf`}
         />
-
-        {/* Visor Excel para Liquidación Comisionista */}
         <TemporaryExcelViewer
-          visible={showExcelViewerLiqComisionista}
+          visible={reportStates.liquidacionComisionista.showExcelViewer}
           onHide={() => {
-            setShowExcelViewerLiqComisionista(false);
-            setShowFormatSelectorLiqComisionista(false);
+            reportStates.liquidacionComisionista.setShowExcelViewer(false);
+            reportStates.liquidacionComisionista.setShowFormatSelector(false);
           }}
-          data={reportDataLiqComisionista}
+          data={reportStates.liquidacionComisionista.reportData}
           generateExcel={generarLiquidacionComisionistaExcel}
-          fileName={`liq_comisionista_${reportDataLiqComisionista?.temporada?.nombre || "temporada"}.xlsx`}
+          fileName={`liq_comisionista_${reportStates.liquidacionComisionista.reportData?.temporada?.nombre || "temporada"}.xlsx`}
         />
-
-        {/* Selector de formato para Comisiones PMM */}
         <ReportFormatSelector
-          visible={showFormatSelectorComisionesPMM}
-          onHide={() => setShowFormatSelectorComisionesPMM(false)}
-          onSelectPDF={() => setShowPDFViewerComisionesPMM(true)}
-          onSelectExcel={() => setShowExcelViewerComisionesPMM(true)}
+          visible={reportStates.comisionesPMM.showFormatSelector}
+          onHide={() => reportStates.comisionesPMM.setShowFormatSelector(false)}
+          onSelectPDF={() => reportStates.comisionesPMM.setShowPDFViewer(true)}
+          onSelectExcel={() =>
+            reportStates.comisionesPMM.setShowExcelViewer(true)
+          }
           title="Comisiones Patrón Motorista Panguero"
         />
-
-        {/* Visor PDF para Comisiones PMM */}
         <TemporaryPDFViewer
-          visible={showPDFViewerComisionesPMM}
+          visible={reportStates.comisionesPMM.showPDFViewer}
           onHide={() => {
-            setShowPDFViewerComisionesPMM(false);
-            setShowFormatSelectorComisionesPMM(false);
+            reportStates.comisionesPMM.setShowPDFViewer(false);
+            reportStates.comisionesPMM.setShowFormatSelector(false);
           }}
-          data={reportDataComisionesPMM}
+          data={reportStates.comisionesPMM.reportData}
           generatePDF={generarComisionesPMMPDF}
-          fileName={`comisiones_pmm_${reportDataComisionesPMM?.temporada?.nombre || "temporada"}.pdf`}
+          fileName={`comisiones_pmm_${reportStates.comisionesPMM.reportData?.temporada?.nombre || "temporada"}.pdf`}
+        />
+        <TemporaryExcelViewer
+          visible={reportStates.comisionesPMM.showExcelViewer}
+          onHide={() => {
+            reportStates.comisionesPMM.setShowExcelViewer(false);
+            reportStates.comisionesPMM.setShowFormatSelector(false);
+          }}
+          data={reportStates.comisionesPMM.reportData}
+          generateExcel={generarComisionesPMMExcel}
+          fileName={`comisiones_pmm_${reportStates.comisionesPMM.reportData?.temporada?.nombre || "temporada"}.xlsx`}
         />
 
-        {/* Visor Excel para Comisiones PMM */}
-        <TemporaryExcelViewer
-          visible={showExcelViewerComisionesPMM}
-          onHide={() => {
-            setShowExcelViewerComisionesPMM(false);
-            setShowFormatSelectorComisionesPMM(false);
+        {/* ⭐ CONTENEDOR: Tablas lado a lado */}
+        <div
+          style={{
+            marginTop: "2rem",
+            display: "flex",
+            gap: "1rem",
+            flexDirection: window.innerWidth < 1200 ? "column" : "row",
           }}
-          data={reportDataComisionesPMM}
-          generateExcel={generarComisionesPMMExcel}
-          fileName={`comisiones_pmm_${reportDataComisionesPMM?.temporada?.nombre || "temporada"}.xlsx`}
-        />
+        >
+          {/* ⭐ COMPONENTE: Tabla de Descargas */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <DescargasTable
+              keyValue={`descargas-table-${clientes.length}`}
+              descargasData={descargasData}
+              loadingDescargas={loadingDescargas}
+              clientes={clientes}
+              onClienteChange={handleClienteChange}
+              onPrecioChange={handlePrecioChange}
+              onActualizarPrecio={handleActualizarPrecioIndividual}
+              readOnly={readOnly}
+              header={headerDescargas}
+            />
+          </div>
+
+          {/* ⭐ COMPONENTE: Tabla de Comisiones Generadas */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <ComisionesTable
+              comisionesGeneradas={comisionesGeneradas}
+              loadingComisiones={loadingComisionesGeneradas}
+            />
+          </div>
+        </div>
+        <ConfirmDialog />
       </Card>
     </>
   );

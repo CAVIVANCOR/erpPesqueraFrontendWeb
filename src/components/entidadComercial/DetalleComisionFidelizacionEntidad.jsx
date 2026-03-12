@@ -1,7 +1,7 @@
 /**
  * DetalleComisionFidelizacionEntidad.jsx
  *
- * Componente CRUD para gestionar comisiones de fidelización por personal de una entidad comercial.
+ * Componente CRUD para gestionar configuración de comisiones de fidelización por personal de una entidad comercial.
  * Sigue el patrón profesional ERP Megui con control de roles y feedback visual.
  *
  * @author ERP Megui
@@ -24,7 +24,6 @@ import { Dropdown } from "primereact/dropdown";
 import { Toast } from "primereact/toast";
 import { Tag } from "primereact/tag";
 import { ConfirmDialog } from "primereact/confirmdialog";
-import { ToggleButton } from "primereact/togglebutton";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -38,7 +37,7 @@ import { getPersonal } from "../../api/personal";
 import { classNames } from "primereact/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../../utils/utils";
-import { actualizarEntidadComercial } from "../../api/entidadComercial"; // ← AGREGAR ESTO
+import { actualizarEntidadComercial } from "../../api/entidadComercial";
 
 // Esquema de validación
 const esquemaValidacionComision = yup.object().shape({
@@ -53,6 +52,7 @@ const esquemaValidacionComision = yup.object().shape({
     .max(99999.99, "El precio no puede exceder 99999.99"),
   cesado: yup.boolean(),
 });
+
 const DetalleComisionFidelizacionEntidad = forwardRef(
   (
     {
@@ -90,72 +90,85 @@ const DetalleComisionFidelizacionEntidad = forwardRef(
     const {
       control,
       handleSubmit,
-      formState: { errors },
       reset,
+      formState: { errors },
     } = useForm({
       resolver: yupResolver(esquemaValidacionComision),
       defaultValues: {
         personalId: null,
-        precioPorTonelada: 0.0,
+        precioPorTonelada: 0,
         cesado: false,
       },
     });
-
-    const personalOptions = personalData.map((personal) => ({
-      label:
-        `${personal.nombres} ${personal.apellidos || ""} - ${personal.empresa?.razonSocial || "SIN EMPRESA"}`.trim(),
-      value: Number(personal.id),
-    }));
-
-    const cargarComisiones = async () => {
-      if (!entidadComercialFidelizacionId) return;
-      try {
-        setLoading(true);
-        const response = await obtenerDetallesPorEntidad(
-          entidadComercialFidelizacionId,
-        );
-        setComisionesData(response);
-      } catch (error) {
-        console.error("❌ Error al cargar comisiones:", error);
-        setComisionesData([]);
-        toast.current?.show({
-          severity: "error",
-          summary: "Error al Cargar",
-          detail:
-            error.response?.data?.message || "Error al cargar las comisiones",
-          life: 4000,
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
 
     useImperativeHandle(ref, () => ({
       recargar: cargarComisiones,
     }));
 
     useEffect(() => {
-      cargarComisiones();
+      if (entidadComercialFidelizacionId) {
+        cargarComisiones();
+        cargarPersonal();
+      }
     }, [entidadComercialFidelizacionId]);
 
-    useEffect(() => {
-      const cargarPersonal = async () => {
-        try {
-          const response = await getPersonal();
-          setPersonalData(response);
-        } catch (error) {
-          console.error("❌ Error al cargar personal:", error);
-          toast.current?.show({
-            severity: "error",
-            summary: "Error al Cargar",
-            detail:
-              error.response?.data?.message || "Error al cargar el personal",
-            life: 4000,
-          });
-        }
-      };
-      cargarPersonal();
-    }, []);
+    const cargarComisiones = async () => {
+      if (!entidadComercialFidelizacionId) return;
+      setLoading(true);
+      try {
+        const data = await obtenerDetallesPorEntidad(
+          entidadComercialFidelizacionId,
+        );
+        setComisionesData(data || []);
+      } catch (error) {
+        console.error("Error al cargar comisiones:", error);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al cargar comisiones de fidelización",
+          life: 3000,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const cargarPersonal = async () => {
+      try {
+        const data = await getPersonal();
+        setPersonalData(data || []);
+      } catch (error) {
+        console.error("Error al cargar personal:", error);
+      }
+    };
+
+    const actualizarPrecioComisionFidelizacion = async (nuevoPrecio) => {
+      if (!entidadComercialFidelizacionId) return;
+
+      try {
+        await actualizarEntidadComercial(entidadComercialFidelizacionId, {
+          precioPorTonComisionFidelizacion: nuevoPrecio,
+          actualizadoPor: usuario?.id,
+        });
+
+        setPrecioPorTonComisionFidelizacion(nuevoPrecio);
+
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Precio de comisión actualizado correctamente",
+          life: 3000,
+        });
+      } catch (error) {
+        console.error("Error al actualizar precio:", error);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Error al actualizar precio de comisión",
+          life: 3000,
+        });
+      }
+    };
 
     const abrirDialogoNuevo = () => {
       setComisionSeleccionada(null);
@@ -167,72 +180,11 @@ const DetalleComisionFidelizacionEntidad = forwardRef(
       setDialogVisible(true);
     };
 
-    const actualizarPrecioComisionFidelizacion = async (nuevoPrecio) => {
-      try {
-        if (!entidadComercial?.id) {
-          console.warn("⚠️ No hay entidadComercial.id disponible");
-          return;
-        }
-
-        // Validar que el nuevo precio sea un número válido
-        if (
-          nuevoPrecio === null ||
-          nuevoPrecio === undefined ||
-          isNaN(nuevoPrecio)
-        ) {
-          console.warn("⚠️ Precio inválido:", nuevoPrecio);
-          return;
-        }
-        setLoading(true);
-        const resultado = await actualizarEntidadComercial(
-          entidadComercial.id,
-          {
-            precioPorTonComisionFidelizacion: Number(nuevoPrecio),
-          },
-        );
-        // Actualizar el estado local
-        setPrecioPorTonComisionFidelizacion(Number(nuevoPrecio));
-
-        toast.current?.show({
-          severity: "success",
-          summary: "Actualizado",
-          detail: "Precio de comisión fidelización actualizado",
-          life: 3000,
-        });
-      } catch (error) {
-        console.error("❌ Error al actualizar precio:", error);
-        console.error("❌ Error completo:", {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-        });
-
-        toast.current?.show({
-          severity: "error",
-          summary: "Error al Guardar",
-          detail:
-            error.response?.data?.message ||
-            error.message ||
-            "Error al actualizar el precio",
-          life: 4000,
-        });
-
-        // Revertir el cambio en el estado local si falla
-        if (entidadComercial?.precioPorTonComisionFidelizacion !== undefined) {
-          setPrecioPorTonComisionFidelizacion(
-            entidadComercial.precioPorTonComisionFidelizacion,
-          );
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
     const abrirDialogoEditar = (comision) => {
       setComisionSeleccionada(comision);
       reset({
-        personalId: Number(comision.personalId),
-        precioPorTonelada: Number(comision.precioPorTonelada),
+        personalId: comision.personalId,
+        precioPorTonelada: comision.precioPorTonelada,
         cesado: comision.cesado,
       });
       setDialogVisible(true);
@@ -245,16 +197,13 @@ const DetalleComisionFidelizacionEntidad = forwardRef(
     };
 
     const guardarComision = async (data) => {
+      setLoading(true);
       try {
-        setLoading(true);
-
         const payload = {
-          entidadComercialFidelizacionId: Number(
-            entidadComercialFidelizacionId,
-          ),
-          personalId: Number(data.personalId),
-          precioPorTonelada: Number(data.precioPorTonelada),
+          personalId: data.personalId,
+          precioPorTonelada: data.precioPorTonelada,
           cesado: data.cesado,
+          entidadComercialFidelizacionId: entidadComercialFidelizacionId,
         };
 
         if (comisionSeleccionada) {
@@ -264,30 +213,31 @@ const DetalleComisionFidelizacionEntidad = forwardRef(
           );
           toast.current?.show({
             severity: "success",
-            summary: "Actualizado",
-            detail: "Comisión actualizada exitosamente",
+            summary: "Éxito",
+            detail: "Comisión actualizada correctamente",
             life: 3000,
           });
         } else {
           await crearDetalleComisionFidelizacion(payload);
           toast.current?.show({
             severity: "success",
-            summary: "Creado",
-            detail: "Comisión creada exitosamente",
+            summary: "Éxito",
+            detail: "Comisión creada correctamente",
             life: 3000,
           });
         }
 
         cerrarDialogo();
-        cargarComisiones();
+        await cargarComisiones();
       } catch (error) {
-        console.error("❌ Error al guardar comisión:", error);
+        console.error("Error al guardar comisión:", error);
         toast.current?.show({
           severity: "error",
-          summary: "Error al Guardar",
+          summary: "Error",
           detail:
-            error.response?.data?.message || "Error al guardar la comisión",
-          life: 4000,
+            error.response?.data?.message ||
+            "Error al guardar comisión de fidelización",
+          life: 5000,
         });
       } finally {
         setLoading(false);
@@ -300,26 +250,27 @@ const DetalleComisionFidelizacionEntidad = forwardRef(
     };
 
     const eliminarComision = async () => {
+      if (!comisionAEliminar) return;
+
+      setLoading(true);
       try {
-        setLoading(true);
         await eliminarDetalleComisionFidelizacion(comisionAEliminar.id);
         toast.current?.show({
           severity: "success",
-          summary: "Eliminado",
-          detail: "Comisión eliminada exitosamente",
+          summary: "Éxito",
+          detail: "Comisión eliminada correctamente",
           life: 3000,
         });
         setConfirmVisible(false);
         setComisionAEliminar(null);
-        cargarComisiones();
+        await cargarComisiones();
       } catch (error) {
-        console.error("❌ Error al eliminar comisión:", error);
+        console.error("Error al eliminar comisión:", error);
         toast.current?.show({
           severity: "error",
-          summary: "Error al Eliminar",
-          detail:
-            error.response?.data?.message || "Error al eliminar la comisión",
-          life: 4000,
+          summary: "Error",
+          detail: "Error al eliminar comisión de fidelización",
+          life: 3000,
         });
       } finally {
         setLoading(false);
@@ -329,34 +280,39 @@ const DetalleComisionFidelizacionEntidad = forwardRef(
     // Templates de columnas
     const personalBodyTemplate = (rowData) => {
       if (!rowData.personal) return "-";
-      return `${rowData.personal.nombres} ${rowData.personal.apellidos || ""}`.trim();
+      return `${rowData.personal.nombres} ${rowData.personal.apellidos}`;
     };
 
     const precioBodyTemplate = (rowData) => {
-      return `$ ${Number(rowData.precioPorTonelada).toFixed(2)}`;
+      return (
+        <div style={{ textAlign: "right", fontWeight: "bold" }}>
+          $ {Number(rowData.precioPorTonelada || 0).toFixed(2)}
+        </div>
+      );
     };
 
     const cesadoBodyTemplate = (rowData) => {
-      return rowData.cesado ? (
-        <Tag value="CESADO" severity="danger" />
-      ) : (
-        <Tag value="ACTIVO" severity="success" />
+      return (
+        <Tag
+          value={rowData.cesado ? "CESADO" : "ACTIVO"}
+          severity={rowData.cesado ? "danger" : "success"}
+        />
       );
     };
+
     const accionesBodyTemplate = (rowData) => {
+      if (readOnly) return null;
+
       return (
-        <div className="flex gap-2">
+        <div
+          style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}
+        >
           <Button
             icon="pi pi-pencil"
             rounded
             outlined
-            type="button"
-            className="p-button-warning"
-            onClick={(e) => {
-              e.stopPropagation();
-              abrirDialogoEditar(rowData);
-            }}
-            disabled={readOnly}
+            severity="warning"
+            onClick={() => abrirDialogoEditar(rowData)}
             tooltip="Editar"
             tooltipOptions={{ position: "top" }}
           />
@@ -364,23 +320,24 @@ const DetalleComisionFidelizacionEntidad = forwardRef(
             icon="pi pi-trash"
             rounded
             outlined
-            type="button"
             severity="danger"
-            onClick={(e) => {
-              e.stopPropagation();
-              confirmarEliminar(rowData);
-            }}
-            disabled={readOnly}
+            onClick={() => confirmarEliminar(rowData)}
             tooltip="Eliminar"
             tooltipOptions={{ position: "top" }}
           />
         </div>
       );
     };
+
+    const personalOptions = personalData.map((p) => ({
+      label: `${p.nombres} ${p.apellidos}`,
+      value: p.id,
+    }));
+
     const header = (
       <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
         <h4 className="m-0">Comisiones de Fidelización</h4>
-        <div className="flex gap-2 align-items-center">
+        <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <label
               htmlFor="precioPorTonComisionFidelizacion"
@@ -425,6 +382,7 @@ const DetalleComisionFidelizacionEntidad = forwardRef(
         </div>
       </div>
     );
+
     return (
       <div className="card">
         <Toast ref={toast} />
@@ -440,7 +398,7 @@ const DetalleComisionFidelizacionEntidad = forwardRef(
           rows={10}
           rowsPerPageOptions={[5, 10, 25, 50]}
           size="small"
-          selectionMode="single" // ← AGREGAR ESTO
+          selectionMode="single"
           onRowClick={(e) => {
             if (!readOnly) {
               abrirDialogoEditar(e.data);
@@ -581,7 +539,6 @@ const DetalleComisionFidelizacionEntidad = forwardRef(
                 />
               </div>
             </div>
-            {/* Botones de acción */}
             <div
               style={{
                 display: "flex",
@@ -606,7 +563,7 @@ const DetalleComisionFidelizacionEntidad = forwardRef(
                 label="Guardar"
                 icon="pi pi-check"
                 type="button"
-                onClick={handleSubmit(guardarComision)} // ← AGREGAR onClick
+                onClick={handleSubmit(guardarComision)}
                 loading={loading}
                 disabled={loading}
                 className="p-button-success"

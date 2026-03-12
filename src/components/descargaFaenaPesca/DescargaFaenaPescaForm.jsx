@@ -67,7 +67,8 @@ export default function DescargaFaenaPescaForm({
   // Estados para loading
   const [loading, setLoading] = useState(false);
   const [finalizandoDescarga, setFinalizandoDescarga] = useState(false);
-
+  // Ref para Toast
+  const toast = useRef(null);
   // Configuración del formulario
   const {
     control,
@@ -307,13 +308,49 @@ export default function DescargaFaenaPescaForm({
     }
   }, [longitudFondeo]);
 
+  /**
+   * Manejar cambio de cliente
+   * Auto-asigna el precioPorTonComisionFidelizacion desde EntidadComercial
+   */
+  const handleClienteChange = (clienteId) => {
+    setValue("clienteId", clienteId);
+
+    if (clienteId) {
+      // Buscar el cliente seleccionado en el array de clientes
+      const clienteSeleccionado = clientes.find(
+        (c) => Number(c.value) === Number(clienteId),
+      );
+
+      if (
+        clienteSeleccionado &&
+        clienteSeleccionado.precioPorTonComisionFidelizacion
+      ) {
+        // Auto-asignar el precio de comisión fidelización
+        setValue(
+          "precioPorTonComisionFidelizacion",
+          Number(clienteSeleccionado.precioPorTonComisionFidelizacion),
+        );
+
+        toast.current?.show({
+          severity: "info",
+          summary: "Precio asignado",
+          detail: `Precio/Ton Comisión Fidelización: $${clienteSeleccionado.precioPorTonComisionFidelizacion}`,
+          life: 3000,
+        });
+      } else {
+        // Si el cliente no tiene precio configurado, establecer en 0
+        setValue("precioPorTonComisionFidelizacion", 0);
+      }
+    }
+  };
+
   // Funciones para actualizar decimal cuando cambia DMS - DESCARGA
   const actualizarLatitudDesdeDMS = () => {
     const decimal = convertirDMSADecimal(
       latGrados,
       latMinutos,
       latSegundos,
-      latDireccion
+      latDireccion,
     );
     setValue("latitud", decimal);
   };
@@ -323,7 +360,7 @@ export default function DescargaFaenaPescaForm({
       lonGrados,
       lonMinutos,
       lonSegundos,
-      lonDireccion
+      lonDireccion,
     );
     setValue("longitud", decimal);
   };
@@ -334,7 +371,7 @@ export default function DescargaFaenaPescaForm({
       latFondeoGrados,
       latFondeoMinutos,
       latFondeoSegundos,
-      latFondeoDireccion
+      latFondeoDireccion,
     );
     setValue("latitudFondeo", decimal);
   };
@@ -344,7 +381,7 @@ export default function DescargaFaenaPescaForm({
       lonFondeoGrados,
       lonFondeoMinutos,
       lonFondeoSegundos,
-      lonFondeoDireccion
+      lonFondeoDireccion,
     );
     setValue("longitudFondeo", decimal);
   };
@@ -517,7 +554,7 @@ export default function DescargaFaenaPescaForm({
           // Llamar al backend para finalizar y generar movimientos de almacén
           const resultado = await finalizarDescargaConMovimientos(
             detalle.id,
-            temporadaPescaId
+            temporadaPescaId,
           );
 
           toast.current?.show({
@@ -555,8 +592,6 @@ export default function DescargaFaenaPescaForm({
     });
   };
 
-  const toast = useRef(null);
-
   /**
    * Maneja la captura de GPS usando las funciones genéricas
    */
@@ -583,7 +618,7 @@ export default function DescargaFaenaPescaForm({
             detail: errorMessage,
             life: 3000,
           });
-        }
+        },
       );
     } catch (error) {
       console.error("Error capturando GPS:", error);
@@ -602,7 +637,7 @@ export default function DescargaFaenaPescaForm({
             severity: "success",
             summary: "GPS Fondeo capturado",
             detail: `GPS Fondeo capturado con precisión de ${accuracy.toFixed(
-              1
+              1,
             )}m`,
             life: 3000,
           });
@@ -615,7 +650,7 @@ export default function DescargaFaenaPescaForm({
             detail: errorMessage,
             life: 3000,
           });
-        }
+        },
       );
     } catch (error) {
       console.error("Error capturando GPS Fondeo:", error);
@@ -1185,8 +1220,8 @@ export default function DescargaFaenaPescaForm({
             render={({ field }) => (
               <Dropdown
                 id="clienteId"
-                {...field}
                 value={field.value}
+                onChange={(e) => handleClienteChange(e.value)}
                 options={clientes}
                 optionLabel="label"
                 optionValue="value"
@@ -1434,7 +1469,6 @@ export default function DescargaFaenaPescaForm({
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
-
         <div style={{ flex: 1 }}>
           <label htmlFor="numReporteRecepcion">Reporte Recepción</label>
           <Controller
@@ -1485,7 +1519,7 @@ export default function DescargaFaenaPescaForm({
             style={{ marginTop: "5px" }}
           />
         </div>
-                <div style={{ flex: 1 }}>
+        <div style={{ flex: 1 }}>
           <label htmlFor="fechaHoraFinDescarga" style={{ color: "#21962e" }}>
             Fin Descarga*
           </label>
@@ -1698,7 +1732,7 @@ export default function DescargaFaenaPescaForm({
                     onChange={(e) =>
                       setValue(
                         "longitudFondeo",
-                        parseFloat(e.target.value) || 0
+                        parseFloat(e.target.value) || 0,
                       )
                     }
                     disabled={loading}

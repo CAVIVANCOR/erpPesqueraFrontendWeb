@@ -1157,6 +1157,7 @@ const TemporadaPescaForm = ({
               setValue={setValue}
               watch={watch}
               readOnly={readOnly}
+              onGuardarTemporada={handleSubmit(handleFormSubmit)}
             />
           )}
 

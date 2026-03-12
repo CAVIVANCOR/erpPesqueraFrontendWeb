@@ -116,3 +116,21 @@ export const finalizarDescargaConMovimientos = async (descargaId, temporadaPesca
     throw error;
   }
 };
+
+/**
+ * Obtiene todas las descargas de una temporada específica
+ * Incluye información del cliente y precio de comisión fidelización
+ * @param {number} temporadaId - ID de la temporada de pesca
+ * @returns {Promise<Array>} Lista de descargas de la temporada
+ */
+export const getDescargasPorTemporada = async (temporadaId) => {
+  try {
+    const response = await axios.get(`${API_URL}/temporada/${temporadaId}`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener descargas por temporada:', error);
+    throw error;
+  }
+};
