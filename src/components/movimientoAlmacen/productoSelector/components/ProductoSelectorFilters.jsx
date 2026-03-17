@@ -221,7 +221,7 @@ export const ProductoSelectorFilters = ({
         />
         {esIngreso && (
           <Button
-            label="Nuevo Producto"
+            label="Ir a Nuevo Producto"
             icon="pi pi-plus"
             className="p-button-sm p-button-success"
             onClick={onNuevoProducto}

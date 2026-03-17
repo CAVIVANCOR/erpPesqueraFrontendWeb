@@ -892,7 +892,7 @@ export default function RequerimientoCompra({ ruta }) {
         maximized={true}
       >
         <RequerimientoCompraForm
-          isEdit={!!editing}
+          isEdit={!!editing?.id}
           defaultValues={editing || {}}
           empresas={empresas}
           tiposDocumento={tiposDocumento}

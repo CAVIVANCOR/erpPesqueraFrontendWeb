@@ -27,6 +27,7 @@ export default function DetalleCotizacionCompra({
   onHide,
   toast,
   puedeEditar,
+  onCambioGuardado, // Callback para notificar cambios al padre
 }) {
   const [detalles, setDetalles] = useState([]);
   const [productos, setProductos] = useState([]);
@@ -35,6 +36,7 @@ export default function DetalleCotizacionCompra({
   const [showDialogEditarItem, setShowDialogEditarItem] = useState(false);
   const [itemEditar, setItemEditar] = useState(null);
   const [mostrarSoloSeleccionados, setMostrarSoloSeleccionados] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const [formProductoAlt, setFormProductoAlt] = useState({
     productoId: null,
@@ -53,7 +55,7 @@ export default function DetalleCotizacionCompra({
       cargarDetalles();
       cargarProductos();
     }
-  }, [cotizacion]);
+  }, [cotizacion, refreshKey]);
 
   const cargarDetalles = () => {
     const detallesOrdenados = [...cotizacion.detalles].sort((a, b) => Number(a.id) - Number(b.id));
@@ -120,6 +122,13 @@ export default function DetalleCotizacionCompra({
             detail: "Cambio guardado",
             life: 1500,
           });
+          
+          // Notificar al padre para que recargue la cotización
+          if (onCambioGuardado) {
+            await onCambioGuardado(cotizacion.id);
+            // Forzar recarga de detalles
+            setRefreshKey(prev => prev + 1);
+          }
         } catch (err) {
           toast.current?.show({
             severity: "error",
@@ -321,6 +330,13 @@ export default function DetalleCotizacionCompra({
         detail: "Item actualizado correctamente",
         life: 2000,
       });
+      
+      // Notificar al padre para que recargue la cotización
+      if (onCambioGuardado) {
+        await onCambioGuardado(cotizacion.id);
+        // Forzar recarga de detalles
+        setRefreshKey(prev => prev + 1);
+      }
       
       setShowDialogEditarItem(false);
       setItemEditar(null);

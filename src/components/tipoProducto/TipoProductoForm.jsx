@@ -15,6 +15,7 @@ import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import { classNames } from "primereact/utils";
 import { getSubfamiliasProducto } from "../../api/subfamiliaProducto";
+import { getFamiliasProducto } from "../../api/familiaProducto";
 
 const esquemaValidacion = yup.object().shape({
   nombre: yup
@@ -64,8 +65,12 @@ const esquemaValidacion = yup.object().shape({
 
 const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
   const [loading, setLoading] = useState(false);
+  const [familias, setFamilias] = useState([]);
   const [subfamilias, setSubfamilias] = useState([]);
+  const [subfamiliasFiltradas, setSubfamiliasFiltradas] = useState([]);
+  const [loadingFamilias, setLoadingFamilias] = useState(false);
   const [loadingSubfamilias, setLoadingSubfamilias] = useState(false);
+  const [familiaSeleccionada, setFamiliaSeleccionada] = useState(null);
   const esEdicion = !!tipoProducto;
 
   const {
@@ -79,6 +84,7 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
     defaultValues: {
       nombre: "",
       descripcion: "",
+      familiaId: null,
       subfamiliaId: null,
       activo: true,
       paraCompras: false,
@@ -91,14 +97,28 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
   });
 
   useEffect(() => {
+    cargarFamilias();
     cargarSubfamilias();
   }, []);
+
+  const cargarFamilias = async () => {
+    try {
+      setLoadingFamilias(true);
+      const data = await getFamiliasProducto();
+      setFamilias(data);
+    } catch (error) {
+      console.error("Error al cargar familias:", error);
+    } finally {
+      setLoadingFamilias(false);
+    }
+  };
 
   const cargarSubfamilias = async () => {
     try {
       setLoadingSubfamilias(true);
       const data = await getSubfamiliasProducto();
       setSubfamilias(data);
+      setSubfamiliasFiltradas(data);
     } catch (error) {
       console.error("Error al cargar subfamilias:", error);
     } finally {
@@ -110,6 +130,16 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
     if (tipoProducto) {
       setValue("nombre", tipoProducto.nombre || "");
       setValue("descripcion", tipoProducto.descripcion || "");
+      
+      // Si tiene subfamilia, buscar su familia
+      if (tipoProducto.subfamiliaId && subfamilias.length > 0) {
+        const subfamilia = subfamilias.find(s => Number(s.id) === Number(tipoProducto.subfamiliaId));
+        if (subfamilia?.familiaId) {
+          setFamiliaSeleccionada(Number(subfamilia.familiaId));
+          setValue("familiaId", Number(subfamilia.familiaId));
+        }
+      }
+      
       setValue("subfamiliaId", tipoProducto.subfamiliaId ? Number(tipoProducto.subfamiliaId) : null);
       setValue("activo", tipoProducto.activo !== undefined ? tipoProducto.activo : true);
       setValue("paraCompras", tipoProducto.paraCompras || false);
@@ -122,6 +152,7 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
       reset({
         nombre: "",
         descripcion: "",
+        familiaId: null,
         subfamiliaId: null,
         activo: true,
         paraCompras: false,
@@ -131,8 +162,28 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
         validezOfertaCompra: "",
         validezOfertaVenta: "",
       });
+      setFamiliaSeleccionada(null);
     }
-  }, [tipoProducto, setValue, reset]);
+  }, [tipoProducto, setValue, reset, subfamilias]);
+
+  // Filtrar subfamilias cuando cambia la familia seleccionada
+  useEffect(() => {
+    if (familiaSeleccionada) {
+      const filtradas = subfamilias.filter(
+        (s) => Number(s.familiaId) === Number(familiaSeleccionada)
+      );
+      setSubfamiliasFiltradas(filtradas);
+    } else {
+      setSubfamiliasFiltradas(subfamilias);
+    }
+  }, [familiaSeleccionada, subfamilias]);
+
+  const handleFamiliaChange = (familiaId) => {
+    setFamiliaSeleccionada(familiaId);
+    setValue("familiaId", familiaId);
+    // Limpiar subfamilia al cambiar familia
+    setValue("subfamiliaId", null);
+  };
 
   const onSubmit = async (data) => {
     try {
@@ -191,10 +242,39 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
           )}
         </div>
 
+        {/* Campo Familia */}
+        <div className="p-col-12 p-field">
+          <label htmlFor="familiaId" className="p-d-block">
+            Familia de Producto
+          </label>
+          <Controller
+            name="familiaId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="familiaId"
+                value={field.value}
+                options={familias.map((f) => ({
+                  label: f.nombre,
+                  value: Number(f.id),
+                }))}
+                onChange={(e) => handleFamiliaChange(e.value)}
+                placeholder="Seleccione una familia"
+                className={getFieldClass("familiaId")}
+                filter
+                showClear
+                loading={loadingFamilias}
+                emptyMessage="No hay familias disponibles"
+                style={{ fontWeight: "bold", textTransform: "uppercase" }}
+              />
+            )}
+          />
+        </div>
+
         {/* Campo Subfamilia */}
         <div className="p-col-12 p-field">
           <label htmlFor="subfamiliaId" className="p-d-block">
-            Subfamilia
+            Subfamilia de Producto
           </label>
           <Controller
             name="subfamiliaId"
@@ -203,17 +283,18 @@ const TipoProductoForm = ({ tipoProducto, onGuardar, onCancelar }) => {
               <Dropdown
                 id="subfamiliaId"
                 value={field.value}
-                options={subfamilias.map((s) => ({
+                options={subfamiliasFiltradas.map((s) => ({
                   label: s.nombre,
                   value: Number(s.id),
                 }))}
                 onChange={(e) => field.onChange(e.value)}
-                placeholder="Seleccione una subfamilia"
+                placeholder={familiaSeleccionada ? "Seleccione una subfamilia" : "Primero seleccione una familia"}
                 className={getFieldClass("subfamiliaId")}
                 filter
                 showClear
                 loading={loadingSubfamilias}
-                emptyMessage="No hay subfamilias disponibles"
+                disabled={!familiaSeleccionada}
+                emptyMessage={familiaSeleccionada ? "No hay subfamilias para esta familia" : "Seleccione primero una familia"}
                 style={{ fontWeight: "bold", textTransform: "uppercase" }}
               />
             )}

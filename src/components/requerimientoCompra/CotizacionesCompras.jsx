@@ -12,6 +12,7 @@ import { Calendar } from "primereact/calendar";
 import { confirmDialog } from "primereact/confirmdialog";
 import {
   getCotizacionesProveedor,
+  getCotizacionProveedorById,
   crearCotizacionProveedor,
   eliminarCotizacionProveedor,
 } from "../../api/cotizacionProveedor";
@@ -406,7 +407,7 @@ export default function CotizacionesCompras({
             <Dropdown
               value={formNuevaCotizacion.proveedorId}
               options={proveedores.map((p) => ({
-                label: p.razonSocial,
+                label: `${p.razonSocial} - ${p.empresa?.razonSocial || 'Sin Empresa'}`,
                 value: Number(p.id),
               }))}
               onChange={(e) =>
@@ -483,6 +484,15 @@ export default function CotizacionesCompras({
             setShowDialogDetalle(false);
             setCotizacionSeleccionada(null);
             cargarCotizaciones();
+          }}
+          onCambioGuardado={async (cotizacionId) => {
+            // Recargar solo la cotización modificada
+            try {
+              const cotizacionActualizada = await getCotizacionProveedorById(cotizacionId);
+              setCotizacionSeleccionada(cotizacionActualizada);
+            } catch (error) {
+              console.error("Error al recargar cotización:", error);
+            }
           }}
           toast={toast}
           puedeEditar={puedeEditar}

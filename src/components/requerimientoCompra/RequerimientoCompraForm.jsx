@@ -326,17 +326,50 @@ export default function RequerimientoCompraForm({
     }
   }, [proveedores, empresaId]);
 
-  // Filtrar personal por empresaId
+  // Filtrar personal por empresaId + SIEMPRE incluir al usuario logueado
   useEffect(() => {
     if (personalOptions && personalOptions.length > 0 && empresaId) {
       const personalPorEmpresa = personalOptions.filter(
         (p) => Number(p.empresaId) === Number(empresaId),
       );
+
+      // ✅ SIEMPRE incluir al usuario logueado, aunque sea de otra empresa
+      if (usuario?.personalId) {
+        const usuarioYaIncluido = personalPorEmpresa.some(
+          (p) => Number(p.id) === Number(usuario.personalId),
+        );
+
+        if (!usuarioYaIncluido) {
+          // Buscar el usuario en la lista completa de personal
+          const usuarioLogueado = personalOptions.find(
+            (p) => Number(p.id) === Number(usuario.personalId),
+          );
+
+          if (usuarioLogueado) {
+            // Buscar la empresa del usuario para concatenar su razón social
+            const empresaUsuario = empresas.find(
+              (e) => Number(e.id) === Number(usuarioLogueado.empresaId),
+            );
+
+            // Crear copia con label modificado para mostrar empresa
+            const usuarioConEmpresa = {
+              ...usuarioLogueado,
+              nombreCompleto: empresaUsuario
+                ? `${usuarioLogueado.nombreCompleto} - ${empresaUsuario.razonSocial}`
+                : usuarioLogueado.nombreCompleto,
+            };
+
+            // Agregar al inicio de la lista para que sea visible
+            personalPorEmpresa.unshift(usuarioConEmpresa);
+          }
+        }
+      }
+
       setPersonalFiltrado(personalPorEmpresa);
     } else {
       setPersonalFiltrado([]);
     }
-  }, [personalOptions, empresaId]);
+  }, [personalOptions, empresaId, usuario?.personalId, empresas]);
 
   // Inicializar porcentajeIGV desde la empresa cuando cambie empresaId (solo en creación)
   useEffect(() => {
@@ -425,6 +458,50 @@ export default function RequerimientoCompraForm({
     };
     cargarSeriesDoc();
   }, [empresaId, tipoDocumentoId]);
+
+  // Asignar automáticamente la serie "001" cuando se carguen las series (solo en modo creación)
+  useEffect(() => {
+    console.log("🔍 [Serie Auto] Ejecutando useEffect", {
+      isEdit,
+      seriesDocLength: seriesDoc.length,
+      serieDocId: formData.serieDocId,
+      seriesDoc: seriesDoc.map(s => ({ id: s.id, serie: s.serie }))
+    });
+
+if (!defaultValues?.id && seriesDoc.length > 0 && !formData.serieDocId) {
+        // Buscar la serie "002"
+      const serie002 = seriesDoc.find((s) => s.serie === "002");
+      console.log("🔍 [Serie Auto] Serie 002 encontrada:", serie002);
+
+      if (serie002) {
+        const correlativoActual = Number(serie002.correlativo);
+        const proximoCorrelativo = correlativoActual + 1;
+        const numSerie = String(serie002.serie).padStart(
+          serie002.numCerosIzqSerie || 3,
+          "0",
+        );
+
+        console.log("✅ [Serie Auto] Asignando serie 002:", {
+          serieDocId: Number(serie002.id),
+          numSerie,
+          proximoCorrelativo
+        });
+
+        // Asignar todos los valores de la serie
+        setFormData((prev) => ({
+          ...prev,
+          serieDocId: Number(serie002.id),
+          numSerieDoc: numSerie,
+          numCorreDoc: `PRÓXIMO: ${proximoCorrelativo}`,
+          numeroDocumento: "Se generará al guardar",
+        }));
+      } else {
+        console.log("❌ [Serie Auto] No se encontró la serie 002");
+      }
+    } else {
+      console.log("⏭️ [Serie Auto] Condiciones no cumplidas");
+    }
+  }, [seriesDoc, isEdit]);
 
   // Cargar estados de requerimiento (tipoProvieneDeId = 11)
   useEffect(() => {
@@ -946,11 +1023,13 @@ export default function RequerimientoCompraForm({
         <TabPanel header="Datos Generales" leftIcon="pi pi-file">
           <DatosGeneralesTab
             formData={formData}
+            defaultValues={defaultValues}
             onChange={handleChange}
             onSerieChange={handleSerieDocChange}
             empresasOptions={empresasOptions}
             tiposDocumentoOptions={tiposDocumentoOptions}
             proveedoresOptions={proveedoresOptions}
+            proveedores={proveedores}
             tiposProductoOptions={tiposProductoOptions}
             tiposEstadoProductoOptions={tiposEstadoProductoOptions}
             destinosProductoOptions={destinosProductoOptions}
@@ -980,9 +1059,9 @@ export default function RequerimientoCompraForm({
             total={totales.total}
             monedaRequerimiento={defaultValues?.moneda}
             readOnly={readOnly}
-            abrirModulo={abrirModulo} // ✅ AGREGAR ESTA LÍNEA
-            onCloseDialog={onCloseDialog} // ✅ AGREGAR ESTA LÍNEA
-            onProveedorCreado={onProveedorCreado} // ✅ AGREGAR ESTA LÍNEA
+            abrirModulo={abrirModulo}
+            onCloseDialog={onCloseDialog}
+            onProveedorCreado={onProveedorCreado}
           />
         </TabPanel>
 
@@ -1089,7 +1168,7 @@ export default function RequerimientoCompraForm({
               (!estaPendiente && !estaAprobado) ||
               readOnly ||
               loading ||
-              !permisos.puedeRechazarDocs  
+              !permisos.puedeRechazarDocs
             }
             tooltip={
               !isEdit
@@ -1098,7 +1177,7 @@ export default function RequerimientoCompraForm({
                   ? "Solo se puede anular si está Pendiente o Aprobado"
                   : readOnly
                     ? "Modo solo lectura"
-                    : !permisos.puedeRechazarDocs  
+                    : !permisos.puedeRechazarDocs
                       ? "No tiene permisos para anular"
                       : "Anular requerimiento de compra"
             }
@@ -1115,7 +1194,7 @@ export default function RequerimientoCompraForm({
               !estaAprobado ||
               readOnly ||
               loading ||
-              !permisos.puedeAprobarDocs  
+              !permisos.puedeAprobarDocs
             }
             style={{
               whiteSpace: "nowrap",
@@ -1129,7 +1208,7 @@ export default function RequerimientoCompraForm({
                   ? "Solo disponible cuando está Aprobado"
                   : readOnly
                     ? "Modo solo lectura"
-                    : !permisos.puedeAprobarDocs  
+                    : !permisos.puedeAprobarDocs
                       ? "No tiene permisos para autorizar"
                       : "Autorizar compra y generar órdenes de Compra"
             }

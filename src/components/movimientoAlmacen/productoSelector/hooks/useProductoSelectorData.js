@@ -64,6 +64,9 @@ export const useProductoSelectorData = ({
    * Para mercadería en custodia: Producto.clienteId = clienteId
    */
   const cargarProductosConStockConsolidado = async () => {
+    console.log("🔍 [useProductoSelectorData] Cargando productos en modo INGRESO...");
+    console.log("🔍 [useProductoSelectorData] familiaProductoId:", familiaProductoId);
+    
     // 1. Cargar productos activos de la empresa
     const filtrosProductos = {
       empresaId,
@@ -71,32 +74,25 @@ export const useProductoSelectorData = ({
       cesado: false,
     };
     const productosData = await getProductos(filtrosProductos);
+    console.log("🔍 [useProductoSelectorData] Total productos cargados:", productosData.length);
+    console.log("🔍 [useProductoSelectorData] Primer producto (estructura):", productosData[0]);
 
        // 1.1. Filtrar productos según configuración
     let productosFiltrados = productosData;
 
     if (familiaProductoId) {
+      console.log("🔍 [useProductoSelectorData] Filtrando por familiaProductoId:", familiaProductoId);
       
-      // Filtrar por familia específica
-      if (Number(familiaProductoId) === 5) {
-        // SERVICIOS: Mostrar todos los productos de familia SERVICIOS (sin filtro de kardex)
-        productosFiltrados = productosData.filter(
-          (producto) => Number(producto.subfamilia?.familiaId) === 5,
-        );
-      } else {
-        // OTRAS FAMILIAS: Aplicar filtro de kardex + filtro de familia
-        productosFiltrados = productosData.filter(
-          (producto) =>
-            producto.subfamilia?.llevaKardex === true &&
-            Number(producto.subfamilia?.familiaId) ===
-              Number(familiaProductoId),
-        );
-      }
-    } else {
-      // Sin familia especificada: aplicar solo filtro de kardex (comportamiento original)
+      // MODO INGRESO: Mostrar TODOS los productos de la familia (sin filtro de kardex)
+      // El filtro de kardex solo aplica en EGRESO
       productosFiltrados = productosData.filter(
-        (producto) => producto.subfamilia?.llevaKardex === true,
+        (producto) => Number(producto.subfamilia?.familiaId) === Number(familiaProductoId),
       );
+      console.log("🔍 [useProductoSelectorData] Productos filtrados por familia:", productosFiltrados.length);
+    } else {
+      // Sin familia especificada: mostrar todos los productos
+      productosFiltrados = productosData;
+      console.log("🔍 [useProductoSelectorData] Todos los productos:", productosFiltrados.length);
     }
     
 

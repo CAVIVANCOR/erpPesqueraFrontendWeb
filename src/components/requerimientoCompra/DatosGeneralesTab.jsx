@@ -14,11 +14,13 @@ import EntidadComercialForm from "../entidadComercial/EntidadComercialForm";
 
 export default function DatosGeneralesTab({
   formData,
+  defaultValues, // ✅ AGREGAR: Objeto completo del backend con relaciones
   onChange,
   onSerieChange,
   empresasOptions,
   tiposDocumentoOptions,
   proveedoresOptions,
+  proveedores = [], // Lista de proveedores para DetallesTab
   tiposProductoOptions,
   tiposEstadoProductoOptions,
   destinosProductoOptions,
@@ -526,6 +528,7 @@ export default function DatosGeneralesTab({
               optionValue="value"
               placeholder="Seleccionar tipo"
               disabled={!puedeEditar || readOnly}
+              filter
               showClear
               style={{
                 fontWeight: "bold",
@@ -552,6 +555,7 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar destino"
               disabled={!puedeEditar || readOnly}
               showClear
+              filter
               style={{
                 fontWeight: "bold",
                 textTransform: "uppercase",
@@ -576,6 +580,7 @@ export default function DatosGeneralesTab({
               placeholder="Seleccionar estado"
               disabled={!puedeEditar || readOnly}
               showClear
+              filter
               style={{
                 fontWeight: "bold",
                 textTransform: "uppercase",
@@ -606,6 +611,7 @@ export default function DatosGeneralesTab({
               onChange={(e) => onChange("formaPagoId", e.value)}
               optionLabel="label"
               optionValue="value"
+              filter
               placeholder="Seleccionar forma de pago"
               style={{
                 fontWeight: "bold",
@@ -731,10 +737,11 @@ export default function DatosGeneralesTab({
               productos={productos}
               empresaId={empresaId}
               empresasOptions={empresasOptions}
+              proveedores={proveedores}
               puedeEditar={puedeEditar}
               puedeVerDetalles={puedeVerDetalles}
               puedeEditarDetalles={puedeEditarDetalles}
-              datosGenerales={formData}
+              datosGenerales={defaultValues || formData}
               toast={toast}
               onCountChange={onCountChange}
               subtotal={subtotal}

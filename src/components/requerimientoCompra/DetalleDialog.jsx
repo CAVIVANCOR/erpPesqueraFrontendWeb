@@ -5,6 +5,7 @@ import { Button } from "primereact/button";
 import { InputNumber } from "primereact/inputnumber";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
+import { Dropdown } from "primereact/dropdown";
 import { Panel } from "primereact/panel";
 import { Divider } from "primereact/divider";
 import ProductoSelectorDialog from "../movimientoAlmacen/ProductoSelectorDialog";
@@ -22,12 +23,14 @@ export default function DetalleDialog({
   empresaId,
   datosGenerales,
   empresas, // Agregar prop para obtener entidadComercialId
+  proveedores = [], // Lista de proveedores
   puedeEditarDetalles,
   onSaveSuccess,
   toast,
 }) {
   const [formData, setFormData] = useState({
     productoId: null,
+    proveedorId: null,
     cantidad: 0,
     costoUnitario: 0,
     subtotal: 0,
@@ -47,30 +50,42 @@ export default function DetalleDialog({
   // Obtener código de moneda de la cabecera (datosGenerales.moneda)
   const codigoMoneda = datosGenerales?.moneda?.codigoSunat || "PEN";
 
-  // ✅ CORRECCIÓN: Obtener familiaId desde tipoProductoId
-  // OPCIÓN 1: Si tipoProducto incluye subfamilia (ideal, cuando backend lo envíe)
-  let familiaProductoId =
+  // Obtener familiaId desde la relación completa tipoProducto.subfamilia.familia
+  const familiaProductoId =
     datosGenerales?.tipoProducto?.subfamilia?.familiaId || null;
 
-  // OPCIÓN 2: Mapeo temporal mientras el backend no incluya la relación completa
-  if (!familiaProductoId && datosGenerales?.tipoProductoId) {
-    const tipoProductoIdNumber = Number(datosGenerales.tipoProductoId);
+  // Crear lista de opciones de proveedores
+  // Si el detalle tiene un proveedor asignado, incluirlo en las opciones
+  const proveedoresOptions = React.useMemo(() => {
+    const opciones = proveedores.map((p) => ({
+      label: `${p.razonSocial} - ${p.empresa?.razonSocial || 'Sin Empresa'}`,
+      value: Number(p.id),
+    }));
 
-    // Mapeo de tipoProductoId a familiaId
-    // TODO: Esto debe venir del backend con la relación completa
-    const mapaTemporalTipoProductoAFamilia = {
-      9: 5, // SERVICIO CONTRATISTA (subfamilia 24) → SERVICIOS
-      // Agrega aquí otros tipos de producto de SERVICIOS si existen
-    };
+    // Si hay un detalle con proveedor y ese proveedor no está en la lista
+    if (detalle?.proveedor) {
+      const proveedorId = Number(detalle.proveedor.id);
+      const yaExiste = opciones.some((opt) => opt.value === proveedorId);
+      
+      if (!yaExiste) {
+        // Agregar el proveedor del detalle al inicio de la lista
+        opciones.unshift({
+          label: `${detalle.proveedor.razonSocial} - ${detalle.proveedor.empresa?.razonSocial || 'Sin Empresa'}`,
+          value: proveedorId,
+        });
+      }
+    }
 
-    familiaProductoId =
-      mapaTemporalTipoProductoAFamilia[tipoProductoIdNumber] || null;
-  }
+    return opciones;
+  }, [proveedores, detalle]);
 
   useEffect(() => {
     if (detalle) {
+      const proveedorIdNumber = detalle.proveedorId ? Number(detalle.proveedorId) : null;
+      
       setFormData({
         productoId: detalle.productoId,
+        proveedorId: proveedorIdNumber,
         cantidad: detalle.cantidad,
         costoUnitario: detalle.costoUnitario,
         subtotal: detalle.subtotal,
@@ -84,6 +99,7 @@ export default function DetalleDialog({
     } else {
       setFormData({
         productoId: null,
+        proveedorId: null,
         cantidad: 0,
         costoUnitario: 0,
         subtotal: 0,
@@ -379,9 +395,27 @@ export default function DetalleDialog({
 
         <Divider />
 
+        {/* Campo Proveedor */}
+        <div style={{ marginBottom: "16px" }}>
+          <label htmlFor="proveedorId" style={{ fontWeight: "bold" }}>
+            Proveedor
+          </label>
+          <Dropdown
+            id="proveedorId"
+            value={formData.proveedorId}
+            options={proveedoresOptions}
+            onChange={(e) => handleChange("proveedorId", e.value)}
+            placeholder="Seleccionar proveedor (opcional)"
+            filter
+            showClear
+            disabled={saving || !puedeEditarDetalles}
+            style={{ fontWeight: "bold" }}
+          />
+        </div>
+
         <div style={{ marginBottom: "16px" }}>
           <label htmlFor="observaciones" style={{ fontWeight: "bold" }}>
-            Observaciones
+            Descripcion Detallada
           </label>
           <InputTextarea
             id="observaciones"

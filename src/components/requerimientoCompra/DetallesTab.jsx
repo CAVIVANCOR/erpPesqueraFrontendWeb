@@ -17,6 +17,7 @@ export default function DetallesTab({
   productos,
   empresaId,
   empresasOptions,
+  proveedores = [],
   puedeEditar,
   puedeVerDetalles,
   puedeEditarDetalles,
@@ -71,12 +72,12 @@ export default function DetallesTab({
 
   const handleDelete = (detalle) => {
     confirmDialog({
-      message: `¿Está seguro de eliminar el detalle del producto "${detalle.producto?.nombre || 'este producto'}"?`,
-      header: 'Confirmar Eliminación',
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Sí, eliminar',
-      rejectLabel: 'Cancelar',
-      acceptClassName: 'p-button-danger',
+      message: `¿Está seguro de eliminar el detalle del producto "${detalle.producto?.nombre || "este producto"}"?`,
+      header: "Confirmar Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Sí, eliminar",
+      rejectLabel: "Cancelar",
+      acceptClassName: "p-button-danger",
       accept: async () => {
         try {
           await eliminarDetalleReqCompra(detalle.id);
@@ -90,10 +91,11 @@ export default function DetallesTab({
           toast.current.show({
             severity: "error",
             summary: "Error",
-            detail: err.response?.data?.error || "No se pudo eliminar el detalle",
+            detail:
+              err.response?.data?.error || "No se pudo eliminar el detalle",
           });
         }
-      }
+      },
     });
   };
 
@@ -114,10 +116,13 @@ export default function DetallesTab({
   const costoTemplate = (rowData) => {
     const codigoMoneda = getCodigoMoneda();
     return rowData.costoUnitario
-      ? `${codigoMoneda} ${Number(rowData.costoUnitario).toLocaleString("es-PE", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`
+      ? `${codigoMoneda} ${Number(rowData.costoUnitario).toLocaleString(
+          "es-PE",
+          {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          },
+        )}`
       : "";
   };
 
@@ -131,12 +136,53 @@ export default function DetallesTab({
       : "";
   };
 
+  const familiaTemplate = (rowData) => {
+    return (
+      <span style={{ fontWeight: "bold" }}>
+        {rowData.producto?.familia?.nombre || "-"}
+      </span>
+    );
+  };
+
+  const subfamiliaTemplate = (rowData) => {
+    return (
+      <span style={{ fontWeight: "bold" }}>
+        {rowData.producto?.subfamilia?.nombre || "-"}
+      </span>
+    );
+  };
+
   const productoTemplate = (rowData) => {
-    return <span style={{ fontWeight: "bold" }}>{rowData.producto?.descripcionArmada}</span>;
+    return (
+      <span style={{ fontWeight: "bold" }}>
+        {rowData.producto?.descripcionArmada}
+      </span>
+    );
   };
 
   const unidadTemplate = (rowData) => {
-    return <span style={{ fontWeight: "bold" }}>{rowData.producto?.unidadMedida?.nombre}</span>;
+    return (
+      <span style={{ fontWeight: "bold" }}>
+        {rowData.producto?.unidadMedida?.nombre}
+      </span>
+    );
+  };
+
+  const proveedorTemplate = (rowData) => {
+    if (!rowData.proveedor) {
+      return <span style={{ fontWeight: "bold" }}>-</span>;
+    }
+
+    // Mostrar empresa solo si es diferente a la empresa del requerimiento
+    const proveedorEmpresaId = Number(rowData.proveedor.empresaId);
+    const requerimientoEmpresaId = Number(empresaId);
+    const esDiferenteEmpresa = proveedorEmpresaId !== requerimientoEmpresaId;
+
+    const texto = esDiferenteEmpresa
+      ? `${rowData.proveedor.razonSocial} - ${rowData.proveedor.empresa?.razonSocial || 'Sin Empresa'}`
+      : rowData.proveedor.razonSocial;
+
+    return <span style={{ fontWeight: "bold" }}>{texto}</span>;
   };
 
   const nroItemTemplate = (rowData, options) => {
@@ -144,7 +190,15 @@ export default function DetallesTab({
   };
 
   const accionesTemplate = (rowData) => (
-    <div style={{ display: "flex", flexDirection: "row", gap: "8px", justifyContent: "center", alignItems: "center" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        gap: "8px",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
       <Button
         icon={puedeEditarDetalles ? "pi pi-pencil" : "pi pi-eye"}
         className="p-button-text p-button-sm"
@@ -157,7 +211,11 @@ export default function DetallesTab({
         className="p-button-text p-button-danger p-button-sm"
         onClick={() => handleDelete(rowData)}
         disabled={!puedeEditarDetalles}
-        tooltip={puedeEditarDetalles ? "Eliminar detalle" : "No se puede eliminar en este estado"}
+        tooltip={
+          puedeEditarDetalles
+            ? "Eliminar detalle"
+            : "No se puede eliminar en este estado"
+        }
         style={{ padding: "0.25rem" }}
       />
     </div>
@@ -166,7 +224,7 @@ export default function DetallesTab({
   // Calcular total
   const totalGeneral = detalles.reduce(
     (sum, det) => sum + (Number(det.subtotal) || 0),
-    0
+    0,
   );
 
   // Helper para obtener código de moneda
@@ -191,7 +249,7 @@ export default function DetallesTab({
           border: "2px solid #dee2e6",
         }}
       >
-                <div style={{ flex: 1 }}>
+        <div style={{ flex: 1 }}>
           <label style={{ opacity: 0 }}>.</label>
           <Button
             label="Agregar Detalle"
@@ -200,7 +258,9 @@ export default function DetallesTab({
             onClick={handleAdd}
             disabled={!puedeEditarDetalles || !requerimientoId}
             style={{ width: "100%", fontWeight: "bold" }}
-            tooltip={!requerimientoId ? "Debe guardar el requerimiento primero" : ""}
+            tooltip={
+              !requerimientoId ? "Debe guardar el requerimiento primero" : ""
+            }
             tooltipOptions={{ position: "top" }}
           />
         </div>
@@ -222,7 +282,9 @@ export default function DetallesTab({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={{ fontWeight: "bold" }}>IGV ({porcentajeIGV || 0}%)</label>
+          <label style={{ fontWeight: "bold" }}>
+            IGV ({porcentajeIGV || 0}%)
+          </label>
           <InputNumber
             value={totalIGV || 0}
             mode="currency"
@@ -239,7 +301,9 @@ export default function DetallesTab({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={{ fontWeight: "bold", color: "#2196F3" }}>Precio Compra Total</label>
+          <label style={{ fontWeight: "bold", color: "#2196F3" }}>
+            Precio Compra Total
+          </label>
           <InputNumber
             value={total || 0}
             mode="currency"
@@ -259,7 +323,7 @@ export default function DetallesTab({
       </div>
 
       <DataTable
-        key={`detalle-table-${monedaId || 'default'}`}
+        key={`detalle-table-${monedaId || "default"}`}
         value={detalles}
         loading={loading}
         emptyMessage="No hay detalles agregados"
@@ -274,28 +338,48 @@ export default function DetallesTab({
         }}
         selectionMode="single"
         paginator
-        rows={10}
-        rowsPerPageOptions={[10, 15, 20, 40]}
+        rows={20}
+        rowsPerPageOptions={[20, 45, 80, 100]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} detalles"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} Items"
       >
         <Column
-          header="Nro Item"
+          header="N°"
           body={nroItemTemplate}
-          style={{ width: "80px", textAlign: "center", fontWeight: "bold", borderRight: "1px solid #dee2e6" }}
+          style={{
+            width: "80px",
+            textAlign: "center",
+            fontWeight: "bold",
+            borderRight: "1px solid #dee2e6",
+          }}
+          headerStyle={{ textAlign: "center" }}
         />
-        <Column 
-          field="producto.descripcionArmada" 
-          header="Producto" 
+        <Column
+          field="producto.familia.nombre"
+          header="Familia"
+          body={familiaTemplate}
+          style={{ width: "2rem", borderRight: "1px solid #dee2e6" }}
+        />
+        <Column
+          field="producto.subfamilia.nombre"
+          header="Subfamilia"
+          body={subfamiliaTemplate}
+          style={{ width: "2rem", borderRight: "1px solid #dee2e6" }}
+        />
+        <Column
+          field="producto.descripcionArmada"
+          header="Producto"
           body={productoTemplate}
-          style={{ borderRight: "1px solid #dee2e6" }}
         />
-        <Column 
-          field="cantidad" 
-          header="Cantidad" 
+        <Column
+          field="cantidad"
+          header="Cantidad"
           body={cantidadTemplate}
-          style={{ width: "100px", borderRight: "1px solid #dee2e6", textAlign: "right" }}
-          bodyStyle={{ textAlign: "right" }}
+          style={{
+            width: "100px",
+            borderRight: "1px solid #dee2e6",
+            textAlign: "right",
+          }}
         />
         <Column
           field="producto.unidadMedida.nombre"
@@ -304,18 +388,31 @@ export default function DetallesTab({
           style={{ borderRight: "1px solid #dee2e6", textAlign: "center" }}
         />
         <Column
+          field="proveedor.razonSocial"
+          header="Proveedor Elegido"
+          body={proveedorTemplate}
+          style={{ width: "200px", borderRight: "1px solid #dee2e6" }}
+          headerStyle={{ textAlign: "center" }}
+        />
+        <Column
           field="costoUnitario"
           header="P. Unit. Compra"
           body={costoTemplate}
-          style={{ width: "150px", borderRight: "1px solid #dee2e6", textAlign: "right" }}
-          bodyStyle={{ textAlign: "right" }}
+          style={{
+            width: "150px",
+            borderRight: "1px solid #dee2e6",
+            textAlign: "right",
+          }}
         />
         <Column
           field="subtotal"
           header="P. Total Compra"
           body={subtotalTemplate}
-          style={{ width: "150px", borderRight: "1px solid #dee2e6", textAlign: "right" }}
-          bodyStyle={{ textAlign: "right" }}
+          style={{
+            width: "150px",
+            borderRight: "1px solid #dee2e6",
+            textAlign: "right",
+          }}
         />
         <Column
           header="Acciones"
@@ -332,6 +429,7 @@ export default function DetallesTab({
         productos={productos}
         empresaId={empresaId}
         empresas={empresasOptions}
+        proveedores={proveedores}
         datosGenerales={datosGenerales}
         puedeEditarDetalles={puedeEditarDetalles}
         onSaveSuccess={handleSaveSuccess}

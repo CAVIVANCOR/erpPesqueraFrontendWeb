@@ -106,7 +106,7 @@ const schema = yup.object().shape({
     }),
   unidadAnguloId: yup
     .number()
-    .required("Unidad de ángulo es obligatoria")
+    .nullable()
     .transform((value, originalValue) => {
       return originalValue === "" ? null : value;
     }),
@@ -381,6 +381,9 @@ export default function ProductoForm({
   };
 
   const onSubmitForm = async (data) => {
+    console.log("✅ [ProductoForm] Formulario validado correctamente, procediendo a guardar...");
+    console.log("🔍 [ProductoForm] Datos del formulario:", data);
+    
     try {
       setLoading(true);
 
@@ -583,7 +586,18 @@ export default function ProductoForm({
             label={modoEdicion ? "Actualizar" : "Crear"}
             icon={modoEdicion ? "pi pi-check" : "pi pi-plus"}
             className="p-button-success"
-            onClick={handleSubmit(onSubmitForm)}
+            onClick={handleSubmit(
+              onSubmitForm,
+              (errors) => {
+                console.error("❌ [ProductoForm] Errores de validación:", errors);
+                toast.current?.show({
+                  severity: "error",
+                  summary: "Errores de Validación",
+                  detail: "Por favor, complete todos los campos obligatorios",
+                  life: 5000,
+                });
+              }
+            )}
             loading={loading}
             disabled={readOnly || !permisos.puedeEditar}
             tooltip={

@@ -15,6 +15,7 @@ import ProductoForm from "../producto/ProductoForm";
 import { useCatalogos } from "./productoSelector/hooks/useCatalogos";
 import { useProductoSelectorData } from "./productoSelector/hooks/useProductoSelectorData";
 import { useProductoSelectorFilters } from "./productoSelector/hooks/useProductoSelectorFilters";
+import { usePermissions } from "../../hooks/usePermissions";
 
 // Componentes modularizados
 import { ProductoSelectorHeader } from "./productoSelector/components/ProductoSelectorHeader";
@@ -78,6 +79,9 @@ export default function ProductoSelectorDialog({
     opcionesDinamicas,
     limpiarFiltros,
   } = useProductoSelectorFilters(items, catalogos, modo);
+
+  // Permisos para crear productos
+  const permisosProducto = usePermissions('productos');
 
   // Estados locales
   const [showProductoForm, setShowProductoForm] = useState(false);
@@ -168,6 +172,17 @@ export default function ProductoSelectorDialog({
    * Abre formulario de nuevo producto
    */
   const handleNuevoProducto = async () => {
+    // Validar permisos antes de abrir el formulario
+    if (!permisosProducto.puedeCrear) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear productos.",
+        life: 3000,
+      });
+      return;
+    }
+
     try {
       const [
         empresasData,
@@ -190,6 +205,12 @@ export default function ProductoSelectorDialog({
         (e) => Number(e.tipoProvieneDeId) === 2 && !e.cesado,
       );
       setEstadosIniciales(estadosProducto);
+      
+      // Buscar unidad métrica por defecto (MILIMETROS o la primera disponible)
+      const unidadMetricaDefault = unidadesMetricasData.find(
+        (u) => u.simbolo === "MM" || u.nombre?.toUpperCase().includes("MILIMETRO")
+      ) || unidadesMetricasData[0];
+      
       setUnidadesMetricas(unidadesMetricasData);
       setShowProductoForm(true);
     } catch (error) {
@@ -206,21 +227,35 @@ export default function ProductoSelectorDialog({
    * Maneja creación de producto
    */
   const handleProductoCreado = async (nuevoProducto) => {
+    console.log("🔍 [handleProductoCreado] Iniciando creación de producto...");
+    console.log("🔍 [handleProductoCreado] Datos recibidos:", nuevoProducto);
+    
     try {
-      await crearProducto(nuevoProducto);
+      console.log("🔍 [handleProductoCreado] Llamando a crearProducto...");
+      const resultado = await crearProducto(nuevoProducto);
+      console.log("✅ [handleProductoCreado] Producto creado exitosamente:", resultado);
+      
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
         detail: "Producto creado correctamente",
+        life: 3000,
       });
+      
       setShowProductoForm(false);
+      console.log("🔍 [handleProductoCreado] Recargando datos...");
       await cargarDatos();
+      console.log("✅ [handleProductoCreado] Datos recargados. Total items:", items.length);
+      console.log("✅ [handleProductoCreado] Proceso completado");
     } catch (error) {
-      console.error("Error al crear producto:", error);
+      console.error("❌ [handleProductoCreado] Error al crear producto:", error);
+      console.error("❌ [handleProductoCreado] Detalles del error:", error.response?.data);
+      
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al crear producto",
+        detail: error.response?.data?.message || error.message || "Error al crear producto",
+        life: 5000,
       });
     }
   };
@@ -297,6 +332,8 @@ export default function ProductoSelectorDialog({
             modoEdicion={false}
             loading={loadingForm}
             setLoading={setLoadingForm}
+            permisos={permisosProducto}
+            readOnly={false}
           />
         </Dialog>
       )}
