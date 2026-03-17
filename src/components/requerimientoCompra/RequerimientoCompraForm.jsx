@@ -461,17 +461,10 @@ export default function RequerimientoCompraForm({
 
   // Asignar automáticamente la serie "001" cuando se carguen las series (solo en modo creación)
   useEffect(() => {
-    console.log("🔍 [Serie Auto] Ejecutando useEffect", {
-      isEdit,
-      seriesDocLength: seriesDoc.length,
-      serieDocId: formData.serieDocId,
-      seriesDoc: seriesDoc.map(s => ({ id: s.id, serie: s.serie }))
-    });
 
 if (!defaultValues?.id && seriesDoc.length > 0 && !formData.serieDocId) {
         // Buscar la serie "002"
       const serie002 = seriesDoc.find((s) => s.serie === "002");
-      console.log("🔍 [Serie Auto] Serie 002 encontrada:", serie002);
 
       if (serie002) {
         const correlativoActual = Number(serie002.correlativo);
@@ -480,12 +473,6 @@ if (!defaultValues?.id && seriesDoc.length > 0 && !formData.serieDocId) {
           serie002.numCerosIzqSerie || 3,
           "0",
         );
-
-        console.log("✅ [Serie Auto] Asignando serie 002:", {
-          serieDocId: Number(serie002.id),
-          numSerie,
-          proximoCorrelativo
-        });
 
         // Asignar todos los valores de la serie
         setFormData((prev) => ({

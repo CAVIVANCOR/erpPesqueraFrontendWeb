@@ -1026,15 +1026,6 @@ export default function DatosLiquidacionPersonalPesca({
      const nombreEmbarcacion =
   primeraFaena?.embarcacion?.nombre || "SIN EMBARCACION";
 
-// ⭐ LOGS DE DEPURACIÓN (ANTES del objeto datosReporte)
-console.log("🔍 DEBUG - liqTripulantesPescaEstimado:", watch("liqTripulantesPescaEstimado"));
-console.log("🔍 DEBUG - liqTripulantesPescaReal:", watch("liqTripulantesPescaReal"));
-console.log("🔍 DEBUG - Todos los valores del formulario:", {
-  liqTripulantesPescaEstimado: watch("liqTripulantesPescaEstimado"),
-  liqTripulantesPescaReal: watch("liqTripulantesPescaReal"),
-  liqComisionPatronReal: watch("liqComisionPatronReal"),
-});
-
 // Preparar datos para el reporte
 const datosReporte = {
   temporada: temporadaCompleta,

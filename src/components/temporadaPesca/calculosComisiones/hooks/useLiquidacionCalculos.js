@@ -93,9 +93,6 @@ export const useLiquidacionCalculos = (temporadaId, empresaId, setValue, toast, 
      const resultado = await calcularLiquidacionesAPI(temporadaId);
 
 // ⭐ LOG DE DEPURACIÓN - Ver respuesta completa del backend
-console.log("🔍 BACKEND RESPONSE - resultado completo:", resultado);
-console.log("🔍 BACKEND RESPONSE - liqTripulantesPescaEstimado:", resultado.liqTripulantesPescaEstimado);
-console.log("🔍 BACKEND RESPONSE - liqTripulantesPescaReal:", resultado.liqTripulantesPescaReal);
 
       // ⭐ GUARDAR BASES DE CÁLCULO
       setBaseLiquidacionEstimada(resultado.baseLiquidacionEstimada || 0);

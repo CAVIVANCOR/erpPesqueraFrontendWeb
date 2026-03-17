@@ -227,13 +227,9 @@ export default function ProductoSelectorDialog({
    * Maneja creación de producto
    */
   const handleProductoCreado = async (nuevoProducto) => {
-    console.log("🔍 [handleProductoCreado] Iniciando creación de producto...");
-    console.log("🔍 [handleProductoCreado] Datos recibidos:", nuevoProducto);
     
     try {
-      console.log("🔍 [handleProductoCreado] Llamando a crearProducto...");
       const resultado = await crearProducto(nuevoProducto);
-      console.log("✅ [handleProductoCreado] Producto creado exitosamente:", resultado);
       
       toast.current?.show({
         severity: "success",
@@ -243,10 +239,7 @@ export default function ProductoSelectorDialog({
       });
       
       setShowProductoForm(false);
-      console.log("🔍 [handleProductoCreado] Recargando datos...");
       await cargarDatos();
-      console.log("✅ [handleProductoCreado] Datos recargados. Total items:", items.length);
-      console.log("✅ [handleProductoCreado] Proceso completado");
     } catch (error) {
       console.error("❌ [handleProductoCreado] Error al crear producto:", error);
       console.error("❌ [handleProductoCreado] Detalles del error:", error.response?.data);

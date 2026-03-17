@@ -381,9 +381,6 @@ export default function ProductoForm({
   };
 
   const onSubmitForm = async (data) => {
-    console.log("✅ [ProductoForm] Formulario validado correctamente, procediendo a guardar...");
-    console.log("🔍 [ProductoForm] Datos del formulario:", data);
-    
     try {
       setLoading(true);
 
