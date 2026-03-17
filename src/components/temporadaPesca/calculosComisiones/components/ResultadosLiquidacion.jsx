@@ -42,12 +42,17 @@ export const ResultadosLiquidacion = ({
   temporada = null,
   toast = null,
   comisionesGeneradas = [], // ⭐ NUEVO: Comisiones generadas del hook
+  esTemporadaSoloAlquiler = false,
+  zona = "NORTE", // ⭐ NUEVO: Zona de la temporada
 }) => {
+  // ⭐ CALCULAR LABEL DINÁMICO PARA INGRESOS DE ALQUILER
+  const labelIngresoAlquiler = esTemporadaSoloAlquiler
+    ? `Ingresos Alq. Cuota ${zona}` // Solo alquiler: misma zona
+    : `Ingresos Alq. Cuota ${zona === "NORTE" ? "SUR" : "NORTE"}`; // Operativa: zona opuesta
   // Construir la fórmula estimada en una sola línea
   const formulaEstimada = `((${Number(cuotaPropiaTon || 0).toFixed(2)} + ${Number(cuotaAlquiladaTon || 0).toFixed(2)}) Ton × $${Number(precioPorTonDolares || 0).toFixed(2)}) × ${Number(porcentajeBaseLiqPesca || 0).toFixed(2)}%`;
   // Construir la fórmula real en una sola línea
-  const formulaReal = `(${Number(toneladasReales || 0).toFixed(2)} Ton × $${Number(precioPorTonDolares || 0).toFixed(2)}) × ${Number(porcentajeBaseLiqPesca || 0).toFixed(2)}%`;
-  // ⭐ CALCULAR Ingreso Total Temporada (NO es campo de BD, es cálculo)
+  const formulaReal = `(${Number(toneladasCapturadasTemporada || 0).toFixed(2)} Ton × $${Number(precioPorTonDolares || 0).toFixed(2)}) × ${Number(porcentajeBaseLiqPesca || 0).toFixed(2)}%`;  // ⭐ CALCULAR Ingreso Total Temporada (NO es campo de BD, es cálculo)
   const ingresoTotalTemporada = useMemo(() => {
     return (
       Number(toneladasCapturadasTemporada || 0) *
@@ -79,20 +84,6 @@ export const ResultadosLiquidacion = ({
     precioPorTonDolaresAlternativo,
     porcentajeBaseLiqPesca, // ⭐ AGREGAR a dependencias
     descargas,
-  ]);
-
-  // ⭐ NUEVO: CALCULAR Base Liquidación Estimada
-  const baseLiquidacionEstimadaCalculada = useMemo(() => {
-    const totalToneladas =
-      Number(cuotaPropiaTon || 0) + Number(cuotaAlquiladaTon || 0);
-    const ingresoTotal = totalToneladas * Number(precioPorTonDolares || 0);
-    const porcentaje = Number(porcentajeBaseLiqPesca || 0) / 100;
-    return ingresoTotal * porcentaje;
-  }, [
-    cuotaPropiaTon,
-    cuotaAlquiladaTon,
-    precioPorTonDolares,
-    porcentajeBaseLiqPesca,
   ]);
 
   // ⭐ CALCULAR Total Ingresos Facturación Pesca (precios especiales/globales)
@@ -160,6 +151,17 @@ export const ResultadosLiquidacion = ({
         }}
       >
         <div style={{ flex: 1 }}>
+          {/* Mensaje informativo para temporadas de solo alquiler */}
+          {esTemporadaSoloAlquiler && (
+            <Message
+              severity="warn"
+              text="⚠️ TEMPORADA DE SOLO ALQUILER: Los ingresos se calculan automáticamente en base a la cuota propia y el precio de alquiler."
+              style={{
+                marginBottom: "1rem",
+                display: "block",
+              }}
+            />
+          )}
           <h3>Liquidaciones Estimadas</h3>
         </div>
         <div style={{ flex: 2 }}>
@@ -223,7 +225,7 @@ export const ResultadosLiquidacion = ({
 
         <div style={{ flex: 0.5 }}>
           <label style={{ fontSize: getResponsiveFontSize() }}>
-            Ingresos Alq. Cuota Sur
+            {labelIngresoAlquiler}
           </label>
           <Controller
             name="ingresosPorAlquilerCuotaSur"
@@ -263,7 +265,7 @@ export const ResultadosLiquidacion = ({
         style={{
           display: "flex",
           gap: 10,
-          alignItems:"end",
+          alignItems: "end",
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
@@ -284,7 +286,7 @@ export const ResultadosLiquidacion = ({
           </label>
           <InputNumber
             id="baseLiquidacionEstimadaCalc"
-            value={baseLiquidacionEstimadaCalculada}
+            value={baseLiquidacionEstimada}
             mode="decimal"
             minFractionDigits={2}
             maxFractionDigits={2}

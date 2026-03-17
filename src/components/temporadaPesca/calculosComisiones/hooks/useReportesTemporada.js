@@ -37,11 +37,17 @@ export const useReportesTemporada = () => {
   const [showExcelViewerLiqComisionista, setShowExcelViewerLiqComisionista] = useState(false);
   const [reportDataLiqComisionista, setReportDataLiqComisionista] = useState(null);
 
-  // Estados para reporte de Comisiones PMM
+   // Estados para reporte de Comisiones PMM
   const [showFormatSelectorComisionesPMM, setShowFormatSelectorComisionesPMM] = useState(false);
   const [showPDFViewerComisionesPMM, setShowPDFViewerComisionesPMM] = useState(false);
   const [showExcelViewerComisionesPMM, setShowExcelViewerComisionesPMM] = useState(false);
   const [reportDataComisionesPMM, setReportDataComisionesPMM] = useState(null);
+
+  // Estados para reporte de Consolidado Pesca
+  const [showFormatSelectorConsolidadoPesca, setShowFormatSelectorConsolidadoPesca] = useState(false);
+  const [showPDFViewerConsolidadoPesca, setShowPDFViewerConsolidadoPesca] = useState(false);
+  const [showExcelViewerConsolidadoPesca, setShowExcelViewerConsolidadoPesca] = useState(false);
+  const [reportDataConsolidadoPesca, setReportDataConsolidadoPesca] = useState(null);
 
   // Objeto con todos los estados de reportes
   const reportStates = {
@@ -95,7 +101,7 @@ export const useReportesTemporada = () => {
       reportData: reportDataLiqComisionista,
       setReportData: setReportDataLiqComisionista,
     },
-    comisionesPMM: {
+        comisionesPMM: {
       showFormatSelector: showFormatSelectorComisionesPMM,
       setShowFormatSelector: setShowFormatSelectorComisionesPMM,
       showPDFViewer: showPDFViewerComisionesPMM,
@@ -104,6 +110,16 @@ export const useReportesTemporada = () => {
       setShowExcelViewer: setShowExcelViewerComisionesPMM,
       reportData: reportDataComisionesPMM,
       setReportData: setReportDataComisionesPMM,
+    },
+    consolidadoPesca: {
+      showFormatSelector: showFormatSelectorConsolidadoPesca,
+      setShowFormatSelector: setShowFormatSelectorConsolidadoPesca,
+      showPDFViewer: showPDFViewerConsolidadoPesca,
+      setShowPDFViewer: setShowPDFViewerConsolidadoPesca,
+      showExcelViewer: showExcelViewerConsolidadoPesca,
+      setShowExcelViewer: setShowExcelViewerConsolidadoPesca,
+      reportData: reportDataConsolidadoPesca,
+      setReportData: setReportDataConsolidadoPesca,
     },
   };
 

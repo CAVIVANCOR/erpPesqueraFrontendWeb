@@ -55,8 +55,14 @@ export const BotonesReportes = ({
       severity: "secondary",
       tooltip: "Generar reporte de comisiones Patrón, Motorista y Marineros",
     },
+    {
+      id: "consolidadoPesca",
+      label: "Consolidado Pesca",
+      icon: "pi pi-file-excel",
+      severity: "contrast",
+      tooltip: "Generar reporte consolidado de pesca industrial",
+    },
   ];
-
   return (
     <Card title="Reportes">
       <div

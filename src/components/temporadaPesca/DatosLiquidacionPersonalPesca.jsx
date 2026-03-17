@@ -51,7 +51,8 @@ import { generarLiquidacionComisionistaPDF } from "./reports/generarLiquidacionC
 import { generarLiquidacionComisionistaExcel } from "./reports/generarLiquidacionComisionistaExcel";
 import { generarComisionesPMMPDF } from "./reports/generarComisionesPMMPDF";
 import { generarComisionesPMMExcel } from "./reports/generarComisionesPMMExcel";
-
+import { generarConsolidadoPescaPDF } from "./reports/generarConsolidadoPescaPDF";
+import { generarConsolidadoPescaExcel } from "./reports/generarConsolidadoPescaExcel";
 // ⭐ IMPORTS DE HOOKS PERSONALIZADOS
 import { useDescargasTemporada } from "./calculosComisiones/hooks/useDescargasTemporada";
 import { useComisionesFidelizacion } from "./calculosComisiones/hooks/useComisionesFidelizacion";
@@ -76,6 +77,7 @@ export default function DatosLiquidacionPersonalPesca({
   onGuardarTemporada,
 }) {
   const toast = useRef(null);
+  const calculoInicialEjecutado = useRef(false);
   const temporadaId = watch("id");
   const empresaId = watch("empresaId");
 
@@ -144,6 +146,7 @@ export default function DatosLiquidacionPersonalPesca({
     const cargarTemporada = async () => {
       if (!temporadaId) {
         setTemporada(null);
+        calculoInicialEjecutado.current = false; // Resetear bandera
         return;
       }
 
@@ -151,6 +154,7 @@ export default function DatosLiquidacionPersonalPesca({
         const temporadaCompleta =
           await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
         setTemporada(temporadaCompleta);
+        calculoInicialEjecutado.current = false; // Resetear para permitir cálculo de nueva temporada
       } catch (error) {
         console.error("Error al cargar temporada completa:", error);
         setTemporada(null);
@@ -192,12 +196,13 @@ export default function DatosLiquidacionPersonalPesca({
     watch("entidadComercialComisionistaAlquiler"),
   ]);
 
-  // Calcular liquidaciones automáticamente al cargar la temporada
-  // useEffect(() => {
-  //   if (temporadaId && !readOnly) {
-  //     handleCalcularLiquidaciones();
-  //   }
-  // }, [temporadaId]);
+  // Calcular liquidaciones automáticamente al cargar la temporada (SOLO UNA VEZ)
+  useEffect(() => {
+    if (temporadaId && !readOnly && !calculoInicialEjecutado.current) {
+      calculoInicialEjecutado.current = true;
+      calcularLiquidaciones();
+    }
+  }, [temporadaId, readOnly]);
 
   /**
    * Función para cargar parámetros de liquidación desde la empresa
@@ -945,6 +950,153 @@ export default function DatosLiquidacionPersonalPesca({
   };
 
   /**
+   * Helper: Obtener DetCuotaPesca ALQUILADA
+   * Filtro: empresaId, activo=true, zona, esAlquiler=false, cuotaPropia=false
+   */
+  const obtenerDetCuotaPescaAlquilada = async (temporada) => {
+    try {
+      const detalles = await getDetallesCuotaPesca({
+        empresaId: temporada.empresaId,
+      });
+
+      // Filtrar manualmente según los criterios especificados
+      const detalleFiltrado = detalles.find(
+        (det) =>
+          det.activo === true &&
+          det.zona === temporada.zona &&
+          det.esAlquiler === false &&
+          det.cuotaPropia === false,
+      );
+
+      return detalleFiltrado || null;
+    } catch (error) {
+      console.error("Error al obtener DetCuotaPesca alquilada:", error);
+      return null;
+    }
+  };
+
+  /**
+   * Helper: Obtener DetCuotaPesca PROPIA
+   * Filtro: empresaId, activo=true, zona, esAlquiler=true, cuotaPropia=true
+   */
+  const obtenerDetCuotaPescaPropia = async (temporada) => {
+    try {
+      const detalles = await getDetallesCuotaPesca({
+        empresaId: temporada.empresaId,
+      });
+
+      // Filtrar manualmente según los criterios especificados
+      const detalleFiltrado = detalles.find(
+        (det) =>
+          det.activo === true &&
+          det.zona === temporada.zona &&
+          det.esAlquiler === true &&
+          det.cuotaPropia === true,
+      );
+
+      return detalleFiltrado || null;
+    } catch (error) {
+      console.error("Error al obtener DetCuotaPesca propia:", error);
+      return null;
+    }
+  };
+
+  /**
+   * Handler para generar Reporte Consolidado Pesca Industrial
+   */
+  const handleConsolidadoPesca = async () => {
+    if (!temporadaId) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Advertencia",
+        detail: "Debe guardar la temporada antes de generar el reporte",
+        life: 3000,
+      });
+      return;
+    }
+
+    try {
+      // Obtener temporada completa con relaciones
+      const temporadaCompleta =
+        await temporadaPescaService.getTemporadaPescaPorId(temporadaId);
+
+      // Obtener nombre de embarcación (primera faena activa)
+      const faenas = await getFaenasPesca(temporadaId);
+      const primeraFaena = faenas.find((f) => f.embarcacion?.activo);
+     const nombreEmbarcacion =
+  primeraFaena?.embarcacion?.nombre || "SIN EMBARCACION";
+
+// ⭐ LOGS DE DEPURACIÓN (ANTES del objeto datosReporte)
+console.log("🔍 DEBUG - liqTripulantesPescaEstimado:", watch("liqTripulantesPescaEstimado"));
+console.log("🔍 DEBUG - liqTripulantesPescaReal:", watch("liqTripulantesPescaReal"));
+console.log("🔍 DEBUG - Todos los valores del formulario:", {
+  liqTripulantesPescaEstimado: watch("liqTripulantesPescaEstimado"),
+  liqTripulantesPescaReal: watch("liqTripulantesPescaReal"),
+  liqComisionPatronReal: watch("liqComisionPatronReal"),
+});
+
+// Preparar datos para el reporte
+const datosReporte = {
+  temporada: temporadaCompleta,
+  descargas: descargasData,
+  comisionesGeneradas: comisionesGeneradas,
+  baseLiquidacionReal: watch("baseLiquidacionReal") || 0,
+  
+  // ✅ Estos SÍ son campos del formulario (funcionan con watch)
+  liqComisionPatronReal: watch("liqComisionPatronReal") || 0,
+  liqComisionMotoristaReal: watch("liqComisionMotoristaReal") || 0,
+  liqComisionPangueroReal: watch("liqComisionPangueroReal") || 0,
+  liqTripulantesPescaEstimado: watch("liqTripulantesPescaEstimado") || 0,
+  liqTripulantesPescaReal: watch("liqTripulantesPescaReal") || 0,
+  
+  // ⭐ CALCULAR liqComisionAlquilerAdicional (NO es campo del formulario)
+  liqComisionAlquilerAdicional:
+    Number(temporadaCompleta.cuotaAlquiladaTon || 0) *
+    Number(temporadaCompleta.precioPorTonComisionAlquilerDolares || 0),
+  
+ // ⭐ CALCULAR fidelizacionPersonal (NO es campo del formulario)
+// Fórmula: SUMA de todas las comisiones.montoPagarFidelizacionDolares
+fidelizacionPersonal: comisionesGeneradas.reduce((total, comision) => {
+  return total + Number(comision.montoPagarFidelizacionDolares || 0);
+}, 0),
+  
+  cantPersonalCalcComisionMotorista:
+    watch("cantPersonalCalcComisionMotorista") || 0,
+  nombreEmbarcacion: nombreEmbarcacion,
+  ingresosTotalPesca: watch("ingresosTotalPesca") || 0,
+  ingresoFidelizacion: watch("ingresoFidelizacion") || 0,
+  ingresosPorAlquilerCuotaSur: watch("ingresosPorAlquilerCuotaSur") || 0,
+  
+  // Agregar estos datos al objeto datosReporte:
+  faenas: faenas,
+  detCuotaPescaAlquilada:
+    await obtenerDetCuotaPescaAlquilada(temporadaCompleta),
+  detCuotaPescaPropia:
+    await obtenerDetCuotaPescaPropia(temporadaCompleta),
+  
+  // ⭐ CALCULAR totalIngresosCalculado (NO es campo del formulario)
+  // Fórmula: cuotaPropiaTon × precioPorTonDolares × (porcentajeBaseLiqPesca / 100)
+  totalIngresosCalculado:
+    Number(temporadaCompleta.cuotaPropiaTon || 0) *
+    Number(temporadaCompleta.precioPorTonDolares || 0) *
+    (Number(temporadaCompleta.porcentajeBaseLiqPesca || 0) / 100),
+};
+
+      // Mostrar selector de formato
+      reportStates.consolidadoPesca.setShowFormatSelector(true);
+      reportStates.consolidadoPesca.setReportData(datosReporte);
+    } catch (error) {
+      console.error("Error al preparar reporte consolidado:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.message || "Error al preparar el reporte consolidado",
+        life: 5000,
+      });
+    }
+  };
+
+  /**
    * Handler genérico para generar reportes
    */
   const handleGenerarReporte = (tipoReporte) => {
@@ -955,6 +1107,7 @@ export default function DatosLiquidacionPersonalPesca({
       liquidacionArmadores: handleLiquidacionArmadores,
       liquidacionComisionista: handleLiquidacionComisionista,
       comisionesPMM: handleComisionesPMM,
+      consolidadoPesca: handleConsolidadoPesca,
     };
 
     const handler = reportHandlers[tipoReporte];
@@ -1191,6 +1344,8 @@ export default function DatosLiquidacionPersonalPesca({
           temporada={temporada}
           toast={toast}
           comisionesGeneradas={comisionesGeneradas} // ⭐ NUEVO: Pasar comisiones
+          esTemporadaSoloAlquiler={watch("esTemporadaSoloAlquiler") || false}
+          zona={watch("zona") || "NORTE"}
         />
         {/* ⭐ COMPONENTE: Botones de Reportes */}
         <BotonesReportes
@@ -1378,6 +1533,43 @@ export default function DatosLiquidacionPersonalPesca({
           data={reportStates.comisionesPMM.reportData}
           generateExcel={generarComisionesPMMExcel}
           fileName={`comisiones_pmm_${reportStates.comisionesPMM.reportData?.temporada?.nombre || "temporada"}.xlsx`}
+        />
+
+        {/* ⭐ COMPONENTES PARA REPORTE CONSOLIDADO PESCA */}
+        <ReportFormatSelector
+          visible={reportStates.consolidadoPesca.showFormatSelector}
+          onHide={() =>
+            reportStates.consolidadoPesca.setShowFormatSelector(false)
+          }
+          onSelectPDF={() => {
+            reportStates.consolidadoPesca.setShowFormatSelector(false);
+            reportStates.consolidadoPesca.setShowPDFViewer(true);
+          }}
+          onSelectExcel={() => {
+            reportStates.consolidadoPesca.setShowFormatSelector(false);
+            reportStates.consolidadoPesca.setShowExcelViewer(true);
+          }}
+          title="Reporte Consolidado Pesca Industrial"
+        />
+        <TemporaryPDFViewer
+          visible={reportStates.consolidadoPesca.showPDFViewer}
+          onHide={() => {
+            reportStates.consolidadoPesca.setShowPDFViewer(false);
+            reportStates.consolidadoPesca.setShowFormatSelector(false);
+          }}
+          data={reportStates.consolidadoPesca.reportData}
+          generatePDF={generarConsolidadoPescaPDF}
+          fileName={`consolidado_pesca_${reportStates.consolidadoPesca.reportData?.temporada?.nombre || "temporada"}.pdf`}
+        />
+        <TemporaryExcelViewer
+          visible={reportStates.consolidadoPesca.showExcelViewer}
+          onHide={() => {
+            reportStates.consolidadoPesca.setShowExcelViewer(false);
+            reportStates.consolidadoPesca.setShowFormatSelector(false);
+          }}
+          data={reportStates.consolidadoPesca.reportData}
+          generateExcel={generarConsolidadoPescaExcel}
+          fileName={`consolidado_pesca_${reportStates.consolidadoPesca.reportData?.temporada?.nombre || "temporada"}.xlsx`}
         />
 
         <ConfirmDialog />

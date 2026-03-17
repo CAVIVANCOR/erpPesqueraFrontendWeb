@@ -152,6 +152,7 @@ const TemporadaPescaForm = ({
       precioPorTonComisionAlquilerDolares: null,
       entidadEmpresarialAlquiladaId: null,
       entidadComercialComisionistaAlquiler: null,
+      esTemporadaSoloAlquiler: editingItem?.esTemporadaSoloAlquiler || false,
     },
   });
 
@@ -483,19 +484,6 @@ const TemporadaPescaForm = ({
               resultado.id,
             );
 
-            // ⭐ DIAGNÓSTICO: Verificar valor recibido del backend
-            console.log("📥 TEMPORADA RECIBIDA EN FRONTEND:", {
-              id: temporadaActualizada?.id,
-              precioPorTonDolares: temporadaActualizada?.precioPorTonDolares,
-              precioPorTonDolaresAlternativo:
-                temporadaActualizada?.precioPorTonDolaresAlternativo,
-              precioPorTonAlquilerDolares:
-                temporadaActualizada?.precioPorTonAlquilerDolares,
-              tipoDato:
-                typeof temporadaActualizada?.precioPorTonDolaresAlternativo,
-              valorPreservado: valorPreservado,
-            });
-
             // Actualizar el formulario con los datos recalculados
             if (temporadaActualizada) {
               // Convertir el objeto de BD al formato que espera el formulario
@@ -526,19 +514,8 @@ const TemporadaPescaForm = ({
                       )
                     : valorPreservado,
               };
-
-              // ⭐ DIAGNÓSTICO: Verificar datosCompletos antes del reset
-              console.log("🔄 DATOS COMPLETOS ANTES DE RESET:", {
-                precioPorTonDolares: datosCompletos.precioPorTonDolares,
-                precioPorTonDolaresAlternativo:
-                  datosCompletos.precioPorTonDolaresAlternativo,
-                precioPorTonAlquilerDolares:
-                  datosCompletos.precioPorTonAlquilerDolares,
-              });
-
               reset(datosCompletos);
             }
-
             // Verificar temporada iniciada
             await verificarTemporadaIniciada(resultado.id);
           } catch (reloadError) {
@@ -546,7 +523,6 @@ const TemporadaPescaForm = ({
           }
         }, 500); // Esperar 500ms para que el backend complete el recálculo
       }
-
       setValidandoSuperposicion(false);
     } catch (error) {
       console.error("Error en handleFormSubmit:", error);
