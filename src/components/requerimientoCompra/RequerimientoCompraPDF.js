@@ -11,14 +11,12 @@ import { dibujaTotalesYFirmaPDFRC } from "./dibujaTotalesYFirmaPDFRC";
  * @param {Object} requerimiento - Datos del requerimiento de compra
  * @param {Array} detalles - Detalles del requerimiento
  * @param {Object} empresa - Datos de la empresa
- * @param {Boolean} mostrarProveedor - Mostrar proveedor en el PDF
  * @returns {Promise<Object>} - {success: boolean, urlPdf: string, error?: string}
  */
 export async function generarYSubirPDFRequerimientoCompra(
   requerimiento,
   detalles,
   empresa,
-  mostrarProveedor = false,
 ) {
   try {
     // 1. Generar el PDF
@@ -26,7 +24,6 @@ export async function generarYSubirPDFRequerimientoCompra(
       requerimiento,
       detalles,
       empresa,
-      mostrarProveedor,
     );
 
     // 2. Crear un blob del PDF
@@ -34,9 +31,10 @@ export async function generarYSubirPDFRequerimientoCompra(
 
     // 3. Crear FormData - El backend generará el nombre automáticamente
     const formData = new FormData();
-    formData.append("files", blob, "temp.pdf"); // Nombre temporal, el backend lo reemplazará
+    formData.append("files", blob, "temp.pdf");
     formData.append("moduleName", "requerimiento-compra");
     formData.append("entityId", requerimiento.id);
+    
     // 4. Subir al servidor usando endpoint estandarizado
     const token = useAuthStore.getState().token;
     const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/merge`, {
@@ -46,10 +44,12 @@ export async function generarYSubirPDFRequerimientoCompra(
       },
       body: formData,
     });
+    
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || "Error al subir el PDF");
     }
+    
     const resultado = await response.json();
     return {
       success: true,
@@ -66,14 +66,12 @@ export async function generarYSubirPDFRequerimientoCompra(
  * @param {Object} requerimiento - Datos del requerimiento
  * @param {Array} detalles - Detalles del requerimiento
  * @param {Object} empresa - Datos de la empresa
- * @param {Boolean} mostrarProveedor - Mostrar proveedor en el PDF
  * @returns {Promise<Uint8Array>} - Bytes del PDF generado
  */
 async function generarPDFRequerimientoCompra(
   requerimiento,
   detalles,
   empresa,
-  mostrarProveedor = false,
 ) {
   // Funciones de formateo
   const formatearFecha = (fecha) => {
@@ -85,9 +83,23 @@ async function generarPDFRequerimientoCompra(
     return `${dia}/${mes}/${anio}`;
   };
 
+  // ⭐ LÓGICA INTELIGENTE BASADA EN esConCotizacion
+  let mostrarProveedorEncabezado = false;
+  let mostrarColumnaProveedor = false;
+
+  if (requerimiento.esConCotizacion === false) {
+    // COMPRA DIRECTA: Proveedor en encabezado
+    mostrarProveedorEncabezado = true;
+    mostrarColumnaProveedor = false;
+  } else {
+    // CON COTIZACIÓN: Proveedor por producto en detalle
+    mostrarProveedorEncabezado = false;
+    mostrarColumnaProveedor = true;
+  }
+
   // Crear nuevo documento PDF en orientación horizontal
   const pdfDoc = await PDFDocument.create();
-  const pages = []; // Array para trackear todas las páginas
+  const pages = [];
   let page = pdfDoc.addPage([841.89, 595.28]); // A4 horizontal
   pages.push(page);
   const { width, height } = page.getSize();
@@ -133,7 +145,7 @@ async function generarPDFRequerimientoCompra(
     requerimiento,
     datosIzquierda,
     datosDerecha,
-    mostrarProveedor,
+    mostrarProveedor: mostrarProveedorEncabezado,
     width,
     height,
     margin,
@@ -145,16 +157,34 @@ async function generarPDFRequerimientoCompra(
   // TABLA DE DETALLES
   yPosition -= 8;
 
-  // Encabezados de tabla con anchos ajustados
-  const colWidths = [25, 340, 40, 180, 70, 80];
-  const headers = [
-    "#",
-    "Producto",
-    "Cant.",
-    "Unidad/Empaque",
-    "P. Unit. Compra",
-    "Precio Compra",
-  ];
+  // Encabezados de tabla con anchos ajustados según si se muestra columna de proveedor
+  let colWidths, headers;
+  
+  if (mostrarColumnaProveedor) {
+    // CON COTIZACIÓN: Con columna de proveedor por producto
+    colWidths = [25, 140, 240, 40, 140, 70, 80];
+    headers = [
+      "#",
+      "Proveedor",
+      "Producto",
+      "Cant.",
+      "Unidad/Empaque",
+      "P. Unit. Compra",
+      "Precio Compra",
+    ];
+  } else {
+    // COMPRA DIRECTA: Sin columna de proveedor
+    colWidths = [25, 340, 40, 180, 70, 80];
+    headers = [
+      "#",
+      "Producto",
+      "Cant.",
+      "Unidad/Empaque",
+      "P. Unit. Compra",
+      "Precio Compra",
+    ];
+  }
+
   const tableWidth = colWidths.reduce((sum, width) => sum + width, 0);
   const tableStartX = margin;
 
@@ -173,7 +203,7 @@ async function generarPDFRequerimientoCompra(
         requerimiento,
         datosIzquierda,
         datosDerecha,
-        mostrarProveedor,
+        mostrarProveedor: mostrarProveedorEncabezado,
         width,
         height,
         margin,
@@ -181,7 +211,7 @@ async function generarPDFRequerimientoCompra(
         fontBold,
         fontNormal,
       });
-      yPos -= 8; // Espacio antes de la tabla
+      yPos -= 8;
     }
 
     // Título
@@ -219,9 +249,18 @@ async function generarPDFRequerimientoCompra(
 
       // Alinear números a la derecha, texto a la izquierda
       let textX = colX + 3;
-      if (i === 0 || i === 2 || i === 4 || i === 5) {
-        const textWidth = fontBold.widthOfTextAtSize(header, 9);
-        textX = colX + colWidth - textWidth - 3;
+      if (mostrarColumnaProveedor) {
+        // Con proveedor: columnas numéricas son 0, 3, 5, 6
+        if (i === 0 || i === 3 || i === 5 || i === 6) {
+          const textWidth = fontBold.widthOfTextAtSize(header, 9);
+          textX = colX + colWidth - textWidth - 3;
+        }
+      } else {
+        // Sin proveedor: columnas numéricas son 0, 2, 4, 5
+        if (i === 0 || i === 2 || i === 4 || i === 5) {
+          const textWidth = fontBold.widthOfTextAtSize(header, 9);
+          textX = colX + colWidth - textWidth - 3;
+        }
       }
 
       pag.drawText(header, {
@@ -248,24 +287,22 @@ async function generarPDFRequerimientoCompra(
     return yPos - 18;
   };
 
-  // Dibujar encabezado inicial (sin encabezado completo porque ya se dibujó arriba)
+  // Dibujar encabezado inicial
   yPosition = await dibujarEncabezadoTabla(page, yPosition, false);
 
   // Calcular totales
   let valorCompra = 0;
 
-  // Dibujar filas de productos (usar for loop para permitir await)
+  // Dibujar filas de productos
   let xPos;
   for (let index = 0; index < detalles.length; index++) {
     const detalle = detalles[index];
 
     // Verificar si hay espacio para la fila (umbral de 180px)
     if (yPosition < 180) {
-      // Nueva página si no hay espacio
       page = pdfDoc.addPage([width, height]);
       pages.push(page);
-      yPosition = height - 50; // Posición inicial
-      // Redibujar encabezado completo + tabla en la nueva página
+      yPosition = height - 50;
       yPosition = await dibujarEncabezadoTabla(page, yPosition, true);
     }
 
@@ -279,22 +316,42 @@ async function generarPDFRequerimientoCompra(
       detalle.producto?.nombre ||
       "PRODUCTO";
 
-    // Calcular altura necesaria para la fila (producto + observaciones)
+    // Calcular altura necesaria para la fila
     const observaciones = detalle.observaciones || "";
-    const maxCharsPerLine = 60; // Caracteres máximos por línea en la columna de producto
+    const maxCharsPerLine = mostrarColumnaProveedor ? 40 : 60;
     const observacionesLines = observaciones
       ? Math.ceil(observaciones.length / maxCharsPerLine)
       : 0;
-    const rowHeight = 18 + observacionesLines * 10; // Altura base + líneas de observaciones + padding
+    const rowHeight = 18 + observacionesLines * 10;
 
-    const rowData = [
-      String(index + 1),
-      nombreProducto,
-      String(detalle.cantidad || 0),
-      detalle.producto?.unidadMedida?.nombre || "-",
-      `S/ ${formatearNumero(Number(detalle.costoUnitario || 0))}`,
-      `S/ ${formatearNumero(Number(detalle.subtotal || 0))}`,
-    ];
+    // Preparar datos de la fila
+    let rowData;
+    
+    if (mostrarColumnaProveedor) {
+      // CON COTIZACIÓN: Incluir proveedor ANTES del producto
+      const nombreProveedor = detalle.proveedor?.razonSocial || 
+                              detalle.proveedor?.nombre || 
+                              "-";
+      rowData = [
+        String(index + 1),
+        nombreProveedor,
+        nombreProducto,
+        String(detalle.cantidad || 0),
+        detalle.producto?.unidadMedida?.nombre || "-",
+        `S/ ${formatearNumero(Number(detalle.costoUnitario || 0))}`,
+        `S/ ${formatearNumero(Number(detalle.subtotal || 0))}`,
+      ];
+    } else {
+      // COMPRA DIRECTA: Sin proveedor
+      rowData = [
+        String(index + 1),
+        nombreProducto,
+        String(detalle.cantidad || 0),
+        detalle.producto?.unidadMedida?.nombre || "-",
+        `S/ ${formatearNumero(Number(detalle.costoUnitario || 0))}`,
+        `S/ ${formatearNumero(Number(detalle.subtotal || 0))}`,
+      ];
+    }
 
     // Dibujar datos con alineación correcta
     rowData.forEach((data, i) => {
@@ -305,13 +362,33 @@ async function generarPDFRequerimientoCompra(
       let textX = colX + 3;
       let textY = yPosition;
 
-      if (i === 0 || i === 2 || i === 4 || i === 5) {
-        // Columnas numéricas: alinear a la derecha
-        const textWidth = fontNormal.widthOfTextAtSize(data, 8);
-        textX = colX + colWidth - textWidth - 3;
+      if (mostrarColumnaProveedor) {
+        // Con proveedor: columnas numéricas son 0, 3, 5, 6
+        if (i === 0 || i === 3 || i === 5 || i === 6) {
+          const textWidth = fontNormal.widthOfTextAtSize(data, 8);
+          textX = colX + colWidth - textWidth - 3;
+        }
+      } else {
+        // Sin proveedor: columnas numéricas son 0, 2, 4, 5
+        if (i === 0 || i === 2 || i === 4 || i === 5) {
+          const textWidth = fontNormal.widthOfTextAtSize(data, 8);
+          textX = colX + colWidth - textWidth - 3;
+        }
       }
 
-      page.drawText(data, {
+      // Truncar texto si es muy largo
+      let displayText = data;
+      if (mostrarColumnaProveedor && i === 1) {
+        // Columna de proveedor (ahora es índice 1)
+        const maxWidth = colWidth - 6;
+        let testText = data;
+        while (fontNormal.widthOfTextAtSize(testText, 8) > maxWidth && testText.length > 3) {
+          testText = testText.substring(0, testText.length - 4) + "...";
+        }
+        displayText = testText;
+      }
+
+      page.drawText(displayText, {
         x: textX,
         y: textY,
         size: 8,
@@ -323,10 +400,12 @@ async function generarPDFRequerimientoCompra(
     // Dibujar observaciones debajo del producto si existen
     if (observaciones) {
       let yObs = yPosition - 10;
-      const obsX = tableStartX + colWidths[0] + 3; // Posición X de la columna Producto
-      const obsMaxWidth = colWidths[1] - 6; // Ancho máximo para observaciones
+      // Ajustar posición X según si hay columna de proveedor
+      const obsX = mostrarColumnaProveedor 
+        ? tableStartX + colWidths[0] + colWidths[1] + 3  // Después de # y Proveedor
+        : tableStartX + colWidths[0] + 3;                 // Después de #
+      const obsMaxWidth = mostrarColumnaProveedor ? colWidths[2] - 6 : colWidths[1] - 6;
 
-      // Dividir observaciones en líneas
       const words = observaciones.split(" ");
       let currentLine = "";
 
@@ -335,7 +414,6 @@ async function generarPDFRequerimientoCompra(
         const testWidth = fontNormal.widthOfTextAtSize(testLine, 7);
 
         if (testWidth > obsMaxWidth && currentLine) {
-          // Dibujar línea actual
           page.drawText(currentLine, {
             x: obsX,
             y: yObs,
@@ -349,7 +427,6 @@ async function generarPDFRequerimientoCompra(
           currentLine = testLine;
         }
 
-        // Última palabra
         if (idx === words.length - 1 && currentLine) {
           page.drawText(currentLine, {
             x: obsX,
@@ -391,8 +468,7 @@ async function generarPDFRequerimientoCompra(
     yPosition -= rowHeight;
   }
 
-  // Verificar si hay espacio para totales y firmas (necesitan ~200px)
-  // Si no hay espacio, crear nueva página
+  // Verificar si hay espacio para totales y firmas
   if (yPosition < 250) {
     page = pdfDoc.addPage([width, height]);
     pages.push(page);

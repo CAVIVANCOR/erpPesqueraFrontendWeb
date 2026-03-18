@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Card } from "primereact/card";
-import { Button } from "primereact/button";
 import PDFGeneratedUploader from "../pdf/PDFGeneratedUploader";
 import { generarYSubirPDFRequerimientoCompra } from "./RequerimientoCompraPDF";
 import { actualizarRequerimientoCompra } from "../../api/requerimientoCompra";
@@ -13,7 +12,6 @@ const VerImpresionRequerimientoCompraPDF = ({
   personalOptions = [],
   onRecargarRegistro,
 }) => {
-  const [mostrarProveedor, setMostrarProveedor] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
 
   useEffect(() => {
@@ -58,18 +56,16 @@ const VerImpresionRequerimientoCompraPDF = ({
       }
     }
 
-    // 1. PRIMERO: Generar el PDF
+    // Generar el PDF (la lógica inteligente está dentro de la función)
     const resultado = await generarYSubirPDFRequerimientoCompra(
       requerimientoConPersonal,
       detalles,
       empresa,
-      mostrarProveedor,
     );
 
     if (resultado.success && resultado.urlPdf) {
       try {
-        // 2. DESPUÉS: Guardar automáticamente SOLO el campo urlReqCompraPdf
-        // ✅ ENVIAR SOLO EL CAMPO urlReqCompraPdf
+        // Guardar automáticamente SOLO el campo urlReqCompraPdf
         const dataToUpdate = {
           urlReqCompraPdf: resultado.urlPdf,
         };
@@ -77,12 +73,13 @@ const VerImpresionRequerimientoCompraPDF = ({
           datosRequerimiento.id,
           dataToUpdate,
         );
+        
         // Notificar al componente padre para actualizar estado local
         if (onPdfGenerated && typeof onPdfGenerated === "function") {
           onPdfGenerated(resultado.urlPdf);
         }
 
-        // ✅ RECARGAR el registro completo desde el servidor para actualizar el estado del padre
+        // Recargar el registro completo desde el servidor
         if (onRecargarRegistro && typeof onRecargarRegistro === "function") {
           await onRecargarRegistro();
         }
@@ -121,31 +118,6 @@ const VerImpresionRequerimientoCompraPDF = ({
     return resultado;
   };
 
-  const customControls = (
-    <>
-      <label
-        htmlFor="toggleProveedor"
-        style={{ display: "block", marginBottom: "0.5rem" }}
-      >
-        Opciones
-      </label>
-      <Button
-        id="toggleProveedor"
-        icon={mostrarProveedor ? "pi pi-eye" : "pi pi-eye-slash"}
-        label={mostrarProveedor ? "CON PROVEEDOR" : "SIN PROVEEDOR"}
-        className={mostrarProveedor ? "p-button-primary" : "p-button-secondary"}
-        onClick={() => setMostrarProveedor(!mostrarProveedor)}
-        tooltip={
-          mostrarProveedor
-            ? "El PDF incluirá el proveedor"
-            : "El PDF NO incluirá el proveedor"
-        }
-        tooltipOptions={{ position: "top" }}
-        style={{ width: "100%" }}
-      />
-    </>
-  );
-
   return (
     <Card>
       <PDFGeneratedUploader
@@ -164,7 +136,6 @@ const VerImpresionRequerimientoCompraPDF = ({
             : null
         }
         toast={toast}
-        customControls={customControls}
         viewerHeight="800px"
         onGenerateComplete={(url) => setPdfUrl(url)}
         initialPdfUrl={datosRequerimiento?.urlReqCompraPdf}
