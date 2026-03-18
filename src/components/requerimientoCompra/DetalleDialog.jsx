@@ -22,8 +22,8 @@ export default function DetalleDialog({
   productos,
   empresaId,
   datosGenerales,
-  empresas, // Agregar prop para obtener entidadComercialId
-  proveedores = [], // Lista de proveedores
+  empresas,
+  proveedores = [],
   puedeEditarDetalles,
   onSaveSuccess,
   toast,
@@ -39,8 +39,8 @@ export default function DetalleDialog({
   const [saving, setSaving] = useState(false);
   const [showProductoSelector, setShowProductoSelector] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
-  // ✅ NUEVO: Ref para el campo Precio Unit. Compra
   const costoUnitarioInputRef = useRef(null);
+
   // Obtener entidadComercialId de la empresa seleccionada
   const empresaSeleccionada = empresas?.find(
     (e) => Number(e.id) === Number(empresaId),
@@ -54,8 +54,11 @@ export default function DetalleDialog({
   const familiaProductoId =
     datosGenerales?.tipoProducto?.subfamilia?.familiaId || null;
 
+  // ✅ NUEVO: Determinar si se debe mostrar el dropdown de Proveedor
+  // Solo se muestra si esConCotizacion = true (Con Cotización)
+  const mostrarDropdownProveedor = datosGenerales?.esConCotizacion === true;
+
   // Crear lista de opciones de proveedores
-  // Si el detalle tiene un proveedor asignado, incluirlo en las opciones
   const proveedoresOptions = React.useMemo(() => {
     const opciones = proveedores.map((p) => ({
       label: `${p.razonSocial} - ${p.empresa?.razonSocial || 'Sin Empresa'}`,
@@ -68,7 +71,6 @@ export default function DetalleDialog({
       const yaExiste = opciones.some((opt) => opt.value === proveedorId);
       
       if (!yaExiste) {
-        // Agregar el proveedor del detalle al inicio de la lista
         opciones.unshift({
           label: `${detalle.proveedor.razonSocial} - ${detalle.proveedor.empresa?.razonSocial || 'Sin Empresa'}`,
           value: proveedorId,
@@ -124,22 +126,18 @@ export default function DetalleDialog({
     setFormData(newFormData);
   };
 
-   const handleProductoSelect = (data) => {
+  const handleProductoSelect = (data) => {
     if (data) {
-      // ProductoSelectorDialog retorna un objeto con estructura {tipo, productoId, producto}
-      const producto = data.producto || data; // Compatibilidad con ambos formatos
+      const producto = data.producto || data;
 
       setProductoSeleccionado(producto);
 
-      // ✅ NUEVO: Auto-poner cantidad = 1 cuando es un servicio
-      // Los servicios tienen familiaId = 5 (SERVICIOS)
+      // Auto-poner cantidad = 1 cuando es un servicio
       const esFamiliaServicios =
         Number(producto.subfamilia?.familiaId) === 5 ||
         Number(producto.familia?.id) === 5;
 
       if (esFamiliaServicios) {
-        
-        // ✅ CORRECCIÓN: Actualizar productoId y cantidad JUNTOS en una sola operación
         setFormData((prev) => ({
           ...prev,
           productoId: Number(producto.id),
@@ -147,19 +145,17 @@ export default function DetalleDialog({
           subtotal: 1 * prev.costoUnitario,
         }));
 
-        // ✅ NUEVO: Posicionar foco en Precio Unit. Compra después de un pequeño delay
+        // Posicionar foco en Precio Unit. Compra
         setTimeout(() => {
           if (costoUnitarioInputRef.current) {
             const inputElement = costoUnitarioInputRef.current.getInput();
             if (inputElement) {
               inputElement.focus();
-              inputElement.select(); // Selecciona el texto para facilitar el reemplazo
+              inputElement.select();
             }
           }
         }, 100);
       } else {
-
-        // Solo actualizar productoId si NO es servicio
         handleChange("productoId", Number(producto.id));
       }
 
@@ -168,7 +164,6 @@ export default function DetalleDialog({
   };
 
   const handleSave = async () => {
-
     // Validaciones
     if (!formData.productoId) {
       toast.current.show({
@@ -314,10 +309,11 @@ export default function DetalleDialog({
           onSelect={handleProductoSelect}
           modo="ingreso"
           empresaId={empresaId}
-          clienteId={entidadComercialId} // Usar entidadComercialId calculado
-          esCustodia={false} // Requerimiento de compra siempre es mercadería propia
-          familiaProductoId={familiaProductoId} // ✅ PASAR familiaId
+          clienteId={entidadComercialId}
+          esCustodia={false}
+          familiaProductoId={familiaProductoId}
         />
+
         {/* Primera fila: Cantidad y Unidad */}
         <div
           style={{
@@ -395,23 +391,29 @@ export default function DetalleDialog({
 
         <Divider />
 
-        {/* Campo Proveedor */}
-        <div style={{ marginBottom: "16px" }}>
-          <label htmlFor="proveedorId" style={{ fontWeight: "bold" }}>
-            Proveedor
-          </label>
-          <Dropdown
-            id="proveedorId"
-            value={formData.proveedorId}
-            options={proveedoresOptions}
-            onChange={(e) => handleChange("proveedorId", e.value)}
-            placeholder="Seleccionar proveedor (opcional)"
-            filter
-            showClear
-            disabled={saving || !puedeEditarDetalles}
-            style={{ fontWeight: "bold" }}
-          />
-        </div>
+        {/* ✅ NUEVO: Campo Proveedor - Solo se muestra si esConCotizacion = true */}
+        {mostrarDropdownProveedor && (
+          <div style={{ marginBottom: "16px" }}>
+            <label htmlFor="proveedorId" style={{ fontWeight: "bold" }}>
+              Proveedor (Asignado desde Cotizaciones)
+            </label>
+            <Dropdown
+              id="proveedorId"
+              value={formData.proveedorId}
+              options={proveedoresOptions}
+              onChange={(e) => handleChange("proveedorId", e.value)}
+              placeholder="Sin proveedor asignado"
+              disabled={true} // SIEMPRE deshabilitado - se asigna desde Card Cotizaciones
+              style={{
+                fontWeight: "bold",
+                backgroundColor: "#f0f0f0", // Fondo gris para indicar campo bloqueado
+              }}
+            />
+            <small style={{ color: "#666", fontStyle: "italic", display: "block", marginTop: "4px" }}>
+              El proveedor se asigna automáticamente al concluir las cotizaciones
+            </small>
+          </div>
+        )}
 
         <div style={{ marginBottom: "16px" }}>
           <label htmlFor="observaciones" style={{ fontWeight: "bold" }}>

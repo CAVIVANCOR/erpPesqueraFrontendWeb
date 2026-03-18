@@ -24,6 +24,7 @@ export default function CotizacionesCompras({
   detallesRequerimiento = [],
   proveedores = [],
   monedas = [],
+  empresaId,
   puedeEditar,
   toast,
   onCountChange,
@@ -35,6 +36,7 @@ export default function CotizacionesCompras({
   const [showDialogNueva, setShowDialogNueva] = useState(false);
   const [showDialogDetalle, setShowDialogDetalle] = useState(false);
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState(null);
+  const [expandedRows, setExpandedRows] = useState(null); // ✅ NUEVO: Estado para filas expandidas
 
   // Filtros
   const [filtroProveedor, setFiltroProveedor] = useState(null);
@@ -48,6 +50,11 @@ export default function CotizacionesCompras({
     fechaCotizacion: new Date(),
   });
 
+  const proveedoresFiltrados = React.useMemo(() => {
+    if (!empresaId) return proveedores;
+    return proveedores.filter((p) => Number(p.empresaId) === Number(empresaId));
+  }, [proveedores, empresaId]);
+
   useEffect(() => {
     if (requerimientoId) {
       cargarCotizaciones();
@@ -57,6 +64,17 @@ export default function CotizacionesCompras({
   useEffect(() => {
     if (onCountChange) onCountChange(cotizaciones.length);
   }, [cotizaciones, onCountChange]);
+
+  // ✅ NUEVO: Expandir todas las filas automáticamente
+  useEffect(() => {
+    if (cotizacionesFiltradas.length > 0) {
+      const expanded = {};
+      cotizacionesFiltradas.forEach((cot) => {
+        expanded[cot.id] = true;
+      });
+      setExpandedRows(expanded);
+    }
+  }, [cotizacionesFiltradas]);
 
   const cargarCotizaciones = async () => {
     setLoading(true);
@@ -78,24 +96,21 @@ export default function CotizacionesCompras({
   const aplicarFiltros = () => {
     let resultado = [...cotizaciones];
 
-    // Filtro por proveedor
     if (filtroProveedor) {
       resultado = resultado.filter(
-        (c) => Number(c.proveedorId) === Number(filtroProveedor)
+        (c) => Number(c.proveedorId) === Number(filtroProveedor),
       );
     }
 
-    // Filtro por productos seleccionados (con precios)
     if (filtroProductosSeleccionados) {
       resultado = resultado.filter((c) =>
-        c.detalles.some((d) => Number(d.precioUnitario) > 0)
+        c.detalles.some((d) => Number(d.precioUnitario) > 0),
       );
     }
 
-    // Filtro por productos nuevos (alternativos)
     if (filtroProductosNuevos) {
       resultado = resultado.filter((c) =>
-        c.detalles.some((d) => d.esProductoAlternativo)
+        c.detalles.some((d) => d.esProductoAlternativo),
       );
     }
 
@@ -209,19 +224,17 @@ export default function CotizacionesCompras({
       {row.proveedor?.razonSocial || "-"}
     </span>
   );
-  
+
   const monedaTemplate = (row) => (
-    <span style={{ fontWeight: "bold" }}>
-      {row.moneda?.simbolo || "-"}
-    </span>
+    <span style={{ fontWeight: "bold" }}>{row.moneda?.simbolo || "-"}</span>
   );
-  
+
   const fechaTemplate = (row) => (
     <span style={{ fontWeight: "bold" }}>
       {new Date(row.fechaCotizacion).toLocaleDateString("es-PE")}
     </span>
   );
-  
+
   const totalTemplate = (row) => {
     const total = calcularTotal(row.detalles || []);
     return (
@@ -230,11 +243,9 @@ export default function CotizacionesCompras({
       </div>
     );
   };
-  
+
   const itemsTemplate = (row) => (
-    <span style={{ fontWeight: "bold" }}>
-      {row.detalles?.length || 0}
-    </span>
+    <span style={{ fontWeight: "bold" }}>{row.detalles?.length || 0}</span>
   );
 
   const accionesTemplate = (row) => (
@@ -249,8 +260,8 @@ export default function CotizacionesCompras({
         tooltip={puedeEditar ? "Editar precios" : "Ver detalle"}
       />
       <Button
-          icon="pi pi-trash"
-          className="p-button-text p-button-danger p-button-sm"
+        icon="pi pi-trash"
+        className="p-button-text p-button-danger p-button-sm"
         onClick={(e) => {
           e.stopPropagation();
           handleDelete(row);
@@ -261,7 +272,65 @@ export default function CotizacionesCompras({
     </div>
   );
 
-  // Obtener proveedores únicos que tienen cotizaciones
+  // ✅ NUEVO: Template para mostrar el detalle expandido
+  const rowExpansionTemplate = (data) => {
+    const detalles = data.detalles || [];
+    
+    return (
+      <div style={{ padding: "1rem", backgroundColor: "#f8f9fa" }}>
+        <h4 style={{ marginTop: 0, marginBottom: "0.5rem" }}>
+          Detalle de Productos
+        </h4>
+        <DataTable
+          value={detalles}
+          size="small"
+          showGridlines
+          style={{ fontSize: "11px" }}
+        >
+          <Column
+            header="#"
+            body={(rowData, options) => options.rowIndex + 1}
+            style={{ width: "50px" }}
+          />
+          <Column
+            header="Producto"
+            field="producto.descripcionArmada"
+            body={(rowData) => rowData.producto?.descripcionArmada || rowData.producto?.nombre || "-"}
+            style={{ width: "40%" }}
+          />
+          <Column
+            header="Cantidad"
+            body={(rowData) => formatearNumero(rowData.cantidad || 0, 2)}
+            style={{ width: "100px", textAlign: "right" }}
+          />
+          <Column
+            header="Unidad"
+            body={(rowData) => rowData.producto?.unidadMedida?.nombre || "-"}
+            style={{ width: "100px" }}
+          />
+          <Column
+            header="Precio Unit."
+            body={(rowData) => (
+              <div style={{ textAlign: "right" }}>
+                {data.moneda?.simbolo || ""} {formatearNumero(rowData.precioUnitario || 0, 2)}
+              </div>
+            )}
+            style={{ width: "120px" }}
+          />
+          <Column
+            header="Subtotal"
+            body={(rowData) => (
+              <div style={{ textAlign: "right", fontWeight: "bold" }}>
+                {data.moneda?.simbolo || ""} {formatearNumero(rowData.subtotal || 0, 2)}
+              </div>
+            )}
+            style={{ width: "120px" }}
+          />
+        </DataTable>
+      </div>
+    );
+  };
+
   const proveedoresConCotizaciones = React.useMemo(() => {
     const proveedoresIds = new Set(
       (cotizaciones || [])
@@ -269,7 +338,7 @@ export default function CotizacionesCompras({
           const id = c?.proveedor?.id ?? c?.proveedorId;
           return id != null ? Number(id) : null;
         })
-        .filter((id) => id != null)
+        .filter((id) => id != null),
     );
     return (proveedores || []).filter((p) => proveedoresIds.has(Number(p.id)));
   }, [cotizaciones, proveedores]);
@@ -311,7 +380,11 @@ export default function CotizacionesCompras({
           <Button
             icon={filtroProductosSeleccionados ? "pi pi-check" : "pi pi-filter"}
             label={filtroProductosSeleccionados ? "Seleccionados" : "Todos"}
-            className={filtroProductosSeleccionados ? "p-button-success" : "p-button-secondary"}
+            className={
+              filtroProductosSeleccionados
+                ? "p-button-success"
+                : "p-button-secondary"
+            }
             severity={filtroProductosSeleccionados ? "success" : "secondary"}
             size="small"
             onClick={() =>
@@ -325,7 +398,9 @@ export default function CotizacionesCompras({
           <Button
             icon={filtroProductosNuevos ? "pi pi-check" : "pi pi-filter"}
             label={filtroProductosNuevos ? "Productos nuevos" : "Todos"}
-            className={filtroProductosNuevos ? "p-button-info" : "p-button-secondary"}
+            className={
+              filtroProductosNuevos ? "p-button-info" : "p-button-secondary"
+            }
             severity={filtroProductosNuevos ? "info" : "secondary"}
             size="small"
             onClick={() => setFiltroProductosNuevos(!filtroProductosNuevos)}
@@ -350,16 +425,15 @@ export default function CotizacionesCompras({
         loading={loading}
         emptyMessage="No hay cotizaciones"
         style={{ fontSize: "12px" }}
-        selectionMode="single"
-        onRowClick={(e) => {
-          if (puedeEditar) {
-            handleEditarPrecios(e.data);
-          }
-        }}
+        expandedRows={expandedRows}
+        onRowToggle={(e) => setExpandedRows(e.data)}
+        rowExpansionTemplate={rowExpansionTemplate}
+        dataKey="id"
         showGridlines
         size="small"
         stripedRows
       >
+        <Column expander style={{ width: "3rem" }} />
         <Column
           field="proveedor.razonSocial"
           header="Proveedor"
@@ -377,11 +451,7 @@ export default function CotizacionesCompras({
           body={fechaTemplate}
           style={{ width: "120px" }}
         />
-        <Column
-          header="Items"
-          body={itemsTemplate}
-          style={{ width: "80px" }}
-        />
+        <Column header="Items" body={itemsTemplate} style={{ width: "80px" }} />
         <Column
           header="Total"
           body={totalTemplate}
@@ -406,8 +476,8 @@ export default function CotizacionesCompras({
             <label>Proveedor*</label>
             <Dropdown
               value={formNuevaCotizacion.proveedorId}
-              options={proveedores.map((p) => ({
-                label: `${p.razonSocial} - ${p.empresa?.razonSocial || 'Sin Empresa'}`,
+              options={proveedoresFiltrados.map((p) => ({
+                label: `${p.razonSocial} - ${p.empresa?.razonSocial || "Sin Empresa"}`,
                 value: Number(p.id),
               }))}
               onChange={(e) =>
@@ -417,6 +487,7 @@ export default function CotizacionesCompras({
                 })
               }
               placeholder="Seleccionar"
+              style={{ fontWeight: "bold" }}
               filter
             />
           </div>
@@ -434,6 +505,7 @@ export default function CotizacionesCompras({
                   monedaId: e.value,
                 })
               }
+              style={{ fontWeight: "bold" }}
               placeholder="Seleccionar"
             />
           </div>
@@ -486,9 +558,9 @@ export default function CotizacionesCompras({
             cargarCotizaciones();
           }}
           onCambioGuardado={async (cotizacionId) => {
-            // Recargar solo la cotización modificada
             try {
-              const cotizacionActualizada = await getCotizacionProveedorById(cotizacionId);
+              const cotizacionActualizada =
+                await getCotizacionProveedorById(cotizacionId);
               setCotizacionSeleccionada(cotizacionActualizada);
             } catch (error) {
               console.error("Error al recargar cotización:", error);

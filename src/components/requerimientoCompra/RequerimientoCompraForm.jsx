@@ -1065,6 +1065,7 @@ if (!defaultValues?.id && seriesDoc.length > 0 && !formData.serieDocId) {
             detallesRequerimiento={defaultValues?.detalles || []}
             proveedores={proveedores}
             monedas={monedas}
+            empresaId={formData.empresaId} // ✅ AGREGAR ESTA LÍNEA
             puedeEditar={puedeEditar}
             toast={toast}
             onCountChange={setCotizacionesCount}
