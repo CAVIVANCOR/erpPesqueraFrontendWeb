@@ -333,7 +333,7 @@ setValue("urlDocumentoMovCaja", defaultValues.urlDocumentoMovCaja || "");
     const fechaActual = new Date();
     onSubmit({
       empresaOrigenId: empresaOrigenId ? Number(empresaOrigenId) : null,
-      cuentaCorrienteOrigenId: cuentaCorrienteOrigenId
+      cuentaCorrienteOrigenId: cuentaCorrienteOrigenId && cuentaCorrienteOrigenId !== ""
         ? Number(cuentaCorrienteOrigenId)
         : null,
       empresaDestinoId: empresaDestinoId ? Number(empresaDestinoId) : null,

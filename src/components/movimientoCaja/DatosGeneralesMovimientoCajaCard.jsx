@@ -81,19 +81,28 @@ const DatosGeneralesMovimientoCajaCard = ({
   readOnly = false,
 }) => {
   // IDs de familias de gastos (igual que en DetMovsEntregaRendirForm)
-  const familiasGastosIds = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100];
+  const familiasGastosIds = [
+    5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+    25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
+    44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
+    63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81,
+    82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100,
+  ];
 
   // Filtrar productos por familias de gastos
-  const productosGastos = (productos || []).filter((p) => 
-    familiasGastosIds.includes(Number(p.familiaId))
+  const productosGastos = (productos || []).filter((p) =>
+    familiasGastosIds.includes(Number(p.familiaId)),
   );
 
   // Obtener familias únicas de los productos filtrados
   const familiasMap = new Map();
-  productosGastos.forEach(p => {
+  productosGastos.forEach((p) => {
     if (p.familia && p.familia.id && p.familia.nombre) {
       const familiaId = Number(p.familia.id);
-      if (familiasGastosIds.includes(familiaId) && !familiasMap.has(familiaId)) {
+      if (
+        familiasGastosIds.includes(familiaId) &&
+        !familiasMap.has(familiaId)
+      ) {
         familiasMap.set(familiaId, {
           label: p.familia.nombre,
           value: familiaId,
@@ -101,13 +110,16 @@ const DatosGeneralesMovimientoCajaCard = ({
       }
     }
   });
-  
-  const familiasUnicas = Array.from(familiasMap.values())
-    .sort((a, b) => a.label.localeCompare(b.label));
+
+  const familiasUnicas = Array.from(familiasMap.values()).sort((a, b) =>
+    a.label.localeCompare(b.label),
+  );
 
   // Filtrar productos por familia seleccionada
   const productosFiltrados = familiaFiltroId
-    ? productosGastos.filter(p => Number(p.familiaId) === Number(familiaFiltroId))
+    ? productosGastos.filter(
+        (p) => Number(p.familiaId) === Number(familiaFiltroId),
+      )
     : productosGastos;
 
   // Opciones de productos para el dropdown
@@ -134,6 +146,55 @@ const DatosGeneralesMovimientoCajaCard = ({
             marginTop: 8,
           }}
         >
+          <div style={{ flex: 1 }}>
+            <label htmlFor="tipoMovimientoId">Tipo Movimiento*</label>
+            <Dropdown
+              id="tipoMovimientoId"
+              value={tipoMovimientoId}
+              options={tipoMovEntregaRendir.map((tipo) => ({
+                label: tipo.nombre,
+                value: Number(tipo.id),
+              }))}
+              onChange={(e) => setTipoMovimientoId(e.value)}
+              placeholder="Seleccione tipo de movimiento"
+              required
+              disabled={readOnly}
+              filter
+              showClear
+              style={{ fontWeight: "bold" }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="monedaId">Moneda*</label>
+            <Dropdown
+              id="monedaId"
+              value={monedaId}
+              options={monedas.map((moneda) => ({
+                label: moneda.simbolo,
+                value: Number(moneda.id),
+              }))}
+              onChange={(e) => setMonedaId(e.value)}
+              placeholder="Seleccione moneda"
+              required
+              disabled={readOnly || loading}
+              filter
+              showClear
+              style={{ fontWeight: "bold" }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="monto">Monto*</label>
+            <InputNumber
+              id="monto"
+              value={monto}
+              onValueChange={(e) => setMonto(e.value)}
+              mode="decimal"
+              minFractionDigits={2}
+              required
+              disabled={readOnly || loading}
+              inputStyle={{ fontWeight: "bold" }}
+            />
+          </div>
           <div style={{ flex: 1 }}>
             <label htmlFor="empresaOrigenId">Empresa Origen*</label>
             <Dropdown
@@ -201,7 +262,9 @@ const DatosGeneralesMovimientoCajaCard = ({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label htmlFor="cuentaCorrienteDestinoId">Cuenta Destino (Opcional)</label>
+            <label htmlFor="cuentaCorrienteDestinoId">
+              Cuenta Destino (Opcional)
+            </label>
             <Dropdown
               id="cuentaCorrienteDestinoId"
               value={cuentaCorrienteDestinoId}
@@ -243,26 +306,11 @@ const DatosGeneralesMovimientoCajaCard = ({
               style={{ fontWeight: "bold" }}
             />
           </div>
+
           <div style={{ flex: 1 }}>
-            <label htmlFor="tipoMovimientoId">Tipo Movimiento*</label>
-            <Dropdown
-              id="tipoMovimientoId"
-              value={tipoMovimientoId}
-              options={tipoMovEntregaRendir.map((tipo) => ({
-                label: tipo.nombre,
-                value: Number(tipo.id),
-              }))}
-              onChange={(e) => setTipoMovimientoId(e.value)}
-              placeholder="Seleccione tipo de movimiento"
-              required
-              disabled={readOnly}
-              filter
-              showClear
-              style={{ fontWeight: "bold" }}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="entidadComercialId">Entidad Comercial (Opcional)</label>
+            <label htmlFor="entidadComercialId">
+              Entidad Comercial (Opcional)
+            </label>
             <Dropdown
               id="entidadComercialId"
               value={entidadComercialId}
@@ -298,9 +346,11 @@ const DatosGeneralesMovimientoCajaCard = ({
                 id="cuentaDestinoEntidadComercialId"
                 value={cuentaDestinoEntidadComercialId}
                 options={cuentasEntidadComercial
-                  .filter((cta) => cta.entidadComercialId === entidadComercialId)
+                  .filter(
+                    (cta) => cta.entidadComercialId === entidadComercialId,
+                  )
                   .map((cta) => ({
-                    label: `${cta.banco?.nombre || 'N/A'} - ${cta.numeroCuenta || cta.numeroTelefonoBilletera || 'Sin número'} ${cta.BilleteraDigital ? '(Billetera Digital)' : ''} - ${cta.moneda?.simbolo || 'N/A'}`,
+                    label: `${cta.banco?.nombre || "N/A"} - ${cta.numeroCuenta || cta.numeroTelefonoBilletera || "Sin número"} ${cta.BilleteraDigital ? "(Billetera Digital)" : ""} - ${cta.moneda?.simbolo || "N/A"}`,
                     value: Number(cta.id),
                   }))}
                 onChange={(e) => setCuentaDestinoEntidadComercialId(e.value)}
@@ -325,7 +375,9 @@ const DatosGeneralesMovimientoCajaCard = ({
           }}
         >
           <div style={{ flex: 1 }}>
-            <label htmlFor="familiaFiltro">Filtrar Gastos por Familia (Opcional)</label>
+            <label htmlFor="familiaFiltro">
+              Filtrar Gastos por Familia (Opcional)
+            </label>
             <Dropdown
               id="familiaFiltro"
               value={familiaFiltroId}
@@ -367,37 +419,7 @@ const DatosGeneralesMovimientoCajaCard = ({
             marginTop: 8,
           }}
         >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="monedaId">Moneda*</label>
-            <Dropdown
-              id="monedaId"
-              value={monedaId}
-              options={monedas.map((moneda) => ({
-                label: moneda.simbolo,
-                value: Number(moneda.id),
-              }))}
-              onChange={(e) => setMonedaId(e.value)}
-              placeholder="Seleccione moneda"
-              required
-              disabled={readOnly || loading}
-              filter
-              showClear
-              style={{ fontWeight: "bold" }}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="monto">Monto*</label>
-            <InputNumber
-              id="monto"
-              value={monto}
-              onValueChange={(e) => setMonto(e.value)}
-              mode="decimal"
-              minFractionDigits={2}
-              required
-              disabled={readOnly || loading}
-              inputStyle={{ fontWeight: "bold" }}
-            />
-          </div>
+          
           <div style={{ flex: 1 }}>
             <label htmlFor="referenciaExtId">Referencia Ext</label>
             <InputText
@@ -548,7 +570,8 @@ const DatosGeneralesMovimientoCajaCard = ({
                   ? `${moduloOrigenMotivoOperacionId} - ${
                       modulos.find(
                         (m) =>
-                          Number(m.id) === Number(moduloOrigenMotivoOperacionId)
+                          Number(m.id) ===
+                          Number(moduloOrigenMotivoOperacionId),
                       )?.nombre || ""
                     }`
                   : ""
@@ -602,19 +625,20 @@ const DatosGeneralesMovimientoCajaCard = ({
                 usuarioMotivoOperacionId
                   ? `${usuarioMotivoOperacionId} - ${
                       personal.find(
-                        (p) => Number(p.id) === Number(usuarioMotivoOperacionId)
+                        (p) =>
+                          Number(p.id) === Number(usuarioMotivoOperacionId),
                       )
                         ? `${
                             personal.find(
                               (p) =>
                                 Number(p.id) ===
-                                Number(usuarioMotivoOperacionId)
+                                Number(usuarioMotivoOperacionId),
                             ).nombres
                           } ${
                             personal.find(
                               (p) =>
                                 Number(p.id) ===
-                                Number(usuarioMotivoOperacionId)
+                                Number(usuarioMotivoOperacionId),
                             ).apellidos
                           }`
                         : ""
@@ -662,14 +686,20 @@ const DatosGeneralesMovimientoCajaCard = ({
           }}
         >
           <div style={{ flex: 1 }}>
-            <div className="p-field-checkbox" style={{ marginBottom: "0.5rem" }}>
+            <div
+              className="p-field-checkbox"
+              style={{ marginBottom: "0.5rem" }}
+            >
               <Checkbox
                 inputId="generarAsientoContable"
                 checked={generarAsientoContable}
                 onChange={(e) => setGenerarAsientoContable(e.checked)}
                 disabled={readOnly || loading}
               />
-              <label htmlFor="generarAsientoContable" style={{ marginLeft: "0.5rem" }}>
+              <label
+                htmlFor="generarAsientoContable"
+                style={{ marginLeft: "0.5rem" }}
+              >
                 Generar Asiento Contable
               </label>
             </div>
@@ -680,7 +710,10 @@ const DatosGeneralesMovimientoCajaCard = ({
                 onChange={(e) => setIncluirEnReporteFiscal(e.checked)}
                 disabled={readOnly || loading}
               />
-              <label htmlFor="incluirEnReporteFiscal" style={{ marginLeft: "0.5rem" }}>
+              <label
+                htmlFor="incluirEnReporteFiscal"
+                style={{ marginLeft: "0.5rem" }}
+              >
                 Incluir en Reporte Fiscal
               </label>
             </div>

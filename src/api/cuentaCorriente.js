@@ -79,3 +79,20 @@ export const eliminarCuentaCorriente = async (id) => {
     throw error;
   }
 };
+
+/**
+ * Verifica si una cuenta corriente tiene movimientos asociados
+ * @param {number} id - ID de la cuenta corriente
+ * @returns {Promise<boolean>} True si tiene movimientos, false si no
+ */
+export const verificarMovimientosCuenta = async (id) => {
+  try {
+    const response = await axios.get(`${API_URL}/${id}/verificar-movimientos`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al verificar movimientos de cuenta:', error);
+    throw error;
+  }
+};

@@ -159,3 +159,30 @@ export const revertirMovimientoCaja = async (id, motivoReversion, usuarioId) => 
     throw error;
   }
 };
+
+/**
+ * Obtiene los movimientos de caja asociados a una cuenta corriente
+ * @param {number} cuentaId - ID de la cuenta corriente
+ * @param {Date} fechaInicio - Fecha de inicio del filtro (opcional)
+ * @param {Date} fechaFin - Fecha de fin del filtro (opcional)
+ * @returns {Promise<Array>} Lista de movimientos de caja de la cuenta
+ */
+export const getMovimientosCajaPorCuenta = async (cuentaId, fechaInicio = null, fechaFin = null) => {
+  try {
+    const params = new URLSearchParams();
+    if (fechaInicio) {
+      params.append('fechaInicio', fechaInicio.toISOString());
+    }
+    if (fechaFin) {
+      params.append('fechaFin', fechaFin.toISOString());
+    }
+
+    const response = await axios.get(`${API_URL}/cuenta/${cuentaId}${params.toString() ? `?${params.toString()}` : ''}`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener movimientos de caja por cuenta:', error);
+    throw error;
+  }
+};

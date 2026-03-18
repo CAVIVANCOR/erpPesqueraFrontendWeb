@@ -138,3 +138,31 @@ export const eliminarSaldoCuentaCorriente = async (id) => {
     throw error;
   }
 };
+
+/**
+ * Obtiene los saldos históricos de una cuenta corriente (alias de getHistorialSaldos)
+ * @param {number} cuentaCorrienteId - ID de la cuenta corriente
+ * @param {Date} fechaInicio - Fecha de inicio (opcional)
+ * @param {Date} fechaFin - Fecha de fin (opcional)
+ * @returns {Promise<Array>} Historial de saldos
+ */
+export const getSaldosCuentaCorriente = async (cuentaCorrienteId, fechaInicio = null, fechaFin = null) => {
+  return getHistorialSaldos(cuentaCorrienteId, fechaInicio, fechaFin);
+};
+
+/**
+ * Obtiene el último saldo registrado de una cuenta corriente
+ * @param {number} cuentaCorrienteId - ID de la cuenta corriente
+ * @returns {Promise<Object>} Último saldo de la cuenta
+ */
+export const getUltimoSaldoCuenta = async (cuentaCorrienteId) => {
+  try {
+    const response = await axios.get(`${API_URL}/ultimo-saldo/${cuentaCorrienteId}`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener último saldo:', error);
+    throw error;
+  }
+};
