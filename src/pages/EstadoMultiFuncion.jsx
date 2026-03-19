@@ -286,6 +286,7 @@ const EstadoMultiFuncion = ({ ruta }) => {
                 placeholder="Filtrar por Tipo Proviene"
                 showClear
                 style={{ width: "100%" }}
+                filter
               />
             </div>
             <div style={{ flex: 1 }}>

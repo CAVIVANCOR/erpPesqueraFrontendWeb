@@ -147,6 +147,19 @@ const DatosGeneralesMovimientoCajaCard = ({
           }}
         >
           <div style={{ flex: 1 }}>
+            <label htmlFor="fecha">Fecha*</label>
+            <Calendar
+              id="fecha"
+              value={fecha}
+              onChange={(e) => setFecha(e.value)}
+              showIcon
+              dateFormat="dd-mm-yy"
+              disabled={readOnly}
+              required
+              inputStyle={{ fontWeight: "bold" }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
             <label htmlFor="tipoMovimientoId">Tipo Movimiento*</label>
             <Dropdown
               id="tipoMovimientoId"
@@ -164,7 +177,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               style={{ fontWeight: "bold" }}
             />
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 0.5 }}>
             <label htmlFor="monedaId">Moneda*</label>
             <Dropdown
               id="monedaId"
@@ -196,7 +209,36 @@ const DatosGeneralesMovimientoCajaCard = ({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label htmlFor="empresaOrigenId">Empresa Origen*</label>
+            <label htmlFor="estadoId">Estado*</label>
+            <Dropdown
+              id="estadoId"
+              value={estadoId}
+              options={estadosMultiFuncion.map((estado) => ({
+                label: estado.descripcion || `ID: ${estado.id}`,
+                value: Number(estado.id),
+              }))}
+              onChange={(e) => setEstadoId(e.value)}
+              placeholder="Seleccione estado"
+              required
+              disabled={readOnly || loading}
+              filter
+              showClear
+              style={{ fontWeight: "bold" }}
+            />
+          </div>
+        </div>
+
+        {/* Empresa Origen y Cuenta Origen */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 24,
+            marginTop: 8,
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label htmlFor="empresaOrigenId">Empresa Origen</label>
             <Dropdown
               id="empresaOrigenId"
               value={empresaOrigenId}
@@ -206,7 +248,6 @@ const DatosGeneralesMovimientoCajaCard = ({
               }))}
               onChange={(e) => setEmpresaOrigenId(e.value)}
               placeholder="Seleccione empresa origen"
-              required
               disabled={readOnly}
               filter
               showClear
@@ -214,7 +255,7 @@ const DatosGeneralesMovimientoCajaCard = ({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label htmlFor="cuentaCorrienteOrigenId">Cuenta Origen*</label>
+            <label htmlFor="cuentaCorrienteOrigenId">Cuenta Origen</label>
             <Dropdown
               id="cuentaCorrienteOrigenId"
               value={cuentaCorrienteOrigenId}
@@ -226,7 +267,6 @@ const DatosGeneralesMovimientoCajaCard = ({
               }))}
               onChange={(e) => setCuentaCorrienteOrigenId(e.value)}
               placeholder="Seleccione cuenta origen"
-              required
               disabled={readOnly || !empresaOrigenId}
               filter
               showClear
@@ -245,7 +285,7 @@ const DatosGeneralesMovimientoCajaCard = ({
           }}
         >
           <div style={{ flex: 1 }}>
-            <label htmlFor="empresaDestinoId">Empresa Destino (Opcional)</label>
+            <label htmlFor="empresaDestinoId">Empresa Destino</label>
             <Dropdown
               id="empresaDestinoId"
               value={empresaDestinoId}
@@ -258,13 +298,11 @@ const DatosGeneralesMovimientoCajaCard = ({
               disabled={readOnly}
               filter
               showClear
-              style={{ fontWeight: "normal" }}
+              style={{ fontWeight: "bold" }}
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label htmlFor="cuentaCorrienteDestinoId">
-              Cuenta Destino (Opcional)
-            </label>
+            <label htmlFor="cuentaCorrienteDestinoId">Cuenta Destino</label>
             <Dropdown
               id="cuentaCorrienteDestinoId"
               value={cuentaCorrienteDestinoId}
@@ -279,7 +317,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               disabled={readOnly || !empresaDestinoId}
               filter
               showClear
-              style={{ fontWeight: "normal" }}
+              style={{ fontWeight: "bold" }}
             />
           </div>
         </div>
@@ -294,23 +332,7 @@ const DatosGeneralesMovimientoCajaCard = ({
           }}
         >
           <div style={{ flex: 1 }}>
-            <label htmlFor="fecha">Fecha*</label>
-            <Calendar
-              id="fecha"
-              value={fecha}
-              onChange={(e) => setFecha(e.value)}
-              showIcon
-              dateFormat="yy-mm-dd"
-              disabled={readOnly}
-              required
-              style={{ fontWeight: "bold" }}
-            />
-          </div>
-
-          <div style={{ flex: 1 }}>
-            <label htmlFor="entidadComercialId">
-              Entidad Comercial (Opcional)
-            </label>
+            <label htmlFor="entidadComercialId">Entidad Comercial</label>
             <Dropdown
               id="entidadComercialId"
               value={entidadComercialId}
@@ -323,21 +345,11 @@ const DatosGeneralesMovimientoCajaCard = ({
               disabled={readOnly}
               filter
               showClear
-              style={{ fontWeight: "normal" }}
+              style={{ fontWeight: "bold" }}
             />
           </div>
-        </div>
-
-        {/* Cuenta Destino Entidad Comercial */}
-        {entidadComercialId && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 24,
-              marginTop: 8,
-            }}
-          >
+          {/* Cuenta Destino Entidad Comercial */}
+          {entidadComercialId && (
             <div style={{ flex: 1 }}>
               <label htmlFor="cuentaDestinoEntidadComercialId">
                 Cuenta Bancaria del Proveedor/Cliente (Opcional)
@@ -361,19 +373,8 @@ const DatosGeneralesMovimientoCajaCard = ({
                 style={{ fontWeight: "normal" }}
               />
             </div>
-            <div style={{ flex: 1 }}></div>
-          </div>
-        )}
-
-        {/* Filtro de Familia y Producto (Gasto) */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 24,
-            marginTop: 8,
-          }}
-        >
+          )}
+          {/* Filtro de Familia y Producto (Gasto) */}
           <div style={{ flex: 1 }}>
             <label htmlFor="familiaFiltro">
               Filtrar Gastos por Familia (Opcional)
@@ -408,9 +409,29 @@ const DatosGeneralesMovimientoCajaCard = ({
               disabled={readOnly || loading}
             />
           </div>
+          <div style={{ flex: 1 }}>
+            <label htmlFor="operacionSinFactura">Estado Facturación</label>
+            <Button
+              type="button"
+              label={operacionSinFactura ? "S/FACTURA" : "C/FACTURA"}
+              icon={
+                operacionSinFactura
+                  ? "pi pi-exclamation-triangle"
+                  : "pi pi-check-circle"
+              }
+              className={
+                operacionSinFactura ? "p-button-warning" : "p-button-primary"
+              }
+              severity={operacionSinFactura ? "warning" : "primary"}
+              onClick={() => setOperacionSinFactura(!operacionSinFactura)}
+              size="small"
+              style={{ width: "100%" }}
+              disabled={readOnly || loading}
+            />
+          </div>
         </div>
 
-        {/* Moneda, Monto, Referencia, Tipo Referencia */}
+        {/* Descripción, Referencia, Tipo Referencia */}
         <div
           style={{
             display: "flex",
@@ -419,7 +440,16 @@ const DatosGeneralesMovimientoCajaCard = ({
             marginTop: 8,
           }}
         >
-          
+          <div style={{ flex: 2 }}>
+            <label htmlFor="descripcion">Descripción</label>
+            <InputText
+              id="descripcion"
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              disabled={readOnly || loading}
+              style={{ fontWeight: "bold" }}
+            />
+          </div>
           <div style={{ flex: 1 }}>
             <label htmlFor="referenciaExtId">Referencia Ext</label>
             <InputText
@@ -441,45 +471,6 @@ const DatosGeneralesMovimientoCajaCard = ({
               }))}
               onChange={(e) => setTipoReferenciaId(e.value)}
               placeholder="Seleccione tipo de referencia"
-              disabled={readOnly || loading}
-              filter
-              showClear
-              style={{ fontWeight: "bold" }}
-            />
-          </div>
-        </div>
-
-        {/* Descripción y Estado */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 24,
-            marginTop: 8,
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <label htmlFor="descripcion">Descripción</label>
-            <InputText
-              id="descripcion"
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              disabled={readOnly || loading}
-              style={{ fontWeight: "bold" }}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="estadoId">Estado*</label>
-            <Dropdown
-              id="estadoId"
-              value={estadoId}
-              options={estadosMultiFuncion.map((estado) => ({
-                label: estado.descripcion || `ID: ${estado.id}`,
-                value: Number(estado.id),
-              }))}
-              onChange={(e) => setEstadoId(e.value)}
-              placeholder="Seleccione estado"
-              required
               disabled={readOnly || loading}
               filter
               showClear
@@ -649,26 +640,6 @@ const DatosGeneralesMovimientoCajaCard = ({
               disabled
               className="p-inputtext-sm"
               style={{ fontWeight: "bold" }}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="operacionSinFactura">Estado Facturación</label>
-            <Button
-              type="button"
-              label={operacionSinFactura ? "S/FACTURA" : "C/FACTURA"}
-              icon={
-                operacionSinFactura
-                  ? "pi pi-exclamation-triangle"
-                  : "pi pi-check-circle"
-              }
-              className={
-                operacionSinFactura ? "p-button-warning" : "p-button-primary"
-              }
-              severity={operacionSinFactura ? "warning" : "primary"}
-              onClick={() => setOperacionSinFactura(!operacionSinFactura)}
-              size="small"
-              style={{ width: "100%" }}
-              disabled={readOnly || loading}
             />
           </div>
         </div>

@@ -107,7 +107,7 @@ export default function MovimientoCajaForm({
     defaultValues.usuarioId ? Number(defaultValues.usuarioId) : "",
   );
   const [estadoId, setEstadoId] = React.useState(
-    defaultValues.estadoId ? Number(defaultValues.estadoId) : "",
+    defaultValues.estadoId ? Number(defaultValues.estadoId) : (!isEdit ? 20 : ""),
   );
   const [fechaCreacion, setFechaCreacion] = React.useState(
     defaultValues.fechaCreacion
@@ -238,7 +238,7 @@ export default function MovimientoCajaForm({
     setUsuarioId(
       defaultValues.usuarioId ? Number(defaultValues.usuarioId) : "",
     );
-    setEstadoId(defaultValues.estadoId ? Number(defaultValues.estadoId) : "");
+    setEstadoId(defaultValues.estadoId ? Number(defaultValues.estadoId) : (!isEdit ? 20 : ""));
     setFechaCreacion(
       defaultValues.fechaCreacion
         ? new Date(defaultValues.fechaCreacion)

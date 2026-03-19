@@ -150,7 +150,7 @@ export default function TipoMovEntregaRendir() {
         className="p-d-flex p-jc-between p-ai-center"
         style={{ marginBottom: 16 }}
       >
-        <h2>Gestión de Tipos de Movimiento Entrega a Rendir</h2>
+        <h2>Gestión de Tipos de Movimiento Caja</h2>
         <Button
           label="Nuevo"
           icon="pi pi-plus"
