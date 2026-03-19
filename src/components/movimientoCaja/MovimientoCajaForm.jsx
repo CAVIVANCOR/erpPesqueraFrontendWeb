@@ -7,6 +7,7 @@ import { Toast } from "primereact/toast";
 import DatosGeneralesMovimientoCajaCard from "./DatosGeneralesMovimientoCajaCard";
 import PdfComprobanteOperacionCard from "./PdfComprobanteOperacionCard";
 import PdfDocumentoAfectoOperacionCard from "./PdfDocumentoAfectoOperacionCard";
+import DetallesGeneradosCard from "./DetallesGeneradosCard";
 
 export default function MovimientoCajaForm({
   isEdit,
@@ -48,8 +49,7 @@ export default function MovimientoCajaForm({
   });
 
   // Estado para navegación de cards
-  const [cardActiva, setCardActiva] = React.useState("datos"); // "datos" | "comprobante" | "documento"
-
+  const [cardActiva, setCardActiva] = React.useState("datos"); // "datos" | "comprobante" | "documento" | "detalles"
   // Estado para filtro de familia de productos
   const [familiaFiltroId, setFamiliaFiltroId] = React.useState(null);
 
@@ -107,7 +107,7 @@ export default function MovimientoCajaForm({
     defaultValues.usuarioId ? Number(defaultValues.usuarioId) : "",
   );
   const [estadoId, setEstadoId] = React.useState(
-    defaultValues.estadoId ? Number(defaultValues.estadoId) : (!isEdit ? 20 : ""),
+    defaultValues.estadoId ? Number(defaultValues.estadoId) : !isEdit ? 20 : "",
   );
   const [fechaCreacion, setFechaCreacion] = React.useState(
     defaultValues.fechaCreacion
@@ -238,7 +238,13 @@ export default function MovimientoCajaForm({
     setUsuarioId(
       defaultValues.usuarioId ? Number(defaultValues.usuarioId) : "",
     );
-    setEstadoId(defaultValues.estadoId ? Number(defaultValues.estadoId) : (!isEdit ? 20 : ""));
+    setEstadoId(
+      defaultValues.estadoId
+        ? Number(defaultValues.estadoId)
+        : !isEdit
+          ? 20
+          : "",
+    );
     setFechaCreacion(
       defaultValues.fechaCreacion
         ? new Date(defaultValues.fechaCreacion)
@@ -289,11 +295,14 @@ export default function MovimientoCajaForm({
         : "",
     );
     setUrlComprobanteOperacionMovCaja(
-  defaultValues.urlComprobanteOperacionMovCaja || "",
-);
-setUrlDocumentoMovCaja(defaultValues.urlDocumentoMovCaja || "");
-setValue("urlComprobanteOperacionMovCaja", defaultValues.urlComprobanteOperacionMovCaja || "");
-setValue("urlDocumentoMovCaja", defaultValues.urlDocumentoMovCaja || "");
+      defaultValues.urlComprobanteOperacionMovCaja || "",
+    );
+    setUrlDocumentoMovCaja(defaultValues.urlDocumentoMovCaja || "");
+    setValue(
+      "urlComprobanteOperacionMovCaja",
+      defaultValues.urlComprobanteOperacionMovCaja || "",
+    );
+    setValue("urlDocumentoMovCaja", defaultValues.urlDocumentoMovCaja || "");
   }, [defaultValues]);
 
   const cuentasOrigenFiltradas = React.useMemo(() => {
@@ -333,9 +342,10 @@ setValue("urlDocumentoMovCaja", defaultValues.urlDocumentoMovCaja || "");
     const fechaActual = new Date();
     onSubmit({
       empresaOrigenId: empresaOrigenId ? Number(empresaOrigenId) : null,
-      cuentaCorrienteOrigenId: cuentaCorrienteOrigenId && cuentaCorrienteOrigenId !== ""
-        ? Number(cuentaCorrienteOrigenId)
-        : null,
+      cuentaCorrienteOrigenId:
+        cuentaCorrienteOrigenId && cuentaCorrienteOrigenId !== ""
+          ? Number(cuentaCorrienteOrigenId)
+          : null,
       empresaDestinoId: empresaDestinoId ? Number(empresaDestinoId) : null,
       cuentaCorrienteDestinoId: cuentaCorrienteDestinoId
         ? Number(cuentaCorrienteDestinoId)
@@ -369,8 +379,9 @@ setValue("urlDocumentoMovCaja", defaultValues.urlDocumentoMovCaja || "");
         : null,
       fechaOperacionMovCaja: new Date(),
       operacionSinFactura,
-urlComprobanteOperacionMovCaja: getValues("urlComprobanteOperacionMovCaja") || null,
-urlDocumentoMovCaja: getValues("urlDocumentoMovCaja") || null,
+      urlComprobanteOperacionMovCaja:
+        getValues("urlComprobanteOperacionMovCaja") || null,
+      urlDocumentoMovCaja: getValues("urlDocumentoMovCaja") || null,
       cuentaDestinoEntidadComercialId: cuentaDestinoEntidadComercialId
         ? Number(cuentaDestinoEntidadComercialId)
         : null,
@@ -385,7 +396,7 @@ urlDocumentoMovCaja: getValues("urlDocumentoMovCaja") || null,
   // Función para validar que existan los PDFs antes de validar el movimiento
   const handleValidarMovimiento = () => {
     // Validar que exista el comprobante de operación
-if (!getValues("urlComprobanteOperacionMovCaja")) {
+    if (!getValues("urlComprobanteOperacionMovCaja")) {
       toast.current?.show({
         severity: "warn",
         summary: "Validación Requerida",
@@ -398,7 +409,7 @@ if (!getValues("urlComprobanteOperacionMovCaja")) {
     }
 
     // Validar que exista el documento afecto
-if (!getValues("urlDocumentoMovCaja")) {
+    if (!getValues("urlDocumentoMovCaja")) {
       toast.current?.show({
         severity: "warn",
         summary: "Validación Requerida",
@@ -508,7 +519,7 @@ if (!getValues("urlDocumentoMovCaja")) {
           readOnly={readOnly}
         />
       </div>
-      
+
       {/* Card de Comprobante de Operación */}
       <div style={{ display: cardActiva === "comprobante" ? "block" : "none" }}>
         <PdfComprobanteOperacionCard
@@ -537,6 +548,13 @@ if (!getValues("urlDocumentoMovCaja")) {
         />
       </div>
 
+      {/* Card de Detalles Generados */}
+      <div style={{ display: cardActiva === "detalles" ? "block" : "none" }}>
+        <DetallesGeneradosCard
+          movimientoId={defaultValues.id}
+          readOnly={readOnly}
+        />
+      </div>
 
       {/* Botones de navegación y acciones */}
       <div
@@ -584,6 +602,18 @@ if (!getValues("urlDocumentoMovCaja")) {
             onClick={() => setCardActiva("documento")}
             size="small"
             tooltip="Documento Afecto"
+            raised
+          />
+          <Button
+            icon="pi pi-list"
+            className={
+              cardActiva === "detalles"
+                ? "p-button-primary"
+                : "p-button-outlined"
+            }
+            onClick={() => setCardActiva("detalles")}
+            size="small"
+            tooltip="Detalles Generados"
             raised
           />
         </div>

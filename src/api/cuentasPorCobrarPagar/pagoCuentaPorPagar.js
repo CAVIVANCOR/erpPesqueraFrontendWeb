@@ -40,3 +40,14 @@ export async function getPagosPorCuentaPagar(cuentaPorPagarId) {
   const res = await axios.get(`${API_URL}/cuenta-pagar/${cuentaPorPagarId}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Obtiene los pagos de cuentas por pagar generados por un movimiento de caja específico
+ * ⚠️ REQUIERE IMPLEMENTACIÓN EN BACKEND: GET /cuentas-por-cobrar-pagar/pago/por-movimiento/:movimientoCajaId
+ * @param {number} movimientoCajaId - ID del movimiento de caja
+ * @returns {Promise<Array>} Pagos generados por el movimiento
+ */
+export async function getPagosPorMovimiento(movimientoCajaId) {
+  const res = await axios.get(`${API_URL}/por-movimiento/${movimientoCajaId}`, { headers: getAuthHeaders() });
+  return res.data;
+}

@@ -166,3 +166,20 @@ export const getUltimoSaldoCuenta = async (cuentaCorrienteId) => {
     throw error;
   }
 };
+
+/**
+ * Obtiene los saldos generados por un movimiento de caja específico
+ * @param {number} movimientoCajaId - ID del movimiento de caja
+ * @returns {Promise<Array>} Saldos generados por el movimiento
+ */
+export const getSaldosPorMovimiento = async (movimientoCajaId) => {
+  try {
+    const response = await axios.get(`${API_URL}/por-movimiento/${movimientoCajaId}`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener saldos por movimiento:', error);
+    throw error;
+  }
+};

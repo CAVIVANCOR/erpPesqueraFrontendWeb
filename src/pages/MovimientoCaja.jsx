@@ -97,55 +97,106 @@ export default function MovimientoCaja({ ruta }) {
   const [personal, setPersonal] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [tipoMovEntregaRendir, setTipoMovEntregaRendir] = useState([]);
+  const [saldosGenerados, setSaldosGenerados] = useState([]);
+  const [showSaldosDialog, setShowSaldosDialog] = useState(false);
   const [monedas, setMonedas] = useState([]);
-  const [tipoReferenciaMovimientoCaja, setTipoReferenciaMovimientoCaja] = useState([]);
+  const [tipoReferenciaMovimientoCaja, setTipoReferenciaMovimientoCaja] =
+    useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
   const [cuentasEntidadComercial, setCuentasEntidadComercial] = useState([]);
   const [movimientosDetEntrega, setMovimientosDetEntrega] = useState([]);
   const [entregasARendir, setEntregasARendir] = useState([]);
-  const [selectedMovimientosDetEntrega, setSelectedMovimientosDetEntrega] = useState(null);
+  const [selectedMovimientosDetEntrega, setSelectedMovimientosDetEntrega] =
+    useState(null);
   const [loadingDetEntrega, setLoadingDetEntrega] = useState(false);
   const [selectedDetMovsIds, setSelectedDetMovsIds] = useState([]);
   const [estadosMultiFuncion, setEstadosMultiFuncion] = useState([]);
-  const [movimientosDetEntregaConsumo, setMovimientosDetEntregaConsumo] = useState([]);
+  const [movimientosDetEntregaConsumo, setMovimientosDetEntregaConsumo] =
+    useState([]);
   const [entregasARendirConsumo, setEntregasARendirConsumo] = useState([]);
-  const [selectedMovimientosDetEntregaConsumo, setSelectedMovimientosDetEntregaConsumo] = useState(null);
-  const [loadingDetEntregaConsumo, setLoadingDetEntregaConsumo] = useState(false);
-  const [selectedDetMovsIdsConsumo, setSelectedDetMovsIdsConsumo] = useState([]);
-  const [movimientosDetEntregaCompras, setMovimientosDetEntregaCompras] = useState([]);
+  const [
+    selectedMovimientosDetEntregaConsumo,
+    setSelectedMovimientosDetEntregaConsumo,
+  ] = useState(null);
+  const [loadingDetEntregaConsumo, setLoadingDetEntregaConsumo] =
+    useState(false);
+  const [selectedDetMovsIdsConsumo, setSelectedDetMovsIdsConsumo] = useState(
+    [],
+  );
+  const [movimientosDetEntregaCompras, setMovimientosDetEntregaCompras] =
+    useState([]);
   const [entregasARendirCompras, setEntregasARendirCompras] = useState([]);
-  const [selectedMovimientosDetEntregaCompras, setSelectedMovimientosDetEntregaCompras] = useState(null);
-  const [loadingDetEntregaCompras, setLoadingDetEntregaCompras] = useState(false);
-  const [selectedDetMovsIdsCompras, setSelectedDetMovsIdsCompras] = useState([]);
-  const [movimientosDetEntregaVentas, setMovimientosDetEntregaVentas] = useState([]);
+  const [
+    selectedMovimientosDetEntregaCompras,
+    setSelectedMovimientosDetEntregaCompras,
+  ] = useState(null);
+  const [loadingDetEntregaCompras, setLoadingDetEntregaCompras] =
+    useState(false);
+  const [selectedDetMovsIdsCompras, setSelectedDetMovsIdsCompras] = useState(
+    [],
+  );
+  const [movimientosDetEntregaVentas, setMovimientosDetEntregaVentas] =
+    useState([]);
   const [entregasARendirVentas, setEntregasARendirVentas] = useState([]);
-  const [selectedMovimientosDetEntregaVentas, setSelectedMovimientosDetEntregaVentas] = useState(null);
+  const [
+    selectedMovimientosDetEntregaVentas,
+    setSelectedMovimientosDetEntregaVentas,
+  ] = useState(null);
   const [loadingDetEntregaVentas, setLoadingDetEntregaVentas] = useState(false);
   const [selectedDetMovsIdsVentas, setSelectedDetMovsIdsVentas] = useState([]);
-  const [movimientosDetEntregaAlmacen, setMovimientosDetEntregaAlmacen] = useState([]);
+  const [movimientosDetEntregaAlmacen, setMovimientosDetEntregaAlmacen] =
+    useState([]);
   const [entregasARendirAlmacen, setEntregasARendirAlmacen] = useState([]);
-  const [selectedMovimientosDetEntregaAlmacen, setSelectedMovimientosDetEntregaAlmacen] = useState(null);
-  const [loadingDetEntregaAlmacen, setLoadingDetEntregaAlmacen] = useState(false);
-  const [selectedDetMovsIdsAlmacen, setSelectedDetMovsIdsAlmacen] = useState([]);
-  const [movimientosDetEntregaServicios, setMovimientosDetEntregaServicios] = useState([]);
+  const [
+    selectedMovimientosDetEntregaAlmacen,
+    setSelectedMovimientosDetEntregaAlmacen,
+  ] = useState(null);
+  const [loadingDetEntregaAlmacen, setLoadingDetEntregaAlmacen] =
+    useState(false);
+  const [selectedDetMovsIdsAlmacen, setSelectedDetMovsIdsAlmacen] = useState(
+    [],
+  );
+  const [movimientosDetEntregaServicios, setMovimientosDetEntregaServicios] =
+    useState([]);
   const [entregasARendirServicios, setEntregasARendirServicios] = useState([]);
-  const [selectedMovimientosDetEntregaServicios, setSelectedMovimientosDetEntregaServicios] = useState(null);
-  const [loadingDetEntregaServicios, setLoadingDetEntregaServicios] = useState(false);
-  const [selectedDetMovsIdsServicios, setSelectedDetMovsIdsServicios] = useState([]);
+  const [
+    selectedMovimientosDetEntregaServicios,
+    setSelectedMovimientosDetEntregaServicios,
+  ] = useState(null);
+  const [loadingDetEntregaServicios, setLoadingDetEntregaServicios] =
+    useState(false);
+  const [selectedDetMovsIdsServicios, setSelectedDetMovsIdsServicios] =
+    useState([]);
   const [entregasOTMantenimiento, setEntregasOTMantenimiento] = useState([]);
-  const [movimientosOTMantenimiento, setMovimientosOTMantenimiento] = useState([]);
-  const [selectedMovimientosOTMantenimiento, setSelectedMovimientosOTMantenimiento] = useState(null);
-  const [selectedDetMovsIdsOTMantenimiento, setSelectedDetMovsIdsOTMantenimiento] = useState([]);
+  const [movimientosOTMantenimiento, setMovimientosOTMantenimiento] = useState(
+    [],
+  );
+  const [
+    selectedMovimientosOTMantenimiento,
+    setSelectedMovimientosOTMantenimiento,
+  ] = useState(null);
+  const [
+    selectedDetMovsIdsOTMantenimiento,
+    setSelectedDetMovsIdsOTMantenimiento,
+  ] = useState([]);
   const [tiposDocumento, setTiposDocumento] = useState([]);
   const [productos, setProductos] = useState([]);
-    useEffect(() => {
+  useEffect(() => {
     cargarDatosIniciales();
   }, []);
 
   useEffect(() => {
     aplicarFiltros();
-  }, [items, empresaOrigenFilter, empresaDestinoFilter, estadoFilter, fechaInicioFilter, fechaFinFilter, globalFilter]);
+  }, [
+    items,
+    empresaOrigenFilter,
+    empresaDestinoFilter,
+    estadoFilter,
+    fechaInicioFilter,
+    fechaFinFilter,
+    globalFilter,
+  ]);
 
   const cargarDatosIniciales = async () => {
     setLoading(true);
@@ -182,7 +233,7 @@ export default function MovimientoCaja({ ruta }) {
         cargarMovimientosOTMantenimiento(),
       ]);
     } catch (err) {
-      console.error('Error cargando datos iniciales:', err);
+      console.error("Error cargando datos iniciales:", err);
     } finally {
       setLoading(false);
     }
@@ -192,22 +243,29 @@ export default function MovimientoCaja({ ruta }) {
     let filtrados = [...items];
 
     if (empresaOrigenFilter) {
-      filtrados = filtrados.filter(item => Number(item.empresaOrigenId) === Number(empresaOrigenFilter));
+      filtrados = filtrados.filter(
+        (item) => Number(item.empresaOrigenId) === Number(empresaOrigenFilter),
+      );
     }
     if (empresaDestinoFilter) {
-      filtrados = filtrados.filter(item => Number(item.empresaDestinoId) === Number(empresaDestinoFilter));
+      filtrados = filtrados.filter(
+        (item) =>
+          Number(item.empresaDestinoId) === Number(empresaDestinoFilter),
+      );
     }
     if (estadoFilter) {
-      filtrados = filtrados.filter(item => Number(item.estadoId) === Number(estadoFilter));
+      filtrados = filtrados.filter(
+        (item) => Number(item.estadoId) === Number(estadoFilter),
+      );
     }
     if (fechaInicioFilter) {
-      filtrados = filtrados.filter(item => {
+      filtrados = filtrados.filter((item) => {
         const fechaItem = new Date(item.fechaOperacionMovCaja);
         return fechaItem >= fechaInicioFilter;
       });
     }
     if (fechaFinFilter) {
-      filtrados = filtrados.filter(item => {
+      filtrados = filtrados.filter((item) => {
         const fechaItem = new Date(item.fechaOperacionMovCaja);
         return fechaItem <= fechaFinFilter;
       });
@@ -215,7 +273,7 @@ export default function MovimientoCaja({ ruta }) {
 
     if (globalFilter) {
       const filterLower = globalFilter.toLowerCase();
-      filtrados = filtrados.filter(item => {
+      filtrados = filtrados.filter((item) => {
         return (
           item.id?.toString().includes(filterLower) ||
           item.descripcion?.toLowerCase().includes(filterLower) ||
@@ -386,7 +444,7 @@ export default function MovimientoCaja({ ruta }) {
     try {
       const data = await getEstadosMultiFuncion();
       const estadosFiltrados = data.filter(
-        (estado) => Number(estado.tipoProvieneDeId) === 6
+        (estado) => Number(estado.tipoProvieneDeId) === 6,
       );
       setEstadosMultiFuncion(estadosFiltrados);
     } catch (err) {
@@ -440,7 +498,8 @@ export default function MovimientoCaja({ ruta }) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo cargar los movimientos de entrega a rendir de pesca consumo.",
+        detail:
+          "No se pudo cargar los movimientos de entrega a rendir de pesca consumo.",
         life: 3000,
       });
     }
@@ -471,7 +530,8 @@ export default function MovimientoCaja({ ruta }) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo cargar los movimientos de entregas a rendir de compras.",
+        detail:
+          "No se pudo cargar los movimientos de entregas a rendir de compras.",
         life: 3000,
       });
     }
@@ -502,7 +562,8 @@ export default function MovimientoCaja({ ruta }) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo cargar los movimientos de entregas a rendir de ventas.",
+        detail:
+          "No se pudo cargar los movimientos de entregas a rendir de ventas.",
         life: 3000,
       });
     }
@@ -533,7 +594,8 @@ export default function MovimientoCaja({ ruta }) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo cargar los movimientos de entregas a rendir de almacén.",
+        detail:
+          "No se pudo cargar los movimientos de entregas a rendir de almacén.",
         life: 3000,
       });
     }
@@ -564,7 +626,8 @@ export default function MovimientoCaja({ ruta }) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo cargar los movimientos de entregas a rendir de servicios.",
+        detail:
+          "No se pudo cargar los movimientos de entregas a rendir de servicios.",
         life: 3000,
       });
     }
@@ -589,17 +652,17 @@ export default function MovimientoCaja({ ruta }) {
     try {
       const [entregasData, movimientosData] = await Promise.all([
         obtenerEntregasRendirOTMantenimiento(),
-        obtenerDetMovsEntregaRendirOTMantenimiento()
+        obtenerDetMovsEntregaRendirOTMantenimiento(),
       ]);
-      
+
       setEntregasOTMantenimiento(entregasData || []);
-      
+
       const movimientosPendientes = (movimientosData || []).filter(
-        mov => !mov.validadoTesoreria && !mov.operacionMovCajaId
+        (mov) => !mov.validadoTesoreria && !mov.operacionMovCajaId,
       );
       setMovimientosOTMantenimiento(movimientosPendientes);
     } catch (error) {
-      console.error('Error cargando movimientos de OT Mantenimiento:', error);
+      console.error("Error cargando movimientos de OT Mantenimiento:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -637,13 +700,12 @@ export default function MovimientoCaja({ ruta }) {
     }
   };
 
-
   const handleNew = () => {
     if (!permisos.puedeCrear) {
       toast.current?.show({
-        severity: 'warn',
-        summary: 'Acceso Denegado',
-        detail: 'No tiene permisos para crear registros.',
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear registros.",
         life: 3000,
       });
       return;
@@ -656,9 +718,9 @@ export default function MovimientoCaja({ ruta }) {
   const handleEdit = (rowData) => {
     if (!permisos.puedeVer && !permisos.puedeEditar) {
       toast.current?.show({
-        severity: 'warn',
-        summary: 'Acceso Denegado',
-        detail: 'No tiene permisos para ver o editar registros.',
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para ver o editar registros.",
         life: 3000,
       });
       return;
@@ -671,9 +733,9 @@ export default function MovimientoCaja({ ruta }) {
   const handleDelete = (rowData) => {
     if (!permisos.puedeEliminar) {
       toast.current?.show({
-        severity: 'warn',
-        summary: 'Acceso Denegado',
-        detail: 'No tiene permisos para eliminar registros.',
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para eliminar registros.",
         life: 3000,
       });
       return;
@@ -683,18 +745,31 @@ export default function MovimientoCaja({ ruta }) {
       message: (
         <div>
           <p>¿Está seguro de eliminar este registro?</p>
-          <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
-            <strong>ID:</strong> {rowData.id}<br />
-            <strong>Monto:</strong> {new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(rowData.monto || 0)}<br />
+          <div
+            style={{
+              marginTop: "1rem",
+              padding: "0.75rem",
+              backgroundColor: "#f8f9fa",
+              borderRadius: "6px",
+            }}
+          >
+            <strong>ID:</strong> {rowData.id}
+            <br />
+            <strong>Monto:</strong>{" "}
+            {new Intl.NumberFormat("es-PE", {
+              style: "currency",
+              currency: "PEN",
+            }).format(rowData.monto || 0)}
+            <br />
             <strong>Descripción:</strong> {rowData.descripcion || "N/A"}
           </div>
         </div>
       ),
-      header: 'Confirmar Eliminación',
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Sí, eliminar',
-      rejectLabel: 'Cancelar',
-      acceptClassName: 'p-button-danger',
+      header: "Confirmar Eliminación",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Sí, eliminar",
+      rejectLabel: "Cancelar",
+      acceptClassName: "p-button-danger",
       accept: () => handleDeleteConfirm(rowData),
     });
   };
@@ -714,7 +789,8 @@ export default function MovimientoCaja({ ruta }) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: err.response?.data?.mensaje || "No se pudo eliminar el registro.",
+        detail:
+          err.response?.data?.mensaje || "No se pudo eliminar el registro.",
         life: 3000,
       });
     }
@@ -726,18 +802,18 @@ export default function MovimientoCaja({ ruta }) {
 
     if (esEdicion && !permisos.puedeEditar) {
       toast.current?.show({
-        severity: 'warn',
-        summary: 'Acceso Denegado',
-        detail: 'No tiene permisos para editar registros.',
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para editar registros.",
         life: 3000,
       });
       return;
     }
     if (!esEdicion && !permisos.puedeCrear) {
       toast.current?.show({
-        severity: 'warn',
-        summary: 'Acceso Denegado',
-        detail: 'No tiene permisos para crear registros.',
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para crear registros.",
         life: 3000,
       });
       return;
@@ -755,7 +831,7 @@ export default function MovimientoCaja({ ruta }) {
         });
         const movimientoActualizado = await getAllMovimientoCaja();
         const movActualizado = movimientoActualizado.find(
-          (m) => Number(m.id) === Number(selected.id)
+          (m) => Number(m.id) === Number(selected.id),
         );
         if (movActualizado) {
           setSelected(movActualizado);
@@ -766,12 +842,13 @@ export default function MovimientoCaja({ ruta }) {
         toast.current?.show({
           severity: "success",
           summary: "Creado",
-          detail: "Registro creado exitosamente. Puede continuar editando o cerrar la ventana.",
+          detail:
+            "Registro creado exitosamente. Puede continuar editando o cerrar la ventana.",
           life: 4000,
         });
         const movimientos = await getAllMovimientoCaja();
         const movimientoCreado = movimientos.find(
-          (m) => Number(m.id) === Number(nuevoMovimiento.id)
+          (m) => Number(m.id) === Number(nuevoMovimiento.id),
         );
         if (movimientoCreado) {
           setSelected(movimientoCreado);
@@ -798,11 +875,17 @@ export default function MovimientoCaja({ ruta }) {
   const handleValidarMovimiento = async (movimiento) => {
     setLoading(true);
     try {
-      await validarMovimientoCaja(movimiento.id);
+      const response = await validarMovimientoCaja(movimiento.id);
+
+      if (response.saldosGenerados && response.saldosGenerados.length > 0) {
+        setSaldosGenerados(response.saldosGenerados);
+        setShowSaldosDialog(true);
+      }
+
       toast.current?.show({
         severity: "success",
         summary: "Validado",
-        detail: "Movimiento validado correctamente y origen actualizado.",
+        detail: "Movimiento validado correctamente y saldos generados.",
         life: 4000,
       });
       setShowDialog(false);
@@ -844,11 +927,11 @@ export default function MovimientoCaja({ ruta }) {
   };
 
   const handleAprobar = (movimiento) => {
-    if (!permisos.puedeEditar) {
+    if (!permisos.puedeAprobarDocs) {
       toast.current?.show({
-        severity: 'warn',
-        summary: 'Acceso Denegado',
-        detail: 'No tiene permisos para aprobar movimientos.',
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para aprobar movimientos.",
         life: 3000,
       });
       return;
@@ -858,11 +941,11 @@ export default function MovimientoCaja({ ruta }) {
   };
 
   const handleRechazar = (movimiento) => {
-    if (!permisos.puedeEditar) {
+    if (!permisos.puedeRechazarDocs) {
       toast.current?.show({
-        severity: 'warn',
-        summary: 'Acceso Denegado',
-        detail: 'No tiene permisos para rechazar movimientos.',
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para rechazar movimientos.",
         life: 3000,
       });
       return;
@@ -873,11 +956,11 @@ export default function MovimientoCaja({ ruta }) {
   };
 
   const handleRevertir = (movimiento) => {
-    if (!permisos.puedeEditar) {
+    if (!permisos.puedeReactivarDocs) {
       toast.current?.show({
-        severity: 'warn',
-        summary: 'Acceso Denegado',
-        detail: 'No tiene permisos para revertir movimientos.',
+        severity: "warn",
+        summary: "Acceso Denegado",
+        detail: "No tiene permisos para revertir movimientos.",
         life: 3000,
       });
       return;
@@ -902,7 +985,8 @@ export default function MovimientoCaja({ ruta }) {
       setShowAprobarDialog(false);
       setMovimientoWorkflow(null);
     } catch (error) {
-      const mensajeError = error.response?.data?.error || "No se pudo aprobar el movimiento";
+      const mensajeError =
+        error.response?.data?.error || "No se pudo aprobar el movimiento";
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -925,7 +1009,11 @@ export default function MovimientoCaja({ ruta }) {
     }
     setLoading(true);
     try {
-      await rechazarMovimientoCaja(movimientoWorkflow.id, usuario.personalId, motivoRechazo);
+      await rechazarMovimientoCaja(
+        movimientoWorkflow.id,
+        usuario.personalId,
+        motivoRechazo,
+      );
       toast.current?.show({
         severity: "success",
         summary: "Rechazado",
@@ -937,7 +1025,8 @@ export default function MovimientoCaja({ ruta }) {
       setMovimientoWorkflow(null);
       setMotivoRechazo("");
     } catch (error) {
-      const mensajeError = error.response?.data?.error || "No se pudo rechazar el movimiento";
+      const mensajeError =
+        error.response?.data?.error || "No se pudo rechazar el movimiento";
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -960,11 +1049,16 @@ export default function MovimientoCaja({ ruta }) {
     }
     setLoading(true);
     try {
-      await revertirMovimientoCaja(movimientoWorkflow.id, motivoReversion, usuario.id);
+      await revertirMovimientoCaja(
+        movimientoWorkflow.id,
+        motivoReversion,
+        usuario.id,
+      );
       toast.current?.show({
         severity: "success",
         summary: "Revertido",
-        detail: "Movimiento revertido correctamente. Se creó un movimiento inverso.",
+        detail:
+          "Movimiento revertido correctamente. Se creó un movimiento inverso.",
         life: 4000,
       });
       await cargarItems();
@@ -972,7 +1066,8 @@ export default function MovimientoCaja({ ruta }) {
       setMovimientoWorkflow(null);
       setMotivoReversion("");
     } catch (error) {
-      const mensajeError = error.response?.data?.error || "No se pudo revertir el movimiento";
+      const mensajeError =
+        error.response?.data?.error || "No se pudo revertir el movimiento";
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -983,7 +1078,10 @@ export default function MovimientoCaja({ ruta }) {
     setLoading(false);
   };
 
-    const handleAplicarMovimientos = async (movimientoSeleccionado, tipoOrigen) => {
+  const handleAplicarMovimientos = async (
+    movimientoSeleccionado,
+    tipoOrigen,
+  ) => {
     if (!movimientoSeleccionado) {
       toast.current?.show({
         severity: "warn",
@@ -996,7 +1094,7 @@ export default function MovimientoCaja({ ruta }) {
 
     try {
       const estadoPendiente = estadosMultiFuncion.find(
-        (estado) => Number(estado.id) === 20
+        (estado) => Number(estado.id) === 20,
       );
 
       if (!estadoPendiente) {
@@ -1013,52 +1111,80 @@ export default function MovimientoCaja({ ruta }) {
 
       if (tipoOrigen === "industrial") {
         const entregaARendir = entregasARendir.find(
-          (e) => Number(e.id) === Number(movimientoSeleccionado.entregaARendirId)
+          (e) =>
+            Number(e.id) === Number(movimientoSeleccionado.entregaARendirId),
         );
         if (entregaARendir && entregaARendir.temporadaPesca) {
           empresaDestinoId = entregaARendir.temporadaPesca.empresaId;
         }
       } else if (tipoOrigen === "consumo") {
         const entregaARendirConsumo = entregasARendirConsumo.find(
-          (e) => Number(e.id) === Number(movimientoSeleccionado.entregaARendirPescaConsumoId)
+          (e) =>
+            Number(e.id) ===
+            Number(movimientoSeleccionado.entregaARendirPescaConsumoId),
         );
-        if (entregaARendirConsumo && entregaARendirConsumo.novedadPescaConsumo) {
-          empresaDestinoId = entregaARendirConsumo.novedadPescaConsumo.empresaId;
+        if (
+          entregaARendirConsumo &&
+          entregaARendirConsumo.novedadPescaConsumo
+        ) {
+          empresaDestinoId =
+            entregaARendirConsumo.novedadPescaConsumo.empresaId;
         }
       } else if (tipoOrigen === "compras") {
         const entregaARendirCompras = entregasARendirCompras.find(
-          (e) => Number(e.id) === Number(movimientoSeleccionado.entregaARendirPComprasId)
+          (e) =>
+            Number(e.id) ===
+            Number(movimientoSeleccionado.entregaARendirPComprasId),
         );
-        if (entregaARendirCompras && entregaARendirCompras.requerimientoCompra) {
-          empresaDestinoId = entregaARendirCompras.requerimientoCompra.empresaId;
+        if (
+          entregaARendirCompras &&
+          entregaARendirCompras.requerimientoCompra
+        ) {
+          empresaDestinoId =
+            entregaARendirCompras.requerimientoCompra.empresaId;
         }
       } else if (tipoOrigen === "ventas") {
         const entregaARendirVentas = entregasARendirVentas.find(
-          (e) => Number(e.id) === Number(movimientoSeleccionado.entregaARendirPVentasId)
+          (e) =>
+            Number(e.id) ===
+            Number(movimientoSeleccionado.entregaARendirPVentasId),
         );
         if (entregaARendirVentas && entregaARendirVentas.cotizacionVentas) {
           empresaDestinoId = entregaARendirVentas.cotizacionVentas.empresaId;
         }
       } else if (tipoOrigen === "almacen") {
         const entregaARendirAlmacen = entregasARendirAlmacen.find(
-          (e) => Number(e.id) === Number(movimientoSeleccionado.entregaARendirMovAlmacenId)
+          (e) =>
+            Number(e.id) ===
+            Number(movimientoSeleccionado.entregaARendirMovAlmacenId),
         );
         if (entregaARendirAlmacen && entregaARendirAlmacen.movimientoAlmacen) {
           empresaDestinoId = entregaARendirAlmacen.movimientoAlmacen.empresaId;
         }
       } else if (tipoOrigen === "servicios") {
         const entregaARendirServicios = entregasARendirServicios.find(
-          (e) => Number(e.id) === Number(movimientoSeleccionado.entregaARendirContratoServiciosId)
+          (e) =>
+            Number(e.id) ===
+            Number(movimientoSeleccionado.entregaARendirContratoServiciosId),
         );
-        if (entregaARendirServicios && entregaARendirServicios.contratoServicio) {
+        if (
+          entregaARendirServicios &&
+          entregaARendirServicios.contratoServicio
+        ) {
           empresaDestinoId = entregaARendirServicios.contratoServicio.empresaId;
         }
       } else if (tipoOrigen === "otMantenimiento") {
         const entregaARendirOTMantenimiento = entregasOTMantenimiento.find(
-          (e) => Number(e.id) === Number(movimientoSeleccionado.entregaARendirOTMantenimientoId)
+          (e) =>
+            Number(e.id) ===
+            Number(movimientoSeleccionado.entregaARendirOTMantenimientoId),
         );
-        if (entregaARendirOTMantenimiento && entregaARendirOTMantenimiento.otMantenimiento) {
-          empresaDestinoId = entregaARendirOTMantenimiento.otMantenimiento.empresaId;
+        if (
+          entregaARendirOTMantenimiento &&
+          entregaARendirOTMantenimiento.otMantenimiento
+        ) {
+          empresaDestinoId =
+            entregaARendirOTMantenimiento.otMantenimiento.empresaId;
         }
       }
 
@@ -1084,11 +1210,11 @@ export default function MovimientoCaja({ ruta }) {
         }
       }
 
-           // Buscar la primera cuenta corriente de la empresa origen
+      // Buscar la primera cuenta corriente de la empresa origen
       let cuentaCorrienteOrigenId = null;
       if (empresaDestinoId) {
         const cuentasEmpresa = cuentasCorrientes.filter(
-          (cc) => Number(cc.empresaId) === Number(empresaDestinoId)
+          (cc) => Number(cc.empresaId) === Number(empresaDestinoId),
         );
         if (cuentasEmpresa.length > 0) {
           cuentaCorrienteOrigenId = Number(cuentasEmpresa[0].id);
@@ -1122,7 +1248,8 @@ export default function MovimientoCaja({ ruta }) {
           ? Number(movimientoSeleccionado.centroCostoId)
           : null,
         origenMotivoOperacionId: Number(movimientoSeleccionado.id),
-        operacionSinFactura: movimientoSeleccionado.operacionSinFactura || false,
+        operacionSinFactura:
+          movimientoSeleccionado.operacionSinFactura || false,
         productoId: movimientoSeleccionado.productoId
           ? Number(movimientoSeleccionado.productoId)
           : null,
@@ -1136,7 +1263,7 @@ export default function MovimientoCaja({ ruta }) {
         movimientoAplicado: movimientoSeleccionado,
         tipoOrigen: tipoOrigen,
       };
-      
+
       setSelected(datosIniciales);
       setIsEdit(false);
       setShowDialog(true);
@@ -1209,53 +1336,68 @@ export default function MovimientoCaja({ ruta }) {
     const estaAprobado = rowData.aprobadoPorId != null;
     const estaRechazado = rowData.rechazadoPorId != null;
     const esReversion = rowData.esReversion === true;
+    const estaValidado = Number(rowData.estadoId) === 21;
 
     if (esReversion) return null;
 
     return (
-      <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
-        {!estaAprobado && !estaRechazado && (
-          <>
-            <Button
-              icon="pi pi-check"
-              rounded
-              severity="success"
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleAprobar(rowData);
-              }}
-              tooltip="Aprobar"
-              disabled={!permisos.puedeEditar || loading}
-            />
-            <Button
-              icon="pi pi-times"
-              rounded
-              severity="danger"
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRechazar(rowData);
-              }}
-              tooltip="Rechazar"
-              disabled={!permisos.puedeEditar || loading}
-            />
-          </>
-        )}
-        {estaAprobado && (
-          <Button
-            icon="pi pi-replay"
-            rounded
-            severity="warning"
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRevertir(rowData);
-            }}
-            tooltip="Revertir"
-            disabled={!permisos.puedeEditar || loading}
-          />
-        )}
+      <div
+        style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Button
+          icon="pi pi-check"
+          rounded
+          severity="success"
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!estaValidado || estaAprobado || estaRechazado) return;
+            handleAprobar(rowData);
+          }}
+          tooltip={estaValidado ? "Aprobar" : "Debe validar primero"}
+          disabled={
+            !permisos.puedeAprobarDocs ||
+            !estaValidado ||
+            estaAprobado ||
+            estaRechazado
+          }
+        />
+        <Button
+          icon="pi pi-times"
+          rounded
+          severity="danger"
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!estaValidado || estaAprobado || estaRechazado) return;
+            handleRechazar(rowData);
+          }}
+          tooltip={estaValidado ? "Rechazar" : "Debe validar primero"}
+          disabled={
+            !permisos.puedeRechazarDocs ||
+            !estaValidado ||
+            estaAprobado ||
+            estaRechazado
+          }
+        />
+        <Button
+          icon="pi pi-replay"
+          rounded
+          severity="warning"
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!estaAprobado) return;
+            handleRevertir(rowData);
+          }}
+          tooltip={
+            estaAprobado
+              ? "Revertir"
+              : "Solo se pueden revertir movimientos aprobados"
+          }
+          disabled={!permisos.puedeReactivarDocs || !estaAprobado}
+        />
       </div>
     );
   };
@@ -1272,7 +1414,7 @@ export default function MovimientoCaja({ ruta }) {
             handleEdit(rowData);
           }}
           disabled={(!permisos.puedeVer && !permisos.puedeEditar) || loading}
-          tooltip={permisos.puedeEditar ? 'Editar' : 'Ver'}
+          tooltip={permisos.puedeEditar ? "Editar" : "Ver"}
         />
         <Button
           icon="pi pi-trash"
@@ -1292,31 +1434,56 @@ export default function MovimientoCaja({ ruta }) {
 
   const renderHeader = () => {
     return (
-      <div className="flex flex-wrap gap-2 align-items-center justify-content-between">
-        <div className="flex gap-2 align-items-center">
+      <div
+        style={{
+          alignItems: "center",
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 2 }}>
+          <h2 className="m-0">Registro de Movimientos de Caja</h2>
           <h4 className="m-0">Total de registros: {itemsFiltrados.length}</h4>
         </div>
-        <div className="flex gap-2">
+        <div style={{ flex: 0.5 }}>
+          <Button
+            label="Nuevo Movimiento"
+            icon="pi pi-plus"
+            severity="success"
+            raised
+            onClick={handleNew}
+            disabled={!permisos.puedeCrear || loading}
+            tooltip={
+              !permisos.puedeCrear
+                ? "No tiene permisos para crear"
+                : "Nuevo Movimiento de Caja"
+            }
+          />
+        </div>
+        <div style={{ flex: 1 }}>
           <span className="p-input-icon-left">
             <i className="pi pi-search" />
             <InputText
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               placeholder="Buscar..."
-              style={{ width: '250px' }}
+              style={{ width: "10rem" }}
             />
           </span>
+        </div>
+        <div style={{ flex: 0.1 }}>
           <Button
             icon="pi pi-filter-slash"
-            outlined
             severity="secondary"
             onClick={handleClearFilters}
             tooltip="Limpiar filtros"
             disabled={loading}
           />
+        </div>
+        <div style={{ flex: 0.1 }}>
           <Button
             icon="pi pi-refresh"
-            outlined
             severity="info"
             onClick={handleRefresh}
             loading={loading}
@@ -1353,7 +1520,10 @@ export default function MovimientoCaja({ ruta }) {
               cargarEntregasARendir();
             }}
             onAplicarValidacion={() =>
-              handleAplicarMovimientos(selectedMovimientosDetEntrega, "industrial")
+              handleAplicarMovimientos(
+                selectedMovimientosDetEntrega,
+                "industrial",
+              )
             }
             toast={toast}
           />
@@ -1379,7 +1549,10 @@ export default function MovimientoCaja({ ruta }) {
               cargarEntregasARendirConsumo();
             }}
             onAplicarValidacion={() =>
-              handleAplicarMovimientos(selectedMovimientosDetEntregaConsumo, "consumo")
+              handleAplicarMovimientos(
+                selectedMovimientosDetEntregaConsumo,
+                "consumo",
+              )
             }
             toast={toast}
           />
@@ -1407,7 +1580,10 @@ export default function MovimientoCaja({ ruta }) {
               cargarEntregasARendirCompras();
             }}
             onAplicarValidacion={() =>
-              handleAplicarMovimientos(selectedMovimientosDetEntregaCompras, "compras")
+              handleAplicarMovimientos(
+                selectedMovimientosDetEntregaCompras,
+                "compras",
+              )
             }
             toast={toast}
           />
@@ -1435,7 +1611,10 @@ export default function MovimientoCaja({ ruta }) {
               cargarEntregasARendirVentas();
             }}
             onAplicarValidacion={() =>
-              handleAplicarMovimientos(selectedMovimientosDetEntregaVentas, "ventas")
+              handleAplicarMovimientos(
+                selectedMovimientosDetEntregaVentas,
+                "ventas",
+              )
             }
             toast={toast}
           />
@@ -1463,7 +1642,10 @@ export default function MovimientoCaja({ ruta }) {
               cargarEntregasARendirAlmacen();
             }}
             onAplicarValidacion={() =>
-              handleAplicarMovimientos(selectedMovimientosDetEntregaAlmacen, "almacen")
+              handleAplicarMovimientos(
+                selectedMovimientosDetEntregaAlmacen,
+                "almacen",
+              )
             }
             toast={toast}
           />
@@ -1491,7 +1673,10 @@ export default function MovimientoCaja({ ruta }) {
               cargarEntregasARendirServicios();
             }}
             onAplicarValidacion={() =>
-              handleAplicarMovimientos(selectedMovimientosDetEntregaServicios, "servicios")
+              handleAplicarMovimientos(
+                selectedMovimientosDetEntregaServicios,
+                "servicios",
+              )
             }
             toast={toast}
           />
@@ -1518,7 +1703,10 @@ export default function MovimientoCaja({ ruta }) {
               cargarMovimientosOTMantenimiento();
             }}
             onAplicarValidacion={() =>
-              handleAplicarMovimientos(selectedMovimientosOTMantenimiento, "otMantenimiento")
+              handleAplicarMovimientos(
+                selectedMovimientosOTMantenimiento,
+                "otMantenimiento",
+              )
             }
             toast={toast}
           />
@@ -1526,25 +1714,12 @@ export default function MovimientoCaja({ ruta }) {
       </TabView>
 
       <Card className="mt-4">
-        <div className="flex justify-content-between align-items-center mb-3">
-          <h2 className="m-0">Registro de Movimientos de Caja</h2>
-          <Button
-            label="Nuevo Movimiento"
-            icon="pi pi-plus"
-            severity="success"
-            raised
-            onClick={handleNew}
-            disabled={!permisos.puedeCrear || loading}
-            tooltip={!permisos.puedeCrear ? 'No tiene permisos para crear' : 'Nuevo Movimiento de Caja'}
-          />
-        </div>
-
         <DataTable
           value={itemsFiltrados}
           loading={loading}
           paginator
-          rows={10}
-          rowsPerPageOptions={[5, 10, 25, 50]}
+          rows={50}
+          rowsPerPageOptions={[50, 100, 250, 500]}
           emptyMessage="No hay movimientos de caja registrados"
           size="small"
           stripedRows
@@ -1557,43 +1732,55 @@ export default function MovimientoCaja({ ruta }) {
           selection={selected}
           onSelectionChange={(e) => setSelected(e.value)}
           onRowClick={(e) => {
+            const isButton = e.originalEvent.target.closest("button");
+            if (isButton) return;
+
             if (permisos.puedeVer || permisos.puedeEditar) {
               handleEdit(e.data);
             }
           }}
         >
           <Column field="id" header="ID" sortable style={{ width: "80px" }} />
-
           <Column
             field="fechaOperacionMovCaja"
-            header="Fecha Operación"
+            header="Fecha"
             sortable
             body={(rowData) => {
               return rowData.fechaOperacionMovCaja
-                ? new Date(rowData.fechaOperacionMovCaja).toLocaleDateString("es-PE")
+                ? new Date(rowData.fechaOperacionMovCaja).toLocaleDateString(
+                    "es-PE",
+                  )
                 : "N/A";
             }}
-            style={{ width: "120px" }}
+            style={{ width: "2rem" }}
           />
-
+          <Column
+            field="tipoMovimientoId"
+            header="Tipo Movimiento"
+            sortable
+            body={(rowData) => {
+              return rowData.tipoMovimiento?.nombre || "N/A";
+            }}
+            style={{ width: "150px" }}
+          />
           <Column
             field="monto"
             header="Monto"
             sortable
             body={(rowData) => {
+              const codigoMoneda = rowData.moneda?.codigoSunat || "PEN";
               return new Intl.NumberFormat("es-PE", {
                 style: "currency",
-                currency: "PEN",
+                currency: codigoMoneda,
               }).format(rowData.monto || 0);
             }}
             style={{ width: "120px", textAlign: "right" }}
           />
-
           <Column
             field="descripcion"
             header="Descripción"
             sortable
-            style={{ minWidth: "200px" }}
+            style={{ width: "12rem" }}
           />
 
           <Column
@@ -1602,7 +1789,7 @@ export default function MovimientoCaja({ ruta }) {
             sortable
             body={(rowData) => {
               const empresa = empresas.find(
-                (e) => Number(e.id) === Number(rowData.empresaOrigenId)
+                (e) => Number(e.id) === Number(rowData.empresaOrigenId),
               );
               return empresa ? empresa.razonSocial : "N/A";
             }}
@@ -1615,7 +1802,7 @@ export default function MovimientoCaja({ ruta }) {
             sortable
             body={(rowData) => {
               const empresa = empresas.find(
-                (e) => Number(e.id) === Number(rowData.empresaDestinoId)
+                (e) => Number(e.id) === Number(rowData.empresaDestinoId),
               );
               return empresa ? empresa.razonSocial : "N/A";
             }}
@@ -1628,7 +1815,7 @@ export default function MovimientoCaja({ ruta }) {
             sortable
             body={(rowData) => {
               const cuenta = cuentasCorrientes.find(
-                (c) => Number(c.id) === Number(rowData.cuentaCorrienteOrigenId)
+                (c) => Number(c.id) === Number(rowData.cuentaCorrienteOrigenId),
               );
               return cuenta ? cuenta.numeroCuenta : "N/A";
             }}
@@ -1641,7 +1828,8 @@ export default function MovimientoCaja({ ruta }) {
             sortable
             body={(rowData) => {
               const cuenta = cuentasCorrientes.find(
-                (c) => Number(c.id) === Number(rowData.cuentaCorrienteDestinoId)
+                (c) =>
+                  Number(c.id) === Number(rowData.cuentaCorrienteDestinoId),
               );
               return cuenta ? cuenta.numeroCuenta : "N/A";
             }}
@@ -1650,16 +1838,16 @@ export default function MovimientoCaja({ ruta }) {
 
           <Column
             field="operacionSinFactura"
-            header="Sin Factura"
+            header="S/F"
             sortable
             body={(rowData) => {
-              return rowData.operacionSinFactura ? (
+              return rowData.operacionSinFactura === true ? (
                 <Badge value="SÍ" severity="warning" />
               ) : (
-                <Badge value="NO" severity="success" />
+                <Badge value="NO" severity="info" />
               );
             }}
-            style={{ width: "100px", textAlign: "center" }}
+            style={{ width: "3rem", textAlign: "center" }}
           />
 
           <Column
@@ -1667,13 +1855,15 @@ export default function MovimientoCaja({ ruta }) {
             header="Estado"
             sortable
             body={(rowData) => {
-              const estado = estadosMultiFuncion.find(
-                (e) => Number(e.id) === Number(rowData.estadoId)
-              );
+              const estado =
+                rowData.estadoMovimientoCaja ||
+                estadosMultiFuncion.find(
+                  (e) => Number(e.id) === Number(rowData.estadoId),
+                );
               return estado ? (
                 <Badge
                   value={estado.descripcion}
-                  severity={estado.descripcion === "ACTIVO" ? "success" : "danger"}
+                  severity={estado.severityColor}
                 />
               ) : (
                 "N/A"
@@ -1685,19 +1875,19 @@ export default function MovimientoCaja({ ruta }) {
           <Column
             header="Estado Workflow"
             body={estadoWorkflowBodyTemplate}
-            style={{ width: "150px", textAlign: "center" }}
+            style={{ width: "3rem", textAlign: "center" }}
           />
 
           <Column
             header="Workflow"
             body={accionesWorkflowBodyTemplate}
-            style={{ width: "120px", textAlign: "center" }}
+            style={{ width: "10rem", textAlign: "center" }}
           />
 
           <Column
             header="Acciones"
             body={actionBodyTemplate}
-            style={{ width: "120px", textAlign: "center" }}
+            style={{ width: "7rem", textAlign: "center" }}
           />
         </DataTable>
       </Card>
@@ -1755,13 +1945,35 @@ export default function MovimientoCaja({ ruta }) {
         <div style={{ padding: "1rem" }}>
           <p>¿Está seguro de aprobar este movimiento de caja?</p>
           {movimientoWorkflow && (
-            <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "#f8f9fa", borderRadius: "6px" }}>
-              <strong>ID:</strong> {movimientoWorkflow.id}<br />
-              <strong>Monto:</strong> {new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(movimientoWorkflow.monto || 0)}<br />
-              <strong>Descripción:</strong> {movimientoWorkflow.descripcion || "N/A"}
+            <div
+              style={{
+                marginTop: "1rem",
+                padding: "0.75rem",
+                backgroundColor: "#f8f9fa",
+                borderRadius: "6px",
+              }}
+            >
+              <strong>Tipo de Movimiento:</strong>{" "}
+              {movimientoWorkflow.tipoMovimiento?.nombre || "N/A"}
+              <br />
+              <strong>Monto:</strong>{" "}
+              {new Intl.NumberFormat("es-PE", {
+                style: "currency",
+                currency: movimientoWorkflow.moneda?.codigoSunat || "PEN",
+              }).format(movimientoWorkflow.monto || 0)}
+              <br />
+              <strong>Descripción:</strong>{" "}
+              {movimientoWorkflow.descripcion || "N/A"}
             </div>
           )}
-          <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+          <div
+            style={{
+              marginTop: "1.5rem",
+              display: "flex",
+              gap: "0.5rem",
+              justifyContent: "flex-end",
+            }}
+          >
             <Button
               label="Cancelar"
               icon="pi pi-times"
@@ -1789,14 +2001,31 @@ export default function MovimientoCaja({ ruta }) {
         <div style={{ padding: "1rem" }}>
           <p>Indique el motivo del rechazo:</p>
           {movimientoWorkflow && (
-            <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "#f8f9fa", borderRadius: "6px" }}>
-              <strong>ID:</strong> {movimientoWorkflow.id}<br />
-              <strong>Monto:</strong> {new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(movimientoWorkflow.monto || 0)}<br />
-              <strong>Descripción:</strong> {movimientoWorkflow.descripcion || "N/A"}
+            <div
+              style={{
+                marginTop: "1rem",
+                padding: "0.75rem",
+                backgroundColor: "#f8f9fa",
+                borderRadius: "6px",
+              }}
+            >
+              <strong>Tipo de Movimiento:</strong>{" "}
+              {movimientoWorkflow.tipoMovimiento?.nombre || "N/A"}
+              <br />
+              <strong>Monto:</strong>{" "}
+              {new Intl.NumberFormat("es-PE", {
+                style: "currency",
+                currency: movimientoWorkflow.moneda?.codigoSunat || "PEN",
+              }).format(movimientoWorkflow.monto || 0)}
+              <br />
+              <strong>Descripción:</strong>{" "}
+              {movimientoWorkflow.descripcion || "N/A"}
             </div>
           )}
           <div style={{ marginTop: "1rem" }}>
-            <label htmlFor="motivoRechazo" style={{ fontWeight: "bold" }}>Motivo del Rechazo <span style={{ color: "red" }}>*</span></label>
+            <label htmlFor="motivoRechazo" style={{ fontWeight: "bold" }}>
+              Motivo del Rechazo <span style={{ color: "red" }}>*</span>
+            </label>
             <InputTextarea
               id="motivoRechazo"
               value={motivoRechazo}
@@ -1806,7 +2035,14 @@ export default function MovimientoCaja({ ruta }) {
               style={{ width: "100%", marginTop: "0.5rem" }}
             />
           </div>
-          <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+          <div
+            style={{
+              marginTop: "1.5rem",
+              display: "flex",
+              gap: "0.5rem",
+              justifyContent: "flex-end",
+            }}
+          >
             <Button
               label="Cancelar"
               icon="pi pi-times"
@@ -1832,16 +2068,35 @@ export default function MovimientoCaja({ ruta }) {
         modal
       >
         <div style={{ padding: "1rem" }}>
-          <p>Se creará un movimiento inverso. Indique el motivo de la reversión:</p>
+          <p>
+            Se creará un movimiento inverso. Indique el motivo de la reversión:
+          </p>
           {movimientoWorkflow && (
-            <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "#f8f9fa", borderRadius: "6px" }}>
-              <strong>ID:</strong> {movimientoWorkflow.id}<br />
-              <strong>Monto:</strong> {new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(movimientoWorkflow.monto || 0)}<br />
-              <strong>Descripción:</strong> {movimientoWorkflow.descripcion || "N/A"}
+            <div
+              style={{
+                marginTop: "1rem",
+                padding: "0.75rem",
+                backgroundColor: "#f8f9fa",
+                borderRadius: "6px",
+              }}
+            >
+              <strong>Tipo de Movimiento:</strong>{" "}
+              {movimientoWorkflow.tipoMovimiento?.nombre || "N/A"}
+              <br />
+              <strong>Monto:</strong>{" "}
+              {new Intl.NumberFormat("es-PE", {
+                style: "currency",
+                currency: movimientoWorkflow.moneda?.codigoSunat || "PEN",
+              }).format(movimientoWorkflow.monto || 0)}
+              <br />
+              <strong>Descripción:</strong>{" "}
+              {movimientoWorkflow.descripcion || "N/A"}
             </div>
           )}
           <div style={{ marginTop: "1rem" }}>
-            <label htmlFor="motivoReversion" style={{ fontWeight: "bold" }}>Motivo de la Reversión <span style={{ color: "red" }}>*</span></label>
+            <label htmlFor="motivoReversion" style={{ fontWeight: "bold" }}>
+              Motivo de la Reversión <span style={{ color: "red" }}>*</span>
+            </label>
             <InputTextarea
               id="motivoReversion"
               value={motivoReversion}
@@ -1851,7 +2106,14 @@ export default function MovimientoCaja({ ruta }) {
               style={{ width: "100%", marginTop: "0.5rem" }}
             />
           </div>
-          <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+          <div
+            style={{
+              marginTop: "1.5rem",
+              display: "flex",
+              gap: "0.5rem",
+              justifyContent: "flex-end",
+            }}
+          >
             <Button
               label="Cancelar"
               icon="pi pi-times"
@@ -1864,6 +2126,120 @@ export default function MovimientoCaja({ ruta }) {
               onClick={handleRevertirConfirm}
               loading={loading}
               severity="warning"
+            />
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog
+        header="Registros Generados - Saldos de Cuenta Corriente"
+        visible={showSaldosDialog}
+        style={{ width: "800px" }}
+        onHide={() => setShowSaldosDialog(false)}
+        modal
+      >
+        <div style={{ padding: "1rem" }}>
+          <p style={{ marginBottom: "1rem", color: "#666" }}>
+            Se han generado los siguientes registros de saldo:
+          </p>
+
+          {saldosGenerados.map((saldo, index) => (
+            <Card
+              key={index}
+              style={{
+                marginBottom: "1rem",
+                backgroundColor: "#f8f9fa",
+                border: "1px solid #dee2e6",
+              }}
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "0.75rem",
+                }}
+              >
+                <div>
+                  <strong>Cuenta Corriente:</strong>
+                  <br />
+                  {saldo.cuentaCorriente?.numeroCuenta || "N/A"}
+                </div>
+                <div>
+                  <strong>Banco:</strong>
+                  <br />
+                  {saldo.cuentaCorriente?.banco?.nombre || "N/A"}
+                </div>
+                <div>
+                  <strong>Saldo Anterior:</strong>
+                  <br />
+                  <span style={{ color: "#6c757d" }}>
+                    {new Intl.NumberFormat("es-PE", {
+                      style: "currency",
+                      currency: "PEN",
+                    }).format(saldo.saldoAnterior || 0)}
+                  </span>
+                </div>
+                <div>
+                  <strong>Ingresos:</strong>
+                  <br />
+                  <span style={{ color: "#28a745", fontWeight: "bold" }}>
+                    +{" "}
+                    {new Intl.NumberFormat("es-PE", {
+                      style: "currency",
+                      currency: "PEN",
+                    }).format(saldo.ingresos || 0)}
+                  </span>
+                </div>
+                <div>
+                  <strong>Egresos:</strong>
+                  <br />
+                  <span style={{ color: "#dc3545", fontWeight: "bold" }}>
+                    -{" "}
+                    {new Intl.NumberFormat("es-PE", {
+                      style: "currency",
+                      currency: "PEN",
+                    }).format(saldo.egresos || 0)}
+                  </span>
+                </div>
+                <div>
+                  <strong>Saldo Actual:</strong>
+                  <br />
+                  <span
+                    style={{
+                      fontSize: "1.1rem",
+                      fontWeight: "bold",
+                      color:
+                        Number(saldo.saldoActual) >= 0 ? "#28a745" : "#dc3545",
+                    }}
+                  >
+                    {new Intl.NumberFormat("es-PE", {
+                      style: "currency",
+                      currency: "PEN",
+                    }).format(saldo.saldoActual || 0)}
+                  </span>
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <strong>Fecha:</strong>{" "}
+                  {saldo.fecha
+                    ? new Date(saldo.fecha).toLocaleString("es-PE")
+                    : "N/A"}
+                </div>
+              </div>
+            </Card>
+          ))}
+
+          <div
+            style={{
+              marginTop: "1.5rem",
+              display: "flex",
+              justifyContent: "flex-end",
+            }}
+          >
+            <Button
+              label="Cerrar"
+              icon="pi pi-check"
+              onClick={() => setShowSaldosDialog(false)}
+              severity="success"
             />
           </div>
         </div>

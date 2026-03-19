@@ -50,3 +50,17 @@ export async function getAsientosByPeriodo(periodoId) {
   const res = await axios.get(`${API_URL}/periodo/${periodoId}`, { headers: getAuthHeaders() });
   return res.data;
 }
+
+/**
+ * Obtiene los asientos contables generados por un movimiento de caja específico
+ * @param {number} movimientoCajaId - ID del movimiento de caja
+ * @param {number} submoduloId - ID del submódulo (opcional, por defecto MovimientoCaja)
+ * @returns {Promise<Array>} Asientos generados por el movimiento
+ */
+export async function getAsientosPorMovimiento(movimientoCajaId, submoduloId = null) {
+  const res = await axios.get(`${API_URL}/por-movimiento/${movimientoCajaId}`, {
+    headers: getAuthHeaders(),
+    params: submoduloId ? { submoduloId } : {}
+  });
+  return res.data;
+}
