@@ -1768,7 +1768,7 @@ export default function MovimientoCaja({ ruta }) {
             header="Monto"
             sortable
             body={(rowData) => {
-              const codigoMoneda = rowData.moneda?.codigoSunat || "PEN";
+              const codigoMoneda = rowData.moneda?.codigoSunat || "S/M";
               return new Intl.NumberFormat("es-PE", {
                 style: "currency",
                 currency: codigoMoneda,
@@ -2015,7 +2015,7 @@ export default function MovimientoCaja({ ruta }) {
               <strong>Monto:</strong>{" "}
               {new Intl.NumberFormat("es-PE", {
                 style: "currency",
-                currency: movimientoWorkflow.moneda?.codigoSunat || "PEN",
+                currency: movimientoWorkflow.moneda?.codigoSunat || "S/M",
               }).format(movimientoWorkflow.monto || 0)}
               <br />
               <strong>Descripción:</strong>{" "}
@@ -2173,10 +2173,18 @@ export default function MovimientoCaja({ ruta }) {
                   <strong>Saldo Anterior:</strong>
                   <br />
                   <span style={{ color: "#6c757d" }}>
-                    {new Intl.NumberFormat("es-PE", {
-                      style: "currency",
-                      currency: "PEN",
-                    }).format(saldo.saldoAnterior || 0)}
+                    {(() => {
+                      const moneda = monedas.find(
+                        (m) =>
+                          Number(m.id) ===
+                          Number(saldo.cuentaCorriente.monedaId),
+                      );
+                      const codigoMoneda = moneda?.codigoSunat || "S/M";
+                      return new Intl.NumberFormat("es-PE", {
+                        style: "currency",
+                        currency: codigoMoneda,
+                      }).format(saldo.saldoAnterior || 0);
+                    })()}
                   </span>
                 </div>
                 <div>
@@ -2184,10 +2192,18 @@ export default function MovimientoCaja({ ruta }) {
                   <br />
                   <span style={{ color: "#28a745", fontWeight: "bold" }}>
                     +{" "}
-                    {new Intl.NumberFormat("es-PE", {
-                      style: "currency",
-                      currency: "PEN",
-                    }).format(saldo.ingresos || 0)}
+                    {(() => {
+                      const moneda = monedas.find(
+                        (m) =>
+                          Number(m.id) ===
+                          Number(saldo.cuentaCorriente.monedaId),
+                      );
+                      const codigoMoneda = moneda?.codigoSunat || "S/M";
+                      return new Intl.NumberFormat("es-PE", {
+                        style: "currency",
+                        currency: codigoMoneda,
+                      }).format(saldo.ingresos || 0);
+                    })()}
                   </span>
                 </div>
                 <div>
@@ -2195,10 +2211,18 @@ export default function MovimientoCaja({ ruta }) {
                   <br />
                   <span style={{ color: "#dc3545", fontWeight: "bold" }}>
                     -{" "}
-                    {new Intl.NumberFormat("es-PE", {
-                      style: "currency",
-                      currency: "PEN",
-                    }).format(saldo.egresos || 0)}
+                    {(() => {
+                      const moneda = monedas.find(
+                        (m) =>
+                          Number(m.id) ===
+                          Number(saldo.cuentaCorriente.monedaId),
+                      );
+                      const codigoMoneda = moneda?.codigoSunat || "S/M";
+                      return new Intl.NumberFormat("es-PE", {
+                        style: "currency",
+                        currency: codigoMoneda,
+                      }).format(saldo.egresos || 0);
+                    })()}
                   </span>
                 </div>
                 <div>
@@ -2212,10 +2236,18 @@ export default function MovimientoCaja({ ruta }) {
                         Number(saldo.saldoActual) >= 0 ? "#28a745" : "#dc3545",
                     }}
                   >
-                    {new Intl.NumberFormat("es-PE", {
-                      style: "currency",
-                      currency: "PEN",
-                    }).format(saldo.saldoActual || 0)}
+                    {(() => {
+                      const moneda = monedas.find(
+                        (m) =>
+                          Number(m.id) ===
+                          Number(saldo.cuentaCorriente.monedaId),
+                      );
+                      const codigoMoneda = moneda?.codigoSunat || "S/M";
+                      return new Intl.NumberFormat("es-PE", {
+                        style: "currency",
+                        currency: codigoMoneda,
+                      }).format(saldo.saldoActual || 0);
+                    })()}
                   </span>
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>

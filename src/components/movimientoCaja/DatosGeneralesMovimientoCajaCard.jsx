@@ -80,29 +80,32 @@ const DatosGeneralesMovimientoCajaCard = ({
   setFamiliaFiltroId,
   readOnly = false,
 }) => {
-  // IDs de familias de gastos (igual que en DetMovsEntregaRendirForm)
-  const familiasGastosIds = [
-    5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
-    25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
-    44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
-    63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81,
-    82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100,
-  ];
+  // Obtener entidad comercial de la empresa origen
+  const empresaOrigen = empresas.find(emp => Number(emp.id) === Number(empresaOrigenId));
+  const entidadComercialDeEmpresa = empresaOrigen?.entidadComercialId;
 
-  // Filtrar productos por familias de gastos
-  const productosGastos = (productos || []).filter((p) =>
-    familiasGastosIds.includes(Number(p.familiaId)),
-  );
+  // Filtrar productos por empresa, cliente y excluir mercaderías
+  const productosFiltradosPorEmpresa = (productos || []).filter((p) => {
+    // Validar que el producto pertenezca a la empresa del movimiento
+    if (!p.empresaId || Number(p.empresaId) !== Number(empresaOrigenId)) {
+      return false;
+    }
+    
+    // Validar que el producto pertenezca al cliente de la empresa
+    if (!p.clienteId || Number(p.clienteId) !== Number(entidadComercialDeEmpresa)) {
+      return false;
+    }
+    
+    // Excluir familia 1 (mercaderías)
+    return Number(p.familiaId) !== 1;
+  });
 
-  // Obtener familias únicas de los productos filtrados
+  // Obtener familias únicas de productos filtrados
   const familiasMap = new Map();
-  productosGastos.forEach((p) => {
+  productosFiltradosPorEmpresa.forEach((p) => {
     if (p.familia && p.familia.id && p.familia.nombre) {
       const familiaId = Number(p.familia.id);
-      if (
-        familiasGastosIds.includes(familiaId) &&
-        !familiasMap.has(familiaId)
-      ) {
+      if (!familiasMap.has(familiaId)) {
         familiasMap.set(familiaId, {
           label: p.familia.nombre,
           value: familiaId,
@@ -115,12 +118,12 @@ const DatosGeneralesMovimientoCajaCard = ({
     a.label.localeCompare(b.label),
   );
 
-  // Filtrar productos por familia seleccionada
+  // Filtrar productos por familia seleccionada (ya filtrados por empresa y cliente)
   const productosFiltrados = familiaFiltroId
-    ? productosGastos.filter(
+    ? productosFiltradosPorEmpresa.filter(
         (p) => Number(p.familiaId) === Number(familiaFiltroId),
       )
-    : productosGastos;
+    : productosFiltradosPorEmpresa;
 
   // Opciones de productos para el dropdown
   const productoOptions = productosFiltrados.map((p) => ({
