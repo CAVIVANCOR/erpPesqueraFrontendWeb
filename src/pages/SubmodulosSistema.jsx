@@ -62,7 +62,7 @@ export default function SubmodulosSistemaPage({ ruta }) {
   useEffect(() => {
     if (moduloFilter) {
       const filtered = submodulos.filter(
-        (sub) => Number(sub.moduloId) === Number(moduloFilter)
+        (sub) => Number(sub.moduloId) === Number(moduloFilter),
       );
       setFilteredSubmodulos(filtered);
     } else {
@@ -152,7 +152,10 @@ export default function SubmodulosSistemaPage({ ruta }) {
       descripcion: data.descripcion,
       ruta: data.ruta || null,
       icono: data.icono || null,
-      orden: data.orden !== undefined && data.orden !== null ? Number(data.orden) : null,
+      orden:
+        data.orden !== undefined && data.orden !== null
+          ? Number(data.orden)
+          : null,
       activo: data.activo,
     };
     try {
@@ -243,7 +246,10 @@ export default function SubmodulosSistemaPage({ ruta }) {
         size="small"
         stripedRows
         paginator
-        rows={10}
+        rows={20}
+        rowsPerPageOptions={[20, 40, 80, 100]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} Submodulos"
         selectionMode="single"
         selection={selected}
         onSelectionChange={(e) => setSelected(e.value)}
@@ -288,6 +294,7 @@ export default function SubmodulosSistemaPage({ ruta }) {
                 placeholder="Filtrar por módulo"
                 onChange={(e) => setModuloFilter(e.value)}
                 showClear
+                filter
                 style={{ minWidth: "200px" }}
               />
             </div>
@@ -316,29 +323,39 @@ export default function SubmodulosSistemaPage({ ruta }) {
         <Column field="modulo.nombre" header="Módulo" sortable />
         <Column field="nombre" header="Nombre" sortable />
         <Column field="descripcion" header="Descripción" sortable />
-        <Column 
-          field="ruta" 
-          header="Ruta" 
-          sortable 
+        <Column
+          field="ruta"
+          header="Ruta"
+          sortable
           body={(row) => row.ruta || <span style={{ color: "#999" }}>-</span>}
         />
-        <Column 
-          field="icono" 
-          header="Icono" 
-          sortable 
-          body={(row) => row.icono ? (
-            <span>
-              <i className={row.icono} style={{ marginRight: 8 }}></i>
-              {row.icono}
-            </span>
-          ) : <span style={{ color: "#999" }}>-</span>}
+        <Column
+          field="icono"
+          header="Icono"
+          sortable
+          body={(row) =>
+            row.icono ? (
+              <span>
+                <i className={row.icono} style={{ marginRight: 8 }}></i>
+                {row.icono}
+              </span>
+            ) : (
+              <span style={{ color: "#999" }}>-</span>
+            )
+          }
         />
-        <Column 
-          field="orden" 
-          header="Orden" 
-          sortable 
+        <Column
+          field="orden"
+          header="Orden"
+          sortable
           style={{ width: "100px" }}
-          body={(row) => row.orden !== null && row.orden !== undefined ? row.orden : <span style={{ color: "#999" }}>-</span>}
+          body={(row) =>
+            row.orden !== null && row.orden !== undefined ? (
+              row.orden
+            ) : (
+              <span style={{ color: "#999" }}>-</span>
+            )
+          }
         />
         <Column
           field="activo"

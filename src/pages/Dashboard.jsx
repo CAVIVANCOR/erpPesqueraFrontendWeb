@@ -200,7 +200,7 @@ export default function Dashboard() {
           key: "movimientoAlmacen",
           icon: "pi-arrows-h",
         },
-        
+
         {
           label: "Conceptos Movimientos",
           key: "conceptoMovAlmacen",
@@ -254,12 +254,12 @@ export default function Dashboard() {
       ],
     },
     {
-      id: "flujoCaja",
-      titulo: "FLUJO DE CAJA",
+      id: "tesoreria",
+      titulo: "TESORERIA",
       descripcion:
         "Control financiero, cuentas corrientes y asientos contables",
       icono: "pi-wallet",
-      modulos: 12,
+      modulos: 21,
       color: "#5DADE2",
       submenu: [
         {
@@ -273,24 +273,14 @@ export default function Dashboard() {
           icon: "pi-credit-card",
         },
         {
-          label: "Saldo Cuenta Corriente",
-          key: "saldoCuentaCorriente",
-          icon: "pi-chart-line",
-        },
-        {
-          label: "Configuración Cuenta Contable",
-          key: "configuracionCuentaContable",
-          icon: "pi-cog",
+          label: "Entregas a Rendir",
+          key: "tipoMovEntregaRendir",
+          icon: "pi-send",
         },
         {
           label: "Asientos Contables",
           key: "asientoContableInterfaz",
           icon: "pi-book",
-        },
-        {
-          label: "Tipos Movimiento Entregas a Rendir",
-          key: "tipoMovEntregaRendir",
-          icon: "pi-tag",
         },
         { label: "Centros de Costo", key: "centroCosto", icon: "pi-sitemap" },
         {
@@ -299,24 +289,79 @@ export default function Dashboard() {
           icon: "pi-tags",
         },
         {
-          label: "Empresa por Centro Costo",
+          label: "Empresas por Centro Costo",
           key: "empresaCentroCosto",
           icon: "pi-building",
         },
         {
           label: "Tipo Cuenta Corriente",
           key: "tipoCuentaCorriente",
-          icon: "pi-tag",
+          icon: "pi-list",
         },
         {
           label: "Tipo Referencia",
           key: "tipoReferenciaMovimientoCaja",
-          icon: "pi-hashtag",
+          icon: "pi-tag",
         },
-        { label: "Bancos", key: "banco", icon: "pi-building-columns" },
+        { label: "Bancos", key: "banco", icon: "pi-credit-card" },
+        {
+          label: "Saldos Cuentas Corrientes",
+          key: "saldoCuentaCorriente",
+          icon: "pi-list",
+        },
+        {
+          label: "Letra de Cambio",
+          key: "letra-cambio",
+          icon: "pi-file",
+        },
+        {
+          label: "Endoso Letra de Cambio",
+          key: "endoso-letra-cambio",
+          icon: "pi-sync",
+        },
+        {
+          label: "Pago Letra de Cambio",
+          key: "pago-letra-cambio",
+          icon: "pi-money-bill",
+        },
+        {
+          label: "Ubicación de Letra",
+          key: "ubicacion-letra",
+          icon: "pi-map-marker",
+        },
+        {
+          label: "Retención",
+          key: "retencion",
+          icon: "pi-minus-circle",
+        },
+        {
+          label: "Percepción",
+          key: "percepcion",
+          icon: "pi-plus-circle",
+        },
+        {
+          label: "Tipo Retención/Percepción",
+          key: "tipo-retencion-percepcion",
+          icon: "pi-percentage",
+        },
+        {
+          label: "Flujo de Caja Proyectado",
+          key: "flujo-caja-proyectado",
+          icon: "pi-chart-line",
+        },
+        {
+          label: "Presupuesto Anual",
+          key: "presupuesto-anual",
+          icon: "pi-calendar",
+        },
+        {
+          label: "Ejecución Presupuestal",
+          key: "ejecucion-presupuestal",
+          icon: "pi-chart-bar",
+        },
       ],
     },
-       {
+    {
       id: "finanzas",
       titulo: "FINANZAS",
       descripcion: "Tesorería Avanzada: Préstamos, Créditos e Inversiones",
@@ -370,9 +415,9 @@ export default function Dashboard() {
     {
       id: "contabilidad",
       titulo: "CONTABILIDAD",
-      descripcion: "Plan Contable, Asientos, Períodos y Reportes Financieros",
+      descripcion: "Plan Contable, Asientos y Períodos Contables",
       icono: "pi-calculator",
-      modulos: 10,
+      modulos: 4,
       color: "#E74C3C",
       submenu: [
         { label: "Plan Contable", key: "planCuentasContable", icon: "pi-list" },
@@ -383,24 +428,10 @@ export default function Dashboard() {
         },
         { label: "Asiento Contable", key: "asientoContable", icon: "pi-book" },
         {
-          label: "Tipo Afectación IGV",
-          key: "tipoAfectacionIGV",
-          icon: "pi-percentage",
+          label: "Configuración Cuenta Contable",
+          key: "configuracionCuentaContable",
+          icon: "pi-cog",
         },
-        {
-          label: "Flujo de Caja Financiero",
-          key: "flujoCaja",
-          icon: "pi-chart-line",
-        },
-        {
-          label: "Conciliación Bancaria",
-          key: "conciliacionBancaria",
-          icon: "pi-check-square",
-        },
-        { label: "Letras de Cambio", key: "letraCambio", icon: "pi-file-edit" },
-        { label: "Retenciones", key: "retencion", icon: "pi-minus-circle" },
-        { label: "Percepciones", key: "percepcion", icon: "pi-plus-circle" },
-        { label: "Presupuestos", key: "presupuesto", icon: "pi-chart-bar" },
       ],
     },
     {
@@ -540,11 +571,11 @@ export default function Dashboard() {
       const matchTitle = modulo.titulo.toLowerCase().includes(query);
       const matchDescription = modulo.descripcion.toLowerCase().includes(query);
       const matchSubmenu = modulo.submenu?.some((item) =>
-        item.label.toLowerCase().includes(query)
+        item.label.toLowerCase().includes(query),
       );
 
       return matchTitle || matchDescription || matchSubmenu;
-    }
+    },
   );
 
   // Usar módulos filtrados
@@ -575,7 +606,7 @@ export default function Dashboard() {
     } else {
       // Reordenar: mover el módulo seleccionado al inicio
       const selectedIndex = modulosConfigBase.findIndex(
-        (m) => m.id === moduloId
+        (m) => m.id === moduloId,
       );
       const selectedModule = modulosConfigBase[selectedIndex];
       const otherModules = modulosConfigBase.filter((m) => m.id !== moduloId);
@@ -647,7 +678,7 @@ export default function Dashboard() {
           zIndex: 1,
           maxWidth: "1800px",
           margin: "0 auto",
-          marginTop:"1rem",
+          marginTop: "1rem",
           padding: "60px 40px",
         }}
       >
@@ -737,10 +768,10 @@ export default function Dashboard() {
                     expandedCard === modulo.id
                       ? "1 / -1"
                       : modulo.size === "large"
-                      ? "span 2"
-                      : modulo.size === "small"
-                      ? "span 1"
-                      : "span 1",
+                        ? "span 2"
+                        : modulo.size === "small"
+                          ? "span 1"
+                          : "span 1",
                   position: "relative",
                   zIndex: expandedCard === modulo.id ? 10 : 1,
                 }}

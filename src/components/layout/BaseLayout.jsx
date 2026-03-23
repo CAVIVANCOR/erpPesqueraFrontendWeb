@@ -121,6 +121,16 @@ import InversionFinanciera from "../../pages/tesoreria/InversionFinanciera";
 import ReporteLineasDisponibles from "../../pages/tesoreria/ReporteLineasDisponibles";
 import ComprobanteElectronico from "../../pages/ComprobanteElectronico";
 import UnidadesNegocio from "../../pages/UnidadesNegocio";
+import LetraCambio from "../../pages/LetraCambio";
+import EndosoLetraCambio from "../../pages/EndosoLetraCambio";
+import PagoLetraCambio from "../../pages/PagoLetraCambio";
+import UbicacionLetra from "../../pages/UbicacionLetra";
+import Retencion from "../../pages/Retencion";
+import Percepcion from "../../pages/Percepcion";
+import TipoRetencionPercepcion from "../../pages/TipoRetencionPercepcion";
+import FlujoCajaProyectado from "../../pages/FlujoCajaProyectado";
+import PresupuestoAnual from "../../pages/PresupuestoAnual";
+import EjecucionPresupuestal from "../../pages/EjecucionPresupuestal";
 /**
  * BaseLayout - Layout principal con gestión de módulos
  *
@@ -400,6 +410,46 @@ export default function BaseLayout({ children, onLogout }) {
       label: "Usuarios del Sistema",
       componente: <Usuarios ruta="usuarios" />,
     },
+    "letra-cambio": {
+      label: "Letra de Cambio",
+      componente: <LetraCambio ruta="letra-cambio" />,
+    },
+    "endoso-letra-cambio": {
+      label: "Endoso Letra de Cambio",
+      componente: <EndosoLetraCambio ruta="endoso-letra-cambio" />,
+    },
+    "pago-letra-cambio": {
+      label: "Pago Letra de Cambio",
+      componente: <PagoLetraCambio ruta="pago-letra-cambio" />,
+    },
+    "ubicacion-letra": {
+      label: "Ubicación de Letra",
+      componente: <UbicacionLetra ruta="ubicacion-letra" />,
+    },
+    retencion: {
+      label: "Retención",
+      componente: <Retencion ruta="retencion" />,
+    },
+    percepcion: {
+      label: "Percepción",
+      componente: <Percepcion ruta="percepcion" />,
+    },
+    "tipo-retencion-percepcion": {
+      label: "Tipo Retención/Percepción",
+      componente: <TipoRetencionPercepcion ruta="tipo-retencion-percepcion" />,
+    },
+    "flujo-caja-proyectado": {
+      label: "Flujo de Caja Proyectado",
+      componente: <FlujoCajaProyectado ruta="flujo-caja-proyectado" />,
+    },
+    "presupuesto-anual": {
+      label: "Presupuesto Anual",
+      componente: <PresupuestoAnual ruta="presupuesto-anual" />,
+    },
+    "ejecucion-presupuestal": {
+      label: "Ejecución Presupuestal",
+      componente: <EjecucionPresupuestal ruta="ejecucion-presupuestal" />,
+    },
     accesosUsuario: {
       label: "Accesos Usuario",
       componente: <AccesosUsuario ruta="accesosUsuario" />,
@@ -563,18 +613,17 @@ export default function BaseLayout({ children, onLogout }) {
    * @param {string} key - Identificador único del módulo
    * @param {string} label - Etiqueta visible de la pestaña (opcional)
    */
-    const abrirModulo = (key, label) => {
-    
+  const abrirModulo = (key, label) => {
     // Verificar si el módulo ya está abierto
     const existe = tabs.findIndex((t) => t.key === key);
-    
+
     if (existe !== -1) {
       // Si ya existe, solo activar esa pestaña
       setActiveIndex(existe);
     } else {
       // Buscar el módulo en el catálogo
       const moduloConfig = modulos[key];
-      
+
       if (moduloConfig) {
         // Si existe en el catálogo, agregar nueva pestaña
         const nuevaTab = {
@@ -582,13 +631,13 @@ export default function BaseLayout({ children, onLogout }) {
           label: moduloConfig.label || label,
           content: moduloConfig.componente,
         };
-        
+
         const nuevasTabs = [...tabs, nuevaTab];
-        
+
         setTabs(nuevasTabs);
-        
+
         const nuevoIndice = tabs.length;
-        
+
         setActiveIndex(nuevoIndice);
       } else {
         // Si no existe, mostrar mensaje "Próximamente"

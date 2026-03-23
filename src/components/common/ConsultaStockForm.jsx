@@ -472,6 +472,8 @@ export default function ConsultaStockForm({
               <DataTable
                 value={saldosGeneralesFiltrados}
                 loading={loading}
+                stripedRows
+                showGridlines
                 paginator
                 rows={20}
                 dataKey="id"
