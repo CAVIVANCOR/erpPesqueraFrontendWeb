@@ -27,13 +27,15 @@ export default function DetEntregaRendirVentas({
   entidadesComerciales = [],
   monedas = [],
   tiposDocumento = [],
-  productos = [], // Nueva prop para productos (gastos)
+  productos = [],
   cotizacionVentas = null,
   cotizacionVentasAprobada = false,
   loading = false,
   selectedMovimientos = [],
   onSelectionChange,
   onDataChange,
+  readOnly = false,
+  permisos,
 }) {
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
   const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);
@@ -77,8 +79,7 @@ export default function DetEntregaRendirVentas({
 
     return movimientosFiltrados;
   };
-  // Filtrar movimientos que son asignaciones (inicial o adicional) y forman parte del cálculo
-  // Excluir el movimiento en edición para evitar auto-referencia
+
   const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
     (mov) =>
       (Number(mov.tipoMovimientoId) === 1 ||
@@ -267,7 +268,6 @@ export default function DetEntregaRendirVentas({
     });
   };
 
-  // Templates
   const fechaMovimientoTemplate = (rowData) => {
     return new Date(rowData.fechaMovimiento).toLocaleDateString("es-PE");
   };
@@ -364,12 +364,30 @@ export default function DetEntregaRendirVentas({
           className="p-button-text p-button-sm"
           onClick={() => handleEditarMovimiento(rowData)}
           aria-label="Editar"
+          disabled={readOnly || entregaARendir?.entregaLiquidada || !permisos?.puedeEditar}
+          tooltip={
+            !permisos?.puedeEditar
+              ? "No tiene permisos para editar"
+              : readOnly || entregaARendir?.entregaLiquidada
+                ? "No se puede editar"
+                : "Editar movimiento"
+          }
+          tooltipOptions={{ position: 'top' }}
         />
         <Button
           icon="pi pi-trash"
           className="p-button-text p-button-danger p-button-sm"
           onClick={() => handleEliminarMovimiento(rowData)}
           aria-label="Eliminar"
+          disabled={readOnly || entregaARendir?.entregaLiquidada || !permisos?.puedeEditar}
+          tooltip={
+            !permisos?.puedeEditar
+              ? "No tiene permisos para eliminar"
+              : readOnly || entregaARendir?.entregaLiquidada
+                ? "No se puede eliminar"
+                : "Eliminar movimiento"
+          }
+          tooltipOptions={{ position: 'top' }}
         />
       </div>
     );
@@ -423,10 +441,26 @@ export default function DetEntregaRendirVentas({
                     severity="success"
                     onClick={handleNuevoMovimiento}
                     disabled={
+                      !permisos?.puedeEditar ||
+                      readOnly ||
                       !cotizacionVentasAprobada ||
                       !entregaARendir ||
                       entregaARendir?.entregaLiquidada
                     }
+                    tooltip={
+                      !permisos?.puedeEditar
+                        ? "No tiene permisos para crear"
+                        : readOnly
+                          ? "Modo solo lectura"
+                          : !cotizacionVentasAprobada
+                            ? "Cotización de ventas no aprobada"
+                            : !entregaARendir
+                              ? "No hay entrega a rendir"
+                              : entregaARendir?.entregaLiquidada
+                                ? "Entrega ya liquidada"
+                                : "Crear nuevo movimiento"
+                    }
+                    tooltipOptions={{ position: 'top' }}
                     type="button"
                   />
                 </div>
@@ -468,7 +502,21 @@ export default function DetEntregaRendirVentas({
                     className="p-button-danger"
                     onClick={handleProcesarLiquidacion}
                     type="button"
-                    disabled={entregaARendir.entregaLiquidada}
+                    disabled={
+                      !permisos?.puedeEditar ||
+                      readOnly ||
+                      entregaARendir.entregaLiquidada
+                    }
+                    tooltip={
+                      !permisos?.puedeEditar
+                        ? "No tiene permisos para procesar liquidación"
+                        : readOnly
+                          ? "Modo solo lectura"
+                          : entregaARendir.entregaLiquidada
+                            ? "Entrega ya liquidada"
+                            : "Procesar liquidación de la entrega"
+                    }
+                    tooltipOptions={{ position: 'top' }}
                   />
                 </div>
               </div>

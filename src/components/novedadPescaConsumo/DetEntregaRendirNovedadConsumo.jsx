@@ -22,7 +22,7 @@ import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 export default function DetEntregaRendirNovedadConsumo({
   // Props de datos
-  entregaARendirPescaConsumo,
+  entregaARendir,
   novedadPescaConsumo = null,
   movimientos = [],
   personal = [],
@@ -31,15 +31,17 @@ export default function DetEntregaRendirNovedadConsumo({
   entidadesComerciales = [],
   monedas = [],
   tiposDocumento = [],
-  productos = [], // Nueva prop para productos (gastos)
+  productos = [],
   // Props de estado
-  novedadPescaConsumoIniciada = false,
+  temporadaPescaIniciada = false,
   loading = false,
   selectedMovimientos = [],
 
   // Props de callbacks
   onSelectionChange,
   onDataChange,
+  readOnly = false,
+  permisos,
 }) {
   // Estados locales para filtros
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
@@ -106,21 +108,21 @@ export default function DetEntregaRendirNovedadConsumo({
 
   const alternarFiltroIngresoEgreso = () => {
     if (filtroIngresoEgreso === null) {
-      setFiltroIngresoEgreso(true); // Ingresos
+      setFiltroIngresoEgreso(true);
     } else if (filtroIngresoEgreso === true) {
-      setFiltroIngresoEgreso(false); // Egresos
+      setFiltroIngresoEgreso(false);
     } else {
-      setFiltroIngresoEgreso(null); // Todos
+      setFiltroIngresoEgreso(null);
     }
   };
 
   const alternarFiltroValidacionTesoreria = () => {
     if (filtroValidacionTesoreria === null) {
-      setFiltroValidacionTesoreria(true); // Validados
+      setFiltroValidacionTesoreria(true);
     } else if (filtroValidacionTesoreria === true) {
-      setFiltroValidacionTesoreria(false); // No validados
+      setFiltroValidacionTesoreria(false);
     } else {
-      setFiltroValidacionTesoreria(null); // Todos
+      setFiltroValidacionTesoreria(null);
     }
   };
 
@@ -180,7 +182,7 @@ export default function DetEntregaRendirNovedadConsumo({
 
       setShowMovimientoForm(false);
       setEditingMovimiento(null);
-      onDataChange?.(); // Notificar al padre que recargue datos
+      onDataChange?.();
     } catch (error) {
       console.error("Error al guardar movimiento:", error);
       toast.current?.show({
@@ -209,7 +211,7 @@ export default function DetEntregaRendirNovedadConsumo({
             detail: "Movimiento eliminado correctamente",
             life: 3000,
           });
-          onDataChange?.(); // Notificar al padre que recargue datos
+          onDataChange?.();
         } catch (error) {
           console.error("Error al eliminar movimiento:", error);
           toast.current?.show({
@@ -235,7 +237,6 @@ export default function DetEntregaRendirNovedadConsumo({
           const fechaActual = new Date();
           const usuario = useAuthStore.getState().usuario;
 
-          // 1. Actualizar todos los movimientos DetMovsEntRendirPescaConsumo
           const promesasActualizacion = movimientos.map((movimiento) => {
             const movimientoActualizado = {
               ...movimiento,
@@ -250,17 +251,15 @@ export default function DetEntregaRendirNovedadConsumo({
 
           await Promise.all(promesasActualizacion);
 
-          // 2. Cargar entrega completa con relaciones para el PDF
           const token = useAuthStore.getState().token;
           const headers = { Authorization: `Bearer ${token}` };
 
           const entregaResponse = await fetch(
-            `${import.meta.env.VITE_API_URL}/entregas-rendir-consumo/${entregaARendirPescaConsumo.id}`,
+            `${import.meta.env.VITE_API_URL}/entregas-rendir-consumo/${entregaARendir.id}`,
             { headers },
           );
           const entregaCompleta = await entregaResponse.json();
 
-          // 3. Cargar empresa
           let empresa;
           try {
             const empresaResponse = await fetch(
@@ -279,7 +278,6 @@ export default function DetEntregaRendirNovedadConsumo({
             };
           }
 
-          // 4. Generar PDF automáticamente
           const resultadoPdf = await generarYSubirPDFLiquidacionPC(
             {
               ...entregaCompleta,
@@ -303,7 +301,7 @@ export default function DetEntregaRendirNovedadConsumo({
             life: 5000,
           });
 
-          onDataChange?.(); // Notificar al padre que recargue datos
+          onDataChange?.();
         } catch (error) {
           console.error("Error al procesar liquidación:", error);
           toast.current?.show({
@@ -323,7 +321,6 @@ export default function DetEntregaRendirNovedadConsumo({
 
     const fecha = new Date(rowData.fechaMovimiento);
 
-    // Validar si la fecha es válida
     if (isNaN(fecha.getTime())) return "Fecha inválida";
 
     return fecha.toLocaleDateString("es-PE", {
@@ -333,24 +330,20 @@ export default function DetEntregaRendirNovedadConsumo({
     });
   };
   const montoTemplate = (rowData) => {
-    // Buscar la moneda correspondiente
     const moneda = monedas.find(
       (m) => Number(m.id) === Number(rowData.monedaId),
     );
 
-    // Si no hay moneda, usar PEN por defecto
     const codigoMoneda = moneda?.codigoSunat || "PEN";
     const simboloMoneda = moneda?.simbolo || "S/.";
 
-    // Definir color de fondo según la moneda
-    let backgroundColor = "#fff9c4"; // Amarillo claro por defecto (SOLES)
+    let backgroundColor = "#fff9c4";
     if (codigoMoneda === "USD") {
-      backgroundColor = "#c8e6c9"; // Verde claro (DÓLARES)
+      backgroundColor = "#c8e6c9";
     } else if (codigoMoneda !== "PEN") {
-      backgroundColor = "#b3e5fc"; // Celeste claro (OTRAS MONEDAS)
+      backgroundColor = "#b3e5fc";
     }
 
-    // Formatear el monto con la moneda correcta
     const montoFormateado = new Intl.NumberFormat("es-PE", {
       style: "currency",
       currency: codigoMoneda,
@@ -397,7 +390,6 @@ export default function DetEntregaRendirNovedadConsumo({
     return centro ? centro.Codigo + " - " + centro.Nombre : "N/A";
   };
 
-  // Template para mostrar entidad comercial
   const entidadComercialTemplate = (rowData) => {
     if (!rowData.entidadComercialId) return "N/A";
 
@@ -432,18 +424,36 @@ export default function DetEntregaRendirNovedadConsumo({
           className="p-button-text p-button-sm"
           onClick={() => handleEditarMovimiento(rowData)}
           aria-label="Editar"
+          disabled={readOnly || entregaARendir?.entregaLiquidada || !permisos?.puedeEditar}
+          tooltip={
+            !permisos?.puedeEditar
+              ? "No tiene permisos para editar"
+              : readOnly || entregaARendir?.entregaLiquidada
+                ? "No se puede editar"
+                : "Editar movimiento"
+          }
+          tooltipOptions={{ position: 'top' }}
         />
         <Button
           icon="pi pi-trash"
           className="p-button-text p-button-danger p-button-sm"
           onClick={() => handleEliminarMovimiento(rowData)}
           aria-label="Eliminar"
+          disabled={readOnly || entregaARendir?.entregaLiquidada || !permisos?.puedeEditar}
+          tooltip={
+            !permisos?.puedeEditar
+              ? "No tiene permisos para eliminar"
+              : readOnly || entregaARendir?.entregaLiquidada
+                ? "No se puede eliminar"
+                : "Eliminar movimiento"
+          }
+          tooltipOptions={{ position: 'top' }}
         />
       </div>
     );
   };
 
-  if (!entregaARendirPescaConsumo) {
+  if (!entregaARendir) {
     return null;
   }
 
@@ -490,10 +500,26 @@ export default function DetEntregaRendirNovedadConsumo({
                     severity="success"
                     onClick={handleNuevoMovimiento}
                     disabled={
-                      !novedadPescaConsumoIniciada ||
-                      !entregaARendirPescaConsumo ||
-                      entregaARendirPescaConsumo?.entregaLiquidada
+                      !permisos?.puedeEditar ||
+                      readOnly ||
+                      !temporadaPescaIniciada ||
+                      !entregaARendir ||
+                      entregaARendir?.entregaLiquidada
                     }
+                    tooltip={
+                      !permisos?.puedeEditar
+                        ? "No tiene permisos para crear"
+                        : readOnly
+                          ? "Modo solo lectura"
+                          : !temporadaPescaIniciada
+                            ? "Temporada de pesca no iniciada"
+                            : !entregaARendir
+                              ? "No hay entrega a rendir"
+                              : entregaARendir?.entregaLiquidada
+                                ? "Entrega ya liquidada"
+                                : "Crear nuevo movimiento"
+                    }
+                    tooltipOptions={{ position: 'top' }}
                     type="button"
                     size="small"
                   />
@@ -541,7 +567,21 @@ export default function DetEntregaRendirNovedadConsumo({
                     className="p-button-sm p-button-outlined"
                     onClick={handleProcesarLiquidacion}
                     type="button"
-                    disabled={entregaARendirPescaConsumo.entregaLiquidada}
+                    disabled={
+                      !permisos?.puedeEditar ||
+                      readOnly ||
+                      entregaARendir.entregaLiquidada
+                    }
+                    tooltip={
+                      !permisos?.puedeEditar
+                        ? "No tiene permisos para procesar liquidación"
+                        : readOnly
+                          ? "Modo solo lectura"
+                          : entregaARendir.entregaLiquidada
+                            ? "Entrega ya liquidada"
+                            : "Procesar liquidación de la entrega"
+                    }
+                    tooltipOptions={{ position: 'top' }}
                     size="small"
                   />
                 </div>
@@ -663,7 +703,7 @@ export default function DetEntregaRendirNovedadConsumo({
       >
         <DetMovsEntRendirNovedadForm
           movimiento={editingMovimiento}
-          entregaARendirPescaConsumoId={entregaARendirPescaConsumo?.id}
+          entregaARendirPescaConsumoId={entregaARendir?.id}
           personal={personal}
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}

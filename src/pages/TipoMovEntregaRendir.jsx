@@ -7,6 +7,7 @@ import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
+import { Tag } from "primereact/tag";
 import TipoMovEntregaRendirForm from "../components/tipoMovEntregaRendir/TipoMovEntregaRendirForm";
 import {
   getAllTipoMovEntregaRendir,
@@ -15,6 +16,7 @@ import {
   deleteTipoMovEntregaRendir,
 } from "../api/tipoMovEntregaRendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
+import { getResponsiveFontSize } from "../utils/utils";
 
 export default function TipoMovEntregaRendir() {
   const toast = useRef(null);
@@ -133,6 +135,36 @@ export default function TipoMovEntregaRendir() {
     </>
   );
 
+  const esIngresoBodyTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.esIngreso ? "INGRESO" : "EGRESO"}
+        severity={rowData.esIngreso ? "success" : "danger"}
+        icon={rowData.esIngreso ? "pi pi-arrow-down" : "pi pi-arrow-up"}
+      />
+    );
+  };
+
+  const esTransferenciaBodyTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.esTransferencia ? "SÍ" : "NO"}
+        severity={rowData.esTransferencia ? "info" : "secondary"}
+        icon={rowData.esTransferencia ? "pi pi-arrows-h" : "pi pi-times"}
+      />
+    );
+  };
+
+  const activoBodyTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.activo ? "ACTIVO" : "INACTIVO"}
+        severity={rowData.activo ? "success" : "danger"}
+        icon={rowData.activo ? "pi pi-check-circle" : "pi pi-times-circle"}
+      />
+    );
+  };
+
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
@@ -146,42 +178,67 @@ export default function TipoMovEntregaRendir() {
         accept={handleDeleteConfirm}
         reject={() => setShowConfirm(false)}
       />
-      <div
-        className="p-d-flex p-jc-between p-ai-center"
-        style={{ marginBottom: 16 }}
-      >
-        <h2>Gestión de Tipos de Movimiento Caja</h2>
-        <Button
-          label="Nuevo"
-          icon="pi pi-plus"
-          className="p-button-success"
-          size="small"
-          outlined
-          onClick={handleAdd}
-          disabled={loading}
-        />
-      </div>
       <DataTable
         value={items}
         loading={loading}
+        showGridlines
+        stripedRows
         dataKey="id"
         paginator
-        rows={10}
+        rows={20}
+        rowsPerPageOptions={[20, 40, 80, 160]}
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} Tipos Movimiento"
         onRowClick={(e) => handleEdit(e.data)}
-        style={{ cursor: "pointer" }}
+        style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
+        size="small"
+        header={
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "center",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <h2>Tipos de Movimiento Caja</h2>
+            </div>
+            <div style={{ flex: 0.5 }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                severity="success"
+                onClick={handleAdd}
+                disabled={loading}
+              />
+            </div>
+          </div>
+        }
       >
-        <Column field="id" header="ID" style={{ width: 80 }} />
-        <Column field="nombre" header="Nombre" />
-        <Column field="descripcion" header="Descripción" />
+        <Column field="id" header="ID" style={{ width: 80 }}  sortable/>
+        <Column field="nombre" header="Nombre" sortable/>
+        <Column field="descripcion" header="Descripción" sortable/>
         <Column
           field="esIngreso"
-          header="Es Ingreso"
-          body={(rowData) => (rowData.esIngreso ? "Sí" : "No")}
+          header="Tipo"
+          body={esIngresoBodyTemplate}
+          style={{ width: 130, textAlign: "center" }}
+          sortable
+        />
+        <Column
+          field="esTransferencia"
+          header="Transferencia"
+          body={esTransferenciaBodyTemplate}
+          style={{ width: 150, textAlign: "center" }}
+          sortable
         />
         <Column
           field="activo"
-          header="Activo"
-          body={(rowData) => (rowData.activo ? "Sí" : "No")}
+          header="Estado"
+          body={activoBodyTemplate}
+          style={{ width: 120, textAlign: "center" }}
+          sortable
         />
         <Column
           body={actionBody}
@@ -192,7 +249,7 @@ export default function TipoMovEntregaRendir() {
       <Dialog
         header={editing ? "Editar Tipo Movimiento" : "Nuevo Tipo Movimiento"}
         visible={showDialog}
-        style={{ width: 600 }}
+        style={{ width: 800 }}
         onHide={() => setShowDialog(false)}
         modal
       >

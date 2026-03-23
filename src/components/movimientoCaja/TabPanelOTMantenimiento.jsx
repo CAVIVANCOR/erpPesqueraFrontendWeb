@@ -22,6 +22,7 @@ export default function TabPanelOTMantenimiento({
   tiposDocumento,
   productos,
   loading,
+  permisos,
   selectedMovimiento,
   onSelectionChange,
   onDataChange,
@@ -29,18 +30,18 @@ export default function TabPanelOTMantenimiento({
   toast,
 }) {
   // Calcular totales
-  const totalAsignaciones = movimientos
+  const totalAsignaciones = (movimientos || [])
     .filter((m) => {
-      const tipoMov = tiposMovimiento.find(
+      const tipoMov = (tiposMovimiento || []).find(
         (tm) => Number(tm.id) === Number(m.tipoMovimientoId)
       );
       return tipoMov?.esIngreso === true;
     })
     .reduce((sum, m) => sum + Number(m.monto || 0), 0);
 
-  const totalGastos = movimientos
+  const totalGastos = (movimientos || [])
     .filter((m) => {
-      const tipoMov = tiposMovimiento.find(
+      const tipoMov = (tiposMovimiento || []).find(
         (tm) => Number(tm.id) === Number(m.tipoMovimientoId)
       );
       return tipoMov?.esIngreso === false;
@@ -63,6 +64,7 @@ export default function TabPanelOTMantenimiento({
         productos={productos}
         otAprobada={true}
         loading={loading}
+        permisos={permisos}
         selectedMovimientos={selectedMovimiento}
         onSelectionChange={onSelectionChange}
         onDataChange={onDataChange}
@@ -167,7 +169,15 @@ export default function TabPanelOTMantenimiento({
           icon="pi pi-check-circle"
           className="p-button-success"
           onClick={onAplicarValidacion}
-          disabled={!selectedMovimiento}
+          disabled={!selectedMovimiento || !permisos?.puedeEditar}
+          tooltip={
+            !selectedMovimiento
+              ? "Debe seleccionar un registro"
+              : !permisos?.puedeEditar
+                ? "No tiene permisos para aplicar validación"
+                : "Aplicar validación al registro seleccionado"
+          }
+          tooltipOptions={{ position: 'top' }}
           style={{
             fontSize: "1rem",
             padding: "0.75rem 1.5rem",

@@ -33,6 +33,8 @@ export default function DetEntregaRendirOTMantenimiento({
   selectedMovimientos = [],
   onSelectionChange,
   onDataChange,
+  readOnly = false,
+  permisos,
 }) {
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
   const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);
@@ -76,7 +78,7 @@ export default function DetEntregaRendirOTMantenimiento({
 
     return movimientosFiltrados;
   };
-  // Filtrar movimientos que son asignaciones (inicial o adicional) y forman parte del cálculo
+
   const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
     (mov) =>
       (mov.tipoMovimientoId === 1 || mov.tipoMovimientoId === 2) &&
@@ -207,7 +209,6 @@ export default function DetEntregaRendirOTMantenimiento({
     });
   };
 
-  // Templates para columnas
   const fechaBodyTemplate = (rowData) => {
     return new Date(rowData.fechaMovimiento).toLocaleDateString("es-PE");
   };
@@ -266,16 +267,28 @@ export default function DetEntregaRendirOTMantenimiento({
           icon="pi pi-pencil"
           className="p-button-rounded p-button-text p-button-warning"
           onClick={() => handleEditarMovimiento(rowData)}
-          disabled={entregaARendir?.entregaLiquidada}
-          tooltip="Editar"
+          disabled={readOnly || entregaARendir?.entregaLiquidada || !permisos?.puedeEditar}
+          tooltip={
+            !permisos?.puedeEditar
+              ? "No tiene permisos para editar"
+              : readOnly || entregaARendir?.entregaLiquidada
+                ? "No se puede editar"
+                : "Editar movimiento"
+          }
           tooltipOptions={{ position: "top" }}
         />
         <Button
           icon="pi pi-trash"
           className="p-button-rounded p-button-text p-button-danger"
           onClick={() => handleEliminarMovimiento(rowData)}
-          disabled={entregaARendir?.entregaLiquidada}
-          tooltip="Eliminar"
+          disabled={readOnly || entregaARendir?.entregaLiquidada || !permisos?.puedeEditar}
+          tooltip={
+            !permisos?.puedeEditar
+              ? "No tiene permisos para eliminar"
+              : readOnly || entregaARendir?.entregaLiquidada
+                ? "No se puede eliminar"
+                : "Eliminar movimiento"
+          }
           tooltipOptions={{ position: "top" }}
         />
       </div>
@@ -289,7 +302,6 @@ export default function DetEntregaRendirOTMantenimiento({
 
   return (
     <>
-      {/* Barra de filtros */}
       <div
         style={{
           display: "flex",
@@ -360,18 +372,33 @@ export default function DetEntregaRendirOTMantenimiento({
         </div>
       </div>
 
-      {/* Botón nuevo movimiento */}
       <div style={{ marginBottom: "1rem" }}>
         <Button
           label="Nuevo Movimiento"
           icon="pi pi-plus"
           className="p-button-success"
           onClick={handleNuevoMovimiento}
-          disabled={!otAprobada || entregaARendir?.entregaLiquidada}
+          disabled={
+            !permisos?.puedeEditar ||
+            readOnly ||
+            !otAprobada ||
+            entregaARendir?.entregaLiquidada
+          }
+          tooltip={
+            !permisos?.puedeEditar
+              ? "No tiene permisos para crear"
+              : readOnly
+                ? "Modo solo lectura"
+                : !otAprobada
+                  ? "OT no aprobada"
+                  : entregaARendir?.entregaLiquidada
+                    ? "Entrega ya liquidada"
+                    : "Crear nuevo movimiento"
+          }
+          tooltipOptions={{ position: 'top' }}
         />
       </div>
 
-      {/* Tabla de movimientos */}
       <DataTable
         dataKey="id"
         value={movimientosFiltrados}
@@ -452,7 +479,6 @@ export default function DetEntregaRendirOTMantenimiento({
           style={{ minWidth: "120px" }}
         />
       </DataTable>
-      {/* Dialog para formulario de movimiento */}
       <Dialog
         visible={showMovimientoForm}
         onHide={() => setShowMovimientoForm(false)}

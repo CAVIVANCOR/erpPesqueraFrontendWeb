@@ -9,29 +9,31 @@ import PdfComprobanteOperacionCard from "./PdfComprobanteOperacionCard";
 import PdfDocumentoAfectoOperacionCard from "./PdfDocumentoAfectoOperacionCard";
 import DetallesGeneradosCard from "./DetallesGeneradosCard";
 
-export default function MovimientoCajaForm({
-  isEdit,
-  defaultValues,
+const MovimientoCajaForm = ({
+  isEdit = false,
+  defaultValues = {},
   onSubmit,
   onCancel,
-  onValidarMovimiento,
-  onGenerarAsiento,
-  loading,
-  centrosCosto = [],
-  modulos = [],
-  personal = [],
+  loading = false,
   empresas = [],
-  tipoMovEntregaRendir = [],
   monedas = [],
+  tipoMovEntregaRendir = [],
   tipoReferenciaMovimientoCaja = [],
   cuentasCorrientes = [],
   entidadesComerciales = [],
   cuentasEntidadComercial = [],
-  estadosMultiFuncion = [],
+  centrosCosto = [],
+  personal = [],
+  modulos = [],
   productos = [],
-  permisos = {},
+  estadosMultiFuncion = [],
+  cuentasOrigenFiltradas = [],
+  cuentasDestinoFiltradas = [],
+  onValidarMovimiento,
+  onGenerarAsiento,
   readOnly = false,
-}) {
+  permisos = { puedeVer: true, puedeEditar: true },
+}) => {
   const toast = useRef(null);
   // React Hook Form para componentes PDF
   const {
@@ -43,95 +45,99 @@ export default function MovimientoCajaForm({
   } = useForm({
     defaultValues: {
       urlComprobanteOperacionMovCaja:
-        defaultValues.urlComprobanteOperacionMovCaja || "",
-      urlDocumentoMovCaja: defaultValues.urlDocumentoMovCaja || "",
+        defaultValues?.urlComprobanteOperacionMovCaja || "",
+      urlDocumentoMovCaja: defaultValues?.urlDocumentoMovCaja || "",
     },
   });
 
   // Estado para navegación de cards
-  const [cardActiva, setCardActiva] = React.useState("datos"); // "datos" | "comprobante" | "documento" | "detalles"
+  const [cardActiva, setCardActiva] = React.useState("datos");
   // Estado para filtro de familia de productos
   const [familiaFiltroId, setFamiliaFiltroId] = React.useState(null);
 
   // Estados del formulario
   const [empresaOrigenId, setEmpresaOrigenId] = React.useState(
-    defaultValues.empresaOrigenId ? Number(defaultValues.empresaOrigenId) : "",
+    defaultValues?.empresaOrigenId ? Number(defaultValues.empresaOrigenId) : "",
   );
   const [cuentaCorrienteOrigenId, setCuentaCorrienteOrigenId] = React.useState(
-    defaultValues.cuentaCorrienteOrigenId
+    defaultValues?.cuentaCorrienteOrigenId
       ? Number(defaultValues.cuentaCorrienteOrigenId)
       : "",
   );
   const [empresaDestinoId, setEmpresaDestinoId] = React.useState(
-    defaultValues.empresaDestinoId
+    defaultValues?.empresaDestinoId
       ? Number(defaultValues.empresaDestinoId)
       : "",
   );
   const [cuentaCorrienteDestinoId, setCuentaCorrienteDestinoId] =
     React.useState(
-      defaultValues.cuentaCorrienteDestinoId
+      defaultValues?.cuentaCorrienteDestinoId
         ? Number(defaultValues.cuentaCorrienteDestinoId)
         : "",
     );
-  const [fecha, setFecha] = React.useState(
-    defaultValues.fecha ? new Date(defaultValues.fecha) : new Date(),
+  const [fechaOperacionMovCaja, setFechaOperacionMovCaja] = React.useState(
+    defaultValues?.fechaOperacionMovCaja
+      ? new Date(defaultValues.fechaOperacionMovCaja)
+      : new Date(),
   );
   const [tipoMovimientoId, setTipoMovimientoId] = React.useState(
-    defaultValues.tipoMovimientoId
+    defaultValues?.tipoMovimientoId
       ? Number(defaultValues.tipoMovimientoId)
       : "",
   );
   const [entidadComercialId, setEntidadComercialId] = React.useState(
-    defaultValues.entidadComercialId
+    defaultValues?.entidadComercialId
       ? Number(defaultValues.entidadComercialId)
       : "",
   );
   const [monto, setMonto] = React.useState(
-    defaultValues.monto ? Number(defaultValues.monto) : 0,
+    defaultValues?.monto ? Number(defaultValues.monto) : 0,
   );
   const [monedaId, setMonedaId] = React.useState(
-    defaultValues.monedaId ? Number(defaultValues.monedaId) : "",
+    defaultValues?.monedaId ? Number(defaultValues.monedaId) : "",
   );
   const [descripcion, setDescripcion] = React.useState(
-    defaultValues.descripcion || "",
+    defaultValues?.descripcion || "",
   );
   const [referenciaExtId, setReferenciaExtId] = React.useState(
-    defaultValues.referenciaExtId || "",
+    defaultValues?.referenciaExtId || "",
   );
   const [tipoReferenciaId, setTipoReferenciaId] = React.useState(
-    defaultValues.tipoReferenciaId
+    defaultValues?.tipoReferenciaId
       ? Number(defaultValues.tipoReferenciaId)
       : "",
   );
   const [usuarioId, setUsuarioId] = React.useState(
-    defaultValues.usuarioId ? Number(defaultValues.usuarioId) : "",
+    defaultValues?.usuarioId ? Number(defaultValues.usuarioId) : "",
   );
   const [estadoId, setEstadoId] = React.useState(
-    defaultValues.estadoId ? Number(defaultValues.estadoId) : !isEdit ? 20 : "",
+    defaultValues?.estadoId
+      ? Number(defaultValues.estadoId)
+      : !isEdit
+        ? 20
+        : "",
   );
   const [fechaCreacion, setFechaCreacion] = React.useState(
-    defaultValues.fechaCreacion
+    defaultValues?.fechaCreacion
       ? new Date(defaultValues.fechaCreacion)
       : new Date(),
   );
   const [fechaActualizacion, setFechaActualizacion] = React.useState(
-    defaultValues.fechaActualizacion
+    defaultValues?.fechaActualizacion
       ? new Date(defaultValues.fechaActualizacion)
       : new Date(),
   );
   const [centroCostoId, setCentroCostoId] = React.useState(
-    defaultValues.centroCostoId ? Number(defaultValues.centroCostoId) : "",
+    defaultValues?.centroCostoId ? Number(defaultValues.centroCostoId) : "",
   );
   const [moduloOrigenMotivoOperacionId, setModuloOrigenMotivoOperacionId] =
     React.useState(
-      defaultValues.moduloOrigenMovCajaId
-        ? Number(defaultValues.moduloOrigenMovCajaId)
-        : defaultValues.moduloOrigenMotivoOperacionId
-          ? Number(defaultValues.moduloOrigenMotivoOperacionId)
-          : "",
+      defaultValues?.moduloOrigenMotivoOperacionId
+        ? Number(defaultValues.moduloOrigenMotivoOperacionId)
+        : "",
     );
   const [origenMotivoOperacionId, setOrigenMotivoOperacionId] = React.useState(
-    defaultValues.origenMotivoOperacionId
+    defaultValues?.origenMotivoOperacionId
       ? Number(defaultValues.origenMotivoOperacionId)
       : "",
   );
@@ -153,11 +159,6 @@ export default function MovimientoCajaForm({
     defaultValues.origenReferenciaIngresoMovCajaId
       ? Number(defaultValues.origenReferenciaIngresoMovCajaId)
       : "",
-  );
-  const [fechaOperacionMovCaja, setFechaOperacionMovCaja] = React.useState(
-    defaultValues.fechaOperacionMovCaja
-      ? new Date(defaultValues.fechaOperacionMovCaja)
-      : new Date(),
   );
   const [operacionSinFactura, setOperacionSinFactura] = React.useState(
     defaultValues.operacionSinFactura || false,
@@ -194,7 +195,41 @@ export default function MovimientoCajaForm({
     defaultValues.motivoSinFactura || "",
   );
 
+  // ESTADOS WORKFLOW DE APROBACIÓN
+  const [aprobadoPorId, setAprobadoPorId] = React.useState(
+    defaultValues?.aprobadoPorId || null,
+  );
+  const [fechaAprobacion, setFechaAprobacion] = React.useState(
+    defaultValues?.fechaAprobacion || null,
+  );
+  const [rechazadoPorId, setRechazadoPorId] = React.useState(
+    defaultValues?.rechazadoPorId || null,
+  );
+  const [fechaRechazo, setFechaRechazo] = React.useState(
+    defaultValues?.fechaRechazo || null,
+  );
+  const [motivoRechazo, setMotivoRechazo] = React.useState(
+    defaultValues?.motivoRechazo || "",
+  );
+
+  // ESTADOS DE REVERSIÓN
+  const [esReversion, setEsReversion] = React.useState(
+    defaultValues?.esReversion || false,
+  );
+  const [movimientoRevertidoId, setMovimientoRevertidoId] = React.useState(
+    defaultValues?.movimientoRevertidoId || null,
+  );
+  const [motivoReversion, setMotivoReversion] = React.useState(
+    defaultValues?.motivoReversion || "",
+  );
+
+  // ESTADO DE INTEGRACIÓN CONTABLE
+  const [asientosGenerados, setAsientosGenerados] = React.useState(
+    defaultValues?.asientosGenerados || false,
+  );
+
   React.useEffect(() => {
+
     setEmpresaOrigenId(
       defaultValues.empresaOrigenId
         ? Number(defaultValues.empresaOrigenId)
@@ -215,7 +250,11 @@ export default function MovimientoCajaForm({
         ? Number(defaultValues.cuentaCorrienteDestinoId)
         : "",
     );
-    setFecha(defaultValues.fecha ? new Date(defaultValues.fecha) : new Date());
+    setFechaOperacionMovCaja(
+      defaultValues.fechaOperacionMovCaja
+        ? new Date(defaultValues.fechaOperacionMovCaja)
+        : new Date(),
+    );
     setTipoMovimientoId(
       defaultValues.tipoMovimientoId
         ? Number(defaultValues.tipoMovimientoId)
@@ -303,16 +342,27 @@ export default function MovimientoCajaForm({
       defaultValues.urlComprobanteOperacionMovCaja || "",
     );
     setValue("urlDocumentoMovCaja", defaultValues.urlDocumentoMovCaja || "");
+
+    // CARGAR ESTADOS WORKFLOW
+    setAprobadoPorId(defaultValues?.aprobadoPorId || null);
+    setFechaAprobacion(defaultValues?.fechaAprobacion || null);
+    setRechazadoPorId(defaultValues?.rechazadoPorId || null);
+    setFechaRechazo(defaultValues?.fechaRechazo || null);
+    setMotivoRechazo(defaultValues?.motivoRechazo || "");
+    setEsReversion(defaultValues?.esReversion || false);
+    setMovimientoRevertidoId(defaultValues?.movimientoRevertidoId || null);
+    setMotivoReversion(defaultValues?.motivoReversion || "");
+    setAsientosGenerados(defaultValues?.asientosGenerados || false);
   }, [defaultValues]);
 
-  const cuentasOrigenFiltradas = React.useMemo(() => {
+  const cuentasOrigenFiltradasCalculadas = React.useMemo(() => {
     if (!empresaOrigenId) return [];
     return cuentasCorrientes.filter(
       (cuenta) => Number(cuenta.empresaId) === Number(empresaOrigenId),
     );
   }, [cuentasCorrientes, empresaOrigenId]);
 
-  const cuentasDestinoFiltradas = React.useMemo(() => {
+  const cuentasDestinoFiltradasCalculadas = React.useMemo(() => {
     if (!empresaDestinoId) return [];
     return cuentasCorrientes.filter(
       (cuenta) => Number(cuenta.empresaId) === Number(empresaDestinoId),
@@ -321,21 +371,29 @@ export default function MovimientoCajaForm({
 
   React.useEffect(() => {
     if (empresaOrigenId && cuentaCorrienteOrigenId) {
-      const cuentaValida = cuentasOrigenFiltradas.find(
+      const cuentaValida = cuentasOrigenFiltradasCalculadas.find(
         (cuenta) => Number(cuenta.id) === Number(cuentaCorrienteOrigenId),
       );
       if (!cuentaValida) setCuentaCorrienteOrigenId("");
     }
-  }, [empresaOrigenId, cuentaCorrienteOrigenId, cuentasOrigenFiltradas]);
+  }, [
+    empresaOrigenId,
+    cuentaCorrienteOrigenId,
+    cuentasOrigenFiltradasCalculadas,
+  ]);
 
   React.useEffect(() => {
     if (empresaDestinoId && cuentaCorrienteDestinoId) {
-      const cuentaValida = cuentasDestinoFiltradas.find(
+      const cuentaValida = cuentasDestinoFiltradasCalculadas.find(
         (cuenta) => Number(cuenta.id) === Number(cuentaCorrienteDestinoId),
       );
       if (!cuentaValida) setCuentaCorrienteDestinoId("");
     }
-  }, [empresaDestinoId, cuentaCorrienteDestinoId, cuentasDestinoFiltradas]);
+  }, [
+    empresaDestinoId,
+    cuentaCorrienteDestinoId,
+    cuentasDestinoFiltradasCalculadas,
+  ]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -377,7 +435,7 @@ export default function MovimientoCajaForm({
       origenReferenciaIngresoMovCajaId: origenReferenciaIngresoMovCajaId
         ? Number(origenReferenciaIngresoMovCajaId)
         : null,
-      fechaOperacionMovCaja: new Date(),
+      fechaOperacionMovCaja: fechaOperacionMovCaja,
       operacionSinFactura,
       urlComprobanteOperacionMovCaja:
         getValues("urlComprobanteOperacionMovCaja") || null,
@@ -390,6 +448,18 @@ export default function MovimientoCajaForm({
       generarAsientoContable,
       incluirEnReporteFiscal,
       motivoSinFactura: motivoSinFactura || null,
+      // Campos workflow de aprobación
+      aprobadoPorId,
+      fechaAprobacion,
+      rechazadoPorId,
+      fechaRechazo,
+      motivoRechazo: motivoRechazo || null,
+      // Campos de reversión
+      esReversion,
+      movimientoRevertidoId,
+      motivoReversion: motivoReversion || null,
+      // Integración contable
+      asientosGenerados,
     });
   };
 
@@ -457,8 +527,8 @@ export default function MovimientoCajaForm({
           setEmpresaDestinoId={setEmpresaDestinoId}
           cuentaCorrienteDestinoId={cuentaCorrienteDestinoId}
           setCuentaCorrienteDestinoId={setCuentaCorrienteDestinoId}
-          fecha={fecha}
-          setFecha={setFecha}
+          fechaOperacionMovCaja={fechaOperacionMovCaja}
+          setFechaOperacionMovCaja={setFechaOperacionMovCaja}
           tipoMovimientoId={tipoMovimientoId}
           setTipoMovimientoId={setTipoMovimientoId}
           entidadComercialId={entidadComercialId}
@@ -509,8 +579,8 @@ export default function MovimientoCajaForm({
           entidadesComerciales={entidadesComerciales}
           cuentasEntidadComercial={cuentasEntidadComercial}
           estadosMultiFuncion={estadosMultiFuncion}
-          cuentasOrigenFiltradas={cuentasOrigenFiltradas}
-          cuentasDestinoFiltradas={cuentasDestinoFiltradas}
+          cuentasOrigenFiltradas={cuentasOrigenFiltradasCalculadas}
+          cuentasDestinoFiltradas={cuentasDestinoFiltradasCalculadas}
           productos={productos}
           productoId={productoId}
           setProductoId={setProductoId}
@@ -552,6 +622,7 @@ export default function MovimientoCajaForm({
       <div style={{ display: cardActiva === "detalles" ? "block" : "none" }}>
         <DetallesGeneradosCard
           movimientoId={defaultValues.id}
+          refreshTrigger={defaultValues.fechaActualizacion}
           readOnly={readOnly}
         />
       </div>
@@ -620,36 +691,52 @@ export default function MovimientoCajaForm({
 
         {/* Grupo de botones de acción - Centro/Derecha */}
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          {esPendiente && (
-            <Button
-              type="button"
-              label="Validar Movimiento"
-              icon="pi pi-check-circle"
-              onClick={handleValidarMovimiento}
-              disabled={loading}
-              className="p-button-warning"
-              severity="warning"
-              raised
-              outlined
-              size="small"
-            />
-          )}
-          {esValidado && (
-            <Button
-              type="button"
-              label="Generar Asiento Contable"
-              icon="pi pi-file-edit"
-              onClick={() =>
-                onGenerarAsiento && onGenerarAsiento(defaultValues)
-              }
-              disabled={loading}
-              className="p-button-info"
-              severity="info"
-              raised
-              outlined
-              size="small"
-            />
-          )}
+          <Button
+            type="button"
+            label="Validar Movimiento"
+            icon="pi pi-check-circle"
+            onClick={handleValidarMovimiento}
+            disabled={!esPendiente || !permisos.puedeEditar || readOnly || loading}
+            tooltip={
+              !esPendiente
+                ? "Solo se puede validar movimientos en estado PENDIENTE"
+                : !permisos.puedeEditar
+                  ? "No tiene permisos para validar"
+                  : readOnly
+                    ? "Modo solo lectura"
+                    : "Validar movimiento"
+            }
+            tooltipOptions={{ position: 'top' }}
+            className="p-button-warning"
+            severity="warning"
+            raised
+            outlined
+            size="small"
+          />
+          <Button
+            type="button"
+            label="Generar Asiento Contable"
+            icon="pi pi-file-edit"
+            onClick={() =>
+              onGenerarAsiento && onGenerarAsiento(defaultValues)
+            }
+            disabled={!esValidado || !permisos.puedeEditar || readOnly || loading}
+            tooltip={
+              !esValidado
+                ? "Solo se puede generar asiento para movimientos VALIDADOS"
+                : !permisos.puedeEditar
+                  ? "No tiene permisos para generar asientos"
+                  : readOnly
+                    ? "Modo solo lectura"
+                    : "Generar asiento contable"
+            }
+            tooltipOptions={{ position: 'top' }}
+            className="p-button-info"
+            severity="info"
+            raised
+            outlined
+            size="small"
+          />
           <Button
             type="button"
             label="Cancelar"
@@ -674,6 +761,7 @@ export default function MovimientoCajaForm({
                   ? "No tiene permisos para editar"
                   : ""
             }
+            tooltipOptions={{ position: 'top' }}
             className="p-button-success"
             severity="success"
             raised
@@ -683,4 +771,6 @@ export default function MovimientoCajaForm({
       </div>
     </div>
   );
-}
+};
+
+export default MovimientoCajaForm;

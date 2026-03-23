@@ -145,7 +145,6 @@ const ContratoServicio = ({ ruta }) => {
         getCentrosAlmacen(),
         getCentrosCosto(),
         getTiposMovimiento(),
-        getAsignacionesOrigen({ activo: true }),
       ]);
 
       setEmpresas(empresasData);

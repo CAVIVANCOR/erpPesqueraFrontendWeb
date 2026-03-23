@@ -80,8 +80,7 @@ export default function DetEntregaRendirMovAlmacen({
 
     return movimientosFiltrados;
   };
-  // Filtrar movimientos que son asignaciones (inicial o adicional) y forman parte del cálculo
-  // Excluir el movimiento en edición para evitar auto-referencia
+
   const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
     (mov) =>
       (Number(mov.tipoMovimientoId) === 1 ||
@@ -273,7 +272,6 @@ export default function DetEntregaRendirMovAlmacen({
     });
   };
 
-  // Templates
   const fechaMovimientoTemplate = (rowData) => {
     return new Date(rowData.fechaMovimiento).toLocaleDateString("es-PE");
   };
@@ -365,24 +363,36 @@ export default function DetEntregaRendirMovAlmacen({
   const accionesTemplate = (rowData) => {
     return (
       <div className="flex gap-2">
-        {permisos.puedeEditar && (
-          <Button
-            icon="pi pi-pencil"
-            className="p-button-text p-button-sm"
-            onClick={() => handleEditarMovimiento(rowData)}
-            aria-label="Editar"
-            tooltip="Editar"
-          />
-        )}
-        {permisos.puedeEliminar && (
-          <Button
-            icon="pi pi-trash"
-            className="p-button-text p-button-danger p-button-sm"
-            onClick={() => handleEliminarMovimiento(rowData)}
-            aria-label="Eliminar"
-            tooltip="Eliminar"
-          />
-        )}
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-button-sm"
+          onClick={() => handleEditarMovimiento(rowData)}
+          aria-label="Editar"
+          disabled={readOnly || entregaARendir?.entregaLiquidada || !permisos?.puedeEditar}
+          tooltip={
+            !permisos?.puedeEditar
+              ? "No tiene permisos para editar"
+              : readOnly || entregaARendir?.entregaLiquidada
+                ? "No se puede editar"
+                : "Editar movimiento"
+          }
+          tooltipOptions={{ position: 'top' }}
+        />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-danger p-button-sm"
+          onClick={() => handleEliminarMovimiento(rowData)}
+          aria-label="Eliminar"
+          disabled={readOnly || entregaARendir?.entregaLiquidada || !permisos?.puedeEditar}
+          tooltip={
+            !permisos?.puedeEditar
+              ? "No tiene permisos para eliminar"
+              : readOnly || entregaARendir?.entregaLiquidada
+                ? "No se puede eliminar"
+                : "Eliminar movimiento"
+          }
+          tooltipOptions={{ position: 'top' }}
+        />
       </div>
     );
   };
@@ -420,7 +430,7 @@ export default function DetEntregaRendirMovAlmacen({
                   display: "flex",
                   gap: 8,
                   padding: 8,
-                  alignItems: "flex-start",
+                  alignItems: "end",
                   marginTop: 18,
                 }}
               >
@@ -435,14 +445,26 @@ export default function DetEntregaRendirMovAlmacen({
                     severity="success"
                     onClick={handleNuevoMovimiento}
                     disabled={
+                      !permisos?.puedeEditar ||
+                      readOnly ||
                       !movimientoAlmacenAprobado ||
                       !entregaARendir ||
-                      entregaARendir?.entregaLiquidada ||
-                      !permisos.puedeCrear
+                      entregaARendir?.entregaLiquidada
                     }
                     tooltip={
-                      !permisos.puedeCrear ? "No tiene permisos para crear" : ""
+                      !permisos?.puedeEditar
+                        ? "No tiene permisos para crear"
+                        : readOnly
+                          ? "Modo solo lectura"
+                          : !movimientoAlmacenAprobado
+                            ? "Movimiento de almacén no aprobado"
+                            : !entregaARendir
+                              ? "No hay entrega a rendir"
+                              : entregaARendir?.entregaLiquidada
+                                ? "Entrega ya liquidada"
+                                : "Crear nuevo movimiento"
                     }
+                    tooltipOptions={{ position: 'top' }}
                     type="button"
                   />
                 </div>
@@ -484,7 +506,21 @@ export default function DetEntregaRendirMovAlmacen({
                     className="p-button-danger"
                     onClick={handleProcesarLiquidacion}
                     type="button"
-                    disabled={entregaARendir.entregaLiquidada}
+                    disabled={
+                      !permisos?.puedeEditar ||
+                      readOnly ||
+                      entregaARendir.entregaLiquidada
+                    }
+                    tooltip={
+                      !permisos?.puedeEditar
+                        ? "No tiene permisos para procesar liquidación"
+                        : readOnly
+                          ? "Modo solo lectura"
+                          : entregaARendir.entregaLiquidada
+                            ? "Entrega ya liquidada"
+                            : "Procesar liquidación de la entrega"
+                    }
+                    tooltipOptions={{ position: 'top' }}
                   />
                 </div>
               </div>

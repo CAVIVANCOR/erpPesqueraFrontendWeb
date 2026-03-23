@@ -14,6 +14,7 @@ import { getPagosPorMovimiento as getPagosCxPPorMovimiento } from "../../api/cue
 
 const DetallesGeneradosCard = ({
   movimientoId,
+  refreshTrigger,
   readOnly = false,
 }) => {
   const [loading, setLoading] = useState(false);
@@ -30,12 +31,12 @@ const DetallesGeneradosCard = ({
   const [movInversiones, setMovInversiones] = useState([]);
   const [prestamos, setPrestamos] = useState([]);
 
-  // Cargar datos cuando hay movimientoId
+  // Cargar datos cuando hay movimientoId o cambia refreshTrigger
   useEffect(() => {
     if (movimientoId) {
       cargarDetallesGenerados();
     }
-  }, [movimientoId]);
+  }, [movimientoId, refreshTrigger]);
 
   const cargarDetallesGenerados = async () => {
     setLoading(true);

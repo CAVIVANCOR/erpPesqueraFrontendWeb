@@ -29,12 +29,14 @@ export default function DetEntregaRendirCompras({
   entidadesComerciales = [],
   monedas = [],
   tiposDocumento = [],
-  productos = [], // Nueva prop para productos (gastos)
+  productos = [],
   requerimientoCompraAprobado = false,
   loading = false,
   selectedMovimientos = [],
   onSelectionChange,
   onDataChange,
+  readOnly = false,
+  permisos,
 }) {
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
   const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);
@@ -80,7 +82,6 @@ export default function DetEntregaRendirCompras({
     return movimientosFiltrados;
   };
 
-  // Filtrar movimientos que son asignaciones (inicial o adicional) y forman parte del cálculo
   const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
     (mov) =>
       (mov.tipoMovimientoId === 1 || mov.tipoMovimientoId === 2) &&
@@ -223,7 +224,6 @@ export default function DetEntregaRendirCompras({
         try {
           const fechaActual = new Date();
 
-          // 1. Actualizar todos los movimientos DetMovsEntregaRendirPCompras - SOLO campos escalares
           const promesasActualizacion = movimientos.map((movimiento) => {
             const movimientoActualizado = {
               entregaARendirPComprasId: movimiento.entregaARendirPComprasId,
@@ -259,7 +259,6 @@ export default function DetEntregaRendirCompras({
 
           await Promise.all(promesasActualizacion);
 
-          // 2. Cargar entrega completa con relaciones para el PDF
           const token = useAuthStore.getState().token;
           const headers = { Authorization: `Bearer ${token}` };
 
@@ -269,7 +268,6 @@ export default function DetEntregaRendirCompras({
           );
           const entregaCompleta = await entregaResponse.json();
 
-          // 3. Cargar empresa
           let empresa;
           try {
             const empresaResponse = await fetch(
@@ -288,7 +286,6 @@ export default function DetEntregaRendirCompras({
             };
           }
 
-          // 4. Generar PDF automáticamente
           const resultadoPdf = await generarYSubirPDFLiquidacionCompras(
             {
               ...entregaCompleta,
@@ -312,7 +309,7 @@ export default function DetEntregaRendirCompras({
             life: 5000,
           });
 
-          onDataChange?.(); // Notificar al padre que recargue datos
+          onDataChange?.();
         } catch (error) {
           console.error("Error al procesar liquidación:", error);
           toast.current?.show({
@@ -326,7 +323,6 @@ export default function DetEntregaRendirCompras({
     });
   };
 
-  // Templates
   const fechaMovimientoTemplate = (rowData) => {
     return new Date(rowData.fechaMovimiento).toLocaleDateString("es-PE");
   };
@@ -423,12 +419,30 @@ export default function DetEntregaRendirCompras({
           className="p-button-text p-button-sm"
           onClick={() => handleEditarMovimiento(rowData)}
           aria-label="Editar"
+          disabled={readOnly || entregaARendir?.entregaLiquidada || !permisos?.puedeEditar}
+          tooltip={
+            !permisos?.puedeEditar
+              ? "No tiene permisos para editar"
+              : readOnly || entregaARendir?.entregaLiquidada
+                ? "No se puede editar"
+                : "Editar movimiento"
+          }
+          tooltipOptions={{ position: 'top' }}
         />
         <Button
           icon="pi pi-trash"
           className="p-button-text p-button-danger p-button-sm"
           onClick={() => handleEliminarMovimiento(rowData)}
           aria-label="Eliminar"
+          disabled={readOnly || entregaARendir?.entregaLiquidada || !permisos?.puedeEditar}
+          tooltip={
+            !permisos?.puedeEditar
+              ? "No tiene permisos para eliminar"
+              : readOnly || entregaARendir?.entregaLiquidada
+                ? "No se puede eliminar"
+                : "Eliminar movimiento"
+          }
+          tooltipOptions={{ position: 'top' }}
         />
       </div>
     );
@@ -471,7 +485,7 @@ export default function DetEntregaRendirCompras({
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <h3>Detalle Entrega a Rendir - Compras HOLA</h3>
+                  <h3>Detalle Entrega a Rendir - Compras</h3>
                 </div>
                 <div style={{ flex: 0.5 }}>
                   <Button
@@ -481,10 +495,26 @@ export default function DetEntregaRendirCompras({
                     severity="success"
                     onClick={handleNuevoMovimiento}
                     disabled={
+                      !permisos?.puedeEditar ||
+                      readOnly ||
                       !requerimientoCompraAprobado ||
                       !entregaARendir ||
                       entregaARendir?.entregaLiquidada
                     }
+                    tooltip={
+                      !permisos?.puedeEditar
+                        ? "No tiene permisos para crear"
+                        : readOnly
+                          ? "Modo solo lectura"
+                          : !requerimientoCompraAprobado
+                            ? "Requerimiento de compra no aprobado"
+                            : !entregaARendir
+                              ? "No hay entrega a rendir"
+                              : entregaARendir?.entregaLiquidada
+                                ? "Entrega ya liquidada"
+                                : "Crear nuevo movimiento"
+                    }
+                    tooltipOptions={{ position: 'top' }}
                     type="button"
                     size="small"
                   />
@@ -532,7 +562,21 @@ export default function DetEntregaRendirCompras({
                     className="p-button-sm p-button-outlined"
                     onClick={handleProcesarLiquidacion}
                     type="button"
-                    disabled={entregaARendir.entregaLiquidada}
+                    disabled={
+                      !permisos?.puedeEditar ||
+                      readOnly ||
+                      entregaARendir.entregaLiquidada
+                    }
+                    tooltip={
+                      !permisos?.puedeEditar
+                        ? "No tiene permisos para procesar liquidación"
+                        : readOnly
+                          ? "Modo solo lectura"
+                          : entregaARendir.entregaLiquidada
+                            ? "Entrega ya liquidada"
+                            : "Procesar liquidación de la entrega"
+                    }
+                    tooltipOptions={{ position: 'top' }}
                     size="small"
                   />
                 </div>

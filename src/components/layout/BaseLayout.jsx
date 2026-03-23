@@ -267,7 +267,7 @@ export default function BaseLayout({ children, onLogout }) {
     },
     contratoServicio: {
       label: "Contratos de Servicios",
-      componente: <ContratoServicio ruta="contratoServicio" />,
+      componente: <ContratoServicio ruta="ContratoServicio" />,
     },
     incoterm: { label: "Incoterms", componente: <Incoterm ruta="incoterm" /> },
     docRequeridaVentas: {
