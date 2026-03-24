@@ -273,7 +273,7 @@ export default function Dashboard() {
           icon: "pi-credit-card",
         },
         {
-          label: "Entregas a Rendir",
+          label: "Tipos de Movimiento Caja",
           key: "tipoMovEntregaRendir",
           icon: "pi-send",
         },
