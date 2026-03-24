@@ -230,9 +230,15 @@ export default function EmpresaForm({
   }, []);
 
    // Reset al abrir en modo edición o alta
-  useEffect(() => {
+    useEffect(() => {
     reset({ 
-      ...defaultValues, 
+      ...defaultValues,
+      razonSocial: defaultValues.razonSocial ?? "",
+      nombreComercial: defaultValues.nombreComercial ?? "",
+      ruc: defaultValues.ruc ?? "",
+      direccion: defaultValues.direccion ?? "",
+      telefono: defaultValues.telefono ?? "",
+      email: defaultValues.email ?? "",
       cesado: defaultValues.cesado ?? false,
       porcentajeIgv: defaultValues.porcentajeIgv ?? null,
       porcentajeRetencion: defaultValues.porcentajeRetencion ?? null,

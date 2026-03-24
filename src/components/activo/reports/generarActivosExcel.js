@@ -65,7 +65,6 @@ export async function generarActivosExcel(data) {
     { Campo: "Total de Activos", Valor: activos.length },
     { Campo: "Activos Activos", Valor: activos.filter(a => !a.cesado).length },
     { Campo: "Activos Cesados", Valor: activos.filter(a => a.cesado).length },
-    { Campo: "Fecha de Generación", Valor: new Date(fechaGeneracion).toLocaleString("es-PE") },
   ];
 
   const worksheetResumen = XLSX.utils.json_to_sheet(resumenData);

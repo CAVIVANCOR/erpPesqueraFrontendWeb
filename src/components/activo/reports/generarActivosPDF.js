@@ -127,37 +127,7 @@ export async function generarActivosPDF(data) {
       color: rgb(0.1, 0.1, 0.1),
     });
 
-    yPos -= 18;
-
-    // Fecha y hora de generación
-    const fechaTexto = `Fecha de Generacion: ${fechaGeneracion.toLocaleDateString('es-PE', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric'
-    })}, ${fechaGeneracion.toLocaleTimeString('es-PE', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })}`;
-    const fechaWidth = fontNormal.widthOfTextAtSize(fechaTexto, 9);
-    pag.drawText(fechaTexto, {
-      x: (width - fechaWidth) / 2,
-      y: yPos,
-      size: 9,
-      font: fontNormal,
-      color: rgb(0.3, 0.3, 0.3),
-    });
-
-    yPos -= 15;
-
-    // Línea separadora
-    pag.drawLine({
-      start: { x: margin, y: yPos },
-      end: { x: width - margin, y: yPos },
-      thickness: 1,
-      color: rgb(0.7, 0.7, 0.7),
-    });
-
-    yPos -= 15;
+       yPos -= 25;
 
     // Numeración de página
     const pageText = `Pagina ${pageNum} de ${totalPages}`;
