@@ -45,7 +45,7 @@ const esquemaValidacion = yup.object().shape({
     .default(false),
 });
 
-const TipoActivoForm = ({ tipoActivo, onGuardar, onCancelar, readOnly = false }) => {
+const TipoActivoForm = ({ tipoActivo, onGuardar, onCancelar, readOnly = false, toast }) => {
   const [loading, setLoading] = React.useState(false);
   const esEdicion = !!tipoActivo;
 
@@ -108,7 +108,26 @@ const TipoActivoForm = ({ tipoActivo, onGuardar, onCancelar, readOnly = false })
       onGuardar();
     } catch (error) {
       console.error("Error al guardar tipo de activo:", error);
-      // El manejo de errores se realiza en el componente padre
+      
+      // Mostrar error al usuario
+      let mensajeError = "Error al guardar tipo de activo";
+      
+      if (error.response?.data?.mensaje) {
+        mensajeError = error.response.data.mensaje;
+      } else if (error.response?.data?.error) {
+        mensajeError = error.response.data.error;
+      } else if (error.message) {
+        mensajeError = error.message;
+      }
+
+      if (toast?.current) {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: mensajeError,
+          life: 5000,
+        });
+      }
     } finally {
       setLoading(false);
     }

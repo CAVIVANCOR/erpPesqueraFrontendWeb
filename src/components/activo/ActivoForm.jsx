@@ -41,22 +41,17 @@ const esquemaValidacion = yup.object().shape({
     .transform((value, originalValue) => {
       return originalValue === "" ? null : value;
     }),
-  nombre: yup
-    .string()
-    .required("El nombre es obligatorio")
-    .trim(),
+  nombre: yup.string().required("El nombre es obligatorio").trim(),
   descripcion: yup
     .string()
     .nullable()
     .transform((value, originalValue) => {
       return originalValue === "" ? null : value;
     }),
-  cesado: yup
-    .boolean()
-    .default(false),
+  cesado: yup.boolean().default(false),
 });
 
-const ActivoForm = ({ activo, onGuardar, onCancelar, readOnly = false }) => {
+const ActivoForm = ({ activo, empresaIdInicial, tipoIdInicial, onGuardar, onCancelar, readOnly = false }) => {
   const [loading, setLoading] = useState(false);
   const [tiposActivo, setTiposActivo] = useState([]);
   const [empresas, setEmpresas] = useState([]);
@@ -85,24 +80,26 @@ const ActivoForm = ({ activo, onGuardar, onCancelar, readOnly = false }) => {
     cargarCombos();
   }, []);
 
-  // Efecto para cargar datos en modo edición
+    // Efecto para cargar datos en modo edición o nuevo con filtros
   useEffect(() => {
     if (activo) {
+      // Modo edición: cargar datos del activo
       setValue("empresaId", Number(activo.empresaId) || null);
       setValue("tipoId", Number(activo.tipoId) || null);
       setValue("nombre", activo.nombre || "");
       setValue("descripcion", activo.descripcion || "");
       setValue("cesado", activo.cesado || false);
     } else {
+      // Modo creación: usar filtros iniciales si existen
       reset({
-        empresaId: null,
-        tipoId: null,
+        empresaId: empresaIdInicial ? Number(empresaIdInicial) : null,
+        tipoId: tipoIdInicial ? Number(tipoIdInicial) : null,
         nombre: "",
         descripcion: "",
         cesado: false,
       });
     }
-  }, [activo, setValue, reset]);
+  }, [activo, empresaIdInicial, tipoIdInicial, setValue, reset]);
 
   /**
    * Cargar datos para combos
@@ -111,9 +108,9 @@ const ActivoForm = ({ activo, onGuardar, onCancelar, readOnly = false }) => {
     try {
       const [tiposData, empresasData] = await Promise.all([
         getTiposActivo(),
-        getEmpresas()
+        getEmpresas(),
       ]);
-      
+
       setTiposActivo(tiposData);
       setEmpresas(empresasData);
     } catch (error) {
@@ -165,14 +162,14 @@ const ActivoForm = ({ activo, onGuardar, onCancelar, readOnly = false }) => {
   };
 
   // Opciones para combos
-  const empresasOptions = empresas.map(empresa => ({
+  const empresasOptions = empresas.map((empresa) => ({
     label: empresa.razonSocial,
-    value: Number(empresa.id)
+    value: Number(empresa.id),
   }));
 
-  const tiposActivoOptions = tiposActivo.map(tipo => ({
+  const tiposActivoOptions = tiposActivo.map((tipo) => ({
     label: tipo.nombre,
-    value: Number(tipo.id)
+    value: Number(tipo.id),
   }));
 
   return (
@@ -197,11 +194,14 @@ const ActivoForm = ({ activo, onGuardar, onCancelar, readOnly = false }) => {
                 filter
                 showClear
                 disabled={readOnly}
+                style={{ fontWeight: "bold" }}
               />
             )}
           />
           {errors.empresaId && (
-            <small className="p-error p-d-block">{errors.empresaId.message}</small>
+            <small className="p-error p-d-block">
+              {errors.empresaId.message}
+            </small>
           )}
         </div>
 
@@ -224,6 +224,7 @@ const ActivoForm = ({ activo, onGuardar, onCancelar, readOnly = false }) => {
                 filter
                 showClear
                 disabled={readOnly}
+                style={{ fontWeight: "bold" }}
               />
             )}
           />
@@ -246,7 +247,7 @@ const ActivoForm = ({ activo, onGuardar, onCancelar, readOnly = false }) => {
                 {...field}
                 placeholder="Ingrese el nombre del activo"
                 className={getFieldClass("nombre")}
-                style={{ textTransform: 'uppercase' }}
+                style={{ textTransform: "uppercase", fontWeight: "bold"  }}
                 disabled={readOnly}
               />
             )}
@@ -270,13 +271,15 @@ const ActivoForm = ({ activo, onGuardar, onCancelar, readOnly = false }) => {
                 {...field}
                 placeholder="Descripción del activo (opcional)"
                 className={getFieldClass("descripcion")}
-                style={{ textTransform: 'uppercase' }}
+                style={{ textTransform: "uppercase", fontWeight: "bold"  }}
                 disabled={readOnly}
               />
             )}
           />
           {errors.descripcion && (
-            <small className="p-error p-d-block">{errors.descripcion.message}</small>
+            <small className="p-error p-d-block">
+              {errors.descripcion.message}
+            </small>
           )}
         </div>
 
@@ -305,7 +308,7 @@ const ActivoForm = ({ activo, onGuardar, onCancelar, readOnly = false }) => {
           )}
         </div>
       </div>
-      
+
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
         <Button
           type="button"

@@ -40,7 +40,12 @@ const TipoActivo = ({ ruta }) => {
   const permisos = usePermissions(ruta);
 
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
-    return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+    return (
+      <div className="p-4">
+        <h2>Sin Acceso</h2>
+        <p>No tiene permisos para acceder a este módulo.</p>
+      </div>
+    );
   }
   const [globalFilter, setGlobalFilter] = useState("");
 
@@ -104,7 +109,9 @@ const TipoActivo = ({ ruta }) => {
     try {
       await eliminarTipoActivo(tipoActivoAEliminar.id);
       setTiposActivo(
-        tiposActivo.filter((t) => Number(t.id) !== Number(tipoActivoAEliminar.id))
+        tiposActivo.filter(
+          (t) => Number(t.id) !== Number(tipoActivoAEliminar.id),
+        ),
       );
       toast.current.show({
         severity: "success",
@@ -134,11 +141,7 @@ const TipoActivo = ({ ruta }) => {
   };
 
   const nombreTemplate = (rowData) => {
-    return (
-      <span style={{ fontWeight: "500" }}>
-        {rowData.nombre}
-      </span>
-    );
+    return <span style={{ fontWeight: "500" }}>{rowData.nombre}</span>;
   };
 
   const cesadoTemplate = (rowData) => {
@@ -190,7 +193,7 @@ const TipoActivo = ({ ruta }) => {
         className="p-datatable-hover cursor-pointer"
         emptyMessage="No se encontraron tipos de activo"
         globalFilter={globalFilter}
-        globalFilterFields={['codigo', 'nombre', 'descripcion']}
+        globalFilterFields={["codigo", "nombre", "descripcion"]}
         header={
           <div className="flex align-items-center gap-2">
             <h2>Gestión de Tipos de Activo</h2>
@@ -219,33 +222,11 @@ const TipoActivo = ({ ruta }) => {
         scrollHeight="600px"
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
       >
-        <Column
-          field="id"
-          header="ID"
-          sortable
-        />
-        <Column 
-          field="codigo" 
-          header="Código" 
-          body={codigoTemplate}
-          sortable 
-        />
-        <Column 
-          field="nombre" 
-          header="Nombre" 
-          body={nombreTemplate}
-          sortable 
-        />
-        <Column 
-          field="descripcion" 
-          header="Descripción" 
-          sortable 
-        />
-        <Column 
-          header="Estado" 
-          body={cesadoTemplate}
-          sortable 
-        />
+        <Column field="id" header="ID" sortable />
+        <Column field="codigo" header="Código" body={codigoTemplate} sortable />
+        <Column field="nombre" header="Nombre" body={nombreTemplate} sortable />
+        <Column field="descripcion" header="Descripción" sortable />
+        <Column header="Estado" body={cesadoTemplate} sortable />
         <Column
           body={accionesTemplate}
           header="Acciones"
@@ -269,6 +250,7 @@ const TipoActivo = ({ ruta }) => {
           onGuardar={onGuardarExitoso}
           onCancelar={cerrarDialogo}
           readOnly={readOnly}
+          toast={toast}
         />
       </Dialog>
 
