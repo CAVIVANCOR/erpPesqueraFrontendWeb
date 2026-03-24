@@ -22,6 +22,7 @@ import ModulosSistema from "../../pages/ModulosSistema";
 import SubmodulosSistema from "../../pages/SubmodulosSistema";
 import DocumentacionPersonal from "../../pages/DocumentacionPersonal";
 import TipoMovEntregaRendir from "../../pages/TipoMovEntregaRendir";
+import CategoriaTipoMovEntregaRendir from "../../pages/CategoriaTipoMovEntregaRendir";
 import CuentaCorriente from "../../pages/CuentaCorriente";
 import Activo from "../../pages/Activo";
 import DetallePermisoActivo from "../../pages/DetallePermisoActivo";
@@ -287,6 +288,12 @@ export default function BaseLayout({ children, onLogout }) {
     requisitoDocPorPais: {
       label: "Requisitos Documentales por País",
       componente: <RequisitoDocPorPais ruta="requisitoDocPorPais" />,
+    },
+    categoriaTipoMovimientoCaja: {
+      label: "Categoría Tipo Movimiento Caja",
+      componente: (
+        <CategoriaTipoMovEntregaRendir ruta="categoriaTipoMovimientoCaja" />
+      ),
     },
     tipoContenedor: {
       label: "Tipo Contenedor",

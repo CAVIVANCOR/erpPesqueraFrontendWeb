@@ -259,7 +259,7 @@ export default function Dashboard() {
       descripcion:
         "Control financiero, cuentas corrientes y asientos contables",
       icono: "pi-wallet",
-      modulos: 21,
+      modulos: 22,
       color: "#5DADE2",
       submenu: [
         {
@@ -271,6 +271,11 @@ export default function Dashboard() {
           label: "Cuenta Corriente",
           key: "cuentaCorriente",
           icon: "pi-credit-card",
+        },
+        {
+          label: "Categoría Tipo Movimiento caja",
+          key: "categoriaTipoMovimientoCaja",
+          icon: "pi-money-bill",
         },
         {
           label: "Tipos de Movimiento Caja",

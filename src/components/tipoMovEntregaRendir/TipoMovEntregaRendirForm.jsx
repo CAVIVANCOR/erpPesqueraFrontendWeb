@@ -4,6 +4,7 @@ import React from "react";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
+import { Dropdown } from "primereact/dropdown";
 
 export default function TipoMovEntregaRendirForm({
   isEdit,
@@ -11,6 +12,7 @@ export default function TipoMovEntregaRendirForm({
   onSubmit,
   onCancel,
   loading,
+  categorias = [], // AGREGAR ESTA LÍNEA
 }) {
   const [nombre, setNombre] = React.useState(defaultValues.nombre || "");
   const [descripcion, setDescripcion] = React.useState(
@@ -23,6 +25,9 @@ export default function TipoMovEntregaRendirForm({
     defaultValues.esTransferencia !== undefined
       ? !!defaultValues.esTransferencia
       : false,
+  );
+  const [categoriaId, setCategoriaId] = React.useState(
+    defaultValues.categoriaId || null,
   );
   const [activo, setActivo] = React.useState(
     defaultValues.activo !== undefined ? !!defaultValues.activo : true,
@@ -39,14 +44,16 @@ export default function TipoMovEntregaRendirForm({
         ? !!defaultValues.esTransferencia
         : false,
     );
+    setCategoriaId(defaultValues.categoriaId || null);
     setActivo(
       defaultValues.activo !== undefined ? !!defaultValues.activo : true,
     );
   }, [defaultValues]);
 
-  const handleSubmit = (e) => {
+   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit({
+      categoriaId: categoriaId ? Number(categoriaId) : null,
       nombre,
       descripcion,
       esIngreso,
@@ -57,6 +64,24 @@ export default function TipoMovEntregaRendirForm({
 
   return (
     <form onSubmit={handleSubmit} className="p-fluid">
+      <div className="p-field">
+        <label htmlFor="categoriaId">Categoría</label>
+        <Dropdown
+          id="categoriaId"
+          value={categoriaId ? Number(categoriaId) : null}
+          options={categorias.map((c) => ({
+            label: c.nombre,
+            value: Number(c.id),
+          }))}
+          onChange={(e) => setCategoriaId(e.value)}
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Seleccionar categoría"
+          disabled={loading}
+          showClear
+          style={{ fontWeight: "bold", textTransform: "uppercase" }}
+        />
+      </div>
       <div className="p-field">
         <label htmlFor="nombre">Nombre*</label>
         <InputText
@@ -108,7 +133,9 @@ export default function TipoMovEntregaRendirForm({
           <Button
             label={esTransferencia ? "TRANSFERENCIA" : "TRANSFERENCIA"}
             icon={esTransferencia ? "pi pi-arrows-h" : "pi pi-times"}
-            className={esTransferencia ? "p-button-primary" : "p-button-secondary"}
+            className={
+              esTransferencia ? "p-button-primary" : "p-button-secondary"
+            }
             onClick={() => setEsTransferencia(!esTransferencia)}
             type="button"
             disabled={loading}
@@ -124,7 +151,14 @@ export default function TipoMovEntregaRendirForm({
         </div>
       </div>
 
-      <div style={{ marginTop: "3rem", display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
+      <div
+        style={{
+          marginTop: "3rem",
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: "0.5rem",
+        }}
+      >
         <Button
           type="button"
           label="Cancelar"

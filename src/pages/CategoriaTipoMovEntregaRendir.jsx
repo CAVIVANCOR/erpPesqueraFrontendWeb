@@ -1,5 +1,5 @@
-// src/pages/TipoMovEntregaRendir.jsx
-// Pantalla CRUD profesional para TipoMovEntregaRendir. Cumple la regla transversal ERP Megui.
+// src/pages/CategoriaTipoMovEntregaRendir.jsx
+// Pantalla CRUD profesional para CategoriaTipoMovEntregaRendir. Cumple la regla transversal ERP Megui.
 import React, { useRef, useState, useEffect } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -8,18 +8,17 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { Tag } from "primereact/tag";
-import TipoMovEntregaRendirForm from "../components/tipoMovEntregaRendir/TipoMovEntregaRendirForm";
+import CategoriaTipoMovEntregaRendirForm from "../components/categoriaTipoMovEntregaRendir/CategoriaTipoMovEntregaRendirForm";
 import {
-  getAllTipoMovEntregaRendir,
-  crearTipoMovEntregaRendir,
-  actualizarTipoMovEntregaRendir,
-  deleteTipoMovEntregaRendir,
-} from "../api/tipoMovEntregaRendir";
+  getAllCategoriaTipoMovEntregaRendir,
+  crearCategoriaTipoMovEntregaRendir,
+  actualizarCategoriaTipoMovEntregaRendir,
+  deleteCategoriaTipoMovEntregaRendir,
+} from "../api/categoriaTipoMovEntregaRendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
-import { getAllCategoriaTipoMovEntregaRendir } from "../api/categoriaTipoMovEntregaRendir";
 
-export default function TipoMovEntregaRendir() {
+export default function CategoriaTipoMovEntregaRendir() {
   const toast = useRef(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -27,17 +26,16 @@ export default function TipoMovEntregaRendir() {
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
-  const [categorias, setCategorias] = useState([]);
   const usuario = useAuthStore((state) => state.usuario);
+
   useEffect(() => {
     cargarItems();
-    cargarCategorias();
   }, []);
 
   const cargarItems = async () => {
     setLoading(true);
     try {
-      const data = await getAllTipoMovEntregaRendir();
+      const data = await getAllCategoriaTipoMovEntregaRendir();
       setItems(data);
     } catch (err) {
       toast.current.show({
@@ -47,15 +45,6 @@ export default function TipoMovEntregaRendir() {
       });
     }
     setLoading(false);
-  };
-
-  const cargarCategorias = async () => {
-    try {
-      const data = await getAllCategoriaTipoMovEntregaRendir();
-      setCategorias(data);
-    } catch (err) {
-      console.error("Error al cargar categorías:", err);
-    }
   };
 
   const handleEdit = (rowData) => {
@@ -73,7 +62,7 @@ export default function TipoMovEntregaRendir() {
     if (!toDelete) return;
     setLoading(true);
     try {
-      await deleteTipoMovEntregaRendir(toDelete.id);
+      await deleteCategoriaTipoMovEntregaRendir(toDelete.id);
       toast.current.show({
         severity: "success",
         summary: "Eliminado",
@@ -84,7 +73,7 @@ export default function TipoMovEntregaRendir() {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo eliminar.",
+        detail: err.response?.data?.mensaje || "No se pudo eliminar.",
       });
     }
     setLoading(false);
@@ -95,14 +84,14 @@ export default function TipoMovEntregaRendir() {
     setLoading(true);
     try {
       if (editing && editing.id) {
-        await actualizarTipoMovEntregaRendir(editing.id, data);
+        await actualizarCategoriaTipoMovEntregaRendir(editing.id, data);
         toast.current.show({
           severity: "success",
           summary: "Actualizado",
           detail: "Registro actualizado.",
         });
       } else {
-        await crearTipoMovEntregaRendir(data);
+        await crearCategoriaTipoMovEntregaRendir(data);
         toast.current.show({
           severity: "success",
           summary: "Creado",
@@ -116,7 +105,7 @@ export default function TipoMovEntregaRendir() {
       toast.current.show({
         severity: "error",
         summary: "Error",
-        detail: "No se pudo guardar.",
+        detail: err.response?.data?.mensaje || "No se pudo guardar.",
       });
     }
     setLoading(false);
@@ -146,32 +135,12 @@ export default function TipoMovEntregaRendir() {
     </>
   );
 
-  const esIngresoBodyTemplate = (rowData) => {
+  const cesadoBodyTemplate = (rowData) => {
     return (
       <Tag
-        value={rowData.esIngreso ? "INGRESO" : "EGRESO"}
-        severity={rowData.esIngreso ? "success" : "danger"}
-        icon={rowData.esIngreso ? "pi pi-arrow-down" : "pi pi-arrow-up"}
-      />
-    );
-  };
-
-  const esTransferenciaBodyTemplate = (rowData) => {
-    return (
-      <Tag
-        value={rowData.esTransferencia ? "SÍ" : "NO"}
-        severity={rowData.esTransferencia ? "info" : "secondary"}
-        icon={rowData.esTransferencia ? "pi pi-arrows-h" : "pi pi-times"}
-      />
-    );
-  };
-
-  const activoBodyTemplate = (rowData) => {
-    return (
-      <Tag
-        value={rowData.activo ? "ACTIVO" : "INACTIVO"}
-        severity={rowData.activo ? "success" : "danger"}
-        icon={rowData.activo ? "pi pi-check-circle" : "pi pi-times-circle"}
+        value={rowData.cesado ? "INACTIVO" : "ACTIVO"}
+        severity={rowData.cesado ? "danger" : "success"}
+        icon={rowData.cesado ? "pi pi-times-circle" : "pi pi-check-circle"}
       />
     );
   };
@@ -199,7 +168,7 @@ export default function TipoMovEntregaRendir() {
         rows={20}
         rowsPerPageOptions={[20, 40, 80, 160]}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} Tipos Movimiento"
+        currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} Categorías"
         onRowClick={(e) => handleEdit(e.data)}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         size="small"
@@ -213,7 +182,7 @@ export default function TipoMovEntregaRendir() {
             }}
           >
             <div style={{ flex: 1 }}>
-              <h2>Tipos de Movimiento Caja</h2>
+              <h2>Categorías Tipos Movimiento Caja</h2>
             </div>
             <div style={{ flex: 0.5 }}>
               <Button
@@ -228,32 +197,11 @@ export default function TipoMovEntregaRendir() {
         }
       >
         <Column field="id" header="ID" style={{ width: 80 }} sortable />
-        <Column
-          field="categoria.nombre"
-          header="Categoría"
-          sortable
-          body={(rowData) => rowData.categoria?.nombre || "-"}
-        />
         <Column field="nombre" header="Nombre" sortable />
-        <Column field="descripcion" header="Descripción" sortable />
         <Column
-          field="esIngreso"
-          header="Tipo"
-          body={esIngresoBodyTemplate}
-          style={{ width: 130, textAlign: "center" }}
-          sortable
-        />
-        <Column
-          field="esTransferencia"
-          header="Transferencia"
-          body={esTransferenciaBodyTemplate}
-          style={{ width: 150, textAlign: "center" }}
-          sortable
-        />
-        <Column
-          field="activo"
+          field="cesado"
           header="Estado"
-          body={activoBodyTemplate}
+          body={cesadoBodyTemplate}
           style={{ width: 120, textAlign: "center" }}
           sortable
         />
@@ -264,19 +212,18 @@ export default function TipoMovEntregaRendir() {
         />
       </DataTable>
       <Dialog
-        header={editing ? "Editar Tipo Movimiento" : "Nuevo Tipo Movimiento"}
+        header={editing ? "Editar Categoría" : "Nueva Categoría"}
         visible={showDialog}
-        style={{ width: 800 }}
+        style={{ width: 600 }}
         onHide={() => setShowDialog(false)}
         modal
       >
-        <TipoMovEntregaRendirForm
+        <CategoriaTipoMovEntregaRendirForm
           isEdit={!!editing}
           defaultValues={editing || {}}
           onSubmit={handleFormSubmit}
           onCancel={() => setShowDialog(false)}
           loading={loading}
-          categorias={categorias}
         />
       </Dialog>
     </div>
