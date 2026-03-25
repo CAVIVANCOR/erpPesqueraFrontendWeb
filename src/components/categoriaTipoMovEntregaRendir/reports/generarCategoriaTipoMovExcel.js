@@ -1,34 +1,29 @@
-// src/components/activo/reports/generarActivosExcel.js
+// src/components/categoriaTipoMovEntregaRendir/reports/generarCategoriaTipoMovExcel.js
 import ExcelJS from "exceljs";
 
 /**
- * Genera Excel del reporte de Activos ordenado por Empresa y Tipo con formateo
- * @param {Object} data - Datos de los activos
+ * Genera Excel del reporte de Categorías de Tipos de Movimiento Caja con formateo
+ * @param {Object} data - Datos de las categorías
  * @returns {Promise<Blob>} - Blob del Excel generado
  */
-export async function generarActivosExcel(data) {
-  const { activos, empresas, tiposActivo, fechaGeneracion } = data;
+export async function generarCategoriaTipoMovExcel(data) {
+  const { items, fechaGeneracion } = data;
 
-  // Ordenar activos por empresa y tipo
-  const activosOrdenados = [...activos].sort((a, b) => {
-    const empresaA =
-      empresas.find((e) => Number(e.id) === Number(a.empresaId))
-        ?.razonSocial || "";
-    const empresaB =
-      empresas.find((e) => Number(e.id) === Number(b.empresaId))
-        ?.razonSocial || "";
-
-    if (empresaA !== empresaB) {
-      return empresaA.localeCompare(empresaB);
+  // Ordenar items por tipo y nombre
+  const itemsOrdenados = [...items].sort((a, b) => {
+    // 1. Ordenar por Tipo (INGRESO primero, EGRESO después)
+    if (a.tipo !== b.tipo) {
+      return a.tipo ? 1 : -1;
     }
 
-    const tipoA = a.tipo?.nombre || "";
-    const tipoB = b.tipo?.nombre || "";
-    return tipoA.localeCompare(tipoB);
+    // 2. Ordenar por Nombre (alfabético)
+    const nombreA = a.nombre || "";
+    const nombreB = b.nombre || "";
+    return nombreA.localeCompare(nombreB);
   });
 
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet("Activos");
+  const worksheet = workbook.addWorksheet("Categorías Tipos Movimiento");
 
   // Desactivar líneas de cuadrícula
   worksheet.views = [{ showGridLines: false }];
@@ -36,9 +31,9 @@ export async function generarActivosExcel(data) {
   let currentRow = 1;
 
   // ⭐ TÍTULO DEL REPORTE
-  worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
+  worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
   const tituloCell = worksheet.getCell(`A${currentRow}`);
-  tituloCell.value = "LISTADO DE ACTIVOS";
+  tituloCell.value = "LISTADO DE CATEGORÍAS TIPOS MOVIMIENTO CAJA";
   tituloCell.font = { bold: true, size: 14, color: { argb: "FF1A1A1A" } };
   tituloCell.alignment = { horizontal: "center", vertical: "middle" };
   tituloCell.fill = {
@@ -49,7 +44,7 @@ export async function generarActivosExcel(data) {
   currentRow++;
 
   // ⭐ FECHA DE GENERACIÓN
-  worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
+  worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
   const fechaCell = worksheet.getCell(`A${currentRow}`);
   fechaCell.value = `Generado: ${fechaGeneracion.toLocaleString("es-PE")}`;
   fechaCell.font = { size: 10, color: { argb: "FF666666" } };
@@ -60,7 +55,7 @@ export async function generarActivosExcel(data) {
 
   // ⭐ ENCABEZADOS DE TABLA
   const headerRow = worksheet.getRow(currentRow);
-  const headers = ["N°", "Empresa", "Tipo", "Nombre", "Descripción", "Estado"];
+  const headers = ["ID", "Tipo", "Nombre", "Estado"];
 
   headers.forEach((header, index) => {
     const cell = headerRow.getCell(index + 1);
@@ -69,7 +64,7 @@ export async function generarActivosExcel(data) {
     cell.fill = {
       type: "pattern",
       pattern: "solid",
-      fgColor: { argb: "FFADD8E6" }, // Azul claro (igual que PDF)
+      fgColor: { argb: "FF4472C4" }, // Azul
     };
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = {
@@ -83,29 +78,22 @@ export async function generarActivosExcel(data) {
 
   // ⭐ ANCHOS DE COLUMNAS
   worksheet.columns = [
-    { width: 6 },  // N°
-    { width: 35 }, // Empresa
-    { width: 25 }, // Tipo
-    { width: 30 }, // Nombre
-    { width: 40 }, // Descripción
+    { width: 8 },  // ID
+    { width: 12 }, // Tipo
+    { width: 50 }, // Nombre
     { width: 12 }, // Estado
   ];
 
   // ⭐ DATOS DE LA TABLA
-  activosOrdenados.forEach((activo, index) => {
+  itemsOrdenados.forEach((item, index) => {
     const dataRow = worksheet.getRow(currentRow);
-    const empresa = empresas.find(
-      (e) => Number(e.id) === Number(activo.empresaId)
-    );
 
     // Valores de la fila
     dataRow.values = [
-      index + 1,
-      empresa?.razonSocial || "N/A",
-      activo.tipo?.nombre || "N/A",
-      activo.nombre || "N/A",
-      activo.descripcion || "-",
-      activo.cesado ? "CESADO" : "ACTIVO",
+      item.id,
+      item.tipo ? "EGRESO" : "INGRESO",
+      item.nombre || "N/A",
+      item.cesado ? "INACTIVO" : "ACTIVO",
     ];
 
     // Aplicar estilos a cada celda
@@ -118,22 +106,31 @@ export async function generarActivosExcel(data) {
         right: { style: "thin", color: { argb: "FFCCCCCC" } },
       };
 
-      // Alineación y estilos específicos por columna
+      // Alineación
       if (colNumber === 1) {
-        // N° - centrado
+        // ID - centrado
         cell.alignment = { horizontal: "center", vertical: "middle" };
-      } else if (colNumber === 4) {
+      } else if (colNumber === 2) {
+        // Tipo - centrado con color
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.font = { bold: true };
+        if (item.tipo) {
+          cell.font = { bold: true, color: { argb: "FFB20000" } }; // Rojo (EGRESO)
+        } else {
+          cell.font = { bold: true, color: { argb: "FF008000" } }; // Verde (INGRESO)
+        }
+      } else if (colNumber === 3) {
         // Nombre - negrita
         cell.alignment = { horizontal: "left", vertical: "middle" };
         cell.font = { bold: true };
-      } else if (colNumber === 6) {
+      } else if (colNumber === 4) {
         // Estado - centrado con color
         cell.alignment = { horizontal: "center", vertical: "middle" };
         cell.font = { bold: true };
-        if (activo.cesado) {
-          cell.font = { bold: true, color: { argb: "FFB20000" } }; // Rojo
+        if (item.cesado) {
+          cell.font = { bold: true, color: { argb: "FFB20000" } }; // Rojo (INACTIVO)
         } else {
-          cell.font = { bold: true, color: { argb: "FF008000" } }; // Verde
+          cell.font = { bold: true, color: { argb: "FF008000" } }; // Verde (ACTIVO)
         }
       } else {
         // Otros - izquierda
@@ -164,7 +161,7 @@ export async function generarActivosExcel(data) {
   // Título de resumen
   worksheetResumen.mergeCells(`A${resumenRow}:B${resumenRow}`);
   const resumenTituloCell = worksheetResumen.getCell(`A${resumenRow}`);
-  resumenTituloCell.value = "RESUMEN DE ACTIVOS";
+  resumenTituloCell.value = "RESUMEN DE CATEGORÍAS";
   resumenTituloCell.font = { bold: true, size: 12 };
   resumenTituloCell.alignment = { horizontal: "center", vertical: "middle" };
   resumenTituloCell.fill = {
@@ -177,14 +174,22 @@ export async function generarActivosExcel(data) {
 
   // Datos de resumen
   const resumenData = [
-    { Campo: "Total de Activos", Valor: activos.length },
+    { Campo: "Total de Categorías", Valor: items.length },
     {
-      Campo: "Activos Activos",
-      Valor: activos.filter((a) => !a.cesado).length,
+      Campo: "Categorías Ingreso",
+      Valor: items.filter((i) => !i.tipo).length,
     },
     {
-      Campo: "Activos Cesados",
-      Valor: activos.filter((a) => a.cesado).length,
+      Campo: "Categorías Egreso",
+      Valor: items.filter((i) => i.tipo).length,
+    },
+    {
+      Campo: "Categorías Activas",
+      Valor: items.filter((i) => !i.cesado).length,
+    },
+    {
+      Campo: "Categorías Inactivas",
+      Valor: items.filter((i) => i.cesado).length,
     },
   ];
 

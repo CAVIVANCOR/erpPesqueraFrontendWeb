@@ -22,6 +22,13 @@ import LineaCreditoForm from "../../components/tesoreria/LineaCreditoForm";
 import ReporteLineasDisponibles from "../../components/tesoreria/ReporteLineasDisponibles";
 import { getResponsiveFontSize } from "../../utils/utils";
 import { usePermissions } from "../../hooks/usePermissions";
+import ReportFormatSelector from "../../components/reports/ReportFormatSelector";
+import TemporaryPDFViewer from "../../components/reports/TemporaryPDFViewer";
+import TemporaryExcelViewer from "../../components/reports/TemporaryExcelViewer";
+import { generarLineaCreditoPDF } from "../../components/tesoreria/reports/generarLineaCreditoPDF";
+import { generarLineaCreditoExcel } from "../../components/tesoreria/reports/generarLineaCreditoExcel";
+import { generarDetalleUsoLineaCreditoPDF } from "../../components/tesoreria/reports/generarDetalleUsoLineaCreditoPDF";
+import { generarDetalleUsoLineaCreditoExcel } from "../../components/tesoreria/reports/generarDetalleUsoLineaCreditoExcel";
 
 const LineaCredito = ({ ruta }) => {
   const permisos = usePermissions(ruta);
@@ -57,7 +64,16 @@ const LineaCredito = ({ ruta }) => {
   const [bancosFiltrados, setBancosFiltrados] = useState([]);
   const [estadosFiltrados, setEstadosFiltrados] = useState([]);
   const [monedasFiltradas, setMonedasFiltradas] = useState([]);
-
+  // Estados para reportes
+  const [showReportSelector, setShowReportSelector] = useState(false);
+  const [showDetalleReportSelector, setShowDetalleReportSelector] =
+    useState(false);
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [showExcelViewer, setShowExcelViewer] = useState(false);
+  const [showDetallePDFViewer, setShowDetallePDFViewer] = useState(false);
+  const [showDetalleExcelViewer, setShowDetalleExcelViewer] = useState(false);
+  const [reportData, setReportData] = useState(null);
+  const [detalleReportData, setDetalleReportData] = useState(null);
   // Cargar datos al montar el componente
   useEffect(() => {
     cargarDatos();
@@ -229,6 +245,30 @@ const LineaCredito = ({ ruta }) => {
     setVisible(false);
     setLineaSeleccionada(null);
     setEmpresaFija(null);
+  };
+
+  // ========================================
+  // FUNCIONES DE REPORTE
+  // ========================================
+
+  const handleGenerarReporteResumen = () => {
+    const data = {
+      items: lineasFiltradas,
+      fechaGeneracion: new Date(),
+      titulo: "LISTADO DE LÍNEAS DE CRÉDITO",
+    };
+    setReportData(data);
+    setShowReportSelector(true);
+  };
+
+  const handleGenerarReporteDetalle = () => {
+    const data = {
+      items: lineasFiltradas,
+      fechaGeneracion: new Date(),
+      titulo: "DETALLE DE USO DE LÍNEAS DE CRÉDITO",
+    };
+    setDetalleReportData(data);
+    setShowDetalleReportSelector(true);
   };
 
   const confirmarEliminar = (linea) => {
@@ -457,7 +497,7 @@ const LineaCredito = ({ ruta }) => {
         </div>
         <div style={{ flex: 1 }}>
           <Button
-            label="Nueva Línea"
+            label="Nuevo"
             icon="pi pi-plus"
             className="p-button-success"
             severity="success"
@@ -476,9 +516,33 @@ const LineaCredito = ({ ruta }) => {
         </div>
         <div style={{ flex: 1 }}>
           <Button
-            label="Reporte"
-            icon="pi pi-chart-bar"
+            label="Reporte Líneas"
+            icon="pi pi-file-pdf"
             className="p-button-info"
+            onClick={handleGenerarReporteResumen}
+            tooltip="Reporte resumen de líneas de crédito"
+            tooltipOptions={{ position: "top" }}
+            style={{ width: "100%" }}
+            disabled={lineasFiltradas.length === 0}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            label="Detalle Uso"
+            icon="pi pi-chart-line"
+            className="p-button-help"
+            onClick={handleGenerarReporteDetalle}
+            tooltip="Reporte detallado de uso de líneas"
+            tooltipOptions={{ position: "top" }}
+            style={{ width: "100%" }}
+            disabled={lineasFiltradas.length === 0}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Button
+            label="Líneas Disponibles"
+            icon="pi pi-chart-bar"
+            className="p-button-success"
             onClick={() => setMostrarReporte(true)}
             tooltip="Ver reporte de líneas disponibles"
             tooltipOptions={{ position: "top" }}
@@ -700,6 +764,83 @@ const LineaCredito = ({ ruta }) => {
       >
         <ReporteLineasDisponibles />
       </Dialog>
+          {/* Selector de formato para Reporte Resumen */}
+      <ReportFormatSelector
+        visible={showReportSelector}
+        onHide={() => setShowReportSelector(false)}
+        onSelectPDF={() => {
+          setShowReportSelector(false);
+          setShowPDFViewer(true);
+        }}
+        onSelectExcel={() => {
+          setShowReportSelector(false);
+          setShowExcelViewer(true);
+        }}
+        title="Reporte de Líneas de Crédito"
+      />
+
+      {/* Selector de formato para Reporte Detalle */}
+      <ReportFormatSelector
+        visible={showDetalleReportSelector}
+        onHide={() => setShowDetalleReportSelector(false)}
+        onSelectPDF={() => {
+          setShowDetalleReportSelector(false);
+          setShowDetallePDFViewer(true);
+        }}
+        onSelectExcel={() => {
+          setShowDetalleReportSelector(false);
+          setShowDetalleExcelViewer(true);
+        }}
+        title="Reporte Detalle de Uso de Líneas"
+      />
+
+      {/* Visor de PDF para Reporte Resumen */}
+      <TemporaryPDFViewer
+        visible={showPDFViewer}
+        onHide={() => {
+          setShowPDFViewer(false);
+          setShowReportSelector(false);
+        }}
+        data={reportData}
+        generatePDF={generarLineaCreditoPDF}
+        fileName="reporte_lineas_credito.pdf"
+      />
+
+      {/* Visor de Excel para Reporte Resumen */}
+      <TemporaryExcelViewer
+        visible={showExcelViewer}
+        onHide={() => {
+          setShowExcelViewer(false);
+          setShowReportSelector(false);
+        }}
+        data={reportData}
+        generateExcel={generarLineaCreditoExcel}
+        fileName="reporte_lineas_credito.xlsx"
+      />
+
+      {/* Visor de PDF para Reporte Detalle */}
+      <TemporaryPDFViewer
+        visible={showDetallePDFViewer}
+        onHide={() => {
+          setShowDetallePDFViewer(false);
+          setShowDetalleReportSelector(false);
+        }}
+        data={detalleReportData}
+        generatePDF={generarDetalleUsoLineaCreditoPDF}
+        fileName="detalle_uso_lineas_credito.pdf"
+      />
+
+      {/* Visor de Excel para Reporte Detalle */}
+      <TemporaryExcelViewer
+        visible={showDetalleExcelViewer}
+        onHide={() => {
+          setShowDetalleExcelViewer(false);
+          setShowDetalleReportSelector(false);
+        }}
+        data={detalleReportData}
+        generateExcel={generarDetalleUsoLineaCreditoExcel}
+        fileName="detalle_uso_lineas_credito.xlsx"
+      />
     </div>
   );
 };

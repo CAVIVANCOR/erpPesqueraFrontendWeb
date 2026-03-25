@@ -17,6 +17,11 @@ import {
 } from "../api/categoriaTipoMovEntregaRendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { getResponsiveFontSize } from "../utils/utils";
+import ReportFormatSelector from "../components/reports/ReportFormatSelector";
+import TemporaryPDFViewer from "../components/reports/TemporaryPDFViewer";
+import TemporaryExcelViewer from "../components/reports/TemporaryExcelViewer";
+import { generarCategoriaTipoMovPDF } from "../components/categoriaTipoMovEntregaRendir/reports/generarCategoriaTipoMovPDF";
+import { generarCategoriaTipoMovExcel } from "../components/categoriaTipoMovEntregaRendir/reports/generarCategoriaTipoMovExcel";
 
 export default function CategoriaTipoMovEntregaRendir() {
   const toast = useRef(null);
@@ -26,6 +31,12 @@ export default function CategoriaTipoMovEntregaRendir() {
   const [editing, setEditing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDelete, setToDelete] = useState(null);
+
+  const [showFormatSelector, setShowFormatSelector] = useState(false);
+  const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [showExcelViewer, setShowExcelViewer] = useState(false);
+  const [reportData, setReportData] = useState(null);
+
   const usuario = useAuthStore((state) => state.usuario);
 
   useEffect(() => {
@@ -116,6 +127,16 @@ export default function CategoriaTipoMovEntregaRendir() {
     setShowDialog(true);
   };
 
+  const handleGenerarReporte = () => {
+    const data = {
+      items: items,
+      fechaGeneracion: new Date(),
+      titulo: "Listado de Categorías Tipos de Movimiento Caja",
+    };
+    setReportData(data);
+    setShowFormatSelector(true);
+  };
+
   const actionBody = (rowData) => (
     <>
       <Button
@@ -145,6 +166,15 @@ export default function CategoriaTipoMovEntregaRendir() {
     );
   };
 
+  const tipoBodyTemplate = (rowData) => {
+    return (
+      <Tag
+        value={rowData.tipo ? "EGRESO" : "INGRESO"}
+        severity={rowData.tipo ? "danger" : "info"}
+        icon={rowData.tipo ? "pi pi-arrow-up" : "pi pi-arrow-down"}
+      />
+    );
+  };
   return (
     <div className="p-fluid">
       <Toast ref={toast} />
@@ -172,6 +202,8 @@ export default function CategoriaTipoMovEntregaRendir() {
         onRowClick={(e) => handleEdit(e.data)}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         size="small"
+        sortField="id"
+        sortOrder={1}
         header={
           <div
             style={{
@@ -193,10 +225,30 @@ export default function CategoriaTipoMovEntregaRendir() {
                 disabled={loading}
               />
             </div>
+            <div style={{ flex: 0.5 }}>
+              <Button
+                label="Reporte"
+                icon="pi pi-file-pdf"
+                severity="info"
+                onClick={handleGenerarReporte}
+                disabled={items.length === 0}
+                style={{
+                  width: "100%",
+                  fontWeight: "bold",
+                }}
+              />
+            </div>
           </div>
         }
       >
         <Column field="id" header="ID" style={{ width: 80 }} sortable />
+        <Column
+          field="tipo"
+          header="Tipo"
+          body={tipoBodyTemplate}
+          style={{ width: 120, textAlign: "center" }}
+          sortable
+        />
         <Column field="nombre" header="Nombre" sortable />
         <Column
           field="cesado"
@@ -226,6 +278,41 @@ export default function CategoriaTipoMovEntregaRendir() {
           loading={loading}
         />
       </Dialog>
+      <ReportFormatSelector
+        visible={showFormatSelector}
+        onHide={() => setShowFormatSelector(false)}
+        onSelectPDF={() => {
+          setShowFormatSelector(false);
+          setShowPDFViewer(true);
+        }}
+        onSelectExcel={() => {
+          setShowFormatSelector(false);
+          setShowExcelViewer(true);
+        }}
+        title="Listado de Categorías Tipos de Movimiento Caja"
+      />
+
+      <TemporaryPDFViewer
+        visible={showPDFViewer}
+        onHide={() => {
+          setShowPDFViewer(false);
+          setShowFormatSelector(false);
+        }}
+        data={reportData}
+        generatePDF={generarCategoriaTipoMovPDF}
+        fileName="categorias_tipos_movimiento_caja.pdf"
+      />
+
+      <TemporaryExcelViewer
+        visible={showExcelViewer}
+        onHide={() => {
+          setShowExcelViewer(false);
+          setShowFormatSelector(false);
+        }}
+        data={reportData}
+        generateExcel={generarCategoriaTipoMovExcel}
+        fileName="categorias_tipos_movimiento_caja.xlsx"
+      />
     </div>
   );
 }

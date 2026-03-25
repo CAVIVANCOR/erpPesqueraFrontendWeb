@@ -11,23 +11,30 @@ export default function CategoriaTipoMovEntregaRendirForm({
   onCancel,
   loading,
 }) {
-  const [nombre, setNombre] = React.useState(defaultValues.nombre || "");
+    const [nombre, setNombre] = React.useState(defaultValues.nombre || "");
   const [cesado, setCesado] = React.useState(
     defaultValues.cesado !== undefined ? !!defaultValues.cesado : false,
   );
+  const [tipo, setTipo] = React.useState(
+    defaultValues.tipo !== undefined ? !!defaultValues.tipo : false,
+  );
 
-  React.useEffect(() => {
+    React.useEffect(() => {
     setNombre(defaultValues.nombre || "");
     setCesado(
       defaultValues.cesado !== undefined ? !!defaultValues.cesado : false,
     );
+    setTipo(
+      defaultValues.tipo !== undefined ? !!defaultValues.tipo : false,
+    );
   }, [defaultValues]);
 
-  const handleSubmit = (e) => {
+    const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit({
       nombre: nombre.trim().toUpperCase(),
       cesado,
+      tipo,
     });
   };
 
@@ -45,6 +52,25 @@ export default function CategoriaTipoMovEntregaRendirForm({
         />
       </div>
 
+      <div style={{ marginTop: "1rem" }}>
+        <label
+          style={{
+            fontWeight: "bold",
+            display: "block",
+            marginBottom: "0.5rem",
+          }}
+        >
+          Tipo de Movimiento
+        </label>
+        <Button
+          label={tipo ? "EGRESO" : "INGRESO"}
+          icon={tipo ? "pi pi-arrow-up" : "pi pi-arrow-down"}
+          className={tipo ? "p-button-danger" : "p-button-info"}
+          onClick={() => setTipo(!tipo)}
+          type="button"
+          disabled={loading}
+        />
+      </div>
       <div style={{ marginTop: "1rem" }}>
         <label
           style={{

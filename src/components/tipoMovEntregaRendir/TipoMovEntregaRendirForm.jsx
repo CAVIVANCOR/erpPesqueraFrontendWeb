@@ -14,6 +14,9 @@ export default function TipoMovEntregaRendirForm({
   loading,
   categorias = [], // AGREGAR ESTA LÍNEA
 }) {
+  const prevEsIngreso = React.useRef(
+    defaultValues.esIngreso !== undefined ? !!defaultValues.esIngreso : false,
+  );
   const [nombre, setNombre] = React.useState(defaultValues.nombre || "");
   const [descripcion, setDescripcion] = React.useState(
     defaultValues.descripcion || "",
@@ -27,7 +30,7 @@ export default function TipoMovEntregaRendirForm({
       : false,
   );
   const [categoriaId, setCategoriaId] = React.useState(
-    defaultValues.categoriaId || null,
+    defaultValues.categoriaId ? Number(defaultValues.categoriaId) : null,
   );
   const [activo, setActivo] = React.useState(
     defaultValues.activo !== undefined ? !!defaultValues.activo : true,
@@ -44,13 +47,34 @@ export default function TipoMovEntregaRendirForm({
         ? !!defaultValues.esTransferencia
         : false,
     );
-    setCategoriaId(defaultValues.categoriaId || null);
+    setCategoriaId(
+      defaultValues.categoriaId ? Number(defaultValues.categoriaId) : null,
+    );
     setActivo(
       defaultValues.activo !== undefined ? !!defaultValues.activo : true,
     );
   }, [defaultValues]);
 
-   const handleSubmit = (e) => {
+  // Limpiar categoriaId cuando el usuario cambia esIngreso manualmente
+  React.useEffect(() => {
+    if (prevEsIngreso.current !== esIngreso) {
+      prevEsIngreso.current = esIngreso;
+      setCategoriaId(null);
+    }
+  }, [esIngreso]);
+
+  const opcionesCategoria = React.useMemo(() => {
+    const resultado = categorias
+      .filter((c) => c.tipo !== esIngreso)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+      .map((c) => ({
+        label: `${c.nombre} - ${c.tipo ? "EGRESO" : "INGRESO"}`,
+        value: Number(c.id),
+      }));
+    return resultado;
+  }, [categorias, esIngreso]);
+
+  const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit({
       categoriaId: categoriaId ? Number(categoriaId) : null,
@@ -64,47 +88,6 @@ export default function TipoMovEntregaRendirForm({
 
   return (
     <form onSubmit={handleSubmit} className="p-fluid">
-      <div className="p-field">
-        <label htmlFor="categoriaId">Categoría</label>
-        <Dropdown
-          id="categoriaId"
-          value={categoriaId ? Number(categoriaId) : null}
-          options={categorias.map((c) => ({
-            label: c.nombre,
-            value: Number(c.id),
-          }))}
-          onChange={(e) => setCategoriaId(e.value)}
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Seleccionar categoría"
-          disabled={loading}
-          showClear
-          style={{ fontWeight: "bold", textTransform: "uppercase" }}
-        />
-      </div>
-      <div className="p-field">
-        <label htmlFor="nombre">Nombre*</label>
-        <InputText
-          id="nombre"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          required
-          disabled={loading}
-          style={{ fontWeight: "bold" }}
-        />
-      </div>
-      <div className="p-field">
-        <label htmlFor="descripcion">Descripción</label>
-        <InputTextarea
-          id="descripcion"
-          value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
-          rows={3}
-          disabled={loading}
-          style={{ fontWeight: "bold" }}
-        />
-      </div>
-
       <div style={{ marginTop: "1rem" }}>
         <label
           style={{
@@ -149,6 +132,45 @@ export default function TipoMovEntregaRendirForm({
             disabled={loading}
           />
         </div>
+      </div>
+
+      <div className="p-field">
+        <label htmlFor="categoriaId">Categoría</label>
+        <Dropdown
+          id="categoriaId"
+          value={categoriaId ? Number(categoriaId) : null}
+          options={opcionesCategoria}
+          onChange={(e) => setCategoriaId(e.value)}
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Seleccionar categoría"
+          disabled={loading}
+          showClear
+          filter
+          style={{ fontWeight: "bold", textTransform: "uppercase" }}
+        />
+      </div>
+      <div className="p-field">
+        <label htmlFor="nombre">Nombre*</label>
+        <InputText
+          id="nombre"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          required
+          disabled={loading}
+          style={{ fontWeight: "bold" }}
+        />
+      </div>
+      <div className="p-field">
+        <label htmlFor="descripcion">Descripción</label>
+        <InputTextarea
+          id="descripcion"
+          value={descripcion}
+          onChange={(e) => setDescripcion(e.target.value)}
+          rows={3}
+          disabled={loading}
+          style={{ fontWeight: "bold" }}
+        />
       </div>
 
       <div
