@@ -60,6 +60,7 @@ const NovedadPescaConsumoForm = ({
   unidadesNegocio = [],
   onNovedadDataChange, // Callback para notificar cambios en datos de novedad
   readOnly = false,
+  permisos = {},
   isEdit = false,
 }) => {
   // Estados principales
@@ -769,6 +770,7 @@ const NovedadPescaConsumoForm = ({
             tiposMovimiento={tiposMovimiento}
             tiposDocumento={tiposDocumento}
             onDataChange={onNovedadDataChange}
+            permisos={permisos}
             readOnly={readOnly}
           />
         )}

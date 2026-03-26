@@ -35,7 +35,7 @@ export default function DetEntregaRendirVentas({
   onSelectionChange,
   onDataChange,
   readOnly = false,
-  permisos,
+  permisos = {},
 }) {
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
   const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);

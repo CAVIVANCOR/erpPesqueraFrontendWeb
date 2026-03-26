@@ -1192,6 +1192,7 @@ const TemporadaPesca = ({ ruta }) => {
         unidadesNegocio={unidadesNegocio}
         onTemporadaDataChange={actualizarEditingItem}
         readOnly={isEdit && !permisos.puedeEditar}
+        permisos={permisos}
         isEdit={isEdit}
       />
     </div>

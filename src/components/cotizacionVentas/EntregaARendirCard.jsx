@@ -13,7 +13,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
-import { confirmDialog } from "primereact/confirmdialog";
+import { confirmDialog, ConfirmDialog } from "primereact/confirmdialog";
 import { Message } from "primereact/message";
 import { Panel } from "primereact/panel";
 import { Divider } from "primereact/divider";
@@ -323,59 +323,12 @@ export default function EntregaARendirCard({
         totalGastos += monto;
       }
     });
-
     const saldo = totalAsignaciones - totalGastos;
-
     setTotalAsignacionesEntregasRendir(totalAsignaciones);
     setTotalGastosEntregasRendir(totalGastos);
     setTotalSaldoEntregasRendir(saldo);
   };
 
-  /**
-   * Obtener nombre del responsable
-   * Prioriza la relación del backend si está disponible
-   */
-  const getNombreResponsable = () => {
-    // Priorizar relación del backend
-    if (entregaARendir?.respEntregaRendir) {
-      const resp = entregaARendir.respEntregaRendir;
-      return (
-        resp.nombreCompleto ||
-        `${resp.nombres || ""} ${resp.apellidos || ""}`.trim() ||
-        "N/A"
-      );
-    }
-
-    // Fallback: buscar en el array de personal (retrocompatibilidad)
-    if (!entregaARendir?.respEntregaRendirId) return "N/A";
-    const resp = personal.find(
-      (p) => Number(p.id) === Number(entregaARendir.respEntregaRendirId),
-    );
-    return (
-      resp?.nombreCompleto ||
-      `${resp?.nombres || ""} ${resp?.apellidos || ""}` ||
-      "N/A"
-    );
-  };
-
-  /**
-   * Obtener nombre del centro de costo
-   * Prioriza la relación del backend si está disponible
-   */
-  const getNombreCentroCosto = () => {
-    // Priorizar relación del backend
-    if (entregaARendir?.centroCosto) {
-      const centro = entregaARendir.centroCosto;
-      return `${centro.Codigo} - ${centro.Nombre}`;
-    }
-
-    // Fallback: buscar en el array de centrosCosto (retrocompatibilidad)
-    if (!entregaARendir?.centroCostoId) return "N/A";
-    const centro = centrosCosto.find(
-      (c) => Number(c.id) === Number(entregaARendir.centroCostoId),
-    );
-    return centro ? `${centro.Codigo} - ${centro.Nombre}` : "N/A";
-  };
   /**
    * Manejar cambios en el responsable
    */
@@ -514,7 +467,29 @@ export default function EntregaARendirCard({
   }
 
   if (!entregaARendir) {
-    return null;
+    return (
+      <>
+        <Panel header="Entrega a Rendir" className="mt-4">
+          <Message
+            severity="warn"
+            text="No existe una entrega a rendir para esta cotización de ventas"
+          />
+          <div className="mt-3">
+            <Button
+              label="Crear Entrega a Rendir"
+              icon="pi pi-plus"
+              className="p-button-success"
+              onClick={crearEntregaAutomatica}
+              loading={loadingEntrega}
+              disabled={!permisos.puedeCrear}
+              tooltip={!permisos.puedeCrear ? "No tiene permisos para crear" : ""}
+            />
+          </div>
+        </Panel>
+        <Toast ref={toast} />
+        <ConfirmDialog />
+      </>
+    );
   }
 
   return (
@@ -707,7 +682,14 @@ export default function EntregaARendirCard({
               className="p-button-success"
               onClick={handleGuardarCambios}
               loading={loadingEntrega}
-              disabled={readOnly || entregaARendir.entregaLiquidada}
+              disabled={
+                !permisos.puedeEditar ||
+                readOnly ||
+                entregaARendir.entregaLiquidada
+              }
+              tooltip={
+                !permisos.puedeEditar ? "No tiene permisos para editar" : ""
+              }
             />
           </div>
         </div>
@@ -749,6 +731,7 @@ export default function EntregaARendirCard({
         </TabView>
       </Panel>
       <Toast ref={toast} />
+      <ConfirmDialog />
     </>
   );
 }

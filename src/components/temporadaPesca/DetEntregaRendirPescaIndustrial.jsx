@@ -436,7 +436,11 @@ export default function DetEntregaRendirPescaIndustrial({
           className="p-button-text p-button-sm"
           onClick={() => handleEditarMovimiento(rowData)}
           aria-label="Editar"
-          disabled={readOnly || entregaARendir?.entregaLiquidada || !permisos?.puedeEditar}
+          disabled={
+            readOnly ||
+            entregaARendir?.entregaLiquidada ||
+            !permisos?.puedeEditar
+          }
           tooltip={
             !permisos?.puedeEditar
               ? "No tiene permisos para editar"
@@ -444,14 +448,18 @@ export default function DetEntregaRendirPescaIndustrial({
                 ? "No se puede editar"
                 : "Editar movimiento"
           }
-          tooltipOptions={{ position: 'top' }}
+          tooltipOptions={{ position: "top" }}
         />
         <Button
           icon="pi pi-trash"
           className="p-button-text p-button-danger p-button-sm"
           onClick={() => handleEliminarMovimiento(rowData)}
           aria-label="Eliminar"
-          disabled={readOnly || entregaARendir?.entregaLiquidada || !permisos?.puedeEditar}
+          disabled={
+            readOnly ||
+            entregaARendir?.entregaLiquidada ||
+            !permisos?.puedeEditar
+          }
           tooltip={
             !permisos?.puedeEditar
               ? "No tiene permisos para eliminar"
@@ -459,7 +467,7 @@ export default function DetEntregaRendirPescaIndustrial({
                 ? "No se puede eliminar"
                 : "Eliminar movimiento"
           }
-          tooltipOptions={{ position: 'top' }}
+          tooltipOptions={{ position: "top" }}
         />
       </div>
     );
@@ -533,7 +541,7 @@ export default function DetEntregaRendirPescaIndustrial({
                                 ? "Entrega ya liquidada"
                                 : "Crear nuevo movimiento"
                     }
-                    tooltipOptions={{ position: 'top' }}
+                    tooltipOptions={{ position: "top" }}
                     type="button"
                     raised
                   />
@@ -594,7 +602,7 @@ export default function DetEntregaRendirPescaIndustrial({
                             ? "Entrega ya liquidada"
                             : "Procesar liquidación de la entrega"
                     }
-                    tooltipOptions={{ position: 'top' }}
+                    tooltipOptions={{ position: "top" }}
                     raised
                   />
                 </div>

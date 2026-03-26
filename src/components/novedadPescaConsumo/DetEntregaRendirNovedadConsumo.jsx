@@ -33,7 +33,7 @@ export default function DetEntregaRendirNovedadConsumo({
   tiposDocumento = [],
   productos = [],
   // Props de estado
-  temporadaPescaIniciada = false,
+  novedadPescaConsumoIniciada = false,
   loading = false,
   selectedMovimientos = [],
 
@@ -41,7 +41,7 @@ export default function DetEntregaRendirNovedadConsumo({
   onSelectionChange,
   onDataChange,
   readOnly = false,
-  permisos,
+  permisos = {},
 }) {
   // Estados locales para filtros
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
@@ -502,7 +502,7 @@ export default function DetEntregaRendirNovedadConsumo({
                     disabled={
                       !permisos?.puedeEditar ||
                       readOnly ||
-                      !temporadaPescaIniciada ||
+                      !novedadPescaConsumoIniciada ||
                       !entregaARendir ||
                       entregaARendir?.entregaLiquidada
                     }
@@ -511,8 +511,8 @@ export default function DetEntregaRendirNovedadConsumo({
                         ? "No tiene permisos para crear"
                         : readOnly
                           ? "Modo solo lectura"
-                          : !temporadaPescaIniciada
-                            ? "Temporada de pesca no iniciada"
+                          : !novedadPescaConsumoIniciada
+                            ? "Novedad de pesca consumo no iniciada"
                             : !entregaARendir
                               ? "No hay entrega a rendir"
                               : entregaARendir?.entregaLiquidada

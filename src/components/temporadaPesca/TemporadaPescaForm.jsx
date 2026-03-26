@@ -66,6 +66,7 @@ const TemporadaPescaForm = ({
   unidadesNegocio = [],
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
   readOnly = false,
+  permisos = {},
   isEdit = false,
 }) => {
   // Estados principales
@@ -1163,6 +1164,7 @@ const TemporadaPescaForm = ({
               tiposMovimiento={tiposMovimiento}
               tiposDocumento={tiposDocumento}
               onDataChange={onTemporadaDataChange}
+              permisos={permisos}
               readOnly={readOnly}
             />
           )}

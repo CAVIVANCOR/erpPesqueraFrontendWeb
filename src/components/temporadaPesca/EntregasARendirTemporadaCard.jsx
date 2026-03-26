@@ -13,25 +13,17 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
-import { Dialog } from "primereact/dialog";
 import { confirmDialog } from "primereact/confirmdialog";
 import { Divider } from "primereact/divider";
-import { Panel } from "primereact/panel";
 import { InputText } from "primereact/inputtext";
-import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
-import { InputNumber } from "primereact/inputnumber";
 import { Message } from "primereact/message";
-import { Badge } from "primereact/badge";
 import { TabView, TabPanel } from "primereact/tabview";
 import DetEntregaRendirPescaIndustrial from "./DetEntregaRendirPescaIndustrial";
 import VerImpresionLiquidacionPI from "./VerImpresionLiquidacionPI";
-import { getResponsiveFontSize } from "../../utils/utils";
 import {
   getAllEntregaARendir,
   crearEntregaARendir,
-  actualizarEntregaARendir,
-  eliminarEntregaARendir,
 } from "../../api/entregaARendir";
 import {
   getAllDetMovsEntregaRendir,
@@ -42,6 +34,7 @@ import {
 import { getEntidadesComerciales } from "../../api/entidadComercial";
 import { getMonedas } from "../../api/moneda"; // ← AGREGAR ESTA LÍNEA
 import { getProductos } from "../../api/producto"; // Importar API de productos
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 const EntregasARendirTemporadaCard = ({
   temporadaPescaId,
@@ -53,13 +46,14 @@ const EntregasARendirTemporadaCard = ({
   tiposMovimiento = [],
   tiposDocumento = [],
   onDataChange,
+  permisos = {},
   readOnly = false,
 }) => {
   const toast = useRef(null);
-
+  const { usuario } = useAuthStore();
   // Estados para EntregaARendir
   const [entregaARendir, setEntregaARendir] = useState(null);
-  const [showEntregaForm, setShowEntregaForm] = useState(false);
+  const [verificandoEntrega, setVerificandoEntrega] = useState(true);
   const [loadingEntrega, setLoadingEntrega] = useState(false);
   const [responsableEntrega, setResponsableEntrega] = useState(null);
   const [centroCostoEntrega, setCentroCostoEntrega] = useState(null);
@@ -77,13 +71,6 @@ const EntregasARendirTemporadaCard = ({
   const [movimientos, setMovimientos] = useState([]);
   const [selectedMovimientos, setSelectedMovimientos] = useState([]);
   const [loadingMovimientos, setLoadingMovimientos] = useState(false);
-
-  // Estados para filtros de movimientos
-  const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
-  const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);
-  const [filtroIngresoEgreso, setFiltroIngresoEgreso] = useState(null);
-  const [filtroValidacionTesoreria, setFiltroValidacionTesoreria] =
-    useState(null);
 
   const cargarEntidadesComerciales = async () => {
     try {
@@ -136,28 +123,39 @@ const EntregasARendirTemporadaCard = ({
     }
   };
 
-  // Cargar entrega a rendir de la temporada
-  const cargarEntregaARendir = async () => {
-    if (!temporadaPescaId) return;
+  /**
+   * Verificar si existe una entrega a rendir para esta temporada
+   * Si no existe, preguntar si desea crearla
+   */
+  const verificarYCargarEntrega = async () => {
+    if (!temporadaPescaId) {
+      setVerificandoEntrega(false);
+      return;
+    }
 
+    setVerificandoEntrega(true);
     try {
-      setLoadingEntrega(true);
       const entregasData = await getAllEntregaARendir();
-      const entregaTemporada = entregasData.find(
-        (entrega) =>
-          Number(entrega.temporadaPescaId) === Number(temporadaPescaId),
+      const entregaExistente = entregasData.find(
+        (e) => Number(e.temporadaPescaId) === Number(temporadaPescaId),
       );
-      setEntregaARendir(entregaTemporada || null);
+
+      if (entregaExistente) {
+        setEntregaARendir(entregaExistente);
+      } else {
+        // No existe entrega, preguntar si desea crearla
+        preguntarCrearEntrega();
+      }
     } catch (error) {
-      console.error("Error al cargar entrega a rendir:", error);
+      console.error("Error al verificar entrega:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al cargar entrega a rendir",
+        detail: "No se pudo verificar la entrega a rendir",
         life: 3000,
       });
     } finally {
-      setLoadingEntrega(false);
+      setVerificandoEntrega(false);
     }
   };
 
@@ -219,7 +217,7 @@ const EntregasARendirTemporadaCard = ({
 
   // Efectos
   useEffect(() => {
-    cargarEntregaARendir();
+    verificarYCargarEntrega();
     cargarEntidadesComerciales();
     cargarMonedas();
   }, [temporadaPescaId]);
@@ -241,45 +239,116 @@ const EntregasARendirTemporadaCard = ({
     obtenerCentroCostoEntrega();
   }, [entregaARendir, personal, centrosCosto]);
 
-  // Handlers para EntregaARendir
-  const handleEditarEntrega = () => {
-    setShowEntregaForm(true);
+  /**
+   * Preguntar al usuario si desea crear una entrega a rendir
+   */
+  const preguntarCrearEntrega = () => {
+    confirmDialog({
+      message:
+        "No existe una entrega a rendir para esta temporada. ¿Desea crear una?",
+      header: "Crear Entrega a Rendir",
+      icon: "pi pi-question-circle",
+      acceptLabel: "Sí, Crear",
+      rejectLabel: "No",
+      accept: () => crearEntregaAutomatica(),
+      reject: () => {
+        setEntregaARendir(null);
+      },
+    });
   };
 
-  const handleGuardarEntrega = async (data) => {
-    try {
-      if (entregaARendir) {
-        await actualizarEntregaARendir(entregaARendir.id, data);
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Entrega a rendir actualizada correctamente",
-          life: 3000,
-        });
-      } else {
-        const nuevaEntrega = await crearEntregaARendir({
-          ...data,
-          temporadaPescaId: Number(temporadaPescaId),
-        });
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Entrega a rendir creada correctamente",
-          life: 3000,
-        });
-      }
-
-      setShowEntregaForm(false);
-      cargarEntregaARendir();
-      onDataChange?.();
-    } catch (error) {
-      console.error("Error al guardar entrega:", error);
+  /**
+   * Crear entrega a rendir automáticamente
+   */
+  const crearEntregaAutomatica = async () => {
+    // Validar que exista un responsable en la temporada
+    if (!temporadaPesca?.BahiaId || Number(temporadaPesca.BahiaId) <= 0) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Error al guardar entrega a rendir",
+        detail:
+          "La temporada debe tener un Responsable asignado. Por favor, edite la temporada y asigne un Responsable antes de crear la entrega a rendir.",
+        life: 5000,
+      });
+      return;
+    }
+
+    setLoadingEntrega(true);
+    try {
+      // Buscar el centro de costo "PESCA INDUSTRIAL" dinámicamente
+      const centroCostoPescaIndustrial = centrosCosto.find(
+        (cc) => cc.Nombre === "PESCA INDUSTRIAL",
+      );
+
+      if (!centroCostoPescaIndustrial) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail:
+            'No se encontró el centro de costo "PESCA INDUSTRIAL". Por favor, verifique la configuración.',
+          life: 5000,
+        });
+        return;
+      }
+
+      const dataToCreate = {
+        temporadaPescaId: Number(temporadaPescaId),
+        respEntregaRendirId: Number(temporadaPesca.BahiaId),
+        centroCostoId: Number(centroCostoPescaIndustrial.id),
+        entregaLiquidada: false,
+        fechaCreacion: new Date().toISOString(),
+        fechaActualizacion: new Date().toISOString(),
+      };
+
+      const nuevaEntrega = await crearEntregaARendir(dataToCreate);
+
+      // Convertir BigInt a Number para evitar problemas de serialización
+      const entregaNormalizada = {
+        ...nuevaEntrega,
+        id: Number(nuevaEntrega.id),
+        temporadaPescaId: Number(nuevaEntrega.temporadaPescaId),
+        respEntregaRendirId: Number(nuevaEntrega.respEntregaRendirId),
+        centroCostoId: Number(nuevaEntrega.centroCostoId),
+      };
+
+      // Recargar la entrega con todas sus relaciones desde el backend
+      const entregasData = await getAllEntregaARendir();
+      const entregaCompleta = entregasData.find(
+        (e) => Number(e.id) === Number(entregaNormalizada.id),
+      );
+
+      if (entregaCompleta) {
+        setEntregaARendir(entregaCompleta);
+      } else {
+        setEntregaARendir(entregaNormalizada);
+      }
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Éxito",
+        detail: "Entrega a rendir creada correctamente",
         life: 3000,
       });
+
+      onDataChange?.();
+    } catch (error) {
+      console.error(
+        "❌ [EntregaARendir] Error al crear entrega automática:",
+        error,
+      );
+      console.error(
+        "❌ [EntregaARendir] Detalles del error:",
+        error.response?.data,
+      );
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail:
+          error.response?.data?.mensaje || "Error al crear la entrega a rendir",
+        life: 3000,
+      });
+    } finally {
+      setLoadingEntrega(false);
     }
   };
 
@@ -368,6 +437,14 @@ const EntregasARendirTemporadaCard = ({
           severity="info"
           text="La temporada de pesca debe estar iniciada para gestionar entregas a rendir"
         />
+      </Card>
+    );
+  }
+
+  if (verificandoEntrega) {
+    return (
+      <Card className="mb-4">
+        <Message severity="info" text="Verificando entrega a rendir..." />
       </Card>
     );
   }
@@ -513,10 +590,11 @@ const EntregasARendirTemporadaCard = ({
                 text="No se ha creado la entrega a rendir para esta temporada"
               />
               <Button
+                type="button"
                 label="Crear Entrega"
                 icon="pi pi-plus"
                 className="mt-3"
-                onClick={() => setShowEntregaForm(true)}
+                onClick={preguntarCrearEntrega}
                 disabled={readOnly}
               />
             </div>
@@ -644,9 +722,11 @@ const EntregasARendirTemporadaCard = ({
               loading={loadingMovimientos}
               selectedMovimientos={selectedMovimientos}
               onSelectionChange={(e) => setSelectedMovimientos(e.value)}
+              permisos={permisos}
+              readOnly={readOnly}
               onDataChange={() => {
                 cargarMovimientos();
-                cargarEntregaARendir();
+                verificarYCargarEntrega();
                 onDataChange?.();
               }}
             />
@@ -660,7 +740,7 @@ const EntregasARendirTemporadaCard = ({
               toast={toast}
               onPdfGenerated={(urlPdf) => {
                 // Actualizar la entrega con la nueva URL del PDF
-                cargarEntregaARendir();
+                verificarYCargarEntrega();
               }}
             />
           </TabPanel>

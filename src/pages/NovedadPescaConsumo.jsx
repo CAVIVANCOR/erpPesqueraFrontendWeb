@@ -998,6 +998,7 @@ const NovedadPescaConsumo = ({ ruta }) => {
         unidadesNegocio={unidadesNegocio}
         onNovedadDataChange={actualizarEditingItem}
         readOnly={isEdit && !permisos.puedeEditar}
+        permisos={permisos}
         isEdit={isEdit}
       />
     </div>
