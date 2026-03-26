@@ -58,6 +58,7 @@ const LineaCredito = ({ ruta }) => {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
   const [monedaSeleccionada, setMonedaSeleccionada] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
   const [globalFilter, setGlobalFilter] = useState("");
   const [mostrarReporte, setMostrarReporte] = useState(false);
   // Estados para catálogos filtrados dinámicamente
@@ -177,7 +178,9 @@ const LineaCredito = ({ ruta }) => {
 
   const cargarDatos = async () => {
     setLoading(true);
+    setLoadingMessage("Cargando catálogos...");
     try {
+      setLoadingMessage("Obteniendo líneas de crédito...");
       const [lineasData, empresasData, bancosData, monedasData, estadosData] =
         await Promise.all([
           getAllLineaCredito(),
@@ -186,11 +189,14 @@ const LineaCredito = ({ ruta }) => {
           getAllMonedas(),
           getEstadosMultiFuncionPorTipoProviene(22),
         ]);
+      setLoadingMessage("Calculando saldos y conversiones de moneda...");
+      await new Promise(resolve => setTimeout(resolve, 300)); // Pequeña pausa para mostrar el mensaje
       setLineas(lineasData);
       setEmpresas(empresasData);
       setBancos(bancosData);
       setMonedas(monedasData);
       setEstados(estadosData);
+      setLoadingMessage("");
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -198,6 +204,7 @@ const LineaCredito = ({ ruta }) => {
         detail: "Error al cargar datos",
         life: 3000,
       });
+      setLoadingMessage("");
     } finally {
       setLoading(false);
     }
@@ -554,6 +561,12 @@ const LineaCredito = ({ ruta }) => {
             icon="pi pi-refresh"
             className="p-button-outlined p-button-info"
             onClick={async () => {
+              toast.current?.show({
+                severity: "info",
+                summary: "Actualizando",
+                detail: "Recalculando saldos y conversiones...",
+                life: 2000,
+              });
               await cargarDatos();
               toast.current?.show({
                 severity: "success",
@@ -563,7 +576,7 @@ const LineaCredito = ({ ruta }) => {
               });
             }}
             loading={loading}
-            tooltip="Actualizar datos"
+            tooltip="Actualizar datos y recalcular saldos"
             tooltipOptions={{ position: "top" }}
             style={{ width: "100%" }}
           />
@@ -675,6 +688,40 @@ const LineaCredito = ({ ruta }) => {
     </div>
   );
 
+  // Template de carga personalizado
+  const loadingTemplate = () => {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        padding: '3rem',
+        gap: '1rem'
+      }}>
+        <i 
+          className="pi pi-spin pi-spinner" 
+          style={{ fontSize: '3rem', color: '#3b82f6' }}
+        />
+        <div style={{ 
+          fontSize: '1.1rem', 
+          fontWeight: '600',
+          color: '#64748b'
+        }}>
+          {loadingMessage || "Cargando datos..."}
+        </div>
+        <div style={{ 
+          fontSize: '0.9rem', 
+          color: '#94a3b8',
+          textAlign: 'center',
+          maxWidth: '400px'
+        }}>
+          Calculando saldos, conversiones de moneda y sobregiros de líneas de crédito
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="card">
       <Toast ref={toast} />
@@ -683,6 +730,7 @@ const LineaCredito = ({ ruta }) => {
       <DataTable
         value={lineasFiltradas}
         loading={loading}
+        loadingIcon={loadingTemplate}
         header={header}
         globalFilter={globalFilter}
         emptyMessage="No se encontraron líneas de crédito"
@@ -741,6 +789,7 @@ const LineaCredito = ({ ruta }) => {
         maximized={true}
         onHide={handleCancel}
         modal
+        key={`linea-${lineaSeleccionada?.id || 'nueva'}-${empresaFija || 'sin-empresa'}`}
       >
         <LineaCreditoForm
           ref={formRef}

@@ -33,7 +33,7 @@ const LineaCreditoForm = forwardRef(
   ) => {
     const toast = useRef(null);
     const [formData, setFormData] = useState({
-      empresaId: empresaFija ? Number(empresaFija) : null,
+      empresaId: null,
       bancoId: null,
       numeroLinea: "",
       montoAprobado: 0,
@@ -58,12 +58,9 @@ const LineaCreditoForm = forwardRef(
 
     useEffect(() => {
       if (lineaCredito) {
+        // Modo edición: cargar datos de la línea existente
         setFormData({
-          empresaId: lineaCredito.empresaId
-            ? lineaCredito.empresaId
-            : empresaFija
-              ? Number(empresaFija)
-              : null,
+          empresaId: lineaCredito.empresaId || null,
           bancoId: lineaCredito.bancoId,
           numeroLinea: lineaCredito.numeroLinea || "",
           montoAprobado: parseFloat(lineaCredito.montoAprobado) || 0,
@@ -79,8 +76,14 @@ const LineaCreditoForm = forwardRef(
           observaciones: lineaCredito.observaciones || "",
           urlDocumentoPDF: lineaCredito.urlDocumentoPDF || "",
         });
+      } else if (empresaFija) {
+        // Modo nuevo: establecer empresaId desde empresaFija
+        setFormData((prev) => ({
+          ...prev,
+          empresaId: Number(empresaFija),
+        }));
       }
-    }, [lineaCredito]);
+    }, [lineaCredito, empresaFija]);
 
     const cargarDatos = async () => {
       try {
@@ -93,16 +96,16 @@ const LineaCreditoForm = forwardRef(
           ]);
 
         setEmpresas(
-          empresasData.map((e) => ({ label: e.razonSocial, value: e.id })),
+          empresasData.map((e) => ({ label: e.razonSocial, value: Number(e.id) })),
         );
-        setBancos(bancosData.map((b) => ({ label: b.nombre, value: b.id })));
+        setBancos(bancosData.map((b) => ({ label: b.nombre, value: Number(b.id) })));
         setMonedas(
-          monedasData.map((m) => ({ label: m.codigoSunat, value: m.id })),
+          monedasData.map((m) => ({ label: m.codigoSunat, value: Number(m.id) })),
         );
         setEstados(
           estadosData.map((e) => ({
             label: e.descripcion || e.estado,
-            value: e.id,
+            value: Number(e.id),
           })),
         );
       } catch (error) {
@@ -260,6 +263,7 @@ const LineaCreditoForm = forwardRef(
               onChange={(e) => setFormData({ ...formData, empresaId: e.value })}
               placeholder="Seleccione una empresa"
               filter
+              disabled={readOnly || empresaFija}
             />
           </div>
           <div style={{ flex: 1 }}>

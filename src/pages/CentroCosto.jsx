@@ -10,10 +10,7 @@ import { ConfirmDialog } from "primereact/confirmdialog";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import CentroCostoForm from "../components/centroCosto/CentroCostoForm";
-import {
-  getCentrosCosto,
-  eliminarCentroCosto,
-} from "../api/centroCosto";
+import { getCentrosCosto, eliminarCentroCosto } from "../api/centroCosto";
 import { getAllCategoriaCCosto } from "../api/categoriaCCosto";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
@@ -78,13 +75,13 @@ export default function CentroCosto({ ruta }) {
 
     if (categoriaFilter) {
       filtrados = filtrados.filter(
-        (item) => Number(item.CategoriaID) === Number(categoriaFilter)
+        (item) => Number(item.CategoriaID) === Number(categoriaFilter),
       );
     }
 
     if (centroPadreFilter) {
       filtrados = filtrados.filter(
-        (item) => item.ParentCentroID === centroPadreFilter
+        (item) => item.ParentCentroID === centroPadreFilter,
       );
     }
 
@@ -212,7 +209,7 @@ export default function CentroCosto({ ruta }) {
 
   const categoriaNombreBodyTemplate = (rowData) => {
     const categoria = categorias.find(
-      (c) => Number(c.id) === Number(rowData.CategoriaID)
+      (c) => Number(c.id) === Number(rowData.CategoriaID),
     );
     return categoria ? categoria.nombre : "-";
   };
@@ -253,7 +250,7 @@ export default function CentroCosto({ ruta }) {
   }));
 
   const centroPadreOptions = Array.from(
-    new Set(items.map((item) => item.ParentCentroID).filter(Boolean))
+    new Set(items.map((item) => item.ParentCentroID).filter(Boolean)),
   ).map((centro) => ({
     label: centro,
     value: centro,
@@ -307,7 +304,12 @@ export default function CentroCosto({ ruta }) {
             : undefined
         }
         globalFilter={globalFilter}
-        globalFilterFields={["Codigo", "Nombre", "Descripcion", "ParentCentroID"]}
+        globalFilterFields={[
+          "Codigo",
+          "Nombre",
+          "Descripcion",
+          "ParentCentroID",
+        ]}
         emptyMessage="No se encontraron registros que coincidan con la búsqueda."
         style={{
           cursor:
@@ -417,15 +419,15 @@ export default function CentroCosto({ ruta }) {
         }
       >
         <Column field="id" header="ID" sortable />
-        <Column field="Codigo" header="Código" sortable />
-        <Column field="Nombre" header="Nombre" sortable />
-        <Column field="Descripcion" header="Descripción" sortable />
         <Column
           field="CategoriaID"
           header="Categoría"
           body={categoriaNombreBodyTemplate}
           sortable
         />
+        <Column field="Codigo" header="Código" sortable />
+        <Column field="Nombre" header="Nombre" sortable />
+        <Column field="Descripcion" header="Descripción" sortable />
         <Column field="ParentCentroID" header="Centro Padre" sortable />
         <Column body={actionBodyTemplate} header="Acciones" />
       </DataTable>

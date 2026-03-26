@@ -41,7 +41,12 @@ export default function CategoriaCCosto({ ruta }) {
   const permisos = usePermissions(ruta);
 
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
-    return <div className="p-4"><h2>Sin Acceso</h2><p>No tiene permisos para acceder a este módulo.</p></div>;
+    return (
+      <div className="p-4">
+        <h2>Sin Acceso</h2>
+        <p>No tiene permisos para acceder a este módulo.</p>
+      </div>
+    );
   }
   const readOnly = !permisos.puedeEditar && !permisos.puedeCrear;
 
@@ -120,7 +125,7 @@ export default function CategoriaCCosto({ ruta }) {
       if (categoriaSeleccionada?.id) {
         await actualizarCategoriaCCosto(
           categoriaSeleccionada.id,
-          categoriaData
+          categoriaData,
         );
         toast.current?.show({
           severity: "success",
@@ -199,9 +204,13 @@ export default function CategoriaCCosto({ ruta }) {
           value={categorias}
           loading={loading}
           dataKey="id"
+          stripedRows
+          showGridlines
           paginator
           rows={10}
           rowsPerPageOptions={[5, 10, 25, 50]}
+          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} categorías"
           header={
             <div className="flex align-items-center gap-2">
               <h2>Gestión de Categorías de Centro de Costo</h2>
@@ -232,10 +241,8 @@ export default function CategoriaCCosto({ ruta }) {
           emptyMessage="No se encontraron categorías"
           onRowClick={(e) => editarCategoria(e.data)}
           className="datatable-responsive"
-          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-          currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} categorías"
           scrollable
-          scrollHeight="600px"
+          size="small"
           style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         >
           <Column field="id" header="ID" sortable style={{ width: "80px" }} />
@@ -260,7 +267,7 @@ export default function CategoriaCCosto({ ruta }) {
           <Column
             body={actionBodyTemplate}
             header="Acciones"
-            style={{ width: "120px", textAlign: "center" }}
+            style={{ width: "140px", textAlign: "center" }}
             exportable={false}
           />
         </DataTable>
