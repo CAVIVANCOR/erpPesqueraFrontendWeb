@@ -10,6 +10,7 @@ import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
 import { Button } from "primereact/button";
 import { ColorPicker } from "primereact/colorpicker";
+import { Dropdown } from "primereact/dropdown";
 
 // Esquema de validación profesional
 const schema = Yup.object().shape({
@@ -25,6 +26,9 @@ const schema = Yup.object().shape({
   orden: Yup.number()
     .min(0, "El orden debe ser mayor o igual a 0")
     .required("El orden es obligatorio"),
+  centroCostoId: Yup.number()
+    .nullable()
+    .transform((value, originalValue) => originalValue === "" ? null : value),
   activo: Yup.boolean(),
 });
 
@@ -39,6 +43,7 @@ export default function UnidadNegocioForm({
   onCancel,
   loading,
   readOnly = false,
+  centrosCosto = [],
 }) {
   const {
     register,
@@ -48,13 +53,14 @@ export default function UnidadNegocioForm({
     watch,
   } = useForm({
     resolver: yupResolver(schema),
-    defaultValues: defaultValues || { 
-      nombre: "", 
-      icono: "", 
-      color: "#3B82F6",
-      orden: 0,
-      activo: true 
-    },
+   defaultValues: defaultValues || { 
+  nombre: "", 
+  icono: "", 
+  color: "#3B82F6",
+  orden: 0,
+  centroCostoId: null,
+  activo: true 
+},
   });
 
   const activo = watch("activo");
@@ -144,6 +150,36 @@ export default function UnidadNegocioForm({
         )}
       </div>
 
+      <div className="p-field" style={{ marginBottom: 18 }}>
+        <label htmlFor="centroCostoId">Centro de Costo</label>
+        <Controller
+          name="centroCostoId"
+          control={control}
+          render={({ field }) => (
+            <Dropdown
+              id="centroCostoId"
+              value={field.value}
+              options={centrosCosto.map((c) => ({
+                label: `${c.Codigo} - ${c.Nombre}`,
+                value: Number(c.id),
+              }))}
+              onChange={(e) => field.onChange(e.value)}
+              placeholder="Seleccione un centro de costo"
+              filter
+              showClear
+              disabled={readOnly}
+              style={{ width: "100%" }}
+            />
+          )}
+        />
+        {errors.centroCostoId && (
+          <small className="p-error">{errors.centroCostoId.message}</small>
+        )}
+        <small className="p-text-secondary">
+          Centro de costo asociado a esta unidad de negocio
+        </small>
+      </div>
+      
       <div className="p-field" style={{ marginBottom: 18 }}>
         <label htmlFor="activo">Estado</label>
         <Controller

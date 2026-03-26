@@ -21,6 +21,7 @@ import {
   actualizarUnidadNegocio,
   eliminarUnidadNegocio,
 } from "../api/unidadNegocio";
+import { getCentrosCosto } from "../api/centroCosto";
 import UnidadNegocioForm from "../components/unidadNegocio/UnidadNegocioForm";
 import { getResponsiveFontSize } from "../utils/utils";
 
@@ -52,24 +53,43 @@ export default function UnidadesNegocio({ ruta }) {
   const [unidadEdit, setUnidadEdit] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [centrosCosto, setCentrosCosto] = useState([]);
 
   useEffect(() => {
     cargarUnidades();
+    cargarCentrosCosto();
   }, []);
 
   async function cargarUnidades() {
     setLoading(true);
     try {
       const data = await getUnidadesNegocio();
-      setUnidades(Array.isArray(data) ? data : []);
+      // Normalizar BigInt a Number
+      const unidadesNormalizadas = Array.isArray(data)
+        ? data.map((u) => ({
+            ...u,
+            id: Number(u.id),
+            centroCostoId: u.centroCostoId ? Number(u.centroCostoId) : null,
+          }))
+        : [];
+      setUnidades(unidadesNormalizadas);
     } catch (err) {
       mostrarToast(
         "error",
         "Error",
-        "No se pudieron cargar las unidades de negocio"
+        "No se pudieron cargar las unidades de negocio",
       );
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function cargarCentrosCosto() {
+    try {
+      const data = await getCentrosCosto();
+      setCentrosCosto(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error al cargar centros de costo:", err);
     }
   }
 
@@ -88,6 +108,7 @@ export default function UnidadesNegocio({ ruta }) {
         icono: data.icono || null,
         color: data.color || null,
         orden: Number(data.orden) || 0,
+        centroCostoId: data.centroCostoId ? Number(data.centroCostoId) : null,
         activo: !!data.activo,
       };
       if (modoEdicion && unidadEdit) {
@@ -95,14 +116,14 @@ export default function UnidadesNegocio({ ruta }) {
         mostrarToast(
           "success",
           "Unidad actualizada",
-          `La unidad de negocio fue actualizada correctamente.`
+          `La unidad de negocio fue actualizada correctamente.`,
         );
       } else {
         await crearUnidadNegocio(payload);
         mostrarToast(
           "success",
           "Unidad creada",
-          `La unidad de negocio fue registrada correctamente.`
+          `La unidad de negocio fue registrada correctamente.`,
         );
       }
       setMostrarDialogo(false);
@@ -111,7 +132,8 @@ export default function UnidadesNegocio({ ruta }) {
       mostrarToast(
         "error",
         "Error",
-        err?.response?.data?.error || "No se pudo guardar la unidad de negocio."
+        err?.response?.data?.error ||
+          "No se pudo guardar la unidad de negocio.",
       );
     } finally {
       setFormLoading(false);
@@ -142,14 +164,15 @@ export default function UnidadesNegocio({ ruta }) {
       mostrarToast(
         "success",
         "Unidad eliminada",
-        `La unidad de negocio fue eliminada correctamente.`
+        `La unidad de negocio fue eliminada correctamente.`,
       );
       cargarUnidades();
     } catch (err) {
       mostrarToast(
         "error",
         "Error",
-        err?.response?.data?.error || "No se pudo eliminar la unidad de negocio."
+        err?.response?.data?.error ||
+          "No se pudo eliminar la unidad de negocio.",
       );
     } finally {
       setLoading(false);
@@ -194,6 +217,13 @@ export default function UnidadesNegocio({ ruta }) {
     );
   };
 
+    const centroCostoTemplate = (rowData) => {
+    if (rowData.centroCosto) {
+      return `${rowData.centroCosto.Codigo} - ${rowData.centroCosto.Nombre}`;
+    }
+    return rowData.centroCostoId ? rowData.centroCostoId : "-";
+  };
+
   const accionesTemplate = (rowData) => (
     <div onClick={(e) => e.stopPropagation()}>
       <Button
@@ -231,8 +261,9 @@ export default function UnidadesNegocio({ ruta }) {
         message={
           <span style={{ color: "#b71c1c", fontWeight: 600 }}>
             ¿Está seguro que desea{" "}
-            <span style={{ color: "#b71c1c" }}>eliminar</span> la unidad de negocio{" "}
-            <b>{confirmState.row ? confirmState.row.nombre : ""}</b>?<br />
+            <span style={{ color: "#b71c1c" }}>eliminar</span> la unidad de
+            negocio <b>{confirmState.row ? confirmState.row.nombre : ""}</b>?
+            <br />
             <span style={{ fontWeight: 400, color: "#b71c1c" }}>
               Esta acción no se puede deshacer.
             </span>
@@ -313,6 +344,13 @@ export default function UnidadesNegocio({ ruta }) {
         <Column field="icono" header="Icono" body={iconoTemplate} sortable />
         <Column field="color" header="Color" body={colorTemplate} sortable />
         <Column field="orden" header="Orden" style={{ width: 100 }} sortable />
+                <Column
+          field="centroCosto.Nombre"
+          header="Centro de Costo"
+          body={centroCostoTemplate}
+          sortable
+          style={{ minWidth: 200 }}
+        />
         <Column
           header="Estado"
           body={estadoTemplate}
@@ -340,12 +378,14 @@ export default function UnidadesNegocio({ ruta }) {
         onHide={() => setMostrarDialogo(false)}
       >
         <UnidadNegocioForm
+          key={unidadEdit?.id || 'new'}
           isEdit={modoEdicion}
           defaultValues={unidadEdit || {}}
           onSubmit={onSubmitForm}
           onCancel={() => setMostrarDialogo(false)}
           loading={formLoading}
           readOnly={modoEdicion && !permisos.puedeEditar}
+          centrosCosto={centrosCosto}
         />
       </Dialog>
     </div>

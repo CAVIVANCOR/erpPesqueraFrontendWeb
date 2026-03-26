@@ -71,6 +71,7 @@ export const crearSubfamiliaProducto = async (subfamiliaProducto) => {
       nombre: subfamiliaProducto.nombre?.toUpperCase().trim(),
       familiaId: Number(subfamiliaProducto.familiaId),
       llevaKardex: Boolean(subfamiliaProducto.llevaKardex),
+      centroCostoId: subfamiliaProducto.centroCostoId ? Number(subfamiliaProducto.centroCostoId) : null,
     };
 
     const response = await axios.post(API_URL, datosNormalizados, getAuthHeaders());
@@ -96,6 +97,7 @@ export const actualizarSubfamiliaProducto = async (id, subfamiliaProducto) => {
       nombre: subfamiliaProducto.nombre?.toUpperCase().trim(),
       familiaId: Number(subfamiliaProducto.familiaId),
       llevaKardex: Boolean(subfamiliaProducto.llevaKardex),
+      centroCostoId: subfamiliaProducto.centroCostoId ? Number(subfamiliaProducto.centroCostoId) : null,
     };
 
     const response = await axios.put(`${API_URL}/${id}`, datosNormalizados, getAuthHeaders());

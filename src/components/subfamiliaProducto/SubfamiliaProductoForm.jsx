@@ -3,11 +3,9 @@
  * Implementa React Hook Form + Yup con validaciones robustas y normalización ERP Megui.
  * Modelo Prisma: id, nombre (VarChar 80), familiaId, familia, productos[]
  * Patrón aplicado: Normalización a mayúsculas, validaciones YUP, dropdown dependiente, feedback visual, loading states.
- *
  * @author ERP Megui
  * @version 1.0.0
  */
-
 import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -37,6 +35,10 @@ const esquemaValidacion = yup.object().shape({
     .required("La familia de producto es obligatoria")
     .typeError("Debe seleccionar una familia de producto"),
   llevaKardex: yup.boolean().default(false),
+  centroCostoId: yup
+    .number()
+    .nullable()
+    .transform((value, originalValue) => (originalValue === "" ? null : value)),
 });
 
 /**
@@ -47,6 +49,7 @@ const esquemaValidacion = yup.object().shape({
 const SubfamiliaProductoForm = ({
   subfamiliaProducto,
   familiasProducto,
+  centrosCosto = [],
   onSave,
   onCancel,
   toast,
@@ -68,6 +71,7 @@ const SubfamiliaProductoForm = ({
       nombre: "",
       familiaId: null,
       llevaKardex: false,
+      centroCostoId: null,
     },
   });
 
@@ -77,13 +81,21 @@ const SubfamiliaProductoForm = ({
   useEffect(() => {
     if (modoEdicion && subfamiliaProducto) {
       setValue("nombre", subfamiliaProducto.nombre || "");
-      setValue(
-        "familiaId",
-        Number(subfamiliaProducto.familiaId) || null
-      );
+      setValue("familiaId", Number(subfamiliaProducto.familiaId) || null);
       setValue("llevaKardex", subfamiliaProducto.llevaKardex || false);
+      setValue(
+        "centroCostoId",
+        subfamiliaProducto.centroCostoId
+          ? Number(subfamiliaProducto.centroCostoId)
+          : null,
+      );
     } else {
-      reset({ nombre: "", familiaId: null, llevaKardex: false });
+      reset({
+        nombre: "",
+        familiaId: null,
+        llevaKardex: false,
+        centroCostoId: null,
+      });
     }
   }, [subfamiliaProducto, modoEdicion, setValue, reset]);
 
@@ -106,12 +118,13 @@ const SubfamiliaProductoForm = ({
         nombre: data.nombre.toUpperCase().trim(),
         familiaId: Number(data.familiaId),
         llevaKardex: Boolean(data.llevaKardex),
+        centroCostoId: data.centroCostoId ? Number(data.centroCostoId) : null,
       };
 
       if (modoEdicion) {
         await actualizarSubfamiliaProducto(
           subfamiliaProducto.id,
-          datosNormalizados
+          datosNormalizados,
         );
         toast.current?.show({
           severity: "success",
@@ -178,9 +191,7 @@ const SubfamiliaProductoForm = ({
             emptyMessage="No hay familias de producto disponibles"
           />
           {errors.familiaId && (
-            <small className="p-error">
-              {errors.familiaId.message}
-            </small>
+            <small className="p-error">{errors.familiaId.message}</small>
           )}
         </div>
 
@@ -212,13 +223,41 @@ const SubfamiliaProductoForm = ({
             type="button"
             label={watch("llevaKardex") ? "SÍ LLEVA KARDEX" : "NO LLEVA KARDEX"}
             icon={watch("llevaKardex") ? "pi pi-check" : "pi pi-times"}
-            className={watch("llevaKardex") ? "p-button-success" : "p-button-danger"}
+            className={
+              watch("llevaKardex") ? "p-button-success" : "p-button-danger"
+            }
             onClick={() => setValue("llevaKardex", !watch("llevaKardex"))}
             disabled={isSubmitting || readOnly}
             style={{ width: "100%" }}
           />
         </div>
-
+        {/* Campo Centro de Costo */}
+        <div className="field">
+          <label htmlFor="centroCostoId" className="font-bold">
+            Centro de Costo
+          </label>
+          <Dropdown
+            id="centroCostoId"
+            value={watch("centroCostoId")}
+            options={centrosCosto.map((c) => ({
+              label: `${c.Codigo} - ${c.Nombre}`,
+              value: Number(c.id),
+            }))}
+            onChange={(e) => setValue("centroCostoId", e.value)}
+            placeholder="Seleccione un centro de costo"
+            className={getFormErrorClass("centroCostoId")}
+            disabled={isSubmitting || readOnly}
+            filter
+            showClear
+            emptyMessage="No hay centros de costo disponibles"
+          />
+          {errors.centroCostoId && (
+            <small className="p-error">{errors.centroCostoId.message}</small>
+          )}
+          <small className="p-text-secondary">
+            Centro de costo asociado a esta subfamilia de producto
+          </small>
+        </div>
         {/* Botones de acción */}
         <div
           style={{

@@ -28,7 +28,7 @@ import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import SubfamiliaProductoForm from "../components/subfamiliaProducto/SubfamiliaProductoForm";
 import { getResponsiveFontSize } from "../utils/utils";
-
+import { getCentrosCosto } from "../api/centroCosto";
 /**
  * Componente SubfamiliaProducto
  * Pantalla principal para gestión de subfamilias de producto
@@ -57,7 +57,7 @@ const SubfamiliaProducto = ({ ruta }) => {
     visible: false,
     row: null,
   });
-
+  const [centrosCosto, setCentrosCosto] = useState([]);
   /**
    * Carga las subfamilias de producto desde la API
    */
@@ -70,8 +70,11 @@ const SubfamiliaProducto = ({ ruta }) => {
       const subfamiliasNormalizadas = data.map((subfamilia) => ({
         ...subfamilia,
         id: Number(subfamilia.id),
-        familiaProductoId: Number(subfamilia.familiaProductoId),
+        familiaId: Number(subfamilia.familiaId),
         llevaKardex: Boolean(subfamilia.llevaKardex),
+        centroCostoId: subfamilia.centroCostoId
+          ? Number(subfamilia.centroCostoId)
+          : null,
       }));
 
       setSubfamiliasProducto(subfamiliasNormalizadas);
@@ -110,13 +113,24 @@ const SubfamiliaProducto = ({ ruta }) => {
       });
     }
   };
-
+  /**
+   * Carga los centros de costo para el dropdown
+   */
+  const cargarCentrosCosto = async () => {
+    try {
+      const data = await getCentrosCosto();
+      setCentrosCosto(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error al cargar centros de costo:", error);
+    }
+  };
   /**
    * Efecto para cargar datos al montar el componente
    */
   useEffect(() => {
     cargarSubfamiliasProducto();
     cargarFamiliasProducto();
+    cargarCentrosCosto();
   }, []);
 
   /**
@@ -212,7 +226,7 @@ const SubfamiliaProducto = ({ ruta }) => {
   const familiaTemplate = (rowData) => {
     // Buscar la familia en el array de familias cargadas usando familiaId
     const familia = familiasProducto.find(
-      (f) => Number(f.id) === Number(rowData.familiaId)
+      (f) => Number(f.id) === Number(rowData.familiaId),
     );
 
     return (
@@ -238,11 +252,13 @@ const SubfamiliaProducto = ({ ruta }) => {
   };
 
   /**
-   * Template para fechas
+   * Template para mostrar el centro de costo
    */
-  const fechaTemplate = (rowData, field) => {
-    const fecha = new Date(rowData[field]);
-    return fecha.toLocaleDateString("es-PE");
+  const centroCostoTemplate = (rowData) => {
+    if (rowData.centroCosto) {
+      return `${rowData.centroCosto.Codigo} - ${rowData.centroCosto.Nombre}`;
+    }
+    return rowData.centroCostoId ? rowData.centroCostoId : "-";
   };
 
   /**
@@ -315,7 +331,7 @@ const SubfamiliaProducto = ({ ruta }) => {
         value={subfamiliasProducto.filter((subfamilia) =>
           familiaFiltro
             ? Number(subfamilia.familiaId) === Number(familiaFiltro)
-            : true
+            : true,
         )}
         loading={loading}
         dataKey="id"
@@ -430,6 +446,13 @@ const SubfamiliaProducto = ({ ruta }) => {
           style={{ minWidth: "150px" }}
         />
         <Column
+          field="centroCosto.Nombre"
+          header="Centro de Costo"
+          body={centroCostoTemplate}
+          sortable
+          style={{ minWidth: 200 }}
+        />
+        <Column
           body={accionesTemplate}
           header="Acciones"
           frozen
@@ -453,8 +476,10 @@ const SubfamiliaProducto = ({ ruta }) => {
         onHide={cerrarDialogo}
       >
         <SubfamiliaProductoForm
+          key={subfamiliaSeleccionada?.id || "new"}
           subfamiliaProducto={subfamiliaSeleccionada}
           familiasProducto={familiasProducto}
+          centrosCosto={centrosCosto}
           onSave={onGuardar}
           onCancel={cerrarDialogo}
           toast={toast}
