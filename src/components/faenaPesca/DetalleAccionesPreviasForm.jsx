@@ -43,7 +43,17 @@ import { getAllAccionesPreviasFaena } from "../../api/accionesPreviasFaena";
  * @param {Array} props.personal - Array de personal para mostrar nombres completos
  */
 const DetalleAccionesPreviasForm = forwardRef(
-  ({ temporadaPescaId, faenaPescaId, personal = [] }, ref) => {
+  ({ temporadaPescaId, faenaPescaId, personal = [], temporadaData }, ref) => {
+    // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
+    const { usuario } = useAuthStore();
+    const esSuperUsuario = usuario?.esSuperUsuario || false;
+
+    // ⭐ LÓGICA DE PERMISOS PARA EDICIÓN
+    const estadosCerrados = ["FINALIZADA", "CANCELADA"];
+    const estadoTemporada = temporadaData?.estadoTemporada?.descripcion || "";
+    const temporadaCerrada = estadosCerrados.includes(estadoTemporada);
+    const camposDeshabilitados = temporadaCerrada && !esSuperUsuario;
+
     // Estados del componente
     const [accionesPreviasData, setAccionesPreviasData] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -55,7 +65,6 @@ const DetalleAccionesPreviasForm = forwardRef(
 
     // Referencias
     const toast = useRef(null);
-    const { usuario } = useAuthStore();
 
     // Función para cargar acciones previas desde la API
     const cargarAccionesPrevias = async () => {

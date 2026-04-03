@@ -401,6 +401,11 @@ const CuentaCorriente = ({ ruta }) => {
   const numeroCuentaTemplate = (rowData) => {
     return (
       <div>
+        {rowData.descripcion && (
+          <div style={{ fontWeight: "bold", fontSize: "13px", color: "#1f2937", textTransform: "uppercase" }}>
+            {rowData.descripcion}
+          </div>
+        )}
         <div style={{ fontWeight: "bold", fontSize: "14px" }}>
           {rowData.numeroCuenta}
         </div>

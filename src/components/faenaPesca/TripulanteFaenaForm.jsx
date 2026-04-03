@@ -18,13 +18,25 @@ import { Toast } from "primereact/toast";
 import { Tag } from "primereact/tag";
 import { classNames } from "primereact/utils";
 import { getResponsiveFontSize } from "../../utils/utils";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 const TripulanteFaenaForm = ({
   tripulante = null,
   personal = [],
+  temporadaData = null,
   onGuardadoExitoso,
   onCancelar,
 }) => {
+  // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
+  const usuario = useAuthStore(state => state.usuario);
+  const esSuperUsuario = usuario?.esSuperUsuario || false;
+
+  // ⭐ LÓGICA DE PERMISOS PARA EDICIÓN
+  const estadosCerrados = ["FINALIZADA", "CANCELADA"];
+  const estadoTemporada = temporadaData?.estadoTemporada?.descripcion || "";
+  const temporadaCerrada = estadosCerrados.includes(estadoTemporada);
+  const camposDeshabilitados = temporadaCerrada && !esSuperUsuario;
+
   const toast = useRef(null);
   const isViewing = !!tripulante;
 

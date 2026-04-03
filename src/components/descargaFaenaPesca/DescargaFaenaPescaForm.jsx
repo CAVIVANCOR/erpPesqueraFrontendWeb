@@ -14,6 +14,7 @@ import { InputNumber } from "primereact/inputnumber";
 import { classNames } from "primereact/utils";
 import { Message } from "primereact/message";
 import { Toast } from "primereact/toast";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 import {
   crearDescargaFaenaPesca,
@@ -61,9 +62,20 @@ export default function DescargaFaenaPescaForm({
   patronId = null,
   faenaPescaId = null,
   temporadaPescaId = null,
+  temporadaData = null,
   onGuardadoExitoso,
   onCancelar,
 }) {
+  // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
+  const usuario = useAuthStore(state => state.usuario);
+  const esSuperUsuario = usuario?.esSuperUsuario || false;
+
+  // ⭐ LÓGICA DE PERMISOS PARA EDICIÓN
+  const estadosCerrados = ["FINALIZADA", "CANCELADA"];
+  const estadoTemporada = temporadaData?.estadoTemporada?.descripcion || "";
+  const temporadaCerrada = estadosCerrados.includes(estadoTemporada);
+  const camposDeshabilitados = temporadaCerrada && !esSuperUsuario;
+
   // Estados para loading
   const [loading, setLoading] = useState(false);
   const [finalizandoDescarga, setFinalizandoDescarga] = useState(false);

@@ -38,6 +38,7 @@ const DetalleCalasEspecieForm = ({
   faenaPescaId,
   temporadaId,
   calaFinalizada = false,
+  camposDeshabilitados = false,
   onDataChange,
   onFaenasChange,
   loading = false,
@@ -345,7 +346,7 @@ const DetalleCalasEspecieForm = ({
           onClick={() => eliminarDetalle(rowData)}
           tooltip="Eliminar"
           size="small"
-          disabled={calaFinalizada}
+          disabled={calaFinalizada || camposDeshabilitados}
         />
       </div>
     );
@@ -382,7 +383,7 @@ const DetalleCalasEspecieForm = ({
           icon="pi pi-plus"
           className="p-button-success"
           onClick={abrirNuevoDetalle}
-          disabled={!calaId || calaFinalizada}
+          disabled={!calaId || calaFinalizada || camposDeshabilitados}
           size="small"
           type="button"
           tooltip="Agregar Especie"
@@ -516,7 +517,7 @@ const DetalleCalasEspecieForm = ({
               onChange={(e) => setEspecieId(e.value)}
               placeholder="Seleccione una especie"
               required
-              disabled={calaFinalizada}
+              disabled={calaFinalizada || camposDeshabilitados}
             />
           </div>
           <div className="col-12 md:col-6">
@@ -530,7 +531,7 @@ const DetalleCalasEspecieForm = ({
               maxFractionDigits={3}
               suffix=" Kg"
               min={0}
-              disabled={calaFinalizada}
+              disabled={calaFinalizada || camposDeshabilitados}
             />
           </div>
           <div className="col-12 md:col-6">
@@ -547,7 +548,7 @@ const DetalleCalasEspecieForm = ({
               suffix="%"
               min={0}
               max={100}
-              disabled={calaFinalizada}
+              disabled={calaFinalizada || camposDeshabilitados}
             />
           </div>
           <div className="col-12">
@@ -558,7 +559,7 @@ const DetalleCalasEspecieForm = ({
               onChange={(e) => setObservaciones(e.target.value)}
               rows={3}
               cols={20}
-              disabled={calaFinalizada}
+              disabled={calaFinalizada || camposDeshabilitados}
             />
           </div>
         </div>

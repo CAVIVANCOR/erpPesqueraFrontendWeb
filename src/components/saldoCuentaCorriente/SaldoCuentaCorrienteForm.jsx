@@ -168,7 +168,7 @@ export default function SaldoCuentaCorrienteForm({
   }));
 
   const cuentasOptions = cuentasCorrientes.map((cuenta) => ({
-    label: `${cuenta.numeroCuenta} - ${cuenta.banco?.nombre || ""}`,
+    label: `${cuenta.descripcion} - ${cuenta.numeroCuenta}`,
     value: Number(cuenta.id),
   }));
 
@@ -341,6 +341,7 @@ export default function SaldoCuentaCorrienteForm({
             style={{
               display: "flex",
               gap: 10,
+              alignItems: "end",
               flexDirection: window.innerWidth < 768 ? "column" : "row",
             }}
           >
@@ -388,18 +389,17 @@ export default function SaldoCuentaCorrienteForm({
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="conciliado">Conciliado</label>
               <ToggleButton
                 id="conciliado"
                 checked={formData.conciliado}
                 onChange={(e) => handleChange("conciliado", e.value)}
-                onLabel="SÍ"
-                offLabel="NO"
+                onLabel="CONCILIADO"
+                offLabel="CONCILIADO"
                 onIcon="pi pi-check"
                 offIcon="pi pi-times"
                 disabled={readOnly || loading || guardando}
                 className={
-                  formData.conciliado ? "p-button-success" : "p-button-warning"
+                  formData.conciliado ? "p-button-success" : "p-button-danger"
                 }
                 style={{ width: "100%" }}
               />
@@ -426,7 +426,6 @@ export default function SaldoCuentaCorrienteForm({
             severity="warning"
             raised
             size="small"
-            outlined
           />
           <Button
             label={isEdit ? "Actualizar" : "Guardar"}
@@ -438,7 +437,6 @@ export default function SaldoCuentaCorrienteForm({
             severity="success"
             raised
             size="small"
-            outlined
           />
         </div>
       </form>

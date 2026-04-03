@@ -21,6 +21,7 @@ import { Dropdown } from "primereact/dropdown";
 import { getResponsiveFontSize } from "../../utils/utils";
 import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
 import DetalleDocTripulantesForm from "../detalleDocTripulantes/DetalleDocTripulantesForm";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 import {
   getDetallesDocTripulantes,
   crearDetalleDocTripulantes,
@@ -39,6 +40,16 @@ const DetalleDocTripulantesCard = ({
   onDocTripulantesChange, // Callback para notificar cambios
   onFaenasChange, // Callback para notificar cambios en faenas
 }) => {
+  // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
+  const usuario = useAuthStore(state => state.usuario);
+  const esSuperUsuario = usuario?.esSuperUsuario || false;
+
+  // ⭐ LÓGICA DE PERMISOS PARA EDICIÓN
+  const estadosCerrados = ["FINALIZADA", "CANCELADA"];
+  const estadoTemporada = temporadaData?.estadoTemporada?.descripcion || "";
+  const temporadaCerrada = estadosCerrados.includes(estadoTemporada);
+  const camposDeshabilitados = temporadaCerrada && !esSuperUsuario;
+
   const [docTripulantes, setDocTripulantes] = useState([]);
   const [selectedDocTripulante, setSelectedDocTripulante] = useState(null);
   const [docTripulanteDialog, setDocTripulanteDialog] = useState(false);
@@ -504,8 +515,8 @@ const DetalleDocTripulantesCard = ({
             label="Recargar Documentos"
             className="p-button-info"
             onClick={cargarDocumentosTripulantes}
-            disabled={loadingData || !temporadaData}
-            tooltip="Cargar documentos de los tripulantes"
+            disabled={loadingData || !temporadaData || camposDeshabilitados}
+            tooltip={camposDeshabilitados ? `Temporada ${estadoTemporada}. Solo superusuarios pueden editar.` : "Cargar documentos de los tripulantes"}
             tooltipOptions={{ position: "top" }}
             size="small"
           />

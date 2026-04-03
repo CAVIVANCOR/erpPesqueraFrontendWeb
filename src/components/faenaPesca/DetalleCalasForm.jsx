@@ -23,6 +23,7 @@ import { Toast } from "primereact/toast";
 import { Toolbar } from "primereact/toolbar";
 import { Card } from "primereact/card";
 import { getResponsiveFontSize } from "../../utils/utils";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 import {
   capturarGPS,
   formatearCoordenadas,
@@ -53,6 +54,10 @@ const DetalleCalasForm = ({
   onCalasChange, // Callback para notificar cambios en calas
   onFaenasChange, // Callback para notificar cambios en faenas
 }) => {
+  // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
+  const usuario = useAuthStore(state => state.usuario);
+  const esSuperUsuario = usuario?.esSuperUsuario || false;
+
   const [calas, setCalas] = useState([]);
   const [selectedCala, setSelectedCala] = useState(null);
   const [calaDialog, setCalaDialog] = useState(false);
@@ -495,10 +500,23 @@ const DetalleCalasForm = ({
     }
   };
 
+  // ========================================
+  // ⭐ LÓGICA DE PERMISOS PARA EDICIÓN
+  // ========================================
+  // Verificar si la temporada está en estado cerrado (FINALIZADA o CANCELADA)
+  const estadosCerrados = ["FINALIZADA", "CANCELADA"];
+  const estadoTemporada = temporadaData?.estadoTemporada?.descripcion || "";
+  const temporadaCerrada = estadosCerrados.includes(estadoTemporada);
+
   // Estados para determinar si los botones están habilitados
   const puedeIniciarCala = !fechaHoraInicio;
   const puedeFinalizarCala = fechaHoraInicio && !fechaHoraFin;
   const calaFinalizada = fechaHoraInicio && fechaHoraFin;
+
+  // ⭐ REGLA DE SUPERUSUARIO:
+  // - Si es superusuario: puede editar siempre, incluso en temporadas cerradas
+  // - Si NO es superusuario: solo puede editar si la temporada NO está cerrada
+  const camposDeshabilitados = temporadaCerrada && !esSuperUsuario;
 
   const accionesTemplate = (rowData) => {
     return (
@@ -591,12 +609,17 @@ const DetalleCalasForm = ({
               !faenaPescaId ||
               !faenaData?.fechaSalida ||
               !faenaData?.puertoSalidaId ||
-              Number(faenaData?.estadoFaenaId) === 19
+              (Number(faenaData?.estadoFaenaId) === 19 && !esSuperUsuario) ||
+              camposDeshabilitados
             }
             type="button"
             tooltip={
-              Number(faenaData?.estadoFaenaId) === 19
-                ? "No se pueden agregar calas a una faena finalizada"
+              camposDeshabilitados
+                ? `Temporada ${estadoTemporada}. Solo superusuarios pueden editar.`
+                : Number(faenaData?.estadoFaenaId) === 19
+                ? esSuperUsuario
+                  ? "Agregar nueva cala (Superusuario)"
+                  : "No se pueden agregar calas a una faena finalizada"
                 : !faenaData?.fechaSalida || !faenaData?.puertoSalidaId
                 ? "Debe ingresar fecha de salida y puerto de salida antes de crear calas"
                 : "Agregar nueva cala"
@@ -842,7 +865,7 @@ const DetalleCalasForm = ({
                 showTime
                 dateFormat="dd/mm/yy"
                 showIcon
-                disabled={loading || calaFinalizada}
+                disabled={loading || (calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -856,7 +879,7 @@ const DetalleCalasForm = ({
                 maxFractionDigits={2}
                 suffix=" m"
                 inputStyle={{ fontWeight: "bold" }}
-                disabled={loading || calaFinalizada}
+                disabled={loading || (calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
               />
             </div>
           </div>
@@ -926,7 +949,7 @@ const DetalleCalasForm = ({
                     console.error("Error capturando GPS:", error);
                   }
                 }}
-                disabled={loading || calaFinalizada}
+                disabled={loading || (calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
                 size="small"
               />
             </div>
@@ -1006,7 +1029,7 @@ const DetalleCalasForm = ({
                           const valor = parseFloat(e.target.value);
                           setLatitud(isNaN(valor) ? "" : valor);
                         }}
-                        disabled={calaFinalizada}
+                        disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
                         step="0.000001"
                         placeholder="-12.345678"
                         style={{
@@ -1030,7 +1053,7 @@ const DetalleCalasForm = ({
                           const valor = parseFloat(e.target.value);
                           setLongitud(isNaN(valor) ? "" : valor);
                         }}
-                        disabled={calaFinalizada}
+                        disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
                         step="0.000001"
                         placeholder="-77.123456"
                         style={{
@@ -1076,7 +1099,7 @@ const DetalleCalasForm = ({
                             setLatGrados(Number(e.target.value) || 0)
                           }
                           onBlur={actualizarLatitudDesdeDMS}
-                          disabled={calaFinalizada}
+                          disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
                           min="0"
                           max="90"
                           style={{
@@ -1109,7 +1132,7 @@ const DetalleCalasForm = ({
                             setLatMinutos(Number(e.target.value) || 0)
                           }
                           onBlur={actualizarLatitudDesdeDMS}
-                          disabled={calaFinalizada}
+                          disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
                           min="0"
                           max="59"
                           style={{
@@ -1142,7 +1165,7 @@ const DetalleCalasForm = ({
                             setLatSegundos(Number(e.target.value) || 0)
                           }
                           onBlur={actualizarLatitudDesdeDMS}
-                          disabled={calaFinalizada}
+                          disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
                           min="0"
                           max="59.99"
                           step="0.01"
@@ -1167,7 +1190,7 @@ const DetalleCalasForm = ({
                           setLatDireccion(e.target.value);
                           setTimeout(actualizarLatitudDesdeDMS, 0);
                         }}
-                        disabled={calaFinalizada}
+                        disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
                         style={{
                           width: "100%",
                           padding: "4px",
@@ -1197,7 +1220,7 @@ const DetalleCalasForm = ({
                             setLonGrados(Number(e.target.value) || 0)
                           }
                           onBlur={actualizarLongitudDesdeDMS}
-                          disabled={calaFinalizada}
+                          disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
                           min="0"
                           max="180"
                           style={{
@@ -1230,7 +1253,7 @@ const DetalleCalasForm = ({
                             setLonMinutos(Number(e.target.value) || 0)
                           }
                           onBlur={actualizarLongitudDesdeDMS}
-                          disabled={calaFinalizada}
+                          disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
                           min="0"
                           max="59"
                           style={{
@@ -1263,7 +1286,7 @@ const DetalleCalasForm = ({
                             setLonSegundos(Number(e.target.value) || 0)
                           }
                           onBlur={actualizarLongitudDesdeDMS}
-                          disabled={calaFinalizada}
+                          disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
                           min="0"
                           max="59.99"
                           step="0.01"
@@ -1288,7 +1311,7 @@ const DetalleCalasForm = ({
                           setLonDireccion(e.target.value);
                           setTimeout(actualizarLongitudDesdeDMS, 0);
                         }}
-                        disabled={calaFinalizada}
+                        disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
                         style={{
                           width: "100%",
                           padding: "4px",
@@ -1311,7 +1334,8 @@ const DetalleCalasForm = ({
             calaId={editingCala?.id}
             faenaPescaId={faenaPescaId}
             temporadaId={temporadaData?.id}
-            calaFinalizada={calaFinalizada}
+            calaFinalizada={calaFinalizada && !esSuperUsuario}
+            camposDeshabilitados={camposDeshabilitados}
             onDataChange={handleDataChange}
             onFaenasChange={onFaenasChange}
           />
@@ -1343,7 +1367,7 @@ const DetalleCalasForm = ({
                 showTime
                 dateFormat="dd/mm/yy"
                 showIcon
-                disabled={loading || calaFinalizada}
+                disabled={loading || (calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
               />
             </div>
             <div style={{ flex: 1 }}>

@@ -23,6 +23,7 @@ import { Dropdown } from "primereact/dropdown";
 import { Avatar } from "primereact/avatar";
 import { getResponsiveFontSize } from "../../utils/utils";
 import TripulanteFaenaForm from "./TripulanteFaenaForm";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 import {
   getTripulantesPorFaena,
   actualizarTripulanteFaena,
@@ -38,6 +39,16 @@ const TripulantesFaenaPescaCard = ({
   onTripulantesChange, // Callback para notificar cambios
   onFaenasChange, // Callback para notificar cambios en faenas
 }) => {
+  // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
+  const usuario = useAuthStore(state => state.usuario);
+  const esSuperUsuario = usuario?.esSuperUsuario || false;
+
+  // ⭐ LÓGICA DE PERMISOS PARA EDICIÓN
+  const estadosCerrados = ["FINALIZADA", "CANCELADA"];
+  const estadoTemporada = temporadaData?.estadoTemporada?.descripcion || "";
+  const temporadaCerrada = estadosCerrados.includes(estadoTemporada);
+  const camposDeshabilitados = temporadaCerrada && !esSuperUsuario;
+
   const [tripulantes, setTripulantes] = useState([]);
   const [selectedTripulante, setSelectedTripulante] = useState(null);
   const [tripulanteDialog, setTripulanteDialog] = useState(false);
@@ -409,8 +420,8 @@ const TripulantesFaenaPescaCard = ({
                     label="Cargar Tripulantes"
                     className="p-button-success"
                     onClick={cargarTripulantesAutomatico}
-                    disabled={loadingTripulantes || !temporadaData}
-                    tooltip="Cargar tripulantes elegibles automáticamente"
+                    disabled={loadingTripulantes || !temporadaData || camposDeshabilitados}
+                    tooltip={camposDeshabilitados ? `Temporada ${estadoTemporada}. Solo superusuarios pueden editar.` : "Cargar tripulantes elegibles automáticamente"}
                     tooltipOptions={{ position: "top" }}
                     style={{ fontSize: "0.875rem" }}
                   />
@@ -501,6 +512,7 @@ const TripulantesFaenaPescaCard = ({
           <TripulanteFaenaForm
             tripulante={editingTripulante}
             personal={personal}
+            temporadaData={temporadaData}
             onGuardadoExitoso={handleGuardarTripulante}
             onCancelar={() => {
               setTripulanteDialog(false);

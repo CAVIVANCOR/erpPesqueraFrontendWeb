@@ -19,6 +19,7 @@ import { Message } from "primereact/message";
 import { InputNumber } from "primereact/inputnumber"; // Import InputNumber
 import DetalleCalasForm from "./DetalleCalasForm";
 import { getFaenaPescaPorId } from "../../api/faenaPesca";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 
 const DatosGeneralesFaenaPesca = ({
   temporadaData,
@@ -42,6 +43,16 @@ const DatosGeneralesFaenaPesca = ({
   onTemporadaDataChange, // Callback para notificar cambios en datos de temporada
   onFaenasChange, // Callback para notificar cambios en faenas
 }) => {
+  // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
+  const usuario = useAuthStore(state => state.usuario);
+  const esSuperUsuario = usuario?.esSuperUsuario || false;
+
+  // ⭐ LÓGICA DE PERMISOS PARA EDICIÓN
+  const estadosCerrados = ["FINALIZADA", "CANCELADA"];
+  const estadoTemporada = temporadaData?.estadoTemporada?.descripcion || "";
+  const temporadaCerrada = estadosCerrados.includes(estadoTemporada);
+  const camposDeshabilitados = temporadaCerrada && !esSuperUsuario;
+
   // Estado para controlar actualizaciones de calas
   const [calasUpdateTrigger, setCalasUpdateTrigger] = useState(0);
 

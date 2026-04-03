@@ -24,6 +24,7 @@ import { Dropdown } from "primereact/dropdown";
 import { getResponsiveFontSize } from "../../utils/utils";
 import { abrirPdfEnNuevaPestana } from "../../utils/pdfUtils";
 import DetalleDocEmbarcacionForm from "../detalleDocEmbarcacion/DetalleDocEmbarcacionForm";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 import {
   getDetallesDocEmbarcacion,
   crearDetalleDocEmbarcacion,
@@ -47,6 +48,16 @@ const DetalleDocEmbarcacionCard = ({
   onDocEmbarcacionChange,
   onFaenasChange,
 }) => {
+  // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
+  const usuario = useAuthStore(state => state.usuario);
+  const esSuperUsuario = usuario?.esSuperUsuario || false;
+
+  // ⭐ LÓGICA DE PERMISOS PARA EDICIÓN
+  const estadosCerrados = ["FINALIZADA", "CANCELADA"];
+  const estadoTemporada = temporadaData?.estadoTemporada?.descripcion || "";
+  const temporadaCerrada = estadosCerrados.includes(estadoTemporada);
+  const camposDeshabilitados = temporadaCerrada && !esSuperUsuario;
+
   const [docEmbarcacion, setDocEmbarcacion] = useState([]);
   const [selectedDocEmbarcacion, setSelectedDocEmbarcacion] = useState(null);
   const [docEmbarcacionDialog, setDocEmbarcacionDialog] = useState(false);
@@ -472,8 +483,8 @@ const DetalleDocEmbarcacionCard = ({
             label="Recargar Documentos"
             className="p-button-info"
             onClick={cargarDocumentosEmbarcacion}
-            disabled={loadingData || !temporadaData}
-            tooltip="Cargar documentos de la embarcación"
+            disabled={loadingData || !temporadaData || camposDeshabilitados}
+            tooltip={camposDeshabilitados ? `Temporada ${estadoTemporada}. Solo superusuarios pueden editar.` : "Cargar documentos de la embarcación"}
             tooltipOptions={{ position: "top" }}
             style={{ fontSize: "0.875rem" }}
           />

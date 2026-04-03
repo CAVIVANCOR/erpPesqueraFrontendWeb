@@ -20,6 +20,7 @@ import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
 import { getResponsiveFontSize, createPorcentajeTemplate } from "../../utils/utils";
 import DescargaFaenaPescaForm from "../descargaFaenaPesca/DescargaFaenaPescaForm";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
 import {
   getAllDescargaFaenaPesca,
   getDescargasPorFaena,
@@ -44,6 +45,16 @@ const DescargaFaenaPescaCard = ({
   onDescargaChange, // Callback para notificar cambios
   onFaenasChange, // Callback para notificar cambios en faenas
 }) => {
+  // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
+  const usuario = useAuthStore(state => state.usuario);
+  const esSuperUsuario = usuario?.esSuperUsuario || false;
+
+  // ⭐ LÓGICA DE PERMISOS PARA EDICIÓN
+  const estadosCerrados = ["FINALIZADA", "CANCELADA"];
+  const estadoTemporada = temporadaData?.estadoTemporada?.descripcion || "";
+  const temporadaCerrada = estadosCerrados.includes(estadoTemporada);
+  const camposDeshabilitados = temporadaCerrada && !esSuperUsuario;
+
   const [descargas, setDescargas] = useState([]);
   const [selectedDescarga, setSelectedDescarga] = useState(null);
   const [descargaDialog, setDescargaDialog] = useState(false);
@@ -307,7 +318,9 @@ const DescargaFaenaPescaCard = ({
           className="p-button-success"
           onClick={openNew}
           size="small"
-          disabled={!faenaPescaId}
+          disabled={!faenaPescaId || camposDeshabilitados}
+          tooltip={camposDeshabilitados ? `Temporada ${estadoTemporada}. Solo superusuarios pueden editar.` : "Agregar nueva descarga"}
+          tooltipOptions={{ position: "top" }}
         />
       </div>
       <div style={{ flex: 2, display: "flex", flexDirection: "column" }}>
@@ -435,6 +448,7 @@ const DescargaFaenaPescaCard = ({
             patronId={faenaData?.patronId ? Number(faenaData.patronId) : null}
             faenaPescaId={faenaPescaId ? Number(faenaPescaId) : null}
             temporadaPescaId={temporadaData?.id ? Number(temporadaData.id) : null}
+            temporadaData={temporadaData}
             especies={especies}
             onGuardadoExitoso={() => {
               cargarDescargas();

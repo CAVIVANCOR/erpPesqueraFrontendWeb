@@ -87,10 +87,11 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
   const cargarCuentasContables = async () => {
     try {
       const cuentas = await getPlanCuentasContable(empresaId);
-      // Filtrar solo cuentas de efectivo (clase 104 - Cuentas Corrientes)
+      // Filtrar cuentas de efectivo: 101 (Caja) y 104 (Cuentas Corrientes)
       const cuentasEfectivo = cuentas.filter(
         (c) =>
-          c.codigoCuenta.startsWith("104") || c.codigoCuenta.startsWith("1041"),
+          c.codigoCuenta.startsWith("101") || 
+          c.codigoCuenta.startsWith("104"),
       );
       setCuentasContables(cuentasEfectivo);
     } catch (error) {
@@ -289,7 +290,7 @@ const CuentaCorrienteForm = ({ cuenta, isEdit, onClose, toast }) => {
   }));
 
   const cuentasContablesOptions = cuentasContables.map((c) => ({
-    label: `${c.codigoCuenta} - ${c.descripcion}`,
+    label: `${c.codigoCuenta} - ${c.nombreCuenta}`,
     value: Number(c.id),
   }));
 
