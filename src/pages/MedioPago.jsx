@@ -204,6 +204,7 @@ const MedioPago = ({ ruta }) => {
             : undefined
         }
         selectionMode="single"
+        size="small"
         className="p-datatable-hover cursor-pointer"
         emptyMessage="No se encontraron medios de pago"
         globalFilter={globalFilter}

@@ -18,6 +18,7 @@ import {
 import { getEmpresas } from "../api/empresa";
 import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
 import { getAllTipoReferenciaMovimientoCaja } from "../api/tipoReferenciaMovimientoCaja";
+import { getAllCategoriaTipoMovEntregaRendir } from "../api/categoriaTipoMovEntregaRendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import { getResponsiveFontSize } from "../utils/utils";
@@ -36,7 +37,10 @@ export default function ConfiguracionCuentaContable({ ruta }) {
   const [empresas, setEmpresas] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
   const [tiposReferencia, setTiposReferencia] = useState([]);
+  const [categorias, setCategorias] = useState([]);
   const [empresaFilter, setEmpresaFilter] = useState(null);
+  const [tipoFilter, setTipoFilter] = useState(null);
+  const [categoriaFilter, setCategoriaFilter] = useState(null);
   const [tipoMovimientoFilter, setTipoMovimientoFilter] = useState(null);
   const [activoFilter, setActivoFilter] = useState(null);
   const [itemsFiltrados, setItemsFiltrados] = useState([]);
@@ -56,21 +60,23 @@ export default function ConfiguracionCuentaContable({ ruta }) {
 
   useEffect(() => {
     filtrarItems();
-  }, [items, empresaFilter, tipoMovimientoFilter, activoFilter]);
+  }, [items, empresaFilter, tipoFilter, categoriaFilter, tipoMovimientoFilter, activoFilter]);
 
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const [configs, emps, tiposMov, tiposRef] = await Promise.all([
+      const [configs, emps, tiposMov, tiposRef, cats] = await Promise.all([
         getAllConfiguracionCuentaContable(),
         getEmpresas(),
         getAllTipoMovEntregaRendir(),
         getAllTipoReferenciaMovimientoCaja(),
+        getAllCategoriaTipoMovEntregaRendir(),
       ]);
       setItems(configs);
       setEmpresas(emps);
       setTiposMovimiento(tiposMov);
       setTiposReferencia(tiposRef);
+      setCategorias(cats);
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -90,6 +96,20 @@ export default function ConfiguracionCuentaContable({ ruta }) {
       filtrados = filtrados.filter(
         (item) => Number(item.empresaId) === Number(empresaFilter)
       );
+    }
+
+    if (tipoFilter !== null) {
+      filtrados = filtrados.filter((item) => {
+        const tipoMov = item.tipoMovimiento;
+        return tipoMov ? tipoMov.esIngreso === tipoFilter : false;
+      });
+    }
+
+    if (categoriaFilter) {
+      filtrados = filtrados.filter((item) => {
+        const tipoMov = item.tipoMovimiento;
+        return tipoMov && Number(tipoMov.categoriaId) === Number(categoriaFilter);
+      });
     }
 
     if (tipoMovimientoFilter) {
@@ -115,7 +135,21 @@ export default function ConfiguracionCuentaContable({ ruta }) {
       });
       return;
     }
-    setSelected(null);
+
+    // AGREGADO: Construir defaultValues con los valores de los filtros activos (PATRÓN REPLICADO)
+    const defaultValues = {};
+
+    // Si hay una empresa seleccionada, precargarla
+    if (empresaFilter) {
+      defaultValues.empresaId = empresaFilter;
+    }
+
+    // Si hay un tipo de movimiento seleccionado, precargarlo
+    if (tipoMovimientoFilter) {
+      defaultValues.tipoMovimientoId = tipoMovimientoFilter;
+    }
+
+    setSelected(defaultValues);
     setIsEdit(false);
     setShowDialog(true);
   };
@@ -220,6 +254,8 @@ export default function ConfiguracionCuentaContable({ ruta }) {
 
   const limpiarFiltros = () => {
     setEmpresaFilter(null);
+    setTipoFilter(null);
+    setCategoriaFilter(null);
     setTipoMovimientoFilter(null);
     setActivoFilter(null);
     setGlobalFilter("");
@@ -283,7 +319,49 @@ export default function ConfiguracionCuentaContable({ ruta }) {
     value: Number(emp.id),
   }));
 
-  const tipoMovimientoOptions = tiposMovimiento.map((tipo) => ({
+  const tipoOptions = [
+    { label: "Ingreso", value: true },
+    { label: "Egreso", value: false },
+  ];
+
+  const getCategoriasDisponibles = () => {
+    if (tipoFilter === null) {
+      return categorias;
+    }
+    // tipoFilter: true=INGRESO, false=EGRESO
+    // categoria.tipo: false=INGRESO, true=EGRESO
+    const tipoCategoria = !tipoFilter;
+    return categorias.filter((c) => c.tipo === tipoCategoria);
+  };
+
+  const getTiposMovimientoDisponibles = () => {
+    let tiposDisponibles = [...tiposMovimiento];
+
+    // Filtrar por tipo (Ingreso/Egreso)
+    if (tipoFilter !== null) {
+      tiposDisponibles = tiposDisponibles.filter(
+        (tm) => tm.esIngreso === tipoFilter
+      );
+    }
+
+    // Filtrar por categoría
+    if (categoriaFilter) {
+      tiposDisponibles = tiposDisponibles.filter(
+        (tm) => Number(tm.categoriaId) === Number(categoriaFilter)
+      );
+    }
+
+    return tiposDisponibles;
+  };
+
+  const categoriaOptions = getCategoriasDisponibles()
+    .filter((cat) => !cat.cesado)
+    .map((cat) => ({
+      label: cat.nombre,
+      value: Number(cat.id),
+    }));
+
+  const tipoMovimientoOptions = getTiposMovimientoDisponibles().map((tipo) => ({
     label: tipo.nombre,
     value: Number(tipo.id),
   }));
@@ -423,6 +501,31 @@ export default function ConfiguracionCuentaContable({ ruta }) {
                   value={empresaFilter}
                   options={empresaOptions}
                   onChange={(e) => setEmpresaFilter(e.value)}
+                  placeholder="Todas"
+                  showClear
+                  filter
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="tipoFilter">Filtrar por Tipo</label>
+                <Dropdown
+                  id="tipoFilter"
+                  value={tipoFilter}
+                  options={tipoOptions}
+                  onChange={(e) => setTipoFilter(e.value)}
+                  placeholder="Todos"
+                  showClear
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1.5 }}>
+                <label htmlFor="categoriaFilter">Filtrar por Categoría</label>
+                <Dropdown
+                  id="categoriaFilter"
+                  value={categoriaFilter}
+                  options={categoriaOptions}
+                  onChange={(e) => setCategoriaFilter(e.value)}
                   placeholder="Todas"
                   showClear
                   filter

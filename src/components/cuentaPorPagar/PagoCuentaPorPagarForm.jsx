@@ -18,6 +18,7 @@ export default function PagoCuentaPorPagarForm({
   mediosPago,
   bancos,
   cuentasCorrientes,
+  prestamosBancarios, // ⭐ AGREGADO: Lista de préstamos bancarios
   onHide,
   onSave,
   loading,
@@ -32,6 +33,7 @@ export default function PagoCuentaPorPagarForm({
     numeroOperacion: "",
     bancoId: null,
     cuentaBancariaId: null,
+    prestamoBancarioId: null, // ⭐ AGREGADO: Campo para préstamo bancario
     observaciones: "",
   });
 
@@ -49,6 +51,9 @@ export default function PagoCuentaPorPagarForm({
         cuentaBancariaId: pago.cuentaBancariaId
           ? Number(pago.cuentaBancariaId)
           : null,
+        prestamoBancarioId: pago.prestamoBancarioId // ⭐ AGREGADO
+          ? Number(pago.prestamoBancarioId)
+          : null,
         observaciones: pago.observaciones || "",
       });
     } else {
@@ -61,6 +66,7 @@ export default function PagoCuentaPorPagarForm({
         numeroOperacion: "",
         bancoId: null,
         cuentaBancariaId: null,
+        prestamoBancarioId: null, // ⭐ AGREGADO
         observaciones: "",
       });
     }
@@ -96,6 +102,21 @@ export default function PagoCuentaPorPagarForm({
       value: Number(c.id),
     })) || [];
 
+  // ⭐ AGREGADO: Opciones de préstamos bancarios
+  const prestamosBancariosOptions =
+    prestamosBancarios?.map((p) => ({
+      label: `${p.numeroPrestamo} - ${p.banco?.nombre || ""} - ${p.tipoPrestamo?.descripcion || ""}`,
+      value: Number(p.id),
+    })) || [];
+
+  // ⭐ AGREGADO: Detectar si el medio de pago seleccionado es "PRÉSTAMO BANCARIO"
+  const medioPagoSeleccionado = mediosPago?.find(
+    (m) => Number(m.id) === Number(formData.medioPagoId)
+  );
+  const esPrestamoBancario =
+    medioPagoSeleccionado?.codigo === "07" ||
+    medioPagoSeleccionado?.nombre?.toUpperCase().includes("PRÉSTAMO");
+
   const footer = (
     <div>
       <Button
@@ -110,7 +131,7 @@ export default function PagoCuentaPorPagarForm({
         icon="pi pi-check"
         onClick={handleSubmit}
         loading={loading}
-          disabled={!puedeEditar}
+        disabled={!puedeEditar}
       />
     </div>
   );
@@ -201,6 +222,30 @@ export default function PagoCuentaPorPagarForm({
             disabled={!puedeEditar}
           />
         </div>
+
+        {/* ⭐ AGREGADO: Campo condicional para Préstamo Bancario */}
+        {esPrestamoBancario && (
+          <div className="field">
+            <label htmlFor="prestamoBancarioId">
+              Préstamo Bancario <span style={{ color: "red" }}>*</span>
+            </label>
+            <Dropdown
+              id="prestamoBancarioId"
+              value={formData.prestamoBancarioId}
+              options={prestamosBancariosOptions}
+              onChange={(e) =>
+                setFormData({ ...formData, prestamoBancarioId: e.value })
+              }
+              placeholder="Seleccione préstamo bancario"
+              filter
+              showClear
+              disabled={!puedeEditar}
+            />
+            <small className="p-info">
+              Seleccione el préstamo bancario que financia este pago (Factoring, FEC, etc.)
+            </small>
+          </div>
+        )}
 
         <div className="field">
           <label htmlFor="numeroOperacion">Número de Operación</label>
