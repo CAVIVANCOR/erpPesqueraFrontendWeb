@@ -73,11 +73,24 @@ export const eliminarDetAccionesPreviasFaena = async (id) => {
 /**
  * Obtiene los detalles de acciones previas de faena por temporada
  * @param {number} temporadaId - ID de la temporada de pesca
+ * @param {number} faenaPescaId - ID de la faena de pesca (opcional)
  * @returns {Promise<Array>} Lista de detalles de acciones previas de faena para la temporada
  */
-export const obtenerDetAccionesPreviasFaenaPorTemporada = async (temporadaId) => {
+export const obtenerDetAccionesPreviasFaenaPorTemporada = async (temporadaId, faenaPescaId = null) => {
   try {
-    const response = await axios.get(`${API_URL}/temporada/${temporadaId}`, { headers: getAuthHeader() });
+    // ⭐ MODIFICADO: Construir params dinámicamente
+    const params = {};
+    if (faenaPescaId) {
+      params.faenaPescaId = faenaPescaId;
+    }
+    
+    const response = await axios.get(
+      `${API_URL}/temporada/${temporadaId}`, 
+      { 
+        params,  // ⭐ AGREGADO: Enviar query params
+        headers: getAuthHeader() 
+      }
+    );
     return response.data;
   } catch (error) {
     console.error('Error al obtener detalles de acciones previas de faena por temporada:', error);

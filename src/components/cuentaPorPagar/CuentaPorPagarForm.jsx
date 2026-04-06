@@ -8,7 +8,9 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
 import { Checkbox } from "primereact/checkbox";
 import { Panel } from "primereact/panel";
+import { TabView, TabPanel } from "primereact/tabview";
 import { getResponsiveFontSize } from "../../utils/utils";
+import CardAsientoContable from "../common/CardAsientoContable";
 
 export default function CuentaPorPagarForm({
   isEdit,
@@ -20,10 +22,12 @@ export default function CuentaPorPagarForm({
   ordenesCompra,
   onSubmit,
   onCancel,
+  onGenerarAsiento,
   loading,
   readOnly = false,
   permisos = {},
 }) {
+  const [activeTab, setActiveTab] = useState(0);
   // Estados del formulario
   const [ordenCompraId, setOrdenCompraId] = useState(
     defaultValues?.ordenCompraId || null
@@ -271,6 +275,12 @@ export default function CuentaPorPagarForm({
 
   return (
     <div className="p-fluid">
+      <TabView
+        activeIndex={activeTab}
+        onTabChange={(e) => setActiveTab(e.index)}
+      >
+        {/* TAB 1: DATOS GENERALES */}
+        <TabPanel header="Datos Generales" leftIcon="pi pi-file">
       <Panel header="Datos de la Cuenta por Pagar" className="mb-3">
         {/* FILA 1: Empresa, Proveedor, Moneda */}
         <div
@@ -891,14 +901,31 @@ export default function CuentaPorPagarForm({
           />
         </div>
       </Panel>
+        </TabPanel>
 
-      {/* BOTONES */}
+        {/* TAB 2: ASIENTO CONTABLE */}
+        {isEdit && (
+          <TabPanel header="Asiento Contable" leftIcon="pi pi-book">
+            <CardAsientoContable
+              asientoContableId={defaultValues?.asientoContableId}
+              onGenerarAsiento={() => onGenerarAsiento(defaultValues)}
+              disabled={loading}
+              loading={loading}
+              tituloCard="Asiento Contable"
+            />
+          </TabPanel>
+        )}
+      </TabView>
+
+      {/* BOTONES DE ACCIÓN - SIEMPRE VISIBLES */}
       <div
         style={{
           display: "flex",
           justifyContent: "flex-end",
           gap: 8,
           marginTop: 18,
+          paddingTop: 18,
+          borderTop: "1px solid #dee2e6",
         }}
       >
         <Button
@@ -909,10 +936,11 @@ export default function CuentaPorPagarForm({
           disabled={loading}
         />
         <Button
-          label="Guardar"
+          label={isEdit ? "Actualizar" : "Guardar"}
           icon="pi pi-save"
           onClick={handleSubmit}
           disabled={readOnly || loading || !puedeEditar}
+          loading={loading}
           tooltip={
             readOnly
               ? "Modo solo lectura"

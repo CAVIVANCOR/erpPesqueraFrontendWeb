@@ -183,3 +183,42 @@ export const getSaldosPorMovimiento = async (movimientoCajaId) => {
     throw error;
   }
 };
+
+/**
+ * Genera un borrador de asiento contable para un saldo (sin guardarlo en BD)
+ * @param {number} saldoId - ID del saldo
+ * @returns {Promise<Object>} Borrador del asiento contable
+ */
+export const generarBorradorAsiento = async (saldoId) => {
+  try {
+    const response = await axios.get(`${API_URL}/${saldoId}/generar-borrador-asiento`, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al generar borrador de asiento:', error);
+    throw error;
+  }
+};
+
+/**
+ * Guarda el asiento contable editado por el usuario y lo vincula al saldo
+ * @param {number} saldoId - ID del saldo
+ * @param {Object} asientoData - Datos del asiento editado
+ * @param {number} creadoPor - ID del usuario que crea el asiento
+ * @returns {Promise<Object>} Asiento contable creado
+ */
+export const guardarAsientoContable = async (saldoId, asientoData, creadoPor) => {
+  try {
+    const response = await axios.post(`${API_URL}/${saldoId}/guardar-asiento`, {
+      asientoData,
+      creadoPor
+    }, {
+      headers: getAuthHeader()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al guardar asiento contable:', error);
+    throw error;
+  }
+};

@@ -7,7 +7,6 @@ import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { ModuloContext } from "../../context/ModuloContext";
 import AppHeader from "./AppHeader";
 import logoCerebro13 from "../../assets/LogoCerebro13.png";
-
 // Importar componentes de módulos
 import Producto from "../../pages/Producto";
 import Empresas from "../../pages/Empresas";
@@ -90,6 +89,7 @@ import TipoProducto from "../../pages/TipoProducto";
 import TipoEstadoProducto from "../../pages/TipoEstadoProducto";
 import DestinoProducto from "../../pages/DestinoProducto";
 import FormaPago from "../../pages/FormaPago";
+import MedioPago from "../../pages/MedioPago";
 import ModoDespachoRecepcion from "../../pages/ModoDespachoRecepcion";
 import CotizacionVentas from "../../pages/CotizacionVentas";
 import PreFactura from "../../pages/PreFactura";
@@ -259,6 +259,10 @@ export default function BaseLayout({ children, onLogout }) {
     formaPago: {
       label: "Forma de Pago",
       componente: <FormaPago ruta="formaPago" />,
+    },
+    medioPago: {
+      label: "Medios de Pago",
+      componente: <MedioPago ruta="medioPago" />,
     },
     modoDespachoRecepcion: {
       label: "Modo Despacho/Recepción",

@@ -8,6 +8,7 @@ import DatosGeneralesMovimientoCajaCard from "./DatosGeneralesMovimientoCajaCard
 import PdfComprobanteOperacionCard from "./PdfComprobanteOperacionCard";
 import PdfDocumentoAfectoOperacionCard from "./PdfDocumentoAfectoOperacionCard";
 import DetallesGeneradosCard from "./DetallesGeneradosCard";
+import CardAsientoContable from "../common/CardAsientoContable";
 
 const MovimientoCajaForm = ({
   isEdit = false,
@@ -627,6 +628,19 @@ const MovimientoCajaForm = ({
         />
       </div>
 
+      {/* Card de Asiento Contable */}
+      {isEdit && (
+        <div style={{ display: cardActiva === "asiento" ? "block" : "none" }}>
+          <CardAsientoContable
+            asientoContableId={defaultValues?.asientoContableId}
+            onGenerarAsiento={() => onGenerarAsiento(defaultValues)}
+            disabled={loading}
+            loading={loading}
+            tituloCard="Asiento Contable"
+          />
+        </div>
+      )}
+
       {/* Botones de navegación y acciones */}
       <div
         style={{
@@ -687,6 +701,20 @@ const MovimientoCajaForm = ({
             tooltip="Detalles Generados"
             raised
           />
+          {isEdit && (
+            <Button
+              icon="pi pi-book"
+              className={
+                cardActiva === "asiento"
+                  ? "p-button-primary"
+                  : "p-button-outlined"
+              }
+              onClick={() => setCardActiva("asiento")}
+              size="small"
+              tooltip="Asiento Contable"
+              raised
+            />
+          )}
         </div>
 
         {/* Grupo de botones de acción - Centro/Derecha */}
@@ -709,30 +737,6 @@ const MovimientoCajaForm = ({
             tooltipOptions={{ position: 'top' }}
             className="p-button-warning"
             severity="warning"
-            raised
-            outlined
-            size="small"
-          />
-          <Button
-            type="button"
-            label="Generar Asiento Contable"
-            icon="pi pi-file-edit"
-            onClick={() =>
-              onGenerarAsiento && onGenerarAsiento(defaultValues)
-            }
-            disabled={!esValidado || !permisos.puedeEditar || readOnly || loading}
-            tooltip={
-              !esValidado
-                ? "Solo se puede generar asiento para movimientos VALIDADOS"
-                : !permisos.puedeEditar
-                  ? "No tiene permisos para generar asientos"
-                  : readOnly
-                    ? "Modo solo lectura"
-                    : "Generar asiento contable"
-            }
-            tooltipOptions={{ position: 'top' }}
-            className="p-button-info"
-            severity="info"
             raised
             outlined
             size="small"

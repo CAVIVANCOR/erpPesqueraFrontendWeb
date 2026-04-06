@@ -394,6 +394,11 @@ export default function Dashboard() {
           key: "pagoCuentaPorCobrar",
           icon: "pi-shopping-cart",
         },
+        {
+          label: "Medios de Pago",
+          key: "medioPago",
+          icon: "pi-wallet",
+        },
         { label: "Tipos de Préstamo", key: "tipoPrestamo", icon: "pi-tags" },
         {
           label: "Préstamo Bancario",

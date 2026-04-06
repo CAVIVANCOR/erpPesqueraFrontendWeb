@@ -621,6 +621,7 @@ export default function PersonalPage({ ruta }) {
                 onChange={(e) => setEmpresaFilter(e.value)}
                 showClear
                 style={{ minWidth: "200px" }}
+                filter
               />
             </div>
             <div style={{ flex: 1 }}>

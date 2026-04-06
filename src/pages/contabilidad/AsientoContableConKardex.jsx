@@ -26,12 +26,13 @@ import { getMonedas } from "../../api/moneda";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import { getResponsiveFontSize } from "../../utils/utils";
-import { generarKardexValorizado } from "../../api/contabilidad/kardexValorizado";
+// import { generarKardexValorizado } from "../../api/contabilidad/kardexValorizado";
 
 export default function AsientoContable({ ruta }) {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
 
+  // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
@@ -57,6 +58,7 @@ export default function AsientoContable({ ruta }) {
     row: null,
   });
   const [globalFilter, setGlobalFilter] = useState("");
+  // AGREGADO: Estados para generación de Kardex Valorizado
   const [showKardexDialog, setShowKardexDialog] = useState(false);
   const [kardexLoading, setKardexLoading] = useState(false);
   const [kardexAnio, setKardexAnio] = useState(new Date().getFullYear());
@@ -78,7 +80,7 @@ export default function AsientoContable({ ruta }) {
           getAsientoContable(),
           getEmpresas(),
           getPeriodosContables(),
-          getEstadosMultiFuncionPorTipoProviene(20),
+          getEstadosMultiFuncionPorTipoProviene(20), // ASIENTO CONTABLE
           getMonedas(),
         ]);
 
@@ -201,24 +203,6 @@ export default function AsientoContable({ ruta }) {
     }
   };
 
-  const recargarAsientoActual = async () => {
-    if (!selected?.id) return;
-    
-    try {
-      const asientoActualizado = await getAsientoContableById(selected.id);
-      setSelected(asientoActualizado);
-      await cargarDatos();
-    } catch (error) {
-      console.error("Error al recargar asiento:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Error al recargar el asiento contable",
-        life: 3000,
-      });
-    }
-  };
-
   const onDelete = (rowData) => {
     if (!permisos.puedeEliminar) {
       toast.current?.show({
@@ -267,6 +251,7 @@ export default function AsientoContable({ ruta }) {
   };
 
   const onSubmit = async (data) => {
+    // Validar permisos antes de guardar
     if (isEdit && !permisos.puedeEditar) {
       return;
     }
@@ -276,7 +261,7 @@ export default function AsientoContable({ ruta }) {
 
     setLoading(true);
     try {
-      await data;
+      await data; // El formulario ya maneja la llamada a la API
       toast.current?.show({
         severity: "success",
         summary: isEdit ? "Asiento actualizado" : "Asiento creado",
@@ -285,15 +270,10 @@ export default function AsientoContable({ ruta }) {
           : "El asiento contable fue creado correctamente.",
         life: 3000,
       });
-
-      if (isEdit) {
-        await recargarAsientoActual();
-      } else {
-        setShowDialog(false);
-        setSelected(null);
-        setIsEdit(false);
-        await cargarDatos();
-      }
+      setShowDialog(false);
+      setSelected(null);
+      setIsEdit(false);
+      cargarDatos();
     } catch (err) {
       toast.current?.show({
         severity: "error",
@@ -389,6 +369,7 @@ export default function AsientoContable({ ruta }) {
     setGlobalFilter("");
   };
 
+  // AGREGADO: Función para generar Kardex Valorizado
   const handleGenerarKardexValorizado = () => {
     if (!empresaFilter) {
       toast.current?.show({
@@ -411,32 +392,47 @@ export default function AsientoContable({ ruta }) {
     setShowKardexDialog(true);
   };
 
+  // AGREGADO: Función para confirmar generación de Kardex Valorizado
   const handleConfirmKardexValorizado = async () => {
     setShowKardexDialog(false);
     setKardexLoading(true);
 
     try {
-      const resultado = await generarKardexValorizado({
-        empresaId: empresaFilter,
-        anio: kardexAnio,
-        mes: kardexMes,
-      });
-
+      // TODO: Implementar llamada al backend cuando esté disponible
+      // const resultado = await generarKardexValorizado({
+      //   empresaId: empresaFilter,
+      //   anio: kardexAnio,
+      //   mes: kardexMes,
+      // });
+      
+      // SIMULACIÓN: Remover cuando el backend esté implementado
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simular proceso
+      
       toast.current?.show({
-        severity: "success",
-        summary: "Kardex Valorizado Generado",
-        detail: `Se generó el asiento de valorización para ${kardexMes}/${kardexAnio}`,
-        life: 3000,
+        severity: "info",
+        summary: "Funcionalidad en Desarrollo",
+        detail: `La generación de Kardex Valorizado para ${kardexMes}/${kardexAnio} estará disponible próximamente. El backend debe implementar el endpoint correspondiente.`,
+        life: 5000,
       });
 
-      await cargarDatos();
-
-      if (resultado.asientoId) {
-        const asientoGenerado = await getAsientoContableById(resultado.asientoId);
-        setSelected(asientoGenerado);
-        setIsEdit(true);
-        setShowDialog(true);
-      }
+      // Cuando esté implementado:
+      // toast.current?.show({
+      //   severity: "success",
+      //   summary: "Kardex Valorizado Generado",
+      //   detail: `Se generó el asiento de valorización para ${kardexMes}/${kardexAnio}`,
+      //   life: 3000,
+      // });
+      // 
+      // // Recargar datos y abrir el asiento generado
+      // await cargarDatos();
+      // 
+      // // Buscar y abrir el asiento recién creado
+      // if (resultado.asientoId) {
+      //   const asientoGenerado = await getAsientoContableById(resultado.asientoId);
+      //   setSelected(asientoGenerado);
+      //   setIsEdit(true);
+      //   setShowDialog(true);
+      // }
     } catch (error) {
       toast.current?.show({
         severity: "error",
@@ -536,6 +532,7 @@ export default function AsientoContable({ ruta }) {
   return (
     <div className="p-m-4">
       <Toast ref={toast} />
+      {/* AGREGADO: Dialog para confirmar generación de Kardex Valorizado */}
       <Dialog
         visible={showKardexDialog}
         onHide={() => setShowKardexDialog(false)}
@@ -806,6 +803,7 @@ export default function AsientoContable({ ruta }) {
                   disabled={loading}
                 />
               </div>
+              {/* AGREGADO: Botón para generar Kardex Valorizado */}
               <div style={{ flex: 0.8 }}>
                 <Button
                   label="Generar Kardex Valorizado"
@@ -919,18 +917,6 @@ export default function AsientoContable({ ruta }) {
         }
       >
         <Column field="id" header="ID" sortable />
-        <Column 
-          field="empresa.razonSocial" 
-          header="Empresa" 
-          sortable 
-          style={{ minWidth: "200px" }}
-        />
-        <Column 
-          field="periodoContable.nombrePeriodo" 
-          header="Periodo" 
-          sortable 
-          style={{ minWidth: "150px" }}
-        />
         <Column field="numeroAsiento" header="Número" sortable />
         <Column
           field="fechaAsiento"

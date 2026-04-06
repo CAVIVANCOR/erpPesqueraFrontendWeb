@@ -296,17 +296,17 @@ const TemporadaPesca = ({ ruta }) => {
     setShowForm(true);
   };
 
-   /**
+  /**
    * Editar temporada (clic en fila - regla transversal ERP Megui)
    * ⚠️ CRÍTICO: Obtiene datos FRESCOS de la BD para garantizar integridad de datos
    */
   const editItem = async (temporada) => {
     try {
       setLoading(true);
-      
+
       // Obtener datos 100% REALES Y ACTUALIZADOS de la base de datos
       const temporadaActualizada = await getTemporadaPescaPorId(temporada.id);
-      
+
       if (temporadaActualizada) {
         setEditingItem(temporadaActualizada);
         setIsEdit(true);
@@ -968,6 +968,12 @@ const TemporadaPesca = ({ ruta }) => {
           <Column
             header="Empresa"
             body={empresaTemplate}
+            sortable
+            style={{ minWidth: "120px" }}
+          />
+          <Column
+            field="nombre"
+            header="Nombre"
             sortable
             style={{ minWidth: "120px" }}
           />

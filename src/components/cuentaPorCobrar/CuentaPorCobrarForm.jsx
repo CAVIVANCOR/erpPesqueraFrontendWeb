@@ -10,7 +10,9 @@ import { Checkbox } from "primereact/checkbox";
 import { Panel } from "primereact/panel";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import { TabView, TabPanel } from "primereact/tabview";
 import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
+import CardAsientoContable from "../common/CardAsientoContable";
 export default function CuentaPorCobrarForm({
   isEdit,
   defaultValues,
@@ -21,10 +23,12 @@ export default function CuentaPorCobrarForm({
   preFacturas,
   onSubmit,
   onCancel,
+  onGenerarAsiento,
   loading,
   readOnly = false,
   permisos = {},
 }) {
+  const [activeTab, setActiveTab] = useState(0);
   const [preFacturaId, setPreFacturaId] = useState(
     defaultValues?.preFacturaId || null,
   );
@@ -360,6 +364,12 @@ export default function CuentaPorCobrarForm({
   const puedeEditar = !readOnly && !loading;
   return (
     <div className="p-fluid">
+      <TabView
+        activeIndex={activeTab}
+        onTabChange={(e) => setActiveTab(e.index)}
+      >
+        {/* TAB 1: DATOS GENERALES */}
+        <TabPanel header="Datos Generales" leftIcon="pi pi-file">
       <Panel header="Datos de la Cuenta por Cobrar" className="mb-3">
         <div
           style={{
@@ -1099,14 +1109,32 @@ export default function CuentaPorCobrarForm({
           />
         </div>
       </Panel>
+        </TabPanel>
 
+        {/* TAB 2: ASIENTO CONTABLE */}
+        {isEdit && (
+          <TabPanel header="Asiento Contable" leftIcon="pi pi-book">
+            <CardAsientoContable
+              asientoContableId={defaultValues?.asientoContableId}
+              onGenerarAsiento={() => onGenerarAsiento(defaultValues)}
+              disabled={loading}
+              loading={loading}
+              tituloCard="Asiento Contable"
+            />
+          </TabPanel>
+        )}
+      </TabView>
+
+      {/* BOTONES DE ACCIÓN - SIEMPRE VISIBLES */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           gap: 10,
-          marginTop: 20,
+          marginTop: 18,
+          paddingTop: 18,
+          borderTop: "1px solid #dee2e6",
         }}
       >
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>

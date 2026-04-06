@@ -38,6 +38,7 @@ import DocPrestamoAdicional from "./DocPrestamoAdicional";
 import { getTipoPrestamoActivos } from "../../api/tesoreria/tipoPrestamo";
 import { obtenerTipoCambio } from "../../api/tesoreria/lineaCredito";
 import { getSublineasCreditoPorLinea } from "../../api/tesoreria/sublineaCredito";
+import CardAsientoContable from "../common/CardAsientoContable";
 
 const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
   {
@@ -46,6 +47,7 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
     empresaFija = null,
     onSubmit,
     onCancel,
+    onGenerarAsiento,
     loading,
     readOnly = false,
   },
@@ -1990,8 +1992,22 @@ const PrestamoBancarioForm = forwardRef(function PrestamoBancarioForm(
             readOnly={readOnly}
           />
         </TabPanel>
+
+        {/* TAB 7: ASIENTO CONTABLE */}
+        {isEdit && (
+          <TabPanel header="Asiento Contable" leftIcon="pi pi-book">
+            <CardAsientoContable
+              asientoContableId={defaultValues?.asientoContableId}
+              onGenerarAsiento={() => onGenerarAsiento(defaultValues)}
+              disabled={loading}
+              loading={loading}
+              tituloCard="Asiento Contable"
+            />
+          </TabPanel>
+        )}
       </TabView>
 
+      {/* BOTONES DE ACCIÓN - SIEMPRE VISIBLES */}
       {!readOnly && (
         <div
           style={{

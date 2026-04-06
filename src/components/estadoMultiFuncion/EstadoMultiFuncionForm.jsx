@@ -207,6 +207,7 @@ const EstadoMultiFuncionForm = ({
                 disabled={readOnly || loading}
                 showClear
                 style={{ fontWeight: "bold" }}
+                filter
               />
             )}
           />

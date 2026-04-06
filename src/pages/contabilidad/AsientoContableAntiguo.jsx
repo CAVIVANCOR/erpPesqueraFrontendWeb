@@ -26,12 +26,12 @@ import { getMonedas } from "../../api/moneda";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { usePermissions } from "../../hooks/usePermissions";
 import { getResponsiveFontSize } from "../../utils/utils";
-import { generarKardexValorizado } from "../../api/contabilidad/kardexValorizado";
 
 export default function AsientoContable({ ruta }) {
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
 
+  // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
@@ -57,10 +57,6 @@ export default function AsientoContable({ ruta }) {
     row: null,
   });
   const [globalFilter, setGlobalFilter] = useState("");
-  const [showKardexDialog, setShowKardexDialog] = useState(false);
-  const [kardexLoading, setKardexLoading] = useState(false);
-  const [kardexAnio, setKardexAnio] = useState(new Date().getFullYear());
-  const [kardexMes, setKardexMes] = useState(new Date().getMonth() + 1);
 
   useEffect(() => {
     cargarDatos();
@@ -78,7 +74,7 @@ export default function AsientoContable({ ruta }) {
           getAsientoContable(),
           getEmpresas(),
           getPeriodosContables(),
-          getEstadosMultiFuncionPorTipoProviene(20),
+          getEstadosMultiFuncionPorTipoProviene(20), // ASIENTO CONTABLE
           getMonedas(),
         ]);
 
@@ -201,24 +197,6 @@ export default function AsientoContable({ ruta }) {
     }
   };
 
-  const recargarAsientoActual = async () => {
-    if (!selected?.id) return;
-    
-    try {
-      const asientoActualizado = await getAsientoContableById(selected.id);
-      setSelected(asientoActualizado);
-      await cargarDatos();
-    } catch (error) {
-      console.error("Error al recargar asiento:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Error al recargar el asiento contable",
-        life: 3000,
-      });
-    }
-  };
-
   const onDelete = (rowData) => {
     if (!permisos.puedeEliminar) {
       toast.current?.show({
@@ -267,6 +245,7 @@ export default function AsientoContable({ ruta }) {
   };
 
   const onSubmit = async (data) => {
+    // Validar permisos antes de guardar
     if (isEdit && !permisos.puedeEditar) {
       return;
     }
@@ -276,7 +255,7 @@ export default function AsientoContable({ ruta }) {
 
     setLoading(true);
     try {
-      await data;
+      await data; // El formulario ya maneja la llamada a la API
       toast.current?.show({
         severity: "success",
         summary: isEdit ? "Asiento actualizado" : "Asiento creado",
@@ -285,15 +264,10 @@ export default function AsientoContable({ ruta }) {
           : "El asiento contable fue creado correctamente.",
         life: 3000,
       });
-
-      if (isEdit) {
-        await recargarAsientoActual();
-      } else {
-        setShowDialog(false);
-        setSelected(null);
-        setIsEdit(false);
-        await cargarDatos();
-      }
+      setShowDialog(false);
+      setSelected(null);
+      setIsEdit(false);
+      cargarDatos();
     } catch (err) {
       toast.current?.show({
         severity: "error",
@@ -389,66 +363,6 @@ export default function AsientoContable({ ruta }) {
     setGlobalFilter("");
   };
 
-  const handleGenerarKardexValorizado = () => {
-    if (!empresaFilter) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "Debe seleccionar una empresa primero",
-        life: 3000,
-      });
-      return;
-    }
-    if (!periodoFilter) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Advertencia",
-        detail: "Debe seleccionar un período contable primero",
-        life: 3000,
-      });
-      return;
-    }
-    setShowKardexDialog(true);
-  };
-
-  const handleConfirmKardexValorizado = async () => {
-    setShowKardexDialog(false);
-    setKardexLoading(true);
-
-    try {
-      const resultado = await generarKardexValorizado({
-        empresaId: empresaFilter,
-        anio: kardexAnio,
-        mes: kardexMes,
-      });
-
-      toast.current?.show({
-        severity: "success",
-        summary: "Kardex Valorizado Generado",
-        detail: `Se generó el asiento de valorización para ${kardexMes}/${kardexAnio}`,
-        life: 3000,
-      });
-
-      await cargarDatos();
-
-      if (resultado.asientoId) {
-        const asientoGenerado = await getAsientoContableById(resultado.asientoId);
-        setSelected(asientoGenerado);
-        setIsEdit(true);
-        setShowDialog(true);
-      }
-    } catch (error) {
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: error.response?.data?.message || "Error al generar kardex valorizado",
-        life: 3000,
-      });
-    } finally {
-      setKardexLoading(false);
-    }
-  };
-
   const estadoBodyTemplate = (rowData) => {
     const estado = rowData.estado?.descripcion || "";
     let severity = "info";
@@ -536,127 +450,6 @@ export default function AsientoContable({ ruta }) {
   return (
     <div className="p-m-4">
       <Toast ref={toast} />
-      <Dialog
-        visible={showKardexDialog}
-        onHide={() => setShowKardexDialog(false)}
-        header="Generar Kardex Valorizado Mensual"
-        style={{ width: "550px" }}
-        modal
-        closable={!kardexLoading}
-        closeOnEscape={!kardexLoading}
-      >
-        <div style={{ padding: "10px 0" }}>
-          <p style={{ marginBottom: 20, fontSize: "1.05em" }}>
-            Configure los parámetros para generar el <b>Kardex Valorizado</b>:
-          </p>
-
-          <div style={{ marginBottom: 20 }}>
-            <label htmlFor="kardexEmpresa" style={{ display: "block", marginBottom: 5, fontWeight: 600 }}>
-              Empresa
-            </label>
-            <InputText
-              id="kardexEmpresa"
-              value={empresas.find((e) => Number(e.id) === empresaFilter)?.razonSocial || ""}
-              disabled
-              style={{ width: "100%", backgroundColor: "#f5f5f5" }}
-            />
-          </div>
-
-          <div style={{ display: "flex", gap: 15, marginBottom: 20 }}>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="kardexAnio" style={{ display: "block", marginBottom: 5, fontWeight: 600 }}>
-                Año <span style={{ color: "red" }}>*</span>
-              </label>
-              <Dropdown
-                id="kardexAnio"
-                value={kardexAnio}
-                options={Array.from({ length: 10 }, (_, i) => {
-                  const year = new Date().getFullYear() - 5 + i;
-                  return { label: year.toString(), value: year };
-                })}
-                onChange={(e) => setKardexAnio(e.value)}
-                placeholder="Seleccionar año"
-                style={{ width: "100%" }}
-                disabled={kardexLoading}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="kardexMes" style={{ display: "block", marginBottom: 5, fontWeight: 600 }}>
-                Mes <span style={{ color: "red" }}>*</span>
-              </label>
-              <Dropdown
-                id="kardexMes"
-                value={kardexMes}
-                options={[
-                  { label: "Enero", value: 1 },
-                  { label: "Febrero", value: 2 },
-                  { label: "Marzo", value: 3 },
-                  { label: "Abril", value: 4 },
-                  { label: "Mayo", value: 5 },
-                  { label: "Junio", value: 6 },
-                  { label: "Julio", value: 7 },
-                  { label: "Agosto", value: 8 },
-                  { label: "Septiembre", value: 9 },
-                  { label: "Octubre", value: 10 },
-                  { label: "Noviembre", value: 11 },
-                  { label: "Diciembre", value: 12 },
-                ]}
-                onChange={(e) => setKardexMes(e.value)}
-                placeholder="Seleccionar mes"
-                style={{ width: "100%" }}
-                disabled={kardexLoading}
-              />
-            </div>
-          </div>
-
-          <div 
-            style={{ 
-              backgroundColor: "#fff3e0", 
-              padding: 12, 
-              borderRadius: 4, 
-              border: "1px solid #ffb74d",
-              marginBottom: 15
-            }}
-          >
-            <p style={{ margin: 0, color: "#e65100", fontSize: "0.95em" }}>
-              <i className="pi pi-exclamation-triangle" style={{ marginRight: 8 }}></i>
-              <b>Importante:</b> Se generarán asientos contables de valorización de inventarios para el período seleccionado.
-            </p>
-          </div>
-
-          <div 
-            style={{ 
-              backgroundColor: "#e3f2fd", 
-              padding: 12, 
-              borderRadius: 4, 
-              border: "1px solid #64b5f6"
-            }}
-          >
-            <p style={{ margin: 0, color: "#1565c0", fontSize: "0.9em" }}>
-              <i className="pi pi-info-circle" style={{ marginRight: 8 }}></i>
-              Si ya existe un asiento de kardex valorizado para este período, se eliminará y regenerará automáticamente.
-            </p>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, paddingTop: 15, borderTop: "1px solid #dee2e6" }}>
-          <Button
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-secondary"
-            onClick={() => setShowKardexDialog(false)}
-            disabled={kardexLoading}
-          />
-          <Button
-            label="Generar Kardex"
-            icon="pi pi-calculator"
-            className="p-button-info"
-            onClick={handleConfirmKardexValorizado}
-            loading={kardexLoading}
-            disabled={!kardexAnio || !kardexMes}
-          />
-        </div>
-      </Dialog>
       <ConfirmDialog
         visible={confirmState.visible}
         onHide={() => setConfirmState({ visible: false, row: null })}
@@ -806,21 +599,6 @@ export default function AsientoContable({ ruta }) {
                   disabled={loading}
                 />
               </div>
-              <div style={{ flex: 0.8 }}>
-                <Button
-                  label="Generar Kardex Valorizado"
-                  icon="pi pi-calculator"
-                  className="p-button-info"
-                  size="small"
-                  raised
-                  outlined
-                  onClick={handleGenerarKardexValorizado}
-                  disabled={!empresaFilter || !periodoFilter || loading || kardexLoading}
-                  loading={kardexLoading}
-                  tooltip="Generar asientos de valorización de inventarios del período seleccionado"
-                  tooltipOptions={{ position: 'top' }}
-                />
-              </div>
               <div style={{ flex: 1 }}>
                 <label htmlFor="empresaFilter">Filtrar por Empresa</label>
                 <Dropdown
@@ -919,18 +697,6 @@ export default function AsientoContable({ ruta }) {
         }
       >
         <Column field="id" header="ID" sortable />
-        <Column 
-          field="empresa.razonSocial" 
-          header="Empresa" 
-          sortable 
-          style={{ minWidth: "200px" }}
-        />
-        <Column 
-          field="periodoContable.nombrePeriodo" 
-          header="Periodo" 
-          sortable 
-          style={{ minWidth: "150px" }}
-        />
         <Column field="numeroAsiento" header="Número" sortable />
         <Column
           field="fechaAsiento"

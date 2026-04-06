@@ -889,7 +889,7 @@ export default function PersonalForm({
             </div>
             {/* Entidad Comercial Enlazada */}
             <div style={{ flex: 1 }}>
-              <label>Entidad Comercial Enlazada</label>
+              <label>Facturar a (Comisiones Pesca Industrial)</label>
               <Controller
                 name="enlaceEntidadComercialId"
                 control={control}

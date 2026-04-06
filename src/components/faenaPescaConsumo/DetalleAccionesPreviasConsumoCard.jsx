@@ -60,12 +60,9 @@ const DetalleAccionesPreviasConsumoCard = forwardRef(
 
       try {
         setLoading(true);
-        const response = await getDetAccionesPreviasFaenaConsumo();
-        // Filtrar por faenaPescaConsumoId
-        const accionesFiltradas = response.filter(
-          (a) => Number(a.faenaPescaConsumoId) === Number(faenaPescaConsumoId)
-        );
-        setAccionesPreviasData(accionesFiltradas);
+        // ⭐ MODIFICADO: Enviar faenaPescaConsumoId al backend para filtrar
+        const response = await getDetAccionesPreviasFaenaConsumo(faenaPescaConsumoId);
+        setAccionesPreviasData(response);
       } catch (error) {
         console.error("❌ [FRONTEND] Error al cargar acciones previas:", error);
         setAccionesPreviasData([]);

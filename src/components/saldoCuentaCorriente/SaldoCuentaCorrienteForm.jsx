@@ -6,10 +6,12 @@ import { InputNumber } from "primereact/inputnumber";
 import { Calendar } from "primereact/calendar";
 import { Toast } from "primereact/toast";
 import { ToggleButton } from "primereact/togglebutton";
+import { TabView, TabPanel } from "primereact/tabview";
 import {
   crearSaldoCuentaCorriente,
   actualizarSaldoCuentaCorriente,
 } from "../../api/saldoCuentaCorriente";
+import CardAsientoContable from "../common/CardAsientoContable";
 
 export default function SaldoCuentaCorrienteForm({
   isEdit = false,
@@ -19,11 +21,13 @@ export default function SaldoCuentaCorrienteForm({
   centrosCosto = [],
   onSubmit,
   onCancel,
+  onGenerarAsiento,
   loading = false,
   readOnly = false,
 }) {
   const toast = useRef(null);
   const [guardando, setGuardando] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
 
   const [formData, setFormData] = useState({
     cuentaCorrienteId: defaultValues?.cuentaCorrienteId || null,
@@ -180,7 +184,14 @@ export default function SaldoCuentaCorrienteForm({
   return (
     <>
       <Toast ref={toast} />
-      <form onSubmit={handleSubmit} className="p-fluid">
+      <div className="p-fluid">
+        <TabView
+          activeIndex={activeTab}
+          onTabChange={(e) => setActiveTab(e.index)}
+        >
+          {/* TAB 1: DATOS GENERALES */}
+          <TabPanel header="Datos Generales" leftIcon="pi pi-file">
+            <form onSubmit={handleSubmit} className="p-fluid">
         <div
           style={{
             display: "flex",
@@ -406,14 +417,32 @@ export default function SaldoCuentaCorrienteForm({
             </div>
           </div>
         </div>
+      </form>
+          </TabPanel>
 
-        {/* Botones de acción */}
+          {/* TAB 2: ASIENTO CONTABLE */}
+          {isEdit && (
+            <TabPanel header="Asiento Contable" leftIcon="pi pi-book">
+              <CardAsientoContable
+                asientoContableId={defaultValues?.asientoContableId}
+                onGenerarAsiento={() => onGenerarAsiento(defaultValues)}
+                disabled={loading || guardando}
+                loading={loading || guardando}
+                tituloCard="Asiento Contable"
+              />
+            </TabPanel>
+          )}
+        </TabView>
+
+        {/* Botones de acción - SIEMPRE VISIBLES PARA TODAS LAS PESTAÑAS */}
         <div
           style={{
             display: "flex",
             justifyContent: "flex-end",
             gap: 8,
             marginTop: 18,
+            paddingTop: 18,
+            borderTop: "1px solid #dee2e6",
           }}
         >
           <Button
@@ -430,7 +459,14 @@ export default function SaldoCuentaCorrienteForm({
           <Button
             label={isEdit ? "Actualizar" : "Guardar"}
             icon="pi pi-check"
-            type="submit"
+            type="button"
+            onClick={(e) => {
+              // Buscar el formulario y disparar submit
+              const form = document.querySelector('form');
+              if (form) {
+                form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+              }
+            }}
             loading={loading || guardando}
             disabled={readOnly || loading || guardando}
             className="p-button-success"
@@ -439,7 +475,7 @@ export default function SaldoCuentaCorrienteForm({
             size="small"
           />
         </div>
-      </form>
+      </div>
     </>
   );
 }

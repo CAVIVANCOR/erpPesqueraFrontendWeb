@@ -14,8 +14,10 @@ function getAuthHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
-export async function getDetAccionesPreviasFaenaConsumo() {
-  const res = await axios.get(API_URL, { headers: getAuthHeaders() });
+export async function getDetAccionesPreviasFaenaConsumo(faenaPescaConsumoId = null) {
+  // ⭐ MODIFICADO: Construir params dinámicamente
+  const params = faenaPescaConsumoId ? { faenaPescaConsumoId } : {};
+  const res = await axios.get(API_URL, { params, headers: getAuthHeaders() });
   return res.data;
 }
 

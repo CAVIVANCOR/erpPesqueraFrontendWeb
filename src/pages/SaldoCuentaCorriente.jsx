@@ -14,11 +14,16 @@ import { Tag } from "primereact/tag";
 import SaldoCuentaCorrienteForm from "../components/saldoCuentaCorriente/SaldoCuentaCorrienteForm";
 import HistoricoCuentaCorriente from "../components/saldoCuentaCorriente/HistoricoCuentaCorriente";
 import ProyeccionCuentaCorriente from "../components/saldoCuentaCorriente/ProyeccionCuentaCorriente";
+import AsientoContableViewer from "../components/common/AsientoContableViewer";
+import AsientoContableEditor from "../components/common/AsientoContableEditor";
 import {
   getAllSaldoCuentaCorriente,
   calcularSaldoActual,
   eliminarSaldoCuentaCorriente,
+  generarBorradorAsiento,
+  guardarAsientoContable,
 } from "../api/saldoCuentaCorriente";
+import { deleteAsientoContable } from "../api/contabilidad/asientoContable";
 import { getAllCuentaCorriente } from "../api/cuentaCorriente";
 import { getEmpresas } from "../api/empresa";
 import { getCentrosCosto } from "../api/centroCosto";
@@ -57,6 +62,11 @@ export default function SaldoCuentaCorriente({ ruta }) {
   const [showHistorico, setShowHistorico] = useState(false);
   const [showProyeccion, setShowProyeccion] = useState(false);
   const [selectedCuentaAnalisis, setSelectedCuentaAnalisis] = useState(null);
+  const [showAsientoDialog, setShowAsientoDialog] = useState(false);
+  const [selectedAsientoId, setSelectedAsientoId] = useState(null);
+  const [showAsientoEditor, setShowAsientoEditor] = useState(false);
+  const [borradorAsiento, setBorradorAsiento] = useState(null);
+  const [saldoParaAsiento, setSaldoParaAsiento] = useState(null);
 
   useEffect(() => {
     cargarDatos();
@@ -271,6 +281,97 @@ export default function SaldoCuentaCorriente({ ruta }) {
     setShowProyeccion(true);
   };
 
+  const handleVerAsiento = (rowData) => {
+    if (!rowData?.asientoContableId) {
+      toast.current?.show({
+        severity: "info",
+        summary: "Sin asiento contable",
+        detail: "Este saldo no tiene un asiento contable generado",
+        life: 3000,
+      });
+      return;
+    }
+    setSelectedAsientoId(rowData.asientoContableId);
+    setShowAsientoDialog(true);
+    setConciliadoFilter(null);
+    setGlobalFilter("");
+  };
+
+  const handleGenerarAsiento = async (rowData) => {
+    // Cerrar el diálogo de edición si está abierto
+    if (showDialog) {
+      setShowDialog(false);
+    }
+
+    setLoading(true);
+    try {
+      // Si ya existe un asiento, informar que se regenerará
+      if (rowData?.asientoContableId) {
+        toast.current?.show({
+          severity: "info",
+          summary: "Regenerando asiento",
+          detail: "Se eliminará el asiento existente y se generará uno nuevo",
+          life: 3000,
+        });
+        await deleteAsientoContable(rowData.asientoContableId);
+      }
+
+      const borrador = await generarBorradorAsiento(rowData.id);
+      setBorradorAsiento(borrador);
+      setSaldoParaAsiento(rowData);
+      setShowAsientoEditor(true);
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al generar borrador de asiento",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGuardarAsiento = async (asientoEditado) => {
+    if (!saldoParaAsiento) return;
+
+    setLoading(true);
+    try {
+      await guardarAsientoContable(
+        saldoParaAsiento.id,
+        asientoEditado,
+        usuario?.id
+      );
+      
+      toast.current?.show({
+        severity: "success",
+        summary: "Asiento generado",
+        detail: "El asiento contable fue generado y vinculado correctamente",
+        life: 3000,
+      });
+
+      setShowAsientoEditor(false);
+      setBorradorAsiento(null);
+      setSaldoParaAsiento(null);
+      await cargarDatos();
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data?.message || "Error al guardar asiento contable",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelarAsiento = () => {
+    setShowAsientoEditor(false);
+    setBorradorAsiento(null);
+    setSaldoParaAsiento(null);
+  };
+
   const limpiarFiltros = () => {
     setEmpresaFilter(null);
     setCuentaFilter(null);
@@ -334,6 +435,22 @@ export default function SaldoCuentaCorriente({ ruta }) {
 
     return (
       <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: "0.25rem" }}>
+        {!rowData.asientoContableId ? (
+          <Button
+            icon="pi pi-plus-circle"
+            className="p-button-text p-button-help"
+            disabled={loading}
+            onClick={() => handleGenerarAsiento(rowData)}
+            tooltip="Generar Asiento Contable"
+          />
+        ) : (
+          <Button
+            icon="pi pi-book"
+            className="p-button-text p-button-success"
+            onClick={() => handleVerAsiento(rowData)}
+            tooltip="Ver Asiento Contable"
+          />
+        )}
         <Button
           icon="pi pi-chart-line"
           className="p-button-text p-button-info"
@@ -680,6 +797,7 @@ export default function SaldoCuentaCorriente({ ruta }) {
           centrosCosto={centrosCosto}
           onSubmit={onSubmit}
           onCancel={onCancel}
+          onGenerarAsiento={handleGenerarAsiento}
           loading={loading}
           readOnly={isEdit && !permisos.puedeEditar}
         />
@@ -714,6 +832,45 @@ export default function SaldoCuentaCorriente({ ruta }) {
         }
         cuentaCorriente={selectedCuentaAnalisis?.cuentaCorriente || null}
       />
+
+      <Dialog
+        header="Asiento Contable Generado"
+        visible={showAsientoDialog}
+        style={{ width: "90vw", maxWidth: "1200px" }}
+        modal
+        onHide={() => {
+          setShowAsientoDialog(false);
+          setSelectedAsientoId(null);
+        }}
+        closeOnEscape
+        dismissableMask
+      >
+        {selectedAsientoId && (
+          <AsientoContableViewer
+            asientoContableId={selectedAsientoId}
+            showHeader={true}
+          />
+        )}
+      </Dialog>
+
+      <Dialog
+        header="Generar Asiento Contable"
+        visible={showAsientoEditor}
+        style={{ width: "95vw", maxWidth: "1400px" }}
+        modal
+        onHide={handleCancelarAsiento}
+        closeOnEscape={false}
+        dismissableMask={false}
+      >
+        {borradorAsiento && (
+          <AsientoContableEditor
+            borradorAsiento={borradorAsiento}
+            onGuardar={handleGuardarAsiento}
+            onCancelar={handleCancelarAsiento}
+            loading={loading}
+          />
+        )}
+      </Dialog>
     </div>
   );
 }

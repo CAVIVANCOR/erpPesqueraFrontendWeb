@@ -72,8 +72,10 @@ const DetalleAccionesPreviasForm = forwardRef(
 
       try {
         setLoading(true);
+        // ⭐ MODIFICADO: Enviar faenaPescaId como segundo parámetro
         const response = await obtenerDetAccionesPreviasFaenaPorTemporada(
-          temporadaPescaId
+          temporadaPescaId,
+          faenaPescaId  // ⭐ AGREGADO: Pasar faenaPescaId para filtrar
         );
         setAccionesPreviasData(response);
       } catch (error) {
@@ -112,7 +114,7 @@ const DetalleAccionesPreviasForm = forwardRef(
     useEffect(() => {
       cargarAccionesPrevias();
       cargarCatalogoAccionesPrevias();
-    }, [temporadaPescaId]);
+    }, [temporadaPescaId, faenaPescaId]);  // ⭐ AGREGADO: faenaPescaId como dependencia
 
     // Template para mostrar el estado de completado
     const completadoTemplate = (rowData) => {
@@ -433,7 +435,7 @@ const DetalleAccionesPreviasForm = forwardRef(
             <DetAccionesPreviasFaenaForm
               isEdit={true}
               defaultValues={{
-                id: selectedAccion.id, // Agregar el ID del registro
+                id: selectedAccion.id,
                 faenaPescaId: selectedAccion.faenaPescaId,
                 accionPreviaId: selectedAccion.accionPreviaId,
                 responsableId: selectedAccion.responsableId,
