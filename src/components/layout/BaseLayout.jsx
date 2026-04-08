@@ -40,7 +40,6 @@ import Banco from "../../pages/Banco";
 import Incoterm from "../../pages/Incoterm";
 import MovimientoCaja from "../../pages/MovimientoCaja";
 import TipoCuentaCorriente from "../../pages/TipoCuentaCorriente";
-import TipoReferenciaMovimientoCaja from "../../pages/TipoReferenciaMovimientoCaja";
 import CentroCosto from "../../pages/CentroCosto";
 import CategoriaCCosto from "../../pages/CategoriaCCosto";
 import EmpresaCentroCosto from "../../pages/EmpresaCentroCosto";
@@ -409,12 +408,6 @@ export default function BaseLayout({ children, onLogout }) {
     tipoCuentaCorriente: {
       label: "Tipo Cuenta Corriente",
       componente: <TipoCuentaCorriente ruta="tipoCuentaCorriente" />,
-    },
-    tipoReferenciaMovimientoCaja: {
-      label: "Tipo Referencia Movimiento Caja",
-      componente: (
-        <TipoReferenciaMovimientoCaja ruta="tipoReferenciaMovimientoCaja" />
-      ),
     },
     banco: { label: "Bancos", componente: <Banco ruta="banco" /> },
     usuarios: {

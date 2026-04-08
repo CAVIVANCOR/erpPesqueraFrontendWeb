@@ -33,7 +33,7 @@ const MovimientoCaja = () => {
     empresas,
     monedas,
     tipoMovEntregaRendir,
-    tipoReferenciaMovimientoCaja,
+    mediosPago,
     cuentasCorrientes,
     entidadesComerciales,
     cuentasEntidadComercial,
@@ -94,7 +94,7 @@ const MovimientoCaja = () => {
     empresas,
     monedas,
     tipoMovEntregaRendir,
-    tipoReferenciaMovimientoCaja,
+    mediosPago,
     cuentasCorrientes,
     entidadesComerciales,
     cuentasEntidadComercial,
@@ -239,7 +239,7 @@ const MovimientoCaja = () => {
         empresas={empresas}
         monedas={monedas}
         tipoMovEntregaRendir={tipoMovEntregaRendir}
-        tipoReferenciaMovimientoCaja={tipoReferenciaMovimientoCaja}
+        mediosPago={mediosPago}
         cuentasCorrientes={cuentasCorrientes}
         entidadesComerciales={entidadesComerciales}
         cuentasEntidadComercial={cuentasEntidadComercial}

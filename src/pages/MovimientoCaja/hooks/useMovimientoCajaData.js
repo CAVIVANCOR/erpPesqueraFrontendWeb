@@ -7,7 +7,7 @@ import { getAllMovimientoCaja } from "../../../api/movimientoCaja.js";
 import { getEmpresas } from "../../../api/empresa.js";
 import { getMonedas } from "../../../api/moneda.js";
 import { getAllTipoMovEntregaRendir } from "../../../api/tipoMovEntregaRendir.js";
-import { getAllTipoReferenciaMovimientoCaja } from "../../../api/tipoReferenciaMovimientoCaja.js";
+import { getMediosPago } from "../../../api/medioPago.js";
 import { getAllCuentaCorriente } from "../../../api/cuentaCorriente.js";
 import { getEntidadesComerciales } from "../../../api/entidadComercial.js";
 import { getCtasCteEntidad } from "../../../api/ctaCteEntidad.js";
@@ -31,7 +31,7 @@ const useMovimientoCajaData = () => {
   const [empresas, setEmpresas] = useState([]);
   const [monedas, setMonedas] = useState([]);
   const [tipoMovEntregaRendir, setTipoMovEntregaRendir] = useState([]);
-  const [tipoReferenciaMovimientoCaja, setTipoReferenciaMovimientoCaja] = useState([]);
+  const [mediosPago, setMediosPago] = useState([]);
   const [cuentasCorrientes, setCuentasCorrientes] = useState([]);
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
   const [cuentasEntidadComercial, setCuentasEntidadComercial] = useState([]);
@@ -69,7 +69,7 @@ const useMovimientoCajaData = () => {
         getEmpresas(),
         getMonedas(),
         getAllTipoMovEntregaRendir(),
-        getAllTipoReferenciaMovimientoCaja(),
+        getMediosPago(),
         getAllCuentaCorriente(),
         getEntidadesComerciales(),
         getCentrosCosto(),
@@ -88,7 +88,7 @@ const useMovimientoCajaData = () => {
       setEmpresas(empresasRes || []);
       setMonedas(monedasRes || []);
       setTipoMovEntregaRendir(tipoMovRes || []);
-      setTipoReferenciaMovimientoCaja(tipoRefRes || []);
+      setMediosPago(tipoRefRes || []);
       setCuentasCorrientes(cuentasRes || []);
       setEntidadesComerciales(entidadesRes || []);
       setEstadosMultiFuncion(estadosFiltrados);
@@ -136,7 +136,7 @@ const useMovimientoCajaData = () => {
     empresas,
     monedas,
     tipoMovEntregaRendir,
-    tipoReferenciaMovimientoCaja,
+    mediosPago,
     cuentasCorrientes,
     entidadesComerciales,
     cuentasEntidadComercial,

@@ -835,7 +835,7 @@ const TemporadaPescaForm = ({
         />
         <Button
           icon="pi pi-money-bill"
-          tooltip="Entregas a Rendir"
+          tooltip="Detalle de Gastos"
           tooltipOptions={{ position: "top" }}
           className={
             activeCard === "entregas-a-rendir"

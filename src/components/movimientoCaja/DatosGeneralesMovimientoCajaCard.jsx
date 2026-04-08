@@ -35,8 +35,8 @@ const DatosGeneralesMovimientoCajaCard = ({
   setDescripcion,
   referenciaExtId,
   setReferenciaExtId,
-  tipoReferenciaId,
-  setTipoReferenciaId,
+  medioPagoId,
+  setMedioPagoId,
   usuarioId,
   setUsuarioId,
   estadoId,
@@ -66,7 +66,7 @@ const DatosGeneralesMovimientoCajaCard = ({
   empresas,
   tipoMovEntregaRendir,
   monedas,
-  tipoReferenciaMovimientoCaja,
+  mediosPago,
   cuentasCorrientes,
   entidadesComerciales,
   cuentasEntidadComercial,
@@ -153,8 +153,8 @@ const DatosGeneralesMovimientoCajaCard = ({
             <label htmlFor="fecha">Fecha*</label>
             <Calendar
               id="fecha"
-              value={fechaOperacionMovCaja} // ✅ CAMBIADO DE 'fecha'
-              onChange={(e) => setFechaOperacionMovCaja(e.value)} // ✅ CAMBIADO DE 'setFecha'
+              value={fechaOperacionMovCaja} // 
+              onChange={(e) => setFechaOperacionMovCaja(e.value)} // 
               showIcon
               dateFormat="dd-mm-yy"
               disabled={readOnly}
@@ -450,7 +450,7 @@ const DatosGeneralesMovimientoCajaCard = ({
           </div>
         </div>
 
-        {/* Descripción, Referencia, Tipo Referencia */}
+        {/* Descripción, Referencia, Medio de Pago */}
         <div
           style={{
             display: "flex",
@@ -480,16 +480,16 @@ const DatosGeneralesMovimientoCajaCard = ({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label htmlFor="tipoReferenciaId">Tipo Referencia</label>
+            <label htmlFor="medioPagoId">Medio de Pago</label>
             <Dropdown
-              id="tipoReferenciaId"
-              value={tipoReferenciaId}
-              options={tipoReferenciaMovimientoCaja.map((tipo) => ({
-                label: tipo.descripcion,
-                value: Number(tipo.id),
+              id="medioPagoId"
+              value={medioPagoId}
+              options={mediosPago.map((medio) => ({
+                label: medio.nombre,
+                value: Number(medio.id),
               }))}
-              onChange={(e) => setTipoReferenciaId(e.value)}
-              placeholder="Seleccione tipo de referencia"
+              onChange={(e) => setMedioPagoId(e.value)}
+              placeholder="Seleccione medio de pago"
               disabled={readOnly || loading}
               filter
               showClear

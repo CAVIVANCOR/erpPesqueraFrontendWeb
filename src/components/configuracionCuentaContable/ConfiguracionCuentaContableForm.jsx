@@ -16,7 +16,7 @@ export default function ConfiguracionCuentaContableForm({
   defaultValues = {},
   empresas = [],
   tiposMovimiento = [],
-  tiposReferencia = [],
+  mediosPago = [],
   onSubmit,
   onCancel,
   loading = false,
@@ -30,7 +30,7 @@ export default function ConfiguracionCuentaContableForm({
   const [formData, setFormData] = useState({
     empresaId: defaultValues?.empresaId || null,
     tipoMovimientoId: defaultValues?.tipoMovimientoId || null,
-    tipoReferenciaId: defaultValues?.tipoReferenciaId || null,
+    medioPagoId: defaultValues?.medioPagoId || null,
     cuentaContableDebeId: defaultValues?.cuentaContableDebeId || null,
     cuentaContableHaberId: defaultValues?.cuentaContableHaberId || null,
     descripcionPlantilla: defaultValues?.descripcionPlantilla || "",
@@ -45,8 +45,8 @@ export default function ConfiguracionCuentaContableForm({
       tipoMovimientoId: defaultValues?.tipoMovimientoId
         ? Number(defaultValues.tipoMovimientoId)
         : null,
-      tipoReferenciaId: defaultValues?.tipoReferenciaId
-        ? Number(defaultValues.tipoReferenciaId)
+      medioPagoId: defaultValues?.medioPagoId
+        ? Number(defaultValues.medioPagoId)
         : null,
       cuentaContableDebeId: defaultValues?.cuentaContableDebeId
         ? Number(defaultValues.cuentaContableDebeId)
@@ -140,8 +140,8 @@ export default function ConfiguracionCuentaContableForm({
     const dataToSend = {
       empresaId: Number(formData.empresaId),
       tipoMovimientoId: Number(formData.tipoMovimientoId),
-      tipoReferenciaId: formData.tipoReferenciaId
-        ? Number(formData.tipoReferenciaId)
+      medioPagoId: formData.medioPagoId
+        ? Number(formData.medioPagoId)
         : null,
       cuentaContableDebeId: Number(formData.cuentaContableDebeId),
       cuentaContableHaberId: Number(formData.cuentaContableHaberId),
@@ -184,9 +184,9 @@ export default function ConfiguracionCuentaContableForm({
     value: Number(tipo.id),
   }));
 
-  const tiposReferenciaOptions = tiposReferencia.map((tipo) => ({
-    label: tipo.descripcion || tipo.codigo,
-    value: Number(tipo.id),
+  const mediosPagoOptions = mediosPago.map((medio) => ({
+    label: medio.nombre,
+    value: Number(medio.id),
   }));
 
   const cuentasDebeOptions = cuentasContables
@@ -247,13 +247,13 @@ export default function ConfiguracionCuentaContableForm({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label htmlFor="tipoReferenciaId">Tipo de Referencia</label>
+            <label htmlFor="medioPagoId">Medio de Pago</label>
             <Dropdown
-              id="tipoReferenciaId"
-              value={formData.tipoReferenciaId}
-              options={tiposReferenciaOptions}
-              onChange={(e) => handleChange("tipoReferenciaId", e.value)}
-              placeholder="Seleccione tipo (opcional)"
+              id="medioPagoId"
+              value={formData.medioPagoId}
+              options={mediosPagoOptions}
+              onChange={(e) => handleChange("medioPagoId", e.value)}
+              placeholder="Seleccione medio (opcional)"
               disabled={readOnly || loading || guardando}
               filter
               showClear

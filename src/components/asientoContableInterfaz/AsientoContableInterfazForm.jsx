@@ -34,7 +34,7 @@ export default function AsientoContableInterfazForm({
     monedaId: defaultValues?.monedaId || null,
     empresaId: defaultValues?.empresaId || null,
     referenciaExtId: defaultValues?.referenciaExtId || "",
-    tipoReferenciaId: defaultValues?.tipoReferenciaId || null,
+    medioPagoId: defaultValues?.medioPagoId || null,
     estado: defaultValues?.estado || "PENDIENTE",
     fechaEnvio: defaultValues?.fechaEnvio
       ? new Date(defaultValues.fechaEnvio)
@@ -58,8 +58,8 @@ export default function AsientoContableInterfazForm({
         ? Number(defaultValues.empresaId)
         : null,
       referenciaExtId: defaultValues?.referenciaExtId || "",
-      tipoReferenciaId: defaultValues?.tipoReferenciaId
-        ? Number(defaultValues.tipoReferenciaId)
+      medioPagoId: defaultValues?.medioPagoId
+        ? Number(defaultValues.medioPagoId)
         : null,
       estado: defaultValues?.estado || "PENDIENTE",
       fechaEnvio: defaultValues?.fechaEnvio
@@ -117,8 +117,8 @@ export default function AsientoContableInterfazForm({
       monedaId: formData.monedaId ? Number(formData.monedaId) : null,
       empresaId: formData.empresaId ? Number(formData.empresaId) : null,
       referenciaExtId: formData.referenciaExtId.trim(),
-      tipoReferenciaId: formData.tipoReferenciaId
-        ? Number(formData.tipoReferenciaId)
+      medioPagoId: formData.medioPagoId
+        ? Number(formData.medioPagoId)
         : null,
       estado: formData.estado,
       fechaEnvio: formData.fechaEnvio,
@@ -310,11 +310,11 @@ export default function AsientoContableInterfazForm({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <label htmlFor="tipoReferenciaId">Tipo Referencia ID</label>
+            <label htmlFor="medioPagoId">Medio de Pago ID</label>
             <InputNumber
-              id="tipoReferenciaId"
-              value={formData.tipoReferenciaId}
-              onValueChange={(e) => handleChange("tipoReferenciaId", e.value)}
+              id="medioPagoId"
+              value={formData.medioPagoId}
+              onValueChange={(e) => handleChange("medioPagoId", e.value)}
               disabled={readOnly || loading || guardando}
               useGrouping={false}
             />

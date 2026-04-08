@@ -103,9 +103,9 @@ const MovimientoCajaForm = ({
   const [referenciaExtId, setReferenciaExtId] = React.useState(
     defaultValues?.referenciaExtId || "",
   );
-  const [tipoReferenciaId, setTipoReferenciaId] = React.useState(
-    defaultValues?.tipoReferenciaId
-      ? Number(defaultValues.tipoReferenciaId)
+  const [medioPagoId, setMedioPagoId] = React.useState(
+    defaultValues?.medioPagoId
+      ? Number(defaultValues.medioPagoId)
       : "",
   );
   const [usuarioId, setUsuarioId] = React.useState(
@@ -270,9 +270,9 @@ const MovimientoCajaForm = ({
     setMonedaId(defaultValues.monedaId ? Number(defaultValues.monedaId) : "");
     setDescripcion(defaultValues.descripcion || "");
     setReferenciaExtId(defaultValues.referenciaExtId || "");
-    setTipoReferenciaId(
-      defaultValues.tipoReferenciaId
-        ? Number(defaultValues.tipoReferenciaId)
+    setMedioPagoId(
+      defaultValues.medioPagoId
+        ? Number(defaultValues.medioPagoId)
         : "",
     );
     setUsuarioId(
@@ -417,7 +417,7 @@ const MovimientoCajaForm = ({
       monedaId: monedaId ? Number(monedaId) : null,
       descripcion,
       referenciaExtId,
-      tipoReferenciaId: tipoReferenciaId ? Number(tipoReferenciaId) : null,
+      medioPagoId: medioPagoId ? Number(medioPagoId) : null,
       usuarioId: usuarioId ? Number(usuarioId) : null,
       estadoId: estadoId ? Number(estadoId) : null,
       fechaCreacion: isEdit ? fechaCreacion : new Date(),
@@ -546,8 +546,8 @@ const MovimientoCajaForm = ({
           setDescripcion={setDescripcion}
           referenciaExtId={referenciaExtId}
           setReferenciaExtId={setReferenciaExtId}
-          tipoReferenciaId={tipoReferenciaId}
-          setTipoReferenciaId={setTipoReferenciaId}
+          medioPagoId={medioPagoId}
+          setMedioPagoId={setMedioPagoId}
           usuarioId={usuarioId}
           setUsuarioId={setUsuarioId}
           estadoId={estadoId}

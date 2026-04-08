@@ -1,6 +1,5 @@
 /**
  * DetMovsEntregaRendirForm.jsx
- *
  * Formulario para crear y editar registros de DetMovsEntregaRendir.
  * Implementa validaciones y sigue el patrón estándar MEGUI.
  * Aplica la regla crítica de usar Number() para comparaciones de IDs.
@@ -8,7 +7,6 @@
  * @author ERP Megui
  * @version 1.0.0
  */
-
 import React, { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { Button } from "primereact/button";
@@ -21,16 +19,13 @@ import { Message } from "primereact/message";
 import { Toast } from "primereact/toast";
 import { classNames } from "primereact/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
-import {
-  crearDetMovsEntregaRendir,
-  actualizarDetMovsEntregaRendir,
-} from "../../api/detMovsEntregaRendir";
 import { getModulos } from "../../api/moduloSistema";
-import { getEntidadesComerciales } from "../../api/entidadComercial";
 import { Card } from "primereact/card";
 import PdfDetMovEntregaRendirCard from "./PdfDetMovEntregaRendirCard";
 import PdfComprobanteOperacionDetMovCard from "./PdfComprobanteOperacionDetMovCard";
 import { formatearFechaHora, formatearNumero } from "../../utils/utils";
+import DetGastosPlanificadosTable from "../detGastosPlanificados/DetGastosPlanificadosTable";
+import { getGastosPlanificados } from "../../api/detGastosPlanificados";
 
 const DetMovsEntregaRendirForm = ({
   movimiento = null,
@@ -39,6 +34,7 @@ const DetMovsEntregaRendirForm = ({
   personal = [],
   centrosCosto = [],
   tiposMovimiento = [],
+  categorias = [],
   entidadesComerciales = [],
   monedas = [],
   tiposDocumento = [],
@@ -53,7 +49,11 @@ const DetMovsEntregaRendirForm = ({
   const [modulosPescaIndustrial, setModulosPescaIndustrial] = useState(null);
   const [cardActiva, setCardActiva] = useState("datos");
   const [familiaFiltroId, setFamiliaFiltroId] = useState(null);
-
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(127);
+  const [gastosPlanificadosAsignacion, setGastosPlanificadosAsignacion] =
+    useState([]);
+  const [gastoPlanificadoSeleccionado, setGastoPlanificadoSeleccionado] =
+    useState(null); // Por defecto: Categoría 127 (A rendir Pesca Industrial)
   const {
     control,
     handleSubmit,
@@ -87,7 +87,7 @@ const DetMovsEntregaRendirForm = ({
       numeroCorrelativoComprobante: "",
       productoId: "",
       detalleGastosPlanificados: "",
-      asignacionOrigenId: null,
+      asignacionOrigenId: 0,
       formaParteCalculoLiquidacionTripulantes: false,
       formaParteCalculoEntregaARendir: false,
       formaParteCalculoLiqAlquilerCuota: false,
@@ -112,6 +112,7 @@ const DetMovsEntregaRendirForm = ({
     "urlComprobanteOperacionMovCaja",
   );
   const tipoMovimientoId = watch("tipoMovimientoId");
+  const asignacionOrigenId = watch("asignacionOrigenId");
 
   useEffect(() => {
     if (isEditing && movimiento) {
@@ -162,7 +163,9 @@ const DetMovsEntregaRendirForm = ({
         detalleGastosPlanificados: movimiento.detalleGastosPlanificados || "",
         asignacionOrigenId: movimiento.asignacionOrigenId
           ? Number(movimiento.asignacionOrigenId)
-          : null,
+          : movimiento.formaParteCalculoEntregaARendir === true
+            ? 0
+            : null,
         formaParteCalculoLiquidacionTripulantes:
           movimiento.formaParteCalculoLiquidacionTripulantes ?? false,
         formaParteCalculoEntregaARendir:
@@ -174,7 +177,6 @@ const DetMovsEntregaRendirForm = ({
       setValue("entregaARendirId", Number(entregaARendirId));
       setValue("fechaMovimiento", new Date());
       setValue("moduloOrigenMovCajaId", 2);
-
       if (usuario?.personalId) {
         setValue("responsableId", Number(usuario.personalId));
 
@@ -214,7 +216,6 @@ const DetMovsEntregaRendirForm = ({
         });
       }
     };
-
     cargarModuloPescaIndustrial();
   }, [setValue, isEditing]);
 
@@ -224,6 +225,69 @@ const DetMovsEntregaRendirForm = ({
       setValue("formaParteCalculoEntregaARendir", true);
     }
   }, [tipoMovimientoId, setValue]);
+  // Auto-seleccionar categoría 10 (EGRESO - PESCA INDUSTRIAL) al crear nuevo registro
+  useEffect(() => {
+    if (!isEditing) {
+      setCategoriaSeleccionada(10); // EGRESO - PESCA INDUSTRIAL
+    }
+  }, [isEditing]);
+
+  // Auto-cambiar categoría y tipo según estado de "Entrega a Rendir"
+  useEffect(() => {
+    if (formaParteCalculoEntregaARendir === true) {
+      // ACTIVADO: Categoría 17 (GASTOS A RENDIR) + Tipo 127 (A RENDIR PESCA INDUSTRIAL)
+      setCategoriaSeleccionada(17);
+      setValue("tipoMovimientoId", 127);
+      setValue("operacionSinFactura", true); // S/FACTURA automático
+      if (!isEditing) {
+        setValue("asignacionOrigenId", 0); // Reset a 0
+      }
+    } else if (!isEditing) {
+      // DESACTIVADO (solo en modo creación): Volver a Categoría 10 + limpiar Tipo
+      setCategoriaSeleccionada(10);
+      setValue("tipoMovimientoId", "");
+      setValue("operacionSinFactura", false);
+      setValue("asignacionOrigenId", 0);
+    }
+  }, [formaParteCalculoEntregaARendir, setValue, isEditing]);
+
+  // Cargar gastos planificados cuando se selecciona asignación origen
+  useEffect(() => {
+    const cargarGastosPlanificados = async () => {
+      if (asignacionOrigenId && asignacionOrigenId > 0) {
+        try {
+          const gastos = await getGastosPlanificados({
+            detMovEntregaRendirTemporadaPescaId: asignacionOrigenId,
+          });
+          setGastosPlanificadosAsignacion(gastos);
+        } catch (error) {
+          console.error("Error al cargar gastos planificados:", error);
+          setGastosPlanificadosAsignacion([]);
+        }
+      } else {
+        setGastosPlanificadosAsignacion([]);
+        setGastoPlanificadoSeleccionado(null);
+      }
+    };
+    cargarGastosPlanificados();
+  }, [asignacionOrigenId]);
+
+  
+  // Cargar centro de costo desde asignación origen
+  useEffect(() => {
+    if (asignacionOrigenId && asignacionOrigenId > 0) {
+      const asignacionOrigen = movimientosAsignacionEntregaRendir.find(
+        (mov) => Number(mov.id) === Number(asignacionOrigenId)
+      );
+      
+      if (asignacionOrigen && asignacionOrigen.centroCostoId) {
+        console.log("✅ Cargando Centro de Costo desde Asignación Origen:", asignacionOrigen.centroCostoId);
+        setValue("centroCostoId", Number(asignacionOrigen.centroCostoId));
+      }
+    }
+  }, [asignacionOrigenId, movimientosAsignacionEntregaRendir, setValue]);
+
+  
 
   // Auto-asignar entidadComercialId desde TemporadaPesca.empresa.entidadComercialId cuando es asignación
   useEffect(() => {
@@ -251,11 +315,41 @@ const DetMovsEntregaRendirForm = ({
     value: Number(cc.id),
   }));
 
-  const tipoMovimientoOptions = tiposMovimiento.map((tm) => ({
+  // Función para obtener categorías disponibles (solo EGRESOS)
+  const getCategoriasDisponibles = () => {
+    // categoria.tipo: false=INGRESO, true=EGRESO
+    // Filtrar solo categorías de EGRESO
+    return categorias.filter((c) => c.tipo === true);
+  };
+
+  // Función para obtener tipos de movimiento disponibles según categoría seleccionada
+  const getTiposMovimientoDisponibles = () => {
+    let tiposDisponibles = [...tiposMovimiento];
+
+    // Filtrar solo EGRESOS
+    tiposDisponibles = tiposDisponibles.filter((tm) => tm.esIngreso === false);
+
+    // Filtrar por categoría seleccionada
+    if (categoriaSeleccionada) {
+      tiposDisponibles = tiposDisponibles.filter(
+        (tm) => Number(tm.categoriaId) === Number(categoriaSeleccionada),
+      );
+    }
+
+    return tiposDisponibles;
+  };
+
+  const categoriaOptions = getCategoriasDisponibles()
+    .filter((cat) => !cat.cesado)
+    .map((cat) => ({
+      label: cat.nombre,
+      value: Number(cat.id),
+    }));
+
+  const tipoMovimientoOptions = getTiposMovimientoDisponibles().map((tm) => ({
     label: tm.nombre || "N/A",
     value: Number(tm.id),
   }));
-
   const monedaOptions = (monedas || []).map((m) => ({
     label: `${m.simbolo}`,
     value: Number(m.id),
@@ -368,6 +462,40 @@ const DetMovsEntregaRendirForm = ({
     });
   };
 
+   const cargarDatosDesdeGastoPlanificado = (gastoId) => {
+    console.log("🔍 cargarDatosDesdeGastoPlanificado - gastoId:", gastoId);
+    console.log("🔍 gastosPlanificadosAsignacion:", gastosPlanificadosAsignacion);
+    
+    const gasto = gastosPlanificadosAsignacion.find(
+      (g) => Number(g.id) === Number(gastoId),
+    );
+    
+    console.log("🔍 Gasto encontrado:", gasto);
+    
+    if (gasto) {
+      const productoId = gasto.productoId ? Number(gasto.productoId) : null;
+      const monedaId = gasto.monedaId ? Number(gasto.monedaId) : null;
+      const monto = gasto.montoPlanificado ? Number(gasto.montoPlanificado) : 0;
+      const descripcion = gasto.descripcion || "";
+      
+      console.log("✅ Cargando valores:");
+      console.log("  - productoId:", productoId);
+      console.log("  - monedaId:", monedaId);
+      console.log("  - monto:", monto);
+      console.log("  - descripcion:", descripcion);
+      
+      setValue("productoId", productoId);
+      setValue("monedaId", monedaId);
+      setValue("monto", monto);
+      setValue("descripcion", descripcion);
+      setGastoPlanificadoSeleccionado(gastoId);
+      
+      console.log("✅ setValue ejecutado correctamente");
+    } else {
+      console.error("❌ No se encontró el gasto con ID:", gastoId);
+    }
+  };
+
   const onSubmit = async (data, event) => {
     event?.preventDefault();
     event?.stopPropagation();
@@ -422,7 +550,9 @@ const DetMovsEntregaRendirForm = ({
           : null,
         asignacionOrigenId: data.asignacionOrigenId
           ? Number(data.asignacionOrigenId)
-          : null,
+          : data.formaParteCalculoEntregaARendir === true
+            ? 0
+            : null,
         formaParteCalculoLiquidacionTripulantes:
           data.formaParteCalculoLiquidacionTripulantes,
         formaParteCalculoEntregaARendir: data.formaParteCalculoEntregaARendir,
@@ -543,6 +673,51 @@ const DetMovsEntregaRendirForm = ({
                   />
                 )}
               </div>
+              <div style={{ flex: 0.5 }}>
+                <label className="block text-900 font-medium mb-2">
+                  Entrega a Rendir
+                </label>
+                <Button
+                  type="button"
+                  label={formaParteCalculoEntregaARendir ? "SI" : "NO"}
+                  icon={
+                    formaParteCalculoEntregaARendir
+                      ? "pi pi-check-circle"
+                      : "pi pi-times-circle"
+                  }
+                  className={
+                    formaParteCalculoEntregaARendir
+                      ? "p-button-success"
+                      : "p-button-secondary"
+                  }
+                  onClick={handleToggleCalculoEntrega}
+                  size="small"
+                  style={{ width: "100%" }}
+                  disabled={formularioDeshabilitado}
+                />
+              </div>
+              {/* FILTRO EN CASCADA: Categoría */}
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="categoriaSeleccionada"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Seleccione categoría
+                </label>
+                <Dropdown
+                  id="categoriaSeleccionada"
+                  value={categoriaSeleccionada}
+                  options={categoriaOptions}
+                  onChange={(e) => {
+                    setCategoriaSeleccionada(e.value);
+                    setValue("tipoMovimientoId", "");
+                  }}
+                  placeholder="Todas las categorías"
+                  showClear
+                  filter
+                  style={{ fontWeight: "bold" }}
+                />
+              </div>
               <div style={{ flex: 1 }}>
                 <label
                   htmlFor="tipoMovimientoId"
@@ -580,78 +755,71 @@ const DetMovsEntregaRendirForm = ({
                   />
                 )}
               </div>
-              <div style={{ flex: 0.5 }}>
-                <label className="block text-900 font-medium mb-2">
-                  Entrega a Rendir
-                </label>
-                <Button
-                  type="button"
-                  label={formaParteCalculoEntregaARendir ? "SI" : "NO"}
-                  icon={
-                    formaParteCalculoEntregaARendir
-                      ? "pi pi-check-circle"
-                      : "pi pi-times-circle"
-                  }
-                  className={
-                    formaParteCalculoEntregaARendir
-                      ? "p-button-success"
-                      : "p-button-secondary"
-                  }
-                  onClick={handleToggleCalculoEntrega}
-                  size="small"
-                  style={{ width: "100%" }}
-                  disabled={formularioDeshabilitado}
-                />
-              </div>
-              {/* Asignación Origen - Solo visible si NO es asignación Y formaParteCalculoEntregaARendir=true */}
-              {tipoMovimientoId !== 1 &&
-                tipoMovimientoId !== 2 &&
-                formaParteCalculoEntregaARendir === true && (
-                  <div style={{ flex: 1 }}>
-                    <label>Asignación Origen *</label>
-                    <Controller
-                      name="asignacionOrigenId"
-                      control={control}
-                      rules={{
-                        validate: (value) => {
-                          const tipo = getValues("tipoMovimientoId");
-                          const formaPartCalculo = getValues(
-                            "formaParteCalculoEntregaARendir",
-                          );
-                          if (
-                            tipo !== 1 &&
-                            tipo !== 2 &&
-                            formaPartCalculo === true &&
-                            !value
-                          ) {
-                            return "Debe seleccionar una asignación origen";
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              {/* ESCENARIO 1 y 2: Asignación Origen - Solo visible si formaParteCalculoEntregaARendir=true */}
+              {formaParteCalculoEntregaARendir === true && (
+                <div style={{ flex: 1 }}>
+                  <label>Asignación Origen</label>
+                  <Controller
+                    name="asignacionOrigenId"
+                    control={control}
+                    render={({ field }) => (
+                      <Dropdown
+                        id="asignacionOrigenId"
+                        value={field.value}
+                        onChange={(e) => {
+                          field.onChange(e.value);
+                          if (e.value > 0) {
+                            setGastoPlanificadoSeleccionado(null);
+                            setValue("productoId", "");
+                            setValue("monto", 0);
+                            setValue("descripcion", "");
                           }
-                          return true;
-                        },
-                      }}
-                      render={({ field }) => (
-                        <Dropdown
-                          id="asignacionOrigenId"
-                          value={field.value}
-                          onChange={(e) => field.onChange(e.value)}
-                          options={asignacionOrigenOptions}
-                          placeholder="Seleccione asignación origen"
-                          filter
-                          showClear
-                          style={{ fontWeight: "bold" }}
-                          className={classNames({
-                            "p-invalid": errors.asignacionOrigenId,
-                          })}
-                          disabled={formularioDeshabilitado}
-                        />
-                      )}
-                    />
-                    {errors.asignacionOrigenId && (
-                      <Message
-                        severity="error"
-                        text={errors.asignacionOrigenId.message}
+                        }}
+                        options={asignacionOrigenOptions}
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Seleccione asignación origen"
+                        showClear
+                        filter
+                        style={{ fontWeight: "bold" }}
+                        disabled={formularioDeshabilitado}
                       />
                     )}
+                  />
+                </div>
+              )}
+
+              {/* ESCENARIO 2: Dropdown Gasto Planificado - Solo visible si asignacionOrigenId > 0 */}
+              {formaParteCalculoEntregaARendir === true &&
+                asignacionOrigenId > 0 && (
+                  <div style={{ flex: 1 }}>
+                    <label>Gasto Planificado *</label>
+                    <Dropdown
+                      id="gastoPlanificadoId"
+                      value={gastoPlanificadoSeleccionado}
+                      options={gastosPlanificadosAsignacion.map((g) => ({
+                        label: `${g.producto?.descripcionArmada || g.producto?.nombre || "N/A"} - ${g.moneda?.simbolo || ""} ${Number(g.montoPlanificado || 0).toFixed(2)}`,
+                        value: Number(g.id),
+                      }))}
+                      onChange={(e) =>
+                        cargarDatosDesdeGastoPlanificado(e.value)
+                      }
+                      placeholder="Seleccione gasto planificado"
+                      filter
+                      showClear
+                      style={{ fontWeight: "bold" }}
+                      disabled={formularioDeshabilitado}
+                    />
                   </div>
                 )}
             </div>
@@ -692,7 +860,10 @@ const DetMovsEntregaRendirForm = ({
                 </div>
               )}
             </div>
-            {tipoMovimientoId !== 1 && tipoMovimientoId !== 2 && (
+            {/* ESCENARIO 2 y 3: Entidad Comercial, Familia y Producto - Solo visible si NO es ESCENARIO 1 */}
+            {(formaParteCalculoEntregaARendir === false ||
+              (formaParteCalculoEntregaARendir === true &&
+                asignacionOrigenId > 0)) && (
               <div
                 style={{
                   display: "flex",
@@ -1070,9 +1241,7 @@ const DetMovsEntregaRendirForm = ({
                 <Button
                   type="button"
                   label={
-                    formaParteCalculoLiqAlquilerCuota
-                      ? "INCLUIDO"
-                      : "EXCLUIDO"
+                    formaParteCalculoLiqAlquilerCuota ? "INCLUIDO" : "EXCLUIDO"
                   }
                   icon={
                     formaParteCalculoLiqAlquilerCuota
@@ -1276,6 +1445,35 @@ const DetMovsEntregaRendirForm = ({
               </div>
             </div>
           </form>
+
+          {/* ESCENARIO 1: CRUD DetGastosPlanificados - Solo visible si asignacionOrigenId = 0 */}
+          {formaParteCalculoEntregaARendir === true &&
+            (!asignacionOrigenId || asignacionOrigenId === 0) && (
+              <div style={{ marginTop: "1rem" }}>
+                {!movimiento?.id ? (
+                  <Message
+                    severity="info"
+                    text="Debe guardar el movimiento primero para poder agregar gastos planificados"
+                    style={{ marginTop: "1rem" }}
+                  />
+                ) : (
+                  <DetGastosPlanificadosTable
+                    entregaRendirData={{
+                      detMovEntregaRendirTemporadaPescaId: movimiento.id,
+                    }}
+                    monedaIdCabecera={watch("monedaId")}
+                    toast={toast}
+                    permisos={{
+                      puedeCrear: true,
+                      puedeEditar: true,
+                      puedeEliminar: true,
+                      puedeVer: true,
+                    }}
+                    readOnly={formularioDeshabilitado}
+                  />
+                )}
+              </div>
+            )}
         </Card>
       )}
 

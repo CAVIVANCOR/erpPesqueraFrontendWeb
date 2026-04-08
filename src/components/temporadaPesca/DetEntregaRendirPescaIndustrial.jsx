@@ -1,6 +1,6 @@
 // src/components/temporadaPesca/DetEntregaRendirPescaIndustrial.jsx
 // Componente autónomo para gestión de detalle de entregas a rendir en pesca industrial
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -10,7 +10,7 @@ import { Dialog } from "primereact/dialog";
 import { Toast } from "primereact/toast";
 import { confirmDialog } from "primereact/confirmdialog";
 import DetMovsEntregaRendirForm from "./DetMovsEntregaRendirForm";
-import { getResponsiveFontSize } from "../../utils/utils";
+import { getResponsiveFontSize, formatearNumero } from "../../utils/utils";
 import {
   crearDetMovsEntregaRendir,
   actualizarDetMovsEntregaRendir,
@@ -18,6 +18,7 @@ import {
 } from "../../api/detMovsEntregaRendir";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { generarYSubirPDFLiquidacionPI } from "./LiquidacionPescaIndustrialPDF";
+import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 
 export default function DetEntregaRendirPescaIndustrial({
   // Props de datos
@@ -27,6 +28,7 @@ export default function DetEntregaRendirPescaIndustrial({
   personal = [],
   centrosCosto = [],
   tiposMovimiento = [],
+  categorias = [],
   entidadesComerciales = [],
   monedas = [],
   tiposDocumento = [],
@@ -35,7 +37,6 @@ export default function DetEntregaRendirPescaIndustrial({
   temporadaPescaIniciada = false,
   loading = false,
   selectedMovimientos = [],
-
   // Props de callbacks
   onSelectionChange,
   onDataChange,
@@ -45,19 +46,109 @@ export default function DetEntregaRendirPescaIndustrial({
   // Estados locales para filtros
   const [filtroTipoMovimiento, setFiltroTipoMovimiento] = useState(null);
   const [filtroCentroCosto, setFiltroCentroCosto] = useState(null);
-  const [filtroIngresoEgreso, setFiltroIngresoEgreso] = useState(null);
+  const [filtroEntregaARendir, setFiltroEntregaARendir] = useState(null);
+  const [filtroCategoriaMovimiento, setFiltroCategoriaMovimiento] =
+    useState(null);
   const [filtroValidacionTesoreria, setFiltroValidacionTesoreria] =
     useState(null);
   // Estados para el dialog
   const [showMovimientoForm, setShowMovimientoForm] = useState(false);
   const [editingMovimiento, setEditingMovimiento] = useState(null);
+  const [saldosARendir, setSaldosARendir] = useState({});
+  const [calculandoSaldos, setCalculandoSaldos] = useState(false);
+  // Calcular saldos A Rendir con conversión de moneda
+  // Calcular saldos A Rendir con conversión de moneda
+  useEffect(() => {
+    const calcularSaldosConConversion = async () => {
+      setCalculandoSaldos(true);
+      const nuevosSaldos = {};
+      // Identificar asignaciones origen
+      const asignacionesOrigen = movimientos.filter(
+        (mov) =>
+          mov.formaParteCalculoEntregaARendir === true &&
+          (mov.asignacionOrigenId === null ||
+            mov.asignacionOrigenId === undefined ||
+            Number(mov.asignacionOrigenId) === 0),
+      );
+      for (const asignacion of asignacionesOrigen) {
+        // Buscar gastos asociados a esta asignación
+        const gastosAsociados = movimientos.filter(
+          (mov) =>
+            mov.asignacionOrigenId &&
+            Number(mov.asignacionOrigenId) === Number(asignacion.id),
+        );
+        let totalGastosConvertidos = 0;
+        // Procesar cada gasto
+        for (const gasto of gastosAsociados) {
+          let montoConvertido = Number(gasto.monto || 0);
+
+          // Si la moneda del gasto es diferente a la de la asignación, convertir
+          if (Number(gasto.monedaId) !== Number(asignacion.monedaId)) {
+            try {
+              // Obtener fecha del movimiento en formato YYYY-MM-DD
+              const fecha = new Date(gasto.fechaMovimiento);
+              const fechaISO = fecha.toISOString().split("T")[0];
+
+              // Consultar tipo de cambio SUNAT
+              const tipoCambioData = await consultarTipoCambioSunat({
+                date: fechaISO,
+              });
+
+              if (tipoCambioData && tipoCambioData.sell_price) {
+                const tipoCambio = parseFloat(tipoCambioData.sell_price);
+
+                // Determinar dirección de conversión
+                // Asumiendo: monedaId=1 es PEN (Soles), monedaId=2 es USD (Dólares)
+                if (
+                  Number(asignacion.monedaId) === 1 &&
+                  Number(gasto.monedaId) === 2
+                ) {
+                  // Convertir USD a PEN: multiplicar por tipo de cambio
+                  montoConvertido = Number(gasto.monto) * tipoCambio;
+                } else if (
+                  Number(asignacion.monedaId) === 2 &&
+                  Number(gasto.monedaId) === 1
+                ) {
+                  // Convertir PEN a USD: dividir por tipo de cambio
+                  montoConvertido = Number(gasto.monto) / tipoCambio;
+                }
+              }
+            } catch (error) {
+              console.error(
+                `Error al convertir moneda para gasto ${gasto.id}:`,
+                error,
+              );
+              // Si falla la conversión, usar monto original (sin conversión)
+            }
+          }
+
+          totalGastosConvertidos += montoConvertido;
+        }
+
+        // Calcular saldo
+        const saldo = Number(asignacion.monto || 0) - totalGastosConvertidos;
+        nuevosSaldos[asignacion.id] = saldo;
+      }
+      setSaldosARendir(nuevosSaldos);
+      setCalculandoSaldos(false);
+    };
+
+    if (movimientos && movimientos.length > 0) {
+      calcularSaldosConConversion();
+    } else {
+      setSaldosARendir({});
+      setCalculandoSaldos(false);
+    }
+  }, [movimientos]);
+
   // Filtrar movimientos que son asignaciones (inicial o adicional) y forman parte del cálculo
   // Excluir el movimiento actual si está en edición
   const movimientosAsignacionEntregaRendir = (movimientos || []).filter(
     (mov) =>
-      (Number(mov.tipoMovimientoId) === 1 ||
-        Number(mov.tipoMovimientoId) === 2) &&
       mov.formaParteCalculoEntregaARendir === true &&
+      (mov.asignacionOrigenId === null ||
+        mov.asignacionOrigenId === undefined ||
+        Number(mov.asignacionOrigenId) === 0) &&
       (!editingMovimiento || Number(mov.id) !== Number(editingMovimiento.id)),
   );
   const toast = useRef(null);
@@ -79,13 +170,45 @@ export default function DetEntregaRendirPescaIndustrial({
       );
     }
 
-    if (filtroIngresoEgreso !== null) {
+    if (filtroEntregaARendir !== null) {
+      movimientosFiltrados = movimientosFiltrados.filter(
+        (mov) => mov.formaParteCalculoEntregaARendir === filtroEntregaARendir,
+      );
+    }
+
+    if (filtroCategoriaMovimiento) {
+      console.log(
+        "🔍 FILTRO CATEGORÍA - Valor seleccionado:",
+        filtroCategoriaMovimiento,
+      );
       movimientosFiltrados = movimientosFiltrados.filter((mov) => {
-        const tipoMov = tiposMovimiento.find(
-          (t) => Number(t.id) === Number(mov.tipoMovimientoId),
+        // Usar la relación directa: DetMovsEntregaRendir.tipoMovimiento.categoria.id
+        const categoriaId =
+          mov.tipoMovimiento?.categoria?.id || mov.tipoMovimiento?.categoriaId;
+
+        console.log(
+          "🔍 Movimiento ID:",
+          mov.id,
+          "| tipoMovimiento:",
+          mov.tipoMovimiento,
+          "| categoriaId encontrado:",
+          categoriaId,
         );
-        return tipoMov?.esIngreso === filtroIngresoEgreso;
+
+        const cumpleFiltro =
+          categoriaId &&
+          Number(categoriaId) === Number(filtroCategoriaMovimiento);
+
+        if (cumpleFiltro) {
+          console.log("✅ Movimiento PASA el filtro:", mov.id);
+        }
+
+        return cumpleFiltro;
       });
+      console.log(
+        "🔍 Total movimientos después de filtrar:",
+        movimientosFiltrados.length,
+      );
     }
 
     if (filtroValidacionTesoreria !== null) {
@@ -93,7 +216,6 @@ export default function DetEntregaRendirPescaIndustrial({
         (mov) => mov.validadoTesoreria === filtroValidacionTesoreria,
       );
     }
-
     return movimientosFiltrados;
   };
 
@@ -101,17 +223,18 @@ export default function DetEntregaRendirPescaIndustrial({
   const limpiarFiltros = () => {
     setFiltroTipoMovimiento(null);
     setFiltroCentroCosto(null);
-    setFiltroIngresoEgreso(null);
+    setFiltroEntregaARendir(null);
+    setFiltroCategoriaMovimiento(null);
     setFiltroValidacionTesoreria(null);
   };
 
-  const alternarFiltroIngresoEgreso = () => {
-    if (filtroIngresoEgreso === null) {
-      setFiltroIngresoEgreso(true);
-    } else if (filtroIngresoEgreso === true) {
-      setFiltroIngresoEgreso(false);
+  const alternarFiltroEntregaARendir = () => {
+    if (filtroEntregaARendir === null) {
+      setFiltroEntregaARendir(true);
+    } else if (filtroEntregaARendir === true) {
+      setFiltroEntregaARendir(false);
     } else {
-      setFiltroIngresoEgreso(null);
+      setFiltroEntregaARendir(null);
     }
   };
 
@@ -125,13 +248,13 @@ export default function DetEntregaRendirPescaIndustrial({
     }
   };
 
-  const obtenerPropiedadesFiltroIngresoEgreso = () => {
-    if (filtroIngresoEgreso === null) {
+  const obtenerPropiedadesFiltroEntregaARendir = () => {
+    if (filtroEntregaARendir === null) {
       return { label: "Todos", severity: "info" };
-    } else if (filtroIngresoEgreso === true) {
-      return { label: "Ingresos", severity: "success" };
+    } else if (filtroEntregaARendir === true) {
+      return { label: "Sí", severity: "success" };
     } else {
-      return { label: "Egresos", severity: "danger" };
+      return { label: "No", severity: "secondary" };
     }
   };
 
@@ -166,16 +289,23 @@ export default function DetEntregaRendirPescaIndustrial({
           detail: "Movimiento actualizado correctamente",
           life: 3000,
         });
+        // NO recargar datos para evitar que se cierre el formulario
+        return; // No cerrar el formulario
       } else {
-        await crearDetMovsEntregaRendir(data);
+        const movimientoCreado = await crearDetMovsEntregaRendir(data);
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
-          detail: "Movimiento creado correctamente",
+          detail:
+            "Movimiento creado correctamente. Ahora puede agregar gastos planificados.",
           life: 3000,
         });
+        // Cambiar a modo edición con el movimiento recién creado
+        setEditingMovimiento(movimientoCreado);
+        return; // No cerrar el formulario
       }
 
+      // Este código ya no se ejecuta porque ambos casos hacen return
       setShowMovimientoForm(false);
       setEditingMovimiento(null);
       onDataChange?.();
@@ -395,6 +525,63 @@ export default function DetEntregaRendirPescaIndustrial({
     return tipo ? tipo.nombre : "N/A";
   };
 
+  const entregaARendirTagTemplate = (rowData) => {
+    return (
+      <div className="text-center">
+        {rowData.formaParteCalculoEntregaARendir ? (
+          <Badge value="SÍ" severity="success" />
+        ) : (
+          <Badge value="NO" severity="secondary" />
+        )}
+      </div>
+    );
+  };
+  const categoriaTemplate = (rowData) => {
+    const tipo = tiposMovimiento.find(
+      (t) => Number(t.id) === Number(rowData.tipoMovimientoId),
+    );
+    return tipo?.categoria?.nombre || "N/A";
+  };
+
+  const asignacionOrigenTemplate = (rowData) => {
+    return rowData.asignacionOrigenId || "0";
+  };
+
+  const aRendirTemplate = (rowData) => {
+    // Solo mostrar para asignaciones origen
+    const esAsignacionOrigen =
+      rowData.formaParteCalculoEntregaARendir === true &&
+      (rowData.asignacionOrigenId === null ||
+        rowData.asignacionOrigenId === undefined ||
+        Number(rowData.asignacionOrigenId) === 0);
+
+    if (!esAsignacionOrigen) {
+      return "N/A";
+    }
+
+    // Obtener saldo precalculado (con conversión de moneda)
+    if (calculandoSaldos) {
+      return (
+        <div style={{ textAlign: "right", fontStyle: "italic" }}>
+          Calculando...
+        </div>
+      );
+    }
+
+    const saldo = saldosARendir[rowData.id] ?? 0;
+    return (
+      <div
+        style={{
+          textAlign: "right",
+          fontWeight: "bold",
+          color: saldo < 0 ? "red" : saldo === 0 ? "orange" : "green",
+        }}
+      >
+        {rowData.moneda?.simbolo || ""} {formatearNumero(saldo, 2)}
+      </div>
+    );
+  };
+
   const centroCostoTemplate = (rowData) => {
     const centro = centrosCosto.find(
       (c) => Number(c.id) === Number(rowData.centroCostoId),
@@ -481,6 +668,7 @@ export default function DetEntregaRendirPescaIndustrial({
     <>
       <div className="mt-4">
         <DataTable
+          key={`datatable-${Object.keys(saldosARendir).length}`}
           value={obtenerMovimientosFiltrados()}
           selection={selectedMovimientos}
           onSelectionChange={onSelectionChange}
@@ -495,7 +683,11 @@ export default function DetEntregaRendirPescaIndustrial({
           rowsPerPageOptions={[10, 20, 40]}
           emptyMessage="No hay movimientos registrados"
           style={{ fontSize: getResponsiveFontSize(), cursor: "pointer" }}
-          rowClassName={() => "p-selectable-row"}
+          rowClassName={(rowData) =>
+            rowData.formaParteCalculoEntregaARendir
+              ? "p-selectable-row bg-green-50"
+              : "p-selectable-row"
+          }
           size="small"
           stripedRows
           showGridlines
@@ -512,7 +704,7 @@ export default function DetEntregaRendirPescaIndustrial({
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <h3>Detalle Entrega a Rendir</h3>
+                  <h3>Detalle de Gastos</h3>
                 </div>
                 <div style={{ flex: 0.5 }}>
                   <Button
@@ -547,12 +739,12 @@ export default function DetEntregaRendirPescaIndustrial({
                   />
                 </div>
                 <div style={{ flex: 0.5 }}>
-                  <label htmlFor="">Ingreso/Egreso</label>
+                  <label htmlFor="">Entrega a Rendir</label>
                   <Button
-                    label={obtenerPropiedadesFiltroIngresoEgreso().label}
+                    label={obtenerPropiedadesFiltroEntregaARendir().label}
                     icon="pi pi-filter"
-                    onClick={alternarFiltroIngresoEgreso}
-                    severity={obtenerPropiedadesFiltroIngresoEgreso().severity}
+                    onClick={alternarFiltroEntregaARendir}
+                    severity={obtenerPropiedadesFiltroEntregaARendir().severity}
                     type="button"
                     raised
                   />
@@ -620,6 +812,31 @@ export default function DetEntregaRendirPescaIndustrial({
               >
                 <div style={{ flex: 1 }}>
                   <Dropdown
+                    value={filtroCategoriaMovimiento}
+                    options={(() => {
+                      const categoriasUnicas = tiposMovimiento
+                        .filter((t) => t.categoria && t.categoria.tipo === true)
+                        .map((t) => t.categoria)
+                        .filter(
+                          (cat, index, self) =>
+                            index ===
+                            self.findIndex(
+                              (c) => String(c.id) === String(cat.id),
+                            ),
+                        );
+                      return categoriasUnicas;
+                    })()}
+                    optionLabel="nombre"
+                    optionValue="id"
+                    placeholder="Filtrar por Categoría"
+                    onChange={(e) => setFiltroCategoriaMovimiento(e.value)}
+                    className="w-full"
+                    showClear
+                    filter
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Dropdown
                     value={filtroTipoMovimiento}
                     options={tiposMovimiento}
                     optionLabel="nombre"
@@ -628,6 +845,7 @@ export default function DetEntregaRendirPescaIndustrial({
                     onChange={(e) => setFiltroTipoMovimiento(e.value)}
                     className="w-full"
                     showClear
+                    filter
                   />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -643,6 +861,7 @@ export default function DetEntregaRendirPescaIndustrial({
                     onChange={(e) => setFiltroCentroCosto(e.value)}
                     className="w-full"
                     showClear
+                    filter
                   />
                 </div>
               </div>
@@ -660,10 +879,11 @@ export default function DetEntregaRendirPescaIndustrial({
             body={fechaMovimientoTemplate}
             sortable
           />
+
           <Column
-            field="responsableId"
-            header="Responsable"
-            body={responsableTemplate}
+            field="tipoMovimientoId"
+            header="Categoría"
+            body={categoriaTemplate}
             sortable
           />
           <Column
@@ -672,13 +892,13 @@ export default function DetEntregaRendirPescaIndustrial({
             body={tipoMovimientoTemplate}
             sortable
           />
-          <Column field="monto" header="Monto" body={montoTemplate} sortable />
           <Column
-            field="centroCostoId"
-            header="Centro de Costo"
-            body={centroCostoTemplate}
+            field="responsableId"
+            header="Responsable"
+            body={responsableTemplate}
             sortable
           />
+          <Column field="monto" header="Monto" body={montoTemplate} sortable />
           <Column
             field="validadoTesoreria"
             header="Validación Tesorería"
@@ -686,10 +906,24 @@ export default function DetEntregaRendirPescaIndustrial({
             sortable
           />
           <Column
-            field="fechaValidacionTesoreria"
-            header="Fecha Validación"
-            body={fechaValidacionTesoreriaTemplate}
+            field="asignacionOrigenId"
+            header="A/Origen"
+            body={asignacionOrigenTemplate}
             sortable
+          />
+          <Column
+            field="aRendir"
+            header="A Rendir"
+            body={aRendirTemplate}
+            sortable={false}
+            style={{ width: "120px", textAlign: "rigth" }}
+          />
+          <Column
+            field="formaParteCalculoEntregaARendir"
+            header="E/R"
+            body={entregaARendirTagTemplate}
+            sortable
+            style={{ width: "50px", textAlign: "center" }}
           />
           <Column field="descripcion" header="Descripción" sortable />
           <Column
@@ -711,14 +945,11 @@ export default function DetEntregaRendirPescaIndustrial({
       {/* Dialog para DetMovsEntregaRendir */}
       <Dialog
         visible={showMovimientoForm}
-        style={{ width: "1300px" }}
+        style={{ width: "95vw" }}
         header={editingMovimiento ? "Editar Movimiento" : "Nuevo Movimiento"}
         modal
         className="p-fluid"
-        onHide={() => {
-          setShowMovimientoForm(false);
-          setEditingMovimiento(null);
-        }}
+        closable={false}
         maximizable
         maximized={true}
       >
@@ -729,6 +960,7 @@ export default function DetEntregaRendirPescaIndustrial({
           personal={personal}
           centrosCosto={centrosCosto}
           tiposMovimiento={tiposMovimiento}
+          categorias={categorias}
           entidadesComerciales={entidadesComerciales}
           monedas={monedas}
           tiposDocumento={tiposDocumento}
@@ -740,6 +972,7 @@ export default function DetEntregaRendirPescaIndustrial({
           onCancelar={() => {
             setShowMovimientoForm(false);
             setEditingMovimiento(null);
+            onDataChange?.();
           }}
         />
       </Dialog>

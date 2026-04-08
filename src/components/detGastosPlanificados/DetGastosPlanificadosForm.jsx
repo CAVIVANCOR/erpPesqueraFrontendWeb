@@ -14,7 +14,10 @@ import { InputNumber } from "primereact/inputnumber";
 import { InputTextarea } from "primereact/inputtextarea";
 import { classNames } from "primereact/utils";
 import { useForm, Controller } from "react-hook-form";
-import { crearGastoPlanificado, actualizarGastoPlanificado } from "../../api/detGastosPlanificados";
+import {
+  crearGastoPlanificado,
+  actualizarGastoPlanificado,
+} from "../../api/detGastosPlanificados";
 
 /**
  * Componente DetGastosPlanificadosForm
@@ -28,20 +31,23 @@ import { crearGastoPlanificado, actualizarGastoPlanificado } from "../../api/det
  * @param {Function} props.onCancel - Función a ejecutar al cancelar
  * @param {Object} props.toast - Referencia al componente Toast para mostrar mensajes
  */
-const DetGastosPlanificadosForm = ({ 
-  gastoPlanificado, 
-  productos, 
-  monedas, 
+const DetGastosPlanificadosForm = ({
+  gastoPlanificado,
+  productos,
+  monedas,
+  familias = [],
+  monedaIdCabecera = null,
   entregaRendirData,
-  onSave, 
-  onCancel, 
-  toast, 
-  readOnly = false 
+  onSave,
+  onCancel,
+  toast,
+  readOnly = false,
 }) => {
   const [loading, setLoading] = useState(false);
+  const [familiaSeleccionada, setFamiliaSeleccionada] = useState(6); // Default: Gastos (id=6)
   const isEdit = !!gastoPlanificado?.id;
 
-  const {
+   const {
     control,
     handleSubmit,
     reset,
@@ -50,24 +56,36 @@ const DetGastosPlanificadosForm = ({
   } = useForm({
     defaultValues: {
       productoId: null,
-      monedaId: null,
+      monedaId: monedaIdCabecera ? Number(monedaIdCabecera) : null,
       montoPlanificado: 0,
       descripcion: "",
     },
-    mode: "onChange",
   });
 
   // Cargar datos si es edición
   useEffect(() => {
     if (gastoPlanificado) {
-      setValue("productoId", gastoPlanificado.productoId ? Number(gastoPlanificado.productoId) : null);
-      setValue("monedaId", gastoPlanificado.monedaId ? Number(gastoPlanificado.monedaId) : null);
+      setValue(
+        "productoId",
+        gastoPlanificado.productoId
+          ? Number(gastoPlanificado.productoId)
+          : null,
+      );
+      setValue(
+        "monedaId",
+        gastoPlanificado.monedaId ? Number(gastoPlanificado.monedaId) : null,
+      );
       setValue("montoPlanificado", gastoPlanificado.montoPlanificado || 0);
       setValue("descripcion", gastoPlanificado.descripcion || "");
-    } else {
+
+      // Cargar familia del producto si existe
+      if (gastoPlanificado.producto && gastoPlanificado.producto.familiaId) {
+        setFamiliaSeleccionada(Number(gastoPlanificado.producto.familiaId));
+      }
+      } else {
       reset({
         productoId: null,
-        monedaId: null,
+        monedaId: monedaIdCabecera ? Number(monedaIdCabecera) : null,
         montoPlanificado: 0,
         descripcion: "",
       });
@@ -80,7 +98,7 @@ const DetGastosPlanificadosForm = ({
   const onSubmit = async (data) => {
     try {
       setLoading(true);
-      
+
       // Construir datos normalizados con el FK correspondiente según el tipo de entrega
       const datosNormalizados = {
         productoId: Number(data.productoId),
@@ -94,7 +112,10 @@ const DetGastosPlanificadosForm = ({
       let resultado;
       if (gastoPlanificado?.id) {
         // Actualizar gasto planificado existente
-        resultado = await actualizarGastoPlanificado(gastoPlanificado.id, datosNormalizados);
+        resultado = await actualizarGastoPlanificado(
+          gastoPlanificado.id,
+          datosNormalizados,
+        );
         toast.current?.show({
           severity: "success",
           summary: "Éxito",
@@ -118,7 +139,9 @@ const DetGastosPlanificadosForm = ({
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: error.response?.data?.message || "Error al guardar el gasto planificado",
+        detail:
+          error.response?.data?.message ||
+          "Error al guardar el gasto planificado",
         life: 3000,
       });
     } finally {
@@ -135,144 +158,205 @@ const DetGastosPlanificadosForm = ({
     );
   };
 
-  // Preparar opciones de productos
-  const productosOptions = productos.map((p) => ({
+  // Preparar opciones de productos - Filtrados por familia seleccionada
+  const productosFiltrados = familiaSeleccionada
+    ? productos.filter(
+        (p) => Number(p.familiaId) === Number(familiaSeleccionada),
+      )
+    : productos;
+
+  const productosOptions = productosFiltrados.map((p) => ({
     label: p.descripcionArmada || p.nombre,
     value: Number(p.id),
   }));
 
   // Preparar opciones de monedas
   const monedasOptions = monedas.map((m) => ({
-    label: `${m.simbolo} - ${m.nombreLargo || m.codigoSunat}`,
+    label: m.codigoSunat,
     value: Number(m.id),
+  }));
+
+  // Preparar opciones de familias
+  const familiasOptions = familias.map((f) => ({
+    label: f.nombre,
+    value: Number(f.id),
   }));
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="p-fluid">
-      <div className="field">
-        <label
-          htmlFor="productoId"
-          className={classNames("font-medium", {
-            "p-error": errors.productoId,
-          })}
-        >
-          Producto (Gasto) <span className="text-red-500">*</span>
-        </label>
-        <Controller
-          name="productoId"
-          control={control}
-          rules={{
-            required: "El producto es requerido",
-          }}
-          render={({ field, fieldState }) => (
-            <Dropdown
-              id={field.name}
-              value={field.value}
-              onChange={(e) => field.onChange(e.value)}
-              options={productosOptions}
-              className={classNames({ "p-invalid": fieldState.error })}
-              disabled={readOnly || loading}
-              placeholder="Seleccione un producto"
-              filter
-              showClear
-            />
-          )}
-        />
-        {getFormErrorMessage("productoId")}
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label htmlFor="familiaId" className="font-medium">
+            Familia <span className="text-red-500">*</span>
+          </label>
+          <Dropdown
+            id="familiaId"
+            value={familiaSeleccionada}
+            onChange={(e) => {
+              setFamiliaSeleccionada(e.value);
+              // Limpiar producto seleccionado al cambiar familia
+              setValue("productoId", null);
+            }}
+            options={familiasOptions}
+            disabled={readOnly || loading}
+            placeholder="Seleccione una familia"
+            filter
+            showClear
+            style={{ fontWeight: "bold" }}
+          />
+        </div>
       </div>
-
-      <div className="field mt-4">
-        <label
-          htmlFor="monedaId"
-          className={classNames("font-medium", {
-            "p-error": errors.monedaId,
-          })}
-        >
-          Moneda <span className="text-red-500">*</span>
-        </label>
-        <Controller
-          name="monedaId"
-          control={control}
-          rules={{
-            required: "La moneda es requerida",
-          }}
-          render={({ field, fieldState }) => (
-            <Dropdown
-              id={field.name}
-              value={field.value}
-              onChange={(e) => field.onChange(e.value)}
-              options={monedasOptions}
-              className={classNames({ "p-invalid": fieldState.error })}
-              disabled={readOnly || loading}
-              placeholder="Seleccione una moneda"
-              filter
-              showClear
-            />
-          )}
-        />
-        {getFormErrorMessage("monedaId")}
-      </div>
-
-      <div className="field mt-4">
-        <label
-          htmlFor="montoPlanificado"
-          className={classNames("font-medium", {
-            "p-error": errors.montoPlanificado,
-          })}
-        >
-          Monto Planificado <span className="text-red-500">*</span>
-        </label>
-        <Controller
-          name="montoPlanificado"
-          control={control}
-          rules={{
-            required: "El monto planificado es requerido",
-            min: {
-              value: 0.01,
-              message: "El monto debe ser mayor a 0",
-            },
-          }}
-          render={({ field, fieldState }) => (
-            <div className="p-inputgroup">
-              <span className="p-inputgroup-addon">
-                <i className="pi pi-dollar" />
-              </span>
-              <InputNumber
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label
+            htmlFor="productoId"
+            className={classNames("font-medium", {
+              "p-error": errors.productoId,
+            })}
+          >
+            Producto (Gasto) <span className="text-red-500">*</span>
+          </label>
+          <Controller
+            name="productoId"
+            control={control}
+            rules={{
+              required: "El producto es requerido",
+            }}
+            render={({ field, fieldState }) => (
+              <Dropdown
                 id={field.name}
                 value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
+                onChange={(e) => field.onChange(e.value)}
+                options={productosOptions}
                 className={classNames({ "p-invalid": fieldState.error })}
                 disabled={readOnly || loading}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                min={0}
-                placeholder="0.00"
+                placeholder="Seleccione un producto"
+                filter
+                showClear
+                style={{ fontWeight: "bold" }}
               />
-            </div>
-          )}
-        />
-        {getFormErrorMessage("montoPlanificado")}
+            )}
+          />
+          {getFormErrorMessage("productoId")}
+        </div>
       </div>
-
-      <div className="field mt-4">
-        <label htmlFor="descripcion" className="font-medium">
-          Descripción (Opcional)
-        </label>
-        <Controller
-          name="descripcion"
-          control={control}
-          render={({ field }) => (
-            <InputTextarea
-              id={field.name}
-              value={field.value || ""}
-              onChange={field.onChange}
-              disabled={readOnly || loading}
-              rows={3}
-              placeholder="Descripción adicional del gasto planificado"
-            />
-          )}
-        />
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label
+            htmlFor="monedaId"
+            className={classNames("font-medium", {
+              "p-error": errors.monedaId,
+            })}
+          >
+            Moneda <span className="text-red-500">*</span>
+          </label>
+          <Controller
+            name="monedaId"
+            control={control}
+            rules={{
+              required: "La moneda es requerida",
+            }}
+            render={({ field, fieldState }) => (
+              <Dropdown
+                id={field.name}
+                value={field.value}
+                onChange={(e) => field.onChange(e.value)}
+                options={monedasOptions}
+                className={classNames({ "p-invalid": fieldState.error })}
+                disabled={readOnly || loading}
+                placeholder="Seleccione una moneda"
+                showClear
+                style={{ fontWeight: "bold" }}
+              />
+            )}
+          />
+          {getFormErrorMessage("monedaId")}
+        </div>
+        <div style={{ flex: 1 }}>
+          <label
+            htmlFor="montoPlanificado"
+            className={classNames("font-medium", {
+              "p-error": errors.montoPlanificado,
+            })}
+          >
+            Monto Planificado <span className="text-red-500">*</span>
+          </label>
+          <Controller
+            name="montoPlanificado"
+            control={control}
+            rules={{
+              required: "El monto planificado es requerido",
+              min: {
+                value: 0.01,
+                message: "El monto debe ser mayor a 0",
+              },
+            }}
+            render={({ field, fieldState }) => (
+              <div className="p-inputgroup">
+                <InputNumber
+                  id={field.name}
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  className={classNames({ "p-invalid": fieldState.error })}
+                  disabled={readOnly || loading}
+                  mode="decimal"
+                  minFractionDigits={2}
+                  maxFractionDigits={2}
+                  min={0}
+                  placeholder="0.00"
+                  inputStyle={{ fontWeight: "bold" }}
+                />
+              </div>
+            )}
+          />
+          {getFormErrorMessage("montoPlanificado")}
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexDirection: window.innerWidth < 768 ? "column" : "row",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label htmlFor="descripcion" className="font-medium">
+            Descripción (Opcional)
+          </label>
+          <Controller
+            name="descripcion"
+            control={control}
+            render={({ field }) => (
+              <InputTextarea
+                id={field.name}
+                value={field.value || ""}
+                onChange={field.onChange}
+                disabled={readOnly || loading}
+                rows={3}
+                placeholder="Descripción adicional del gasto planificado"
+                style={{ fontWeight: "bold" }}
+              />
+            )}
+          />
+        </div>
       </div>
 
       <div
@@ -296,11 +380,12 @@ const DetGastosPlanificadosForm = ({
           outlined
         />
         <Button
-          type="submit"
+          type="button"
           label={isEdit ? "Actualizar" : "Guardar"}
           icon="pi pi-check"
           loading={loading}
           disabled={loading}
+          onClick={handleSubmit(onSubmit)}
           className="p-button-success"
           severity="success"
           raised

@@ -17,7 +17,7 @@ import {
 } from "../api/configuracionCuentaContable";
 import { getEmpresas } from "../api/empresa";
 import { getAllTipoMovEntregaRendir } from "../api/tipoMovEntregaRendir";
-import { getAllTipoReferenciaMovimientoCaja } from "../api/tipoReferenciaMovimientoCaja";
+import { getMediosPago } from "../api/medioPago";
 import { getAllCategoriaTipoMovEntregaRendir } from "../api/categoriaTipoMovEntregaRendir";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
@@ -36,7 +36,7 @@ export default function ConfiguracionCuentaContable({ ruta }) {
   const [items, setItems] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [tiposMovimiento, setTiposMovimiento] = useState([]);
-  const [tiposReferencia, setTiposReferencia] = useState([]);
+  const [mediosPago, setMediosPago] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [empresaFilter, setEmpresaFilter] = useState(null);
   const [tipoFilter, setTipoFilter] = useState(null);
@@ -65,17 +65,17 @@ export default function ConfiguracionCuentaContable({ ruta }) {
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const [configs, emps, tiposMov, tiposRef, cats] = await Promise.all([
+      const [configs, emps, tiposMov, medios, cats] = await Promise.all([
         getAllConfiguracionCuentaContable(),
         getEmpresas(),
         getAllTipoMovEntregaRendir(),
-        getAllTipoReferenciaMovimientoCaja(),
+        getMediosPago(),
         getAllCategoriaTipoMovEntregaRendir(),
       ]);
       setItems(configs);
       setEmpresas(emps);
       setTiposMovimiento(tiposMov);
-      setTiposReferencia(tiposRef);
+      setMediosPago(medios);
       setCategorias(cats);
     } catch (error) {
       toast.current?.show({
@@ -271,10 +271,10 @@ export default function ConfiguracionCuentaContable({ ruta }) {
     return tipo ? tipo.nombre : "-";
   };
 
-  const tipoReferenciaBodyTemplate = (rowData) => {
-    if (!rowData.tipoReferenciaId) return "-";
-    const tipo = rowData.tipoReferencia;
-    return tipo ? tipo.nombre : "-";
+  const medioPagoBodyTemplate = (rowData) => {
+    if (!rowData.medioPagoId) return "-";
+    const medio = rowData.medioPago;
+    return medio ? medio.nombre : "-";
   };
 
   const activoBodyTemplate = (rowData) => {
@@ -588,9 +588,9 @@ export default function ConfiguracionCuentaContable({ ruta }) {
           sortable
         />
         <Column
-          field="tipoReferenciaId"
-          header="Tipo Referencia"
-          body={tipoReferenciaBodyTemplate}
+          field="medioPagoId"
+          header="Medio de Pago"
+          body={medioPagoBodyTemplate}
           sortable
         />
         <Column
@@ -640,7 +640,7 @@ export default function ConfiguracionCuentaContable({ ruta }) {
           defaultValues={selected || {}}
           empresas={empresas}
           tiposMovimiento={tiposMovimiento}
-          tiposReferencia={tiposReferencia}
+          mediosPago={mediosPago}
           onSubmit={onSubmit}
           onCancel={onCancel}
           loading={loading}

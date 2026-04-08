@@ -8,7 +8,6 @@
  * @author ERP Megui
  * @version 1.0.0
  */
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card } from "primereact/card";
 import { Button } from "primereact/button";
@@ -35,6 +34,7 @@ import { getEntidadesComerciales } from "../../api/entidadComercial";
 import { getMonedas } from "../../api/moneda"; // ← AGREGAR ESTA LÍNEA
 import { getProductos } from "../../api/producto"; // Importar API de productos
 import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { getAllCategoriaTipoMovEntregaRendir } from "../../api/categoriaTipoMovEntregaRendir";
 
 const EntregasARendirTemporadaCard = ({
   temporadaPescaId,
@@ -60,13 +60,12 @@ const EntregasARendirTemporadaCard = ({
   const [entidadesComerciales, setEntidadesComerciales] = useState([]);
   const [monedas, setMonedas] = useState([]); // ← AGREGAR ESTA LÍNEA
   const [productos, setProductos] = useState([]); // Estado para productos (gastos)
-
+  const [categorias, setCategorias] = useState([]);
   // Estados para cálculos automáticos
   const [totalAsignacionesEntregasRendir, setTotalAsignacionesEntregasRendir] =
     useState(0);
   const [totalGastosEntregasRendir, setTotalGastosEntregasRendir] = useState(0);
   const [totalSaldoEntregasRendir, setTotalSaldoEntregasRendir] = useState(0);
-
   // Estados para DetMovsEntregaRendir
   const [movimientos, setMovimientos] = useState([]);
   const [selectedMovimientos, setSelectedMovimientos] = useState([]);
@@ -123,6 +122,20 @@ const EntregasARendirTemporadaCard = ({
     }
   };
 
+  const cargarCategorias = async () => {
+    try {
+      const data = await getAllCategoriaTipoMovEntregaRendir();
+      setCategorias(data);
+    } catch (error) {
+      console.error("Error al cargar categorías:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Error al cargar categorías de tipo movimiento",
+        life: 3000,
+      });
+    }
+  };
   /**
    * Verificar si existe una entrega a rendir para esta temporada
    * Si no existe, preguntar si desea crearla
@@ -195,16 +208,20 @@ const EntregasARendirTemporadaCard = ({
     movs.forEach((mov) => {
       const monto = Number(mov.monto) || 0;
 
-      // Buscar el tipo de movimiento en el array tiposMovimiento usando el ID
-      const tipoMov = tiposMovimiento.find(
-        (t) => Number(t.id) === Number(mov.tipoMovimientoId),
-      );
-
-      // Verificar si es ingreso o egreso usando el campo "esIngreso" (booleano)
-      if (tipoMov?.esIngreso === true) {
-        totalAsignaciones += monto;
-      } else if (tipoMov?.esIngreso === false) {
-        totalGastos += monto;
+      // Solo considerar movimientos que forman parte del cálculo de entrega a rendir
+      if (mov.formaParteCalculoEntregaARendir === true) {
+        // Asignaciones origen: asignacionOrigenId = null/undefined/0
+        if (
+          mov.asignacionOrigenId === null ||
+          mov.asignacionOrigenId === undefined ||
+          Number(mov.asignacionOrigenId) === 0
+        ) {
+          totalAsignaciones += monto;
+        }
+        // Gastos asociados: asignacionOrigenId > 0
+        else if (Number(mov.asignacionOrigenId) > 0) {
+          totalGastos += monto;
+        }
       }
     });
 
@@ -220,6 +237,7 @@ const EntregasARendirTemporadaCard = ({
     verificarYCargarEntrega();
     cargarEntidadesComerciales();
     cargarMonedas();
+    cargarCategorias();
   }, [temporadaPescaId]);
 
   useEffect(() => {
@@ -245,8 +263,8 @@ const EntregasARendirTemporadaCard = ({
   const preguntarCrearEntrega = () => {
     confirmDialog({
       message:
-        "No existe una entrega a rendir para esta temporada. ¿Desea crear una?",
-      header: "Crear Entrega a Rendir",
+        "No existe una Detalle de Gastos para esta temporada. ¿Desea crear una?",
+      header: "Crear Detalle de Gastos",
       icon: "pi pi-question-circle",
       acceptLabel: "Sí, Crear",
       rejectLabel: "No",
@@ -326,7 +344,7 @@ const EntregasARendirTemporadaCard = ({
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: "Entrega a rendir creada correctamente",
+        detail: "Detalle de Gastos creado correctamente",
         life: 3000,
       });
 
@@ -456,8 +474,8 @@ const EntregasARendirTemporadaCard = ({
         <div className="mb-4">
           <h2 className="text-900 font-medium mb-3">
             {entregaARendir
-              ? `Entrega a Rendir ID: ${entregaARendir.id}`
-              : "Entrega a Rendir"}
+              ? `Detalle de Gastos ID: ${entregaARendir.id}`
+              : "Detalle de Gastos"}
           </h2>
           {entregaARendir ? (
             <div>
@@ -616,7 +634,7 @@ const EntregasARendirTemporadaCard = ({
           >
             <div style={{ flex: 1 }}>
               <label className="block text-900 font-medium mb-2">
-                Total Asignaciones
+                Total Entregas a Rendir
               </label>
               <InputText
                 value={new Intl.NumberFormat("es-PE", {
@@ -714,6 +732,7 @@ const EntregasARendirTemporadaCard = ({
               personal={personal}
               centrosCosto={centrosCosto}
               tiposMovimiento={tiposMovimiento}
+              categorias={categorias}
               entidadesComerciales={entidadesComerciales}
               monedas={monedas}
               tiposDocumento={tiposDocumento}

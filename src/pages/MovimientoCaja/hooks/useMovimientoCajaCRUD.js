@@ -14,7 +14,7 @@ const useMovimientoCajaCRUD = ({
   empresas,
   monedas,
   tipoMovEntregaRendir,
-  tipoReferenciaMovimientoCaja,
+  mediosPago,
   cuentasCorrientes,
   entidadesComerciales,
   cuentasEntidadComercial,
