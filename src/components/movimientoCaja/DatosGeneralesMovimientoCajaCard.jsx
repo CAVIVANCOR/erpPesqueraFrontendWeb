@@ -81,7 +81,9 @@ const DatosGeneralesMovimientoCajaCard = ({
   readOnly = false,
 }) => {
   // Obtener entidad comercial de la empresa origen
-  const empresaOrigen = empresas.find(emp => Number(emp.id) === Number(empresaOrigenId));
+  const empresaOrigen = empresas.find(
+    (emp) => Number(emp.id) === Number(empresaOrigenId),
+  );
   const entidadComercialDeEmpresa = empresaOrigen?.entidadComercialId;
 
   // Filtrar productos por empresa, cliente y excluir mercaderías
@@ -90,12 +92,15 @@ const DatosGeneralesMovimientoCajaCard = ({
     if (!p.empresaId || Number(p.empresaId) !== Number(empresaOrigenId)) {
       return false;
     }
-    
+
     // Validar que el producto pertenezca al cliente de la empresa
-    if (!p.clienteId || Number(p.clienteId) !== Number(entidadComercialDeEmpresa)) {
+    if (
+      !p.clienteId ||
+      Number(p.clienteId) !== Number(entidadComercialDeEmpresa)
+    ) {
       return false;
     }
-    
+
     // Excluir familia 1 (mercaderías)
     return Number(p.familiaId) !== 1;
   });
@@ -153,8 +158,8 @@ const DatosGeneralesMovimientoCajaCard = ({
             <label htmlFor="fecha">Fecha*</label>
             <Calendar
               id="fecha"
-              value={fechaOperacionMovCaja} // 
-              onChange={(e) => setFechaOperacionMovCaja(e.value)} // 
+              value={fechaOperacionMovCaja} //
+              onChange={(e) => setFechaOperacionMovCaja(e.value)} //
               showIcon
               dateFormat="dd-mm-yy"
               disabled={readOnly}
@@ -396,9 +401,7 @@ const DatosGeneralesMovimientoCajaCard = ({
           )}
           {/* Filtro de Familia y Producto (Gasto) */}
           <div style={{ flex: 1 }}>
-            <label htmlFor="familiaFiltro">
-              Filtrar por Familia
-            </label>
+            <label htmlFor="familiaFiltro">Filtrar por Familia</label>
             <Dropdown
               id="familiaFiltro"
               value={familiaFiltroId}
@@ -409,7 +412,7 @@ const DatosGeneralesMovimientoCajaCard = ({
               onChange={(e) => setFamiliaFiltroId(e.value)}
               showClear
               filter
-              style={{ fontWeight: "bold", fontStyle:"italic" }}
+              style={{ fontWeight: "bold", fontStyle: "italic" }}
               disabled={readOnly || loading}
             />
           </div>
@@ -484,7 +487,7 @@ const DatosGeneralesMovimientoCajaCard = ({
             <Dropdown
               id="medioPagoId"
               value={medioPagoId}
-              options={mediosPago.map((medio) => ({
+              options={(mediosPago || []).map((medio) => ({
                 label: medio.nombre,
                 value: Number(medio.id),
               }))}
