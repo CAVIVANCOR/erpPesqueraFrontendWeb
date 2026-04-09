@@ -25,7 +25,7 @@ import { formatearFechaHora, formatearNumero } from "../../utils/utils";
 import DetGastosPlanificadosTable from "../detGastosPlanificados/DetGastosPlanificadosTable";
 import { getGastosPlanificados } from "../../api/detGastosPlanificados";
 import LiquidacionEntregaARendirCard from "./LiquidacionEntregaARendirCard";
-import { obtenerTodasAsignacionesNoLiquidadas } from "../../api/detMovsEntregaRendir";
+import { obtenerTodasAsignacionesNoLiquidadas, obtenerValoresIniciales } from "../../api/detMovsEntregaRendir";
 import { getEmbarcaciones } from "../../api/embarcacion";
 
 const DetMovsEntregaRendirForm = ({
@@ -318,6 +318,30 @@ const DetMovsEntregaRendirForm = ({
     cargarAsignaciones();
   }, []);
 
+    // ⭐ Cargar valores iniciales en modo creación
+  useEffect(() => {
+    const cargarValoresIniciales = async () => {
+      if (!isEditing && entregaARendirId) {
+        try {
+          const valores = await obtenerValoresIniciales(
+            'PESCA_INDUSTRIAL',
+            entregaARendirId
+          );
+          
+          setValue('enlaceAOtroDetalleGastoId', valores.enlaceAOtroDetalleGastoId);
+          
+          if (valores.embarcacionId) {
+            setValue('embarcacionId', valores.embarcacionId);
+          }
+        } catch (error) {
+          console.error('Error al cargar valores iniciales:', error);
+        }
+      }
+    };
+
+    cargarValoresIniciales();
+  }, [isEditing, entregaARendirId, setValue]);
+  
   // Cargar embarcaciones
   useEffect(() => {
     const cargarEmbarcaciones = async () => {

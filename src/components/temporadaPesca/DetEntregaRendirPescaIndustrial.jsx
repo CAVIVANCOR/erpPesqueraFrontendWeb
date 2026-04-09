@@ -486,14 +486,8 @@ export default function DetEntregaRendirPescaIndustrial({
     );
   };
 
-  const responsableTemplate = (rowData) => {
-    const responsable = personal.find(
-      (p) => Number(p.id) === Number(rowData.responsableId),
-    );
-    return responsable
-      ? responsable.nombreCompleto ||
-          `${responsable.nombres} ${responsable.apellidos}`
-      : "N/A";
+  const descripcionTemplate = (rowData) => {
+    return rowData.descripcion || "N/A";
   };
 
   const tipoMovimientoTemplate = (rowData) => {
@@ -871,9 +865,9 @@ export default function DetEntregaRendirPescaIndustrial({
             sortable
           />
           <Column
-            field="responsableId"
-            header="Responsable"
-            body={responsableTemplate}
+            field="descripcion"
+            header="Descripción"
+            body={descripcionTemplate}
             sortable
           />
           <Column field="monto" header="Monto" body={montoTemplate} sortable />

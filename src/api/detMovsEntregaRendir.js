@@ -112,3 +112,22 @@ export const obtenerTodasAsignacionesNoLiquidadas = async () => {
     throw error;
   }
 };
+
+/**
+ * Obtiene los valores iniciales para un nuevo detalle de movimiento
+ * @param {string} moduloOrigen - Módulo de origen (PESCA_INDUSTRIAL, PESCA_CONSUMO, etc.)
+ * @param {number} entregaARendirId - ID de la entrega a rendir
+ * @returns {Promise<Object>} Valores iniciales (enlaceAOtroDetalleGastoId, embarcacionId)
+ */
+export const obtenerValoresIniciales = async (moduloOrigen, entregaARendirId) => {
+  try {
+    const response = await axios.get(`${API_URL}/valores-iniciales`, {
+      params: { moduloOrigen, entregaARendirId },
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener valores iniciales:', error);
+    throw error;
+  }
+};
