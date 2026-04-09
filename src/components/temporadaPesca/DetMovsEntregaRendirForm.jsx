@@ -26,6 +26,7 @@ import PdfComprobanteOperacionDetMovCard from "./PdfComprobanteOperacionDetMovCa
 import { formatearFechaHora, formatearNumero } from "../../utils/utils";
 import DetGastosPlanificadosTable from "../detGastosPlanificados/DetGastosPlanificadosTable";
 import { getGastosPlanificados } from "../../api/detGastosPlanificados";
+import LiquidacionEntregaARendirCard from "./LiquidacionEntregaARendirCard";
 
 const DetMovsEntregaRendirForm = ({
   movimiento = null,
@@ -91,6 +92,9 @@ const DetMovsEntregaRendirForm = ({
       formaParteCalculoLiquidacionTripulantes: false,
       formaParteCalculoEntregaARendir: false,
       formaParteCalculoLiqAlquilerCuota: false,
+      entregaARendirLiquidada: false,
+      fechaLiquidacionEntregaARendir: null,
+      urlLiquidacionEntregaARendir: null,
     },
   });
   const urlComprobanteMovimiento = watch("urlComprobanteMovimiento");
@@ -172,6 +176,11 @@ const DetMovsEntregaRendirForm = ({
           movimiento.formaParteCalculoEntregaARendir ?? false,
         formaParteCalculoLiqAlquilerCuota:
           movimiento.formaParteCalculoLiqAlquilerCuota ?? false,
+        entregaARendirLiquidada: movimiento.entregaARendirLiquidada ?? false,
+        fechaLiquidacionEntregaARendir:
+          movimiento.fechaLiquidacionEntregaARendir || null,
+        urlLiquidacionEntregaARendir:
+          movimiento.urlLiquidacionEntregaARendir || null,
       });
     } else {
       setValue("entregaARendirId", Number(entregaARendirId));
@@ -272,22 +281,22 @@ const DetMovsEntregaRendirForm = ({
     cargarGastosPlanificados();
   }, [asignacionOrigenId]);
 
-  
   // Cargar centro de costo desde asignación origen
   useEffect(() => {
     if (asignacionOrigenId && asignacionOrigenId > 0) {
       const asignacionOrigen = movimientosAsignacionEntregaRendir.find(
-        (mov) => Number(mov.id) === Number(asignacionOrigenId)
+        (mov) => Number(mov.id) === Number(asignacionOrigenId),
       );
-      
+
       if (asignacionOrigen && asignacionOrigen.centroCostoId) {
-        console.log("✅ Cargando Centro de Costo desde Asignación Origen:", asignacionOrigen.centroCostoId);
+        console.log(
+          "✅ Cargando Centro de Costo desde Asignación Origen:",
+          asignacionOrigen.centroCostoId,
+        );
         setValue("centroCostoId", Number(asignacionOrigen.centroCostoId));
       }
     }
   }, [asignacionOrigenId, movimientosAsignacionEntregaRendir, setValue]);
-
-  
 
   // Auto-asignar entidadComercialId desde TemporadaPesca.empresa.entidadComercialId cuando es asignación
   useEffect(() => {
@@ -462,35 +471,21 @@ const DetMovsEntregaRendirForm = ({
     });
   };
 
-   const cargarDatosDesdeGastoPlanificado = (gastoId) => {
-    console.log("🔍 cargarDatosDesdeGastoPlanificado - gastoId:", gastoId);
-    console.log("🔍 gastosPlanificadosAsignacion:", gastosPlanificadosAsignacion);
-    
+  const cargarDatosDesdeGastoPlanificado = (gastoId) => {
     const gasto = gastosPlanificadosAsignacion.find(
       (g) => Number(g.id) === Number(gastoId),
     );
-    
-    console.log("🔍 Gasto encontrado:", gasto);
-    
+
     if (gasto) {
       const productoId = gasto.productoId ? Number(gasto.productoId) : null;
       const monedaId = gasto.monedaId ? Number(gasto.monedaId) : null;
       const monto = gasto.montoPlanificado ? Number(gasto.montoPlanificado) : 0;
       const descripcion = gasto.descripcion || "";
-      
-      console.log("✅ Cargando valores:");
-      console.log("  - productoId:", productoId);
-      console.log("  - monedaId:", monedaId);
-      console.log("  - monto:", monto);
-      console.log("  - descripcion:", descripcion);
-      
       setValue("productoId", productoId);
       setValue("monedaId", monedaId);
       setValue("monto", monto);
       setValue("descripcion", descripcion);
       setGastoPlanificadoSeleccionado(gastoId);
-      
-      console.log("✅ setValue ejecutado correctamente");
     } else {
       console.error("❌ No se encontró el gasto con ID:", gastoId);
     }
@@ -556,6 +551,11 @@ const DetMovsEntregaRendirForm = ({
         formaParteCalculoLiquidacionTripulantes:
           data.formaParteCalculoLiquidacionTripulantes,
         formaParteCalculoEntregaARendir: data.formaParteCalculoEntregaARendir,
+        formaParteCalculoLiqAlquilerCuota:
+          data.formaParteCalculoLiqAlquilerCuota,
+        entregaARendirLiquidada: data.entregaARendirLiquidada,
+        fechaLiquidacionEntregaARendir: data.fechaLiquidacionEntregaARendir,
+        urlLiquidacionEntregaARendir: data.urlLiquidacionEntregaARendir,
         actualizadoEn: new Date(),
       };
 
@@ -1502,6 +1502,22 @@ const DetMovsEntregaRendirForm = ({
           readOnly={false}
         />
       )}
+
+      {cardActiva === "liquidacion" && (
+        <LiquidacionEntregaARendirCard
+          control={control}
+          errors={errors}
+          setValue={setValue}
+          watch={watch}
+          getValues={getValues}
+          defaultValues={getValues()}
+          detMovId={movimiento?.id}
+          readOnly={false}
+          movimientoData={movimiento}
+          onLiquidacionExitosa={onGuardadoExitoso}
+          onGuardarMovimiento={() => handleSubmit(onSubmit)()}
+        />
+      )}
       <div
         style={{
           display: "flex",
@@ -1546,6 +1562,20 @@ const DetMovsEntregaRendirForm = ({
             tooltip="Comprobante Operación MovCaja"
             raised
           />
+          {!getValues("asignacionOrigenId") &&
+            getValues("formaParteCalculoEntregaARendir") && (
+              <Button
+                type="button"
+                label="Liquidación"
+                icon="pi pi-file-check"
+                className={
+                  cardActiva === "liquidacion"
+                    ? "p-button-primary"
+                    : "p-button-secondary"
+                }
+                onClick={() => setCardActiva("liquidacion")}
+              />
+            )}
         </div>
 
         <div style={{ display: "flex", gap: "0.5rem" }}>

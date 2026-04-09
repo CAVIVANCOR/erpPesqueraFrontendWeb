@@ -78,3 +78,20 @@ export const eliminarDetMovsEntregaRendir = async (id) => {
     throw error;
   }
 };
+
+/**
+ * Obtiene un detalle de movimientos entrega a rendir con gastos asociados
+ * @param {number} id - ID del detalle de movimientos entrega a rendir
+ * @returns {Promise<Object>} Detalle con gastos asociados
+ */
+export const obtenerDetMovsEntregaRendirConGastos = async (id) => {
+  try {
+    const response = await axios.get(`${API_URL}/${id}/con-gastos`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener detalle con gastos asociados:', error);
+    throw error;
+  }
+};

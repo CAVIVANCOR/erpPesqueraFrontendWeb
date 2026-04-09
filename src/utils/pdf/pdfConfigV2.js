@@ -550,6 +550,20 @@ export const PDF_MODULES_CONFIG = {
     },
   },
 
+    "liquidacion-entrega-rendir-pesca-industrial": {
+    uploadPath: "uploads/pdf-system/liquidacion-entrega-rendir-pesca-industrial",
+    oldPaths: [],
+    apiEndpoint: "/pdf/liquidacion-entrega-rendir-pesca-industrial",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf", "image/jpeg", "image/png"],
+    maxFiles: 20,
+    database: {
+      table: "DetMovsEntregaRendir",
+      field: "urlLiquidacionEntregaARendir",
+    },
+  },
+  
+
   "det-movs-entrega-rendir-reqcompras-comprobante": {
     uploadPath: "uploads/pdf-system/det-movs-entrega-rendir-reqcompras-comprobante",
     oldPaths: [],
