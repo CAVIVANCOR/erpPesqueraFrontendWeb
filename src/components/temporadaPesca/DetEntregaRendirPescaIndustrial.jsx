@@ -177,38 +177,16 @@ export default function DetEntregaRendirPescaIndustrial({
     }
 
     if (filtroCategoriaMovimiento) {
-      console.log(
-        "🔍 FILTRO CATEGORÍA - Valor seleccionado:",
-        filtroCategoriaMovimiento,
-      );
       movimientosFiltrados = movimientosFiltrados.filter((mov) => {
         // Usar la relación directa: DetMovsEntregaRendir.tipoMovimiento.categoria.id
         const categoriaId =
           mov.tipoMovimiento?.categoria?.id || mov.tipoMovimiento?.categoriaId;
-
-        console.log(
-          "🔍 Movimiento ID:",
-          mov.id,
-          "| tipoMovimiento:",
-          mov.tipoMovimiento,
-          "| categoriaId encontrado:",
-          categoriaId,
-        );
-
         const cumpleFiltro =
           categoriaId &&
           Number(categoriaId) === Number(filtroCategoriaMovimiento);
 
-        if (cumpleFiltro) {
-          console.log("✅ Movimiento PASA el filtro:", mov.id);
-        }
-
         return cumpleFiltro;
       });
-      console.log(
-        "🔍 Total movimientos después de filtrar:",
-        movimientosFiltrados.length,
-      );
     }
 
     if (filtroValidacionTesoreria !== null) {

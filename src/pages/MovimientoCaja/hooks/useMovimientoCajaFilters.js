@@ -1,8 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 
 const useMovimientoCajaFilters = (movimientos) => {
-  // ✅ LOG INICIAL:
-  console.log("🔍 FILTERS - movimientos recibidos:", movimientos?.length || 0);
 
   // Estado de filtros - CORREGIDO: nombres correctos de campos
   const [filtros, setFiltros] = useState({
@@ -52,10 +50,6 @@ const useMovimientoCajaFilters = (movimientos) => {
 
   // ✅ CORRECCIÓN PRINCIPAL: Lógica de filtrado corregida
   const filteredMovimientos = useMemo(() => {
-    console.log("🔍 FILTERS - Aplicando filtros:", {
-      originales: movimientos?.length || 0,
-      filtrosActivos: Object.values(filtros).filter(v => v !== null && v !== "").length
-    });
 
     if (!movimientos || movimientos.length === 0) {
       return [];

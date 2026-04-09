@@ -46,7 +46,6 @@ const CardAsientoContable = ({
 
   const handleGuardarEdicion = (asientoEditado) => {
     // Aquí llamarías a la API para actualizar el asiento
-    console.log("Asiento editado:", asientoEditado);
     setDialogEditar(false);
   };
 

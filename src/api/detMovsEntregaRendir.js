@@ -95,3 +95,20 @@ export const obtenerDetMovsEntregaRendirConGastos = async (id) => {
     throw error;
   }
 };
+
+
+/**
+ * Obtiene todas las asignaciones no liquidadas de todos los módulos
+ * @returns {Promise<Array>} Lista de asignaciones no liquidadas
+ */
+export const obtenerTodasAsignacionesNoLiquidadas = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/asignaciones/no-liquidadas`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener asignaciones no liquidadas:', error);
+    throw error;
+  }
+};

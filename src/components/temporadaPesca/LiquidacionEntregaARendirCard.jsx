@@ -110,7 +110,6 @@ const LiquidacionEntregaARendirCard = ({
         });
       }
     }
-    console.log("resultado", resultado);
     return resultado;
   };
 

@@ -50,29 +50,10 @@ const MovimientoCaja = () => {
     recargarDatos
   } = useMovimientoCajaData();
 
-  // 🔍 DEBUG: Ver qué permisos recibe index.jsx
-  console.log("🔍 [MovimientoCaja/index] permisos recibidos:", permisos);
-  console.log("🔍 [MovimientoCaja/index] permisos.tieneAcceso:", permisos.tieneAcceso);
-  console.log("🔍 [MovimientoCaja/index] permisos.puedeVer:", permisos.puedeVer);
-  console.log("🔍 [MovimientoCaja/index] Condición (!permisos.tieneAcceso || !permisos.puedeVer):", (!permisos.tieneAcceso || !permisos.puedeVer));
-
   // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
-    console.log("❌ [MovimientoCaja/index] BLOQUEANDO ACCESO - Redirigiendo a /sin-acceso");
     return <Navigate to="/sin-acceso" replace />;
   }
-
-  console.log("✅ [MovimientoCaja/index] ACCESO PERMITIDO - Renderizando módulo");
-
-  // ✅ LOGS DE DATOS RECIBIDOS EN INDEX
-  console.log("📋 DATOS RECIBIDOS EN INDEX:", {
-    centrosCosto: centrosCosto?.length || 0,
-    personal: personal?.length || 0,
-    modulos: modulos?.length || 0,
-    estadosMultiFuncion: estadosMultiFuncion?.length || 0,
-    empresas: empresas?.length || 0,
-    monedas: monedas?.length || 0
-  });
 
   // ✅ CORRECCIÓN: Pasar parámetros a useMovimientoCajaCRUD
   const {
@@ -112,26 +93,8 @@ const MovimientoCaja = () => {
     handleFiltroChange,
     limpiarFiltros
   } = useMovimientoCajaFilters(movimientos);
-
   // Hook para datos de tabs de procesos productivos
   const tabsData = useMovimientoCajaTabsData(toast);
-
-  // ✅ LOGS DE DEBUGGING:
-  console.log("🔍 DEBUG - movimientos:", movimientos?.length || 0);
-  console.log("🔍 DEBUG - filteredMovimientos:", filteredMovimientos?.length || 0);
-  console.log("🔍 DEBUG - filtros:", filtros);
-
-  // ✅ LOGS ANTES DE PASAR A HEADER
-  console.log("📤 DATOS A MOVIMIENTOCAJAHEADER:", {
-    empresas: empresas?.length || 0,
-    cuentasCorrientes: cuentasCorrientes?.length || 0,
-    monedas: monedas?.length || 0,
-    centrosCosto: centrosCosto?.length || 0,
-    personal: personal?.length || 0,
-    modulos: modulos?.length || 0,
-    estadosMultiFuncion: estadosMultiFuncion?.length || 0
-  });
-
   // Effects
   useEffect(() => {
     if (error) {
@@ -148,22 +111,6 @@ const MovimientoCaja = () => {
   const handleRowClick = (event) => {
     // ✅ CORRECCIÓN: Extraer datos correctamente del evento de PrimeReact
     const movimiento = event?.data || event;
-    
-    // ✅ DEBUG: Verificar datos al hacer clic
-    console.log("🔍 INDEX - handleRowClick - MOVIMIENTO SELECCIONADO:", {
-      eventType: event?.data ? "PrimeReact Event" : "Direct Object",
-      movimiento,
-      movimientoKeys: Object.keys(movimiento || {}),
-      movimientoLength: Object.keys(movimiento || {}).length,
-      sampleData: {
-        id: movimiento?.id,
-        empresaOrigenId: movimiento?.empresaOrigenId,
-        tipoMovimientoId: movimiento?.tipoMovimientoId,
-        monto: movimiento?.monto,
-        descripcion: movimiento?.descripcion,
-      }
-    });
-
     if (permisos?.puedeVer || permisos?.puedeEditar) {
       handleEditar(movimiento);
       setShowDialog(true);
@@ -252,14 +199,6 @@ const MovimientoCaja = () => {
         cuentasDestinoFiltradas={cuentasDestinoFiltradas}
         onValidarMovimiento={handleValidarMovimiento}
       />
-
-      {/* ✅ LOG DESPUÉS DE TABLA: */}
-      {console.log("🔍 DEBUG - Props a MovimientoCajaTabs:", {
-        movimientosLength: movimientos?.length || 0,
-        filteredMovimientosLength: filteredMovimientos?.length || 0,
-        empresasLength: empresas?.length || 0,
-        cuentasCorrientesLength: cuentasCorrientes?.length || 0
-      })}
     </div>
   );
 };

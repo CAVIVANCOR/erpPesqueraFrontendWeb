@@ -4,8 +4,6 @@
  * Implementa validaciones y sigue el patrón estándar MEGUI.
  * Aplica la regla crítica de usar Number() para comparaciones de IDs.
  * La lógica de negocio correcta. El dropdown debe mostrar solo los movimientos que son asignaciones (iniciales o adicionales) y que forman parte del cálculo de la entrega a rendir.
- * @author ERP Megui
- * @version 1.0.0
  */
 import React, { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -27,6 +25,8 @@ import { formatearFechaHora, formatearNumero } from "../../utils/utils";
 import DetGastosPlanificadosTable from "../detGastosPlanificados/DetGastosPlanificadosTable";
 import { getGastosPlanificados } from "../../api/detGastosPlanificados";
 import LiquidacionEntregaARendirCard from "./LiquidacionEntregaARendirCard";
+import { obtenerTodasAsignacionesNoLiquidadas } from "../../api/detMovsEntregaRendir";
+import { getEmbarcaciones } from "../../api/embarcacion";
 
 const DetMovsEntregaRendirForm = ({
   movimiento = null,
@@ -54,7 +54,9 @@ const DetMovsEntregaRendirForm = ({
   const [gastosPlanificadosAsignacion, setGastosPlanificadosAsignacion] =
     useState([]);
   const [gastoPlanificadoSeleccionado, setGastoPlanificadoSeleccionado] =
-    useState(null); // Por defecto: Categoría 127 (A rendir Pesca Industrial)
+    useState(null);
+  const [asignacionesNoLiquidadas, setAsignacionesNoLiquidadas] = useState([]);
+  const [embarcaciones, setEmbarcaciones] = useState([]);
   const {
     control,
     handleSubmit,
@@ -95,6 +97,8 @@ const DetMovsEntregaRendirForm = ({
       entregaARendirLiquidada: false,
       fechaLiquidacionEntregaARendir: null,
       urlLiquidacionEntregaARendir: null,
+      enlaceAOtroDetalleGastoId: null,
+      embarcacionId: null,
     },
   });
   const urlComprobanteMovimiento = watch("urlComprobanteMovimiento");
@@ -181,7 +185,20 @@ const DetMovsEntregaRendirForm = ({
           movimiento.fechaLiquidacionEntregaARendir || null,
         urlLiquidacionEntregaARendir:
           movimiento.urlLiquidacionEntregaARendir || null,
+        enlaceAOtroDetalleGastoId: movimiento.enlaceAOtroDetalleGastoId
+          ? Number(movimiento.enlaceAOtroDetalleGastoId)
+          : null,
+        embarcacionId: movimiento.embarcacionId
+          ? Number(movimiento.embarcacionId)
+          : null,
       });
+
+      // Cargar categoría desde la base de datos
+      if (movimiento.tipoMovimiento?.categoria?.id) {
+        setCategoriaSeleccionada(
+          Number(movimiento.tipoMovimiento.categoria.id),
+        );
+      }
     } else {
       setValue("entregaARendirId", Number(entregaARendirId));
       setValue("fechaMovimiento", new Date());
@@ -241,22 +258,23 @@ const DetMovsEntregaRendirForm = ({
     }
   }, [isEditing]);
 
-  // Auto-cambiar categoría y tipo según estado de "Entrega a Rendir"
+  // Auto-cambiar categoría y tipo según estado de "Entrega a Rendir" (SOLO EN MODO CREACIÓN)
   useEffect(() => {
-    if (formaParteCalculoEntregaARendir === true) {
-      // ACTIVADO: Categoría 17 (GASTOS A RENDIR) + Tipo 127 (A RENDIR PESCA INDUSTRIAL)
-      setCategoriaSeleccionada(17);
-      setValue("tipoMovimientoId", 127);
-      setValue("operacionSinFactura", true); // S/FACTURA automático
-      if (!isEditing) {
+    // SOLO ejecutar en modo creación, NO en edición
+    if (!isEditing) {
+      if (formaParteCalculoEntregaARendir === true) {
+        // ACTIVADO: Categoría 17 (GASTOS A RENDIR) + Tipo 127 (A RENDIR PESCA INDUSTRIAL)
+        setCategoriaSeleccionada(17);
+        setValue("tipoMovimientoId", 127);
+        setValue("operacionSinFactura", true); // S/FACTURA automático
         setValue("asignacionOrigenId", 0); // Reset a 0
+      } else {
+        // DESACTIVADO: Volver a Categoría 10 + limpiar Tipo
+        setCategoriaSeleccionada(10);
+        setValue("tipoMovimientoId", "");
+        setValue("operacionSinFactura", false);
+        setValue("asignacionOrigenId", 0);
       }
-    } else if (!isEditing) {
-      // DESACTIVADO (solo en modo creación): Volver a Categoría 10 + limpiar Tipo
-      setCategoriaSeleccionada(10);
-      setValue("tipoMovimientoId", "");
-      setValue("operacionSinFactura", false);
-      setValue("asignacionOrigenId", 0);
     }
   }, [formaParteCalculoEntregaARendir, setValue, isEditing]);
 
@@ -281,18 +299,51 @@ const DetMovsEntregaRendirForm = ({
     cargarGastosPlanificados();
   }, [asignacionOrigenId]);
 
+  // Cargar asignaciones no liquidadas de todos los módulos
+  useEffect(() => {
+    const cargarAsignaciones = async () => {
+      try {
+        const asignaciones = await obtenerTodasAsignacionesNoLiquidadas();
+        setAsignacionesNoLiquidadas(asignaciones);
+      } catch (error) {
+        console.error("Error al cargar asignaciones no liquidadas:", error);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudieron cargar las asignaciones",
+          life: 3000,
+        });
+      }
+    };
+    cargarAsignaciones();
+  }, []);
+
+  // Cargar embarcaciones
+  useEffect(() => {
+    const cargarEmbarcaciones = async () => {
+      try {
+        const embarcacionesData = await getEmbarcaciones();
+        setEmbarcaciones(embarcacionesData);
+      } catch (error) {
+        console.error("Error al cargar embarcaciones:", error);
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudieron cargar las embarcaciones",
+          life: 3000,
+        });
+      }
+    };
+    cargarEmbarcaciones();
+  }, []);
+
   // Cargar centro de costo desde asignación origen
   useEffect(() => {
     if (asignacionOrigenId && asignacionOrigenId > 0) {
       const asignacionOrigen = movimientosAsignacionEntregaRendir.find(
         (mov) => Number(mov.id) === Number(asignacionOrigenId),
       );
-
       if (asignacionOrigen && asignacionOrigen.centroCostoId) {
-        console.log(
-          "✅ Cargando Centro de Costo desde Asignación Origen:",
-          asignacionOrigen.centroCostoId,
-        );
         setValue("centroCostoId", Number(asignacionOrigen.centroCostoId));
       }
     }
@@ -556,6 +607,10 @@ const DetMovsEntregaRendirForm = ({
         entregaARendirLiquidada: data.entregaARendirLiquidada,
         fechaLiquidacionEntregaARendir: data.fechaLiquidacionEntregaARendir,
         urlLiquidacionEntregaARendir: data.urlLiquidacionEntregaARendir,
+        enlaceAOtroDetalleGastoId: data.enlaceAOtroDetalleGastoId
+          ? Number(data.enlaceAOtroDetalleGastoId)
+          : null,
+        embarcacionId: data.embarcacionId ? Number(data.embarcacionId) : null,
         actualizadoEn: new Date(),
       };
 
@@ -766,38 +821,39 @@ const DetMovsEntregaRendirForm = ({
               }}
             >
               {/* ESCENARIO 1 y 2: Asignación Origen - Solo visible si formaParteCalculoEntregaARendir=true */}
-              {formaParteCalculoEntregaARendir === true && (
-                <div style={{ flex: 1 }}>
-                  <label>Asignación Origen</label>
-                  <Controller
-                    name="asignacionOrigenId"
-                    control={control}
-                    render={({ field }) => (
-                      <Dropdown
-                        id="asignacionOrigenId"
-                        value={field.value}
-                        onChange={(e) => {
-                          field.onChange(e.value);
-                          if (e.value > 0) {
-                            setGastoPlanificadoSeleccionado(null);
-                            setValue("productoId", "");
-                            setValue("monto", 0);
-                            setValue("descripcion", "");
-                          }
-                        }}
-                        options={asignacionOrigenOptions}
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Seleccione asignación origen"
-                        showClear
-                        filter
-                        style={{ fontWeight: "bold" }}
-                        disabled={formularioDeshabilitado}
-                      />
-                    )}
-                  />
-                </div>
-              )}
+              {tipoMovimientoId !== 127 &&
+                formaParteCalculoEntregaARendir === true && (
+                  <div style={{ flex: 1 }}>
+                    <label>Asignación Origen</label>
+                    <Controller
+                      name="asignacionOrigenId"
+                      control={control}
+                      render={({ field }) => (
+                        <Dropdown
+                          id="asignacionOrigenId"
+                          value={field.value}
+                          onChange={(e) => {
+                            field.onChange(e.value);
+                            if (e.value > 0) {
+                              setGastoPlanificadoSeleccionado(null);
+                              setValue("productoId", "");
+                              setValue("monto", 0);
+                              setValue("descripcion", "");
+                            }
+                          }}
+                          options={asignacionOrigenOptions}
+                          optionLabel="label"
+                          optionValue="value"
+                          placeholder="Seleccione asignación origen"
+                          showClear
+                          filter
+                          style={{ fontWeight: "bold" }}
+                          disabled={formularioDeshabilitado}
+                        />
+                      )}
+                    />
+                  </div>
+                )}
 
               {/* ESCENARIO 2: Dropdown Gasto Planificado - Solo visible si asignacionOrigenId > 0 */}
               {formaParteCalculoEntregaARendir === true &&
@@ -822,43 +878,6 @@ const DetMovsEntregaRendirForm = ({
                     />
                   </div>
                 )}
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginBottom: "0.5rem",
-                flexDirection: window.innerWidth < 768 ? "column" : "row",
-              }}
-            >
-              {/* Detalle Gastos Planificados - Solo visible para asignaciones (tipo 1 o 2) */}
-              {(tipoMovimientoId === 1 || tipoMovimientoId === 2) && (
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor="detalleGastosPlanificados"
-                    className="block text-900 font-medium mb-2"
-                  >
-                    Detalle Gastos Planificados
-                  </label>
-                  <Controller
-                    name="detalleGastosPlanificados"
-                    control={control}
-                    render={({ field }) => (
-                      <InputTextarea
-                        id="detalleGastosPlanificados"
-                        value={field.value || ""}
-                        onChange={(e) => field.onChange(e.target.value)}
-                        rows={3}
-                        placeholder="Ingrese detalle de gastos planificados para esta asignación"
-                        className={classNames({
-                          "p-invalid": errors.detalleGastosPlanificados,
-                        })}
-                        disabled={formularioDeshabilitado}
-                      />
-                    )}
-                  />
-                </div>
-              )}
             </div>
             {/* ESCENARIO 2 y 3: Entidad Comercial, Familia y Producto - Solo visible si NO es ESCENARIO 1 */}
             {(formaParteCalculoEntregaARendir === false ||
@@ -1126,6 +1145,121 @@ const DetMovsEntregaRendirForm = ({
                 )}
               </div>
             </div>
+            {/* ESCENARIO 1: CRUD DetGastosPlanificados - Solo visible si asignacionOrigenId = 0 */}
+            {formaParteCalculoEntregaARendir === true &&
+              (!asignacionOrigenId || asignacionOrigenId === 0) && (
+                <div style={{ marginTop: "1rem" }}>
+                  {!movimiento?.id ? (
+                    <Message
+                      severity="info"
+                      text="Debe guardar el movimiento primero para poder agregar gastos planificados"
+                      style={{ marginTop: "1rem" }}
+                    />
+                  ) : (
+                    <DetGastosPlanificadosTable
+                      entregaRendirData={{
+                        detMovEntregaRendirTemporadaPescaId: movimiento.id,
+                      }}
+                      monedaIdCabecera={watch("monedaId")}
+                      toast={toast}
+                      permisos={{
+                        puedeCrear: true,
+                        puedeEditar: true,
+                        puedeEliminar: true,
+                        puedeVer: true,
+                      }}
+                      readOnly={formularioDeshabilitado}
+                    />
+                  )}
+                </div>
+              )}
+
+            {!operacionSinFactura && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginBottom: "0.5rem",
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label
+                    htmlFor="tipoDocumentoId"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Tipo Documento
+                  </label>
+                  <Controller
+                    name="tipoDocumentoId"
+                    control={control}
+                    render={({ field }) => (
+                      <Dropdown
+                        id="tipoDocumentoId"
+                        {...field}
+                        value={field.value}
+                        options={tipoDocumentoOptions}
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Seleccione tipo"
+                        filter
+                        showClear
+                        style={{ fontWeight: "bold" }}
+                        disabled={formularioDeshabilitado}
+                      />
+                    )}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label
+                    htmlFor="numeroSerieComprobante"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Serie
+                  </label>
+                  <Controller
+                    name="numeroSerieComprobante"
+                    control={control}
+                    render={({ field }) => (
+                      <InputText
+                        id="numeroSerieComprobante"
+                        {...field}
+                        value={field.value}
+                        onChange={(e) =>
+                          field.onChange(e.target.value?.toUpperCase())
+                        }
+                        placeholder="Ej: F001"
+                        style={{ fontWeight: "bold" }}
+                        disabled={formularioDeshabilitado}
+                      />
+                    )}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label
+                    htmlFor="numeroCorrelativoComprobante"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Correlativo
+                  </label>
+                  <Controller
+                    name="numeroCorrelativoComprobante"
+                    control={control}
+                    render={({ field }) => (
+                      <InputText
+                        id="numeroCorrelativoComprobante"
+                        {...field}
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        placeholder="Ej: 00001234"
+                        style={{ fontWeight: "bold" }}
+                        disabled={formularioDeshabilitado}
+                      />
+                    )}
+                  />
+                </div>
+              </div>
+            )}
 
             <div
               style={{
@@ -1260,93 +1394,78 @@ const DetMovsEntregaRendirForm = ({
                 />
               </div>
             </div>
-
-            {!operacionSinFactura && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  marginBottom: "0.5rem",
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor="tipoDocumentoId"
-                    className="block text-900 font-medium mb-2"
-                  >
-                    Tipo Documento
-                  </label>
-                  <Controller
-                    name="tipoDocumentoId"
-                    control={control}
-                    render={({ field }) => (
-                      <Dropdown
-                        id="tipoDocumentoId"
-                        {...field}
-                        value={field.value}
-                        options={tipoDocumentoOptions}
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Seleccione tipo"
-                        filter
-                        showClear
-                        style={{ fontWeight: "bold" }}
-                        disabled={formularioDeshabilitado}
-                      />
-                    )}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor="numeroSerieComprobante"
-                    className="block text-900 font-medium mb-2"
-                  >
-                    Serie
-                  </label>
-                  <Controller
-                    name="numeroSerieComprobante"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="numeroSerieComprobante"
-                        {...field}
-                        value={field.value}
-                        onChange={(e) =>
-                          field.onChange(e.target.value?.toUpperCase())
-                        }
-                        placeholder="Ej: F001"
-                        style={{ fontWeight: "bold" }}
-                        disabled={formularioDeshabilitado}
-                      />
-                    )}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor="numeroCorrelativoComprobante"
-                    className="block text-900 font-medium mb-2"
-                  >
-                    Correlativo
-                  </label>
-                  <Controller
-                    name="numeroCorrelativoComprobante"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="numeroCorrelativoComprobante"
-                        {...field}
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.value)}
-                        placeholder="Ej: 00001234"
-                        style={{ fontWeight: "bold" }}
-                        disabled={formularioDeshabilitado}
-                      />
-                    )}
-                  />
-                </div>
+            {/* NUEVOS CAMPOS: Enlace a Otro Detalle de Gasto y Embarcación */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: "0.5rem",
+                alignItems: "end",
+                flexDirection: window.innerWidth < 768 ? "column" : "row",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="enlaceAOtroDetalleGastoId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Enlace a Otro Detalle de Gasto
+                </label>
+                <Controller
+                  name="enlaceAOtroDetalleGastoId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="enlaceAOtroDetalleGastoId"
+                      {...field}
+                      value={field.value}
+                      options={asignacionesNoLiquidadas.map((asig) => ({
+                        label: asig.label,
+                        value: asig.id,
+                      }))}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione enlace (opcional)"
+                      filter
+                      showClear
+                      disabled={formularioDeshabilitado}
+                      emptyMessage="No hay asignaciones disponibles"
+                    />
+                  )}
+                />
               </div>
-            )}
+
+              <div style={{ flex: 1 }}>
+                <label
+                  htmlFor="embarcacionId"
+                  className="block text-900 font-medium mb-2"
+                >
+                  Embarcación
+                </label>
+                <Controller
+                  name="embarcacionId"
+                  control={control}
+                  render={({ field }) => (
+                    <Dropdown
+                      id="embarcacionId"
+                      {...field}
+                      value={field.value}
+                      options={embarcaciones.map((emb) => ({
+                        label: emb.activo?.nombre || emb.matricula,
+                        value: Number(emb.id),
+                      }))}
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Seleccione embarcación (opcional)"
+                      filter
+                      showClear
+                      disabled={formularioDeshabilitado}
+                      emptyMessage="No hay embarcaciones disponibles"
+                    />
+                  )}
+                />
+              </div>
+            </div>
 
             <div
               style={{
@@ -1445,35 +1564,6 @@ const DetMovsEntregaRendirForm = ({
               </div>
             </div>
           </form>
-
-          {/* ESCENARIO 1: CRUD DetGastosPlanificados - Solo visible si asignacionOrigenId = 0 */}
-          {formaParteCalculoEntregaARendir === true &&
-            (!asignacionOrigenId || asignacionOrigenId === 0) && (
-              <div style={{ marginTop: "1rem" }}>
-                {!movimiento?.id ? (
-                  <Message
-                    severity="info"
-                    text="Debe guardar el movimiento primero para poder agregar gastos planificados"
-                    style={{ marginTop: "1rem" }}
-                  />
-                ) : (
-                  <DetGastosPlanificadosTable
-                    entregaRendirData={{
-                      detMovEntregaRendirTemporadaPescaId: movimiento.id,
-                    }}
-                    monedaIdCabecera={watch("monedaId")}
-                    toast={toast}
-                    permisos={{
-                      puedeCrear: true,
-                      puedeEditar: true,
-                      puedeEliminar: true,
-                      puedeVer: true,
-                    }}
-                    readOnly={formularioDeshabilitado}
-                  />
-                )}
-              </div>
-            )}
         </Card>
       )}
 
