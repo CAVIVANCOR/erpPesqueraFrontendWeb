@@ -1198,92 +1198,7 @@ const DetMovsEntregaRendirForm = ({
                 </div>
               )}
 
-            {!operacionSinFactura && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  marginBottom: "0.5rem",
-                  flexDirection: window.innerWidth < 768 ? "column" : "row",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor="tipoDocumentoId"
-                    className="block text-900 font-medium mb-2"
-                  >
-                    Tipo Documento
-                  </label>
-                  <Controller
-                    name="tipoDocumentoId"
-                    control={control}
-                    render={({ field }) => (
-                      <Dropdown
-                        id="tipoDocumentoId"
-                        {...field}
-                        value={field.value}
-                        options={tipoDocumentoOptions}
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Seleccione tipo"
-                        filter
-                        showClear
-                        style={{ fontWeight: "bold" }}
-                        disabled={formularioDeshabilitado}
-                      />
-                    )}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor="numeroSerieComprobante"
-                    className="block text-900 font-medium mb-2"
-                  >
-                    Serie
-                  </label>
-                  <Controller
-                    name="numeroSerieComprobante"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="numeroSerieComprobante"
-                        {...field}
-                        value={field.value}
-                        onChange={(e) =>
-                          field.onChange(e.target.value?.toUpperCase())
-                        }
-                        placeholder="Ej: F001"
-                        style={{ fontWeight: "bold" }}
-                        disabled={formularioDeshabilitado}
-                      />
-                    )}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label
-                    htmlFor="numeroCorrelativoComprobante"
-                    className="block text-900 font-medium mb-2"
-                  >
-                    Correlativo
-                  </label>
-                  <Controller
-                    name="numeroCorrelativoComprobante"
-                    control={control}
-                    render={({ field }) => (
-                      <InputText
-                        id="numeroCorrelativoComprobante"
-                        {...field}
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.value)}
-                        placeholder="Ej: 00001234"
-                        style={{ fontWeight: "bold" }}
-                        disabled={formularioDeshabilitado}
-                      />
-                    )}
-                  />
-                </div>
-              </div>
-            )}
+
 
             <div
               style={{
@@ -1418,6 +1333,92 @@ const DetMovsEntregaRendirForm = ({
                 />
               </div>
             </div>
+                        {!operacionSinFactura && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginBottom: "0.5rem",
+                  flexDirection: window.innerWidth < 768 ? "column" : "row",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label
+                    htmlFor="tipoDocumentoId"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Tipo Documento
+                  </label>
+                  <Controller
+                    name="tipoDocumentoId"
+                    control={control}
+                    render={({ field }) => (
+                      <Dropdown
+                        id="tipoDocumentoId"
+                        {...field}
+                        value={field.value}
+                        options={tipoDocumentoOptions}
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Seleccione tipo"
+                        filter
+                        showClear
+                        style={{ fontWeight: "bold" }}
+                        disabled={formularioDeshabilitado}
+                      />
+                    )}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label
+                    htmlFor="numeroSerieComprobante"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Serie
+                  </label>
+                  <Controller
+                    name="numeroSerieComprobante"
+                    control={control}
+                    render={({ field }) => (
+                      <InputText
+                        id="numeroSerieComprobante"
+                        {...field}
+                        value={field.value}
+                        onChange={(e) =>
+                          field.onChange(e.target.value?.toUpperCase())
+                        }
+                        placeholder="Ej: F001"
+                        style={{ fontWeight: "bold" }}
+                        disabled={formularioDeshabilitado}
+                      />
+                    )}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label
+                    htmlFor="numeroCorrelativoComprobante"
+                    className="block text-900 font-medium mb-2"
+                  >
+                    Correlativo
+                  </label>
+                  <Controller
+                    name="numeroCorrelativoComprobante"
+                    control={control}
+                    render={({ field }) => (
+                      <InputText
+                        id="numeroCorrelativoComprobante"
+                        {...field}
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        placeholder="Ej: 00001234"
+                        style={{ fontWeight: "bold" }}
+                        disabled={formularioDeshabilitado}
+                      />
+                    )}
+                  />
+                </div>
+              </div>
+            )}
             {/* NUEVOS CAMPOS: Enlace a Otro Detalle de Gasto y Embarcación */}
             <div
               style={{

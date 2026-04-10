@@ -10,7 +10,6 @@ import { formatearNumero, formatearFecha } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 import { obtenerLabelEnlace } from "../../api/detMovsEntregaRendir";
-import { agregarDocumentosAdjuntos } from "./LiquidacionDocumentosAdjuntos";
 
 export async function generarYSubirPDFLiquidacionEntregaARendir(
   liquidacion,
@@ -247,10 +246,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     // Columna derecha
     yPos = yInicial;
     const datosDerecha = [
-      [
-        "Moneda:",
-        liquidacion.moneda?.simbolo || liquidacion.moneda?.nombre || "S/.",
-      ],
+      ["Moneda:", liquidacion.moneda?.nombre || ""],
       [
         "Tipo de Cambio:",
         `${simboloMoneda} ${formatearNumero(tipoCambioBase, 4)}`,
@@ -288,26 +284,26 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     });
     yPos -= lineHeight + 3;
 
-    // Definir columnas OPTIMIZADAS CON N° DCMTO
+    // Definir columnas OPTIMIZADAS
     const colX = [
       margin, // Id
       margin + 25, // Fecha
-      margin + 75, // N° Dcmto
-      margin + 125, // Categoría/Tipo/Desc
-      margin + 390, // Moneda
-      margin + 415, // T/C
-      margin + 450, // Monto (UNIFICADO)
+      margin + 75, // Categoría/Tipo/Desc
+      margin + 340, // Moneda
+      margin + 365, // T/C
+      margin + 400, // Asignación
+      margin + 455, // Gasto
       margin + 510, // Saldo
     ];
 
     const headers = [
       "Id",
       "Fecha",
-      "N° Dcmto",
       "Categoría / Tipo Movimiento / Descripción",
       "Mon",
       "T/C",
-      "Monto",
+      "Asignación",
+      "Gasto",
       "Saldo",
     ];
 
@@ -336,13 +332,13 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     pag.drawText(headers[2], {
       x: colX[2] + 2,
       y: yPos + 2,
-      size: 6,
+      size: 7,
       font: fontBold,
     });
     pag.drawText(headers[3], {
       x: colX[3] + 2,
       y: yPos + 2,
-      size: 7,
+      size: 6,
       font: fontBold,
     });
     pag.drawText(headers[4], {
@@ -354,7 +350,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     pag.drawText(headers[5], {
       x: colX[5] + 2,
       y: yPos + 2,
-      size: 6,
+      size: 7,
       font: fontBold,
     });
     pag.drawText(headers[6], {
@@ -401,37 +397,38 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     return x + ancho - textoWidth - 3;
   };
 
-  // Definir columnas OPTIMIZADAS CON N° DCMTO
+  // Definir columnas OPTIMIZADAS
   const colX = [
     margin, // Id
     margin + 25, // Fecha
-    margin + 75, // N° Dcmto
-    margin + 125, // Categoría/Tipo/Desc
-    margin + 390, // Moneda
-    margin + 415, // T/C
-    margin + 450, // Monto (UNIFICADO)
+    margin + 75, // Categoría/Tipo/Desc
+    margin + 340, // Moneda
+    margin + 365, // T/C
+    margin + 400, // Asignación
+    margin + 455, // Gasto
     margin + 510, // Saldo
   ];
 
   // Anchos de columnas para alineación
   const anchoColMon = colX[4] - colX[3];
   const anchoColTC = colX[5] - colX[4];
-  const anchoColMonto = colX[7] - colX[6];
+  const anchoColAsig = colX[6] - colX[5];
+  const anchoColGasto = colX[7] - colX[6];
   const anchoColSaldo = width - margin - colX[7];
 
   // PRIMERA FILA: Asignación origen
   let saldoAcumulado = Number(liquidacion.monto || 0);
 
-  // CALCULAR ALTURA DINÁMICA DE LA FILA
+   // CALCULAR ALTURA DINÁMICA DE LA FILA
   let numLineasAsignacion = 2; // Categoría+Tipo en 1 línea, Descripción en otra
   if (liquidacion.embarcacion || labelEnlacePrincipal) numLineasAsignacion++;
   const alturaFilaAsignacion = Math.max(20, numLineasAsignacion * 8 + 6);
 
-  // Fondo verde para monto (asignación)
+  // Fondo verde para asignación
   page.drawRectangle({
-    x: colX[6],
+    x: colX[5],
     y: yPosition - alturaFilaAsignacion + 6,
-    width: anchoColMonto,
+    width: anchoColAsig,
     height: alturaFilaAsignacion,
     color: rgb(0.85, 0.95, 0.85),
   });
@@ -467,20 +464,12 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     font: fontNormal,
   });
 
-  // N° Dcmto (asignación no tiene documento)
-  page.drawText("-", {
-    x: colX[2] + 2,
-    y: yTopCelda,
-    size: 6,
-    font: fontNormal,
-  });
-
-  // Categoría/Tipo/Descripción/Embarcación/Enlace
+    // Categoría/Tipo/Descripción/Embarcación/Enlace
   let yLineaDesc = yTopCelda;
 
   // Categoría y Tipo de Movimiento en UNA LÍNEA
   if (categoria || tipoMov) {
-    let xPosTexto = colX[3];
+    let xPosTexto = colX[2];
 
     if (categoria) {
       page.drawText(categoria, {
@@ -509,7 +498,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
   if (desc) {
     page.drawText(desc, {
-      x: colX[3],
+      x: colX[2],
       y: yLineaDesc,
       size: 7,
       font: fontOblique,
@@ -519,7 +508,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
   // Embarcación y Enlace en UNA LÍNEA - DOS COLORES
   if (liquidacion.embarcacion || labelEnlacePrincipal) {
-    let xPosicion = colX[3];
+    let xPosicion = colX[2];
 
     if (liquidacion.embarcacion) {
       const textoEmbarcacion = `Embarcacion: ${liquidacion.embarcacion.activo?.nombre || liquidacion.embarcacion.matricula || "N/A"}`;
@@ -547,9 +536,9 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     }
   }
 
-  // Moneda, T/C, Monto, Saldo
+  // Moneda, T/C, Asignación, Gasto, Saldo
   page.drawText(simboloMoneda, {
-    x: alinearDerecha(simboloMoneda, colX[4], anchoColMon, fontNormal, 7),
+    x: alinearDerecha(simboloMoneda, colX[3], anchoColMon, fontNormal, 7),
     y: yTopCelda,
     size: 7,
     font: fontNormal,
@@ -557,18 +546,25 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
   const tcTexto = formatearNumero(tipoCambioBase, 3);
   page.drawText(tcTexto, {
-    x: alinearDerecha(tcTexto, colX[5], anchoColTC, fontNormal, 7),
+    x: alinearDerecha(tcTexto, colX[4], anchoColTC, fontNormal, 7),
     y: yTopCelda,
     size: 7,
     font: fontNormal,
   });
 
-  const montoTexto = formatearNumero(liquidacion.monto, 2);
-  page.drawText(montoTexto, {
-    x: alinearDerecha(montoTexto, colX[6], anchoColMonto, fontBold, 7),
+  const asigTexto = formatearNumero(liquidacion.monto, 2);
+  page.drawText(asigTexto, {
+    x: alinearDerecha(asigTexto, colX[5], anchoColAsig, fontBold, 7),
     y: yTopCelda,
     size: 7,
     font: fontBold,
+  });
+
+  page.drawText("-", {
+    x: alinearDerecha("-", colX[6], anchoColGasto, fontNormal, 7),
+    y: yTopCelda,
+    size: 7,
+    font: fontNormal,
   });
 
   const saldoTexto = formatearNumero(saldoAcumulado, 2);
@@ -592,7 +588,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     const alturaFilaGasto = Math.max(20, numLineasGasto * 8 + 6);
 
     // Verificar si hay espacio para la fila
-    if (yPosition < 180) {
+    if (yPosition < 120) {
       page = pdfDoc.addPage([595.28, 841.89]);
       pages.push(page);
       yPosition = height - 30;
@@ -608,11 +604,11 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     saldoAcumulado -= montoConvertido;
     totalGastos += montoConvertido;
 
-    // Fondo rojo para monto (gasto)
+    // Fondo rojo para gasto
     page.drawRectangle({
       x: colX[6],
       y: yPosition - alturaFilaGasto + 6,
-      width: anchoColMonto,
+      width: anchoColGasto,
       height: alturaFilaGasto,
       color: rgb(0.98, 0.85, 0.85),
     });
@@ -648,34 +644,12 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
       font: fontNormal,
     });
 
-    // N° Dcmto
-    let numeroDocumento = "";
-    if (gasto.tipoDocumento?.codigo) {
-      numeroDocumento = gasto.tipoDocumento.codigo;
-      if (gasto.numeroSerieComprobante || gasto.numeroCorrelativoComprobante) {
-        numeroDocumento += "/";
-        if (gasto.numeroSerieComprobante) {
-          numeroDocumento += gasto.numeroSerieComprobante;
-        }
-        if (gasto.numeroCorrelativoComprobante) {
-          numeroDocumento += "-" + gasto.numeroCorrelativoComprobante;
-        }
-      }
-    }
-
-    page.drawText(numeroDocumento || "-", {
-      x: colX[2] + 2,
-      y: yTopCeldaGasto,
-      size: 6,
-      font: fontNormal,
-    });
-
-    // Categoría/Tipo/Descripción/Embarcación/Enlace
+        // Categoría/Tipo/Descripción/Embarcación/Enlace
     let yLineaDescGasto = yTopCeldaGasto;
 
     // Categoría y Tipo de Movimiento en UNA LÍNEA
     if (catGasto || tipoGasto) {
-      let xPosTexto = colX[3];
+      let xPosTexto = colX[2];
 
       if (catGasto) {
         page.drawText(catGasto, {
@@ -704,7 +678,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
     if (descGasto) {
       page.drawText(descGasto, {
-        x: colX[3],
+        x: colX[2],
         y: yLineaDescGasto,
         size: 7,
         font: fontOblique,
@@ -714,7 +688,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
     // Embarcación y Enlace en UNA LÍNEA - DOS COLORES
     if (gasto.embarcacion || gasto.labelEnlace) {
-      let xPosicion = colX[3];
+      let xPosicion = colX[2];
 
       if (gasto.embarcacion) {
         const textoEmbarcacion = `Embarcacion: ${gasto.embarcacion.activo?.nombre || gasto.embarcacion.matricula || "N/A"}`;
@@ -725,10 +699,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
           font: fontOblique,
           color: rgb(0.2, 0.2, 0.6), // Azul oscuro
         });
-        const anchoTextoEmb = fontOblique.widthOfTextAtSize(
-          textoEmbarcacion,
-          6,
-        );
+        const anchoTextoEmb = fontOblique.widthOfTextAtSize(textoEmbarcacion, 6);
         xPosicion += anchoTextoEmb;
       }
 
@@ -745,10 +716,10 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
       }
     }
 
-    // Moneda, T/C, Monto, Saldo
+    // Moneda, T/C, Asignación, Gasto, Saldo
     const monGasto = gasto.moneda?.simbolo || "S/";
     page.drawText(monGasto, {
-      x: alinearDerecha(monGasto, colX[4], anchoColMon, fontNormal, 7),
+      x: alinearDerecha(monGasto, colX[3], anchoColMon, fontNormal, 7),
       y: yTopCeldaGasto,
       size: 7,
       font: fontNormal,
@@ -756,7 +727,14 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
     const tcGastoTexto = formatearNumero(gasto.tipoCambio || tipoCambioBase, 3);
     page.drawText(tcGastoTexto, {
-      x: alinearDerecha(tcGastoTexto, colX[5], anchoColTC, fontNormal, 7),
+      x: alinearDerecha(tcGastoTexto, colX[4], anchoColTC, fontNormal, 7),
+      y: yTopCeldaGasto,
+      size: 7,
+      font: fontNormal,
+    });
+
+    page.drawText("-", {
+      x: alinearDerecha("-", colX[5], anchoColAsig, fontNormal, 7),
       y: yTopCeldaGasto,
       size: 7,
       font: fontNormal,
@@ -764,7 +742,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
     const gastoTexto = formatearNumero(montoConvertido, 2);
     page.drawText(gastoTexto, {
-      x: alinearDerecha(gastoTexto, colX[6], anchoColMonto, fontBold, 7),
+      x: alinearDerecha(gastoTexto, colX[6], anchoColGasto, fontBold, 7),
       y: yTopCeldaGasto,
       size: 7,
       font: fontBold,
@@ -803,7 +781,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
   });
 
   page.drawText("TOTALES:", {
-    x: colX[3] + 2,
+    x: colX[2] + 2,
     y: yPosition + 1,
     size: 8,
     font: fontBold,
@@ -811,109 +789,19 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
   const totalAsigTexto = formatearNumero(liquidacion.monto, 2);
   page.drawText(totalAsigTexto, {
-    x: alinearDerecha(totalAsigTexto, colX[6], anchoColMonto, fontBold, 8),
+    x: alinearDerecha(totalAsigTexto, colX[5], anchoColAsig, fontBold, 8),
     y: yPosition + 1,
     size: 8,
     font: fontBold,
   });
 
-  yPosition -= 20;
-
-  // ========== FIRMAS EN PÁGINA 1 ==========
-  const firmaYPosition = yPosition - 40;
-  const firmaIzqX = margin + 15;
-  const firmaDerX = width / 2 + 60;
-  const firmaWidth = 180;
-
-  // Firma Izquierda - Responsable
-  if (liquidacion.responsable) {
-    let yFirma = firmaYPosition;
-
-    page.drawLine({
-      start: { x: firmaIzqX, y: yFirma },
-      end: { x: firmaIzqX + firmaWidth, y: yFirma },
-      thickness: 1,
-      color: rgb(0, 0, 0),
-    });
-
-    yFirma -= 10;
-    page.drawText(responsableNombre, {
-      x: firmaIzqX,
-      y: yFirma,
-      size: 7,
-      font: fontBold,
-    });
-
-    yFirma -= 9;
-    if (liquidacion.responsable.numeroDocumento) {
-      const tipoDocResp =
-        liquidacion.responsable.tipoDocumento?.abreviatura || "Doc";
-      page.drawText(
-        `${tipoDocResp}: ${liquidacion.responsable.numeroDocumento}`,
-        {
-          x: firmaIzqX,
-          y: yFirma,
-          size: 6,
-          font: fontNormal,
-        },
-      );
-      yFirma -= 9;
-    }
-
-    page.drawText("Responsable", {
-      x: firmaIzqX,
-      y: yFirma,
-      size: 6,
-      font: fontNormal,
-      color: rgb(0.5, 0.5, 0.5),
-    });
-  }
-
-  // Firma Derecha - Usuario Logueado
-  if (usuarioLogueado?.personal) {
-    let yFirma = firmaYPosition;
-
-    page.drawLine({
-      start: { x: firmaDerX, y: yFirma },
-      end: { x: firmaDerX + firmaWidth, y: yFirma },
-      thickness: 1,
-      color: rgb(0, 0, 0),
-    });
-
-    yFirma -= 10;
-    const nombreUsuario =
-      `${usuarioLogueado.personal.nombres || ""} ${usuarioLogueado.personal.apellidos || ""}`.trim();
-    page.drawText(nombreUsuario, {
-      x: firmaDerX,
-      y: yFirma,
-      size: 7,
-      font: fontBold,
-    });
-
-    yFirma -= 9;
-    if (usuarioLogueado.personal.numeroDocumento) {
-      const tipoDocUsuario =
-        usuarioLogueado.personal.tipoDocumento?.abreviatura || "Doc";
-      page.drawText(
-        `${tipoDocUsuario}: ${usuarioLogueado.personal.numeroDocumento}`,
-        {
-          x: firmaDerX,
-          y: yFirma,
-          size: 6,
-          font: fontNormal,
-        },
-      );
-      yFirma -= 9;
-    }
-
-    page.drawText("Responsable de Liquidacion", {
-      x: firmaDerX,
-      y: yFirma,
-      size: 6,
-      font: fontNormal,
-      color: rgb(0.5, 0.5, 0.5),
-    });
-  }
+  const totalGastoTexto = formatearNumero(totalGastos, 2);
+  page.drawText(totalGastoTexto, {
+    x: alinearDerecha(totalGastoTexto, colX[6], anchoColGasto, fontBold, 8),
+    y: yPosition + 1,
+    size: 8,
+    font: fontBold,
+  });
 
   // ========== NUEVA PÁGINA: DETALLE DE GASTOS PLANIFICADOS ==========
   const gastosPlanificados = liquidacion.gastosPlanificados || [];
@@ -1047,10 +935,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     // Columna derecha
     yPosition = yInicial;
     const datosDerecha = [
-      [
-        "Moneda:",
-        liquidacion.moneda?.simbolo || liquidacion.moneda?.nombre || "S/.",
-      ],
+      ["Moneda:", liquidacion.moneda?.nombre || ""],
       [
         "Tipo de Cambio:",
         `${simboloMoneda} ${formatearNumero(tipoCambioBase, 4)}`,
@@ -1406,34 +1291,112 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     });
   }
 
-  // ========== DOCUMENTOS ADJUNTOS (AL FINAL) ==========
-  const todosLosGastos = [liquidacion, ...gastosAsociados];
+  // ========== FIRMAS ==========
+  const firmaYPosition = 80;
+  const firmaIzqX = margin + 15;
+  const firmaDerX = width / 2 + 60;
+  const firmaWidth = 180;
 
-  await agregarDocumentosAdjuntos(
-    pdfDoc,
-    todosLosGastos,
-    empresa,
-    liquidacion,
-    {
-      fontBold,
-      fontNormal,
-      fontOblique,
-    },
-  );
+  // Firma Izquierda - Responsable
+  if (liquidacion.responsable) {
+    let yFirma = firmaYPosition;
+
+    page.drawLine({
+      start: { x: firmaIzqX, y: yFirma },
+      end: { x: firmaIzqX + firmaWidth, y: yFirma },
+      thickness: 1,
+      color: rgb(0, 0, 0),
+    });
+
+    yFirma -= 10;
+    page.drawText(responsableNombre, {
+      x: firmaIzqX,
+      y: yFirma,
+      size: 7,
+      font: fontBold,
+    });
+
+    yFirma -= 9;
+    if (liquidacion.responsable.numeroDocumento) {
+      const tipoDocResp =
+        liquidacion.responsable.tipoDocumento?.abreviatura || "Doc";
+      page.drawText(
+        `${tipoDocResp}: ${liquidacion.responsable.numeroDocumento}`,
+        {
+          x: firmaIzqX,
+          y: yFirma,
+          size: 6,
+          font: fontNormal,
+        },
+      );
+      yFirma -= 9;
+    }
+
+    page.drawText("Responsable", {
+      x: firmaIzqX,
+      y: yFirma,
+      size: 6,
+      font: fontNormal,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+  }
+
+  // Firma Derecha - Usuario Logueado
+  if (usuarioLogueado?.personal) {
+    let yFirma = firmaYPosition;
+
+    page.drawLine({
+      start: { x: firmaDerX, y: yFirma },
+      end: { x: firmaDerX + firmaWidth, y: yFirma },
+      thickness: 1,
+      color: rgb(0, 0, 0),
+    });
+
+    yFirma -= 10;
+    const nombreUsuario =
+      `${usuarioLogueado.personal.nombres || ""} ${usuarioLogueado.personal.apellidos || ""}`.trim();
+    page.drawText(nombreUsuario, {
+      x: firmaDerX,
+      y: yFirma,
+      size: 7,
+      font: fontBold,
+    });
+
+    yFirma -= 9;
+    if (usuarioLogueado.personal.numeroDocumento) {
+      const tipoDocUsuario =
+        usuarioLogueado.personal.tipoDocumento?.abreviatura || "Doc";
+      page.drawText(
+        `${tipoDocUsuario}: ${usuarioLogueado.personal.numeroDocumento}`,
+        {
+          x: firmaDerX,
+          y: yFirma,
+          size: 6,
+          font: fontNormal,
+        },
+      );
+      yFirma -= 9;
+    }
+
+    page.drawText("Responsable de Liquidacion", {
+      x: firmaDerX,
+      y: yFirma,
+      size: 6,
+      font: fontNormal,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+  }
 
   // ========== NUMERACIÓN DE PÁGINAS Y PIE DE PÁGINA ==========
-  const allPages = pdfDoc.getPages();
-  const totalPages = allPages.length;
-
-  allPages.forEach((p, index) => {
+  const totalPages = pages.length;
+  pages.forEach((p, index) => {
     const pageNumber = index + 1;
     const pageText = `Pagina ${pageNumber} de ${totalPages}`;
     const pageTextWidth = fontNormal.widthOfTextAtSize(pageText, 7);
-    const { width: pageWidth, height: pageHeight } = p.getSize();
 
     p.drawText(pageText, {
-      x: pageWidth - margin - pageTextWidth,
-      y: pageHeight - 20,
+      x: width - margin - pageTextWidth,
+      y: height - 20,
       size: 7,
       font: fontNormal,
       color: rgb(0.5, 0.5, 0.5),
