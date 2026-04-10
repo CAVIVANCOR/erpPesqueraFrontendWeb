@@ -569,6 +569,89 @@ export default function DetEntregaRendirPescaIndustrial({
     );
     return entidad ? entidad.razonSocial : "N/A";
   };
+  const gastoPlanificadoTemplate = (rowData) => {
+    if (!rowData.detalleGastosPlanificados) return "N/A";
+
+    // El campo detalleGastosPlanificados es un String que contiene la descripción
+    return (
+      <div style={{ fontSize: "0.85rem", color: "#666" }}>
+        {rowData.detalleGastosPlanificados}
+      </div>
+    );
+  };
+
+    const saldoInicialTemplate = (rowData) => {
+    // Solo mostrar para asignaciones principales
+    const esAsignacionPrincipal =
+      rowData.formaParteCalculoEntregaARendir === true &&
+      (rowData.asignacionOrigenId === null ||
+        rowData.asignacionOrigenId === undefined ||
+        Number(rowData.asignacionOrigenId) === 0);
+
+    if (!esAsignacionPrincipal) {
+      return "N/A";
+    }
+
+    const saldo = Number(rowData.saldoInicialAsignacion || 0);
+    return (
+      <div
+        style={{
+          textAlign: "right",
+          fontWeight: "bold",
+          color: saldo > 0 ? "green" : "#666",
+        }}
+      >
+        {rowData.moneda?.simbolo || ""} {formatearNumero(saldo, 2)}
+      </div>
+    );
+  };
+
+    const saldoFinalTemplate = (rowData) => {
+    // Solo mostrar para asignaciones principales
+    const esAsignacionPrincipal =
+      rowData.formaParteCalculoEntregaARendir === true &&
+      (rowData.asignacionOrigenId === null ||
+        rowData.asignacionOrigenId === undefined ||
+        Number(rowData.asignacionOrigenId) === 0);
+
+    if (!esAsignacionPrincipal) {
+      return "N/A";
+    }
+
+    // Calcular saldo final en tiempo real
+    // Saldo Final = Saldo Inicial + Monto Asignación - Total Gastos
+    const saldoInicial = Number(rowData.saldoInicialAsignacion || 0);
+    const montoAsignacion = Number(rowData.monto || 0);
+    
+    // Buscar gastos asociados a esta asignación
+    const gastosAsociados = movimientos.filter(
+      (mov) =>
+        mov.asignacionOrigenId &&
+        Number(mov.asignacionOrigenId) === Number(rowData.id),
+    );
+    
+    // Sumar total de gastos
+    const totalGastos = gastosAsociados.reduce((sum, gasto) => {
+      return sum + Number(gasto.monto || 0);
+    }, 0);
+    
+    // Calcular saldo final
+    const saldoFinal = saldoInicial + montoAsignacion - totalGastos;
+
+    return (
+      <div
+        style={{
+          textAlign: "right",
+          fontWeight: "bold",
+          color: saldoFinal < 0 ? "red" : saldoFinal === 0 ? "orange" : "green",
+        }}
+      >
+        {rowData.moneda?.simbolo || ""} {formatearNumero(saldoFinal, 2)}
+      </div>
+    );
+  };
+
+
 
   const validacionTesoreriaTemplate = (rowData) => {
     return (
@@ -884,20 +967,32 @@ export default function DetEntregaRendirPescaIndustrial({
             sortable
           />
           <Column
-            field="aRendir"
-            header="A Rendir"
-            body={aRendirTemplate}
-            sortable={false}
-            style={{ width: "120px", textAlign: "rigth" }}
-          />
-          <Column
             field="formaParteCalculoEntregaARendir"
             header="E/R"
             body={entregaARendirTagTemplate}
             sortable
             style={{ width: "50px", textAlign: "center" }}
           />
-          <Column field="descripcion" header="Descripción" sortable />
+          <Column
+            field="saldoInicialAsignacion"
+            header="Saldo Inicial"
+            body={saldoInicialTemplate}
+            sortable
+            style={{ width: "120px", textAlign: "right" }}
+          />
+          <Column
+            field="saldoFinalAsignacion"
+            header="Saldo Final"
+            body={saldoFinalTemplate}
+            sortable
+            style={{ width: "120px", textAlign: "right" }}
+          />
+          <Column
+            field="detalleGastosPlanificados"
+            header="Gasto Planificado"
+            body={gastoPlanificadoTemplate}
+            sortable
+          />
           <Column
             field="entidadComercialId"
             header="Entidad Comercial"

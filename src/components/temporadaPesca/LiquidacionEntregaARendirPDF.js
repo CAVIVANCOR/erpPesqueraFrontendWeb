@@ -416,11 +416,64 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
   // Anchos de columnas para alineación
   const anchoColMon = colX[4] - colX[3];
   const anchoColTC = colX[5] - colX[4];
-  const anchoColMonto = colX[7] - colX[6];
+   const anchoColMonto = colX[7] - colX[6];
   const anchoColSaldo = width - margin - colX[7];
 
+  // ⭐ DECLARAR VARIABLES PRIMERO
+  const saldoInicial = Number(liquidacion.saldoInicialAsignacion || 0);
+  const montoAsignacion = Number(liquidacion.monto || 0);
+  let saldoAcumulado = saldoInicial + montoAsignacion;
+
+    // ========== LÍNEA SALDO INICIAL ==========
+  const alturaFilaSaldoInicial = 12;
+  
+  // Fondo verde claro para monto
+  page.drawRectangle({
+    x: colX[6],
+    y: yPosition - alturaFilaSaldoInicial + 6,
+    width: anchoColMonto,
+    height: alturaFilaSaldoInicial,
+    color: rgb(0.85, 0.95, 0.85),
+  });
+
+  // Fondo gris para saldo
+  page.drawRectangle({
+    x: colX[7],
+    y: yPosition - alturaFilaSaldoInicial + 6,
+    width: anchoColSaldo,
+    height: alturaFilaSaldoInicial,
+    color: rgb(0.92, 0.92, 0.92),
+  });
+
+  // Texto "SALDO INICIAL"
+  page.drawText("SALDO INICIAL", {
+    x: colX[3],
+    y: yPosition,
+    size: 8,
+    font: fontBold,
+    color: rgb(0, 0.5, 0),
+  });
+
+  // Monto del saldo inicial
+  const saldoInicialTexto = formatearNumero(saldoInicial, 2);
+  page.drawText(saldoInicialTexto, {
+    x: alinearDerecha(saldoInicialTexto, colX[6], anchoColMonto, fontNormal, 8),
+    y: yPosition,
+    size: 8,
+    font: fontNormal,
+  });
+
+  // Saldo acumulado (mismo valor)
+  page.drawText(saldoInicialTexto, {
+    x: alinearDerecha(saldoInicialTexto, colX[7], anchoColSaldo, fontNormal, 8),
+    y: yPosition,
+    size: 8,
+    font: fontNormal,
+  });
+
+  yPosition -= alturaFilaSaldoInicial + 5;
+
   // PRIMERA FILA: Asignación origen
-  let saldoAcumulado = Number(liquidacion.monto || 0);
 
   // CALCULAR ALTURA DINÁMICA DE LA FILA
   let numLineasAsignacion = 2; // Categoría+Tipo en 1 línea, Descripción en otra
@@ -789,31 +842,37 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
   });
   yPosition -= 8;
 
-  // FILA DE TOTALES
+  // ========== LÍNEA SALDO FINAL ==========
+  const alturaFilaSaldoFinal = 14;
+  
+  // Fondo gris para saldo
   page.drawRectangle({
-    x: margin,
-    y: yPosition - 2,
-    width: width - 2 * margin,
-    height: 12,
-    color: rgb(0.75, 0.75, 0.75),
+    x: colX[7],
+    y: yPosition - alturaFilaSaldoFinal + 6,
+    width: anchoColSaldo,
+    height: alturaFilaSaldoFinal,
+    color: rgb(0.92, 0.92, 0.92),
   });
 
-  page.drawText("TOTALES:", {
-    x: colX[3] + 2,
-    y: yPosition + 1,
-    size: 8,
+  // Texto "SALDO FINAL"
+  page.drawText("SALDO FINAL", {
+    x: colX[3],
+    y: yPosition,
+    size: 9,
+    font: fontBold,
+    color: rgb(0, 0.5, 0),
+  });
+
+  // Saldo final (saldo acumulado actual)
+  const saldoFinalTexto = formatearNumero(saldoAcumulado, 2);
+  page.drawText(saldoFinalTexto, {
+    x: alinearDerecha(saldoFinalTexto, colX[7], anchoColSaldo, fontBold, 9),
+    y: yPosition,
+    size: 9,
     font: fontBold,
   });
 
-  const totalAsigTexto = formatearNumero(liquidacion.monto, 2);
-  page.drawText(totalAsigTexto, {
-    x: alinearDerecha(totalAsigTexto, colX[6], anchoColMonto, fontBold, 8),
-    y: yPosition + 1,
-    size: 8,
-    font: fontBold,
-  });
-
-  yPosition -= 20;
+  yPosition -= alturaFilaSaldoFinal + 15;
 
   // ========== FIRMAS EN PÁGINA 1 ==========
   const firmaYPosition = yPosition - 40;

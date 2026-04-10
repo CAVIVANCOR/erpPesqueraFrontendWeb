@@ -149,3 +149,57 @@ export const obtenerLabelEnlace = async (enlaceId) => {
     return null;
   }
 };
+
+
+/**
+ * Liquida una asignación (marca como liquidada y calcula saldo final)
+ * @param {number} asignacionId - ID de la asignación a liquidar
+ * @returns {Promise<Object>} Asignación liquidada con saldo final calculado
+ */
+export const liquidarAsignacion = async (asignacionId) => {
+  try {
+    const response = await axios.post(`${API_URL}/${asignacionId}/liquidar`, {}, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al liquidar asignación:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtiene el saldo inicial para una nueva asignación
+ * @param {number} entregaARendirId - ID de la entrega a rendir
+ * @param {string} fechaMovimiento - Fecha del movimiento (ISO string)
+ * @returns {Promise<number>} Saldo inicial calculado
+ */
+export const obtenerSaldoInicial = async (entregaARendirId, fechaMovimiento) => {
+  try {
+    const response = await axios.get(`${API_URL}/saldo-inicial`, {
+      params: { entregaARendirId, fechaMovimiento },
+      headers: getAuthHeaders()
+    });
+    return response.data.saldoInicial;
+  } catch (error) {
+    console.error('Error al obtener saldo inicial:', error);
+    throw error;
+  }
+};
+
+/**
+ * Calcula el saldo final de una asignación
+ * @param {number} asignacionId - ID de la asignación
+ * @returns {Promise<number>} Saldo final calculado
+ */
+export const calcularSaldoFinal = async (asignacionId) => {
+  try {
+    const response = await axios.get(`${API_URL}/${asignacionId}/saldo-final`, {
+      headers: getAuthHeaders()
+    });
+    return response.data.saldoFinal;
+  } catch (error) {
+    console.error('Error al calcular saldo final:', error);
+    throw error;
+  }
+};
