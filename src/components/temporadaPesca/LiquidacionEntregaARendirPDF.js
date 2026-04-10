@@ -564,10 +564,10 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
   yPosition -= alturaFilaAsignacion + 2;
 
-  // FILAS DE GASTOS
+  // FILAS DE GASTOS - ⭐ CAMBIO CRÍTICO: forEach → for...of
   let totalGastos = 0;
 
-  gastosAsociados.forEach((gasto) => {
+  for (const gasto of gastosAsociados) {
     // ⭐ CALCULAR ALTURA DINÁMICA DE LA FILA
     let numLineasGasto = 3; // Categoría, Tipo, Descripción
     if (gasto.embarcacion) numLineasGasto++;
@@ -579,8 +579,8 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
       page = pdfDoc.addPage([841.89, 595.28]);
       pages.push(page);
       yPosition = height - 50;
-      // Dibujar encabezado completo en nueva página
-      yPosition = dibujarEncabezadoCompleto(page, yPosition);
+      // ⭐ FIX CRÍTICO: Agregar await
+      yPosition = await dibujarEncabezadoCompleto(page, yPosition);
     }
 
     const montoConvertido = convertirAMonedaBase(
@@ -732,7 +732,7 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
     });
 
     yPosition -= alturaFilaGasto + 2;
-  });
+  }
 
   // Línea final de tabla
   yPosition -= 3;
