@@ -650,16 +650,12 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
 
     // N° Dcmto
     let numeroDocumento = "";
-    if (gasto.tipoDocumento?.codigo) {
-      numeroDocumento = gasto.tipoDocumento.codigo;
-      if (gasto.numeroSerieComprobante || gasto.numeroCorrelativoComprobante) {
-        numeroDocumento += "/";
-        if (gasto.numeroSerieComprobante) {
-          numeroDocumento += gasto.numeroSerieComprobante;
-        }
-        if (gasto.numeroCorrelativoComprobante) {
-          numeroDocumento += "-" + gasto.numeroCorrelativoComprobante;
-        }
+    if (gasto.numeroSerieComprobante || gasto.numeroCorrelativoComprobante) {
+      if (gasto.numeroSerieComprobante) {
+        numeroDocumento += gasto.numeroSerieComprobante;
+      }
+      if (gasto.numeroCorrelativoComprobante) {
+        numeroDocumento += "-" + gasto.numeroCorrelativoComprobante;
       }
     }
 
