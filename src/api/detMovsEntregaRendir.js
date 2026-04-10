@@ -131,3 +131,21 @@ export const obtenerValoresIniciales = async (moduloOrigen, entregaARendirId) =>
     throw error;
   }
 };
+
+
+/**
+ * Obtiene el label formateado de un enlace a otro detalle de gasto
+ * @param {number} enlaceId - ID del enlace
+ * @returns {Promise<string|null>} Label formateado o null
+ */
+export const obtenerLabelEnlace = async (enlaceId) => {
+  try {
+    const response = await axios.get(`${API_URL}/${enlaceId}/label-enlace`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener label de enlace:', error);
+    return null;
+  }
+};
