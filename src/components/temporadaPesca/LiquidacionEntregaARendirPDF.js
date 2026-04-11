@@ -1278,10 +1278,10 @@ async function generarPDFLiquidacion(liquidacion, empresa) {
         tipoCambioBase,
       );
 
-      // Calcular monto ejecutado
+           // Calcular monto ejecutado usando enlaceGastosPlanificadosId
       let montoEjecutado = 0;
       gastosAsociados.forEach((ga) => {
-        if (ga.productoId && Number(ga.productoId) === Number(gp.productoId)) {
+        if (ga.enlaceGastosPlanificadosId && Number(ga.enlaceGastosPlanificadosId) === Number(gp.id)) {
           montoEjecutado += convertirAMonedaBase(
             ga.monto,
             ga.monedaId,

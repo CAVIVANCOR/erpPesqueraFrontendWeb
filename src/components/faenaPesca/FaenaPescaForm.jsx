@@ -772,10 +772,15 @@ export default function FaenaPescaForm({
         )}
 
         {activeCard === "descarga-faena" && (
-          <DescargaFaenaPescaCard
+                   <DescargaFaenaPescaCard
             faenaPescaId={currentFaenaData.id || defaultValues.id}
             temporadaData={temporadaData}
-            faenaData={currentFaenaData}
+            faenaData={{
+              ...currentFaenaData,
+              bahiaId: watch("bahiaId"),
+              motoristaId: watch("motoristaId"),
+              patronId: watch("patronId"),
+            }}
             puertos={puertosDescarga} // Usar puertos de descarga
             patrones={patrones}
             motoristas={motoristas}

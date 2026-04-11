@@ -25,7 +25,10 @@ import { formatearFechaHora, formatearNumero } from "../../utils/utils";
 import DetGastosPlanificadosTable from "../detGastosPlanificados/DetGastosPlanificadosTable";
 import { getGastosPlanificados } from "../../api/detGastosPlanificados";
 import LiquidacionEntregaARendirCard from "./LiquidacionEntregaARendirCard";
-import { obtenerTodasAsignacionesNoLiquidadas, obtenerValoresIniciales } from "../../api/detMovsEntregaRendir";
+import {
+  obtenerTodasAsignacionesNoLiquidadas,
+  obtenerValoresIniciales,
+} from "../../api/detMovsEntregaRendir";
 import { getEmbarcaciones } from "../../api/embarcacion";
 
 const DetMovsEntregaRendirForm = ({
@@ -99,6 +102,7 @@ const DetMovsEntregaRendirForm = ({
       urlLiquidacionEntregaARendir: null,
       enlaceAOtroDetalleGastoId: null,
       embarcacionId: null,
+      enlaceGastosPlanificadosId: null,
     },
   });
   const urlComprobanteMovimiento = watch("urlComprobanteMovimiento");
@@ -191,7 +195,17 @@ const DetMovsEntregaRendirForm = ({
         embarcacionId: movimiento.embarcacionId
           ? Number(movimiento.embarcacionId)
           : null,
+        enlaceGastosPlanificadosId: movimiento.enlaceGastosPlanificadosId
+          ? Number(movimiento.enlaceGastosPlanificadosId)
+          : null,
       });
+
+      // Establecer gasto planificado seleccionado si existe
+      if (movimiento.enlaceGastosPlanificadosId) {
+        setGastoPlanificadoSeleccionado(
+          Number(movimiento.enlaceGastosPlanificadosId),
+        );
+      }
 
       // Cargar categoría desde la base de datos
       if (movimiento.tipoMovimiento?.categoria?.id) {
@@ -293,7 +307,9 @@ const DetMovsEntregaRendirForm = ({
         }
       } else {
         setGastosPlanificadosAsignacion([]);
-        setGastoPlanificadoSeleccionado(null);
+        if (!isEditing) {
+          setGastoPlanificadoSeleccionado(null);
+        }
       }
     };
     cargarGastosPlanificados();
@@ -318,30 +334,33 @@ const DetMovsEntregaRendirForm = ({
     cargarAsignaciones();
   }, []);
 
-    // ⭐ Cargar valores iniciales en modo creación
+  // ⭐ Cargar valores iniciales en modo creación
   useEffect(() => {
     const cargarValoresIniciales = async () => {
       if (!isEditing && entregaARendirId) {
         try {
           const valores = await obtenerValoresIniciales(
-            'PESCA_INDUSTRIAL',
-            entregaARendirId
+            "PESCA_INDUSTRIAL",
+            entregaARendirId,
           );
-          
-          setValue('enlaceAOtroDetalleGastoId', valores.enlaceAOtroDetalleGastoId);
-          
+
+          setValue(
+            "enlaceAOtroDetalleGastoId",
+            valores.enlaceAOtroDetalleGastoId,
+          );
+
           if (valores.embarcacionId) {
-            setValue('embarcacionId', valores.embarcacionId);
+            setValue("embarcacionId", valores.embarcacionId);
           }
         } catch (error) {
-          console.error('Error al cargar valores iniciales:', error);
+          console.error("Error al cargar valores iniciales:", error);
         }
       }
     };
 
     cargarValoresIniciales();
   }, [isEditing, entregaARendirId, setValue]);
-  
+
   // Cargar embarcaciones
   useEffect(() => {
     const cargarEmbarcaciones = async () => {
@@ -552,14 +571,16 @@ const DetMovsEntregaRendirForm = ({
     );
 
     if (gasto) {
-      const productoId = gasto.productoId ? Number(gasto.productoId) : null;
-      const monedaId = gasto.monedaId ? Number(gasto.monedaId) : null;
-      const monto = gasto.montoPlanificado ? Number(gasto.montoPlanificado) : 0;
+      const productoId = Number(gasto.productoId);
+      const monedaId = Number(gasto.monedaId);
+      const monto = Number(gasto.montoPlanificado);
       const descripcion = gasto.descripcion || "";
+
       setValue("productoId", productoId);
       setValue("monedaId", monedaId);
       setValue("monto", monto);
       setValue("descripcion", descripcion);
+      setValue("enlaceGastosPlanificadosId", Number(gastoId)); // ← AGREGAR ESTA LÍNEA
       setGastoPlanificadoSeleccionado(gastoId);
     } else {
       console.error("❌ No se encontró el gasto con ID:", gastoId);
@@ -635,6 +656,9 @@ const DetMovsEntregaRendirForm = ({
           ? Number(data.enlaceAOtroDetalleGastoId)
           : null,
         embarcacionId: data.embarcacionId ? Number(data.embarcacionId) : null,
+        enlaceGastosPlanificadosId: data.enlaceGastosPlanificadosId
+          ? Number(data.enlaceGastosPlanificadosId)
+          : null,
         actualizadoEn: new Date(),
       };
 
@@ -863,6 +887,7 @@ const DetMovsEntregaRendirForm = ({
                               setValue("productoId", "");
                               setValue("monto", 0);
                               setValue("descripcion", "");
+                              setValue("enlaceGastosPlanificadosId", null); // ← AGREGAR AQUÍ
                             }
                           }}
                           options={asignacionOrigenOptions}
@@ -1198,8 +1223,6 @@ const DetMovsEntregaRendirForm = ({
                 </div>
               )}
 
-
-
             <div
               style={{
                 display: "flex",
@@ -1333,7 +1356,7 @@ const DetMovsEntregaRendirForm = ({
                 />
               </div>
             </div>
-                        {!operacionSinFactura && (
+            {!operacionSinFactura && (
               <div
                 style={{
                   display: "flex",

@@ -569,13 +569,21 @@ export default function DetEntregaRendirPescaIndustrial({
     );
     return entidad ? entidad.razonSocial : "N/A";
   };
+  
   const gastoPlanificadoTemplate = (rowData) => {
-    if (!rowData.detalleGastosPlanificados) return "N/A";
+    // Verificar si existe la relación enlaceGastoPlanificado
+    if (!rowData.enlaceGastoPlanificado) {
+      return <span style={{ color: "#999", fontStyle: "italic" }}>Sin gasto planificado</span>;
+    }
 
-    // El campo detalleGastosPlanificados es un String que contiene la descripción
+    // Mostrar descripcionArmada del producto del gasto planificado
+    const descripcion = rowData.enlaceGastoPlanificado.producto?.descripcionArmada 
+      || rowData.enlaceGastoPlanificado.producto?.nombre 
+      || "N/A";
+
     return (
       <div style={{ fontSize: "0.85rem", color: "#666" }}>
-        {rowData.detalleGastosPlanificados}
+        {descripcion}
       </div>
     );
   };

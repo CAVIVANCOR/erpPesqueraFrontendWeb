@@ -407,7 +407,7 @@ export default function DescargaFaenaPescaForm({
 
     try {
       setLoading(true);
-
+console.log("patronId",patronId,"motoristaId",motoristaId,"bahiaId",bahiaId)
       const payload = {
         faenaPescaId: data.faenaPescaId ? Number(data.faenaPescaId) : null,
         temporadaPescaId: data.temporadaPescaId
@@ -433,9 +433,9 @@ export default function DescargaFaenaPescaForm({
           : null,
         numWinchaPesaje: data.numWinchaPesaje?.trim() || null,
         urlComprobanteWincha: data.urlComprobanteWincha?.trim() || null,
-        patronId: data.patronId ? Number(data.patronId) : null,
-        motoristaId: data.motoristaId ? Number(data.motoristaId) : null,
-        bahiaId: data.bahiaId ? Number(data.bahiaId) : null,
+        patronId: patronId ? Number(patronId) : null,
+        motoristaId: motoristaId ? Number(motoristaId) : null,
+        bahiaId: bahiaId ? Number(bahiaId) : null,
         latitud: data.latitud || 0,
         longitud: data.longitud || 0,
         combustibleAbastecidoGalones: data.combustibleAbastecidoGalones || 0,
