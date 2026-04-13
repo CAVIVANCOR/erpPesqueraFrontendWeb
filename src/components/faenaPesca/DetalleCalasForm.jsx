@@ -31,6 +31,8 @@ import {
   descomponerDMS,
   convertirDMSADecimal,
 } from "../../utils/gpsUtils";
+import { analizarCoordenadas } from "../../api/geolocalizacion";
+import InformacionGeografica from "../descargaFaenaPesca/InformacionGeografica";
 import DetalleCalasEspecieForm from "./DetalleCalasEspecieForm";
 import {
   getCalasPorFaena,
@@ -86,6 +88,11 @@ const DetalleCalasForm = ({
   const [lonMinutos, setLonMinutos] = useState(0);
   const [lonSegundos, setLonSegundos] = useState(0);
   const [lonDireccion, setLonDireccion] = useState("W");
+
+  // Estados para información geográfica
+  const [infoGeografica, setInfoGeografica] = useState(null);
+  const [loadingGeo, setLoadingGeo] = useState(false);
+  const [errorGeo, setErrorGeo] = useState(null);
 
   // Estados para dropdowns deshabilitados
   const [bahias, setBahias] = useState(bahiasProps);
@@ -175,6 +182,44 @@ const DetalleCalasForm = ({
     embarcacionesProps,
     faenaData,
   ]);
+
+    /**
+   * useEffect para analizar coordenadas cuando ya existen en el formulario
+   * (por ejemplo, al editar una cala existente)
+   */
+  useEffect(() => {
+    // Solo analizar si hay coordenadas válidas y no estamos ya cargando
+    if (latitud && longitud && !loadingGeo) {
+      // Verificar que las coordenadas sean diferentes a las ya analizadas
+      const coordenadasActuales = `${latitud},${longitud}`;
+      const coordenadasAnalizadas = infoGeografica
+        ? `${infoGeografica.coordenadas?.latitud},${infoGeografica.coordenadas?.longitud}`
+        : null;
+
+      // Solo analizar si son coordenadas nuevas
+      if (coordenadasActuales !== coordenadasAnalizadas) {
+        const analizarCoordenadasExistentes = async () => {
+          setLoadingGeo(true);
+          setErrorGeo(null);
+          try {
+            const infoGeo = await analizarCoordenadas(
+              latitud,
+              longitud,
+              null, // Cala no tiene puerto de salida
+            );
+            setInfoGeografica(infoGeo);
+          } catch (error) {
+            console.error("Error al analizar coordenadas existentes:", error);
+            setErrorGeo("No se pudo obtener la información geográfica");
+          } finally {
+            setLoadingGeo(false);
+          }
+        };
+
+        analizarCoordenadasExistentes();
+      }
+    }
+  }, [latitud, longitud]);
 
   const cargarCalas = async () => {
     if (!faenaPescaId) {
@@ -764,6 +809,8 @@ const DetalleCalasForm = ({
         style={{ width: "1300px" }}
         header={calaDialogHeader}
         modal
+        maximizable
+        maximized="true"
         className="p-fluid"
         footer={calaDialogFooter}
         onHide={() => setCalaDialog(false)}
@@ -904,7 +951,7 @@ const DetalleCalasForm = ({
                 label="Capturar GPS"
                 icon="pi pi-map-marker"
                 className="p-button-info"
-                onClick={async () => {
+                              onClick={async () => {
                   try {
                     await capturarGPS(
                       async (latitude, longitude, accuracy) => {
@@ -919,6 +966,37 @@ const DetalleCalasForm = ({
                           )}m. Guardando cala...`,
                           life: 3000,
                         });
+
+                        // Analizar coordenadas para obtener información geográfica
+                        setLoadingGeo(true);
+                        setErrorGeo(null);
+                        try {
+                          const infoGeo = await analizarCoordenadas(
+                            latitude,
+                            longitude,
+                            null, // Cala no tiene puerto de salida
+                          );
+                          setInfoGeografica(infoGeo);
+
+                          toast.current?.show({
+                            severity: "info",
+                            summary: "Información geográfica obtenida",
+                            detail: `Ubicación: ${infoGeo.ubicacion?.ciudad || "N/A"}`,
+                            life: 3000,
+                          });
+                        } catch (error) {
+                          console.error("Error al analizar coordenadas:", error);
+                          setErrorGeo("No se pudo obtener la información geográfica");
+                          toast.current?.show({
+                            severity: "warn",
+                            summary: "Advertencia",
+                            detail:
+                              "GPS capturado pero no se pudo obtener información geográfica",
+                            life: 3000,
+                          });
+                        } finally {
+                          setLoadingGeo(false);
+                        }
 
                         try {
                           await guardarCala(false);
@@ -954,25 +1032,25 @@ const DetalleCalasForm = ({
               />
             </div>
 
-            {/* Tabla compacta de coordenadas GPS */}
+                      {/* Tabla MEJORADA de coordenadas GPS - Optimizada para Tablet */}
             <div style={{ flex: 3 }}>
               <table
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  border: "2px solid #0EA5E9",
+                  border: "3px solid #0EA5E9",
                 }}
               >
                 <thead>
                   <tr style={{ backgroundColor: "#0EA5E9", color: "white" }}>
                     <th
                       style={{
-                        padding: "4px",
+                        padding: "8px",
                         border: "1px solid #0EA5E9",
-                        fontSize: "12px",
-                        width: "75px",
-                        minWidth: "75px",
-                        maxWidth: "75px",
+                        fontSize: "14px",
+                        fontWeight: "bold",
+                        width: "100px",
+                        minWidth: "100px",
                       }}
                     >
                       Formato
@@ -980,47 +1058,47 @@ const DetalleCalasForm = ({
                     <th
                       colSpan="4"
                       style={{
-                        padding: "4px",
+                        padding: "8px",
                         border: "1px solid #0EA5E9",
-                        fontSize: "12px",
+                        fontSize: "14px",
+                        fontWeight: "bold",
                         textAlign: "center",
                       }}
                     >
-                      Latitud
+                      Latitud (Siempre SUR en Perú)
                     </th>
                     <th
                       colSpan="4"
                       style={{
-                        padding: "4px",
+                        padding: "8px",
                         border: "1px solid #0EA5E9",
-                        fontSize: "12px",
+                        fontSize: "14px",
+                        fontWeight: "bold",
                         textAlign: "center",
                       }}
                     >
-                      Longitud
+                      Longitud (Siempre OESTE en Perú)
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Fila Decimal */}
+                  {/* ========== FILA DECIMAL ========== */}
                   <tr>
                     <td
                       style={{
-                        padding: "4px",
+                        padding: "8px",
                         border: "1px solid #0EA5E9",
                         fontWeight: "bold",
-                        fontSize: "11px",
+                        fontSize: "14px",
                         backgroundColor: "#e1f1f7",
-                        width: "75px",
-                        minWidth: "75px",
-                        maxWidth: "75px",
+                        width: "100px",
                       }}
                     >
                       Decimal
                     </td>
                     <td
                       colSpan="4"
-                      style={{ padding: "2px", border: "1px solid #0EA5E9" }}
+                      style={{ padding: "4px", border: "1px solid #0EA5E9" }}
                     >
                       <input
                         type="number"
@@ -1034,17 +1112,19 @@ const DetalleCalasForm = ({
                         placeholder="-12.345678"
                         style={{
                           width: "100%",
-                          padding: "4px",
-                          border: "none",
-                          fontSize: "12px",
+                          padding: "8px",
+                          border: "2px solid #0EA5E9",
+                          fontSize: "20px", // ← MÁS GRANDE PARA TABLET
                           fontWeight: "bold",
                           textAlign: "center",
+                          borderRadius: "4px",
+                          color: "#059669",
                         }}
                       />
                     </td>
                     <td
                       colSpan="4"
-                      style={{ padding: "2px", border: "1px solid #0EA5E9" }}
+                      style={{ padding: "4px", border: "1px solid #0EA5E9" }}
                     >
                       <input
                         type="number"
@@ -1058,38 +1138,41 @@ const DetalleCalasForm = ({
                         placeholder="-77.123456"
                         style={{
                           width: "100%",
-                          padding: "4px",
-                          border: "none",
-                          fontSize: "12px",
+                          padding: "8px",
+                          border: "2px solid #0EA5E9",
+                          fontSize: "20px", // ← MÁS GRANDE PARA TABLET
                           fontWeight: "bold",
                           textAlign: "center",
+                          borderRadius: "4px",
+                          color: "#2563eb",
                         }}
                       />
                     </td>
                   </tr>
-                  {/* Fila GMS */}
+
+                  {/* ========== FILA DMS (Grados, Minutos, Segundos) ========== */}
                   <tr>
                     <td
                       style={{
-                        padding: "4px",
+                        padding: "8px",
                         border: "1px solid #0EA5E9",
                         fontWeight: "bold",
-                        fontSize: "11px",
+                        fontSize: "14px",
                         backgroundColor: "#e1f1f7",
-                        width: "75px",
-                        minWidth: "75px",
-                        maxWidth: "75px",
                       }}
                     >
-                      GMS
+                      DMS
                     </td>
-                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                    {/* ===== LATITUD DMS ===== */}
+                    {/* Grados */}
+                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: "2px",
+                          gap: "4px",
                         }}
                       >
                         <input
@@ -1103,26 +1186,29 @@ const DetalleCalasForm = ({
                           min="0"
                           max="90"
                           style={{
-                            width: "60px",
-                            padding: "4px",
-                            border: "none",
-                            fontSize: "12px",
+                            width: "70px",
+                            padding: "8px",
+                            border: "2px solid #059669",
+                            fontSize: "18px", // ← MÁS GRANDE
                             fontWeight: "bold",
                             textAlign: "center",
+                            borderRadius: "4px",
                           }}
                         />
-                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                           °
                         </span>
                       </div>
                     </td>
-                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                    {/* Minutos */}
+                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: "2px",
+                          gap: "4px",
                         }}
                       >
                         <input
@@ -1136,33 +1222,36 @@ const DetalleCalasForm = ({
                           min="0"
                           max="59"
                           style={{
-                            width: "50px",
-                            padding: "4px",
-                            border: "none",
-                            fontSize: "12px",
+                            width: "70px",
+                            padding: "8px",
+                            border: "2px solid #059669",
+                            fontSize: "18px", // ← MÁS GRANDE
                             fontWeight: "bold",
                             textAlign: "center",
+                            borderRadius: "4px",
                           }}
                         />
-                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                           '
                         </span>
                       </div>
                     </td>
-                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                    {/* Segundos */}
+                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: "2px",
+                          gap: "4px",
                         }}
                       >
                         <input
                           type="number"
                           value={latSegundos}
                           onChange={(e) =>
-                            setLatSegundos(Number(e.target.value) || 0)
+                            setLatSegundos(parseFloat(e.target.value) || 0)
                           }
                           onBlur={actualizarLatitudDesdeDMS}
                           disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
@@ -1170,47 +1259,72 @@ const DetalleCalasForm = ({
                           max="59.99"
                           step="0.01"
                           style={{
-                            width: "60px",
-                            padding: "4px",
-                            border: "none",
-                            fontSize: "12px",
+                            width: "80px",
+                            padding: "8px",
+                            border: "2px solid #059669",
+                            fontSize: "18px", // ← MÁS GRANDE
                             fontWeight: "bold",
                             textAlign: "center",
+                            borderRadius: "4px",
                           }}
                         />
-                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                           "
                         </span>
                       </div>
                     </td>
-                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                    {/* Dirección N/S - BLOQUEADO EN "S" PARA USUARIOS NORMALES */}
+                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                       <select
                         value={latDireccion}
                         onChange={(e) => {
                           setLatDireccion(e.target.value);
-                          setTimeout(actualizarLatitudDesdeDMS, 0);
+                          actualizarLatitudDesdeDMS();
                         }}
-                        disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
+                        disabled={
+                          !esSuperUsuario || (calaFinalizada && !esSuperUsuario) || camposDeshabilitados
+                        } // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
                         style={{
                           width: "100%",
-                          padding: "4px",
-                          border: "none",
-                          fontSize: "12px",
+                          padding: "8px",
+                          border: esSuperUsuario
+                            ? "2px solid #f59e0b"
+                            : "2px solid #94a3b8",
+                          fontSize: "18px", // ← MÁS GRANDE
                           fontWeight: "bold",
                           textAlign: "center",
+                          borderRadius: "4px",
+                          backgroundColor: esSuperUsuario ? "#fef3c7" : "#f1f5f9",
+                          cursor: esSuperUsuario ? "pointer" : "not-allowed",
                         }}
                       >
                         <option value="N">N</option>
                         <option value="S">S</option>
                       </select>
+                      {!esSuperUsuario && (
+                        <div
+                          style={{
+                            fontSize: "10px",
+                            color: "#64748b",
+                            textAlign: "center",
+                            marginTop: "2px",
+                          }}
+                        >
+                          🔒 Fijo
+                        </div>
+                      )}
                     </td>
-                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                    {/* ===== LONGITUD DMS ===== */}
+                    {/* Grados */}
+                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: "2px",
+                          gap: "4px",
                         }}
                       >
                         <input
@@ -1224,26 +1338,29 @@ const DetalleCalasForm = ({
                           min="0"
                           max="180"
                           style={{
-                            width: "60px",
-                            padding: "4px",
-                            border: "none",
-                            fontSize: "12px",
+                            width: "70px",
+                            padding: "8px",
+                            border: "2px solid #2563eb",
+                            fontSize: "18px", // ← MÁS GRANDE
                             fontWeight: "bold",
                             textAlign: "center",
+                            borderRadius: "4px",
                           }}
                         />
-                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                           °
                         </span>
                       </div>
                     </td>
-                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                    {/* Minutos */}
+                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: "2px",
+                          gap: "4px",
                         }}
                       >
                         <input
@@ -1257,33 +1374,36 @@ const DetalleCalasForm = ({
                           min="0"
                           max="59"
                           style={{
-                            width: "50px",
-                            padding: "4px",
-                            border: "none",
-                            fontSize: "12px",
+                            width: "70px",
+                            padding: "8px",
+                            border: "2px solid #2563eb",
+                            fontSize: "18px", // ← MÁS GRANDE
                             fontWeight: "bold",
                             textAlign: "center",
+                            borderRadius: "4px",
                           }}
                         />
-                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                           '
                         </span>
                       </div>
                     </td>
-                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                    {/* Segundos */}
+                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: "2px",
+                          gap: "4px",
                         }}
                       >
                         <input
                           type="number"
                           value={lonSegundos}
                           onChange={(e) =>
-                            setLonSegundos(Number(e.target.value) || 0)
+                            setLonSegundos(parseFloat(e.target.value) || 0)
                           }
                           onBlur={actualizarLongitudDesdeDMS}
                           disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
@@ -1291,45 +1411,75 @@ const DetalleCalasForm = ({
                           max="59.99"
                           step="0.01"
                           style={{
-                            width: "60px",
-                            padding: "4px",
-                            border: "none",
-                            fontSize: "12px",
+                            width: "80px",
+                            padding: "8px",
+                            border: "2px solid #2563eb",
+                            fontSize: "18px", // ← MÁS GRANDE
                             fontWeight: "bold",
                             textAlign: "center",
+                            borderRadius: "4px",
                           }}
                         />
-                        <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                           "
                         </span>
                       </div>
                     </td>
-                    <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                    {/* Dirección E/W - BLOQUEADO EN "W" PARA USUARIOS NORMALES */}
+                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                       <select
                         value={lonDireccion}
                         onChange={(e) => {
                           setLonDireccion(e.target.value);
-                          setTimeout(actualizarLongitudDesdeDMS, 0);
+                          actualizarLongitudDesdeDMS();
                         }}
-                        disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
+                        disabled={
+                          !esSuperUsuario || (calaFinalizada && !esSuperUsuario) || camposDeshabilitados
+                        } // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
                         style={{
                           width: "100%",
-                          padding: "4px",
-                          border: "none",
-                          fontSize: "12px",
+                          padding: "8px",
+                          border: esSuperUsuario
+                            ? "2px solid #f59e0b"
+                            : "2px solid #94a3b8",
+                          fontSize: "18px", // ← MÁS GRANDE
                           fontWeight: "bold",
                           textAlign: "center",
+                          borderRadius: "4px",
+                          backgroundColor: esSuperUsuario ? "#fef3c7" : "#f1f5f9",
+                          cursor: esSuperUsuario ? "pointer" : "not-allowed",
                         }}
                       >
                         <option value="E">E</option>
                         <option value="W">W</option>
                       </select>
+                      {!esSuperUsuario && (
+                        <div
+                          style={{
+                            fontSize: "10px",
+                            color: "#64748b",
+                            textAlign: "center",
+                            marginTop: "2px",
+                          }}
+                        >
+                          🔒 Fijo
+                        </div>
+                      )}
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
+
+          {/* Información Geográfica */}
+          <InformacionGeografica
+            data={infoGeografica}
+            loading={loadingGeo}
+            error={errorGeo}
+          />
+
           <DetalleCalasEspecieForm
             calaId={editingCala?.id}
             faenaPescaId={faenaPescaId}

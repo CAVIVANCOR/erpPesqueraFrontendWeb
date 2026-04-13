@@ -26,6 +26,9 @@ import {
   descomponerDMS,
   convertirDMSADecimal,
 } from "../../utils/gpsUtils";
+import { useAuthStore } from "../../shared/stores/useAuthStore";
+import { analizarCoordenadas } from "../../api/geolocalizacion";
+import InformacionGeografica from "../descargaFaenaPesca/InformacionGeografica";
 
 /**
  * Formulario DescargaFaenaConsumoForm
@@ -65,6 +68,10 @@ export default function DescargaFaenaConsumoForm({
   onGuardadoExitoso,
   onCancelar,
 }) {
+  // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
+  const usuario = useAuthStore((state) => state.usuario);
+  const esSuperUsuario = usuario?.esSuperUsuario || false;
+
   // Estados para loading
   const [loading, setLoading] = useState(false);
   const [finalizandoDescarga, setFinalizandoDescarga] = useState(false);
@@ -153,6 +160,16 @@ export default function DescargaFaenaConsumoForm({
   const [lonFondeoMinutos, setLonFondeoMinutos] = useState(0);
   const [lonFondeoSegundos, setLonFondeoSegundos] = useState(0);
   const [lonFondeoDireccion, setLonFondeoDireccion] = useState("W");
+
+  // Estados para información geográfica
+  const [infoGeografica, setInfoGeografica] = useState(null);
+  const [loadingGeo, setLoadingGeo] = useState(false);
+    const [errorGeo, setErrorGeo] = useState(null);
+
+  // Estados para información geográfica de FONDEO
+  const [infoGeograficaFondeo, setInfoGeograficaFondeo] = useState(null);
+  const [loadingGeoFondeo, setLoadingGeoFondeo] = useState(false);
+  const [errorGeoFondeo, setErrorGeoFondeo] = useState(null);
 
   // Normalizar opciones de combos
   const puertosNormalizados = puertos.map((p) => ({
@@ -337,6 +354,83 @@ export default function DescargaFaenaConsumoForm({
     }
   }, [longitudFondeo]);
 
+  /**
+   * useEffect para analizar coordenadas cuando ya existen en el formulario
+   * (por ejemplo, al editar una descarga existente)
+   */
+  useEffect(() => {
+    // Solo analizar si hay coordenadas válidas y no estamos ya cargando
+    if (latitud && longitud && !loadingGeo) {
+      // Verificar que las coordenadas sean diferentes a las ya analizadas
+      const coordenadasActuales = `${latitud},${longitud}`;
+      const coordenadasAnalizadas = infoGeografica
+        ? `${infoGeografica.coordenadas?.latitud},${infoGeografica.coordenadas?.longitud}`
+        : null;
+
+      // Solo analizar si son coordenadas nuevas
+      if (coordenadasActuales !== coordenadasAnalizadas) {
+        const analizarCoordenadasExistentes = async () => {
+          setLoadingGeo(true);
+          setErrorGeo(null);
+          try {
+            const puertoSalidaId = getValues("puertoDescargaId");
+            const infoGeo = await analizarCoordenadas(
+              latitud,
+              longitud,
+              puertoSalidaId || null,
+            );
+            setInfoGeografica(infoGeo);
+          } catch (error) {
+            console.error("Error al analizar coordenadas existentes:", error);
+            setErrorGeo("No se pudo obtener la información geográfica");
+          } finally {
+            setLoadingGeo(false);
+          }
+        };
+
+        analizarCoordenadasExistentes();
+      }
+    }
+    }, [latitud, longitud]);
+
+  /**
+   * useEffect para analizar coordenadas de FONDEO cuando ya existen
+   */
+  useEffect(() => {
+    // Solo analizar si hay coordenadas de fondeo válidas y no estamos ya cargando
+    if (latitudFondeo && longitudFondeo && !loadingGeoFondeo) {
+      // Verificar que las coordenadas sean diferentes a las ya analizadas
+      const coordenadasActuales = `${latitudFondeo},${longitudFondeo}`;
+      const coordenadasAnalizadas = infoGeograficaFondeo
+        ? `${infoGeograficaFondeo.coordenadas?.latitud},${infoGeograficaFondeo.coordenadas?.longitud}`
+        : null;
+
+      // Solo analizar si son coordenadas nuevas
+      if (coordenadasActuales !== coordenadasAnalizadas) {
+        const analizarCoordenadasFondeoExistentes = async () => {
+          setLoadingGeoFondeo(true);
+          setErrorGeoFondeo(null);
+          try {
+            const puertoFondeoId = getValues("puertoFondeoId");
+            const infoGeo = await analizarCoordenadas(
+              latitudFondeo,
+              longitudFondeo,
+              puertoFondeoId || null,
+            );
+            setInfoGeograficaFondeo(infoGeo);
+          } catch (error) {
+            console.error("Error al analizar coordenadas de fondeo existentes:", error);
+            setErrorGeoFondeo("No se pudo obtener la información geográfica de fondeo");
+          } finally {
+            setLoadingGeoFondeo(false);
+          }
+        };
+
+        analizarCoordenadasFondeoExistentes();
+      }
+    }
+  }, [latitudFondeo, longitudFondeo]);
+
   // Cálculos automáticos al cambiar especie, toneladas, cubetas o precio
   useEffect(() => {
     const realizarCalculos = () => {
@@ -347,7 +441,7 @@ export default function DescargaFaenaConsumoForm({
 
       // 1. Obtener especie seleccionada
       const especieSeleccionada = especies.find(
-        (e) => Number(e.id) === Number(especieIdWatched)
+        (e) => Number(e.id) === Number(especieIdWatched),
       );
 
       if (!especieSeleccionada) {
@@ -446,7 +540,7 @@ export default function DescargaFaenaConsumoForm({
       latGrados,
       latMinutos,
       latSegundos,
-      latDireccion
+      latDireccion,
     );
     setValue("latitud", decimal);
   };
@@ -456,7 +550,7 @@ export default function DescargaFaenaConsumoForm({
       lonGrados,
       lonMinutos,
       lonSegundos,
-      lonDireccion
+      lonDireccion,
     );
     setValue("longitud", decimal);
   };
@@ -467,7 +561,7 @@ export default function DescargaFaenaConsumoForm({
       latFondeoGrados,
       latFondeoMinutos,
       latFondeoSegundos,
-      latFondeoDireccion
+      latFondeoDireccion,
     );
     setValue("latitudFondeo", decimal);
   };
@@ -477,7 +571,7 @@ export default function DescargaFaenaConsumoForm({
       lonFondeoGrados,
       lonFondeoMinutos,
       lonFondeoSegundos,
-      lonFondeoDireccion
+      lonFondeoDireccion,
     );
     setValue("longitudFondeo", decimal);
   };
@@ -638,7 +732,7 @@ export default function DescargaFaenaConsumoForm({
           // Llamar al backend para finalizar y generar movimientos de almacén
           const resultado = await finalizarDescargaConsumoConMovimientos(
             detalle.id,
-            novedadPescaConsumoId
+            novedadPescaConsumoId,
           );
 
           // Mostrar mensaje de éxito con detalles
@@ -683,7 +777,7 @@ export default function DescargaFaenaConsumoForm({
   const handleCapturarGPS = async () => {
     try {
       await capturarGPS(
-        (latitude, longitude, accuracy) => {
+        async (latitude, longitude, accuracy) => {
           // Callback de éxito
           setValue("latitud", latitude);
           setValue("longitud", longitude);
@@ -694,6 +788,38 @@ export default function DescargaFaenaConsumoForm({
             detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m`,
             life: 3000,
           });
+
+          // Analizar coordenadas para obtener información geográfica
+          setLoadingGeo(true);
+          setErrorGeo(null);
+          try {
+            const puertoSalidaId = getValues("puertoDescargaId");
+            const infoGeo = await analizarCoordenadas(
+              latitude,
+              longitude,
+              puertoSalidaId || null,
+            );
+            setInfoGeografica(infoGeo);
+
+            toast.current?.show({
+              severity: "info",
+              summary: "Información geográfica obtenida",
+              detail: `Ubicación: ${infoGeo.ubicacion?.ciudad || "N/A"}`,
+              life: 3000,
+            });
+          } catch (error) {
+            console.error("Error al analizar coordenadas:", error);
+            setErrorGeo("No se pudo obtener la información geográfica");
+            toast.current?.show({
+              severity: "warn",
+              summary: "Advertencia",
+              detail:
+                "GPS capturado pero no se pudo obtener información geográfica",
+              life: 3000,
+            });
+          } finally {
+            setLoadingGeo(false);
+          }
         },
         (errorMessage) => {
           // Callback de error
@@ -703,7 +829,7 @@ export default function DescargaFaenaConsumoForm({
             detail: errorMessage,
             life: 3000,
           });
-        }
+        },
       );
     } catch (error) {
       console.error("Error capturando GPS:", error);
@@ -713,7 +839,7 @@ export default function DescargaFaenaConsumoForm({
   const handleCapturarGPSFondeo = async () => {
     try {
       await capturarGPS(
-        (latitude, longitude, accuracy) => {
+               async (latitude, longitude, accuracy) => {
           // Callback de éxito
           setValue("latitudFondeo", latitude);
           setValue("longitudFondeo", longitude);
@@ -722,10 +848,42 @@ export default function DescargaFaenaConsumoForm({
             severity: "success",
             summary: "GPS Fondeo capturado",
             detail: `GPS Fondeo capturado con precisión de ${accuracy.toFixed(
-              1
+              1,
             )}m`,
             life: 3000,
           });
+
+          // Analizar coordenadas de fondeo para obtener información geográfica
+          setLoadingGeoFondeo(true);
+          setErrorGeoFondeo(null);
+          try {
+            const puertoFondeoId = getValues("puertoFondeoId");
+            const infoGeo = await analizarCoordenadas(
+              latitude,
+              longitude,
+              puertoFondeoId || null,
+            );
+            setInfoGeograficaFondeo(infoGeo);
+
+            toast.current?.show({
+              severity: "info",
+              summary: "Información geográfica de fondeo obtenida",
+              detail: `Ubicación: ${infoGeo.ubicacion?.ciudad || "N/A"}`,
+              life: 3000,
+            });
+          } catch (error) {
+            console.error("Error al analizar coordenadas de fondeo:", error);
+            setErrorGeoFondeo("No se pudo obtener la información geográfica de fondeo");
+            toast.current?.show({
+              severity: "warn",
+              summary: "Advertencia",
+              detail:
+                "GPS Fondeo capturado pero no se pudo obtener información geográfica",
+              life: 3000,
+            });
+          } finally {
+            setLoadingGeoFondeo(false);
+          }
         },
         (errorMessage) => {
           // Callback de error
@@ -735,7 +893,7 @@ export default function DescargaFaenaConsumoForm({
             detail: errorMessage,
             life: 3000,
           });
-        }
+        },
       );
     } catch (error) {
       console.error("Error capturando GPS Fondeo:", error);
@@ -899,25 +1057,25 @@ export default function DescargaFaenaConsumoForm({
           />
         </div>
 
-        {/* Tabla compacta de coordenadas GPS */}
+        {/* Tabla MEJORADA de coordenadas GPS - Optimizada para Tablet */}
         <div style={{ flex: 3 }}>
           <table
             style={{
               width: "100%",
               borderCollapse: "collapse",
-              border: "2px solid #0EA5E9",
+              border: "3px solid #0EA5E9",
             }}
           >
             <thead>
               <tr style={{ backgroundColor: "#0EA5E9", color: "white" }}>
                 <th
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #0EA5E9",
-                    fontSize: "12px",
-                    width: "75px",
-                    minWidth: "75px",
-                    maxWidth: "75px",
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                    width: "100px",
+                    minWidth: "100px",
                   }}
                 >
                   Formato
@@ -925,47 +1083,47 @@ export default function DescargaFaenaConsumoForm({
                 <th
                   colSpan="4"
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #0EA5E9",
-                    fontSize: "12px",
+                    fontSize: "14px",
+                    fontWeight: "bold",
                     textAlign: "center",
                   }}
                 >
-                  Latitud
+                  Latitud (Siempre SUR en Perú)
                 </th>
                 <th
                   colSpan="4"
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #0EA5E9",
-                    fontSize: "12px",
+                    fontSize: "14px",
+                    fontWeight: "bold",
                     textAlign: "center",
                   }}
                 >
-                  Longitud
+                  Longitud (Siempre OESTE en Perú)
                 </th>
               </tr>
             </thead>
             <tbody>
-              {/* Fila Decimal */}
+              {/* ========== FILA DECIMAL ========== */}
               <tr>
                 <td
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #0EA5E9",
                     fontWeight: "bold",
-                    fontSize: "11px",
+                    fontSize: "14px",
                     backgroundColor: "#e1f1f7",
-                    width: "75px",
-                    minWidth: "75px",
-                    maxWidth: "75px",
+                    width: "100px",
                   }}
                 >
                   Decimal
                 </td>
                 <td
                   colSpan="4"
-                  style={{ padding: "2px", border: "1px solid #0EA5E9" }}
+                  style={{ padding: "4px", border: "1px solid #0EA5E9" }}
                 >
                   <input
                     type="number"
@@ -978,17 +1136,19 @@ export default function DescargaFaenaConsumoForm({
                     placeholder="-12.345678"
                     style={{
                       width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
+                      padding: "8px",
+                      border: "2px solid #0EA5E9",
+                      fontSize: "20px", // ← MÁS GRANDE PARA TABLET
                       fontWeight: "bold",
                       textAlign: "center",
+                      borderRadius: "4px",
+                      color: "#059669",
                     }}
                   />
                 </td>
                 <td
                   colSpan="4"
-                  style={{ padding: "2px", border: "1px solid #0EA5E9" }}
+                  style={{ padding: "4px", border: "1px solid #0EA5E9" }}
                 >
                   <input
                     type="number"
@@ -1001,39 +1161,41 @@ export default function DescargaFaenaConsumoForm({
                     placeholder="-77.123456"
                     style={{
                       width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
+                      padding: "8px",
+                      border: "2px solid #0EA5E9",
+                      fontSize: "20px", // ← MÁS GRANDE PARA TABLET
                       fontWeight: "bold",
                       textAlign: "center",
+                      borderRadius: "4px",
+                      color: "#2563eb",
                     }}
                   />
                 </td>
               </tr>
 
-              {/* Fila GMS */}
+              {/* ========== FILA DMS (Grados, Minutos, Segundos) ========== */}
               <tr>
                 <td
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #0EA5E9",
                     fontWeight: "bold",
-                    fontSize: "11px",
+                    fontSize: "14px",
                     backgroundColor: "#e1f1f7",
-                    width: "75px",
-                    minWidth: "75px",
-                    maxWidth: "75px",
                   }}
                 >
-                  GMS
+                  DMS
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* ===== LATITUD DMS ===== */}
+                {/* Grados */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
@@ -1047,26 +1209,29 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="90"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "70px",
+                        padding: "8px",
+                        border: "2px solid #059669",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       °
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* Minutos */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
@@ -1080,33 +1245,36 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="59"
                       style={{
-                        width: "50px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "70px",
+                        padding: "8px",
+                        border: "2px solid #059669",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       '
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* Segundos */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
                       type="number"
                       value={latSegundos}
                       onChange={(e) =>
-                        setLatSegundos(Number(e.target.value) || 0)
+                        setLatSegundos(parseFloat(e.target.value) || 0)
                       }
                       onBlur={actualizarLatitudDesdeDMS}
                       disabled={loading}
@@ -1114,47 +1282,70 @@ export default function DescargaFaenaConsumoForm({
                       max="59.99"
                       step="0.01"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "80px",
+                        padding: "8px",
+                        border: "2px solid #059669",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       "
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* Dirección N/S - BLOQUEADO EN "S" PARA USUARIOS NORMALES */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <select
                     value={latDireccion}
                     onChange={(e) => {
                       setLatDireccion(e.target.value);
-                      setTimeout(actualizarLatitudDesdeDMS, 0);
+                      actualizarLatitudDesdeDMS();
                     }}
-                    disabled={loading}
+                    disabled={!esSuperUsuario || loading} // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
                     style={{
                       width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
+                      padding: "8px",
+                      border: esSuperUsuario
+                        ? "2px solid #f59e0b"
+                        : "2px solid #94a3b8",
+                      fontSize: "18px", // ← MÁS GRANDE
                       fontWeight: "bold",
                       textAlign: "center",
+                      borderRadius: "4px",
+                      backgroundColor: esSuperUsuario ? "#fef3c7" : "#f1f5f9",
+                      cursor: esSuperUsuario ? "pointer" : "not-allowed",
                     }}
                   >
                     <option value="N">N</option>
                     <option value="S">S</option>
                   </select>
+                  {!esSuperUsuario && (
+                    <div
+                      style={{
+                        fontSize: "10px",
+                        color: "#64748b",
+                        textAlign: "center",
+                        marginTop: "2px",
+                      }}
+                    >
+                      🔒 Fijo
+                    </div>
+                  )}
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* ===== LONGITUD DMS ===== */}
+                {/* Grados */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
@@ -1168,26 +1359,29 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="180"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "70px",
+                        padding: "8px",
+                        border: "2px solid #2563eb",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       °
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* Minutos */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
@@ -1201,33 +1395,36 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="59"
                       style={{
-                        width: "50px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "70px",
+                        padding: "8px",
+                        border: "2px solid #2563eb",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       '
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* Segundos */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
                       type="number"
                       value={lonSegundos}
                       onChange={(e) =>
-                        setLonSegundos(Number(e.target.value) || 0)
+                        setLonSegundos(parseFloat(e.target.value) || 0)
                       }
                       onBlur={actualizarLongitudDesdeDMS}
                       disabled={loading}
@@ -1235,39 +1432,59 @@ export default function DescargaFaenaConsumoForm({
                       max="59.99"
                       step="0.01"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "80px",
+                        padding: "8px",
+                        border: "2px solid #2563eb",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       "
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* Dirección E/W - BLOQUEADO EN "W" PARA USUARIOS NORMALES */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <select
                     value={lonDireccion}
                     onChange={(e) => {
                       setLonDireccion(e.target.value);
-                      setTimeout(actualizarLongitudDesdeDMS, 0);
+                      actualizarLongitudDesdeDMS();
                     }}
-                    disabled={loading}
+                    disabled={!esSuperUsuario || loading} // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
                     style={{
                       width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
+                      padding: "8px",
+                      border: esSuperUsuario
+                        ? "2px solid #f59e0b"
+                        : "2px solid #94a3b8",
+                      fontSize: "18px", // ← MÁS GRANDE
                       fontWeight: "bold",
                       textAlign: "center",
+                      borderRadius: "4px",
+                      backgroundColor: esSuperUsuario ? "#fef3c7" : "#f1f5f9",
+                      cursor: esSuperUsuario ? "pointer" : "not-allowed",
                     }}
                   >
                     <option value="E">E</option>
                     <option value="W">W</option>
                   </select>
+                  {!esSuperUsuario && (
+                    <div
+                      style={{
+                        fontSize: "10px",
+                        color: "#64748b",
+                        textAlign: "center",
+                        marginTop: "2px",
+                      }}
+                    >
+                      🔒 Fijo
+                    </div>
+                  )}
                 </td>
               </tr>
             </tbody>
@@ -1275,6 +1492,12 @@ export default function DescargaFaenaConsumoForm({
         </div>
       </div>
 
+      {/* Información Geográfica */}
+      <InformacionGeografica
+        data={infoGeografica}
+        loading={loadingGeo}
+        error={errorGeo}
+      />
       {/* Segunda fila: Fechas y horas */}
       <div
         style={{
@@ -1795,25 +2018,25 @@ export default function DescargaFaenaConsumoForm({
           )}
         </div>
 
-        {/* Tabla compacta de coordenadas GPS FONDEO */}
+         {/* Tabla MEJORADA de coordenadas GPS FONDEO - Optimizada para Tablet */}
         <div style={{ flex: 3 }}>
           <table
             style={{
               width: "100%",
               borderCollapse: "collapse",
-              border: "2px solid #F97316",
+              border: "3px solid #F97316",
             }}
           >
             <thead>
               <tr style={{ backgroundColor: "#F97316", color: "white" }}>
                 <th
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #F97316",
-                    fontSize: "12px",
-                    width: "75px",
-                    minWidth: "75px",
-                    maxWidth: "75px",
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                    width: "100px",
+                    minWidth: "100px",
                   }}
                 >
                   Formato
@@ -1821,47 +2044,47 @@ export default function DescargaFaenaConsumoForm({
                 <th
                   colSpan="4"
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #F97316",
-                    fontSize: "12px",
+                    fontSize: "14px",
+                    fontWeight: "bold",
                     textAlign: "center",
                   }}
                 >
-                  Latitud
+                  Latitud Fondeo (Siempre SUR en Perú)
                 </th>
                 <th
                   colSpan="4"
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #F97316",
-                    fontSize: "12px",
+                    fontSize: "14px",
+                    fontWeight: "bold",
                     textAlign: "center",
                   }}
                 >
-                  Longitud
+                  Longitud Fondeo (Siempre OESTE en Perú)
                 </th>
               </tr>
             </thead>
             <tbody>
-              {/* Fila Decimal */}
+              {/* ========== FILA DECIMAL ========== */}
               <tr>
                 <td
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #F97316",
                     fontWeight: "bold",
-                    fontSize: "11px",
-                    backgroundColor: "#fff8e1",
-                    width: "75px",
-                    minWidth: "75px",
-                    maxWidth: "75px",
+                    fontSize: "14px",
+                    backgroundColor: "#fed7aa",
+                    width: "100px",
                   }}
                 >
                   Decimal
                 </td>
                 <td
                   colSpan="4"
-                  style={{ padding: "2px", border: "1px solid #F97316" }}
+                  style={{ padding: "4px", border: "1px solid #F97316" }}
                 >
                   <input
                     type="number"
@@ -1874,65 +2097,66 @@ export default function DescargaFaenaConsumoForm({
                     placeholder="-12.345678"
                     style={{
                       width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
+                      padding: "8px",
+                      border: "2px solid #F97316",
+                      fontSize: "20px", // ← MÁS GRANDE PARA TABLET
                       fontWeight: "bold",
                       textAlign: "center",
+                      borderRadius: "4px",
+                      color: "#059669",
                     }}
                   />
                 </td>
                 <td
                   colSpan="4"
-                  style={{ padding: "2px", border: "1px solid #F97316" }}
+                  style={{ padding: "4px", border: "1px solid #F97316" }}
                 >
                   <input
                     type="number"
                     value={longitudFondeo || ""}
                     onChange={(e) =>
-                      setValue(
-                        "longitudFondeo",
-                        parseFloat(e.target.value) || 0
-                      )
+                      setValue("longitudFondeo", parseFloat(e.target.value) || 0)
                     }
                     disabled={loading}
                     step="0.000001"
                     placeholder="-77.123456"
                     style={{
                       width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
+                      padding: "8px",
+                      border: "2px solid #F97316",
+                      fontSize: "20px", // ← MÁS GRANDE PARA TABLET
                       fontWeight: "bold",
                       textAlign: "center",
+                      borderRadius: "4px",
+                      color: "#2563eb",
                     }}
                   />
                 </td>
               </tr>
 
-              {/* Fila GMS */}
+              {/* ========== FILA DMS (Grados, Minutos, Segundos) ========== */}
               <tr>
                 <td
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #F97316",
                     fontWeight: "bold",
-                    fontSize: "11px",
-                    backgroundColor: "#fff8e1",
-                    width: "75px",
-                    minWidth: "75px",
-                    maxWidth: "75px",
+                    fontSize: "14px",
+                    backgroundColor: "#fed7aa",
                   }}
                 >
-                  GMS
+                  DMS
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+
+                {/* ===== LATITUD FONDEO DMS ===== */}
+                {/* Grados */}
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
@@ -1946,26 +2170,29 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="90"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "70px",
+                        padding: "8px",
+                        border: "2px solid #059669",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       °
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+
+                {/* Minutos */}
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
@@ -1979,33 +2206,36 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="59"
                       style={{
-                        width: "50px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "70px",
+                        padding: "8px",
+                        border: "2px solid #059669",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       '
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+
+                {/* Segundos */}
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
                       type="number"
                       value={latFondeoSegundos}
                       onChange={(e) =>
-                        setLatFondeoSegundos(Number(e.target.value) || 0)
+                        setLatFondeoSegundos(parseFloat(e.target.value) || 0)
                       }
                       onBlur={actualizarLatitudFondeoDesdeDMS}
                       disabled={loading}
@@ -2013,47 +2243,70 @@ export default function DescargaFaenaConsumoForm({
                       max="59.99"
                       step="0.01"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "80px",
+                        padding: "8px",
+                        border: "2px solid #059669",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       "
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+
+                {/* Dirección N/S - BLOQUEADO EN "S" PARA USUARIOS NORMALES */}
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <select
                     value={latFondeoDireccion}
                     onChange={(e) => {
                       setLatFondeoDireccion(e.target.value);
-                      setTimeout(actualizarLatitudFondeoDesdeDMS, 0);
+                      actualizarLatitudFondeoDesdeDMS();
                     }}
-                    disabled={loading}
+                    disabled={!esSuperUsuario || loading} // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
                     style={{
                       width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
+                      padding: "8px",
+                      border: esSuperUsuario
+                        ? "2px solid #f59e0b"
+                        : "2px solid #94a3b8",
+                      fontSize: "18px", // ← MÁS GRANDE
                       fontWeight: "bold",
                       textAlign: "center",
+                      borderRadius: "4px",
+                      backgroundColor: esSuperUsuario ? "#fef3c7" : "#f1f5f9",
+                      cursor: esSuperUsuario ? "pointer" : "not-allowed",
                     }}
                   >
                     <option value="N">N</option>
                     <option value="S">S</option>
                   </select>
+                  {!esSuperUsuario && (
+                    <div
+                      style={{
+                        fontSize: "10px",
+                        color: "#64748b",
+                        textAlign: "center",
+                        marginTop: "2px",
+                      }}
+                    >
+                      🔒 Fijo
+                    </div>
+                  )}
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+
+                {/* ===== LONGITUD FONDEO DMS ===== */}
+                {/* Grados */}
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
@@ -2067,26 +2320,29 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="180"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "70px",
+                        padding: "8px",
+                        border: "2px solid #2563eb",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       °
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+
+                {/* Minutos */}
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
@@ -2100,33 +2356,36 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="59"
                       style={{
-                        width: "50px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "70px",
+                        padding: "8px",
+                        border: "2px solid #2563eb",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       '
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+
+                {/* Segundos */}
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
                       type="number"
                       value={lonFondeoSegundos}
                       onChange={(e) =>
-                        setLonFondeoSegundos(Number(e.target.value) || 0)
+                        setLonFondeoSegundos(parseFloat(e.target.value) || 0)
                       }
                       onBlur={actualizarLongitudFondeoDesdeDMS}
                       disabled={loading}
@@ -2134,45 +2393,73 @@ export default function DescargaFaenaConsumoForm({
                       max="59.99"
                       step="0.01"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "80px",
+                        padding: "8px",
+                        border: "2px solid #2563eb",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       "
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+
+                {/* Dirección E/W - BLOQUEADO EN "W" PARA USUARIOS NORMALES */}
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <select
                     value={lonFondeoDireccion}
                     onChange={(e) => {
                       setLonFondeoDireccion(e.target.value);
-                      setTimeout(actualizarLongitudFondeoDesdeDMS, 0);
+                      actualizarLongitudFondeoDesdeDMS();
                     }}
-                    disabled={loading}
+                    disabled={!esSuperUsuario || loading} // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
                     style={{
                       width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
+                      padding: "8px",
+                      border: esSuperUsuario
+                        ? "2px solid #f59e0b"
+                        : "2px solid #94a3b8",
+                      fontSize: "18px", // ← MÁS GRANDE
                       fontWeight: "bold",
                       textAlign: "center",
+                      borderRadius: "4px",
+                      backgroundColor: esSuperUsuario ? "#fef3c7" : "#f1f5f9",
+                      cursor: esSuperUsuario ? "pointer" : "not-allowed",
                     }}
                   >
                     <option value="E">E</option>
                     <option value="W">W</option>
                   </select>
+                  {!esSuperUsuario && (
+                    <div
+                      style={{
+                        fontSize: "10px",
+                        color: "#64748b",
+                        textAlign: "center",
+                        marginTop: "2px",
+                      }}
+                    >
+                      🔒 Fijo
+                    </div>
+                  )}
                 </td>
               </tr>
             </tbody>
           </table>
-        </div>
+              </div>
       </div>
+
+      {/* Información Geográfica de FONDEO */}
+      <InformacionGeografica
+        data={infoGeograficaFondeo}
+        loading={loadingGeoFondeo}
+        error={errorGeoFondeo}
+      />
+
       {/* Botones de acción */}
       <div
         style={{

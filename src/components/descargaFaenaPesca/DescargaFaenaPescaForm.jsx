@@ -30,6 +30,8 @@ import {
   descomponerDMS,
   convertirDMSADecimal,
 } from "../../utils/gpsUtils";
+import { analizarCoordenadas } from "../../api/geolocalizacion";
+import InformacionGeografica from "./InformacionGeografica";
 
 /**
  * Formulario DescargaFaenaPescaForm
@@ -67,7 +69,7 @@ export default function DescargaFaenaPescaForm({
   onCancelar,
 }) {
   // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
-  const usuario = useAuthStore(state => state.usuario);
+  const usuario = useAuthStore((state) => state.usuario);
   const esSuperUsuario = usuario?.esSuperUsuario || false;
 
   // ⭐ LÓGICA DE PERMISOS PARA EDICIÓN
@@ -81,6 +83,10 @@ export default function DescargaFaenaPescaForm({
   const [finalizandoDescarga, setFinalizandoDescarga] = useState(false);
   // Ref para Toast
   const toast = useRef(null);
+  // Estados para información geográfica
+  const [infoGeografica, setInfoGeografica] = useState(null);
+  const [loadingGeo, setLoadingGeo] = useState(false);
+  const [errorGeo, setErrorGeo] = useState(null);
   // Configuración del formulario
   const {
     control,
@@ -407,7 +413,14 @@ export default function DescargaFaenaPescaForm({
 
     try {
       setLoading(true);
-console.log("patronId",patronId,"motoristaId",motoristaId,"bahiaId",bahiaId)
+      console.log(
+        "patronId",
+        patronId,
+        "motoristaId",
+        motoristaId,
+        "bahiaId",
+        bahiaId,
+      );
       const payload = {
         faenaPescaId: data.faenaPescaId ? Number(data.faenaPescaId) : null,
         temporadaPescaId: data.temporadaPescaId
@@ -610,7 +623,7 @@ console.log("patronId",patronId,"motoristaId",motoristaId,"bahiaId",bahiaId)
   const handleCapturarGPS = async () => {
     try {
       await capturarGPS(
-        (latitude, longitude, accuracy) => {
+        async (latitude, longitude, accuracy) => {
           // Callback de éxito
           setValue("latitud", latitude);
           setValue("longitud", longitude);
@@ -621,6 +634,38 @@ console.log("patronId",patronId,"motoristaId",motoristaId,"bahiaId",bahiaId)
             detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m`,
             life: 3000,
           });
+
+          // Analizar coordenadas para obtener información geográfica
+          setLoadingGeo(true);
+          setErrorGeo(null);
+          try {
+            const puertoSalidaId = getValues("puertoDescargaId");
+            const infoGeo = await analizarCoordenadas(
+              latitude,
+              longitude,
+              puertoSalidaId,
+            );
+            setInfoGeografica(infoGeo);
+
+            toast.current?.show({
+              severity: "info",
+              summary: "Información geográfica obtenida",
+              detail: `Ubicación: ${infoGeo.ubicacion?.ciudad || "N/A"}`,
+              life: 3000,
+            });
+          } catch (error) {
+            console.error("Error al analizar coordenadas:", error);
+            setErrorGeo("No se pudo obtener la información geográfica");
+            toast.current?.show({
+              severity: "warn",
+              summary: "Advertencia",
+              detail:
+                "GPS capturado pero no se pudo obtener información geográfica",
+              life: 3000,
+            });
+          } finally {
+            setLoadingGeo(false);
+          }
         },
         (errorMessage) => {
           // Callback de error
@@ -668,6 +713,48 @@ console.log("patronId",patronId,"motoristaId",motoristaId,"bahiaId",bahiaId)
       console.error("Error capturando GPS Fondeo:", error);
     }
   };
+
+  /**
+   * useEffect para analizar coordenadas cuando ya existen en el formulario
+   * (por ejemplo, al editar un registro existente)
+   */
+  useEffect(() => {
+    const latitud = watch("latitud");
+    const longitud = watch("longitud");
+    const puertoDescargaId = watch("puertoDescargaId");
+
+    // Solo analizar si hay coordenadas válidas y no estamos ya cargando
+    if (latitud && longitud && !loadingGeo) {
+      // Verificar que las coordenadas sean diferentes a las ya analizadas
+      const coordenadasActuales = `${latitud},${longitud}`;
+      const coordenadasAnalizadas = infoGeografica
+        ? `${infoGeografica.coordenadas?.latitud},${infoGeografica.coordenadas?.longitud}`
+        : null;
+
+      // Solo analizar si son coordenadas nuevas
+      if (coordenadasActuales !== coordenadasAnalizadas) {
+        const analizarCoordenadasExistentes = async () => {
+          setLoadingGeo(true);
+          setErrorGeo(null);
+          try {
+            const infoGeo = await analizarCoordenadas(
+              latitud,
+              longitud,
+              puertoDescargaId,
+            );
+            setInfoGeografica(infoGeo);
+          } catch (error) {
+            console.error("Error al analizar coordenadas existentes:", error);
+            setErrorGeo("No se pudo obtener la información geográfica");
+          } finally {
+            setLoadingGeo(false);
+          }
+        };
+
+        analizarCoordenadasExistentes();
+      }
+    }
+  }, [watch("latitud"), watch("longitud"), watch("puertoDescargaId")]);
 
   // Crear configuración de inputs de coordenadas usando utilidad genérica
   const coordenadasConfig = crearInputCoordenadas({
@@ -814,25 +901,25 @@ console.log("patronId",patronId,"motoristaId",motoristaId,"bahiaId",bahiaId)
           />
         </div>
 
-        {/* Tabla compacta de coordenadas GPS */}
+        {/* Tabla MEJORADA de coordenadas GPS - Optimizada para Tablet */}
         <div style={{ flex: 3 }}>
           <table
             style={{
               width: "100%",
               borderCollapse: "collapse",
-              border: "2px solid #0EA5E9",
+              border: "3px solid #0EA5E9",
             }}
           >
             <thead>
               <tr style={{ backgroundColor: "#0EA5E9", color: "white" }}>
                 <th
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #0EA5E9",
-                    fontSize: "12px",
-                    width: "75px",
-                    minWidth: "75px",
-                    maxWidth: "75px",
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                    width: "100px",
+                    minWidth: "100px",
                   }}
                 >
                   Formato
@@ -840,47 +927,47 @@ console.log("patronId",patronId,"motoristaId",motoristaId,"bahiaId",bahiaId)
                 <th
                   colSpan="4"
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #0EA5E9",
-                    fontSize: "12px",
+                    fontSize: "14px",
+                    fontWeight: "bold",
                     textAlign: "center",
                   }}
                 >
-                  Latitud
+                  Latitud (Siempre SUR en Perú)
                 </th>
                 <th
                   colSpan="4"
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #0EA5E9",
-                    fontSize: "12px",
+                    fontSize: "14px",
+                    fontWeight: "bold",
                     textAlign: "center",
                   }}
                 >
-                  Longitud
+                  Longitud (Siempre OESTE en Perú)
                 </th>
               </tr>
             </thead>
             <tbody>
-              {/* Fila Decimal */}
+              {/* ========== FILA DECIMAL ========== */}
               <tr>
                 <td
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #0EA5E9",
                     fontWeight: "bold",
-                    fontSize: "11px",
+                    fontSize: "14px",
                     backgroundColor: "#e1f1f7",
-                    width: "75px",
-                    minWidth: "75px",
-                    maxWidth: "75px",
+                    width: "100px",
                   }}
                 >
                   Decimal
                 </td>
                 <td
                   colSpan="4"
-                  style={{ padding: "2px", border: "1px solid #0EA5E9" }}
+                  style={{ padding: "4px", border: "1px solid #0EA5E9" }}
                 >
                   <input
                     type="number"
@@ -888,22 +975,24 @@ console.log("patronId",patronId,"motoristaId",motoristaId,"bahiaId",bahiaId)
                     onChange={(e) =>
                       setValue("latitud", parseFloat(e.target.value) || 0)
                     }
-                    disabled={loading}
+                    disabled={loading || camposDeshabilitados}
                     step="0.000001"
                     placeholder="-12.345678"
                     style={{
                       width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
+                      padding: "8px",
+                      border: "2px solid #0EA5E9",
+                      fontSize: "20px", // ← MÁS GRANDE PARA TABLET
                       fontWeight: "bold",
                       textAlign: "center",
+                      borderRadius: "4px",
+                      color: "#059669",
                     }}
                   />
                 </td>
                 <td
                   colSpan="4"
-                  style={{ padding: "2px", border: "1px solid #0EA5E9" }}
+                  style={{ padding: "4px", border: "1px solid #0EA5E9" }}
                 >
                   <input
                     type="number"
@@ -911,43 +1000,46 @@ console.log("patronId",patronId,"motoristaId",motoristaId,"bahiaId",bahiaId)
                     onChange={(e) =>
                       setValue("longitud", parseFloat(e.target.value) || 0)
                     }
-                    disabled={loading}
+                    disabled={loading || camposDeshabilitados}
                     step="0.000001"
                     placeholder="-77.123456"
                     style={{
                       width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
+                      padding: "8px",
+                      border: "2px solid #0EA5E9",
+                      fontSize: "20px", // ← MÁS GRANDE PARA TABLET
                       fontWeight: "bold",
                       textAlign: "center",
+                      borderRadius: "4px",
+                      color: "#2563eb",
                     }}
                   />
                 </td>
               </tr>
-              {/* Fila GMS */}
+
+              {/* ========== FILA DMS (Grados, Minutos, Segundos) ========== */}
               <tr>
                 <td
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #0EA5E9",
                     fontWeight: "bold",
-                    fontSize: "11px",
+                    fontSize: "14px",
                     backgroundColor: "#e1f1f7",
-                    width: "75px",
-                    minWidth: "75px",
-                    maxWidth: "75px",
                   }}
                 >
-                  GMS
+                  DMS
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* ===== LATITUD DMS ===== */}
+                {/* Grados */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
@@ -957,30 +1049,33 @@ console.log("patronId",patronId,"motoristaId",motoristaId,"bahiaId",bahiaId)
                         setLatGrados(Number(e.target.value) || 0)
                       }
                       onBlur={actualizarLatitudDesdeDMS}
-                      disabled={loading}
+                      disabled={loading || camposDeshabilitados}
                       min="0"
                       max="90"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "70px",
+                        padding: "8px",
+                        border: "2px solid #059669",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       °
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* Minutos */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
@@ -990,85 +1085,113 @@ console.log("patronId",patronId,"motoristaId",motoristaId,"bahiaId",bahiaId)
                         setLatMinutos(Number(e.target.value) || 0)
                       }
                       onBlur={actualizarLatitudDesdeDMS}
-                      disabled={loading}
+                      disabled={loading || camposDeshabilitados}
                       min="0"
                       max="59"
                       style={{
-                        width: "50px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "70px",
+                        padding: "8px",
+                        border: "2px solid #059669",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       '
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* Segundos */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
                       type="number"
                       value={latSegundos}
                       onChange={(e) =>
-                        setLatSegundos(Number(e.target.value) || 0)
+                        setLatSegundos(parseFloat(e.target.value) || 0)
                       }
                       onBlur={actualizarLatitudDesdeDMS}
-                      disabled={loading}
+                      disabled={loading || camposDeshabilitados}
                       min="0"
                       max="59.99"
                       step="0.01"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "80px",
+                        padding: "8px",
+                        border: "2px solid #059669",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       "
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* Dirección N/S - BLOQUEADO EN "S" PARA USUARIOS NORMALES */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <select
                     value={latDireccion}
                     onChange={(e) => {
                       setLatDireccion(e.target.value);
-                      setTimeout(actualizarLatitudDesdeDMS, 0);
+                      actualizarLatitudDesdeDMS();
                     }}
-                    disabled={loading}
+                    disabled={
+                      !esSuperUsuario || loading || camposDeshabilitados
+                    } // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
                     style={{
                       width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
+                      padding: "8px",
+                      border: esSuperUsuario
+                        ? "2px solid #f59e0b"
+                        : "2px solid #94a3b8",
+                      fontSize: "18px", // ← MÁS GRANDE
                       fontWeight: "bold",
                       textAlign: "center",
+                      borderRadius: "4px",
+                      backgroundColor: esSuperUsuario ? "#fef3c7" : "#f1f5f9",
+                      cursor: esSuperUsuario ? "pointer" : "not-allowed",
                     }}
                   >
                     <option value="N">N</option>
                     <option value="S">S</option>
                   </select>
+                  {!esSuperUsuario && (
+                    <div
+                      style={{
+                        fontSize: "10px",
+                        color: "#64748b",
+                        textAlign: "center",
+                        marginTop: "2px",
+                      }}
+                    >
+                      🔒 Fijo
+                    </div>
+                  )}
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* ===== LONGITUD DMS ===== */}
+                {/* Grados */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
@@ -1078,30 +1201,33 @@ console.log("patronId",patronId,"motoristaId",motoristaId,"bahiaId",bahiaId)
                         setLonGrados(Number(e.target.value) || 0)
                       }
                       onBlur={actualizarLongitudDesdeDMS}
-                      disabled={loading}
+                      disabled={loading || camposDeshabilitados}
                       min="0"
                       max="180"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "70px",
+                        padding: "8px",
+                        border: "2px solid #2563eb",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       °
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* Minutos */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
@@ -1111,83 +1237,115 @@ console.log("patronId",patronId,"motoristaId",motoristaId,"bahiaId",bahiaId)
                         setLonMinutos(Number(e.target.value) || 0)
                       }
                       onBlur={actualizarLongitudDesdeDMS}
-                      disabled={loading}
+                      disabled={loading || camposDeshabilitados}
                       min="0"
                       max="59"
                       style={{
-                        width: "50px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "70px",
+                        padding: "8px",
+                        border: "2px solid #2563eb",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       '
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* Segundos */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "2px",
+                      gap: "4px",
                     }}
                   >
                     <input
                       type="number"
                       value={lonSegundos}
                       onChange={(e) =>
-                        setLonSegundos(Number(e.target.value) || 0)
+                        setLonSegundos(parseFloat(e.target.value) || 0)
                       }
                       onBlur={actualizarLongitudDesdeDMS}
-                      disabled={loading}
+                      disabled={loading || camposDeshabilitados}
                       min="0"
                       max="59.99"
                       step="0.01"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "80px",
+                        padding: "8px",
+                        border: "2px solid #2563eb",
+                        fontSize: "18px", // ← MÁS GRANDE
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       "
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #0EA5E9" }}>
+
+                {/* Dirección E/W - BLOQUEADO EN "W" PARA USUARIOS NORMALES */}
+                <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
                   <select
                     value={lonDireccion}
                     onChange={(e) => {
                       setLonDireccion(e.target.value);
-                      setTimeout(actualizarLongitudDesdeDMS, 0);
+                      actualizarLongitudDesdeDMS();
                     }}
-                    disabled={loading}
+                    disabled={
+                      !esSuperUsuario || loading || camposDeshabilitados
+                    } // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
                     style={{
                       width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
+                      padding: "8px",
+                      border: esSuperUsuario
+                        ? "2px solid #f59e0b"
+                        : "2px solid #94a3b8",
+                      fontSize: "18px", // ← MÁS GRANDE
                       fontWeight: "bold",
                       textAlign: "center",
+                      borderRadius: "4px",
+                      backgroundColor: esSuperUsuario ? "#fef3c7" : "#f1f5f9",
+                      cursor: esSuperUsuario ? "pointer" : "not-allowed",
                     }}
                   >
                     <option value="E">E</option>
                     <option value="W">W</option>
                   </select>
+                  {!esSuperUsuario && (
+                    <div
+                      style={{
+                        fontSize: "10px",
+                        color: "#64748b",
+                        textAlign: "center",
+                        marginTop: "2px",
+                      }}
+                    >
+                      🔒 Fijo
+                    </div>
+                  )}
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Información Geográfica */}
+      <InformacionGeografica
+        data={infoGeografica}
+        loading={loadingGeo}
+        error={errorGeo}
+      />
 
       {/* Segunda fila: Fechas y horas */}
       <div

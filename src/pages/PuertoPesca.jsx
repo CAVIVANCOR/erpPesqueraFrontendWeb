@@ -214,7 +214,7 @@ const PuertoPesca = ({ ruta }) => {
             : undefined
         }
         selectionMode="single"
-        className="p-datatable-hover cursor-pointer"
+        size="small"
         emptyMessage="No se encontraron puertos de pesca"
         globalFilter={globalFilter}
         globalFilterFields={['zona', 'nombre', 'provincia', 'departamento']}
