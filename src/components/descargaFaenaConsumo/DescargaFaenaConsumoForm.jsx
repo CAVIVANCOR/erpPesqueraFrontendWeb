@@ -4,6 +4,8 @@
 // Documentado en español técnico para mantenibilidad
 
 import React, { useState, useEffect, useRef } from "react";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import { useForm, Controller } from "react-hook-form";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
@@ -144,7 +146,6 @@ export default function DescargaFaenaConsumoForm({
   const [latMinutos, setLatMinutos] = useState(0);
   const [latSegundos, setLatSegundos] = useState(0);
   const [latDireccion, setLatDireccion] = useState("S");
-
   const [lonGrados, setLonGrados] = useState(0);
   const [lonMinutos, setLonMinutos] = useState(0);
   const [lonSegundos, setLonSegundos] = useState(0);
@@ -155,7 +156,6 @@ export default function DescargaFaenaConsumoForm({
   const [latFondeoMinutos, setLatFondeoMinutos] = useState(0);
   const [latFondeoSegundos, setLatFondeoSegundos] = useState(0);
   const [latFondeoDireccion, setLatFondeoDireccion] = useState("S");
-
   const [lonFondeoGrados, setLonFondeoGrados] = useState(0);
   const [lonFondeoMinutos, setLonFondeoMinutos] = useState(0);
   const [lonFondeoSegundos, setLonFondeoSegundos] = useState(0);
@@ -164,12 +164,20 @@ export default function DescargaFaenaConsumoForm({
   // Estados para información geográfica
   const [infoGeografica, setInfoGeografica] = useState(null);
   const [loadingGeo, setLoadingGeo] = useState(false);
-    const [errorGeo, setErrorGeo] = useState(null);
+  const [errorGeo, setErrorGeo] = useState(null);
 
   // Estados para información geográfica de FONDEO
   const [infoGeograficaFondeo, setInfoGeograficaFondeo] = useState(null);
   const [loadingGeoFondeo, setLoadingGeoFondeo] = useState(false);
   const [errorGeoFondeo, setErrorGeoFondeo] = useState(null);
+
+  // Estados para el mapa de DESCARGA
+  const [mapPosition, setMapPosition] = useState([-12.0, -77.0]);
+  const [mapKey, setMapKey] = useState(0);
+
+  // Estados para el mapa de FONDEO
+  const [mapPositionFondeo, setMapPositionFondeo] = useState([-12.0, -77.0]);
+  const [mapKeyFondeo, setMapKeyFondeo] = useState(0);
 
   // Normalizar opciones de combos
   const puertosNormalizados = puertos.map((p) => ({
@@ -323,6 +331,23 @@ export default function DescargaFaenaConsumoForm({
     }
   }, [longitud]);
 
+  // Actualizar posición del mapa cuando cambian las coordenadas de DESCARGA
+  useEffect(() => {
+    if (
+      latitud !== "" &&
+      latitud !== null &&
+      latitud !== undefined &&
+      latitud !== 0 &&
+      longitud !== "" &&
+      longitud !== null &&
+      longitud !== undefined &&
+      longitud !== 0
+    ) {
+      setMapPosition([Number(latitud), Number(longitud)]);
+      setMapKey((prev) => prev + 1);
+    }
+  }, [latitud, longitud]);
+
   // Sincronizar cambios de decimal a DMS para FONDEO
   useEffect(() => {
     if (
@@ -353,6 +378,23 @@ export default function DescargaFaenaConsumoForm({
       setLonFondeoDireccion(dms.direccion);
     }
   }, [longitudFondeo]);
+
+  // Actualizar posición del mapa cuando cambian las coordenadas de FONDEO
+  useEffect(() => {
+    if (
+      latitudFondeo !== "" &&
+      latitudFondeo !== null &&
+      latitudFondeo !== undefined &&
+      latitudFondeo !== 0 &&
+      longitudFondeo !== "" &&
+      longitudFondeo !== null &&
+      longitudFondeo !== undefined &&
+      longitudFondeo !== 0
+    ) {
+      setMapPositionFondeo([Number(latitudFondeo), Number(longitudFondeo)]);
+      setMapKeyFondeo((prev) => prev + 1);
+    }
+  }, [latitudFondeo, longitudFondeo]);
 
   /**
    * useEffect para analizar coordenadas cuando ya existen en el formulario
@@ -391,7 +433,7 @@ export default function DescargaFaenaConsumoForm({
         analizarCoordenadasExistentes();
       }
     }
-    }, [latitud, longitud]);
+  }, [latitud, longitud]);
 
   /**
    * useEffect para analizar coordenadas de FONDEO cuando ya existen
@@ -419,8 +461,13 @@ export default function DescargaFaenaConsumoForm({
             );
             setInfoGeograficaFondeo(infoGeo);
           } catch (error) {
-            console.error("Error al analizar coordenadas de fondeo existentes:", error);
-            setErrorGeoFondeo("No se pudo obtener la información geográfica de fondeo");
+            console.error(
+              "Error al analizar coordenadas de fondeo existentes:",
+              error,
+            );
+            setErrorGeoFondeo(
+              "No se pudo obtener la información geográfica de fondeo",
+            );
           } finally {
             setLoadingGeoFondeo(false);
           }
@@ -574,6 +621,86 @@ export default function DescargaFaenaConsumoForm({
       lonFondeoDireccion,
     );
     setValue("longitudFondeo", decimal);
+  };
+
+  /**
+   * Componente de marker draggable para el mapa de DESCARGA
+   */
+  const DraggableMarker = () => {
+    const markerRef = useRef(null);
+    const nombrePuerto = watch("puertoDescargaId")
+      ? puertos.find((p) => Number(p.id) === Number(watch("puertoDescargaId")))
+          ?.nombre || "Puerto"
+      : "Puerto de Descarga";
+
+    const eventHandlers = {
+      dragend() {
+        const marker = markerRef.current;
+        if (marker != null) {
+          const { lat, lng } = marker.getLatLng();
+          setValue("latitud", lat);
+          setValue("longitud", lng);
+          setMapPosition([lat, lng]);
+        }
+      },
+    };
+
+    return (
+      <Marker
+        position={mapPosition}
+        draggable={!loading}
+        eventHandlers={eventHandlers}
+        ref={markerRef}
+      >
+        <Popup>
+          <strong>{nombrePuerto}</strong>
+          <br />
+          Lat: {Number(latitud).toFixed(6)}
+          <br />
+          Lon: {Number(longitud).toFixed(6)}
+        </Popup>
+      </Marker>
+    );
+  };
+
+  /**
+   * Componente de marker draggable para el mapa de FONDEO
+   */
+  const DraggableMarkerFondeo = () => {
+    const markerRef = useRef(null);
+    const nombrePuerto = watch("puertoFondeoId")
+      ? puertos.find((p) => Number(p.id) === Number(watch("puertoFondeoId")))
+          ?.nombre || "Puerto"
+      : "Puerto de Fondeo";
+
+    const eventHandlers = {
+      dragend() {
+        const marker = markerRef.current;
+        if (marker != null) {
+          const { lat, lng } = marker.getLatLng();
+          setValue("latitudFondeo", lat);
+          setValue("longitudFondeo", lng);
+          setMapPositionFondeo([lat, lng]);
+        }
+      },
+    };
+
+    return (
+      <Marker
+        position={mapPositionFondeo}
+        draggable={!loading}
+        eventHandlers={eventHandlers}
+        ref={markerRef}
+      >
+        <Popup>
+          <strong>{nombrePuerto}</strong>
+          <br />
+          Lat: {Number(latitudFondeo).toFixed(6)}
+          <br />
+          Lon: {Number(longitudFondeo).toFixed(6)}
+        </Popup>
+      </Marker>
+    );
   };
 
   /**
@@ -839,7 +966,7 @@ export default function DescargaFaenaConsumoForm({
   const handleCapturarGPSFondeo = async () => {
     try {
       await capturarGPS(
-               async (latitude, longitude, accuracy) => {
+        async (latitude, longitude, accuracy) => {
           // Callback de éxito
           setValue("latitudFondeo", latitude);
           setValue("longitudFondeo", longitude);
@@ -873,7 +1000,9 @@ export default function DescargaFaenaConsumoForm({
             });
           } catch (error) {
             console.error("Error al analizar coordenadas de fondeo:", error);
-            setErrorGeoFondeo("No se pudo obtener la información geográfica de fondeo");
+            setErrorGeoFondeo(
+              "No se pudo obtener la información geográfica de fondeo",
+            );
             toast.current?.show({
               severity: "warn",
               summary: "Advertencia",
@@ -1058,7 +1187,7 @@ export default function DescargaFaenaConsumoForm({
         </div>
 
         {/* Tabla MEJORADA de coordenadas GPS - Optimizada para Tablet */}
-        <div style={{ flex: 3 }}>
+        <div style={{ flex: 6 }}>
           <table
             style={{
               width: "100%",
@@ -1125,50 +1254,54 @@ export default function DescargaFaenaConsumoForm({
                   colSpan="4"
                   style={{ padding: "4px", border: "1px solid #0EA5E9" }}
                 >
-                  <input
-                    type="number"
-                    value={latitud || ""}
-                    onChange={(e) =>
-                      setValue("latitud", parseFloat(e.target.value) || 0)
-                    }
-                    disabled={loading}
-                    step="0.000001"
-                    placeholder="-12.345678"
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "2px solid #0EA5E9",
-                      fontSize: "20px", // ← MÁS GRANDE PARA TABLET
-                      fontWeight: "bold",
-                      textAlign: "center",
-                      borderRadius: "4px",
-                      color: "#059669",
-                    }}
+                  <Controller
+                    name="latitud"
+                    control={control}
+                    render={({ field }) => (
+                      <InputNumber
+                        value={field.value}
+                        onValueChange={(e) => field.onChange(e.value)}
+                        placeholder="-12.123456"
+                        disabled={loading}
+                        mode="decimal"
+                        minFractionDigits={0}
+                        maxFractionDigits={14}
+                        min={-90}
+                        max={90}
+                        style={{
+                          width: "100%",
+                          fontSize: "20px",
+                          padding: "8px",
+                        }}
+                      />
+                    )}
                   />
                 </td>
                 <td
                   colSpan="4"
                   style={{ padding: "4px", border: "1px solid #0EA5E9" }}
                 >
-                  <input
-                    type="number"
-                    value={longitud || ""}
-                    onChange={(e) =>
-                      setValue("longitud", parseFloat(e.target.value) || 0)
-                    }
-                    disabled={loading}
-                    step="0.000001"
-                    placeholder="-77.123456"
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "2px solid #0EA5E9",
-                      fontSize: "20px", // ← MÁS GRANDE PARA TABLET
-                      fontWeight: "bold",
-                      textAlign: "center",
-                      borderRadius: "4px",
-                      color: "#2563eb",
-                    }}
+                  <Controller
+                    name="longitud"
+                    control={control}
+                    render={({ field }) => (
+                      <InputNumber
+                        value={field.value}
+                        onValueChange={(e) => field.onChange(e.value)}
+                        placeholder="-77.123456"
+                        disabled={loading}
+                        mode="decimal"
+                        minFractionDigits={0}
+                        maxFractionDigits={14}
+                        min={-180}
+                        max={180}
+                        style={{
+                          width: "100%",
+                          fontSize: "20px",
+                          padding: "8px",
+                        }}
+                      />
+                    )}
                   />
                 </td>
               </tr>
@@ -1209,7 +1342,7 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="90"
                       style={{
-                        width: "70px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #059669",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -1245,7 +1378,7 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="59"
                       style={{
-                        width: "70px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #059669",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -1282,7 +1415,7 @@ export default function DescargaFaenaConsumoForm({
                       max="59.99"
                       step="0.01"
                       style={{
-                        width: "80px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #059669",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -1359,7 +1492,7 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="180"
                       style={{
-                        width: "70px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #2563eb",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -1395,7 +1528,7 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="59"
                       style={{
-                        width: "70px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #2563eb",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -1432,7 +1565,7 @@ export default function DescargaFaenaConsumoForm({
                       max="59.99"
                       step="0.01"
                       style={{
-                        width: "80px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #2563eb",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -1490,6 +1623,30 @@ export default function DescargaFaenaConsumoForm({
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mapa de ubicación DESCARGA */}
+      <div
+        style={{
+          marginBottom: "1rem",
+          border: "3px solid #0EA5E9",
+          borderRadius: "8px",
+          overflow: "hidden",
+          height: "400px",
+        }}
+      >
+        <MapContainer
+          key={mapKey}
+          center={mapPosition}
+          zoom={13}
+          style={{ height: "100%", width: "100%" }}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&​copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          />
+          <DraggableMarker />
+        </MapContainer>
       </div>
 
       {/* Información Geográfica */}
@@ -2018,8 +2175,8 @@ export default function DescargaFaenaConsumoForm({
           )}
         </div>
 
-         {/* Tabla MEJORADA de coordenadas GPS FONDEO - Optimizada para Tablet */}
-        <div style={{ flex: 3 }}>
+        {/* Tabla MEJORADA de coordenadas GPS FONDEO - Optimizada para Tablet */}
+        <div style={{ flex: 6 }}>
           <table
             style={{
               width: "100%",
@@ -2086,50 +2243,54 @@ export default function DescargaFaenaConsumoForm({
                   colSpan="4"
                   style={{ padding: "4px", border: "1px solid #F97316" }}
                 >
-                  <input
-                    type="number"
-                    value={latitudFondeo || ""}
-                    onChange={(e) =>
-                      setValue("latitudFondeo", parseFloat(e.target.value) || 0)
-                    }
-                    disabled={loading}
-                    step="0.000001"
-                    placeholder="-12.345678"
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "2px solid #F97316",
-                      fontSize: "20px", // ← MÁS GRANDE PARA TABLET
-                      fontWeight: "bold",
-                      textAlign: "center",
-                      borderRadius: "4px",
-                      color: "#059669",
-                    }}
+                  <Controller
+                    name="latitudFondeo"
+                    control={control}
+                    render={({ field }) => (
+                      <InputNumber
+                        value={field.value}
+                        onValueChange={(e) => field.onChange(e.value)}
+                        placeholder="-12.123456"
+                        disabled={loading}
+                        mode="decimal"
+                        minFractionDigits={0}
+                        maxFractionDigits={14}
+                        min={-90}
+                        max={90}
+                        style={{
+                          width: "100%",
+                          fontSize: "20px",
+                          padding: "8px",
+                        }}
+                      />
+                    )}
                   />
                 </td>
                 <td
                   colSpan="4"
                   style={{ padding: "4px", border: "1px solid #F97316" }}
                 >
-                  <input
-                    type="number"
-                    value={longitudFondeo || ""}
-                    onChange={(e) =>
-                      setValue("longitudFondeo", parseFloat(e.target.value) || 0)
-                    }
-                    disabled={loading}
-                    step="0.000001"
-                    placeholder="-77.123456"
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "2px solid #F97316",
-                      fontSize: "20px", // ← MÁS GRANDE PARA TABLET
-                      fontWeight: "bold",
-                      textAlign: "center",
-                      borderRadius: "4px",
-                      color: "#2563eb",
-                    }}
+                  <Controller
+                    name="longitudFondeo"
+                    control={control}
+                    render={({ field }) => (
+                      <InputNumber
+                        value={field.value}
+                        onValueChange={(e) => field.onChange(e.value)}
+                        placeholder="-77.123456"
+                        disabled={loading}
+                        mode="decimal"
+                        minFractionDigits={0}
+                        maxFractionDigits={14}
+                        min={-180}
+                        max={180}
+                        style={{
+                          width: "100%",
+                          fontSize: "20px",
+                          padding: "8px",
+                        }}
+                      />
+                    )}
                   />
                 </td>
               </tr>
@@ -2170,7 +2331,7 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="90"
                       style={{
-                        width: "70px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #059669",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -2206,7 +2367,7 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="59"
                       style={{
-                        width: "70px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #059669",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -2243,7 +2404,7 @@ export default function DescargaFaenaConsumoForm({
                       max="59.99"
                       step="0.01"
                       style={{
-                        width: "80px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #059669",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -2320,7 +2481,7 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="180"
                       style={{
-                        width: "70px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #2563eb",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -2356,7 +2517,7 @@ export default function DescargaFaenaConsumoForm({
                       min="0"
                       max="59"
                       style={{
-                        width: "70px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #2563eb",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -2393,7 +2554,7 @@ export default function DescargaFaenaConsumoForm({
                       max="59.99"
                       step="0.01"
                       style={{
-                        width: "80px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #2563eb",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -2450,7 +2611,31 @@ export default function DescargaFaenaConsumoForm({
               </tr>
             </tbody>
           </table>
-              </div>
+        </div>
+      </div>
+
+      {/* Mapa de ubicación FONDEO */}
+      <div
+        style={{
+          marginBottom: "1rem",
+          border: "3px solid #F97316",
+          borderRadius: "8px",
+          overflow: "hidden",
+          height: "400px",
+        }}
+      >
+        <MapContainer
+          key={mapKeyFondeo}
+          center={mapPositionFondeo}
+          zoom={13}
+          style={{ height: "100%", width: "100%" }}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&​copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          />
+          <DraggableMarkerFondeo />
+        </MapContainer>
       </div>
 
       {/* Información Geográfica de FONDEO */}

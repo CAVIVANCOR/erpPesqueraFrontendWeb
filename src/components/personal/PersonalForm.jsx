@@ -1032,7 +1032,6 @@ export default function PersonalForm({
               severity="warning"
               raised
               size="small"
-              outlined
             />
             <Button
               label={isEdit ? "Actualizar" : "Guardar"}
@@ -1044,7 +1043,6 @@ export default function PersonalForm({
               severity="success"
               raised
               size="small"
-              outlined
             />
           </div>
         </div>

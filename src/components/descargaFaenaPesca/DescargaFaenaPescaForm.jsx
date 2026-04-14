@@ -4,6 +4,8 @@
 // Documentado en español técnico para mantenibilidad
 
 import React, { useState, useEffect, useRef } from "react";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import { useForm, Controller } from "react-hook-form";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
@@ -87,6 +89,10 @@ export default function DescargaFaenaPescaForm({
   const [infoGeografica, setInfoGeografica] = useState(null);
   const [loadingGeo, setLoadingGeo] = useState(false);
   const [errorGeo, setErrorGeo] = useState(null);
+    // Estados para información geográfica FONDEO
+  const [infoGeograficaFondeo, setInfoGeograficaFondeo] = useState(null);
+  const [loadingGeoFondeo, setLoadingGeoFondeo] = useState(false);
+  const [errorGeoFondeo, setErrorGeoFondeo] = useState(null);
   // Configuración del formulario
   const {
     control,
@@ -158,6 +164,14 @@ export default function DescargaFaenaPescaForm({
   const [lonFondeoMinutos, setLonFondeoMinutos] = useState(0);
   const [lonFondeoSegundos, setLonFondeoSegundos] = useState(0);
   const [lonFondeoDireccion, setLonFondeoDireccion] = useState("W");
+
+  // Estados para el mapa de DESCARGA
+  const [mapPosition, setMapPosition] = useState([-12.0, -77.0]);
+  const [mapKey, setMapKey] = useState(0);
+
+  // Estados para el mapa de FONDEO
+  const [mapPositionFondeo, setMapPositionFondeo] = useState([-12.0, -77.0]);
+  const [mapKeyFondeo, setMapKeyFondeo] = useState(0);
 
   // Cargar datos del registro a editar cuando cambie detalle
   useEffect(() => {
@@ -295,6 +309,42 @@ export default function DescargaFaenaPescaForm({
     }
   }, [longitud]);
 
+  // Actualizar posición del mapa cuando cambian las coordenadas de DESCARGA
+  useEffect(() => {
+    if (
+      latitud !== "" &&
+      latitud !== null &&
+      latitud !== undefined &&
+      latitud !== 0 &&
+      longitud !== "" &&
+      longitud !== null &&
+      longitud !== undefined &&
+      longitud !== 0
+    ) {
+      setMapPosition([Number(latitud), Number(longitud)]);
+      setMapKey((prev) => prev + 1);
+    }
+  }, [latitud, longitud]);
+
+  // Actualizar posición del mapa cuando cambian las coordenadas de FONDEO
+  useEffect(() => {
+    if (
+      latitudFondeo !== "" &&
+      latitudFondeo !== null &&
+      latitudFondeo !== undefined &&
+      latitudFondeo !== 0 &&
+      longitudFondeo !== "" &&
+      longitudFondeo !== null &&
+      longitudFondeo !== undefined &&
+      longitudFondeo !== 0
+    ) {
+      setMapPositionFondeo([Number(latitudFondeo), Number(longitudFondeo)]);
+      setMapKeyFondeo((prev) => prev + 1);
+    }
+  }, [latitudFondeo, longitudFondeo]);
+
+  // Sincronizar cambios de decimal a DMS para FONDEO
+
   // Sincronizar cambios de decimal a DMS para FONDEO
   useEffect(() => {
     if (
@@ -402,6 +452,86 @@ export default function DescargaFaenaPescaForm({
       lonFondeoDireccion,
     );
     setValue("longitudFondeo", decimal);
+  };
+
+  /**
+   * Componente de marker draggable para el mapa de DESCARGA
+   */
+  const DraggableMarker = () => {
+    const markerRef = useRef(null);
+    const nombrePuerto = watch("puertoDescargaId")
+      ? puertos.find((p) => Number(p.id) === Number(watch("puertoDescargaId")))
+          ?.nombre || "Puerto"
+      : "Puerto de Descarga";
+
+    const eventHandlers = {
+      dragend() {
+        const marker = markerRef.current;
+        if (marker != null) {
+          const { lat, lng } = marker.getLatLng();
+          setValue("latitud", lat);
+          setValue("longitud", lng);
+          setMapPosition([lat, lng]);
+        }
+      },
+    };
+
+    return (
+      <Marker
+        position={mapPosition}
+        draggable={!loading && !camposDeshabilitados}
+        eventHandlers={eventHandlers}
+        ref={markerRef}
+      >
+        <Popup>
+          <strong>{nombrePuerto}</strong>
+          <br />
+          Lat: {Number(latitud).toFixed(6)}
+          <br />
+          Lon: {Number(longitud).toFixed(6)}
+        </Popup>
+      </Marker>
+    );
+  };
+
+  /**
+   * Componente de marker draggable para el mapa de FONDEO
+   */
+  const DraggableMarkerFondeo = () => {
+    const markerRef = useRef(null);
+    const nombrePuerto = watch("puertoFondeoId")
+      ? puertos.find((p) => Number(p.id) === Number(watch("puertoFondeoId")))
+          ?.nombre || "Puerto"
+      : "Puerto de Fondeo";
+
+    const eventHandlers = {
+      dragend() {
+        const marker = markerRef.current;
+        if (marker != null) {
+          const { lat, lng } = marker.getLatLng();
+          setValue("latitudFondeo", lat);
+          setValue("longitudFondeo", lng);
+          setMapPositionFondeo([lat, lng]);
+        }
+      },
+    };
+
+    return (
+      <Marker
+        position={mapPositionFondeo}
+        draggable={!loading}
+        eventHandlers={eventHandlers}
+        ref={markerRef}
+      >
+        <Popup>
+          <strong>{nombrePuerto}</strong>
+          <br />
+          Lat: {Number(latitudFondeo).toFixed(6)}
+          <br />
+          Lon: {Number(longitudFondeo).toFixed(6)}
+        </Popup>
+      </Marker>
+    );
   };
 
   /**
@@ -685,7 +815,7 @@ export default function DescargaFaenaPescaForm({
   const handleCapturarGPSFondeo = async () => {
     try {
       await capturarGPS(
-        (latitude, longitude, accuracy) => {
+               async (latitude, longitude, accuracy) => {
           // Callback de éxito
           setValue("latitudFondeo", latitude);
           setValue("longitudFondeo", longitude);
@@ -698,6 +828,37 @@ export default function DescargaFaenaPescaForm({
             )}m`,
             life: 3000,
           });
+
+          // Analizar coordenadas para obtener información geográfica de FONDEO
+          setLoadingGeoFondeo(true);
+          setErrorGeoFondeo(null);
+          try {
+            const puertoFondeoId = getValues("puertoFondeoId");
+            const infoGeo = await analizarCoordenadas(
+              latitude,
+              longitude,
+              puertoFondeoId,
+            );
+            setInfoGeograficaFondeo(infoGeo);
+
+            toast.current?.show({
+              severity: "info",
+              summary: "Información Geográfica Fondeo",
+              detail: "Información geográfica de fondeo obtenida correctamente",
+              life: 3000,
+            });
+          } catch (error) {
+            console.error("Error al analizar coordenadas de fondeo:", error);
+            setErrorGeoFondeo("No se pudo obtener la información geográfica de fondeo");
+            toast.current?.show({
+              severity: "warn",
+              summary: "Advertencia",
+              detail: "No se pudo obtener información geográfica de fondeo",
+              life: 3000,
+            });
+          } finally {
+            setLoadingGeoFondeo(false);
+          }
         },
         (errorMessage) => {
           // Callback de error
@@ -755,6 +916,48 @@ export default function DescargaFaenaPescaForm({
       }
     }
   }, [watch("latitud"), watch("longitud"), watch("puertoDescargaId")]);
+
+  
+  /**
+   * useEffect para analizar coordenadas FONDEO cuando ya existen en el formulario
+   */
+  useEffect(() => {
+    const latitudFondeo = watch("latitudFondeo");
+    const longitudFondeo = watch("longitudFondeo");
+    const puertoFondeoId = watch("puertoFondeoId");
+
+    // Solo analizar si hay coordenadas válidas y no estamos ya cargando
+    if (latitudFondeo && longitudFondeo && !loadingGeoFondeo) {
+      // Verificar que las coordenadas sean diferentes a las ya analizadas
+      const coordenadasActuales = `${latitudFondeo},${longitudFondeo}`;
+      const coordenadasAnalizadas = infoGeograficaFondeo
+        ? `${infoGeograficaFondeo.coordenadas?.latitud},${infoGeograficaFondeo.coordenadas?.longitud}`
+        : null;
+
+      // Solo analizar si son coordenadas nuevas
+      if (coordenadasActuales !== coordenadasAnalizadas) {
+        const analizarCoordenadasFondeoExistentes = async () => {
+          setLoadingGeoFondeo(true);
+          setErrorGeoFondeo(null);
+          try {
+            const infoGeo = await analizarCoordenadas(
+              latitudFondeo,
+              longitudFondeo,
+              puertoFondeoId,
+            );
+            setInfoGeograficaFondeo(infoGeo);
+          } catch (error) {
+            console.error("Error al analizar coordenadas fondeo existentes:", error);
+            setErrorGeoFondeo("No se pudo obtener la información geográfica de fondeo");
+          } finally {
+            setLoadingGeoFondeo(false);
+          }
+        };
+
+        analizarCoordenadasFondeoExistentes();
+      }
+    }
+  }, [watch("latitudFondeo"), watch("longitudFondeo"), watch("puertoFondeoId")]);
 
   // Crear configuración de inputs de coordenadas usando utilidad genérica
   const coordenadasConfig = crearInputCoordenadas({
@@ -902,7 +1105,7 @@ export default function DescargaFaenaPescaForm({
         </div>
 
         {/* Tabla MEJORADA de coordenadas GPS - Optimizada para Tablet */}
-        <div style={{ flex: 3 }}>
+        <div style={{ flex: 6 }}>
           <table
             style={{
               width: "100%",
@@ -969,50 +1172,54 @@ export default function DescargaFaenaPescaForm({
                   colSpan="4"
                   style={{ padding: "4px", border: "1px solid #0EA5E9" }}
                 >
-                  <input
-                    type="number"
-                    value={latitud || ""}
-                    onChange={(e) =>
-                      setValue("latitud", parseFloat(e.target.value) || 0)
-                    }
-                    disabled={loading || camposDeshabilitados}
-                    step="0.000001"
-                    placeholder="-12.345678"
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "2px solid #0EA5E9",
-                      fontSize: "20px", // ← MÁS GRANDE PARA TABLET
-                      fontWeight: "bold",
-                      textAlign: "center",
-                      borderRadius: "4px",
-                      color: "#059669",
-                    }}
+                  <Controller
+                    name="latitud"
+                    control={control}
+                    render={({ field }) => (
+                      <InputNumber
+                        value={field.value}
+                        onValueChange={(e) => field.onChange(e.value)}
+                        placeholder="-12.123456"
+                        disabled={loading || camposDeshabilitados}
+                        mode="decimal"
+                        minFractionDigits={0}
+                        maxFractionDigits={14}
+                        min={-90}
+                        max={90}
+                        style={{
+                          width: "100%",
+                          fontSize: "20px",
+                          padding: "8px",
+                        }}
+                      />
+                    )}
                   />
                 </td>
                 <td
                   colSpan="4"
                   style={{ padding: "4px", border: "1px solid #0EA5E9" }}
                 >
-                  <input
-                    type="number"
-                    value={longitud || ""}
-                    onChange={(e) =>
-                      setValue("longitud", parseFloat(e.target.value) || 0)
-                    }
-                    disabled={loading || camposDeshabilitados}
-                    step="0.000001"
-                    placeholder="-77.123456"
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "2px solid #0EA5E9",
-                      fontSize: "20px", // ← MÁS GRANDE PARA TABLET
-                      fontWeight: "bold",
-                      textAlign: "center",
-                      borderRadius: "4px",
-                      color: "#2563eb",
-                    }}
+                  <Controller
+                    name="longitud"
+                    control={control}
+                    render={({ field }) => (
+                      <InputNumber
+                        value={field.value}
+                        onValueChange={(e) => field.onChange(e.value)}
+                        placeholder="-77.123456"
+                        disabled={loading || camposDeshabilitados}
+                        mode="decimal"
+                        minFractionDigits={0}
+                        maxFractionDigits={14}
+                        min={-180}
+                        max={180}
+                        style={{
+                          width: "100%",
+                          fontSize: "20px",
+                          padding: "8px",
+                        }}
+                      />
+                    )}
                   />
                 </td>
               </tr>
@@ -1053,7 +1260,7 @@ export default function DescargaFaenaPescaForm({
                       min="0"
                       max="90"
                       style={{
-                        width: "70px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #059669",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -1089,7 +1296,7 @@ export default function DescargaFaenaPescaForm({
                       min="0"
                       max="59"
                       style={{
-                        width: "70px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #059669",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -1126,7 +1333,7 @@ export default function DescargaFaenaPescaForm({
                       max="59.99"
                       step="0.01"
                       style={{
-                        width: "80px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #059669",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -1205,7 +1412,7 @@ export default function DescargaFaenaPescaForm({
                       min="0"
                       max="180"
                       style={{
-                        width: "70px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #2563eb",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -1241,7 +1448,7 @@ export default function DescargaFaenaPescaForm({
                       min="0"
                       max="59"
                       style={{
-                        width: "70px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #2563eb",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -1278,7 +1485,7 @@ export default function DescargaFaenaPescaForm({
                       max="59.99"
                       step="0.01"
                       style={{
-                        width: "80px",
+                        width: "140px",
                         padding: "8px",
                         border: "2px solid #2563eb",
                         fontSize: "18px", // ← MÁS GRANDE
@@ -1338,6 +1545,30 @@ export default function DescargaFaenaPescaForm({
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mapa de ubicación DESCARGA */}
+      <div
+        style={{
+          marginBottom: "1rem",
+          border: "3px solid #0EA5E9",
+          borderRadius: "8px",
+          overflow: "hidden",
+          height: "400px",
+        }}
+      >
+        <MapContainer
+          key={mapKey}
+          center={mapPosition}
+          zoom={13}
+          style={{ height: "100%", width: "100%" }}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&​copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          />
+          <DraggableMarker />
+        </MapContainer>
       </div>
 
       {/* Información Geográfica */}
@@ -1806,24 +2037,23 @@ export default function DescargaFaenaPescaForm({
         </div>
 
         {/* Tabla compacta de coordenadas GPS FONDEO */}
-        <div style={{ flex: 3 }}>
+        <div style={{ flex: 6 }}>
           <table
             style={{
               width: "100%",
               borderCollapse: "collapse",
-              border: "2px solid #F97316",
+              border: "3px solid #F97316",
             }}
           >
             <thead>
               <tr style={{ backgroundColor: "#F97316", color: "white" }}>
                 <th
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #F97316",
-                    fontSize: "12px",
-                    width: "75px",
-                    minWidth: "75px",
-                    maxWidth: "75px",
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                    width: "100px",
                   }}
                 >
                   Formato
@@ -1831,24 +2061,26 @@ export default function DescargaFaenaPescaForm({
                 <th
                   colSpan="4"
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #F97316",
-                    fontSize: "12px",
+                    fontSize: "14px",
+                    fontWeight: "bold",
                     textAlign: "center",
                   }}
                 >
-                  Latitud
+                  Latitud (Siempre SUR en Perú)
                 </th>
                 <th
                   colSpan="4"
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #F97316",
-                    fontSize: "12px",
+                    fontSize: "14px",
+                    fontWeight: "bold",
                     textAlign: "center",
                   }}
                 >
-                  Longitud
+                  Longitud (Siempre OESTE en Perú)
                 </th>
               </tr>
             </thead>
@@ -1857,65 +2089,66 @@ export default function DescargaFaenaPescaForm({
               <tr>
                 <td
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #F97316",
                     fontWeight: "bold",
-                    fontSize: "11px",
-                    backgroundColor: "#fff8e1",
-                    width: "75px",
-                    minWidth: "75px",
-                    maxWidth: "75px",
+                    backgroundColor: "#FFF8E1",
                   }}
                 >
                   Decimal
                 </td>
                 <td
                   colSpan="4"
-                  style={{ padding: "2px", border: "1px solid #F97316" }}
+                  style={{ padding: "4px", border: "1px solid #F97316" }}
                 >
-                  <input
-                    type="number"
-                    value={latitudFondeo || ""}
-                    onChange={(e) =>
-                      setValue("latitudFondeo", parseFloat(e.target.value) || 0)
-                    }
-                    disabled={loading}
-                    step="0.000001"
-                    placeholder="-12.345678"
-                    style={{
-                      width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                      textAlign: "center",
-                    }}
+                  <Controller
+                    name="latitudFondeo"
+                    control={control}
+                    render={({ field }) => (
+                      <InputNumber
+                        value={field.value}
+                        onValueChange={(e) => field.onChange(e.value)}
+                        placeholder="-12.123456"
+                        disabled={loading}
+                        mode="decimal"
+                        minFractionDigits={0}
+                        maxFractionDigits={14}
+                        min={-90}
+                        max={90}
+                        style={{
+                          width: "100%",
+                          fontSize: "20px",
+                          padding: "8px",
+                        }}
+                      />
+                    )}
                   />
                 </td>
                 <td
                   colSpan="4"
-                  style={{ padding: "2px", border: "1px solid #F97316" }}
+                  style={{ padding: "4px", border: "1px solid #F97316" }}
                 >
-                  <input
-                    type="number"
-                    value={longitudFondeo || ""}
-                    onChange={(e) =>
-                      setValue(
-                        "longitudFondeo",
-                        parseFloat(e.target.value) || 0,
-                      )
-                    }
-                    disabled={loading}
-                    step="0.000001"
-                    placeholder="-77.123456"
-                    style={{
-                      width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                      textAlign: "center",
-                    }}
+                  <Controller
+                    name="longitudFondeo"
+                    control={control}
+                    render={({ field }) => (
+                      <InputNumber
+                        value={field.value}
+                        onValueChange={(e) => field.onChange(e.value)}
+                        placeholder="-77.123456"
+                        disabled={loading}
+                        mode="decimal"
+                        minFractionDigits={0}
+                        maxFractionDigits={14}
+                        min={-180}
+                        max={180}
+                        style={{
+                          width: "100%",
+                          fontSize: "20px",
+                          padding: "8px",
+                        }}
+                      />
+                    )}
                   />
                 </td>
               </tr>
@@ -1923,19 +2156,15 @@ export default function DescargaFaenaPescaForm({
               <tr>
                 <td
                   style={{
-                    padding: "4px",
+                    padding: "8px",
                     border: "1px solid #F97316",
                     fontWeight: "bold",
-                    fontSize: "11px",
-                    backgroundColor: "#fff8e1",
-                    width: "75px",
-                    minWidth: "75px",
-                    maxWidth: "75px",
+                    backgroundColor: "#FFF8E1",
                   }}
                 >
-                  GMS
+                  DMS
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <div
                     style={{
                       display: "flex",
@@ -1955,20 +2184,21 @@ export default function DescargaFaenaPescaForm({
                       min="0"
                       max="90"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "140px",
+                        padding: "8px",
+                        border: "2px solid #F97316",
+                        fontSize: "18px",
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       °
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <div
                     style={{
                       display: "flex",
@@ -1988,20 +2218,21 @@ export default function DescargaFaenaPescaForm({
                       min="0"
                       max="59"
                       style={{
-                        width: "50px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "140px",
+                        padding: "8px",
+                        border: "2px solid #F97316",
+                        fontSize: "18px",
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       '
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <div
                     style={{
                       display: "flex",
@@ -2022,20 +2253,21 @@ export default function DescargaFaenaPescaForm({
                       max="59.99"
                       step="0.01"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "140px",
+                        padding: "8px",
+                        border: "2px solid #F97316",
+                        fontSize: "18px",
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       "
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <select
                     value={latFondeoDireccion}
                     onChange={(e) => {
@@ -2045,18 +2277,19 @@ export default function DescargaFaenaPescaForm({
                     disabled={loading}
                     style={{
                       width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                      textAlign: "center",
+                      padding: "8px",
+                      fontSize: "18px",
+                      border: "1px solid #ccc",
+                      borderRadius: "4px",
+                      backgroundColor: "white",
+                      cursor: "pointer",
                     }}
                   >
                     <option value="N">N</option>
                     <option value="S">S</option>
                   </select>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <div
                     style={{
                       display: "flex",
@@ -2076,20 +2309,21 @@ export default function DescargaFaenaPescaForm({
                       min="0"
                       max="180"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "140px",
+                        padding: "8px",
+                        border: "2px solid #F97316",
+                        fontSize: "18px",
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       °
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <div
                     style={{
                       display: "flex",
@@ -2109,20 +2343,21 @@ export default function DescargaFaenaPescaForm({
                       min="0"
                       max="59"
                       style={{
-                        width: "50px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "140px",
+                        padding: "8px",
+                        border: "2px solid #F97316",
+                        fontSize: "18px",
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       '
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <div
                     style={{
                       display: "flex",
@@ -2143,20 +2378,21 @@ export default function DescargaFaenaPescaForm({
                       max="59.99"
                       step="0.01"
                       style={{
-                        width: "60px",
-                        padding: "4px",
-                        border: "none",
-                        fontSize: "12px",
+                        width: "140px",
+                        padding: "8px",
+                        border: "2px solid #F97316",
+                        fontSize: "18px",
                         fontWeight: "bold",
                         textAlign: "center",
+                        borderRadius: "4px",
                       }}
                     />
-                    <span style={{ fontSize: "12px", fontWeight: "bold" }}>
+                    <span style={{ fontSize: "18px", fontWeight: "bold" }}>
                       "
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "2px", border: "1px solid #F97316" }}>
+                <td style={{ padding: "4px", border: "1px solid #F97316" }}>
                   <select
                     value={lonFondeoDireccion}
                     onChange={(e) => {
@@ -2166,11 +2402,12 @@ export default function DescargaFaenaPescaForm({
                     disabled={loading}
                     style={{
                       width: "100%",
-                      padding: "4px",
-                      border: "none",
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                      textAlign: "center",
+                      padding: "8px",
+                      fontSize: "18px",
+                      border: "1px solid #ccc",
+                      borderRadius: "4px",
+                      backgroundColor: "white",
+                      cursor: "pointer",
                     }}
                   >
                     <option value="E">E</option>
@@ -2182,6 +2419,38 @@ export default function DescargaFaenaPescaForm({
           </table>
         </div>
       </div>
+
+      {/* Mapa de ubicación FONDEO */}
+      <div
+        style={{
+          marginBottom: "1rem",
+          border: "3px solid #F97316",
+          borderRadius: "8px",
+          overflow: "hidden",
+          height: "400px",
+        }}
+      >
+        <MapContainer
+          key={mapKeyFondeo}
+          center={mapPositionFondeo}
+          zoom={13}
+          style={{ height: "100%", width: "100%" }}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&​copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          />
+          <DraggableMarkerFondeo />
+        </MapContainer>
+      </div>
+
+      {/* Información Geográfica FONDEO */}
+      <InformacionGeografica
+        data={infoGeograficaFondeo}
+        loading={loadingGeoFondeo}
+        error={errorGeoFondeo}
+      />
+
       {/* Botones de acción */}
       <div
         style={{

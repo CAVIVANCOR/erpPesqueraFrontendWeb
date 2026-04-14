@@ -23,7 +23,11 @@ import { Toast } from "primereact/toast";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { Tag } from "primereact/tag";
 import { InputText } from "primereact/inputtext";
-import { getPuertosPesca, eliminarPuertoPesca } from "../api/puertoPesca";
+import {
+  getPuertosPesca,
+  eliminarPuertoPesca,
+  obtenerZonasDisponibles,
+} from "../api/puertoPesca";
 import { useAuthStore } from "../shared/stores/useAuthStore";
 import { usePermissions } from "../hooks/usePermissions";
 import PuertoPescaForm from "../components/puertoPesca/PuertoPescaForm";
@@ -33,12 +37,10 @@ const PuertoPesca = ({ ruta }) => {
   // Obtener usuario autenticado para control de permisos
   const { usuario } = useAuthStore();
   const permisos = usePermissions(ruta);
-
   // Verificar acceso al módulo
   if (!permisos.tieneAcceso || !permisos.puedeVer) {
     return <Navigate to="/sin-acceso" replace />;
   }
-
   const [puertosPesca, setPuertosPesca] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -47,10 +49,16 @@ const PuertoPesca = ({ ruta }) => {
   const [puertoPescaAEliminar, setPuertoPescaAEliminar] = useState(null);
   const toast = useRef(null);
   const [globalFilter, setGlobalFilter] = useState("");
+  // Estados para filtros dinámicos
+  const [zonasDisponibles, setZonasDisponibles] = useState([]);
+  const [filtroZona, setFiltroZona] = useState(null);
+  const [filtroTipo, setFiltroTipo] = useState(null); // null = Todos, false = Nacional, true = Internacional
+  const [puertosFiltrados, setPuertosFiltrados] = useState([]);
   const [isEdit, setIsEdit] = useState(false);
 
   useEffect(() => {
     cargarPuertosPesca();
+    cargarZonasDisponibles();
   }, []);
 
   const cargarPuertosPesca = async () => {
@@ -68,6 +76,95 @@ const PuertoPesca = ({ ruta }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const cargarZonasDisponibles = async () => {
+    try {
+      const zonas = await obtenerZonasDisponibles();
+      setZonasDisponibles(zonas);
+    } catch (error) {
+      console.error("Error al cargar zonas disponibles:", error);
+    }
+  };
+
+  // Aplicar filtros cuando cambian los datos o filtros
+  useEffect(() => {
+    aplicarFiltros();
+  }, [puertosPesca, filtroZona, filtroTipo]);
+
+  const aplicarFiltros = () => {
+    let resultado = [...puertosPesca];
+
+    // Filtro por zona
+    if (filtroZona !== null) {
+      resultado = resultado.filter((p) => p.zona === filtroZona);
+    }
+
+    // Filtro por tipo (Nacional/Internacional)
+    if (filtroTipo !== null) {
+      resultado = resultado.filter((p) => p.esPuertoOtroPais === filtroTipo);
+    }
+
+    setPuertosFiltrados(resultado);
+  };
+
+  const limpiarFiltros = () => {
+    setFiltroZona(null);
+    setFiltroTipo(null);
+    setGlobalFilter("");
+  };
+
+  // Función para ciclar filtro de zona
+  const ciclarFiltroZona = () => {
+    if (filtroZona === null) {
+      // Si no hay filtro, seleccionar la primera zona
+      setFiltroZona(zonasDisponibles[0] || null);
+    } else {
+      // Buscar el índice actual
+      const indiceActual = zonasDisponibles.indexOf(filtroZona);
+      if (indiceActual < zonasDisponibles.length - 1) {
+        // Siguiente zona
+        setFiltroZona(zonasDisponibles[indiceActual + 1]);
+      } else {
+        // Volver a "Todas"
+        setFiltroZona(null);
+      }
+    }
+  };
+
+  // Función para ciclar filtro de tipo
+  const ciclarFiltroTipo = () => {
+    if (filtroTipo === null) {
+      setFiltroTipo(false); // Nacional
+    } else if (filtroTipo === false) {
+      setFiltroTipo(true); // Internacional
+    } else {
+      setFiltroTipo(null); // Todos
+    }
+  };
+
+  // Obtener label y color para botón de zona
+  const getLabelZona = () => {
+    if (filtroZona === null) return "Todas las Zonas";
+    return `Zona: ${filtroZona}`;
+  };
+
+  const getColorZona = () => {
+    if (filtroZona === null) return "secondary";
+    const index = zonasDisponibles.indexOf(filtroZona);
+    const colores = ["info", "success", "warning", "help"];
+    return colores[index % colores.length];
+  };
+
+  // Obtener label y color para botón de tipo
+  const getLabelTipo = () => {
+    if (filtroTipo === null) return "Todos los Tipos";
+    return filtroTipo ? "Internacional" : "Nacional";
+  };
+
+  const getColorTipo = () => {
+    if (filtroTipo === null) return "secondary";
+    return filtroTipo ? "info" : "success";
   };
 
   const abrirDialogoNuevo = () => {
@@ -127,7 +224,9 @@ const PuertoPesca = ({ ruta }) => {
     try {
       await eliminarPuertoPesca(puertoPescaAEliminar.id);
       setPuertosPesca(
-        puertosPesca.filter((p) => Number(p.id) !== Number(puertoPescaAEliminar.id))
+        puertosPesca.filter(
+          (p) => Number(p.id) !== Number(puertoPescaAEliminar.id),
+        ),
       );
       toast.current.show({
         severity: "success",
@@ -203,11 +302,13 @@ const PuertoPesca = ({ ruta }) => {
     <div className="p-4">
       <Toast ref={toast} />
       <DataTable
-        value={puertosPesca}
+        value={puertosFiltrados}
         loading={loading}
         paginator
-        rows={10}
-        rowsPerPageOptions={[5, 10, 25, 50]}
+        rows={20}
+        stripedRows
+        showGridlines
+        rowsPerPageOptions={[20, 40, 60, 80]}
         onRowClick={
           permisos.puedeVer || permisos.puedeEditar
             ? (e) => abrirDialogoEdicion(e.data)
@@ -217,29 +318,76 @@ const PuertoPesca = ({ ruta }) => {
         size="small"
         emptyMessage="No se encontraron puertos de pesca"
         globalFilter={globalFilter}
-        globalFilterFields={['zona', 'nombre', 'provincia', 'departamento']}
+        globalFilterFields={["zona", "nombre", "provincia", "departamento"]}
         header={
-          <div className="flex align-items-center gap-2">
-            <h2>Gestión de Puertos de Pesca</h2>
-            <Button
-              label="Nuevo"
-              icon="pi pi-plus"
-              size="small"
-              raised
-              tooltip="Nuevo Puerto de Pesca"
-              outlined
-              className="p-button-success"
-              onClick={abrirDialogoNuevo}
-              disabled={!permisos.puedeCrear}
-            />
-            <span className="p-input-icon-left">
-              <InputText
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Buscar puertos de pesca..."
-                style={{ width: "300px" }}
+          <div
+            style={{
+              alignItems: "end",
+              display: "flex",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <h2>Gestión de Puertos de Pesca</h2>
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <Button
+                label="Nuevo"
+                icon="pi pi-plus"
+                size="small"
+                raised
+                tooltip="Nuevo Puerto de Pesca"
+                outlined
+                className="p-button-success"
+                onClick={abrirDialogoNuevo}
+                disabled={!permisos.puedeCrear}
               />
-            </span>
+            </div>
+            <div style={{ flex: 1 }}>
+              <span className="p-input-icon-left">
+                <InputText
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  placeholder="Buscar puertos de pesca..."
+                  style={{ width: "300px" }}
+                />
+              </span>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label={getLabelZona()}
+                icon="pi pi-filter"
+                size="small"
+                severity={getColorZona()}
+                onClick={ciclarFiltroZona}
+                tooltip="Click para cambiar filtro de zona"
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Button
+                label={getLabelTipo()}
+                icon="pi pi-globe"
+                size="small"
+                severity={getColorTipo()}
+                onClick={ciclarFiltroTipo}
+                tooltip="Click para cambiar filtro de tipo"
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              {(filtroZona !== null || filtroTipo !== null) && (
+                <Button
+                  label="Limpiar Filtros"
+                  icon="pi pi-filter-slash"
+                  size="small"
+                  severity="danger"
+                  outlined
+                  onClick={limpiarFiltros}
+                  tooltip="Limpiar todos los filtros"
+                />
+              )}
+            </div>
           </div>
         }
         scrollable
@@ -257,7 +405,12 @@ const PuertoPesca = ({ ruta }) => {
         <Column field="latitud" header="Latitud" sortable />
         <Column field="longitud" header="Longitud" sortable />
         <Column field="activo" header="Estado" body={estadoTemplate} sortable />
-        <Column field="esPuertoOtroPais" header="Tipo" body={paisTemplate} sortable />
+        <Column
+          field="esPuertoOtroPais"
+          header="Tipo"
+          body={paisTemplate}
+          sortable
+        />
         <Column
           body={accionesTemplate}
           header="Acciones"
@@ -275,7 +428,9 @@ const PuertoPesca = ({ ruta }) => {
         }
         visible={dialogVisible}
         onHide={cerrarDialogo}
-        style={{ width: "600px" }}
+        style={{ width: "1300px" }}
+        maximizable
+        maximized="true"
         modal
       >
         <PuertoPescaForm

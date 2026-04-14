@@ -48,3 +48,12 @@ export async function getPuertosActivos() {
     value: Number(puerto.id)
   }));
 }
+
+/**
+ * Obtiene las zonas únicas disponibles de los puertos activos
+ * @returns {Promise<string[]>} Array de zonas únicas
+ */
+export async function obtenerZonasDisponibles() {
+  const res = await axios.get(`${API_URL}/zonas-disponibles`, { headers: getAuthHeaders() });
+  return res.data;
+}

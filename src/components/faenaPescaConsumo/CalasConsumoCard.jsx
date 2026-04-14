@@ -1,6 +1,8 @@
 // src/components/faenaPescaConsumo/CalasConsumoCard.jsx
 // Card para gestionar calas de FaenaPescaConsumo con sus especies pescadas
 import React, { useState, useEffect, useRef } from "react";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -74,6 +76,10 @@ export default function CalasConsumoCard({
   const [infoGeografica, setInfoGeografica] = useState(null);
   const [loadingGeo, setLoadingGeo] = useState(false);
   const [errorGeo, setErrorGeo] = useState(null);
+
+  // Estados para el mapa
+  const [mapPosition, setMapPosition] = useState([-12.0, -77.0]);
+  const [mapKey, setMapKey] = useState(0);
 
   // Estados para campos de fecha
   const [createdAt, setCreatedAt] = useState(null);
@@ -152,14 +158,9 @@ export default function CalasConsumoCard({
     faenaData,
   ]);
 
-  // Sincronizar cambios de decimal a DMS
+  // Sincronizar cambios de decimal a DMS (cuando cambia latitud decimal)
   useEffect(() => {
-    if (
-      latitud !== "" &&
-      latitud !== null &&
-      latitud !== undefined &&
-      latitud !== 0
-    ) {
+    if (latitud !== "" && latitud !== null && latitud !== undefined) {
       const dms = descomponerDMS(Number(latitud), true);
       setLatGrados(dms.grados);
       setLatMinutos(dms.minutos);
@@ -168,13 +169,9 @@ export default function CalasConsumoCard({
     }
   }, [latitud]);
 
+  // Sincronizar cambios de decimal a DMS (cuando cambia longitud decimal)
   useEffect(() => {
-    if (
-      longitud !== "" &&
-      longitud !== null &&
-      longitud !== undefined &&
-      longitud !== 0
-    ) {
+    if (longitud !== "" && longitud !== null && longitud !== undefined) {
       const dms = descomponerDMS(Number(longitud), false);
       setLonGrados(dms.grados);
       setLonMinutos(dms.minutos);
@@ -182,6 +179,61 @@ export default function CalasConsumoCard({
       setLonDireccion(dms.direccion);
     }
   }, [longitud]);
+
+  // Actualizar posición del mapa cuando cambian las coordenadas
+  useEffect(() => {
+    if (
+      latitud !== "" &&
+      latitud !== null &&
+      latitud !== undefined &&
+      latitud !== 0 &&
+      longitud !== "" &&
+      longitud !== null &&
+      longitud !== undefined &&
+      longitud !== 0
+    ) {
+      setMapPosition([Number(latitud), Number(longitud)]);
+      setMapKey((prev) => prev + 1);
+    }
+  }, [latitud, longitud]);
+
+  /**
+   * useEffect para analizar coordenadas cuando ya existen
+   * (por ejemplo, al editar una cala existente)
+   */
+  useEffect(() => {
+    // Solo analizar si hay coordenadas válidas y no estamos ya cargando
+    if (latitud && longitud && !loadingGeo) {
+      // Verificar que las coordenadas sean diferentes a las ya analizadas
+      const coordenadasActuales = `${latitud},${longitud}`;
+      const coordenadasAnalizadas = infoGeografica
+        ? `${infoGeografica.coordenadas?.latitud},${infoGeografica.coordenadas?.longitud}`
+        : null;
+
+      // Solo analizar si son coordenadas nuevas
+      if (coordenadasActuales !== coordenadasAnalizadas) {
+        const analizarCoordenadasExistentes = async () => {
+          setLoadingGeo(true);
+          setErrorGeo(null);
+          try {
+            const infoGeo = await analizarCoordenadas(
+              latitud,
+              longitud,
+              null, // Cala no tiene puerto
+            );
+            setInfoGeografica(infoGeo);
+          } catch (error) {
+            console.error("Error al analizar coordenadas existentes:", error);
+            setErrorGeo("No se pudo obtener la información geográfica");
+          } finally {
+            setLoadingGeo(false);
+          }
+        };
+
+        analizarCoordenadasExistentes();
+      }
+    }
+  }, [latitud, longitud]);
 
   // Funciones para actualizar decimal cuando cambia DMS
   const actualizarLatitudDesdeDMS = () => {
@@ -360,6 +412,45 @@ export default function CalasConsumoCard({
         }
       },
     });
+  };
+
+  /**
+   * Componente de marker draggable para el mapa
+   */
+  const DraggableMarker = () => {
+    const markerRef = useRef(null);
+    const nombreBahia = bahias.find((b) => Number(b.value) === Number(selectedBahiaId || faenaData?.bahiaId))?.label || "Cala";
+
+    const eventHandlers = {
+      dragend() {
+        const marker = markerRef.current;
+        if (marker != null) {
+          const { lat, lng } = marker.getLatLng();
+          setLatitud(lat);
+          setLongitud(lng);
+          setValueCala("latitud", lat);
+          setValueCala("longitud", lng);
+          setMapPosition([lat, lng]);
+        }
+      },
+    };
+
+    return (
+      <Marker
+        position={mapPosition}
+        draggable={!loading}
+        eventHandlers={eventHandlers}
+        ref={markerRef}
+      >
+        <Popup>
+          <strong>{nombreBahia}</strong>
+          <br />
+          Lat: {Number(latitud).toFixed(6)}
+          <br />
+          Lon: {Number(longitud).toFixed(6)}
+        </Popup>
+      </Marker>
+    );
   };
 
   const guardarCala = async (cerrarDialogo = true) => {
@@ -1007,26 +1098,23 @@ export default function CalasConsumoCard({
                       colSpan="4"
                       style={{ padding: "4px", border: "1px solid #0EA5E9" }}
                     >
-                      <input
-                        type="number"
-                        value={latitud || ""}
-                        onChange={(e) => {
-                          const valor = parseFloat(e.target.value);
-                          setLatitud(isNaN(valor) ? "" : valor);
-                          setValueCala("latitud", isNaN(valor) ? null : valor);
+                      <InputNumber
+                        value={latitud}
+                        onValueChange={(e) => {
+                          setLatitud(e.value);
+                          setValueCala("latitud", e.value);
                         }}
+                        placeholder="-12.123456"
                         disabled={loading}
-                        step="0.000001"
-                        placeholder="-12.345678"
+                        mode="decimal"
+                        minFractionDigits={0}
+                        maxFractionDigits={14}
+                        min={-90}
+                        max={90}
                         style={{
                           width: "100%",
+                          fontSize: "20px",
                           padding: "8px",
-                          border: "2px solid #0EA5E9",
-                          fontSize: "20px", // ← MÁS GRANDE PARA TABLET
-                          fontWeight: "bold",
-                          textAlign: "center",
-                          borderRadius: "4px",
-                          color: "#059669",
                         }}
                       />
                     </td>
@@ -1034,26 +1122,23 @@ export default function CalasConsumoCard({
                       colSpan="4"
                       style={{ padding: "4px", border: "1px solid #0EA5E9" }}
                     >
-                      <input
-                        type="number"
-                        value={longitud || ""}
-                        onChange={(e) => {
-                          const valor = parseFloat(e.target.value);
-                          setLongitud(isNaN(valor) ? "" : valor);
-                          setValueCala("longitud", isNaN(valor) ? null : valor);
+                      <InputNumber
+                        value={longitud}
+                        onValueChange={(e) => {
+                          setLongitud(e.value);
+                          setValueCala("longitud", e.value);
                         }}
-                        disabled={loading}
-                        step="0.000001"
                         placeholder="-77.123456"
+                        disabled={loading}
+                        mode="decimal"
+                        minFractionDigits={0}
+                        maxFractionDigits={14}
+                        min={-180}
+                        max={180}
                         style={{
                           width: "100%",
+                          fontSize: "20px",
                           padding: "8px",
-                          border: "2px solid #0EA5E9",
-                          fontSize: "20px", // ← MÁS GRANDE PARA TABLET
-                          fontWeight: "bold",
-                          textAlign: "center",
-                          borderRadius: "4px",
-                          color: "#2563eb",
                         }}
                       />
                     </td>
@@ -1095,7 +1180,7 @@ export default function CalasConsumoCard({
                           min="0"
                           max="90"
                           style={{
-                            width: "70px",
+                            width: "140px",
                             padding: "8px",
                             border: "2px solid #059669",
                             fontSize: "18px", // ← MÁS GRANDE
@@ -1131,7 +1216,7 @@ export default function CalasConsumoCard({
                           min="0"
                           max="59"
                           style={{
-                            width: "70px",
+                            width: "140px",
                             padding: "8px",
                             border: "2px solid #059669",
                             fontSize: "18px", // ← MÁS GRANDE
@@ -1168,7 +1253,7 @@ export default function CalasConsumoCard({
                           max="59.99"
                           step="0.01"
                           style={{
-                            width: "80px",
+                            width: "140px",
                             padding: "8px",
                             border: "2px solid #059669",
                             fontSize: "18px", // ← MÁS GRANDE
@@ -1247,7 +1332,7 @@ export default function CalasConsumoCard({
                           min="0"
                           max="180"
                           style={{
-                            width: "70px",
+                            width: "140px",
                             padding: "8px",
                             border: "2px solid #2563eb",
                             fontSize: "18px", // ← MÁS GRANDE
@@ -1283,7 +1368,7 @@ export default function CalasConsumoCard({
                           min="0"
                           max="59"
                           style={{
-                            width: "70px",
+                            width: "140px",
                             padding: "8px",
                             border: "2px solid #2563eb",
                             fontSize: "18px", // ← MÁS GRANDE
@@ -1320,7 +1405,7 @@ export default function CalasConsumoCard({
                           max="59.99"
                           step="0.01"
                           style={{
-                            width: "80px",
+                            width: "140px",
                             padding: "8px",
                             border: "2px solid #2563eb",
                             fontSize: "18px", // ← MÁS GRANDE
@@ -1380,6 +1465,30 @@ export default function CalasConsumoCard({
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* Mapa de ubicación */}
+          <div
+            style={{
+              marginBottom: "1rem",
+              border: "3px solid #0EA5E9",
+              borderRadius: "8px",
+              overflow: "hidden",
+              height: "400px",
+            }}
+          >
+            <MapContainer
+              key={mapKey}
+              center={mapPosition}
+              zoom={13}
+              style={{ height: "100%", width: "100%" }}
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              />
+              <DraggableMarker />
+            </MapContainer>
           </div>
 
           {/* Información Geográfica */}
