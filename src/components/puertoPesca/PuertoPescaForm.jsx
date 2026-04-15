@@ -29,14 +29,16 @@ import {
   TileLayer,
   Marker,
   Popup,
-  useMapEvents,
+  Polyline,
+  useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { crearPuertoPesca, actualizarPuertoPesca } from "../../api/puertoPesca";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
-import { analizarCoordenadas } from "../../api/geolocalizacion";
-import InformacionGeografica from "../descargaFaenaPesca/InformacionGeografica";
+import { analizarCoordenadasConReferencia } from "../../api/geolocalizacion";
+import { DEFAULT_MAP_ZOOM, MARKER_ICONS } from "../../config/mapConfig";
+import PanelMapaGeografico from "../shared/PanelMapaGeografico";
 import {
   capturarGPS,
   descomponerDMS,
@@ -120,12 +122,20 @@ const PuertoPescaForm = ({
   const [lonDireccion, setLonDireccion] = useState("W");
 
   // Estados para información geográfica
+  // Estados para información geográfica
   const [infoGeografica, setInfoGeografica] = useState(null);
   const [loadingGeo, setLoadingGeo] = useState(false);
   const [errorGeo, setErrorGeo] = useState(null);
 
-  // Estado para posición del mapa
-  const [mapPosition, setMapPosition] = useState([-12.0464, -77.0428]); // Lima, Perú por defecto
+  // Estados para ubicación del usuario y pantalla completa
+  const [ubicacionUsuario, setUbicacionUsuario] = useState(null);
+  const [mapaFullscreen, setMapaFullscreen] = useState(false);
+  const mapContainerRef = useRef(null);
+  const [tipoMapa, setTipoMapa] = useState("street");
+
+  // Estados para el mapa
+  const [mapPosition, setMapPosition] = useState([-12.0, -77.0]);
+  const [mapKey, setMapKey] = useState(0);
 
   // Configuración del formulario con React Hook Form
   const {
@@ -217,7 +227,11 @@ const PuertoPescaForm = ({
           setLoadingGeo(true);
           setErrorGeo(null);
           try {
-            const infoGeo = await analizarCoordenadas(latitud, longitud, null);
+            const infoGeo = await analizarCoordenadasConReferencia(
+              latitud,
+              longitud,
+              null,
+            );
             setInfoGeografica(infoGeo);
           } catch (error) {
             console.error("Error al analizar coordenadas existentes:", error);
@@ -277,7 +291,7 @@ const PuertoPescaForm = ({
           setLoadingGeo(true);
           setErrorGeo(null);
           try {
-            const infoGeo = await analizarCoordenadas(
+            const infoGeo = await analizarCoordenadasConReferencia(
               latitude,
               longitude,
               null,
@@ -379,6 +393,157 @@ const PuertoPescaForm = ({
         </Popup>
       </Marker>
     );
+  };
+
+  /**
+   * Componente de marcador de ubicación del usuario
+   */
+  const UserLocationMarker = () => {
+    if (!ubicacionUsuario) return null;
+
+    const iconUsuario = L.icon({
+      iconUrl: MARKER_ICONS.usuario.iconUrl,
+      iconSize: MARKER_ICONS.usuario.iconSize,
+      iconAnchor: MARKER_ICONS.usuario.iconAnchor,
+      popupAnchor: MARKER_ICONS.usuario.popupAnchor,
+    });
+
+    return (
+      <Marker
+        position={[ubicacionUsuario.lat, ubicacionUsuario.lng]}
+        icon={iconUsuario}
+      >
+        <Popup>
+          <strong>📍 Tu Ubicación</strong>
+          <br />
+          Lat: {ubicacionUsuario.lat.toFixed(6)}
+          <br />
+          Lon: {ubicacionUsuario.lng.toFixed(6)}
+          <br />
+          Precisión: ±{ubicacionUsuario.accuracy.toFixed(0)}m
+        </Popup>
+      </Marker>
+    );
+  };
+
+  /**
+   * Componente de línea de distancia entre usuario y puerto
+   */
+  const DistanceLine = () => {
+    if (!ubicacionUsuario || !latitud || !longitud) return null;
+
+    const positions = [
+      [ubicacionUsuario.lat, ubicacionUsuario.lng],
+      [latitud, longitud],
+    ];
+
+    return (
+      <Polyline
+        positions={positions}
+        color="#10B981"
+        weight={2}
+        opacity={0.6}
+        dashArray="5, 10"
+      />
+    );
+  };
+
+
+  /**
+   * Obtener ubicación actual del usuario
+   */
+  const obtenerUbicacionUsuario = () => {
+    if (!navigator.geolocation) {
+      toast.current.show({
+        severity: "warn",
+        summary: "No disponible",
+        detail: "Tu navegador no soporta geolocalización",
+        life: 3000,
+      });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        setUbicacionUsuario({ lat: latitude, lng: longitude, accuracy });
+        toast.current.show({
+          severity: "success",
+          summary: "Ubicación obtenida",
+          detail: `Precisión: ±${accuracy.toFixed(0)}m`,
+          life: 3000,
+        });
+      },
+      (error) => {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudo obtener tu ubicación",
+          life: 3000,
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  };
+
+  /**
+   * Alternar pantalla completa del mapa
+   */
+  const toggleFullscreen = () => {
+    if (!mapContainerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      mapContainerRef.current.requestFullscreen?.();
+      setMapaFullscreen(true);
+    } else {
+      document.exitFullscreen?.();
+      setMapaFullscreen(false);
+    }
+  };
+
+  /**
+   * Cambiar tipo de mapa
+   */
+  const cambiarTipoMapa = () => {
+    setTipoMapa((prev) => {
+      if (prev === "street") return "satellite";
+      if (prev === "satellite") return "hybrid";
+      return "street";
+    });
+  };
+
+  /**
+   * Obtener configuración del tile según tipo de mapa
+   */
+  const getTileConfig = () => {
+    const configs = {
+      street: {
+        url: "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+        attribution:
+          '&​copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      },
+      satellite: {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attribution:
+          "&​copy; Esri &​mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+      },
+      hybrid: {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attribution:
+          "&​copy; Esri &​mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+      },
+    };
+    return configs[tipoMapa] || configs.street;
+  };
+
+  /**
+   * Obtener color según clasificación de aguas
+   */
+  const getClasificacionAguasColor = (clasificacion) => {
+    if (!clasificacion) return "info";
+    if (clasificacion.includes("Territorial")) return "danger";
+    if (clasificacion.includes("Exclusiva")) return "success";
+    return "info";
   };
 
   // Efecto para cargar datos en modo edición
@@ -1129,38 +1294,27 @@ const PuertoPescaForm = ({
               </div>
             </div>
 
-            {/* Mapa Interactivo */}
-            <div
-              style={{
-                marginBottom: "15px",
-                marginTop: "15px",
-                height: "400px",
-                border: "3px solid #0EA5E9",
-                borderRadius: "8px",
-                overflow: "hidden",
-              }}
-            >
-              <MapContainer
-                center={mapPosition}
-                zoom={13}
-                key={`${mapPosition[0]}-${mapPosition[1]}`}
-                style={{ height: "100%", width: "100%" }}
-              >
-                <TileLayer
-                  attribution='&​copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <DraggableMarker />
-                <MapClickHandler />
-              </MapContainer>
-            </div>
 
-            {/* Información Geográfica */}
-            <InformacionGeografica
-              data={infoGeografica}
-              loading={loadingGeo}
-              error={errorGeo}
-            />
+            <PanelMapaGeografico
+              mapPosition={mapPosition}
+              mapKey={mapKey}
+              tipoMapa={tipoMapa}
+              getTileConfig={getTileConfig}
+              toggleFullscreen={toggleFullscreen}
+              cambiarTipoMapa={cambiarTipoMapa}
+              obtenerUbicacionUsuario={obtenerUbicacionUsuario}
+              mapContainerRef={mapContainerRef}
+              mapaFullscreen={mapaFullscreen}
+              infoGeografica={infoGeografica}
+              loadingGeo={loadingGeo}
+              getClasificacionAguasColor={getClasificacionAguasColor}
+              titulo="📍 Información Geográfica - Puerto"
+              colapsadoPorDefecto={true}
+            >
+              <DraggableMarker />
+              <UserLocationMarker />
+              <DistanceLine />
+            </PanelMapaGeografico>
           </div>
           {/* ========== FIN SECCIÓN DE GEOLOCALIZACIÓN ========== */}
         </div>

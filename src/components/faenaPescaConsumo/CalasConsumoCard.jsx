@@ -1,7 +1,14 @@
 // src/components/faenaPescaConsumo/CalasConsumoCard.jsx
 // Card para gestionar calas de FaenaPescaConsumo con sus especies pescadas
 import React, { useState, useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  useMap,
+} from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -25,8 +32,13 @@ import {
   descomponerDMS,
   convertirDMSADecimal,
 } from "../../utils/gpsUtils";
-import { analizarCoordenadas } from "../../api/geolocalizacion";
-import InformacionGeografica from "../descargaFaenaPesca/InformacionGeografica";
+import { analizarCoordenadasConReferencia } from "../../api/geolocalizacion";
+import {
+  DEFAULT_MAP_ZOOM,
+  DEFAULT_TILE_LAYER,
+  MARKER_ICONS,
+} from "../../config/mapConfig";
+import L from "leaflet";
 import {
   getCalasFaenaConsumoPorFaena,
   crearCalaFaenaConsumo,
@@ -34,6 +46,7 @@ import {
   eliminarCalaFaenaConsumo,
 } from "../../api/calaFaenaConsumo";
 import DetalleCalasConsumoEspecieForm from "./DetalleCalasConsumoEspecieForm";
+import PanelMapaGeografico from "../shared/PanelMapaGeografico";
 
 export default function CalasConsumoCard({
   faenaPescaConsumoId,
@@ -77,6 +90,11 @@ export default function CalasConsumoCard({
   const [loadingGeo, setLoadingGeo] = useState(false);
   const [errorGeo, setErrorGeo] = useState(null);
 
+  // Estados para ubicación del usuario y pantalla completa
+  const [ubicacionUsuario, setUbicacionUsuario] = useState(null);
+  const [mapaFullscreen, setMapaFullscreen] = useState(false);
+  const mapContainerRef = useRef(null);
+  const [tipoMapa, setTipoMapa] = useState("street");
   // Estados para el mapa
   const [mapPosition, setMapPosition] = useState([-12.0, -77.0]);
   const [mapKey, setMapKey] = useState(0);
@@ -216,7 +234,7 @@ export default function CalasConsumoCard({
           setLoadingGeo(true);
           setErrorGeo(null);
           try {
-            const infoGeo = await analizarCoordenadas(
+            const infoGeo = await analizarCoordenadasConReferencia(
               latitud,
               longitud,
               null, // Cala no tiene puerto
@@ -277,7 +295,7 @@ export default function CalasConsumoCard({
           setLoadingGeo(true);
           setErrorGeo(null);
           try {
-            const infoGeo = await analizarCoordenadas(
+            const infoGeo = await analizarCoordenadasConReferencia(
               latitud,
               longitud,
               null, // Cala no tiene puerto de salida
@@ -419,7 +437,11 @@ export default function CalasConsumoCard({
    */
   const DraggableMarker = () => {
     const markerRef = useRef(null);
-    const nombreBahia = bahias.find((b) => Number(b.value) === Number(selectedBahiaId || faenaData?.bahiaId))?.label || "Cala";
+    const nombreBahia =
+      bahias.find(
+        (b) =>
+          Number(b.value) === Number(selectedBahiaId || faenaData?.bahiaId),
+      )?.label || "Cala";
 
     const eventHandlers = {
       dragend() {
@@ -451,6 +473,175 @@ export default function CalasConsumoCard({
         </Popup>
       </Marker>
     );
+  };
+
+  /**
+   * Componente de marcador de ubicación del usuario
+   */
+  const UserLocationMarker = () => {
+    if (!ubicacionUsuario) return null;
+
+    const iconUsuario = L.icon({
+      iconUrl: MARKER_ICONS.usuario.iconUrl,
+      iconSize: MARKER_ICONS.usuario.iconSize,
+      iconAnchor: MARKER_ICONS.usuario.iconAnchor,
+      popupAnchor: MARKER_ICONS.usuario.popupAnchor,
+    });
+
+    return (
+      <Marker
+        position={[ubicacionUsuario.lat, ubicacionUsuario.lng]}
+        icon={iconUsuario}
+      >
+        <Popup>
+          <strong>📍 Tu Ubicación</strong>
+          <br />
+          Lat: {ubicacionUsuario.lat.toFixed(6)}
+          <br />
+          Lon: {ubicacionUsuario.lng.toFixed(6)}
+          <br />
+          Precisión: ±{ubicacionUsuario.accuracy.toFixed(0)}m
+        </Popup>
+      </Marker>
+    );
+  };
+
+  /**
+   * Componente de línea de distancia entre usuario y embarcación
+   */
+  const DistanceLine = () => {
+    if (!ubicacionUsuario || !latitud || !longitud) return null;
+
+    const positions = [
+      [ubicacionUsuario.lat, ubicacionUsuario.lng],
+      [latitud, longitud],
+    ];
+
+    return (
+      <Polyline
+        positions={positions}
+        color="#10B981"
+        weight={2}
+        opacity={0.6}
+        dashArray="5, 10"
+      />
+    );
+  };
+
+  /**
+   * Obtener ubicación actual del usuario
+   */
+  const obtenerUbicacionUsuario = () => {
+    if (!navigator.geolocation) {
+      toast.current.show({
+        severity: "warn",
+        summary: "GPS no disponible",
+        detail: "Tu dispositivo no soporta geolocalización",
+        life: 3000,
+      });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUbicacionUsuario({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        });
+        toast.current.show({
+          severity: "success",
+          summary: "Ubicación obtenida",
+          detail: "Tu ubicación se muestra en el mapa (marcador verde)",
+          life: 3000,
+        });
+      },
+      (error) => {
+        toast.current.show({
+          severity: "error",
+          summary: "Error GPS",
+          detail: "No se pudo obtener tu ubicación",
+          life: 3000,
+        });
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    );
+  };
+
+  /**
+   * Toggle pantalla completa del mapa
+   */
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      mapContainerRef.current?.requestFullscreen();
+      setMapaFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setMapaFullscreen(false);
+    }
+  };
+
+  /**
+   * Cambiar tipo de mapa
+   */
+  const cambiarTipoMapa = () => {
+    if (tipoMapa === "street") {
+      setTipoMapa("satellite");
+      toast.current.show({
+        severity: "info",
+        summary: "Vista Satélite",
+        detail: "Cambiado a vista satelital",
+        life: 2000,
+      });
+    } else if (tipoMapa === "satellite") {
+      setTipoMapa("hybrid");
+      toast.current.show({
+        severity: "info",
+        summary: "Vista Híbrida",
+        detail: "Satélite + etiquetas",
+        life: 2000,
+      });
+    } else {
+      setTipoMapa("street");
+      toast.current.show({
+        severity: "info",
+        summary: "Vista Calles",
+        detail: "Cambiado a vista de calles",
+        life: 2000,
+      });
+    }
+  };
+
+  /**
+   * Obtener configuración de tile según tipo de mapa
+   */
+  const getTileConfig = () => {
+    const configs = {
+      street: {
+        url: "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+        attribution:
+          '&​copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      },
+      satellite: {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attribution: "Tiles &​copy; Esri",
+      },
+      hybrid: {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attribution: "Tiles &​copy; Esri",
+      },
+    };
+    return configs[tipoMapa];
+  };
+
+  /**
+   * Obtener color del Tag según clasificación de aguas
+   */
+  const getClasificacionAguasColor = (clasificacion) => {
+    if (!clasificacion) return "info";
+    if (clasificacion.includes("Territoriales")) return "danger";
+    if (clasificacion.includes("Económica")) return "success";
+    return "info";
   };
 
   const guardarCala = async (cerrarDialogo = true) => {
@@ -980,11 +1171,12 @@ export default function CalasConsumoCard({
                         setLoadingGeo(true);
                         setErrorGeo(null);
                         try {
-                          const infoGeo = await analizarCoordenadas(
-                            latitude,
-                            longitude,
-                            null, // Cala no tiene puerto de salida
-                          );
+                          const infoGeo =
+                            await analizarCoordenadasConReferencia(
+                              latitude,
+                              longitude,
+                              null, // Cala no tiene puerto de salida
+                            );
                           setInfoGeografica(infoGeo);
 
                           toast.current?.show({
@@ -1467,36 +1659,26 @@ export default function CalasConsumoCard({
             </div>
           </div>
 
-          {/* Mapa de ubicación */}
-          <div
-            style={{
-              marginBottom: "1rem",
-              border: "3px solid #0EA5E9",
-              borderRadius: "8px",
-              overflow: "hidden",
-              height: "400px",
-            }}
+          <PanelMapaGeografico
+            mapPosition={mapPosition}
+            mapKey={mapKey}
+            tipoMapa={tipoMapa}
+            getTileConfig={getTileConfig}
+            toggleFullscreen={toggleFullscreen}
+            cambiarTipoMapa={cambiarTipoMapa}
+            obtenerUbicacionUsuario={obtenerUbicacionUsuario}
+            mapContainerRef={mapContainerRef}
+            mapaFullscreen={mapaFullscreen}
+            infoGeografica={infoGeografica}
+            loadingGeo={loadingGeo}
+            getClasificacionAguasColor={getClasificacionAguasColor}
+            titulo="📍 Información Geográfica - Cala"
+            colapsadoPorDefecto={true}
           >
-            <MapContainer
-              key={mapKey}
-              center={mapPosition}
-              zoom={13}
-              style={{ height: "100%", width: "100%" }}
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              />
-              <DraggableMarker />
-            </MapContainer>
-          </div>
-
-          {/* Información Geográfica */}
-          <InformacionGeografica
-            data={infoGeografica}
-            loading={loadingGeo}
-            error={errorGeo}
-          />
+            <DraggableMarker />
+            <UserLocationMarker />
+            <DistanceLine />
+          </PanelMapaGeografico>
 
           <DetalleCalasConsumoEspecieForm
             calaId={editingCala?.id}

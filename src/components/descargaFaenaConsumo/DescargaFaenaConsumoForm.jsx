@@ -4,7 +4,14 @@
 // Documentado en español técnico para mantenibilidad
 
 import React, { useState, useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  useMap,
+} from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useForm, Controller } from "react-hook-form";
 import { Button } from "primereact/button";
@@ -29,9 +36,10 @@ import {
   convertirDMSADecimal,
 } from "../../utils/gpsUtils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
-import { analizarCoordenadas } from "../../api/geolocalizacion";
-import InformacionGeografica from "../descargaFaenaPesca/InformacionGeografica";
-
+import { analizarCoordenadasConReferencia } from "../../api/geolocalizacion";
+import { DEFAULT_MAP_ZOOM, MARKER_ICONS } from "../../config/mapConfig";
+import L from "leaflet";
+import PanelMapaGeografico from "../shared/PanelMapaGeografico";
 /**
  * Formulario DescargaFaenaConsumoForm
  *
@@ -171,13 +179,320 @@ export default function DescargaFaenaConsumoForm({
   const [loadingGeoFondeo, setLoadingGeoFondeo] = useState(false);
   const [errorGeoFondeo, setErrorGeoFondeo] = useState(null);
 
-  // Estados para el mapa de DESCARGA
+  // Estados para ubicación del usuario y pantalla completa
+  const [ubicacionUsuario, setUbicacionUsuario] = useState(null);
+  const [mapaFullscreen, setMapaFullscreen] = useState(false);
+  const mapContainerRef = useRef(null);
+  const [tipoMapa, setTipoMapa] = useState("street");
+
+  // Estados para ubicación del usuario y pantalla completa FONDEO
+  const [ubicacionUsuarioFondeo, setUbicacionUsuarioFondeo] = useState(null);
+  const [mapaFullscreenFondeo, setMapaFullscreenFondeo] = useState(false);
+  const mapContainerRefFondeo = useRef(null);
+  const [tipoMapaFondeo, setTipoMapaFondeo] = useState("street");
+
+  // Estados para el mapa
   const [mapPosition, setMapPosition] = useState([-12.0, -77.0]);
   const [mapKey, setMapKey] = useState(0);
 
-  // Estados para el mapa de FONDEO
+  // Estados para el mapa de fondeo
   const [mapPositionFondeo, setMapPositionFondeo] = useState([-12.0, -77.0]);
   const [mapKeyFondeo, setMapKeyFondeo] = useState(0);
+
+  /**
+   * Componente de marcador de ubicación del usuario - DESCARGA
+   */
+  const UserLocationMarker = () => {
+    if (!ubicacionUsuario) return null;
+
+    const iconUsuario = L.icon({
+      iconUrl: MARKER_ICONS.usuario.iconUrl,
+      iconSize: MARKER_ICONS.usuario.iconSize,
+      iconAnchor: MARKER_ICONS.usuario.iconAnchor,
+      popupAnchor: MARKER_ICONS.usuario.popupAnchor,
+    });
+
+    return (
+      <Marker
+        position={[ubicacionUsuario.lat, ubicacionUsuario.lng]}
+        icon={iconUsuario}
+      >
+        <Popup>
+          <strong>📍 Tu Ubicación</strong>
+          <br />
+          Lat: {ubicacionUsuario.lat.toFixed(6)}
+          <br />
+          Lon: {ubicacionUsuario.lng.toFixed(6)}
+          <br />
+          Precisión: ±{ubicacionUsuario.accuracy.toFixed(0)}m
+        </Popup>
+      </Marker>
+    );
+  };
+
+  /**
+   * Componente de línea de distancia - DESCARGA
+   */
+  const DistanceLine = () => {
+    const latitud = watch("latitud");
+    const longitud = watch("longitud");
+    if (!ubicacionUsuario || !latitud || !longitud) return null;
+
+    const positions = [
+      [ubicacionUsuario.lat, ubicacionUsuario.lng],
+      [latitud, longitud],
+    ];
+
+    return (
+      <Polyline
+        positions={positions}
+        color="#10B981"
+        weight={2}
+        opacity={0.6}
+        dashArray="5, 10"
+      />
+    );
+  };
+
+  /**
+   * Componente de marcador de ubicación del usuario - FONDEO
+   */
+  const UserLocationMarkerFondeo = () => {
+    if (!ubicacionUsuarioFondeo) return null;
+
+    const iconUsuario = L.icon({
+      iconUrl: MARKER_ICONS.usuario.iconUrl,
+      iconSize: MARKER_ICONS.usuario.iconSize,
+      iconAnchor: MARKER_ICONS.usuario.iconAnchor,
+      popupAnchor: MARKER_ICONS.usuario.popupAnchor,
+    });
+
+    return (
+      <Marker
+        position={[ubicacionUsuarioFondeo.lat, ubicacionUsuarioFondeo.lng]}
+        icon={iconUsuario}
+      >
+        <Popup>
+          <strong>📍 Tu Ubicación</strong>
+          <br />
+          Lat: {ubicacionUsuarioFondeo.lat.toFixed(6)}
+          <br />
+          Lon: {ubicacionUsuarioFondeo.lng.toFixed(6)}
+          <br />
+          Precisión: ±{ubicacionUsuarioFondeo.accuracy.toFixed(0)}m
+        </Popup>
+      </Marker>
+    );
+  };
+
+  /**
+   * Componente de línea de distancia - FONDEO
+   */
+  const DistanceLineFondeo = () => {
+    const latitudFondeo = watch("latitudFondeo");
+    const longitudFondeo = watch("longitudFondeo");
+    if (!ubicacionUsuarioFondeo || !latitudFondeo || !longitudFondeo)
+      return null;
+
+    const positions = [
+      [ubicacionUsuarioFondeo.lat, ubicacionUsuarioFondeo.lng],
+      [latitudFondeo, longitudFondeo],
+    ];
+
+    return (
+      <Polyline
+        positions={positions}
+        color="#10B981"
+        weight={2}
+        opacity={0.6}
+        dashArray="5, 10"
+      />
+    );
+  };
+
+  /**
+   * Obtener ubicación actual del usuario - DESCARGA
+   */
+  const obtenerUbicacionUsuario = () => {
+    if (!navigator.geolocation) {
+      toast.current.show({
+        severity: "warn",
+        summary: "No disponible",
+        detail: "Tu navegador no soporta geolocalización",
+        life: 3000,
+      });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        setUbicacionUsuario({ lat: latitude, lng: longitude, accuracy });
+        toast.current.show({
+          severity: "success",
+          summary: "Ubicación obtenida",
+          detail: `Precisión: ±${accuracy.toFixed(0)}m`,
+          life: 3000,
+        });
+      },
+      (error) => {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudo obtener tu ubicación",
+          life: 3000,
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  };
+
+  /**
+   * Obtener ubicación actual del usuario - FONDEO
+   */
+  const obtenerUbicacionUsuarioFondeo = () => {
+    if (!navigator.geolocation) {
+      toast.current.show({
+        severity: "warn",
+        summary: "No disponible",
+        detail: "Tu navegador no soporta geolocalización",
+        life: 3000,
+      });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        setUbicacionUsuarioFondeo({ lat: latitude, lng: longitude, accuracy });
+        toast.current.show({
+          severity: "success",
+          summary: "Ubicación obtenida (Fondeo)",
+          detail: `Precisión: ±${accuracy.toFixed(0)}m`,
+          life: 3000,
+        });
+      },
+      (error) => {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudo obtener tu ubicación",
+          life: 3000,
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  };
+
+  /**
+   * Alternar pantalla completa del mapa - DESCARGA
+   */
+  const toggleFullscreen = () => {
+    if (!mapContainerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      mapContainerRef.current.requestFullscreen?.();
+      setMapaFullscreen(true);
+    } else {
+      document.exitFullscreen?.();
+      setMapaFullscreen(false);
+    }
+  };
+
+  /**
+   * Alternar pantalla completa del mapa - FONDEO
+   */
+  const toggleFullscreenFondeo = () => {
+    if (!mapContainerRefFondeo.current) return;
+
+    if (!document.fullscreenElement) {
+      mapContainerRefFondeo.current.requestFullscreen?.();
+      setMapaFullscreenFondeo(true);
+    } else {
+      document.exitFullscreen?.();
+      setMapaFullscreenFondeo(false);
+    }
+  };
+
+  /**
+   * Cambiar tipo de mapa - DESCARGA
+   */
+  const cambiarTipoMapa = () => {
+    setTipoMapa((prev) => {
+      if (prev === "street") return "satellite";
+      if (prev === "satellite") return "hybrid";
+      return "street";
+    });
+  };
+
+  /**
+   * Cambiar tipo de mapa - FONDEO
+   */
+  const cambiarTipoMapaFondeo = () => {
+    setTipoMapaFondeo((prev) => {
+      if (prev === "street") return "satellite";
+      if (prev === "satellite") return "hybrid";
+      return "street";
+    });
+  };
+
+  /**
+   * Obtener configuración del tile según tipo de mapa
+   */
+  const getTileConfig = () => {
+    const configs = {
+      street: {
+        url: "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+        attribution:
+          '&​copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      },
+      satellite: {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attribution:
+          "&​copy; Esri &​mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+      },
+      hybrid: {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attribution:
+          "&​copy; Esri &​mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+      },
+    };
+    return configs[tipoMapa] || configs.street;
+  };
+
+  /**
+   * Obtener configuración del tile según tipo de mapa - FONDEO
+   */
+  const getTileConfigFondeo = () => {
+    const configs = {
+      street: {
+        url: "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+        attribution:
+          '&​copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      },
+      satellite: {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attribution:
+          "&​copy; Esri &​mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+      },
+      hybrid: {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attribution:
+          "&​copy; Esri &​mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+      },
+    };
+    return configs[tipoMapaFondeo] || configs.street;
+  };
+
+  /**
+   * Obtener color según clasificación de aguas
+   */
+  const getClasificacionAguasColor = (clasificacion) => {
+    if (!clasificacion) return "info";
+    if (clasificacion.includes("Territorial")) return "danger";
+    if (clasificacion.includes("Exclusiva")) return "success";
+    return "info";
+  };
 
   // Normalizar opciones de combos
   const puertosNormalizados = puertos.map((p) => ({
@@ -416,7 +731,7 @@ export default function DescargaFaenaConsumoForm({
           setErrorGeo(null);
           try {
             const puertoSalidaId = getValues("puertoDescargaId");
-            const infoGeo = await analizarCoordenadas(
+            const infoGeo = await analizarCoordenadasConReferencia(
               latitud,
               longitud,
               puertoSalidaId || null,
@@ -454,7 +769,7 @@ export default function DescargaFaenaConsumoForm({
           setErrorGeoFondeo(null);
           try {
             const puertoFondeoId = getValues("puertoFondeoId");
-            const infoGeo = await analizarCoordenadas(
+            const infoGeo = await analizarCoordenadasConReferencia(
               latitudFondeo,
               longitudFondeo,
               puertoFondeoId || null,
@@ -921,7 +1236,7 @@ export default function DescargaFaenaConsumoForm({
           setErrorGeo(null);
           try {
             const puertoSalidaId = getValues("puertoDescargaId");
-            const infoGeo = await analizarCoordenadas(
+            const infoGeo = await analizarCoordenadasConReferencia(
               latitude,
               longitude,
               puertoSalidaId || null,
@@ -985,7 +1300,7 @@ export default function DescargaFaenaConsumoForm({
           setErrorGeoFondeo(null);
           try {
             const puertoFondeoId = getValues("puertoFondeoId");
-            const infoGeo = await analizarCoordenadas(
+            const infoGeo = await analizarCoordenadasConReferencia(
               latitude,
               longitude,
               puertoFondeoId || null,
@@ -1625,36 +1940,27 @@ export default function DescargaFaenaConsumoForm({
         </div>
       </div>
 
-      {/* Mapa de ubicación DESCARGA */}
-      <div
-        style={{
-          marginBottom: "1rem",
-          border: "3px solid #0EA5E9",
-          borderRadius: "8px",
-          overflow: "hidden",
-          height: "400px",
-        }}
+      <PanelMapaGeografico
+        mapPosition={mapPosition}
+        mapKey={mapKey}
+        tipoMapa={tipoMapa}
+        getTileConfig={getTileConfig}
+        toggleFullscreen={toggleFullscreen}
+        cambiarTipoMapa={cambiarTipoMapa}
+        obtenerUbicacionUsuario={obtenerUbicacionUsuario}
+        mapContainerRef={mapContainerRef}
+        mapaFullscreen={mapaFullscreen}
+        infoGeografica={infoGeografica}
+        loadingGeo={loadingGeo}
+        getClasificacionAguasColor={getClasificacionAguasColor}
+        titulo="📍 Información Geográfica - Descarga"
+        colapsadoPorDefecto={true}
       >
-        <MapContainer
-          key={mapKey}
-          center={mapPosition}
-          zoom={13}
-          style={{ height: "100%", width: "100%" }}
-        >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&​copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          />
-          <DraggableMarker />
-        </MapContainer>
-      </div>
-
-      {/* Información Geográfica */}
-      <InformacionGeografica
-        data={infoGeografica}
-        loading={loadingGeo}
-        error={errorGeo}
-      />
+        <DraggableMarker />
+        <UserLocationMarker />
+        <DistanceLine />
+      </PanelMapaGeografico>
+      
       {/* Segunda fila: Fechas y horas */}
       <div
         style={{
@@ -2614,36 +2920,26 @@ export default function DescargaFaenaConsumoForm({
         </div>
       </div>
 
-      {/* Mapa de ubicación FONDEO */}
-      <div
-        style={{
-          marginBottom: "1rem",
-          border: "3px solid #F97316",
-          borderRadius: "8px",
-          overflow: "hidden",
-          height: "400px",
-        }}
+      <PanelMapaGeografico
+        mapPosition={mapPositionFondeo}
+        mapKey={mapKeyFondeo}
+        tipoMapa={tipoMapaFondeo}
+        getTileConfig={getTileConfigFondeo}
+        toggleFullscreen={toggleFullscreenFondeo}
+        cambiarTipoMapa={cambiarTipoMapaFondeo}
+        obtenerUbicacionUsuario={obtenerUbicacionUsuarioFondeo}
+        mapContainerRef={mapContainerRefFondeo}
+        mapaFullscreen={mapaFullscreenFondeo}
+        infoGeografica={infoGeograficaFondeo}
+        loadingGeo={loadingGeoFondeo}
+        getClasificacionAguasColor={getClasificacionAguasColor}
+        titulo="📍 Información Geográfica - Fondeo"
+        colapsadoPorDefecto={true}
       >
-        <MapContainer
-          key={mapKeyFondeo}
-          center={mapPositionFondeo}
-          zoom={13}
-          style={{ height: "100%", width: "100%" }}
-        >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&​copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          />
-          <DraggableMarkerFondeo />
-        </MapContainer>
-      </div>
-
-      {/* Información Geográfica de FONDEO */}
-      <InformacionGeografica
-        data={infoGeograficaFondeo}
-        loading={loadingGeoFondeo}
-        error={errorGeoFondeo}
-      />
+        <DraggableMarkerFondeo />
+        <UserLocationMarkerFondeo />
+        <DistanceLineFondeo />
+      </PanelMapaGeografico>
 
       {/* Botones de acción */}
       <div

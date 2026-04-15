@@ -9,7 +9,14 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  useMap,
+} from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -33,8 +40,10 @@ import {
   descomponerDMS,
   convertirDMSADecimal,
 } from "../../utils/gpsUtils";
-import { analizarCoordenadas } from "../../api/geolocalizacion";
-import InformacionGeografica from "../descargaFaenaPesca/InformacionGeografica";
+import { analizarCoordenadasConReferencia } from "../../api/geolocalizacion";
+import { DEFAULT_MAP_ZOOM, MARKER_ICONS } from "../../config/mapConfig";
+import PanelMapaGeografico from "../shared/PanelMapaGeografico";
+import L from "leaflet";
 import DetalleCalasEspecieForm from "./DetalleCalasEspecieForm";
 import {
   getCalasPorFaena,
@@ -59,7 +68,7 @@ const DetalleCalasForm = ({
   onFaenasChange, // Callback para notificar cambios en faenas
 }) => {
   // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
-  const usuario = useAuthStore(state => state.usuario);
+  const usuario = useAuthStore((state) => state.usuario);
   const esSuperUsuario = usuario?.esSuperUsuario || false;
 
   const [calas, setCalas] = useState([]);
@@ -96,6 +105,11 @@ const DetalleCalasForm = ({
   const [loadingGeo, setLoadingGeo] = useState(false);
   const [errorGeo, setErrorGeo] = useState(null);
 
+  // Estados para ubicación del usuario y pantalla completa
+  const [ubicacionUsuario, setUbicacionUsuario] = useState(null);
+  const [mapaFullscreen, setMapaFullscreen] = useState(false);
+  const mapContainerRef = useRef(null);
+  const [tipoMapa, setTipoMapa] = useState("street");
   // Estados para el mapa
   const [mapPosition, setMapPosition] = useState([-12.0, -77.0]);
   const [mapKey, setMapKey] = useState(0);
@@ -180,7 +194,7 @@ const DetalleCalasForm = ({
           setLoadingGeo(true);
           setErrorGeo(null);
           try {
-            const infoGeo = await analizarCoordenadas(
+            const infoGeo = await analizarCoordenadasConReferencia(
               latitud,
               longitud,
               null, // Cala no tiene puerto
@@ -244,7 +258,7 @@ const DetalleCalasForm = ({
     faenaData,
   ]);
 
-    /**
+  /**
    * useEffect para analizar coordenadas cuando ya existen en el formulario
    * (por ejemplo, al editar una cala existente)
    */
@@ -263,7 +277,7 @@ const DetalleCalasForm = ({
           setLoadingGeo(true);
           setErrorGeo(null);
           try {
-            const infoGeo = await analizarCoordenadas(
+            const infoGeo = await analizarCoordenadasConReferencia(
               latitud,
               longitud,
               null, // Cala no tiene puerto de salida
@@ -330,7 +344,7 @@ const DetalleCalasForm = ({
   const editarCala = (cala) => {
     setEditingCala(cala);
     setFechaHoraInicio(
-      cala.fechaHoraInicio ? new Date(cala.fechaHoraInicio) : null
+      cala.fechaHoraInicio ? new Date(cala.fechaHoraInicio) : null,
     );
     setFechaHoraFin(cala.fechaHoraFin ? new Date(cala.fechaHoraFin) : null);
     setLatitud(cala.latitud || "");
@@ -346,7 +360,7 @@ const DetalleCalasForm = ({
     const motoristaValue = Number(cala.motoristaId || faenaData?.motoristaId);
     const patronValue = Number(cala.patronId || faenaData?.patronId);
     const embarcacionValue = Number(
-      cala.embarcacionId || faenaData?.embarcacionId
+      cala.embarcacionId || faenaData?.embarcacionId,
     );
 
     setSelectedBahiaId(bahiaValue);
@@ -362,7 +376,7 @@ const DetalleCalasForm = ({
       latGrados,
       latMinutos,
       latSegundos,
-      latDireccion
+      latDireccion,
     );
     setLatitud(decimal);
   };
@@ -372,7 +386,7 @@ const DetalleCalasForm = ({
       lonGrados,
       lonMinutos,
       lonSegundos,
-      lonDireccion
+      lonDireccion,
     );
     setLongitud(decimal);
   };
@@ -454,7 +468,11 @@ const DetalleCalasForm = ({
    */
   const DraggableMarker = () => {
     const markerRef = useRef(null);
-    const nombreBahia = bahias.find((b) => Number(b.value) === Number(selectedBahiaId || faenaData?.bahiaId))?.label || "Cala";
+    const nombreBahia =
+      bahias.find(
+        (b) =>
+          Number(b.value) === Number(selectedBahiaId || faenaData?.bahiaId),
+      )?.label || "Cala";
 
     const eventHandlers = {
       dragend() {
@@ -471,7 +489,9 @@ const DetalleCalasForm = ({
     return (
       <Marker
         position={mapPosition}
-        draggable={!(calaFinalizada && !esSuperUsuario) && !camposDeshabilitados}
+        draggable={
+          !(calaFinalizada && !esSuperUsuario) && !camposDeshabilitados
+        }
         eventHandlers={eventHandlers}
         ref={markerRef}
       >
@@ -486,6 +506,156 @@ const DetalleCalasForm = ({
     );
   };
 
+  /**
+   * Componente de marcador de ubicación del usuario
+   */
+  const UserLocationMarker = () => {
+    if (!ubicacionUsuario) return null;
+
+    const iconUsuario = L.icon({
+      iconUrl: MARKER_ICONS.usuario.iconUrl,
+      iconSize: MARKER_ICONS.usuario.iconSize,
+      iconAnchor: MARKER_ICONS.usuario.iconAnchor,
+      popupAnchor: MARKER_ICONS.usuario.popupAnchor,
+    });
+
+    return (
+      <Marker
+        position={[ubicacionUsuario.lat, ubicacionUsuario.lng]}
+        icon={iconUsuario}
+      >
+        <Popup>
+          <strong>📍 Tu Ubicación</strong>
+          <br />
+          Lat: {ubicacionUsuario.lat.toFixed(6)}
+          <br />
+          Lon: {ubicacionUsuario.lng.toFixed(6)}
+          <br />
+          Precisión: ±{ubicacionUsuario.accuracy.toFixed(0)}m
+        </Popup>
+      </Marker>
+    );
+  };
+
+  /**
+   * Componente de línea de distancia entre usuario y embarcación
+   */
+  const DistanceLine = () => {
+    if (!ubicacionUsuario || !latitud || !longitud) return null;
+
+    const positions = [
+      [ubicacionUsuario.lat, ubicacionUsuario.lng],
+      [latitud, longitud],
+    ];
+
+    return (
+      <Polyline
+        positions={positions}
+        color="#10B981"
+        weight={2}
+        opacity={0.6}
+        dashArray="5, 10"
+      />
+    );
+  };
+
+  /**
+   * Obtener ubicación actual del usuario
+   */
+  const obtenerUbicacionUsuario = () => {
+    if (!navigator.geolocation) {
+      toast.current.show({
+        severity: "warn",
+        summary: "No disponible",
+        detail: "Tu navegador no soporta geolocalización",
+        life: 3000,
+      });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        setUbicacionUsuario({ lat: latitude, lng: longitude, accuracy });
+        toast.current.show({
+          severity: "success",
+          summary: "Ubicación obtenida",
+          detail: `Precisión: ±${accuracy.toFixed(0)}m`,
+          life: 3000,
+        });
+      },
+      (error) => {
+        toast.current.show({
+          severity: "error",
+          summary: "Error",
+          detail: "No se pudo obtener tu ubicación",
+          life: 3000,
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  };
+
+  /**
+   * Alternar pantalla completa del mapa
+   */
+  const toggleFullscreen = () => {
+    if (!mapContainerRef.current) return;
+
+    if (!document.fullscreenElement) {
+      mapContainerRef.current.requestFullscreen?.();
+      setMapaFullscreen(true);
+    } else {
+      document.exitFullscreen?.();
+      setMapaFullscreen(false);
+    }
+  };
+
+  /**
+   * Cambiar tipo de mapa
+   */
+  const cambiarTipoMapa = () => {
+    setTipoMapa((prev) => {
+      if (prev === "street") return "satellite";
+      if (prev === "satellite") return "hybrid";
+      return "street";
+    });
+  };
+
+  /**
+   * Obtener configuración del tile según tipo de mapa
+   */
+  const getTileConfig = () => {
+    const configs = {
+      street: {
+        url: "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+        attribution:
+          '&​copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      },
+      satellite: {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attribution:
+          "&​copy; Esri &​mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+      },
+      hybrid: {
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attribution:
+          "&​copy; Esri &​mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+      },
+    };
+    return configs[tipoMapa] || configs.street;
+  };
+
+  /**
+   * Obtener color según clasificación de aguas
+   */
+  const getClasificacionAguasColor = (clasificacion) => {
+    if (!clasificacion) return "info";
+    if (clasificacion.includes("Territorial")) return "danger";
+    if (clasificacion.includes("Exclusiva")) return "success";
+    return "info";
+  };
+
   const guardarCala = async (cerrarDialogo = true) => {
     try {
       const calaData = {
@@ -493,7 +663,7 @@ const DetalleCalasForm = ({
         motoristaId: Number(selectedMotoristaId || faenaData?.motoristaId),
         patronId: Number(selectedPatronId || faenaData?.patronId),
         embarcacionId: Number(
-          selectedEmbarcacionId || faenaData?.embarcacionId
+          selectedEmbarcacionId || faenaData?.embarcacionId,
         ),
         faenaPescaId: Number(faenaPescaId),
         temporadaPescaId: Number(temporadaData?.id),
@@ -760,12 +930,12 @@ const DetalleCalasForm = ({
               camposDeshabilitados
                 ? `Temporada ${estadoTemporada}. Solo superusuarios pueden editar.`
                 : Number(faenaData?.estadoFaenaId) === 19
-                ? esSuperUsuario
-                  ? "Agregar nueva cala (Superusuario)"
-                  : "No se pueden agregar calas a una faena finalizada"
-                : !faenaData?.fechaSalida || !faenaData?.puertoSalidaId
-                ? "Debe ingresar fecha de salida y puerto de salida antes de crear calas"
-                : "Agregar nueva cala"
+                  ? esSuperUsuario
+                    ? "Agregar nueva cala (Superusuario)"
+                    : "No se pueden agregar calas a una faena finalizada"
+                  : !faenaData?.fechaSalida || !faenaData?.puertoSalidaId
+                    ? "Debe ingresar fecha de salida y puerto de salida antes de crear calas"
+                    : "Agregar nueva cala"
             }
             tooltipOptions={{ position: "top" }}
             raised
@@ -796,7 +966,7 @@ const DetalleCalasForm = ({
       try {
         const calasActualizadas = await getCalasPorFaena(faenaPescaId);
         const calaActualizada = calasActualizadas.find(
-          (c) => c.id === editingCala.id
+          (c) => c.id === editingCala.id,
         );
 
         if (calaActualizada) {
@@ -1010,7 +1180,11 @@ const DetalleCalasForm = ({
                 showTime
                 dateFormat="dd/mm/yy"
                 showIcon
-                disabled={loading || (calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
+                disabled={
+                  loading ||
+                  (calaFinalizada && !esSuperUsuario) ||
+                  camposDeshabilitados
+                }
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -1024,7 +1198,11 @@ const DetalleCalasForm = ({
                 maxFractionDigits={2}
                 suffix=" m"
                 inputStyle={{ fontWeight: "bold" }}
-                disabled={loading || (calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
+                disabled={
+                  loading ||
+                  (calaFinalizada && !esSuperUsuario) ||
+                  camposDeshabilitados
+                }
               />
             </div>
           </div>
@@ -1049,7 +1227,7 @@ const DetalleCalasForm = ({
                 label="Capturar GPS"
                 icon="pi pi-map-marker"
                 className="p-button-info"
-                              onClick={async () => {
+                onClick={async () => {
                   try {
                     await capturarGPS(
                       async (latitude, longitude, accuracy) => {
@@ -1060,7 +1238,7 @@ const DetalleCalasForm = ({
                           severity: "success",
                           summary: "GPS capturado",
                           detail: `GPS capturado con precisión de ${accuracy.toFixed(
-                            1
+                            1,
                           )}m. Guardando cala...`,
                           life: 3000,
                         });
@@ -1069,11 +1247,12 @@ const DetalleCalasForm = ({
                         setLoadingGeo(true);
                         setErrorGeo(null);
                         try {
-                          const infoGeo = await analizarCoordenadas(
-                            latitude,
-                            longitude,
-                            null, // Cala no tiene puerto de salida
-                          );
+                          const infoGeo =
+                            await analizarCoordenadasConReferencia(
+                              latitude,
+                              longitude,
+                              null, // Cala no tiene puerto de salida
+                            );
                           setInfoGeografica(infoGeo);
 
                           toast.current?.show({
@@ -1083,8 +1262,13 @@ const DetalleCalasForm = ({
                             life: 3000,
                           });
                         } catch (error) {
-                          console.error("Error al analizar coordenadas:", error);
-                          setErrorGeo("No se pudo obtener la información geográfica");
+                          console.error(
+                            "Error al analizar coordenadas:",
+                            error,
+                          );
+                          setErrorGeo(
+                            "No se pudo obtener la información geográfica",
+                          );
                           toast.current?.show({
                             severity: "warn",
                             summary: "Advertencia",
@@ -1101,7 +1285,7 @@ const DetalleCalasForm = ({
                         } catch (error) {
                           console.error(
                             "Error al guardar cala automáticamente:",
-                            error
+                            error,
                           );
                           toast.current?.show({
                             severity: "error",
@@ -1119,18 +1303,22 @@ const DetalleCalasForm = ({
                           detail: errorMessage,
                           life: 3000,
                         });
-                      }
+                      },
                     );
                   } catch (error) {
                     console.error("Error capturando GPS:", error);
                   }
                 }}
-                disabled={loading || (calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
+                disabled={
+                  loading ||
+                  (calaFinalizada && !esSuperUsuario) ||
+                  camposDeshabilitados
+                }
                 size="small"
               />
             </div>
 
-                      {/* Tabla MEJORADA de coordenadas GPS - Optimizada para Tablet */}
+            {/* Tabla MEJORADA de coordenadas GPS - Optimizada para Tablet */}
             <div style={{ flex: 3 }}>
               <table
                 style={{
@@ -1202,7 +1390,10 @@ const DetalleCalasForm = ({
                         value={latitud}
                         onValueChange={(e) => setLatitud(e.value)}
                         placeholder="-12.123456"
-                        disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
+                        disabled={
+                          (calaFinalizada && !esSuperUsuario) ||
+                          camposDeshabilitados
+                        }
                         mode="decimal"
                         minFractionDigits={0}
                         maxFractionDigits={14}
@@ -1223,7 +1414,10 @@ const DetalleCalasForm = ({
                         value={longitud}
                         onValueChange={(e) => setLongitud(e.value)}
                         placeholder="-77.123456"
-                        disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
+                        disabled={
+                          (calaFinalizada && !esSuperUsuario) ||
+                          camposDeshabilitados
+                        }
                         mode="decimal"
                         minFractionDigits={0}
                         maxFractionDigits={14}
@@ -1270,7 +1464,10 @@ const DetalleCalasForm = ({
                             setLatGrados(Number(e.target.value) || 0)
                           }
                           onBlur={actualizarLatitudDesdeDMS}
-                          disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
                           min="0"
                           max="90"
                           style={{
@@ -1306,7 +1503,10 @@ const DetalleCalasForm = ({
                             setLatMinutos(Number(e.target.value) || 0)
                           }
                           onBlur={actualizarLatitudDesdeDMS}
-                          disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
                           min="0"
                           max="59"
                           style={{
@@ -1342,7 +1542,10 @@ const DetalleCalasForm = ({
                             setLatSegundos(parseFloat(e.target.value) || 0)
                           }
                           onBlur={actualizarLatitudDesdeDMS}
-                          disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
                           min="0"
                           max="59.99"
                           step="0.01"
@@ -1371,7 +1574,9 @@ const DetalleCalasForm = ({
                           actualizarLatitudDesdeDMS();
                         }}
                         disabled={
-                          !esSuperUsuario || (calaFinalizada && !esSuperUsuario) || camposDeshabilitados
+                          !esSuperUsuario ||
+                          (calaFinalizada && !esSuperUsuario) ||
+                          camposDeshabilitados
                         } // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
                         style={{
                           width: "100%",
@@ -1383,7 +1588,9 @@ const DetalleCalasForm = ({
                           fontWeight: "bold",
                           textAlign: "center",
                           borderRadius: "4px",
-                          backgroundColor: esSuperUsuario ? "#fef3c7" : "#f1f5f9",
+                          backgroundColor: esSuperUsuario
+                            ? "#fef3c7"
+                            : "#f1f5f9",
                           cursor: esSuperUsuario ? "pointer" : "not-allowed",
                         }}
                       >
@@ -1422,7 +1629,10 @@ const DetalleCalasForm = ({
                             setLonGrados(Number(e.target.value) || 0)
                           }
                           onBlur={actualizarLongitudDesdeDMS}
-                          disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
                           min="0"
                           max="180"
                           style={{
@@ -1458,7 +1668,10 @@ const DetalleCalasForm = ({
                             setLonMinutos(Number(e.target.value) || 0)
                           }
                           onBlur={actualizarLongitudDesdeDMS}
-                          disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
                           min="0"
                           max="59"
                           style={{
@@ -1494,7 +1707,10 @@ const DetalleCalasForm = ({
                             setLonSegundos(parseFloat(e.target.value) || 0)
                           }
                           onBlur={actualizarLongitudDesdeDMS}
-                          disabled={(calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
                           min="0"
                           max="59.99"
                           step="0.01"
@@ -1523,7 +1739,9 @@ const DetalleCalasForm = ({
                           actualizarLongitudDesdeDMS();
                         }}
                         disabled={
-                          !esSuperUsuario || (calaFinalizada && !esSuperUsuario) || camposDeshabilitados
+                          !esSuperUsuario ||
+                          (calaFinalizada && !esSuperUsuario) ||
+                          camposDeshabilitados
                         } // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
                         style={{
                           width: "100%",
@@ -1535,7 +1753,9 @@ const DetalleCalasForm = ({
                           fontWeight: "bold",
                           textAlign: "center",
                           borderRadius: "4px",
-                          backgroundColor: esSuperUsuario ? "#fef3c7" : "#f1f5f9",
+                          backgroundColor: esSuperUsuario
+                            ? "#fef3c7"
+                            : "#f1f5f9",
                           cursor: esSuperUsuario ? "pointer" : "not-allowed",
                         }}
                       >
@@ -1561,36 +1781,26 @@ const DetalleCalasForm = ({
             </div>
           </div>
 
-          {/* Mapa de ubicación */}
-          <div
-            style={{
-              marginBottom: "1rem",
-              border: "3px solid #0EA5E9",
-              borderRadius: "8px",
-              overflow: "hidden",
-              height: "400px",
-            }}
+          <PanelMapaGeografico
+            mapPosition={mapPosition}
+            mapKey={mapKey}
+            tipoMapa={tipoMapa}
+            getTileConfig={getTileConfig}
+            toggleFullscreen={toggleFullscreen}
+            cambiarTipoMapa={cambiarTipoMapa}
+            obtenerUbicacionUsuario={obtenerUbicacionUsuario}
+            mapContainerRef={mapContainerRef}
+            mapaFullscreen={mapaFullscreen}
+            infoGeografica={infoGeografica}
+            loadingGeo={loadingGeo}
+            getClasificacionAguasColor={getClasificacionAguasColor}
+            titulo="📍 Información Geográfica - Cala"
+            colapsadoPorDefecto={true}
           >
-            <MapContainer
-              key={mapKey}
-              center={mapPosition}
-              zoom={13}
-              style={{ height: "100%", width: "100%" }}
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              />
-              <DraggableMarker />
-            </MapContainer>
-          </div>
-
-          {/* Información Geográfica */}
-          <InformacionGeografica
-            data={infoGeografica}
-            loading={loadingGeo}
-            error={errorGeo}
-          />
+            <DraggableMarker />
+            <UserLocationMarker />
+            <DistanceLine />
+          </PanelMapaGeografico>
 
           <DetalleCalasEspecieForm
             calaId={editingCala?.id}
@@ -1629,7 +1839,11 @@ const DetalleCalasForm = ({
                 showTime
                 dateFormat="dd/mm/yy"
                 showIcon
-                disabled={loading || (calaFinalizada && !esSuperUsuario) || camposDeshabilitados}
+                disabled={
+                  loading ||
+                  (calaFinalizada && !esSuperUsuario) ||
+                  camposDeshabilitados
+                }
               />
             </div>
             <div style={{ flex: 1 }}>
