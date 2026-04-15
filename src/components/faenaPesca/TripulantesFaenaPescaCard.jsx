@@ -113,10 +113,7 @@ const TripulantesFaenaPescaCard = ({
         (p) =>
           Number(p.empresaId) === Number(temporadaData.empresaId) &&
           p.cesado === false &&
-          p.paraTemporadaPesca === true &&
-          (Number(p.cargoId) === 21 || // TRIPULANTE
-            Number(p.cargoId) === 22 || // PATRON
-            Number(p.cargoId) === 14) // MOTORISTA
+          p.paraTemporadaPesca === true 
       );
 
       if (tripulantesElegibles.length === 0) {
