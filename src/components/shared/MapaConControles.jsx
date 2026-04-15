@@ -180,6 +180,7 @@ export default function MapaConControles({
         }}
       >
         <Button
+          type="button"
           icon={mapaFullscreen ? "pi pi-times" : "pi pi-window-maximize"}
           className="p-button-rounded p-button-secondary"
           onClick={toggleFullscreen}
@@ -194,6 +195,7 @@ export default function MapaConControles({
           }}
         />
         <Button
+          type="button"
           icon="pi pi-map"
           className="p-button-rounded p-button-info"
           onClick={cambiarTipoMapa}
@@ -208,6 +210,7 @@ export default function MapaConControles({
           }}
         />
         <Button
+          type="button"
           icon="pi pi-compass"
           className="p-button-rounded p-button-success"
           onClick={obtenerUbicacionUsuario}
