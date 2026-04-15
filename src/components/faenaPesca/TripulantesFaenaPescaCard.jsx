@@ -250,6 +250,7 @@ const TripulantesFaenaPescaCard = ({
       14: { label: "Motorista", severity: "info" },
       21: { label: "Tripulante", severity: "success" },
       22: { label: "Patrón", severity: "warning" },
+      27: { label: "Panguero", severity: "secondary" },
     };
 
     const cargo = cargoMap[rowData.cargoId] || {
