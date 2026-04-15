@@ -103,10 +103,7 @@ const TripulantesFaenaPescaConsumoCard = ({
         (p) =>
           Number(p.empresaId) === Number(novedadData.empresaId) &&
           p.cesado === false &&
-          p.paraPescaConsumo === true &&
-          (Number(p.cargoId) === 21 || // TRIPULANTE
-            Number(p.cargoId) === 22 || // PATRON
-            Number(p.cargoId) === 14) // MOTORISTA
+          p.paraPescaConsumo === true
       );
 
       if (tripulantesElegibles.length === 0) {
@@ -279,6 +276,7 @@ const TripulantesFaenaPescaConsumoCard = ({
       14: { label: "Motorista", severity: "info" },
       21: { label: "Tripulante", severity: "success" },
       22: { label: "Patrón", severity: "warning" },
+      27: { label: "Panguero", severity: "secondary" },
     };
 
     const cargo = cargoMap[rowData.cargoId] || {
