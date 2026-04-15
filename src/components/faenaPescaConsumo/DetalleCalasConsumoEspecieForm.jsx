@@ -1,19 +1,18 @@
 /**
  * DetalleCalasConsumoEspecieForm.jsx
- *
  * Componente CRUD para gestionar las especies de una cala de pesca de consumo.
  * Permite listar, crear, editar y eliminar registros de DetCalaPescaConsumo.
- *
  * @author ERP Megui
- * @version 1.0.0
+ * @version 2.0.0
  */
-
 import React, { useState, useEffect, useRef } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as Yup from "yup";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
-import { InputText } from "primereact/inputtext";
 import { InputNumber } from "primereact/inputnumber";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
@@ -30,6 +29,26 @@ import {
   actualizarDetCalaPescaConsumo,
   eliminarDetCalaPescaConsumo,
 } from "../../api/detCalaPescaConsumo";
+import { calcularPorcentajeJuveniles } from "../../utils/calcularPorcentajeJuveniles";
+import PDFDocumentManager from "../pdf/PDFDocumentManager";
+
+// Schema de validación con Yup
+const schema = Yup.object().shape({
+  especieId: Yup.number()
+    .required("La especie es obligatoria")
+    .positive("Debe seleccionar una especie válida"),
+  kilogramos: Yup.number()
+    .required("Los kilogramos son obligatorios")
+    .positive("Los kilogramos deben ser mayores a 0")
+    .min(0.001, "Los kilogramos deben ser mayores a 0"),
+  porcentajeJuveniles: Yup.number()
+    .nullable()
+    .min(0, "El porcentaje debe ser mayor o igual a 0")
+    .max(100, "El porcentaje debe ser menor o igual a 100"),
+  pesoMuestra: Yup.number().nullable().min(0, "El peso debe ser mayor o igual a 0"),
+  observaciones: Yup.string().nullable(),
+  urlDatosCala: Yup.string().nullable(),
+});
 
 const DetalleCalasConsumoEspecieForm = ({
   calaId,
@@ -43,14 +62,125 @@ const DetalleCalasConsumoEspecieForm = ({
   const [detalleDialog, setDetalleDialog] = useState(false);
   const [editingDetalle, setEditingDetalle] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [isEdit, setIsEdit] = useState(false);
   const toast = useRef(null);
 
-  // Estados del formulario
-  const [especieId, setEspecieId] = useState("");
-  const [toneladas, setToneladas] = useState("");
-  const [kilogramos, setKilogramos] = useState("");
-  const [porcentajeJuveniles, setPorcentajeJuveniles] = useState("");
-  const [observaciones, setObservaciones] = useState("");
+  const getDefaultValues = () => {
+    if (editingDetalle) {
+      return {
+        id: editingDetalle.id || null,
+        especieId: editingDetalle.especieId || null,
+        kilogramos: editingDetalle.toneladas ? editingDetalle.toneladas * 1000 : 0,
+        porcentajeJuveniles: editingDetalle.porcentajeJuveniles || 0,
+        pesoMuestra: editingDetalle.pesoMuestra || 0,
+        talla_9_50: editingDetalle.talla_9_50 || 0,
+        talla_10_00: editingDetalle.talla_10_00 || 0,
+        talla_10_50: editingDetalle.talla_10_50 || 0,
+        talla_11_00: editingDetalle.talla_11_00 || 0,
+        talla_11_50: editingDetalle.talla_11_50 || 0,
+        talla_12_00: editingDetalle.talla_12_00 || 0,
+        talla_12_50: editingDetalle.talla_12_50 || 0,
+        talla_13_00: editingDetalle.talla_13_00 || 0,
+        talla_13_50: editingDetalle.talla_13_50 || 0,
+        talla_14_00: editingDetalle.talla_14_00 || 0,
+        talla_14_50: editingDetalle.talla_14_50 || 0,
+        talla_15_00: editingDetalle.talla_15_00 || 0,
+        talla_15_50: editingDetalle.talla_15_50 || 0,
+        talla_16_00: editingDetalle.talla_16_00 || 0,
+        urlDatosCala: editingDetalle.urlDatosCala || "",
+        totalEjemplares: editingDetalle.totalEjemplares || 0,
+        observaciones: editingDetalle.observaciones || "",
+      };
+    }
+    return {
+      id: null,
+      especieId: null,
+      kilogramos: 0,
+      porcentajeJuveniles: 0,
+      pesoMuestra: 0,
+      talla_9_50: 0,
+      talla_10_00: 0,
+      talla_10_50: 0,
+      talla_11_00: 0,
+      talla_11_50: 0,
+      talla_12_00: 0,
+      talla_12_50: 0,
+      talla_13_00: 0,
+      talla_13_50: 0,
+      talla_14_00: 0,
+      talla_14_50: 0,
+      talla_15_00: 0,
+      talla_15_50: 0,
+      talla_16_00: 0,
+      urlDatosCala: "",
+      totalEjemplares: 0,
+      observaciones: "",
+    };
+  };
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    setValue,
+    watch,
+    getValues,
+  } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: getDefaultValues(),
+    mode: "onTouched",
+  });
+
+  const watchTallas = watch([
+    "talla_9_50",
+    "talla_10_00",
+    "talla_10_50",
+    "talla_11_00",
+    "talla_11_50",
+    "talla_12_00",
+    "talla_12_50",
+    "talla_13_00",
+    "talla_13_50",
+    "talla_14_00",
+    "talla_14_50",
+    "talla_15_00",
+    "talla_15_50",
+    "talla_16_00",
+  ]);
+
+  // Calcular automáticamente porcentaje de juveniles y total SOLO si hay valores en tallas
+  useEffect(() => {
+    const tallasData = {
+      talla_9_50: watchTallas[0] || 0,
+      talla_10_00: watchTallas[1] || 0,
+      talla_10_50: watchTallas[2] || 0,
+      talla_11_00: watchTallas[3] || 0,
+      talla_11_50: watchTallas[4] || 0,
+      talla_12_00: watchTallas[5] || 0,
+      talla_12_50: watchTallas[6] || 0,
+      talla_13_00: watchTallas[7] || 0,
+      talla_13_50: watchTallas[8] || 0,
+      talla_14_00: watchTallas[9] || 0,
+      talla_14_50: watchTallas[10] || 0,
+      talla_15_00: watchTallas[11] || 0,
+      talla_15_50: watchTallas[12] || 0,
+      talla_16_00: watchTallas[13] || 0,
+    };
+
+    // ⭐ SOLO recalcular si hay al menos un valor > 0 en las tallas
+    const hayValoresEnTallas = Object.values(tallasData).some((val) => val > 0);
+
+    if (hayValoresEnTallas) {
+      const { porcentajeJuveniles, totalEjemplares } =
+        calcularPorcentajeJuveniles(tallasData);
+
+      setValue("totalEjemplares", totalEjemplares, { shouldValidate: false });
+      setValue("porcentajeJuveniles", porcentajeJuveniles, {
+        shouldValidate: false,
+      });
+    }
+  }, [watchTallas, setValue]);
 
   useEffect(() => {
     cargarEspecies();
@@ -59,6 +189,13 @@ const DetalleCalasConsumoEspecieForm = ({
     }
   }, [calaId]);
 
+  useEffect(() => {
+    if (editingDetalle) {
+      reset(getDefaultValues());
+      setIsEdit(true);
+    }
+  }, [editingDetalle]);
+
   const cargarEspecies = async () => {
     try {
       const response = await getEspecies();
@@ -66,7 +203,7 @@ const DetalleCalasConsumoEspecieForm = ({
         response.map((e) => ({
           label: `${e.nombre} (${e.nombreCientifico})`,
           value: e.id,
-        }))
+        })),
       );
     } catch (error) {
       console.error("Error cargando especies:", error);
@@ -95,32 +232,42 @@ const DetalleCalasConsumoEspecieForm = ({
   };
 
   const abrirNuevoDetalle = () => {
-    limpiarFormulario();
     setEditingDetalle(null);
+    setIsEdit(false);
+    reset({
+      id: null,
+      especieId: null,
+      kilogramos: 0,
+      porcentajeJuveniles: 0,
+      pesoMuestra: 0,
+      talla_9_50: 0,
+      talla_10_00: 0,
+      talla_10_50: 0,
+      talla_11_00: 0,
+      talla_11_50: 0,
+      talla_12_00: 0,
+      talla_12_50: 0,
+      talla_13_00: 0,
+      talla_13_50: 0,
+      talla_14_00: 0,
+      talla_14_50: 0,
+      talla_15_00: 0,
+      talla_15_50: 0,
+      talla_16_00: 0,
+      urlDatosCala: "",
+      totalEjemplares: 0,
+      observaciones: "",
+    });
     setDetalleDialog(true);
   };
 
   const editarDetalle = (detalle) => {
     setEditingDetalle(detalle);
-    setEspecieId(detalle.especieId || "");
-    setToneladas(detalle.toneladas || "");
-    setKilogramos(detalle.toneladas * 1000 || "");
-    setPorcentajeJuveniles(detalle.porcentajeJuveniles || "");
-    setObservaciones(detalle.observaciones || "");
     setDetalleDialog(true);
   };
 
-  const limpiarFormulario = () => {
-    setEspecieId("");
-    setToneladas("");
-    setKilogramos("");
-    setPorcentajeJuveniles("");
-    setObservaciones("");
-  };
-
-  const guardarDetalle = async () => {
+  const onSubmitForm = async (data) => {
     try {
-      // Validar campos requeridos
       if (!calaId) {
         toast.current?.show({
           severity: "error",
@@ -131,131 +278,85 @@ const DetalleCalasConsumoEspecieForm = ({
         return;
       }
 
-      if (!especieId) {
-        toast.current?.show({
-          severity: "error",
-          summary: "Campo Requerido",
-          detail: "Debe seleccionar una especie para continuar",
-          life: 4000,
-        });
-        return;
-      }
-
-      if (!kilogramos || Number(kilogramos) <= 0) {
-        toast.current?.show({
-          severity: "error",
-          summary: "Campo Requerido",
-          detail: "Debe ingresar una cantidad válida en kilogramos (mayor a 0)",
-          life: 4000,
-        });
-        return;
-      }
-
-      if (
-        porcentajeJuveniles &&
-        (Number(porcentajeJuveniles) < 0 || Number(porcentajeJuveniles) > 100)
-      ) {
-        toast.current?.show({
-          severity: "error",
-          summary: "Valor Inválido",
-          detail: "El porcentaje de juveniles debe estar entre 0 y 100",
-          life: 4000,
-        });
-        return;
-      }
-
-      // Validar duplicados solo al crear
-      if (!editingDetalle) {
-        const especieYaExiste = especiesDetalle.some(
-          (detalle) => Number(detalle.especieId) === Number(especieId)
-        );
-
-        if (especieYaExiste) {
-          toast.current?.show({
-            severity: "warn",
-            summary: "Especie Duplicada",
-            detail:
-              "Ya existe un registro para esta especie en la cala. Use 'Editar' para modificar el registro existente.",
-            life: 5000,
-          });
-          return;
-        }
-      }
-
       const detalleData = {
         calaFaenaConsumoId: Number(calaId),
-        especieId: Number(especieId),
-        toneladas: kilogramos ? Number(kilogramos) / 1000 : null,
-        porcentajeJuveniles: porcentajeJuveniles
-          ? Number(porcentajeJuveniles)
-          : null,
-        observaciones: observaciones || null,
-        updatedAt: new Date().toISOString(), // ← AGREGAR ESTA LÍNEA
+        especieId: Number(data.especieId),
+        toneladas: data.kilogramos ? Number(data.kilogramos) / 1000 : null,
+        pesoMuestra: data.pesoMuestra ? Number(data.pesoMuestra) : null,
+        talla_9_50: Number(data.talla_9_50) || 0,
+        talla_10_00: Number(data.talla_10_00) || 0,
+        talla_10_50: Number(data.talla_10_50) || 0,
+        talla_11_00: Number(data.talla_11_00) || 0,
+        talla_11_50: Number(data.talla_11_50) || 0,
+        talla_12_00: Number(data.talla_12_00) || 0,
+        talla_12_50: Number(data.talla_12_50) || 0,
+        talla_13_00: Number(data.talla_13_00) || 0,
+        talla_13_50: Number(data.talla_13_50) || 0,
+        talla_14_00: Number(data.talla_14_00) || 0,
+        talla_14_50: Number(data.talla_14_50) || 0,
+        talla_15_00: Number(data.talla_15_00) || 0,
+        talla_15_50: Number(data.talla_15_50) || 0,
+        talla_16_00: Number(data.talla_16_00) || 0,
+        urlDatosCala: data.urlDatosCala?.trim() || null,
+        porcentajeJuveniles: data.porcentajeJuveniles,
+        totalEjemplares: data.totalEjemplares,
+        observaciones: data.observaciones?.trim() || null,
       };
 
       if (editingDetalle) {
         await actualizarDetCalaPescaConsumo(editingDetalle.id, detalleData);
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Especie actualizada correctamente",
+          life: 3000,
+        });
       } else {
         await crearDetCalaPescaConsumo(detalleData);
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Especie agregada correctamente",
+          life: 3000,
+        });
       }
-
-      toast.current?.show({
-        severity: "success",
-        summary: "Operación Exitosa",
-        detail: editingDetalle
-          ? "Especie actualizada correctamente"
-          : "Especie agregada correctamente",
-        life: 3000,
-      });
 
       setDetalleDialog(false);
       cargarEspeciesDetalle();
 
-      // Notificar al componente padre
       if (onDataChange) {
         onDataChange();
       }
     } catch (error) {
-      if (error.response?.status === 409) {
-        toast.current?.show({
-          severity: "warn",
-          summary: "Registro Duplicado",
-          detail: "Ya existe un registro para esta especie en la cala.",
-          life: 5000,
-        });
-      } else if (error.response?.status === 400) {
-        toast.current?.show({
-          severity: "error",
-          summary: "Datos Inválidos",
-          detail:
-            error.response?.data?.message ||
-            "Los datos ingresados no son válidos.",
-          life: 4000,
-        });
-      } else {
-        toast.current?.show({
-          severity: "error",
-          summary: "Error Inesperado",
-          detail:
-            error.response?.data?.message || "Ocurrió un error inesperado.",
-          life: 4000,
-        });
-      }
+      console.error("Error guardando detalle:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.message || "Error al guardar la especie",
+        life: 3000,
+      });
     }
   };
 
   const eliminarDetalle = async (detalle) => {
     try {
+      if (
+        !window.confirm(
+          `¿Está seguro de eliminar la especie ${detalle.especie?.nombre}?`,
+        )
+      ) {
+        return;
+      }
+
       await eliminarDetCalaPescaConsumo(detalle.id);
       toast.current?.show({
         severity: "success",
         summary: "Éxito",
-        detail: "Especie eliminada",
+        detail: "Especie eliminada correctamente",
         life: 3000,
       });
       cargarEspeciesDetalle();
 
-      // Notificar al componente padre
       if (onDataChange) {
         onDataChange();
       }
@@ -311,7 +412,7 @@ const DetalleCalasConsumoEspecieForm = ({
         style={{
           alignItems: "center",
           display: "flex",
-          gap: 10,
+          gap: 5,
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
@@ -335,11 +436,12 @@ const DetalleCalasConsumoEspecieForm = ({
         </div>
         <div style={{ flex: 1 }}>
           <span className="p-input-icon-left">
-            <InputText
-              type="search"
+            <i className="pi pi-search" />
+            <input
+              type="text"
               onInput={(e) => setGlobalFilter(e.target.value)}
               placeholder="Buscar..."
-              size="small"
+              className="p-inputtext p-component p-inputtext-sm"
             />
           </span>
         </div>
@@ -371,7 +473,7 @@ const DetalleCalasConsumoEspecieForm = ({
         label="Guardar"
         icon="pi pi-check"
         type="button"
-        onClick={guardarDetalle}
+        onClick={handleSubmit(onSubmitForm)}
         className="p-button-success"
         severity="success"
         raised
@@ -380,6 +482,13 @@ const DetalleCalasConsumoEspecieForm = ({
       />
     </div>
   );
+
+  const getFieldClass = (fieldName) => {
+    return errors[fieldName] ? "p-invalid" : "";
+  };
+
+  const totalEjemplares = watch("totalEjemplares") || 0;
+  const porcentajeJuveniles = watch("porcentajeJuveniles") || 0;
 
   return (
     <Card className="mt-3">
@@ -395,6 +504,7 @@ const DetalleCalasConsumoEspecieForm = ({
         header={header}
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         size="small"
+        onRowClick={(e) => editarDetalle(e.data)}
       >
         <Column
           field="especie.nombre"
@@ -440,71 +550,601 @@ const DetalleCalasConsumoEspecieForm = ({
 
       <Dialog
         visible={detalleDialog}
-        style={{ width: "500px" }}
+        style={{ width: "95vw", maxWidth: "1400px" }}
         header={
           editingDetalle ? "Editar Captura Especie" : "Agregar Captura Especie"
         }
         modal
         className="p-fluid"
+        maximizable
         footer={detalleDialogFooter}
         onHide={() => setDetalleDialog(false)}
       >
-        <div className="grid">
-          <div className="col-12">
-            <label htmlFor="especieId">Especie *</label>
-            <Dropdown
-              id="especieId"
-              value={especieId}
-              options={especiesDisponibles}
-              onChange={(e) => setEspecieId(e.value)}
-              placeholder="Seleccione una especie"
-              required
-              disabled={calaFinalizada}
-            />
+        <form onSubmit={handleSubmit(onSubmitForm)}>
+          <div
+            style={{
+              display: "flex",
+              gap: 20,
+              flexDirection: window.innerWidth < 1024 ? "column" : "row",
+            }}
+          >
+            {/* COLUMNA IZQUIERDA - FORMULARIO */}
+            <div style={{ flex: "1 1 30%", minWidth: 0 }}>
+              <div className="p-fluid">
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <label htmlFor="especieId">Especie *</label>
+                    <Controller
+                      name="especieId"
+                      control={control}
+                      render={({ field }) => (
+                        <Dropdown
+                          id="especieId"
+                          value={field.value}
+                          onChange={(e) => field.onChange(e.value)}
+                          options={especiesDisponibles}
+                          placeholder="Seleccione una especie"
+                          className={getFieldClass("especieId")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                    {errors.especieId && (
+                      <small className="p-error">
+                        {errors.especieId.message}
+                      </small>
+                    )}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <label htmlFor="kilogramos">Kilogramos *</label>
+                    <Controller
+                      name="kilogramos"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="kilogramos"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          minFractionDigits={0}
+                          maxFractionDigits={3}
+                          suffix=" Kg"
+                          min={0}
+                          className={getFieldClass("kilogramos")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                    {errors.kilogramos && (
+                      <small className="p-error">
+                        {errors.kilogramos.message}
+                      </small>
+                    )}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label htmlFor="porcentajeJuveniles">
+                      Porcentaje Juveniles (%)
+                    </label>
+                    <Controller
+                      name="porcentajeJuveniles"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="porcentajeJuveniles"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          minFractionDigits={0}
+                          maxFractionDigits={2}
+                          suffix="%"
+                          min={0}
+                          max={100}
+                          className={getFieldClass("porcentajeJuveniles")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                    {errors.porcentajeJuveniles && (
+                      <small className="p-error">
+                        {errors.porcentajeJuveniles.message}
+                      </small>
+                    )}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <label htmlFor="pesoMuestra">Peso de Muestra (kg)</label>
+                    <Controller
+                      name="pesoMuestra"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="pesoMuestra"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          minFractionDigits={3}
+                          maxFractionDigits={3}
+                          placeholder="Ej: 2.800"
+                          className={getFieldClass("pesoMuestra")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                    {errors.pesoMuestra && (
+                      <small className="p-error">
+                        {errors.pesoMuestra.message}
+                      </small>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ marginTop: "1rem" }}>
+                  <h4 className="text-lg font-semibold mb-3 text-primary">
+                    📊 Estructura de Tallas (cm)
+                  </h4>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <label>9.50</label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Controller
+                      name="talla_9_50"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="talla_9_50"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          useGrouping={false}
+                          min={0}
+                          className={getFieldClass("talla_9_50")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label>13.00</label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Controller
+                      name="talla_13_00"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="talla_13_00"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          useGrouping={false}
+                          min={0}
+                          className={getFieldClass("talla_13_00")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <label>10.00</label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Controller
+                      name="talla_10_00"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="talla_10_00"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          useGrouping={false}
+                          min={0}
+                          className={getFieldClass("talla_10_00")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <label>13.50</label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Controller
+                      name="talla_13_50"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="talla_13_50"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          useGrouping={false}
+                          min={0}
+                          className={getFieldClass("talla_13_50")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <label>10.50</label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Controller
+                      name="talla_10_50"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="talla_10_50"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          useGrouping={false}
+                          min={0}
+                          className={getFieldClass("talla_10_50")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label>14.00</label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Controller
+                      name="talla_14_00"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="talla_14_00"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          useGrouping={false}
+                          min={0}
+                          className={getFieldClass("talla_14_00")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <label>11.00</label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Controller
+                      name="talla_11_00"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="talla_11_00"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          useGrouping={false}
+                          min={0}
+                          className={getFieldClass("talla_11_00")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label>14.50</label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Controller
+                      name="talla_14_50"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="talla_14_50"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          useGrouping={false}
+                          min={0}
+                          className={getFieldClass("talla_14_50")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <label>11.50</label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Controller
+                      name="talla_11_50"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="talla_11_50"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          useGrouping={false}
+                          min={0}
+                          className={getFieldClass("talla_11_50")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label>15.00</label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Controller
+                      name="talla_15_00"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="talla_15_00"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          useGrouping={false}
+                          min={0}
+                          className={getFieldClass("talla_15_00")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <label>12.00</label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Controller
+                      name="talla_12_00"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="talla_12_00"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          useGrouping={false}
+                          min={0}
+                          className={getFieldClass("talla_12_00")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label>15.50</label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Controller
+                      name="talla_15_50"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="talla_15_50"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          useGrouping={false}
+                          min={0}
+                          className={getFieldClass("talla_15_50")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    flexDirection: window.innerWidth < 768 ? "column" : "row",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <label>12.50</label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Controller
+                      name="talla_12_50"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="talla_12_50"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          useGrouping={false}
+                          min={0}
+                          className={getFieldClass("talla_12_50")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label>16.00</label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Controller
+                      name="talla_16_00"
+                      control={control}
+                      render={({ field }) => (
+                        <InputNumber
+                          id="talla_16_00"
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="decimal"
+                          useGrouping={false}
+                          min={0}
+                          className={getFieldClass("talla_16_00")}
+                          disabled={calaFinalizada}
+                        />
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: "1rem" }}>
+                  <div
+                    style={{
+                      padding: "0.75rem",
+                      backgroundColor: "#f0f9ff",
+                      borderRadius: "6px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: "1.125rem",
+                        fontWeight: "bold",
+                        color: "#1e40af",
+                      }}
+                    >
+                      Total Peces Muestreados: {totalEjemplares}
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: "1rem" }}>
+                  <label htmlFor="observaciones">Observaciones</label>
+                  <Controller
+                    name="observaciones"
+                    control={control}
+                    render={({ field }) => (
+                      <InputTextarea
+                        id="observaciones"
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        rows={3}
+                        disabled={calaFinalizada}
+                      />
+                    )}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* COLUMNA DERECHA - VISOR PDF */}
+            <div style={{ flex: "1 1 70%", minWidth: 0 }}>
+              {isEdit && (
+                <div
+                  style={{
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <PDFDocumentManager
+                    moduleName="detalle-cala-pesca-consumo"
+                    fieldName="urlDatosCala"
+                    entityId={getDefaultValues().id}
+                    title="Reporte de Cala (PDF)"
+                    dialogTitle="Subir Reporte de Cala"
+                    uploadButtonLabel="Capturar/Subir PDF"
+                    viewButtonLabel="Abrir"
+                    downloadButtonLabel="Descargar"
+                    emptyMessage="No hay reporte de cala cargado"
+                    emptyDescription='Use el botón "Capturar/Subir PDF" para agregar el reporte de cala'
+                    control={control}
+                    errors={errors}
+                    setValue={setValue}
+                    watch={watch}
+                    getValues={getValues}
+                    defaultValues={getDefaultValues()}
+                    readOnly={calaFinalizada}
+                  />
+                </div>
+              )}
+            </div>
           </div>
-          <div className="col-12 md:col-6">
-            <label htmlFor="kilogramos">Kilogramos</label>
-            <InputNumber
-              id="kilogramos"
-              value={kilogramos}
-              onValueChange={(e) => setKilogramos(e.value)}
-              mode="decimal"
-              minFractionDigits={0}
-              maxFractionDigits={3}
-              suffix=" Kg"
-              min={0}
-              disabled={calaFinalizada}
-            />
-          </div>
-          <div className="col-12 md:col-6">
-            <label htmlFor="porcentajeJuveniles">
-              Porcentaje Juveniles (%)
-            </label>
-            <InputNumber
-              id="porcentajeJuveniles"
-              value={porcentajeJuveniles}
-              onValueChange={(e) => setPorcentajeJuveniles(e.value)}
-              mode="decimal"
-              minFractionDigits={0}
-              maxFractionDigits={2}
-              suffix="%"
-              min={0}
-              max={100}
-              disabled={calaFinalizada}
-            />
-          </div>
-          <div className="col-12">
-            <label htmlFor="observaciones">Observaciones</label>
-            <InputTextarea
-              id="observaciones"
-              value={observaciones}
-              onChange={(e) => setObservaciones(e.target.value)}
-              rows={3}
-              cols={20}
-              disabled={calaFinalizada}
-            />
-          </div>
-        </div>
+        </form>
       </Dialog>
     </Card>
   );

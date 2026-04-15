@@ -96,7 +96,31 @@ export const PDF_MODULES_CONFIG = {
       field: "urlCotizacionPdf",
     },
   },
-
+  "detalle-cala-especie": {
+    uploadPath: "uploads/pdf-system/detalle-cala-especie",
+    oldPaths: [],
+    apiEndpoint: "/pdf/detalle-cala-especie",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf", "image/jpeg", "image/png"],
+    maxFiles: 20,
+    database: {
+      table: "DetalleCalaEspecie",
+      field: "urlDatosCala",
+    },
+  },
+    "detalle-cala-pesca-consumo": {
+    uploadPath: "uploads/pdf-system/detalle-cala-pesca-consumo",
+    oldPaths: [],
+    apiEndpoint: "/api/pdf/detalle-cala-pesca-consumo",
+    maxFileSize: 10 * 1024 * 1024,
+    allowedTypes: ["application/pdf", "image/jpeg", "image/png"],
+    maxFiles: 20,
+    database: {
+      table: "DetCalaPescaConsumo",
+      field: "urlDatosCala",
+    },
+  },
+  
   "pre-factura": {
     uploadPath: "uploads/pdf-system/pre-facturas",
     oldPaths: [],
