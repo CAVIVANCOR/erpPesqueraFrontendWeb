@@ -228,9 +228,6 @@ const DetalleDocTripulantesCard = ({
       const tripulantesEmbarcacion = personal.filter(
         (p) =>
           Number(p.empresaId) === Number(temporadaData.empresaId) &&
-          (Number(p.cargoId) === 21 || // TRIPULANTE EMBARCACION
-            Number(p.cargoId) === 22 || // PATRON EMBARCACION
-            Number(p.cargoId) === 14) && // MOTORISTA EMBARCACION
           p.cesado === false &&
           p.paraTemporadaPesca === true,
       );

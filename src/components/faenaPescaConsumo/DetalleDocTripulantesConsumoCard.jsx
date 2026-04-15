@@ -155,9 +155,6 @@ export default function DetalleDocTripulantesConsumoCard({
       const tripulantesEmbarcacion = personal.filter(
         (p) =>
           p.paraPescaConsumo === true &&
-          (Number(p.cargoId) === 21 || // TRIPULANTE EMBARCACION
-            Number(p.cargoId) === 22 || // PATRON EMBARCACION
-            Number(p.cargoId) === 14) && // MOTORISTA EMBARCACION
           p.cesado === false
       );
 
