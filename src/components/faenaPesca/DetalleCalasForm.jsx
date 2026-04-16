@@ -5,7 +5,7 @@
  * Permite listar, crear y editar registros de Cala.
  *
  * @author ERP Megui
- * @version 1.0.0
+ * @version 1.1.0 - Agregado soporte para latitudFin y longitudFin
  */
 
 import React, { useState, useEffect, useRef } from "react";
@@ -64,10 +64,9 @@ const DetalleCalasForm = ({
   embarcaciones: embarcacionesProps = [],
   loading = false,
   onDataChange,
-  onCalasChange, // Callback para notificar cambios en calas
-  onFaenasChange, // Callback para notificar cambios en faenas
+  onCalasChange,
+  onFaenasChange,
 }) => {
-  // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
   const usuario = useAuthStore((state) => state.usuario);
   const esSuperUsuario = usuario?.esSuperUsuario || false;
 
@@ -78,7 +77,6 @@ const DetalleCalasForm = ({
   const [globalFilter, setGlobalFilter] = useState("");
   const toast = useRef(null);
 
-  // Estados del formulario de cala
   const [fechaHoraInicio, setFechaHoraInicio] = useState(null);
   const [fechaHoraFin, setFechaHoraFin] = useState(null);
   const [latitud, setLatitud] = useState("");
@@ -88,45 +86,50 @@ const DetalleCalasForm = ({
   const [observaciones, setObservaciones] = useState("");
   const [calaSeleccionadaId, setCalaSeleccionadaId] = useState(null);
 
-  // Estados para formato DMS de latitud
   const [latGrados, setLatGrados] = useState(0);
   const [latMinutos, setLatMinutos] = useState(0);
   const [latSegundos, setLatSegundos] = useState(0);
   const [latDireccion, setLatDireccion] = useState("S");
 
-  // Estados para formato DMS de longitud
   const [lonGrados, setLonGrados] = useState(0);
   const [lonMinutos, setLonMinutos] = useState(0);
   const [lonSegundos, setLonSegundos] = useState(0);
   const [lonDireccion, setLonDireccion] = useState("W");
 
-  // Estados para información geográfica
+  const [latitudFin, setLatitudFin] = useState("");
+  const [longitudFin, setLongitudFin] = useState("");
+
+  const [latFinGrados, setLatFinGrados] = useState(0);
+  const [latFinMinutos, setLatFinMinutos] = useState(0);
+  const [latFinSegundos, setLatFinSegundos] = useState(0);
+  const [latFinDireccion, setLatFinDireccion] = useState("S");
+
+  const [lonFinGrados, setLonFinGrados] = useState(0);
+  const [lonFinMinutos, setLonFinMinutos] = useState(0);
+  const [lonFinSegundos, setLonFinSegundos] = useState(0);
+  const [lonFinDireccion, setLonFinDireccion] = useState("W");
+
   const [infoGeografica, setInfoGeografica] = useState(null);
   const [loadingGeo, setLoadingGeo] = useState(false);
   const [errorGeo, setErrorGeo] = useState(null);
 
-  // Estados para ubicación del usuario y pantalla completa
   const [ubicacionUsuario, setUbicacionUsuario] = useState(null);
   const [mapaFullscreen, setMapaFullscreen] = useState(false);
   const mapContainerRef = useRef(null);
   const [tipoMapa, setTipoMapa] = useState("street");
-  // Estados para el mapa
   const [mapPosition, setMapPosition] = useState([-12.0, -77.0]);
   const [mapKey, setMapKey] = useState(0);
 
-  // Estados para dropdowns deshabilitados
   const [bahias, setBahias] = useState(bahiasProps);
   const [motoristas, setMotoristas] = useState(motoristasProps);
   const [patrones, setPatrones] = useState(patronesProps);
   const [embarcaciones, setEmbarcaciones] = useState(embarcacionesProps);
 
-  // Estados para valores seleccionados en dropdowns
   const [selectedBahiaId, setSelectedBahiaId] = useState(null);
   const [selectedMotoristaId, setSelectedMotoristaId] = useState(null);
   const [selectedPatronId, setSelectedPatronId] = useState(null);
   const [selectedEmbarcacionId, setSelectedEmbarcacionId] = useState(null);
 
-  // Estados para campos de fecha
   const [createdAt, setCreatedAt] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
 
@@ -136,7 +139,6 @@ const DetalleCalasForm = ({
     }
   }, [faenaPescaId]);
 
-  // Sincronizar cambios de decimal a DMS (cuando cambia latitud decimal)
   useEffect(() => {
     if (latitud !== "" && latitud !== null && latitud !== undefined) {
       const dms = descomponerDMS(Number(latitud), true);
@@ -147,7 +149,6 @@ const DetalleCalasForm = ({
     }
   }, [latitud]);
 
-  // Sincronizar cambios de decimal a DMS (cuando cambia longitud decimal)
   useEffect(() => {
     if (longitud !== "" && longitud !== null && longitud !== undefined) {
       const dms = descomponerDMS(Number(longitud), false);
@@ -158,7 +159,26 @@ const DetalleCalasForm = ({
     }
   }, [longitud]);
 
-  // Actualizar posición del mapa cuando cambian las coordenadas
+  useEffect(() => {
+    if (latitudFin !== "" && latitudFin !== null && latitudFin !== undefined) {
+      const dms = descomponerDMS(Number(latitudFin), true);
+      setLatFinGrados(dms.grados);
+      setLatFinMinutos(dms.minutos);
+      setLatFinSegundos(parseFloat(dms.segundos.toFixed(2)));
+      setLatFinDireccion(dms.direccion);
+    }
+  }, [latitudFin]);
+
+  useEffect(() => {
+    if (longitudFin !== "" && longitudFin !== null && longitudFin !== undefined) {
+      const dms = descomponerDMS(Number(longitudFin), false);
+      setLonFinGrados(dms.grados);
+      setLonFinMinutos(dms.minutos);
+      setLonFinSegundos(parseFloat(dms.segundos.toFixed(2)));
+      setLonFinDireccion(dms.direccion);
+    }
+  }, [longitudFin]);
+
   useEffect(() => {
     if (
       latitud !== "" &&
@@ -175,20 +195,13 @@ const DetalleCalasForm = ({
     }
   }, [latitud, longitud]);
 
-  /**
-   * useEffect para analizar coordenadas cuando ya existen
-   * (por ejemplo, al editar una cala existente)
-   */
   useEffect(() => {
-    // Solo analizar si hay coordenadas válidas y no estamos ya cargando
     if (latitud && longitud && !loadingGeo) {
-      // Verificar que las coordenadas sean diferentes a las ya analizadas
       const coordenadasActuales = `${latitud},${longitud}`;
       const coordenadasAnalizadas = infoGeografica
         ? `${infoGeografica.coordenadas?.latitud},${infoGeografica.coordenadas?.longitud}`
         : null;
 
-      // Solo analizar si son coordenadas nuevas
       if (coordenadasActuales !== coordenadasAnalizadas) {
         const analizarCoordenadasExistentes = async () => {
           setLoadingGeo(true);
@@ -197,7 +210,7 @@ const DetalleCalasForm = ({
             const infoGeo = await analizarCoordenadasConReferencia(
               latitud,
               longitud,
-              null, // Cala no tiene puerto
+              null,
             );
             setInfoGeografica(infoGeo);
           } catch (error) {
@@ -220,7 +233,6 @@ const DetalleCalasForm = ({
       patronesProps?.length > 0 &&
       embarcacionesProps?.length > 0
     ) {
-      // Normalizar los arrays para convertir values a Number y asegurar labels correctos
       const bahiasNormalizadas = bahiasProps.map((item) => ({
         value: Number(item.value),
         label: item.label,
@@ -242,7 +254,6 @@ const DetalleCalasForm = ({
       setPatrones(patronesNormalizados);
       setEmbarcaciones(embarcacionesNormalizadas);
 
-      // Asignar valores seleccionados desde faenaData si están disponibles
       if (faenaData) {
         setSelectedBahiaId(Number(faenaData.bahiaId));
         setSelectedMotoristaId(Number(faenaData.motoristaId));
@@ -258,20 +269,13 @@ const DetalleCalasForm = ({
     faenaData,
   ]);
 
-  /**
-   * useEffect para analizar coordenadas cuando ya existen en el formulario
-   * (por ejemplo, al editar una cala existente)
-   */
   useEffect(() => {
-    // Solo analizar si hay coordenadas válidas y no estamos ya cargando
     if (latitud && longitud && !loadingGeo) {
-      // Verificar que las coordenadas sean diferentes a las ya analizadas
       const coordenadasActuales = `${latitud},${longitud}`;
       const coordenadasAnalizadas = infoGeografica
         ? `${infoGeografica.coordenadas?.latitud},${infoGeografica.coordenadas?.longitud}`
         : null;
 
-      // Solo analizar si son coordenadas nuevas
       if (coordenadasActuales !== coordenadasAnalizadas) {
         const analizarCoordenadasExistentes = async () => {
           setLoadingGeo(true);
@@ -280,7 +284,7 @@ const DetalleCalasForm = ({
             const infoGeo = await analizarCoordenadasConReferencia(
               latitud,
               longitud,
-              null, // Cala no tiene puerto de salida
+              null,
             );
             setInfoGeografica(infoGeo);
           } catch (error) {
@@ -305,7 +309,7 @@ const DetalleCalasForm = ({
     try {
       const response = await getCalasPorFaena(faenaPescaId);
       setCalas(response);
-      onCalasChange(response); // Notificar cambios en calas
+      onCalasChange(response);
     } catch (error) {
       console.error("Error cargando calas:", error);
       toast.current?.show({
@@ -324,9 +328,7 @@ const DetalleCalasForm = ({
     setCreatedAt(new Date());
     setUpdatedAt(new Date());
 
-    // Asignar valores directamente desde faenaData
     if (faenaData) {
-      // Convertir a números para asegurar compatibilidad
       const bahiaIdNum = Number(faenaData.bahiaId);
       const motoristaIdNum = Number(faenaData.motoristaId);
       const patronIdNum = Number(faenaData.patronId);
@@ -349,13 +351,14 @@ const DetalleCalasForm = ({
     setFechaHoraFin(cala.fechaHoraFin ? new Date(cala.fechaHoraFin) : null);
     setLatitud(cala.latitud || "");
     setLongitud(cala.longitud || "");
+    setLatitudFin(cala.latitudFin || "");
+    setLongitudFin(cala.longitudFin || "");
     setProfundidadM(cala.profundidadM || "");
     setToneladasCapturadas(cala.toneladasCapturadas || "");
     setObservaciones(cala.observaciones || "");
     setCreatedAt(cala.createdAt ? new Date(cala.createdAt) : null);
     setUpdatedAt(cala.updatedAt ? new Date(cala.updatedAt) : null);
 
-    // Usar valores de la cala o faenaData y convertir a números
     const bahiaValue = Number(cala.bahiaId || faenaData?.bahiaId);
     const motoristaValue = Number(cala.motoristaId || faenaData?.motoristaId);
     const patronValue = Number(cala.patronId || faenaData?.patronId);
@@ -370,7 +373,6 @@ const DetalleCalasForm = ({
     setCalaDialog(true);
   };
 
-  // Funciones para actualizar decimal cuando cambia DMS
   const actualizarLatitudDesdeDMS = () => {
     const decimal = convertirDMSADecimal(
       latGrados,
@@ -391,6 +393,26 @@ const DetalleCalasForm = ({
     setLongitud(decimal);
   };
 
+  const actualizarLatitudFinDesdeDMS = () => {
+    const decimal = convertirDMSADecimal(
+      latFinGrados,
+      latFinMinutos,
+      latFinSegundos,
+      latFinDireccion,
+    );
+    setLatitudFin(decimal);
+  };
+
+  const actualizarLongitudFinDesdeDMS = () => {
+    const decimal = convertirDMSADecimal(
+      lonFinGrados,
+      lonFinMinutos,
+      lonFinSegundos,
+      lonFinDireccion,
+    );
+    setLongitudFin(decimal);
+  };
+
   const finalizarCala = async (cala) => {
     try {
       const calaData = {
@@ -408,7 +430,7 @@ const DetalleCalasForm = ({
       });
 
       cargarCalas();
-      onCalasChange(); // Notificar cambios en calas
+      onCalasChange();
     } catch (error) {
       console.error("Error finalizando cala:", error);
       toast.current?.show({
@@ -431,7 +453,7 @@ const DetalleCalasForm = ({
       });
 
       cargarCalas();
-      onCalasChange(); // Notificar cambios en calas
+      onCalasChange();
     } catch (error) {
       console.error("Error eliminando cala:", error);
       toast.current?.show({
@@ -448,24 +470,21 @@ const DetalleCalasForm = ({
     setFechaHoraFin(null);
     setLatitud("");
     setLongitud("");
+    setLatitudFin("");
+    setLongitudFin("");
     setProfundidadM("");
     setToneladasCapturadas("");
     setObservaciones("");
 
-    // Limpiar valores de dropdowns
     setSelectedBahiaId(null);
     setSelectedMotoristaId(null);
     setSelectedPatronId(null);
     setSelectedEmbarcacionId(null);
 
-    // Limpiar fechas del sistema
     setCreatedAt(null);
     setUpdatedAt(null);
   };
 
-  /**
-   * Componente de marker draggable para el mapa
-   */
   const DraggableMarker = () => {
     const markerRef = useRef(null);
     const nombreBahia =
@@ -506,9 +525,6 @@ const DetalleCalasForm = ({
     );
   };
 
-  /**
-   * Componente de marcador de ubicación del usuario
-   */
   const UserLocationMarker = () => {
     if (!ubicacionUsuario) return null;
 
@@ -537,9 +553,6 @@ const DetalleCalasForm = ({
     );
   };
 
-  /**
-   * Componente de línea de distancia entre usuario y embarcación
-   */
   const DistanceLine = () => {
     if (!ubicacionUsuario || !latitud || !longitud) return null;
 
@@ -559,9 +572,77 @@ const DetalleCalasForm = ({
     );
   };
 
-  /**
-   * Obtener ubicación actual del usuario
-   */
+  const CalaRouteLine = () => {
+    if (
+      !latitud ||
+      !longitud ||
+      !latitudFin ||
+      !longitudFin ||
+      latitud === "" ||
+      longitud === "" ||
+      latitudFin === "" ||
+      longitudFin === ""
+    )
+      return null;
+
+    const positions = [
+      [Number(latitud), Number(longitud)],
+      [Number(latitudFin), Number(longitudFin)],
+    ];
+
+    return (
+      <Polyline
+        positions={positions}
+        color="#EF4444"
+        weight={3}
+        opacity={0.8}
+        dashArray="10, 5"
+      />
+    );
+  };
+
+  const MarkerFin = () => {
+    if (
+      !latitudFin ||
+      !longitudFin ||
+      latitudFin === "" ||
+      longitudFin === ""
+    )
+      return null;
+
+    const iconFin = L.icon({
+      iconUrl:
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
+      shadowUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+
+    const nombreBahia =
+      bahias.find(
+        (b) =>
+          Number(b.value) === Number(selectedBahiaId || faenaData?.bahiaId),
+      )?.label || "Cala";
+
+    return (
+      <Marker
+        position={[Number(latitudFin), Number(longitudFin)]}
+        icon={iconFin}
+      >
+        <Popup>
+          <strong>{nombreBahia} - FIN</strong>
+          <br />
+          Lat: {Number(latitudFin).toFixed(6)}
+          <br />
+          Lon: {Number(longitudFin).toFixed(6)}
+        </Popup>
+      </Marker>
+    );
+  };
+
   const obtenerUbicacionUsuario = () => {
     if (!navigator.geolocation) {
       toast.current.show({
@@ -596,9 +677,6 @@ const DetalleCalasForm = ({
     );
   };
 
-  /**
-   * Alternar pantalla completa del mapa
-   */
   const toggleFullscreen = () => {
     if (!mapContainerRef.current) return;
 
@@ -611,9 +689,6 @@ const DetalleCalasForm = ({
     }
   };
 
-  /**
-   * Cambiar tipo de mapa
-   */
   const cambiarTipoMapa = () => {
     setTipoMapa((prev) => {
       if (prev === "street") return "satellite";
@@ -622,9 +697,6 @@ const DetalleCalasForm = ({
     });
   };
 
-  /**
-   * Obtener configuración del tile según tipo de mapa
-   */
   const getTileConfig = () => {
     const configs = {
       street: {
@@ -646,9 +718,6 @@ const DetalleCalasForm = ({
     return configs[tipoMapa] || configs.street;
   };
 
-  /**
-   * Obtener color según clasificación de aguas
-   */
   const getClasificacionAguasColor = (clasificacion) => {
     if (!clasificacion) return "info";
     if (clasificacion.includes("Territorial")) return "danger";
@@ -671,18 +740,19 @@ const DetalleCalasForm = ({
         fechaHoraFin,
         latitud: latitud ? Number(latitud) : null,
         longitud: longitud ? Number(longitud) : null,
+        latitudFin: latitudFin ? Number(latitudFin) : null,
+        longitudFin: longitudFin ? Number(longitudFin) : null,
         profundidadM: profundidadM ? Number(profundidadM) : null,
         toneladasCapturadas: toneladasCapturadas
           ? Number(toneladasCapturadas)
           : null,
         observaciones: observaciones || null,
-        updatedAt: new Date(), // Campo requerido por Prisma
+        updatedAt: new Date(),
       };
 
       let nuevaCalaCreada = null;
 
       if (editingCala) {
-        // Actualizar cala existente
         await actualizarCala(editingCala.id, calaData);
         toast.current?.show({
           severity: "success",
@@ -694,10 +764,7 @@ const DetalleCalasForm = ({
           setCalaDialog(false);
         }
       } else {
-        // Crear nueva cala
         nuevaCalaCreada = await crearCala(calaData);
-
-        // Actualizar el estado editingCala con la nueva cala creada
         setEditingCala(nuevaCalaCreada);
 
         toast.current?.show({
@@ -706,13 +773,10 @@ const DetalleCalasForm = ({
           detail: "Cala creada correctamente. Ahora puede agregar especies.",
           life: 4000,
         });
-
-        // NO cerrar el dialog para permitir agregar especies
-        // setCalaDialog(false); // Comentado para mantener abierto
       }
 
       cargarCalas();
-      onCalasChange(); // Notificar cambios en calas
+      onCalasChange();
     } catch (error) {
       console.error("Error guardando cala:", error);
       toast.current?.show({
@@ -737,7 +801,6 @@ const DetalleCalasForm = ({
 
   const iniciarCala = async (cala) => {
     if (!cala || fechaHoraInicio) {
-      // No hacer nada si ya tiene fecha de inicio
       return;
     }
 
@@ -745,7 +808,6 @@ const DetalleCalasForm = ({
       const ahora = new Date();
       setFechaHoraInicio(ahora);
 
-      // Actualizar en la base de datos
       const calaActualizada = {
         ...cala,
         fechaHoraInicio: ahora.toISOString(),
@@ -760,9 +822,8 @@ const DetalleCalasForm = ({
         life: 3000,
       });
 
-      // Recargar la lista de calas
       cargarCalas();
-      onCalasChange(); // Notificar cambios en calas
+      onCalasChange();
     } catch (error) {
       console.error("Error iniciando cala:", error);
       toast.current?.show({
@@ -776,7 +837,6 @@ const DetalleCalasForm = ({
 
   const finalizarCalaAction = async (cala) => {
     if (!cala || !fechaHoraInicio || fechaHoraFin) {
-      // No hacer nada si no está iniciada o ya está finalizada
       return;
     }
 
@@ -784,7 +844,6 @@ const DetalleCalasForm = ({
       const ahora = new Date();
       setFechaHoraFin(ahora);
 
-      // Actualizar en la base de datos
       const calaActualizada = {
         ...cala,
         fechaHoraFin: ahora.toISOString(),
@@ -799,9 +858,8 @@ const DetalleCalasForm = ({
         life: 3000,
       });
 
-      // Recargar la lista de calas
       cargarCalas();
-      onCalasChange(); // Notificar cambios en calas
+      onCalasChange();
     } catch (error) {
       console.error("Error finalizando cala:", error);
       toast.current?.show({
@@ -813,22 +871,14 @@ const DetalleCalasForm = ({
     }
   };
 
-  // ========================================
-  // ⭐ LÓGICA DE PERMISOS PARA EDICIÓN
-  // ========================================
-  // Verificar si la temporada está en estado cerrado (FINALIZADA o CANCELADA)
   const estadosCerrados = ["FINALIZADA", "CANCELADA"];
   const estadoTemporada = temporadaData?.estadoTemporada?.descripcion || "";
   const temporadaCerrada = estadosCerrados.includes(estadoTemporada);
 
-  // Estados para determinar si los botones están habilitados
   const puedeIniciarCala = !fechaHoraInicio;
   const puedeFinalizarCala = fechaHoraInicio && !fechaHoraFin;
   const calaFinalizada = fechaHoraInicio && fechaHoraFin;
 
-  // ⭐ REGLA DE SUPERUSUARIO:
-  // - Si es superusuario: puede editar siempre, incluso en temporadas cerradas
-  // - Si NO es superusuario: solo puede editar si la temporada NO está cerrada
   const camposDeshabilitados = temporadaCerrada && !esSuperUsuario;
 
   const accionesTemplate = (rowData) => {
@@ -958,10 +1008,8 @@ const DetalleCalasForm = ({
   );
 
   const handleDataChange = async () => {
-    // Recargar las calas para obtener los datos actualizados
     await cargarCalas();
 
-    // Si hay una cala siendo editada, actualizar sus datos con los valores recalculados
     if (editingCala?.id) {
       try {
         const calasActualizadas = await getCalasPorFaena(faenaPescaId);
@@ -970,7 +1018,6 @@ const DetalleCalasForm = ({
         );
 
         if (calaActualizada) {
-          // Actualizar el estado del formulario con los nuevos valores
           setToneladasCapturadas(calaActualizada.toneladasCapturadas || "");
         }
       } catch (error) {
@@ -978,14 +1025,13 @@ const DetalleCalasForm = ({
       }
     }
 
-    // Notificar al componente padre que debe recargar los datos
     if (onDataChange && typeof onDataChange === "function") {
       await onDataChange();
     }
     if (onFaenasChange && typeof onFaenasChange === "function") {
       await onFaenasChange();
     }
-  };
+   };
 
   return (
     <Card
@@ -1017,7 +1063,7 @@ const DetalleCalasForm = ({
         ></Column>
         <Column
           field="latitud"
-          header="Latitud"
+          header="Lat Inicio"
           sortable
           body={(rowData) => {
             const latitudNormalizada = rowData.latitud
@@ -1029,12 +1075,36 @@ const DetalleCalasForm = ({
         ></Column>
         <Column
           field="longitud"
-          header="Longitud"
+          header="Lon Inicio"
           sortable
           body={(rowData) => {
             const longitudNormalizada = rowData.longitud
               ? parseFloat(rowData.longitud).toFixed(8)
               : "0.00000000";
+            return longitudNormalizada;
+          }}
+          style={{ minWidth: "8rem" }}
+        ></Column>
+        <Column
+          field="latitudFin"
+          header="Lat Fin"
+          sortable
+          body={(rowData) => {
+            const latitudNormalizada = rowData.latitudFin
+              ? parseFloat(rowData.latitudFin).toFixed(8)
+              : "-";
+            return latitudNormalizada;
+          }}
+          style={{ minWidth: "8rem" }}
+        ></Column>
+        <Column
+          field="longitudFin"
+          header="Lon Fin"
+          sortable
+          body={(rowData) => {
+            const longitudNormalizada = rowData.longitudFin
+              ? parseFloat(rowData.longitudFin).toFixed(8)
+              : "-";
             return longitudNormalizada;
           }}
           style={{ minWidth: "8rem" }}
@@ -1207,14 +1277,13 @@ const DetalleCalasForm = ({
             </div>
           </div>
 
-          {/* Coordenadas GPS - Formato compacto */}
           <div
             style={{
-              border: "6px solid #0EA5E9",
+              border: "6px solid #10B981",
               padding: "0.5rem",
               borderRadius: "8px",
               marginTop: "1rem",
-              marginBottom: "1rem",
+              marginBottom: "0.5rem",
               display: "flex",
               alignItems: "self-end",
               gap: 10,
@@ -1224,9 +1293,9 @@ const DetalleCalasForm = ({
             <div style={{ flex: 1 }}>
               <Button
                 type="button"
-                label="Capturar GPS"
+                label="Capturar GPS INICIO"
                 icon="pi pi-map-marker"
-                className="p-button-info"
+                className="p-button-success"
                 onClick={async () => {
                   try {
                     await capturarGPS(
@@ -1236,14 +1305,13 @@ const DetalleCalasForm = ({
 
                         toast.current?.show({
                           severity: "success",
-                          summary: "GPS capturado",
+                          summary: "GPS INICIO capturado",
                           detail: `GPS capturado con precisión de ${accuracy.toFixed(
                             1,
                           )}m. Guardando cala...`,
                           life: 3000,
                         });
 
-                        // Analizar coordenadas para obtener información geográfica
                         setLoadingGeo(true);
                         setErrorGeo(null);
                         try {
@@ -1251,7 +1319,7 @@ const DetalleCalasForm = ({
                             await analizarCoordenadasConReferencia(
                               latitude,
                               longitude,
-                              null, // Cala no tiene puerto de salida
+                              null,
                             );
                           setInfoGeografica(infoGeo);
 
@@ -1318,21 +1386,20 @@ const DetalleCalasForm = ({
               />
             </div>
 
-            {/* Tabla MEJORADA de coordenadas GPS - Optimizada para Tablet */}
             <div style={{ flex: 3 }}>
               <table
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  border: "3px solid #0EA5E9",
+                  border: "3px solid #10B981",
                 }}
               >
                 <thead>
-                  <tr style={{ backgroundColor: "#0EA5E9", color: "white" }}>
+                  <tr style={{ backgroundColor: "#10B981", color: "white" }}>
                     <th
                       style={{
                         padding: "8px",
-                        border: "1px solid #0EA5E9",
+                        border: "1px solid #10B981",
                         fontSize: "14px",
                         fontWeight: "bold",
                         width: "100px",
@@ -1345,38 +1412,37 @@ const DetalleCalasForm = ({
                       colSpan="4"
                       style={{
                         padding: "8px",
-                        border: "1px solid #0EA5E9",
+                        border: "1px solid #10B981",
                         fontSize: "14px",
                         fontWeight: "bold",
                         textAlign: "center",
                       }}
                     >
-                      Latitud (Siempre SUR en Perú)
+                      Latitud INICIO (Siempre SUR en Perú)
                     </th>
                     <th
                       colSpan="4"
                       style={{
                         padding: "8px",
-                        border: "1px solid #0EA5E9",
+                        border: "1px solid #10B981",
                         fontSize: "14px",
                         fontWeight: "bold",
                         textAlign: "center",
                       }}
                     >
-                      Longitud (Siempre OESTE en Perú)
+                      Longitud INICIO (Siempre OESTE en Perú)
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* ========== FILA DECIMAL ========== */}
                   <tr>
                     <td
                       style={{
                         padding: "8px",
-                        border: "1px solid #0EA5E9",
+                        border: "1px solid #10B981",
                         fontWeight: "bold",
                         fontSize: "14px",
-                        backgroundColor: "#e1f1f7",
+                        backgroundColor: "#d1fae5",
                         width: "100px",
                       }}
                     >
@@ -1384,7 +1450,7 @@ const DetalleCalasForm = ({
                     </td>
                     <td
                       colSpan="4"
-                      style={{ padding: "4px", border: "1px solid #0EA5E9" }}
+                      style={{ padding: "4px", border: "1px solid #10B981" }}
                     >
                       <InputNumber
                         value={latitud}
@@ -1408,7 +1474,7 @@ const DetalleCalasForm = ({
                     </td>
                     <td
                       colSpan="4"
-                      style={{ padding: "4px", border: "1px solid #0EA5E9" }}
+                      style={{ padding: "4px", border: "1px solid #10B981" }}
                     >
                       <InputNumber
                         value={longitud}
@@ -1432,23 +1498,20 @@ const DetalleCalasForm = ({
                     </td>
                   </tr>
 
-                  {/* ========== FILA DMS (Grados, Minutos, Segundos) ========== */}
                   <tr>
                     <td
                       style={{
                         padding: "8px",
-                        border: "1px solid #0EA5E9",
+                        border: "1px solid #10B981",
                         fontWeight: "bold",
                         fontSize: "14px",
-                        backgroundColor: "#e1f1f7",
+                        backgroundColor: "#d1fae5",
                       }}
                     >
                       DMS
                     </td>
 
-                    {/* ===== LATITUD DMS ===== */}
-                    {/* Grados */}
-                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
+                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
                       <div
                         style={{
                           display: "flex",
@@ -1474,7 +1537,7 @@ const DetalleCalasForm = ({
                             width: "140px",
                             padding: "8px",
                             border: "2px solid #059669",
-                            fontSize: "18px", // ← MÁS GRANDE
+                            fontSize: "18px",
                             fontWeight: "bold",
                             textAlign: "center",
                             borderRadius: "4px",
@@ -1486,8 +1549,7 @@ const DetalleCalasForm = ({
                       </div>
                     </td>
 
-                    {/* Minutos */}
-                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
+                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
                       <div
                         style={{
                           display: "flex",
@@ -1513,7 +1575,7 @@ const DetalleCalasForm = ({
                             width: "140px",
                             padding: "8px",
                             border: "2px solid #059669",
-                            fontSize: "18px", // ← MÁS GRANDE
+                            fontSize: "18px",
                             fontWeight: "bold",
                             textAlign: "center",
                             borderRadius: "4px",
@@ -1525,8 +1587,7 @@ const DetalleCalasForm = ({
                       </div>
                     </td>
 
-                    {/* Segundos */}
-                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
+                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
                       <div
                         style={{
                           display: "flex",
@@ -1553,7 +1614,7 @@ const DetalleCalasForm = ({
                             width: "140px",
                             padding: "8px",
                             border: "2px solid #059669",
-                            fontSize: "18px", // ← MÁS GRANDE
+                            fontSize: "18px",
                             fontWeight: "bold",
                             textAlign: "center",
                             borderRadius: "4px",
@@ -1565,8 +1626,7 @@ const DetalleCalasForm = ({
                       </div>
                     </td>
 
-                    {/* Dirección N/S - BLOQUEADO EN "S" PARA USUARIOS NORMALES */}
-                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
+                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
                       <select
                         value={latDireccion}
                         onChange={(e) => {
@@ -1577,14 +1637,14 @@ const DetalleCalasForm = ({
                           !esSuperUsuario ||
                           (calaFinalizada && !esSuperUsuario) ||
                           camposDeshabilitados
-                        } // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
+                        }
                         style={{
                           width: "100%",
                           padding: "8px",
                           border: esSuperUsuario
                             ? "2px solid #f59e0b"
                             : "2px solid #94a3b8",
-                          fontSize: "18px", // ← MÁS GRANDE
+                          fontSize: "18px",
                           fontWeight: "bold",
                           textAlign: "center",
                           borderRadius: "4px",
@@ -1611,9 +1671,7 @@ const DetalleCalasForm = ({
                       )}
                     </td>
 
-                    {/* ===== LONGITUD DMS ===== */}
-                    {/* Grados */}
-                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
+                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
                       <div
                         style={{
                           display: "flex",
@@ -1639,7 +1697,7 @@ const DetalleCalasForm = ({
                             width: "140px",
                             padding: "8px",
                             border: "2px solid #2563eb",
-                            fontSize: "18px", // ← MÁS GRANDE
+                            fontSize: "18px",
                             fontWeight: "bold",
                             textAlign: "center",
                             borderRadius: "4px",
@@ -1651,8 +1709,7 @@ const DetalleCalasForm = ({
                       </div>
                     </td>
 
-                    {/* Minutos */}
-                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
+                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
                       <div
                         style={{
                           display: "flex",
@@ -1678,7 +1735,7 @@ const DetalleCalasForm = ({
                             width: "140px",
                             padding: "8px",
                             border: "2px solid #2563eb",
-                            fontSize: "18px", // ← MÁS GRANDE
+                            fontSize: "18px",
                             fontWeight: "bold",
                             textAlign: "center",
                             borderRadius: "4px",
@@ -1690,8 +1747,7 @@ const DetalleCalasForm = ({
                       </div>
                     </td>
 
-                    {/* Segundos */}
-                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
+                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
                       <div
                         style={{
                           display: "flex",
@@ -1718,7 +1774,7 @@ const DetalleCalasForm = ({
                             width: "140px",
                             padding: "8px",
                             border: "2px solid #2563eb",
-                            fontSize: "18px", // ← MÁS GRANDE
+                            fontSize: "18px",
                             fontWeight: "bold",
                             textAlign: "center",
                             borderRadius: "4px",
@@ -1730,8 +1786,7 @@ const DetalleCalasForm = ({
                       </div>
                     </td>
 
-                    {/* Dirección E/W - BLOQUEADO EN "W" PARA USUARIOS NORMALES */}
-                    <td style={{ padding: "4px", border: "1px solid #0EA5E9" }}>
+                    <td style={{ padding: "4px", border: "1px solid #10B981" }}>
                       <select
                         value={lonDireccion}
                         onChange={(e) => {
@@ -1742,14 +1797,537 @@ const DetalleCalasForm = ({
                           !esSuperUsuario ||
                           (calaFinalizada && !esSuperUsuario) ||
                           camposDeshabilitados
-                        } // ← SOLO SUPERUSUARIO PUEDE CAMBIAR
+                        }
                         style={{
                           width: "100%",
                           padding: "8px",
                           border: esSuperUsuario
                             ? "2px solid #f59e0b"
                             : "2px solid #94a3b8",
-                          fontSize: "18px", // ← MÁS GRANDE
+                          fontSize: "18px",
+                          fontWeight: "bold",
+                          textAlign: "center",
+                          borderRadius: "4px",
+                          backgroundColor: esSuperUsuario
+                            ? "#fef3c7"
+                            : "#f1f5f9",
+                          cursor: esSuperUsuario ? "pointer" : "not-allowed",
+                        }}
+                      >
+                        <option value="E">E</option>
+                        <option value="W">W</option>
+                      </select>
+                      {!esSuperUsuario && (
+                        <div
+                          style={{
+                            fontSize: "10px",
+                            color: "#64748b",
+                            textAlign: "center",
+                            marginTop: "2px",
+                          }}
+                        >
+                          🔒 Fijo
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div
+            style={{
+              border: "6px solid #EF4444",
+              padding: "0.5rem",
+              borderRadius: "8px",
+              marginTop: "0.5rem",
+              marginBottom: "1rem",
+              display: "flex",
+              alignItems: "self-end",
+              gap: 10,
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <Button
+                type="button"
+                label="Capturar GPS FIN"
+                icon="pi pi-map-marker"
+                className="p-button-danger"
+                onClick={async () => {
+                  try {
+                    await capturarGPS(
+                      async (latitude, longitude, accuracy) => {
+                        setLatitudFin(latitude);
+                        setLongitudFin(longitude);
+
+                        toast.current?.show({
+                          severity: "success",
+                          summary: "GPS FIN capturado",
+                          detail: `GPS capturado con precisión de ${accuracy.toFixed(
+                            1,
+                          )}m. Guardando cala...`,
+                          life: 3000,
+                        });
+
+                        try {
+                          await guardarCala(false);
+                        } catch (error) {
+                          console.error(
+                            "Error al guardar cala automáticamente:",
+                            error,
+                          );
+                          toast.current?.show({
+                            severity: "error",
+                            summary: "Error",
+                            detail:
+                              "GPS capturado pero error al guardar la cala",
+                            life: 4000,
+                          });
+                        }
+                      },
+                      (errorMessage) => {
+                        toast.current?.show({
+                          severity: "error",
+                          summary: "Error",
+                          detail: errorMessage,
+                          life: 3000,
+                        });
+                      },
+                    );
+                  } catch (error) {
+                    console.error("Error capturando GPS FIN:", error);
+                  }
+                }}
+                disabled={
+                  loading ||
+                  (calaFinalizada && !esSuperUsuario) ||
+                  camposDeshabilitados
+                }
+                size="small"
+              />
+            </div>
+
+            <div style={{ flex: 3 }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  border: "3px solid #EF4444",
+                }}
+              >
+                <thead>
+                  <tr style={{ backgroundColor: "#EF4444", color: "white" }}>
+                    <th
+                      style={{
+                        padding: "8px",
+                        border: "1px solid #EF4444",
+                        fontSize: "14px",
+                        fontWeight: "bold",
+                        width: "100px",
+                        minWidth: "100px",
+                      }}
+                    >
+                      Formato
+                    </th>
+                    <th
+                      colSpan="4"
+                      style={{
+                        padding: "8px",
+                        border: "1px solid #EF4444",
+                        fontSize: "14px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    >
+                      Latitud FIN (Siempre SUR en Perú)
+                    </th>
+                    <th
+                      colSpan="4"
+                      style={{
+                        padding: "8px",
+                        border: "1px solid #EF4444",
+                        fontSize: "14px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    >
+                      Longitud FIN (Siempre OESTE en Perú)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td
+                      style={{
+                        padding: "8px",
+                        border: "1px solid #EF4444",
+                        fontWeight: "bold",
+                        fontSize: "14px",
+                        backgroundColor: "#fee2e2",
+                        width: "100px",
+                      }}
+                    >
+                      Decimal
+                    </td>
+                    <td
+                      colSpan="4"
+                      style={{ padding: "4px", border: "1px solid #EF4444" }}
+                    >
+                      <InputNumber
+                        value={latitudFin}
+                        onValueChange={(e) => setLatitudFin(e.value)}
+                        placeholder="-12.123456"
+                        disabled={
+                          (calaFinalizada && !esSuperUsuario) ||
+                          camposDeshabilitados
+                        }
+                        mode="decimal"
+                        minFractionDigits={0}
+                        maxFractionDigits={14}
+                        min={-90}
+                        max={90}
+                        style={{
+                          width: "100%",
+                          fontSize: "20px",
+                          padding: "8px",
+                        }}
+                      />
+                    </td>
+                    <td
+                      colSpan="4"
+                      style={{ padding: "4px", border: "1px solid #EF4444" }}
+                    >
+                      <InputNumber
+                        value={longitudFin}
+                        onValueChange={(e) => setLongitudFin(e.value)}
+                        placeholder="-77.123456"
+                        disabled={
+                          (calaFinalizada && !esSuperUsuario) ||
+                          camposDeshabilitados
+                        }
+                        mode="decimal"
+                        minFractionDigits={0}
+                        maxFractionDigits={14}
+                        min={-180}
+                        max={180}
+                        style={{
+                          width: "100%",
+                          fontSize: "20px",
+                          padding: "8px",
+                        }}
+                      />
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td
+                      style={{
+                        padding: "8px",
+                        border: "1px solid #EF4444",
+                        fontWeight: "bold",
+                        fontSize: "14px",
+                        backgroundColor: "#fee2e2",
+                      }}
+                    >
+                      DMS
+                    </td>
+
+                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <input
+                          type="number"
+                          value={latFinGrados}
+                          onChange={(e) =>
+                            setLatFinGrados(Number(e.target.value) || 0)
+                          }
+                          onBlur={actualizarLatitudFinDesdeDMS}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
+                          min="0"
+                          max="90"
+                          style={{
+                            width: "140px",
+                            padding: "8px",
+                            border: "2px solid #dc2626",
+                            fontSize: "18px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                            borderRadius: "4px",
+                          }}
+                        />
+                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                          °
+                        </span>
+                      </div>
+                    </td>
+
+                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <input
+                          type="number"
+                          value={latFinMinutos}
+                          onChange={(e) =>
+                            setLatFinMinutos(Number(e.target.value) || 0)
+                          }
+                          onBlur={actualizarLatitudFinDesdeDMS}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
+                          min="0"
+                          max="59"
+                          style={{
+                            width: "140px",
+                            padding: "8px",
+                            border: "2px solid #dc2626",
+                            fontSize: "18px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                            borderRadius: "4px",
+                          }}
+                        />
+                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                          '
+                        </span>
+                      </div>
+                    </td>
+
+                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <input
+                          type="number"
+                          value={latFinSegundos}
+                          onChange={(e) =>
+                            setLatFinSegundos(parseFloat(e.target.value) || 0)
+                          }
+                          onBlur={actualizarLatitudFinDesdeDMS}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
+                          min="0"
+                          max="59.99"
+                          step="0.01"
+                          style={{
+                            width: "140px",
+                            padding: "8px",
+                            border: "2px solid #dc2626",
+                            fontSize: "18px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                            borderRadius: "4px",
+                          }}
+                        />
+                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                          "
+                        </span>
+                      </div>
+                    </td>
+
+                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                      <select
+                        value={latFinDireccion}
+                        onChange={(e) => {
+                          setLatFinDireccion(e.target.value);
+                          actualizarLatitudFinDesdeDMS();
+                        }}
+                        disabled={
+                          !esSuperUsuario ||
+                          (calaFinalizada && !esSuperUsuario) ||
+                          camposDeshabilitados
+                        }
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: esSuperUsuario
+                            ? "2px solid #f59e0b"
+                            : "2px solid #94a3b8",
+                          fontSize: "18px",
+                          fontWeight: "bold",
+                          textAlign: "center",
+                          borderRadius: "4px",
+                          backgroundColor: esSuperUsuario
+                            ? "#fef3c7"
+                            : "#f1f5f9",
+                          cursor: esSuperUsuario ? "pointer" : "not-allowed",
+                        }}
+                      >
+                        <option value="N">N</option>
+                        <option value="S">S</option>
+                      </select>
+                      {!esSuperUsuario && (
+                        <div
+                          style={{
+                            fontSize: "10px",
+                            color: "#64748b",
+                            textAlign: "center",
+                            marginTop: "2px",
+                          }}
+                        >
+                          🔒 Fijo
+                        </div>
+                      )}
+                    </td>
+
+                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <input
+                          type="number"
+                          value={lonFinGrados}
+                          onChange={(e) =>
+                            setLonFinGrados(Number(e.target.value) || 0)
+                          }
+                          onBlur={actualizarLongitudFinDesdeDMS}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
+                          min="0"
+                          max="180"
+                          style={{
+                            width: "140px",
+                            padding: "8px",
+                            border: "2px solid #dc2626",
+                            fontSize: "18px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                            borderRadius: "4px",
+                          }}
+                        />
+                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                          °
+                        </span>
+                      </div>
+                    </td>
+
+                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <input
+                          type="number"
+                          value={lonFinMinutos}
+                          onChange={(e) =>
+                            setLonFinMinutos(Number(e.target.value) || 0)
+                          }
+                          onBlur={actualizarLongitudFinDesdeDMS}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
+                          min="0"
+                          max="59"
+                          style={{
+                            width: "140px",
+                            padding: "8px",
+                            border: "2px solid #dc2626",
+                            fontSize: "18px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                            borderRadius: "4px",
+                          }}
+                        />
+                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                          '
+                        </span>
+                      </div>
+                    </td>
+
+                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <input
+                          type="number"
+                          value={lonFinSegundos}
+                          onChange={(e) =>
+                            setLonFinSegundos(parseFloat(e.target.value) || 0)
+                          }
+                          onBlur={actualizarLongitudFinDesdeDMS}
+                          disabled={
+                            (calaFinalizada && !esSuperUsuario) ||
+                            camposDeshabilitados
+                          }
+                          min="0"
+                          max="59.99"
+                          step="0.01"
+                          style={{
+                            width: "140px",
+                            padding: "8px",
+                            border: "2px solid #dc2626",
+                            fontSize: "18px",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                            borderRadius: "4px",
+                          }}
+                        />
+                        <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                          "
+                        </span>
+                      </div>
+                    </td>
+
+                    <td style={{ padding: "4px", border: "1px solid #EF4444" }}>
+                      <select
+                        value={lonFinDireccion}
+                        onChange={(e) => {
+                          setLonFinDireccion(e.target.value);
+                          actualizarLongitudFinDesdeDMS();
+                        }}
+                        disabled={
+                          !esSuperUsuario ||
+                          (calaFinalizada && !esSuperUsuario) ||
+                          camposDeshabilitados
+                        }
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: esSuperUsuario
+                            ? "2px solid #f59e0b"
+                            : "2px solid #94a3b8",
+                          fontSize: "18px",
                           fontWeight: "bold",
                           textAlign: "center",
                           borderRadius: "4px",
@@ -1798,8 +2376,10 @@ const DetalleCalasForm = ({
             colapsadoPorDefecto={true}
           >
             <DraggableMarker />
+            <MarkerFin />
             <UserLocationMarker />
             <DistanceLine />
+            <CalaRouteLine />
           </PanelMapaGeografico>
 
           <DetalleCalasEspecieForm
@@ -1881,3 +2461,5 @@ const DetalleCalasForm = ({
 };
 
 export default DetalleCalasForm;
+
+  
