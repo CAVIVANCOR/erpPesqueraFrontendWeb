@@ -1,13 +1,10 @@
 /**
  * DetalleCalasForm.jsx
- *
  * Componente para mostrar y gestionar las calas de una faena de pesca.
  * Permite listar, crear y editar registros de Cala.
- *
  * @author ERP Megui
- * @version 1.1.0 - Agregado soporte para latitudFin y longitudFin
+ * @version 1.2.0 - Agregado soporte para consumo de combustible
  */
-
 import React, { useState, useEffect, useRef } from "react";
 import {
   MapContainer,
@@ -31,6 +28,7 @@ import { Dropdown } from "primereact/dropdown";
 import { Toast } from "primereact/toast";
 import { Toolbar } from "primereact/toolbar";
 import { Card } from "primereact/card";
+import { Panel } from "primereact/panel";
 import { getResponsiveFontSize } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import {
@@ -51,6 +49,16 @@ import {
   actualizarCala,
   eliminarCala,
 } from "../../api/cala";
+import { getPuertoPescaPorId } from "../../api/puertoPesca";
+import { getEmbarcacionPorId } from "../../api/embarcacion";
+import {
+  calcularConsumoFaena,
+  calcularCostoCombustible,
+  calcularDiferenciaTiempo,
+  calcularVelocidadPromedio,
+} from "../../utils/combustibleUtils";
+import { getPrecioCombustibleVigente } from "../../api/precioCombustible";
+import { consultarTipoCambioSunat } from "../../api/consultaExterna";
 
 const DetalleCalasForm = ({
   faenaPescaId,
@@ -133,6 +141,45 @@ const DetalleCalasForm = ({
   const [createdAt, setCreatedAt] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
 
+  const [puertoDatos, setPuertoDatos] = useState(null);
+  const [distanciaPuertoInicio, setDistanciaPuertoInicio] = useState(null);
+  const [distanciaInicioFin, setDistanciaInicioFin] = useState(null);
+  const [distanciaTotal, setDistanciaTotal] = useState(null);
+  const [consumoCombustible, setConsumoCombustible] = useState(null);
+  const [costoCombustible, setCostoCombustible] = useState(null);
+  const [tiempoPuertoInicio, setTiempoPuertoInicio] = useState(null);
+  const [tiempoInicioFin, setTiempoInicioFin] = useState(null);
+  const [tiempoTotal, setTiempoTotal] = useState(null);
+  const [velocidadPromedioPuertoInicio, setVelocidadPromedioPuertoInicio] =
+    useState(null);
+  const [velocidadPromedioInicioFin, setVelocidadPromedioInicioFin] =
+    useState(null);
+  const [velocidadPromedioTotal, setVelocidadPromedioTotal] = useState(null);
+  const [precioCombustibleSoles, setPrecioCombustibleSoles] = useState(0);
+  const [loadingPrecioCombustible, setLoadingPrecioCombustible] =
+    useState(false);
+  const [embarcacionCompleta, setEmbarcacionCompleta] = useState(null);
+
+  // Cargar datos completos de la embarcación
+  useEffect(() => {
+    const cargarEmbarcacion = async () => {
+      if (!faenaData?.embarcacionId) {
+        setEmbarcacionCompleta(null);
+        return;
+      }
+
+      try {
+        const embarcacion = await getEmbarcacionPorId(faenaData.embarcacionId);
+        setEmbarcacionCompleta(embarcacion);
+      } catch (error) {
+        console.error("Error al cargar embarcación:", error);
+        setEmbarcacionCompleta(null);
+      }
+    };
+
+    cargarEmbarcacion();
+  }, [faenaData?.embarcacionId]);
+
   useEffect(() => {
     if (faenaPescaId) {
       cargarCalas();
@@ -170,7 +217,11 @@ const DetalleCalasForm = ({
   }, [latitudFin]);
 
   useEffect(() => {
-    if (longitudFin !== "" && longitudFin !== null && longitudFin !== undefined) {
+    if (
+      longitudFin !== "" &&
+      longitudFin !== null &&
+      longitudFin !== undefined
+    ) {
       const dms = descomponerDMS(Number(longitudFin), false);
       setLonFinGrados(dms.grados);
       setLonFinMinutos(dms.minutos);
@@ -270,35 +321,297 @@ const DetalleCalasForm = ({
   ]);
 
   useEffect(() => {
-    if (latitud && longitud && !loadingGeo) {
-      const coordenadasActuales = `${latitud},${longitud}`;
-      const coordenadasAnalizadas = infoGeografica
-        ? `${infoGeografica.coordenadas?.latitud},${infoGeografica.coordenadas?.longitud}`
-        : null;
-
-      if (coordenadasActuales !== coordenadasAnalizadas) {
-        const analizarCoordenadasExistentes = async () => {
-          setLoadingGeo(true);
-          setErrorGeo(null);
-          try {
-            const infoGeo = await analizarCoordenadasConReferencia(
-              latitud,
-              longitud,
-              null,
-            );
-            setInfoGeografica(infoGeo);
-          } catch (error) {
-            console.error("Error al analizar coordenadas existentes:", error);
-            setErrorGeo("No se pudo obtener la información geográfica");
-          } finally {
-            setLoadingGeo(false);
-          }
-        };
-
-        analizarCoordenadasExistentes();
+    const cargarPuerto = async () => {
+      if (faenaData?.puertoSalidaId) {
+        try {
+          const puerto = await getPuertoPescaPorId(faenaData.puertoSalidaId);
+          setPuertoDatos(puerto);
+        } catch (error) {
+          console.error("Error cargando puerto:", error);
+        }
       }
+    };
+    cargarPuerto();
+  }, [faenaData?.puertoSalidaId]);
+
+  // Analizar información geográfica de Cala FIN (donde se pescó)
+  useEffect(() => {
+    const analizarCoordenadas = async () => {
+      // Usar coordenadas de Cala FIN si existen, sino usar Cala INICIO
+      const latAnalisis = latitudFin || latitud;
+      const lonAnalisis = longitudFin || longitud;
+
+      if (latAnalisis && lonAnalisis) {
+        try {
+          setLoadingGeo(true);
+          const info = await analizarCoordenadasConReferencia(
+            Number(latAnalisis),
+            Number(lonAnalisis),
+            null,
+          );
+          setInfoGeografica(info);
+        } catch (error) {
+          console.error("Error al analizar coordenadas:", error);
+          setErrorGeo(error.message);
+        } finally {
+          setLoadingGeo(false);
+        }
+      }
+    };
+    analizarCoordenadas();
+  }, [latitud, longitud, latitudFin, longitudFin]);
+
+  useEffect(() => {
+    if (puertoDatos?.latitud && puertoDatos?.longitud && latitud && longitud) {
+      const R = 3440.065;
+      const lat1 = (Number(puertoDatos.latitud) * Math.PI) / 180;
+      const lat2 = (Number(latitud) * Math.PI) / 180;
+      const deltaLat =
+        ((Number(latitud) - Number(puertoDatos.latitud)) * Math.PI) / 180;
+      const deltaLon =
+        ((Number(longitud) - Number(puertoDatos.longitud)) * Math.PI) / 180;
+
+      const a =
+        Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+        Math.cos(lat1) *
+          Math.cos(lat2) *
+          Math.sin(deltaLon / 2) *
+          Math.sin(deltaLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const distancia = R * c;
+
+      setDistanciaPuertoInicio(distancia);
+    } else {
+      setDistanciaPuertoInicio(null);
     }
-  }, [latitud, longitud]);
+  }, [puertoDatos, latitud, longitud]);
+
+  useEffect(() => {
+    if (latitud && longitud && latitudFin && longitudFin) {
+      const R = 3440.065;
+      const lat1 = (Number(latitud) * Math.PI) / 180;
+      const lat2 = (Number(latitudFin) * Math.PI) / 180;
+      const deltaLat = ((Number(latitudFin) - Number(latitud)) * Math.PI) / 180;
+      const deltaLon =
+        ((Number(longitudFin) - Number(longitud)) * Math.PI) / 180;
+
+      const a =
+        Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+        Math.cos(lat1) *
+          Math.cos(lat2) *
+          Math.sin(deltaLon / 2) *
+          Math.sin(deltaLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const distancia = R * c;
+
+      setDistanciaInicioFin(distancia);
+    } else {
+      setDistanciaInicioFin(null);
+    }
+  }, [latitud, longitud, latitudFin, longitudFin]);
+
+  useEffect(() => {
+    if (distanciaPuertoInicio !== null && distanciaInicioFin !== null) {
+      setDistanciaTotal(distanciaPuertoInicio + distanciaInicioFin);
+    } else if (distanciaPuertoInicio !== null) {
+      setDistanciaTotal(distanciaPuertoInicio);
+    } else {
+      setDistanciaTotal(null);
+    }
+  }, [distanciaPuertoInicio, distanciaInicioFin]);
+
+  useEffect(() => {
+    if (
+      faenaData?.fechaSalida &&
+      fechaHoraInicio &&
+      fechaHoraFin &&
+      distanciaTotal !== null &&
+      faenaData?.embarcacion?.millasNauticasPorGalon
+    ) {
+      const consumo = calcularConsumoFaena(
+        distanciaTotal,
+        Number(embarcacionCompleta.millasNauticasPorGalon),
+      );
+      setConsumoCombustible(consumo);
+
+      const costo = calcularCostoCombustible(consumo, precioCombustibleSoles);
+      setCostoCombustible(costo);
+    } else {
+      setConsumoCombustible(null);
+      setCostoCombustible(null);
+    }
+  }, [
+    distanciaTotal,
+    faenaData?.embarcacion?.millasNauticasPorGalon,
+    faenaData?.fechaSalida,
+    fechaHoraInicio,
+    fechaHoraFin,
+    precioCombustibleSoles,
+  ]);
+
+  useEffect(() => {
+    if (faenaData?.fechaSalida && fechaHoraInicio) {
+      const tiempo = calcularDiferenciaTiempo(
+        faenaData.fechaSalida,
+        fechaHoraInicio,
+      );
+      setTiempoPuertoInicio(tiempo);
+    } else {
+      setTiempoPuertoInicio(null);
+    }
+  }, [faenaData?.fechaSalida, fechaHoraInicio]);
+
+  useEffect(() => {
+    if (fechaHoraInicio && fechaHoraFin) {
+      const tiempo = calcularDiferenciaTiempo(fechaHoraInicio, fechaHoraFin);
+      setTiempoInicioFin(tiempo);
+    } else {
+      setTiempoInicioFin(null);
+    }
+  }, [fechaHoraInicio, fechaHoraFin]);
+
+  useEffect(() => {
+    if (faenaData?.fechaSalida && fechaHoraFin) {
+      const tiempo = calcularDiferenciaTiempo(
+        faenaData.fechaSalida,
+        fechaHoraFin,
+      );
+      setTiempoTotal(tiempo);
+    } else {
+      setTiempoTotal(null);
+    }
+  }, [faenaData?.fechaSalida, fechaHoraFin]);
+
+  useEffect(() => {
+    if (distanciaPuertoInicio !== null && tiempoPuertoInicio !== null) {
+      const velocidad = calcularVelocidadPromedio(
+        distanciaPuertoInicio,
+        tiempoPuertoInicio,
+      );
+      setVelocidadPromedioPuertoInicio(velocidad);
+    } else {
+      setVelocidadPromedioPuertoInicio(null);
+    }
+  }, [distanciaPuertoInicio, tiempoPuertoInicio]);
+
+  useEffect(() => {
+    if (distanciaInicioFin !== null && tiempoInicioFin !== null) {
+      const velocidad = calcularVelocidadPromedio(
+        distanciaInicioFin,
+        tiempoInicioFin,
+      );
+      setVelocidadPromedioInicioFin(velocidad);
+    } else {
+      setVelocidadPromedioInicioFin(null);
+    }
+  }, [distanciaInicioFin, tiempoInicioFin]);
+
+  useEffect(() => {
+    if (distanciaTotal !== null && tiempoTotal !== null) {
+      const velocidad = calcularVelocidadPromedio(distanciaTotal, tiempoTotal);
+      setVelocidadPromedioTotal(velocidad);
+    } else {
+      setVelocidadPromedioTotal(null);
+    }
+  }, [distanciaTotal, tiempoTotal]);
+
+  // Obtener precio de combustible dinámico
+  useEffect(() => {
+    const obtenerPrecioCombustible = async () => {
+
+      const fechaReferencia =
+        fechaHoraFin || fechaHoraInicio || faenaData?.fechaSalida;
+
+      if (!temporadaData?.empresa?.entidadComercialId || !fechaReferencia) {
+        return;
+      }
+      setLoadingPrecioCombustible(true);
+      try {
+        const precioCombustible = await getPrecioCombustibleVigente(
+          Number(temporadaData.empresa.entidadComercialId),
+          fechaReferencia,
+        );
+
+        if (!precioCombustible) {
+          console.warn(
+            "No se encontró precio de combustible vigente, usando precio por defecto",
+          );
+          return;
+        }
+
+        let precioEnSoles = Number(precioCombustible.precioUnitario);
+
+        // Si está en dólares, convertir a soles
+        // Si está en dólares (ID = 2), convertir a soles
+        if (Number(precioCombustible.monedaId) === 2) {
+          try {
+            const fecha = new Date(fechaReferencia);
+            const tipoCambio = await consultarTipoCambioSunat({
+              date: fecha.getDate(),
+              month: fecha.getMonth() + 1,
+              year: fecha.getFullYear(),
+            });
+            if (tipoCambio?.venta) {
+              precioEnSoles = precioEnSoles * Number(tipoCambio.venta);
+            }
+          } catch (error) {
+            console.error("Error obteniendo tipo de cambio:", error);
+          }
+        }
+
+        setPrecioCombustibleSoles(precioEnSoles);
+      } catch (error) {
+        console.error("Error obteniendo precio de combustible:", error);
+      } finally {
+        setLoadingPrecioCombustible(false);
+      }
+    };
+
+    obtenerPrecioCombustible();
+  }, [
+    temporadaData?.empresaId,
+    fechaHoraFin,
+    fechaHoraInicio,
+    faenaData?.fechaSalida,
+  ]);
+
+  // Centrar mapa automáticamente para mostrar todos los puntos
+  useEffect(() => {
+    if (!latitud || !longitud) return;
+
+    const puntos = [];
+
+    // Agregar puerto si existe
+    if (puertoDatos?.latitud && puertoDatos?.longitud) {
+      puntos.push([Number(puertoDatos.latitud), Number(puertoDatos.longitud)]);
+    }
+
+    // Agregar Cala Inicio
+    puntos.push([Number(latitud), Number(longitud)]);
+
+    // Agregar Cala Fin si existe
+    if (latitudFin && longitudFin) {
+      puntos.push([Number(latitudFin), Number(longitudFin)]);
+    }
+
+    if (puntos.length > 0) {
+      // Calcular bounds
+      const lats = puntos.map((p) => p[0]);
+      const lngs = puntos.map((p) => p[1]);
+
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+
+      // Calcular centro
+      const centerLat = (minLat + maxLat) / 2;
+      const centerLng = (minLng + maxLng) / 2;
+
+      setMapPosition([centerLat, centerLng]);
+      setMapKey((prev) => prev + 1); // Forzar re-render del mapa
+    }
+  }, [puertoDatos, latitud, longitud, latitudFin, longitudFin]);
 
   const cargarCalas = async () => {
     if (!faenaPescaId) {
@@ -485,6 +798,36 @@ const DetalleCalasForm = ({
     setUpdatedAt(null);
   };
 
+  const MarkerPuerto = () => {
+    if (!puertoDatos?.latitud || !puertoDatos?.longitud) return null;
+
+    const iconPuerto = L.icon({
+      iconUrl:
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png",
+      shadowUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+
+    return (
+      <Marker
+        position={[Number(puertoDatos.latitud), Number(puertoDatos.longitud)]}
+        icon={iconPuerto}
+      >
+        <Popup>
+          <strong>🟣 {puertoDatos.nombre}</strong>
+          <br />
+          Lat: {Number(puertoDatos.latitud).toFixed(6)}
+          <br />
+          Lon: {Number(puertoDatos.longitud).toFixed(6)}
+        </Popup>
+      </Marker>
+    );
+  };
+
   const DraggableMarker = () => {
     const markerRef = useRef(null);
     const nombreBahia =
@@ -507,7 +850,11 @@ const DetalleCalasForm = ({
 
     return (
       <Marker
-        position={mapPosition}
+        position={
+          latitud && longitud
+            ? [Number(latitud), Number(longitud)]
+            : mapPosition
+        }
         draggable={
           !(calaFinalizada && !esSuperUsuario) && !camposDeshabilitados
         }
@@ -515,7 +862,7 @@ const DetalleCalasForm = ({
         ref={markerRef}
       >
         <Popup>
-          <strong>{nombreBahia}</strong>
+          <strong>{nombreBahia} - INICIO</strong>
           <br />
           Lat: {Number(latitud).toFixed(6)}
           <br />
@@ -572,19 +919,28 @@ const DetalleCalasForm = ({
     );
   };
 
-  const CalaRouteLine = () => {
-    if (
-      !latitud ||
-      !longitud ||
-      !latitudFin ||
-      !longitudFin ||
-      latitud === "" ||
-      longitud === "" ||
-      latitudFin === "" ||
-      longitudFin === ""
-    )
-      return null;
+  const LineaPuertoInicio = () => {
 
+    if (
+      !puertoDatos?.latitud ||
+      !puertoDatos?.longitud ||
+      !latitud ||
+      !longitud
+    ) {
+      return null;
+    }
+    const positions = [
+      [Number(puertoDatos.latitud), Number(puertoDatos.longitud)],
+      [Number(latitud), Number(longitud)],
+    ];
+
+    return (
+      <Polyline positions={positions} color="#FBBF24" weight={5} opacity={1} />
+    );
+  };
+
+  const LineaInicioFin = () => {
+    if (!latitud || !longitud || !latitudFin || !longitudFin) return null;
     const positions = [
       [Number(latitud), Number(longitud)],
       [Number(latitudFin), Number(longitudFin)],
@@ -593,21 +949,16 @@ const DetalleCalasForm = ({
     return (
       <Polyline
         positions={positions}
-        color="#EF4444"
-        weight={3}
-        opacity={0.8}
+        color="#DC2626"
+        weight={5}
+        opacity={1}
         dashArray="10, 5"
       />
     );
   };
 
   const MarkerFin = () => {
-    if (
-      !latitudFin ||
-      !longitudFin ||
-      latitudFin === "" ||
-      longitudFin === ""
-    )
+    if (!latitudFin || !longitudFin || latitudFin === "" || longitudFin === "")
       return null;
 
     const iconFin = L.icon({
@@ -871,6 +1222,367 @@ const DetalleCalasForm = ({
     }
   };
 
+  const PanelResumenFaena = () => {
+    const hayDatos =
+      distanciaPuertoInicio !== null ||
+      distanciaInicioFin !== null ||
+      distanciaTotal !== null ||
+      consumoCombustible !== null ||
+      costoCombustible !== null;
+
+    if (!hayDatos) return null;
+
+    return (
+      <Panel
+        header="⛽ Resumen de la Faena - Consumo de Combustible"
+        toggleable
+        collapsed={false}
+        style={{
+          marginTop: "1rem",
+          marginBottom: "1rem",
+          border: "3px solid #059669",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+            gap: "1rem",
+          }}
+        >
+          {puertoDatos && (
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "#dbeafe",
+                borderRadius: "8px",
+                border: "2px solid #3b82f6",
+              }}
+            >
+              <h4 style={{ margin: "0 0 0.5rem 0", color: "#1e40af" }}>
+                🚢 Puerto de Salida
+              </h4>
+              <p style={{ margin: "0.25rem 0", fontWeight: "bold" }}>
+                {puertoDatos.nombre}
+              </p>
+              <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                Lat: {Number(puertoDatos.latitud).toFixed(6)}
+              </p>
+              <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                Lon: {Number(puertoDatos.longitud).toFixed(6)}
+              </p>
+              {precioCombustibleSoles > 0 && (
+                <>
+                  <hr
+                    style={{ margin: "0.5rem 0", border: "1px solid #93c5fd" }}
+                  />
+                  <p
+                    style={{
+                      margin: "0.25rem 0",
+                      fontSize: "0.9rem",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    💰 Precio Combustible: S/{" "}
+                    {precioCombustibleSoles.toFixed(2)} /gal
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
+          {distanciaPuertoInicio !== null && (
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "#dcfce7",
+                borderRadius: "8px",
+                border: "2px solid #10b981",
+              }}
+            >
+              <h4 style={{ margin: "0 0 0.5rem 0", color: "#047857" }}>
+                🟣 Puerto → 🟢 Cala Inicio
+              </h4>
+              <p
+                style={{
+                  margin: "0.25rem 0",
+                  fontSize: "1.5rem",
+                  fontWeight: "bold",
+                  color: "#047857",
+                }}
+              >
+                {distanciaPuertoInicio.toFixed(2)} MN
+              </p>
+              {embarcacionCompleta?.millasNauticasPorGalon && (
+                <>
+                  <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                    ⛽{" "}
+                    {(
+                      distanciaPuertoInicio /
+                      Number(embarcacionCompleta.millasNauticasPorGalon)
+                    ).toFixed(2)}{" "}
+                    Galones
+                  </p>
+                  <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                    💰 S/{" "}
+                    {(
+                      (distanciaPuertoInicio /
+                        Number(embarcacionCompleta.millasNauticasPorGalon)) *
+                      precioCombustibleSoles
+                    ).toFixed(2)}
+                  </p>
+                </>
+              )}
+              {tiempoPuertoInicio && (
+                <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                  ⏱️ Tiempo: {tiempoPuertoInicio}
+                </p>
+              )}
+              {velocidadPromedioPuertoInicio !== null && (
+                <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                  🚤 Velocidad: {velocidadPromedioPuertoInicio.toFixed(2)} nudos
+                </p>
+              )}
+            </div>
+          )}
+
+          {distanciaInicioFin !== null && (
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "#fee2e2",
+                borderRadius: "8px",
+                border: "2px solid #ef4444",
+              }}
+            >
+              <h4 style={{ margin: "0 0 0.5rem 0", color: "#b91c1c" }}>
+                🟢 Cala Inicio → 🔴 Cala Fin
+              </h4>
+              <p
+                style={{
+                  margin: "0.25rem 0",
+                  fontSize: "1.5rem",
+                  fontWeight: "bold",
+                  color: "#b91c1c",
+                }}
+              >
+                {distanciaInicioFin.toFixed(2)} MN
+              </p>
+              {embarcacionCompleta?.millasNauticasPorGalon && (
+                <>
+                  <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                    ⛽{" "}
+                    {(
+                      distanciaInicioFin /
+                      Number(embarcacionCompleta.millasNauticasPorGalon)
+                    ).toFixed(2)}{" "}
+                    Galones
+                  </p>
+                  <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                    💰 S/{" "}
+                    {(() => {
+                      const galones =
+                        distanciaInicioFin /
+                        Number(embarcacionCompleta.millasNauticasPorGalon);
+                      const costo = galones * precioCombustibleSoles;
+                      return costo.toFixed(2);
+                    })()}
+                  </p>
+                </>
+              )}
+              {tiempoInicioFin && (
+                <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                  ⏱️ Tiempo: {tiempoInicioFin}
+                </p>
+              )}
+              {velocidadPromedioInicioFin !== null && (
+                <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                  🚤 Velocidad: {velocidadPromedioInicioFin.toFixed(2)} nudos
+                </p>
+              )}
+            </div>
+          )}
+
+          {distanciaTotal !== null && (
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "#fef3c7",
+                borderRadius: "8px",
+                border: "2px solid #f59e0b",
+              }}
+            >
+              <h4 style={{ margin: "0 0 0.5rem 0", color: "#92400e" }}>
+                📏 Distancia Total
+              </h4>
+              <p
+                style={{
+                  margin: "0.25rem 0",
+                  fontSize: "1.5rem",
+                  fontWeight: "bold",
+                  color: "#92400e",
+                }}
+              >
+                {distanciaTotal.toFixed(2)} MN
+              </p>
+              {embarcacionCompleta?.millasNauticasPorGalon && (
+                <>
+                  <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                    ⛽{" "}
+                    {(
+                      distanciaTotal /
+                      Number(embarcacionCompleta.millasNauticasPorGalon)
+                    ).toFixed(2)}{" "}
+                    Galones (Total)
+                  </p>
+                  <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                    💰 S/{" "}
+                    {(() => {
+                      const galonesTotal =
+                        distanciaTotal /
+                        Number(embarcacionCompleta.millasNauticasPorGalon);
+                      const costoTotal = galonesTotal * precioCombustibleSoles;
+                      return costoTotal.toFixed(2);
+                    })()}{" "}
+                    (Total)
+                  </p>
+                  <p
+                    style={{
+                      margin: "0.25rem 0",
+                      fontSize: "0.85rem",
+                      color: "#64748b",
+                    }}
+                  >
+                    Rend:{" "}
+                    {Number(embarcacionCompleta.millasNauticasPorGalon).toFixed(
+                      2,
+                    )}{" "}
+                    MN/Gal
+                  </p>
+                  <p
+                    style={{
+                      margin: "0.25rem 0",
+                      fontSize: "1rem",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {embarcacionCompleta.activo?.nombre || "Embarcación"} -{" "}
+                    {embarcacionCompleta.matricula}
+                  </p>
+                </>
+              )}
+              {tiempoTotal && (
+                <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                  ⏱️ Tiempo Total: {tiempoTotal}
+                </p>
+              )}
+              {velocidadPromedioTotal !== null && (
+                <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                  🚤 Velocidad Promedio: {velocidadPromedioTotal.toFixed(2)}{" "}
+                  nudos
+                </p>
+              )}
+            </div>
+          )}
+
+          {faenaData?.embarcacion?.millasNauticasPorGalon && (
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "#e0e7ff",
+                borderRadius: "8px",
+                border: "2px solid #6366f1",
+              }}
+            >
+              <h4 style={{ margin: "0 0 0.5rem 0", color: "#3730a3" }}>
+                ⚙️ Rendimiento Embarcación
+              </h4>
+              <p
+                style={{
+                  margin: "0.25rem 0",
+                  fontSize: "1.5rem",
+                  fontWeight: "bold",
+                  color: "#3730a3",
+                }}
+              >
+                {Number(embarcacionCompleta.millasNauticasPorGalon).toFixed(2)}{" "}
+                MN/Gal
+              </p>
+              <p
+                style={{
+                  margin: "0.25rem 0",
+                  fontSize: "1rem",
+                  fontWeight: "bold",
+                }}
+              >
+                {embarcacionCompleta.activo?.nombre || "Embarcación"} -{" "}
+                {embarcacionCompleta.matricula}
+              </p>
+            </div>
+          )}
+
+          {consumoCombustible !== null && (
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "#fce7f3",
+                borderRadius: "8px",
+                border: "2px solid #ec4899",
+              }}
+            >
+              <h4 style={{ margin: "0 0 0.5rem 0", color: "#9f1239" }}>
+                ⛽ Consumo de Combustible
+              </h4>
+              <p
+                style={{
+                  margin: "0.25rem 0",
+                  fontSize: "1.5rem",
+                  fontWeight: "bold",
+                  color: "#9f1239",
+                }}
+              >
+                {consumoCombustible.toFixed(2)} Galones
+              </p>
+              <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                Estimado según distancia recorrida
+              </p>
+            </div>
+          )}
+
+          {costoCombustible !== null && (
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "#dcfce7",
+                borderRadius: "8px",
+                border: "2px solid #10b981",
+              }}
+            >
+              <h4 style={{ margin: "0 0 0.5rem 0", color: "#047857" }}>
+                💰 Costo Estimado
+              </h4>
+              <p
+                style={{
+                  margin: "0.25rem 0",
+                  fontSize: "1.5rem",
+                  fontWeight: "bold",
+                  color: "#047857",
+                }}
+              >
+                S/ {costoCombustible.toFixed(2)}
+              </p>
+              <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                {loadingPrecioCombustible
+                  ? "Cargando precio..."
+                  : `A S/ ${precioCombustibleSoles.toFixed(2)} por galón`}
+              </p>
+            </div>
+          )}
+        </div>
+      </Panel>
+    );
+  };
+
   const estadosCerrados = ["FINALIZADA", "CANCELADA"];
   const estadoTemporada = temporadaData?.estadoTemporada?.descripcion || "";
   const temporadaCerrada = estadosCerrados.includes(estadoTemporada);
@@ -1031,7 +1743,7 @@ const DetalleCalasForm = ({
     if (onFaenasChange && typeof onFaenasChange === "function") {
       await onFaenasChange();
     }
-   };
+  };
 
   return (
     <Card
@@ -1418,7 +2130,7 @@ const DetalleCalasForm = ({
                         textAlign: "center",
                       }}
                     >
-                      Latitud INICIO (Siempre SUR en Perú)
+                      Latitud INICIO
                     </th>
                     <th
                       colSpan="4"
@@ -1430,7 +2142,7 @@ const DetalleCalasForm = ({
                         textAlign: "center",
                       }}
                     >
-                      Longitud INICIO (Siempre OESTE en Perú)
+                      Longitud INICIO
                     </th>
                   </tr>
                 </thead>
@@ -1941,7 +2653,7 @@ const DetalleCalasForm = ({
                         textAlign: "center",
                       }}
                     >
-                      Latitud FIN (Siempre SUR en Perú)
+                      Latitud FIN
                     </th>
                     <th
                       colSpan="4"
@@ -1953,7 +2665,7 @@ const DetalleCalasForm = ({
                         textAlign: "center",
                       }}
                     >
-                      Longitud FIN (Siempre OESTE en Perú)
+                      Longitud FIN
                     </th>
                   </tr>
                 </thead>
@@ -2375,12 +3087,15 @@ const DetalleCalasForm = ({
             titulo="📍 Información Geográfica - Cala"
             colapsadoPorDefecto={true}
           >
+            <LineaPuertoInicio />
+            <LineaInicioFin />
+            <MarkerPuerto />
             <DraggableMarker />
             <MarkerFin />
             <UserLocationMarker />
-            <DistanceLine />
-            <CalaRouteLine />
           </PanelMapaGeografico>
+
+          <PanelResumenFaena />
 
           <DetalleCalasEspecieForm
             calaId={editingCala?.id}
@@ -2391,6 +3106,7 @@ const DetalleCalasForm = ({
             onDataChange={handleDataChange}
             onFaenasChange={onFaenasChange}
           />
+
           <div
             style={{
               display: "flex",
@@ -2461,5 +3177,3 @@ const DetalleCalasForm = ({
 };
 
 export default DetalleCalasForm;
-
-  

@@ -44,7 +44,7 @@ const DatosGeneralesFaenaPesca = ({
   onFaenasChange, // Callback para notificar cambios en faenas
 }) => {
   // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
-  const usuario = useAuthStore(state => state.usuario);
+  const usuario = useAuthStore((state) => state.usuario);
   const esSuperUsuario = usuario?.esSuperUsuario || false;
 
   // ⭐ LÓGICA DE PERMISOS PARA EDICIÓN
@@ -597,6 +597,9 @@ const DatosGeneralesFaenaPesca = ({
           motoristaId: watch("motoristaId"),
           patronId: watch("patronId"),
           embarcacionId: watch("embarcacionId"),
+          embarcacion: embarcaciones.find(
+            (e) => Number(e.value) === Number(watch("embarcacionId")),
+          ),
           fechaSalida: watch("fechaSalida"),
           puertoSalidaId: watch("puertoSalidaId"),
           estadoFaenaId: watch("estadoFaenaId"),

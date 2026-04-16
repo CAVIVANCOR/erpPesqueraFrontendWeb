@@ -278,7 +278,6 @@ async function agregarPaginaDocumento(
       }
     }
     
-    console.log(`📄 Cargando documento: ${urlCompleta}`);
     
     const response = await fetch(`${urlCompleta}?t=${Date.now()}`, {
       method: "GET",
@@ -294,7 +293,6 @@ async function agregarPaginaDocumento(
     const contentType = response.headers.get('content-type') || '';
     const documentBytes = await response.arrayBuffer();
     
-    console.log(`📄 Content-Type: ${contentType}`);
     
     // Calcular espacio disponible para el documento
     const maxWidth = width - 2 * margin;
@@ -325,7 +323,6 @@ async function agregarPaginaDocumento(
           height: finalHeight,
         });
 
-        console.log(`✅ PDF dibujado en la misma página: ${finalWidth}x${finalHeight}`);
       } catch (pdfError) {
         console.error("Error al cargar PDF:", pdfError);
         throw new Error(`No se pudo cargar el PDF: ${pdfError.message}`);
@@ -363,7 +360,6 @@ async function agregarPaginaDocumento(
           height: finalHeight,
         });
 
-        console.log(`✅ Imagen dibujada en la misma página: ${finalWidth}x${finalHeight}`);
       } catch (imgError) {
         console.error("Error al cargar imagen:", imgError);
         throw new Error(`No se pudo cargar la imagen: ${imgError.message}`);

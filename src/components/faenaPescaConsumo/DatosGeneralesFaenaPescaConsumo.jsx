@@ -35,21 +35,21 @@ export default function DatosGeneralesFaenaPescaConsumo({
   onNovedadDataChange, // Mantener para callbacks
 }) {
   const [calasUpdateTrigger, setCalasUpdateTrigger] = useState(0);
-    // Normalizar puertos
-    const puertosNormalizados = useMemo(() => {
-      if (!puertos || !Array.isArray(puertos)) return [];
-      
-      // Si ya están normalizados (tienen label y value), devolverlos tal cual
-      if (puertos.length > 0 && puertos[0].label && puertos[0].value) {
-        return puertos;
-      }
-      
-      // Si no están normalizados, normalizarlos
-      return puertos.map(p => ({
-        label: p.nombre,
-        value: Number(p.id)
-      }));
-    }, [puertos]);
+  // Normalizar puertos
+  const puertosNormalizados = useMemo(() => {
+    if (!puertos || !Array.isArray(puertos)) return [];
+
+    // Si ya están normalizados (tienen label y value), devolverlos tal cual
+    if (puertos.length > 0 && puertos[0].label && puertos[0].value) {
+      return puertos;
+    }
+
+    // Si no están normalizados, normalizarlos
+    return puertos.map((p) => ({
+      label: p.nombre,
+      value: Number(p.id),
+    }));
+  }, [puertos]);
 
   const estadoFaenaId = watch("estadoFaenaId");
   const toneladasCapturadasFaena = watch("toneladasCapturadasFaena");
@@ -72,37 +72,30 @@ export default function DatosGeneralesFaenaPescaConsumo({
 
   // Verificar si todos los campos requeridos están completos para finalizar faena
   const allRequiredFieldsComplete = useMemo(() => {
-    const requiredFields = [
-      fechaSalida,
-      puertoSalidaId,
-    ];
+    const requiredFields = [fechaSalida, puertoSalidaId];
 
     return requiredFields.every(
-      (field) => field !== null && field !== undefined && field !== ""
+      (field) => field !== null && field !== undefined && field !== "",
     );
-  }, [
-    fechaSalida,
-    puertoSalidaId,
-  ]);
+  }, [fechaSalida, puertoSalidaId]);
 
   // ← AGREGAR LÓGICA PARA MOSTRAR BOTÓN
   const showFinalizarButton =
-  Number(estadoFaenaId) === 28 && allRequiredFieldsComplete;
+    Number(estadoFaenaId) === 28 && allRequiredFieldsComplete;
 
   // ← AGREGAR LÓGICA DE SOLO LECTURA
   const isReadOnlyState = Number(estadoFaenaId) === 29; // FINALIZADA
-
 
   useEffect(() => {
     const recargarDatosFaena = async () => {
       if (faenaData?.id && calasUpdateTrigger > 0) {
         try {
           const faenaActualizada = await getFaenaPescaConsumoPorId(
-            faenaData.id
+            faenaData.id,
           );
           setValue(
             "toneladasCapturadasFaena",
-            faenaActualizada.toneladasCapturadasFaena || 0
+            faenaActualizada.toneladasCapturadasFaena || 0,
           );
         } catch (error) {
           console.error("❌ Error recargando datos de faena:", error);
@@ -506,8 +499,8 @@ export default function DatosGeneralesFaenaPescaConsumo({
                 finalizandoFaena
                   ? "Procesando finalización de faena..."
                   : !showFinalizarButton
-                  ? "Complete Fecha de Salida y Puerto de Salida, y asegúrese que el estado sea EN ZARPE"
-                  : "Finalizar faena de pesca consumo"
+                    ? "Complete Fecha de Salida y Puerto de Salida, y asegúrese que el estado sea EN ZARPE"
+                    : "Finalizar faena de pesca consumo"
               }
               tooltipOptions={{ position: "top" }}
             />
@@ -518,6 +511,7 @@ export default function DatosGeneralesFaenaPescaConsumo({
       <CalasConsumoCard
         faenaPescaConsumoId={faenaData?.id}
         novedadPescaConsumoId={novedadData?.id}
+        novedadData={novedadData}
         faenaData={{
           bahiaId: watch("bahiaId"),
           motoristaId: watch("motoristaId"),

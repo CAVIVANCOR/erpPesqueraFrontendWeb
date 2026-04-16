@@ -22,6 +22,7 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { InputText } from "primereact/inputtext";
 import { Tag } from "primereact/tag";
+import { Panel } from "primereact/panel";
 import { confirmDialog } from "primereact/confirmdialog";
 import { Controller, useForm } from "react-hook-form";
 import { getResponsiveFontSize } from "../../utils/utils";
@@ -32,6 +33,12 @@ import {
   descomponerDMS,
   convertirDMSADecimal,
 } from "../../utils/gpsUtils";
+import {
+  calcularConsumoFaena,
+  calcularCostoCombustible,
+  calcularDiferenciaTiempo,
+  calcularVelocidadPromedio,
+} from "../../utils/combustibleUtils";
 import { analizarCoordenadasConReferencia } from "../../api/geolocalizacion";
 import {
   DEFAULT_MAP_ZOOM,
@@ -45,13 +52,18 @@ import {
   actualizarCalaFaenaConsumo,
   eliminarCalaFaenaConsumo,
 } from "../../api/calaFaenaConsumo";
+import { getPuertoPescaPorId } from "../../api/puertoPesca";
 import DetalleCalasConsumoEspecieForm from "./DetalleCalasConsumoEspecieForm";
 import PanelMapaGeografico from "../shared/PanelMapaGeografico";
+import { getPrecioCombustibleVigente } from "../../api/precioCombustible";
+import { consultarTipoCambioSunat } from "../../api/consultaExterna";
+import { getEmbarcacionPorId } from "../../api/embarcacion";
 
 export default function CalasConsumoCard({
   faenaPescaConsumoId,
   novedadPescaConsumoId,
   faenaData,
+  novedadData,
   bahias: bahiasProps = [],
   motoristas: motoristasProps = [],
   patrones: patronesProps = [],
@@ -93,70 +105,135 @@ export default function CalasConsumoCard({
   const [lonFinMinutos, setLonFinMinutos] = useState(0);
   const [lonFinSegundos, setLonFinSegundos] = useState(0);
   const [lonFinDireccion, setLonFinDireccion] = useState("W");
-
+  // Estados para información geográfica de INICIO de cala
   const [infoGeografica, setInfoGeografica] = useState(null);
   const [loadingGeo, setLoadingGeo] = useState(false);
   const [errorGeo, setErrorGeo] = useState(null);
-
-  const [ubicacionUsuario, setUbicacionUsuario] = useState(null);
+  // NUEVO: Estados para información geográfica del Puerto de Salida
+  const [infoPuerto, setInfoPuerto] = useState(null);
+  const [loadingGeoPuerto, setLoadingGeoPuerto] = useState(false);
+  const [coordenadasPuerto, setCoordenadasPuerto] = useState(null);
+  // NUEVO: Estados para información geográfica de FIN de cala
+  const [infoGeoFin, setInfoGeoFin] = useState(null);
+  const [loadingGeoFin, setLoadingGeoFin] = useState(false);
+  // NUEVO: Estados para cálculos de distancias y consumo
+  const [distanciaPuertoInicio, setDistanciaPuertoInicio] = useState(0);
+  const [distanciaInicioFin, setDistanciaInicioFin] = useState(0);
+  const [distanciaTotal, setDistanciaTotal] = useState(0);
+  const [consumoCombustible, setConsumoCombustible] = useState(null);
+  const [tiempoNavegacion, setTiempoNavegacion] = useState(null);
+  const [tiempoCala, setTiempoCala] = useState(null);
+  const [velocidadNavegacion, setVelocidadNavegacion] = useState(0);
+  const [velocidadCala, setVelocidadCala] = useState(0);
+  const [precioCombustibleSoles, setPrecioCombustibleSoles] = useState(0);
+  const [loadingPrecioCombustible, setLoadingPrecioCombustible] =
+    useState(false);
+  const [embarcacionCompleta, setEmbarcacionCompleta] = useState(null);
+  const [mapPosition, setMapPosition] = useState([-8.1116, -79.0288]);
+  const [mapKey, setMapKey] = useState(0);
+  const [tipoMapa, setTipoMapa] = useState("street");
   const [mapaFullscreen, setMapaFullscreen] = useState(false);
   const mapContainerRef = useRef(null);
-  const [tipoMapa, setTipoMapa] = useState("street");
-  const [mapPosition, setMapPosition] = useState([-12.0, -77.0]);
-  const [mapKey, setMapKey] = useState(0);
-
-  const [createdAt, setCreatedAt] = useState(null);
-  const [updatedAt, setUpdatedAt] = useState(null);
-
-  const [bahias, setBahias] = useState(bahiasProps);
-  const [motoristas, setMotoristas] = useState(motoristasProps);
-  const [patrones, setPatrones] = useState(patronesProps);
-  const [embarcaciones, setEmbarcaciones] = useState(embarcacionesProps);
-
+  const [bahias, setBahias] = useState([]);
+  const [motoristas, setMotoristas] = useState([]);
+  const [patrones, setPatrones] = useState([]);
+  const [embarcaciones, setEmbarcaciones] = useState([]);
   const [selectedBahiaId, setSelectedBahiaId] = useState(null);
   const [selectedMotoristaId, setSelectedMotoristaId] = useState(null);
   const [selectedPatronId, setSelectedPatronId] = useState(null);
   const [selectedEmbarcacionId, setSelectedEmbarcacionId] = useState(null);
-
+  const [createdAt, setCreatedAt] = useState(new Date());
+  const [updatedAt, setUpdatedAt] = useState(new Date());
   const toast = useRef(null);
-
   const {
     control: controlCala,
     handleSubmit: handleSubmitCala,
     reset: resetCala,
     setValue: setValueCala,
     formState: { errors: errorsCala },
-  } = useForm();
+  } = useForm({
+    defaultValues: {
+      profundidadM: null,
+      fechaHoraInicio: null,
+      fechaHoraFin: null,
+      observaciones: "",
+      latitud: null,
+      longitud: null,
+      latitudFin: null,
+      longitudFin: null,
+    },
+  });
 
+  // Cargar datos completos de la embarcación
   useEffect(() => {
-    if (faenaPescaConsumoId) {
-      cargarCalas();
-    }
-  }, [faenaPescaConsumoId]);
+    const cargarEmbarcacion = async () => {
+      if (!faenaData?.embarcacionId) {
+        setEmbarcacionCompleta(null);
+        return;
+      }
 
+      try {
+        const embarcacion = await getEmbarcacionPorId(faenaData.embarcacionId);
+        setEmbarcacionCompleta(embarcacion);
+      } catch (error) {
+        console.error("Error al cargar embarcación:", error);
+        setEmbarcacionCompleta(null);
+      }
+    };
+
+    cargarEmbarcacion();
+  }, [faenaData?.embarcacionId]);
+
+  // Función para calcular distancia entre coordenadas usando fórmula Haversine
+  const calcularDistanciaEntreCoordenadasEnMillas = (
+    lat1,
+    lon1,
+    lat2,
+    lon2,
+  ) => {
+    const R = 3440.065; // Radio de la Tierra en millas náuticas
+    const lat1Rad = (Number(lat1) * Math.PI) / 180;
+    const lat2Rad = (Number(lat2) * Math.PI) / 180;
+    const deltaLat = ((Number(lat2) - Number(lat1)) * Math.PI) / 180;
+    const deltaLon = ((Number(lon2) - Number(lon1)) * Math.PI) / 180;
+
+    const a =
+      Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+      Math.cos(lat1Rad) *
+        Math.cos(lat2Rad) *
+        Math.sin(deltaLon / 2) *
+        Math.sin(deltaLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distancia = R * c;
+
+    return distancia;
+  };
+
+  // Normalizar datos de combos
   useEffect(() => {
     if (
-      bahiasProps?.length > 0 &&
-      motoristasProps?.length > 0 &&
-      patronesProps?.length > 0 &&
-      embarcacionesProps?.length > 0
+      bahiasProps.length > 0 ||
+      motoristasProps.length > 0 ||
+      patronesProps.length > 0 ||
+      embarcacionesProps.length > 0
     ) {
-      const bahiasNormalizadas = bahiasProps.map((item) => ({
-        value: Number(item.value),
-        label: item.label,
+      const bahiasNormalizadas = bahiasProps.map((b) => ({
+        label: b.nombre || b.label,
+        value: Number(b.id || b.value),
       }));
-      const motoristasNormalizados = motoristasProps.map((item) => ({
-        value: Number(item.value),
-        label: item.label,
+      const motoristasNormalizados = motoristasProps.map((m) => ({
+        label: m.nombre || m.label,
+        value: Number(m.id || m.value),
       }));
-      const patronesNormalizados = patronesProps.map((item) => ({
-        value: Number(item.value),
-        label: item.label,
+      const patronesNormalizados = patronesProps.map((p) => ({
+        label: p.nombre || p.label,
+        value: Number(p.id || p.value),
       }));
-      const embarcacionesNormalizadas = embarcacionesProps.map((item) => ({
-        value: Number(item.value),
-        label: item.label,
+      const embarcacionesNormalizadas = embarcacionesProps.map((e) => ({
+        label: e.nombre || e.label,
+        value: Number(e.id || e.value),
       }));
+
       setBahias(bahiasNormalizadas);
       setMotoristas(motoristasNormalizados);
       setPatrones(patronesNormalizados);
@@ -177,6 +254,47 @@ export default function CalasConsumoCard({
     faenaData,
   ]);
 
+  // Cargar calas
+  useEffect(() => {
+    if (faenaPescaConsumoId) {
+      cargarCalas();
+    }
+  }, [faenaPescaConsumoId]);
+
+  // NUEVO: Cargar coordenadas del Puerto de Salida
+  useEffect(() => {
+    const cargarPuerto = async () => {
+      if (faenaData?.puertoSalidaId) {
+        try {
+          setLoadingGeoPuerto(true);
+          const puerto = await getPuertoPescaPorId(faenaData.puertoSalidaId);
+          if (puerto && puerto.latitud && puerto.longitud) {
+            const coords = {
+              latitud: Number(puerto.latitud),
+              longitud: Number(puerto.longitud),
+              nombre: puerto.nombre,
+            };
+            setCoordenadasPuerto(coords);
+
+            // Analizar coordenadas del puerto
+            const info = await analizarCoordenadasConReferencia(
+              coords.latitud,
+              coords.longitud,
+              null,
+            );
+            setInfoPuerto(info);
+          }
+        } catch (error) {
+          console.error("Error al cargar puerto:", error);
+        } finally {
+          setLoadingGeoPuerto(false);
+        }
+      }
+    };
+    cargarPuerto();
+  }, [faenaData?.puertoSalidaId]);
+
+  // Sincronizar latitud decimal con DMS (INICIO)
   useEffect(() => {
     if (latitud !== "" && latitud !== null && latitud !== undefined) {
       const dms = descomponerDMS(Number(latitud), true);
@@ -187,6 +305,7 @@ export default function CalasConsumoCard({
     }
   }, [latitud]);
 
+  // Sincronizar longitud decimal con DMS (INICIO)
   useEffect(() => {
     if (longitud !== "" && longitud !== null && longitud !== undefined) {
       const dms = descomponerDMS(Number(longitud), false);
@@ -197,6 +316,7 @@ export default function CalasConsumoCard({
     }
   }, [longitud]);
 
+  // Sincronizar latitudFin decimal con DMS (FIN)
   useEffect(() => {
     if (latitudFin !== "" && latitudFin !== null && latitudFin !== undefined) {
       const dms = descomponerDMS(Number(latitudFin), true);
@@ -207,8 +327,13 @@ export default function CalasConsumoCard({
     }
   }, [latitudFin]);
 
+  // Sincronizar longitudFin decimal con DMS (FIN)
   useEffect(() => {
-    if (longitudFin !== "" && longitudFin !== null && longitudFin !== undefined) {
+    if (
+      longitudFin !== "" &&
+      longitudFin !== null &&
+      longitudFin !== undefined
+    ) {
       const dms = descomponerDMS(Number(longitudFin), false);
       setLonFinGrados(dms.grados);
       setLonFinMinutos(dms.minutos);
@@ -217,52 +342,273 @@ export default function CalasConsumoCard({
     }
   }, [longitudFin]);
 
+  // Analizar información geográfica de Cala FIN (donde se pescó)
   useEffect(() => {
-    if (
-      latitud !== "" &&
-      latitud !== null &&
-      latitud !== undefined &&
-      latitud !== 0 &&
-      longitud !== "" &&
-      longitud !== null &&
-      longitud !== undefined &&
-      longitud !== 0
-    ) {
-      setMapPosition([Number(latitud), Number(longitud)]);
-      setMapKey((prev) => prev + 1);
-    }
-  }, [latitud, longitud]);
+    const analizarCoordenadas = async () => {
+      // Usar coordenadas de Cala FIN si existen, sino usar Cala INICIO
+      const latAnalisis = latitudFin || latitud;
+      const lonAnalisis = longitudFin || longitud;
 
-  useEffect(() => {
-    if (latitud && longitud && !loadingGeo) {
-      const coordenadasActuales = `${latitud},${longitud}`;
-      const coordenadasAnalizadas = infoGeografica
-        ? `${infoGeografica.coordenadas?.latitud},${infoGeografica.coordenadas?.longitud}`
-        : null;
-
-      if (coordenadasActuales !== coordenadasAnalizadas) {
-        const analizarCoordenadasExistentes = async () => {
+      if (latAnalisis && lonAnalisis) {
+        try {
           setLoadingGeo(true);
-          setErrorGeo(null);
-          try {
-            const infoGeo = await analizarCoordenadasConReferencia(
-              latitud,
-              longitud,
-              null,
-            );
-            setInfoGeografica(infoGeo);
-          } catch (error) {
-            console.error("Error al analizar coordenadas existentes:", error);
-            setErrorGeo("No se pudo obtener la información geográfica");
-          } finally {
-            setLoadingGeo(false);
-          }
-        };
+          const info = await analizarCoordenadasConReferencia(
+            Number(latAnalisis),
+            Number(lonAnalisis),
+            null,
+          );
+          setInfoGeografica(info);
+        } catch (error) {
+          console.error("Error al analizar coordenadas:", error);
+          setErrorGeo(error.message);
+        } finally {
+          setLoadingGeo(false);
+        }
+      }
+    };
+    analizarCoordenadas();
+  }, [latitud, longitud, latitudFin, longitudFin]);
 
-        analizarCoordenadasExistentes();
+  // NUEVO: Analizar coordenadas de FIN cuando cambien
+  useEffect(() => {
+    const analizarFin = async () => {
+      if (latitudFin && longitudFin) {
+        try {
+          setLoadingGeoFin(true);
+          const info = await analizarCoordenadasConReferencia(
+            Number(latitudFin),
+            Number(longitudFin),
+            null,
+          );
+          setInfoGeoFin(info);
+        } catch (error) {
+          console.error("Error al analizar coordenadas de fin:", error);
+        } finally {
+          setLoadingGeoFin(false);
+        }
+      }
+    };
+    analizarFin();
+  }, [latitudFin, longitudFin]);
+
+  // NUEVO: Calcular distancias cuando cambien las coordenadas
+  useEffect(() => {
+    if (coordenadasPuerto && latitud && longitud) {
+      const distPuertoInicio = calcularDistanciaEntreCoordenadasEnMillas(
+        coordenadasPuerto.latitud,
+        coordenadasPuerto.longitud,
+        Number(latitud),
+        Number(longitud),
+      );
+      setDistanciaPuertoInicio(distPuertoInicio);
+    }
+
+    if (latitud && longitud && latitudFin && longitudFin) {
+      const distInicioFin = calcularDistanciaEntreCoordenadasEnMillas(
+        Number(latitud),
+        Number(longitud),
+        Number(latitudFin),
+        Number(longitudFin),
+      );
+      setDistanciaInicioFin(distInicioFin);
+    }
+
+    // Calcular distancia total
+    const total = (distanciaPuertoInicio || 0) + (distanciaInicioFin || 0);
+    setDistanciaTotal(total);
+  }, [
+    coordenadasPuerto,
+    latitud,
+    longitud,
+    latitudFin,
+    longitudFin,
+    distanciaPuertoInicio,
+    distanciaInicioFin,
+  ]);
+
+  // NUEVO: Calcular tiempos cuando cambien las fechas
+  useEffect(() => {
+    if (faenaData?.fechaSalida && editingCala?.fechaHoraInicio) {
+      const tiempo = calcularDiferenciaTiempo(
+        faenaData.fechaSalida,
+        editingCala.fechaHoraInicio,
+      );
+      setTiempoNavegacion(tiempo);
+
+      // Calcular velocidad de navegación
+      if (distanciaPuertoInicio && tiempo.totalHoras > 0) {
+        const vel = calcularVelocidadPromedio(
+          distanciaPuertoInicio,
+          tiempo.totalHoras,
+        );
+        setVelocidadNavegacion(vel);
       }
     }
-  }, [latitud, longitud]);
+
+    if (editingCala?.fechaHoraInicio && editingCala?.fechaHoraFin) {
+      const tiempo = calcularDiferenciaTiempo(
+        editingCala.fechaHoraInicio,
+        editingCala.fechaHoraFin,
+      );
+      setTiempoCala(tiempo);
+
+      // Calcular velocidad en cala
+      if (distanciaInicioFin && tiempo.totalHoras > 0) {
+        const vel = calcularVelocidadPromedio(
+          distanciaInicioFin,
+          tiempo.totalHoras,
+        );
+        setVelocidadCala(vel);
+      }
+    }
+  }, [
+    faenaData?.fechaSalida,
+    editingCala?.fechaHoraInicio,
+    editingCala?.fechaHoraFin,
+    distanciaPuertoInicio,
+    distanciaInicioFin,
+  ]);
+
+  // NUEVO: Calcular consumo de combustible
+  useEffect(() => {
+    if (distanciaTotal > 0 && embarcacionCompleta?.millasNauticasPorGalon) {
+      const rendimiento = Number(embarcacionCompleta.millasNauticasPorGalon);
+      const galones = calcularConsumoFaena(distanciaTotal, rendimiento);
+      const costo = calcularCostoCombustible(galones, precioCombustibleSoles);
+      setConsumoCombustible({
+        rendimiento: rendimiento.toFixed(2),
+        galones: galones.toFixed(2),
+        costo: costo.toFixed(2),
+      });
+    } else {
+      setConsumoCombustible(null);
+    }
+  }, [
+    distanciaTotal,
+    embarcacionCompleta?.millasNauticasPorGalon,
+    precioCombustibleSoles,
+  ]);
+
+  // Obtener precio de combustible dinámico
+  useEffect(() => {
+    const obtenerPrecioCombustible = async () => {
+
+      const fechaReferencia =
+        editingCala?.fechaHoraFin ||
+        editingCala?.fechaHoraInicio ||
+        faenaData?.fechaSalida;
+
+      if (!novedadData?.empresa?.entidadComercialId || !fechaReferencia) {
+        return;
+      }
+
+      setLoadingPrecioCombustible(true);
+      try {
+        const precioCombustible = await getPrecioCombustibleVigente(
+          Number(novedadData.empresa.entidadComercialId),
+          fechaReferencia,
+        );
+
+        if (!precioCombustible) {
+          console.warn(
+            "No se encontró precio de combustible vigente, usando precio por defecto",
+          );
+          return;
+        }
+
+        let precioEnSoles = Number(precioCombustible.precioUnitario);
+
+        // Si está en dólares (ID = 2), convertir a soles
+        if (Number(precioCombustible.monedaId) === 2) {
+          try {
+            const fecha = new Date(fechaReferencia);
+            const tipoCambio = await consultarTipoCambioSunat({
+              date: fecha.getDate(),
+              month: fecha.getMonth() + 1,
+              year: fecha.getFullYear(),
+            });
+            if (tipoCambio?.venta) {
+              precioEnSoles = precioEnSoles * Number(tipoCambio.venta);
+            }
+          } catch (error) {
+            console.error("Error obteniendo tipo de cambio:", error);
+          }
+        }
+
+        setPrecioCombustibleSoles(precioEnSoles);
+      } catch (error) {
+        console.error("Error obteniendo precio de combustible:", error);
+      } finally {
+        setLoadingPrecioCombustible(false);
+      }
+    };
+
+    obtenerPrecioCombustible();
+  }, [
+    novedadData?.empresa?.entidadComercialId,
+    editingCala?.fechaHoraFin,
+    editingCala?.fechaHoraInicio,
+    faenaData?.fechaSalida,
+  ]);
+
+  // Centrar mapa automáticamente para mostrar todos los puntos
+  useEffect(() => {
+    if (!latitud || !longitud) return;
+
+    const puntos = [];
+
+    // Agregar puerto si existe
+    if (coordenadasPuerto?.latitud && coordenadasPuerto?.longitud) {
+      puntos.push([
+        Number(coordenadasPuerto.latitud),
+        Number(coordenadasPuerto.longitud),
+      ]);
+    }
+
+    // Agregar Cala Inicio
+    puntos.push([Number(latitud), Number(longitud)]);
+
+    // Agregar Cala Fin si existe
+    if (latitudFin && longitudFin) {
+      puntos.push([Number(latitudFin), Number(longitudFin)]);
+    }
+
+    if (puntos.length > 0) {
+      // Calcular bounds
+      const lats = puntos.map((p) => p[0]);
+      const lngs = puntos.map((p) => p[1]);
+
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+
+      // Calcular centro
+      const centerLat = (minLat + maxLat) / 2;
+      const centerLng = (minLng + maxLng) / 2;
+
+      setMapPosition([centerLat, centerLng]);
+      setMapKey((prev) => prev + 1); // Forzar re-render del mapa
+    }
+  }, [coordenadasPuerto, latitud, longitud, latitudFin, longitudFin]);
+
+  const cargarCalas = async () => {
+    try {
+      setLoading(true);
+      const data = await getCalasFaenaConsumoPorFaena(faenaPescaConsumoId);
+      setCalas(data || []);
+    } catch (error) {
+      console.error("Error al cargar calas:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "No se pudieron cargar las calas",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const actualizarLatitudDesdeDMS = () => {
     const decimal = convertirDMSADecimal(
@@ -308,30 +654,15 @@ export default function CalasConsumoCard({
     setValueCala("longitudFin", decimal);
   };
 
-  const cargarCalas = async () => {
-    try {
-      setLoading(true);
-      const data = await getCalasFaenaConsumoPorFaena(faenaPescaConsumoId);
-      setCalas(data);
-    } catch (error) {
-      console.error("Error al cargar calas:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: "Error al cargar calas",
-        life: 3000,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleNuevaCala = () => {
     setEditingCala(null);
     setLatitud("");
     setLongitud("");
     setLatitudFin("");
     setLongitudFin("");
+    setInfoGeografica(null);
+    setInfoGeoFin(null);
+    setErrorGeo(null);
     setCreatedAt(new Date());
     setUpdatedAt(new Date());
 
@@ -348,20 +679,16 @@ export default function CalasConsumoCard({
     }
 
     resetCala({
-      bahiaId: null,
-      motoristaId: null,
-      patronId: null,
-      embarcacionId: null,
-      fechaHoraInicio: new Date(),
+      profundidadM: null,
+      fechaHoraInicio: null,
       fechaHoraFin: null,
+      observaciones: "",
       latitud: null,
       longitud: null,
       latitudFin: null,
       longitudFin: null,
-      profundidadM: null,
-      toneladasCapturadas: null,
-      observaciones: "",
     });
+
     setDialogCalaVisible(true);
   };
 
@@ -371,33 +698,28 @@ export default function CalasConsumoCard({
     setLongitud(cala.longitud || "");
     setLatitudFin(cala.latitudFin || "");
     setLongitudFin(cala.longitudFin || "");
-    setCreatedAt(cala.createdAt ? new Date(cala.createdAt) : null);
-    setUpdatedAt(cala.updatedAt ? new Date(cala.updatedAt) : null);
 
-    setSelectedBahiaId(cala.bahiaId ? Number(cala.bahiaId) : null);
-    setSelectedMotoristaId(cala.motoristaId ? Number(cala.motoristaId) : null);
-    setSelectedPatronId(cala.patronId ? Number(cala.patronId) : null);
-    setSelectedEmbarcacionId(
-      cala.embarcacionId ? Number(cala.embarcacionId) : null,
-    );
+    setSelectedBahiaId(Number(cala.bahiaId));
+    setSelectedMotoristaId(Number(cala.motoristaId));
+    setSelectedPatronId(Number(cala.patronId));
+    setSelectedEmbarcacionId(Number(cala.embarcacionId));
+
+    setCreatedAt(cala.createdAt ? new Date(cala.createdAt) : new Date());
+    setUpdatedAt(new Date());
 
     resetCala({
-      bahiaId: cala.bahiaId ? Number(cala.bahiaId) : null,
-      motoristaId: cala.motoristaId ? Number(cala.motoristaId) : null,
-      patronId: cala.patronId ? Number(cala.patronId) : null,
-      embarcacionId: cala.embarcacionId ? Number(cala.embarcacionId) : null,
+      profundidadM: cala.profundidadM || null,
       fechaHoraInicio: cala.fechaHoraInicio
         ? new Date(cala.fechaHoraInicio)
         : null,
       fechaHoraFin: cala.fechaHoraFin ? new Date(cala.fechaHoraFin) : null,
+      observaciones: cala.observaciones || "",
       latitud: cala.latitud || null,
       longitud: cala.longitud || null,
       latitudFin: cala.latitudFin || null,
       longitudFin: cala.longitudFin || null,
-      profundidadM: cala.profundidadM || null,
-      toneladasCapturadas: cala.toneladasCapturadas || null,
-      observaciones: cala.observaciones || "",
     });
+
     setDialogCalaVisible(true);
   };
 
@@ -431,6 +753,64 @@ export default function CalasConsumoCard({
     });
   };
 
+  const guardarCala = async (data) => {
+    try {
+      const calaData = {
+        faenaPescaConsumoId: Number(faenaPescaConsumoId),
+        novedadPescaConsumoId: Number(novedadPescaConsumoId),
+        bahiaId: Number(selectedBahiaId || faenaData?.bahiaId),
+        motoristaId: Number(selectedMotoristaId || faenaData?.motoristaId),
+        patronId: Number(selectedPatronId || faenaData?.patronId),
+        embarcacionId: Number(
+          selectedEmbarcacionId || faenaData?.embarcacionId,
+        ),
+        fechaHoraInicio: data.fechaHoraInicio,
+        fechaHoraFin: data.fechaHoraFin,
+        latitud: latitud ? Number(latitud) : null,
+        longitud: longitud ? Number(longitud) : null,
+        latitudFin: latitudFin ? Number(latitudFin) : null,
+        longitudFin: longitudFin ? Number(longitudFin) : null,
+        profundidadM: data.profundidadM ? Number(data.profundidadM) : null,
+        observaciones: data.observaciones || null,
+      };
+
+      if (editingCala) {
+        await actualizarCalaFaenaConsumo(editingCala.id, calaData);
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Cala actualizada correctamente",
+          life: 3000,
+        });
+      } else {
+        const nuevaCala = await crearCalaFaenaConsumo(calaData);
+        setEditingCala(nuevaCala);
+        toast.current?.show({
+          severity: "success",
+          summary: "Éxito",
+          detail: "Cala creada correctamente. Ahora puede agregar especies.",
+          life: 4000,
+        });
+      }
+
+      cargarCalas();
+      onDataChange?.();
+    } catch (error) {
+      console.error("Error al guardar cala:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.message || "Error al guardar la cala",
+        life: 3000,
+      });
+    }
+  };
+
+  const onSubmitCala = (data) => {
+    guardarCala(data);
+  };
+
+  // NUEVO: Componentes del mapa
   const DraggableMarker = () => {
     const markerRef = useRef(null);
     const nombreBahia =
@@ -438,6 +818,17 @@ export default function CalasConsumoCard({
         (b) =>
           Number(b.value) === Number(selectedBahiaId || faenaData?.bahiaId),
       )?.label || "Cala";
+
+    const iconInicio = L.icon({
+      iconUrl:
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
+      shadowUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
 
     const eventHandlers = {
       dragend() {
@@ -453,15 +844,18 @@ export default function CalasConsumoCard({
       },
     };
 
+    if (!latitud || !longitud) return null;
+
     return (
       <Marker
-        position={mapPosition}
+        position={[Number(latitud), Number(longitud)]}
         draggable={!loading}
         eventHandlers={eventHandlers}
         ref={markerRef}
+        icon={iconInicio}
       >
         <Popup>
-          <strong>{nombreBahia}</strong>
+          <strong>🔵 {nombreBahia} - INICIO</strong>
           <br />
           Lat: {Number(latitud).toFixed(6)}
           <br />
@@ -471,90 +865,8 @@ export default function CalasConsumoCard({
     );
   };
 
-  const UserLocationMarker = () => {
-    if (!ubicacionUsuario) return null;
-
-    const iconUsuario = L.icon({
-      iconUrl: MARKER_ICONS.usuario.iconUrl,
-      iconSize: MARKER_ICONS.usuario.iconSize,
-      iconAnchor: MARKER_ICONS.usuario.iconAnchor,
-      popupAnchor: MARKER_ICONS.usuario.popupAnchor,
-    });
-
-    return (
-      <Marker
-        position={[ubicacionUsuario.lat, ubicacionUsuario.lng]}
-        icon={iconUsuario}
-      >
-        <Popup>
-          <strong>📍 Tu Ubicación</strong>
-          <br />
-          Lat: {ubicacionUsuario.lat.toFixed(6)}
-          <br />
-          Lon: {ubicacionUsuario.lng.toFixed(6)}
-          <br />
-          Precisión: ±{ubicacionUsuario.accuracy.toFixed(0)}m
-        </Popup>
-      </Marker>
-    );
-  };
-
-  const DistanceLine = () => {
-    if (!ubicacionUsuario || !latitud || !longitud) return null;
-
-    const positions = [
-      [ubicacionUsuario.lat, ubicacionUsuario.lng],
-      [latitud, longitud],
-    ];
-
-    return (
-      <Polyline
-        positions={positions}
-        color="#10B981"
-        weight={2}
-        opacity={0.6}
-        dashArray="5, 10"
-      />
-    );
-  };
-
-  const CalaRouteLine = () => {
-    if (
-      !latitud ||
-      !longitud ||
-      !latitudFin ||
-      !longitudFin ||
-      latitud === "" ||
-      longitud === "" ||
-      latitudFin === "" ||
-      longitudFin === ""
-    )
-      return null;
-
-    const positions = [
-      [Number(latitud), Number(longitud)],
-      [Number(latitudFin), Number(longitudFin)],
-    ];
-
-    return (
-      <Polyline
-        positions={positions}
-        color="#EF4444"
-        weight={3}
-        opacity={0.8}
-        dashArray="10, 5"
-      />
-    );
-  };
-
   const MarkerFin = () => {
-    if (
-      !latitudFin ||
-      !longitudFin ||
-      latitudFin === "" ||
-      longitudFin === ""
-    )
-      return null;
+    if (!latitudFin || !longitudFin) return null;
 
     const iconFin = L.icon({
       iconUrl:
@@ -579,13 +891,82 @@ export default function CalasConsumoCard({
         icon={iconFin}
       >
         <Popup>
-          <strong>{nombreBahia} - FIN</strong>
+          <strong>🔴 {nombreBahia} - FIN</strong>
           <br />
           Lat: {Number(latitudFin).toFixed(6)}
           <br />
           Lon: {Number(longitudFin).toFixed(6)}
         </Popup>
       </Marker>
+    );
+  };
+
+  const MarkerPuerto = () => {
+    if (!coordenadasPuerto) return null;
+
+    const iconPuerto = L.icon({
+      iconUrl:
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png",
+      shadowUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+
+    return (
+      <Marker
+        position={[coordenadasPuerto.latitud, coordenadasPuerto.longitud]}
+        icon={iconPuerto}
+      >
+        <Popup>
+          <strong>🟣 {coordenadasPuerto.nombre}</strong>
+          <br />
+          Puerto de Salida
+          <br />
+          Lat: {coordenadasPuerto.latitud.toFixed(6)}
+          <br />
+          Lon: {coordenadasPuerto.longitud.toFixed(6)}
+        </Popup>
+      </Marker>
+    );
+  };
+
+  const LineaPuertoInicio = () => {
+    if (!coordenadasPuerto || !latitud || !longitud) return null;
+
+    const positions = [
+      [coordenadasPuerto.latitud, coordenadasPuerto.longitud],
+      [Number(latitud), Number(longitud)],
+    ];
+
+    return (
+      <Polyline
+        positions={positions}
+        color="#FCD34D"
+        weight={3}
+        opacity={0.8}
+      />
+    );
+  };
+
+  const LineaInicioFin = () => {
+    if (!latitud || !longitud || !latitudFin || !longitudFin) return null;
+
+    const positions = [
+      [Number(latitud), Number(longitud)],
+      [Number(latitudFin), Number(longitudFin)],
+    ];
+
+    return (
+      <Polyline
+        positions={positions}
+        color="#EF4444"
+        weight={3}
+        opacity={0.8}
+        dashArray="10, 5"
+      />
     );
   };
 
@@ -602,12 +983,13 @@ export default function CalasConsumoCard({
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude, accuracy } = position.coords;
-        setUbicacionUsuario({ lat: latitude, lng: longitude, accuracy });
+        const { latitude, longitude } = position.coords;
+        setMapPosition([latitude, longitude]);
+        setMapKey((prev) => prev + 1);
         toast.current.show({
           severity: "success",
           summary: "Ubicación obtenida",
-          detail: `Precisión: ±${accuracy.toFixed(0)}m`,
+          detail: "Mapa centrado en tu ubicación",
           life: 3000,
         });
       },
@@ -671,66 +1053,6 @@ export default function CalasConsumoCard({
     return "info";
   };
 
-  const guardarCala = async (data) => {
-    try {
-      const calaData = {
-        faenaPescaConsumoId: Number(faenaPescaConsumoId),
-        novedadPescaConsumoId: Number(novedadPescaConsumoId),
-        bahiaId: Number(selectedBahiaId || faenaData?.bahiaId),
-        motoristaId: Number(selectedMotoristaId || faenaData?.motoristaId),
-        patronId: Number(selectedPatronId || faenaData?.patronId),
-        embarcacionId: Number(
-          selectedEmbarcacionId || faenaData?.embarcacionId,
-        ),
-        fechaHoraInicio: data.fechaHoraInicio,
-        fechaHoraFin: data.fechaHoraFin,
-        latitud: latitud ? Number(latitud) : null,
-        longitud: longitud ? Number(longitud) : null,
-        latitudFin: latitudFin ? Number(latitudFin) : null,
-        longitudFin: longitudFin ? Number(longitudFin) : null,
-        profundidadM: data.profundidadM ? Number(data.profundidadM) : null,
-        toneladasCapturadas: data.toneladasCapturadas
-          ? Number(data.toneladasCapturadas)
-          : null,
-        observaciones: data.observaciones || null,
-      };
-
-      if (editingCala) {
-        await actualizarCalaFaenaConsumo(editingCala.id, calaData);
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Cala actualizada correctamente",
-          life: 3000,
-        });
-      } else {
-        const nuevaCala = await crearCalaFaenaConsumo(calaData);
-        setEditingCala(nuevaCala);
-        toast.current?.show({
-          severity: "success",
-          summary: "Éxito",
-          detail: "Cala creada correctamente. Ahora puede agregar especies.",
-          life: 4000,
-        });
-      }
-
-      cargarCalas();
-      onDataChange?.();
-    } catch (error) {
-      console.error("Error al guardar cala:", error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: error.message || "Error al guardar la cala",
-        life: 3000,
-      });
-    }
-  };
-
-  const onSubmitCala = (data) => {
-    guardarCala(data);
-  };
-
   const formatearFecha = (fecha) => {
     if (!fecha) return "";
     return new Date(fecha).toLocaleString("es-ES", {
@@ -758,6 +1080,240 @@ export default function CalasConsumoCard({
           tooltip="Eliminar"
         />
       </div>
+    );
+  };
+
+  // NUEVO: Panel de Resumen de Faena
+  const PanelResumenFaena = () => {
+    if (!distanciaTotal && !consumoCombustible) return null;
+
+    return (
+      <Panel
+        header="⛽ Resumen de la Faena - Consumo de Combustible"
+        toggleable
+        collapsed={false}
+        className="mb-3"
+        style={{
+          marginTop: "1rem",
+          marginBottom: "1rem",
+          border: "3px solid #059669",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+            gap: "1rem",
+          }}
+        >
+          {/* Puerto de Salida */}
+          {coordenadasPuerto && (
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "#dbeafe",
+                borderRadius: "8px",
+                border: "2px solid #3b82f6",
+              }}
+            >
+              <h4 style={{ margin: "0 0 0.5rem 0", color: "#1e40af" }}>
+                🚢 Puerto de Salida
+              </h4>
+              <p style={{ margin: "0.25rem 0", fontWeight: "bold" }}>
+                {coordenadasPuerto.nombre}
+              </p>
+              <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                Lat: {Number(coordenadasPuerto.latitud).toFixed(6)}
+              </p>
+              <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                Lon: {Number(coordenadasPuerto.longitud).toFixed(6)}
+              </p>
+              {precioCombustibleSoles > 0 && (
+                <>
+                  <hr
+                    style={{ margin: "0.5rem 0", border: "1px solid #93c5fd" }}
+                  />
+                  <p
+                    style={{
+                      margin: "0.25rem 0",
+                      fontSize: "0.9rem",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    💰 Precio Combustible: S/{" "}
+                    {precioCombustibleSoles.toFixed(2)} /gal
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Puerto → Cala Inicio */}
+          {distanciaPuertoInicio !== null && (
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "#dcfce7",
+                borderRadius: "8px",
+                border: "2px solid #10b981",
+              }}
+            >
+              <h4 style={{ margin: "0 0 0.5rem 0", color: "#047857" }}>
+                🟣 Puerto → 🟢 Cala Inicio
+              </h4>
+              <p
+                style={{
+                  margin: "0.25rem 0",
+                  fontSize: "1.5rem",
+                  fontWeight: "bold",
+                  color: "#047857",
+                }}
+              >
+                {distanciaPuertoInicio.toFixed(2)} MN
+              </p>
+              {embarcacionCompleta?.millasNauticasPorGalon && (
+                <>
+                  <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                    ⛽{" "}
+                    {(
+                      distanciaPuertoInicio /
+                      Number(embarcacionCompleta.millasNauticasPorGalon)
+                    ).toFixed(2)}{" "}
+                    Galones
+                  </p>
+                  <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                    💰 S/{" "}
+                    {(
+                      (distanciaPuertoInicio /
+                        Number(embarcacionCompleta.millasNauticasPorGalon)) *
+                      precioCombustibleSoles
+                    ).toFixed(2)}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Cala Inicio → Cala Fin */}
+          {distanciaInicioFin !== null && (
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "#fef3c7",
+                borderRadius: "8px",
+                border: "2px solid #f59e0b",
+              }}
+            >
+              <h4 style={{ margin: "0 0 0.5rem 0", color: "#92400e" }}>
+                🟢 Cala Inicio → 🔴 Cala Fin
+              </h4>
+              <p
+                style={{
+                  margin: "0.25rem 0",
+                  fontSize: "1.5rem",
+                  fontWeight: "bold",
+                  color: "#92400e",
+                }}
+              >
+                {distanciaInicioFin.toFixed(2)} MN
+              </p>
+              {embarcacionCompleta?.millasNauticasPorGalon && (
+                <>
+                  <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                    ⛽{" "}
+                    {(
+                      distanciaInicioFin /
+                      Number(embarcacionCompleta.millasNauticasPorGalon)
+                    ).toFixed(2)}{" "}
+                    Galones
+                  </p>
+                  <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                    💰 S/{" "}
+                    {(
+                      (distanciaInicioFin /
+                        Number(embarcacionCompleta.millasNauticasPorGalon)) *
+                      precioCombustibleSoles
+                    ).toFixed(2)}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Distancia Total */}
+          {distanciaTotal > 0 && consumoCombustible && (
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "#fef9c3",
+                borderRadius: "8px",
+                border: "2px solid #eab308",
+              }}
+            >
+              <h4 style={{ margin: "0 0 0.5rem 0", color: "#713f12" }}>
+                📊 Distancia Total
+              </h4>
+              <p
+                style={{
+                  margin: "0.25rem 0",
+                  fontSize: "1.5rem",
+                  fontWeight: "bold",
+                  color: "#713f12",
+                }}
+              >
+                {distanciaTotal.toFixed(2)} MN
+              </p>
+              {embarcacionCompleta?.millasNauticasPorGalon && (
+                <>
+                  <p
+                    style={{
+                      margin: "0.25rem 0",
+                      fontSize: "0.9rem",
+                    }}
+                  >
+                    ⛽{" "}
+                    {(
+                      distanciaTotal /
+                      Number(embarcacionCompleta.millasNauticasPorGalon)
+                    ).toFixed(2)}{" "}
+                    Galones (Total)
+                  </p>
+                  <p
+                    style={{
+                      margin: "0.25rem 0",
+                      fontSize: "0.9rem",
+                    }}
+                  >
+                    💰 S/{" "}
+                    {(
+                      (distanciaTotal /
+                        Number(embarcacionCompleta.millasNauticasPorGalon)) *
+                      precioCombustibleSoles
+                    ).toFixed(2)}
+                  </p>
+                  <p
+                    style={{
+                      margin: "0.25rem 0",
+                      fontSize: "0.85rem",
+                      color: "#64748b",
+                    }}
+                  >
+                    Rend:{" "}
+                    {Number(embarcacionCompleta.millasNauticasPorGalon).toFixed(
+                      2,
+                    )}{" "}
+                    MN/Gal
+                  </p>
+                  <p style={{ margin: "0.25rem 0", fontSize: "1rem", fontWeight:"bold" }}>
+                    {embarcacionCompleta.activo?.nombre || "Embarcación"} -{" "}
+                    {embarcacionCompleta.matricula}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </Panel>
     );
   };
 
@@ -813,6 +1369,15 @@ export default function CalasConsumoCard({
   return (
     <Card>
       <Toast ref={toast} style={{ zIndex: 9999 }} baseZIndex={9999} />
+
+      <Button
+        label="Nueva Cala"
+        icon="pi pi-plus"
+        onClick={handleNuevaCala}
+        className="mb-3"
+        severity="success"
+      />
+
       <DataTable
         value={calas}
         loading={loading}
@@ -824,58 +1389,47 @@ export default function CalasConsumoCard({
         style={{ cursor: "pointer", fontSize: getResponsiveFontSize() }}
         onRowClick={(e) => handleEditarCala(e.data)}
       >
-        <Column
-          field="id"
-          header="ID"
-          sortable
-          style={{ minWidth: "4rem" }}
-        />
+        <Column field="id" header="ID" sortable style={{ minWidth: "4rem" }} />
         <Column
           field="latitud"
           header="Lat Inicio"
           sortable
-          body={(rowData) => {
-            const latitudNormalizada = rowData.latitud
+          body={(rowData) =>
+            rowData.latitud
               ? parseFloat(rowData.latitud).toFixed(8)
-              : "0.00000000";
-            return latitudNormalizada;
-          }}
+              : "0.00000000"
+          }
           style={{ minWidth: "8rem" }}
         />
         <Column
           field="longitud"
           header="Lon Inicio"
           sortable
-          body={(rowData) => {
-            const longitudNormalizada = rowData.longitud
+          body={(rowData) =>
+            rowData.longitud
               ? parseFloat(rowData.longitud).toFixed(8)
-              : "0.00000000";
-            return longitudNormalizada;
-          }}
+              : "0.00000000"
+          }
           style={{ minWidth: "8rem" }}
         />
         <Column
           field="latitudFin"
           header="Lat Fin"
           sortable
-          body={(rowData) => {
-            const latitudNormalizada = rowData.latitudFin
-              ? parseFloat(rowData.latitudFin).toFixed(8)
-              : "-";
-            return latitudNormalizada;
-          }}
+          body={(rowData) =>
+            rowData.latitudFin ? parseFloat(rowData.latitudFin).toFixed(8) : "-"
+          }
           style={{ minWidth: "8rem" }}
         />
         <Column
           field="longitudFin"
           header="Lon Fin"
           sortable
-          body={(rowData) => {
-            const longitudNormalizada = rowData.longitudFin
+          body={(rowData) =>
+            rowData.longitudFin
               ? parseFloat(rowData.longitudFin).toFixed(8)
-              : "-";
-            return longitudNormalizada;
-          }}
+              : "-"
+          }
           style={{ minWidth: "8rem" }}
         />
         <Column
@@ -891,18 +1445,6 @@ export default function CalasConsumoCard({
           body={(rowData) => formatearFecha(rowData.fechaHoraFin)}
           sortable
           style={{ minWidth: "10rem" }}
-        />
-        <Column
-          field="toneladasCapturadas"
-          header="Toneladas"
-          sortable
-          body={(rowData) => {
-            const tonsC = rowData.toneladasCapturadas
-              ? parseFloat(rowData.toneladasCapturadas).toFixed(3)
-              : "0.000";
-            return `${tonsC} t`;
-          }}
-          style={{ minWidth: "8rem" }}
         />
         <Column
           header="Acciones"
@@ -923,6 +1465,7 @@ export default function CalasConsumoCard({
         className="p-fluid"
       >
         <div className="grid">
+          {/* Campos básicos de la cala */}
           <div
             style={{
               display: "flex",
@@ -1050,6 +1593,7 @@ export default function CalasConsumoCard({
             </div>
           </div>
 
+          {/* GPS INICIO - Tabla verde */}
           <div
             style={{
               border: "6px solid #10B981",
@@ -1175,7 +1719,7 @@ export default function CalasConsumoCard({
                         textAlign: "center",
                       }}
                     >
-                      Latitud INICIO (Siempre SUR en Perú)
+                      Latitud INICIO
                     </th>
                     <th
                       colSpan="4"
@@ -1187,7 +1731,7 @@ export default function CalasConsumoCard({
                         textAlign: "center",
                       }}
                     >
-                      Longitud INICIO (Siempre OESTE en Perú)
+                      Longitud INICIO
                     </th>
                   </tr>
                 </thead>
@@ -1567,6 +2111,7 @@ export default function CalasConsumoCard({
             </div>
           </div>
 
+          {/* GPS FIN - Tabla roja */}
           <div
             style={{
               border: "6px solid #EF4444",
@@ -1656,7 +2201,7 @@ export default function CalasConsumoCard({
                         textAlign: "center",
                       }}
                     >
-                      Latitud FIN (Siempre SUR en Perú)
+                      Latitud FIN
                     </th>
                     <th
                       colSpan="4"
@@ -1668,7 +2213,7 @@ export default function CalasConsumoCard({
                         textAlign: "center",
                       }}
                     >
-                      Longitud FIN (Siempre OESTE en Perú)
+                      Longitud FIN
                     </th>
                   </tr>
                 </thead>
@@ -2048,6 +2593,7 @@ export default function CalasConsumoCard({
             </div>
           </div>
 
+          {/* Panel de Mapa Geográfico */}
           <PanelMapaGeografico
             mapPosition={mapPosition}
             mapKey={mapKey}
@@ -2064,19 +2610,22 @@ export default function CalasConsumoCard({
             titulo="📍 Información Geográfica - Cala"
             colapsadoPorDefecto={true}
           >
+            <MarkerPuerto />
             <DraggableMarker />
             <MarkerFin />
-            <UserLocationMarker />
-            <DistanceLine />
-            <CalaRouteLine />
+            <LineaPuertoInicio />
+            <LineaInicioFin />
           </PanelMapaGeografico>
-
+          {/* NUEVO: Panel de Resumen */}
+          <PanelResumenFaena />
+          {/* Formulario de Especies */}
           <DetalleCalasConsumoEspecieForm
             calaId={editingCala?.id}
             faenaPescaConsumoId={faenaPescaConsumoId}
             onDataChange={onDataChange}
           />
 
+          {/* Campos finales */}
           <div
             style={{
               display: "flex",
@@ -2100,27 +2649,6 @@ export default function CalasConsumoCard({
                     dateFormat="dd/mm/yy"
                     showIcon
                     disabled={loading}
-                  />
-                )}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="toneladasCapturadas">Toneladas Capturadas</label>
-              <Controller
-                name="toneladasCapturadas"
-                control={controlCala}
-                render={({ field }) => (
-                  <InputNumber
-                    id="toneladasCapturadas"
-                    value={field.value}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    mode="decimal"
-                    minFractionDigits={0}
-                    maxFractionDigits={3}
-                    suffix=" Ton"
-                    inputStyle={{ fontWeight: "bold" }}
-                    style={{ backgroundColor: "#f7ee88" }}
-                    disabled
                   />
                 )}
               />

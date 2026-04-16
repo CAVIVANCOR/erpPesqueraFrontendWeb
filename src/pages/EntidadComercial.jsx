@@ -390,6 +390,7 @@ const EntidadComercial = ({ ruta }) => {
             placeholder="Filtrar por Empresa"
             showClear
             className="w-full"
+            filter
           />
         </div>
         <div style={{ flex: 1 }}>

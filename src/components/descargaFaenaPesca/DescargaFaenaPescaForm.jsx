@@ -553,14 +553,6 @@ export default function DescargaFaenaPescaForm({
 
     try {
       setLoading(true);
-      console.log(
-        "patronId",
-        patronId,
-        "motoristaId",
-        motoristaId,
-        "bahiaId",
-        bahiaId,
-      );
       const payload = {
         faenaPescaId: data.faenaPescaId ? Number(data.faenaPescaId) : null,
         temporadaPescaId: data.temporadaPescaId
@@ -1061,10 +1053,6 @@ export default function DescargaFaenaPescaForm({
               longitud,
               puertoDescargaId,
             );
-            console.log(
-              "📍 INFO GEO DESCARGA:",
-              JSON.stringify(infoGeo, null, 2),
-            );
             setInfoGeografica(infoGeo);
           } catch (error) {
             console.error("Error al analizar coordenadas existentes:", error);
@@ -1104,10 +1092,6 @@ export default function DescargaFaenaPescaForm({
               latitudFondeo,
               longitudFondeo,
               puertoFondeoId,
-            );
-            console.log(
-              "⚓ INFO GEO FONDEO:",
-              JSON.stringify(infoGeo, null, 2),
             );
             setInfoGeograficaFondeo(infoGeo);
           } catch (error) {

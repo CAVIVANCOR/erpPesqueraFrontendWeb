@@ -18,7 +18,7 @@
  * Zoom por defecto para todos los mapas del sistema
  * Cambia este valor para ajustar el zoom de TODOS los mapas
  */
-export const DEFAULT_MAP_ZOOM = 9;
+export const DEFAULT_MAP_ZOOM = 7;
 
 /**
  * Zoom mínimo permitido

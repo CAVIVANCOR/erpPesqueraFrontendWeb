@@ -54,7 +54,7 @@ export default function DatosGeneralesEmbarcacionForm({
       ? `${import.meta.env.VITE_UPLOADS_URL}/embarcaciones/${
           defaultValues.urlFotoEmbarcacion
         }`
-      : null
+      : null,
   );
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const toastFoto = useRef(null);
@@ -535,6 +535,35 @@ export default function DatosGeneralesEmbarcacionForm({
                 {errors.motorPotenciaHp.message}
               </small>
             )}
+            <label htmlFor="millasNauticasPorGalon" className="font-bold">
+              Rendimiento (MN/gal)
+            </label>
+            <Controller
+              name="millasNauticasPorGalon"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  id="millasNauticasPorGalon"
+                  value={field.value}
+                  onValueChange={(e) => field.onChange(e.value)}
+                  placeholder="Millas náuticas por galón"
+                  className={getFieldClass("millasNauticasPorGalon")}
+                  inputStyle={{ fontWeight: "bold" }}
+                  mode="decimal"
+                  minFractionDigits={0}
+                  maxFractionDigits={2}
+                  min={0}
+                  suffix=" MN/gal"
+                  disabled={readOnly}
+                />
+              )}
+            />
+            {errors.millasNauticasPorGalon && (
+              <small className="text-red-500 block">
+                {errors.millasNauticasPorGalon.message}
+              </small>
+            )}
+
             <label htmlFor="anioFabricacion" className="font-bold">
               Año de Fabricación
             </label>

@@ -77,6 +77,7 @@ export default function EmbarcacionForm({
       tabletModelo: "",
       estadoActivoId: null,
       urlFotoEmbarcacion: "",
+      millasNauticasPorGalon: null,
     },
   });
 
@@ -112,11 +113,11 @@ export default function EmbarcacionForm({
       setValue("matricula", embarcacion.matricula || "");
       setValue(
         "tipoEmbarcacionId",
-        Number(embarcacion.tipoEmbarcacionId) || null
+        Number(embarcacion.tipoEmbarcacionId) || null,
       );
       setValue(
         "capacidadBodegaTon",
-        Number(embarcacion.capacidadBodegaTon) || null
+        Number(embarcacion.capacidadBodegaTon) || null,
       );
       setValue("esloraM", Number(embarcacion.esloraM) || null);
       setValue("mangaM", Number(embarcacion.mangaM) || null);
@@ -129,6 +130,10 @@ export default function EmbarcacionForm({
       setValue("tabletModelo", embarcacion.tabletModelo || "");
       setValue("estadoActivoId", Number(embarcacion.estadoActivoId) || null);
       setValue("urlFotoEmbarcacion", embarcacion.urlFotoEmbarcacion || "");
+      setValue(
+        "millasNauticasPorGalon",
+        Number(embarcacion.millasNauticasPorGalon) || null,
+      );
     } else if (!embarcacion) {
       reset();
     }

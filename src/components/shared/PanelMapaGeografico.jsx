@@ -19,6 +19,7 @@ import InformacionGeograficaPanel from "./InformacionGeograficaPanel";
  * - Configuración flexible de título y estado inicial
  * - Layout responsive automático
  * - Soporte para children (markers, polylines, etc.)
+ * - Opción para ocultar el mapa y mostrar solo información
  *
  * Props:
  * - mapPosition: [lat, lng] - Posición central del mapa
@@ -35,6 +36,7 @@ import InformacionGeograficaPanel from "./InformacionGeograficaPanel";
  * - getClasificacionAguasColor: function - Función para obtener color de clasificación
  * - titulo: string - Título del panel (opcional, default: "📍 Información Geográfica")
  * - colapsadoPorDefecto: boolean - Estado inicial del panel (opcional, default: true)
+ * - mostrarMapa: boolean - Si se muestra el mapa o solo la información (opcional, default: true)
  * - children: ReactNode - Componentes hijos (markers, polylines, etc.)
  */
 export default function PanelMapaGeografico({
@@ -57,6 +59,9 @@ export default function PanelMapaGeografico({
   // Props del panel colapsable
   titulo = "📍 Información Geográfica",
   colapsadoPorDefecto = true,
+  
+  // NUEVO: Prop para ocultar el mapa
+  mostrarMapa = true,
 
   // Children (markers, lines, etc.)
   children,
@@ -82,19 +87,21 @@ export default function PanelMapaGeografico({
           flexWrap: "wrap",
         }}
       >
-        <MapaConControles
-          mapPosition={mapPosition}
-          mapKey={mapKey}
-          tipoMapa={tipoMapa}
-          getTileConfig={getTileConfig}
-          toggleFullscreen={toggleFullscreen}
-          cambiarTipoMapa={cambiarTipoMapa}
-          obtenerUbicacionUsuario={obtenerUbicacionUsuario}
-          mapContainerRef={mapContainerRef}
-          mapaFullscreen={mapaFullscreen}
-        >
-          {children}
-        </MapaConControles>
+        {mostrarMapa && (
+          <MapaConControles
+            mapPosition={mapPosition}
+            mapKey={mapKey}
+            tipoMapa={tipoMapa}
+            getTileConfig={getTileConfig}
+            toggleFullscreen={toggleFullscreen}
+            cambiarTipoMapa={cambiarTipoMapa}
+            obtenerUbicacionUsuario={obtenerUbicacionUsuario}
+            mapContainerRef={mapContainerRef}
+            mapaFullscreen={mapaFullscreen}
+          >
+            {children}
+          </MapaConControles>
+        )}
 
         <InformacionGeograficaPanel
           infoGeografica={infoGeografica}
