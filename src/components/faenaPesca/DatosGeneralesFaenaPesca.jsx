@@ -407,7 +407,7 @@ const DatosGeneralesFaenaPesca = ({
             <Message severity="error" text={errors.fechaSalida.message} />
           )}
         </div>
-        <div style={{ flex: 1 }}>
+               <div style={{ flex: 1 }}>
           <label htmlFor="puertoSalidaId" style={{ color: "#2c32d3" }}>
             Puerto Zarpe*
           </label>
@@ -417,8 +417,8 @@ const DatosGeneralesFaenaPesca = ({
             render={({ field }) => (
               <Dropdown
                 id="puertoSalidaId"
-                {...field}
-                value={field.value}
+                value={field.value ? Number(field.value) : null}
+                onChange={(e) => field.onChange(e.value)}
                 options={puertos}
                 optionLabel="label"
                 optionValue="value"

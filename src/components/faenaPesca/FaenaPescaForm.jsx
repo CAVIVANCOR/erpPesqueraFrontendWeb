@@ -80,8 +80,7 @@ export default function FaenaPescaForm({
   const [pangueros, setPangueros] = useState(panguerosOptions); // ⭐ AGREGAR
   const [embarcaciones, setEmbarcaciones] = useState(embarcacionesOptions);
   const [boliches, setBoliches] = useState(bolichesOptions);
-  const [puertos, setPuertos] = useState(puertosOptions);
-  const [puertosDescarga, setPuertosDescarga] = useState([]); // Estado para puertos de descarga
+  const [puertosDescarga, setPuertosDescarga] = useState(puertosOptions); // Inicializar con puertosOptions
   const [documentosPesca, setDocumentosPesca] = useState([]);
 
   // Configuración del formulario con React Hook Form
@@ -129,7 +128,7 @@ export default function FaenaPescaForm({
     setPangueros(panguerosOptions); // ⭐ AGREGAR
     setEmbarcaciones(embarcacionesOptions);
     setBoliches(bolichesOptions);
-    setPuertos(puertosOptions);
+    setPuertosDescarga(puertosOptions); // Sincronizar con props
 
     const cargarDatos = async () => {
       try {
@@ -160,7 +159,6 @@ export default function FaenaPescaForm({
         setDocumentacionEmbarcacion(documentacionEmbarcacionData);
         setEspecies(especiesData);
         setPuertosDescarga(puertosData);
-
         // Cargar clientes si hay temporada con empresaId
         if (temporadaData?.empresaId) {
           const clientesData = await getClientesPorEmpresa(
@@ -301,8 +299,7 @@ export default function FaenaPescaForm({
         // Generar descripción si el backend no la devuelve
         const descripcionGenerada =
           resultado.descripcion ||
-          `Faena ${resultado.id} Temporada ${
-            temporadaData?.numeroResolucion || "S/N"
+          `Faena ${resultado.id} Temporada ${temporadaData?.numeroResolucion || "S/N"
           }`;
 
         const nuevaFaenaData = {
@@ -722,8 +719,8 @@ export default function FaenaPescaForm({
             bahias={bahias}
             motoristas={motoristas}
             patrones={patrones}
-            pangueros={pangueros}  // ⭐ AGREGAR
-            puertos={puertos}
+            pangueros={pangueros} // ⭐ AGREGAR
+            puertos={puertosDescarga}
             embarcaciones={embarcaciones}
             boliches={boliches}
             estadosFaena={estadosFaena}
@@ -772,7 +769,7 @@ export default function FaenaPescaForm({
         )}
 
         {activeCard === "descarga-faena" && (
-                   <DescargaFaenaPescaCard
+          <DescargaFaenaPescaCard
             faenaPescaId={currentFaenaData.id || defaultValues.id}
             temporadaData={temporadaData}
             faenaData={{
@@ -780,6 +777,7 @@ export default function FaenaPescaForm({
               bahiaId: watch("bahiaId"),
               motoristaId: watch("motoristaId"),
               patronId: watch("patronId"),
+              embarcacionId: watch("embarcacionId"),
             }}
             puertos={puertosDescarga} // Usar puertos de descarga
             patrones={patrones}

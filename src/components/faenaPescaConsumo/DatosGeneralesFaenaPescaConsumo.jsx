@@ -303,7 +303,6 @@ export default function DatosGeneralesFaenaPescaConsumo({
             <small className="p-error">{errors.fechaSalida.message}</small>
           )}
         </div>
-
         <div style={{ flex: 1 }}>
           <label htmlFor="puertoSalidaId">Puerto Zarpe</label>
           <Controller

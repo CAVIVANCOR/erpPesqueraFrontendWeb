@@ -134,6 +134,7 @@ const GraticuleLayer = () => {
  * @param {Array} props.mapPosition - Posición central del mapa [lat, lng]
  * @param {number} props.mapKey - Key para forzar re-render del mapa
  * @param {string} props.tipoMapa - Tipo de mapa: 'street', 'satellite', 'hybrid'
+ * @param {number} props.zoom - Nivel de zoom inicial (opcional, default: DEFAULT_MAP_ZOOM)
  * @param {Function} props.getTileConfig - Función que retorna configuración de tiles
  * @param {Function} props.toggleFullscreen - Función para alternar pantalla completa
  * @param {Function} props.cambiarTipoMapa - Función para cambiar tipo de mapa
@@ -146,6 +147,7 @@ export default function MapaConControles({
   mapPosition = [-12.0, -77.0],
   mapKey = 0,
   tipoMapa = "street",
+  zoom = DEFAULT_MAP_ZOOM,
   getTileConfig,
   toggleFullscreen,
   cambiarTipoMapa,
@@ -230,7 +232,7 @@ export default function MapaConControles({
       <MapContainer
         key={mapKey}
         center={mapPosition}
-        zoom={DEFAULT_MAP_ZOOM}
+        zoom={zoom}
         style={{ height: "100%", width: "100%" }}
         zoomControl={true}
         scrollWheelZoom={true}

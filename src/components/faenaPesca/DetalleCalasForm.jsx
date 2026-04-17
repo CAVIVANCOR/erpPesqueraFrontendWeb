@@ -1879,7 +1879,6 @@ const DetalleCalasForm = ({
                 id="bahiaId"
                 value={selectedBahiaId}
                 options={bahias}
-                placeholder="Bahía (automático)"
                 disabled
                 style={{ fontWeight: "bold" }}
               />
@@ -1890,7 +1889,6 @@ const DetalleCalasForm = ({
                 id="motoristaId"
                 value={selectedMotoristaId}
                 options={motoristas}
-                placeholder="Motorista (automático)"
                 disabled
                 style={{ fontWeight: "bold" }}
               />
@@ -1901,7 +1899,6 @@ const DetalleCalasForm = ({
                 id="patronId"
                 value={selectedPatronId}
                 options={patrones}
-                placeholder="Patrón (automático)"
                 disabled
                 style={{ fontWeight: "bold" }}
               />
@@ -1912,7 +1909,6 @@ const DetalleCalasForm = ({
                 id="embarcacionId"
                 value={selectedEmbarcacionId}
                 options={embarcaciones}
-                placeholder="Embarcación (automático)"
                 disabled
                 style={{ fontWeight: "bold" }}
               />
@@ -1937,7 +1933,6 @@ const DetalleCalasForm = ({
                 dateFormat="dd/mm/yy"
                 showIcon
                 disabled
-                placeholder="Se asigna automáticamente"
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -1949,7 +1944,6 @@ const DetalleCalasForm = ({
                 dateFormat="dd/mm/yy"
                 showIcon
                 disabled
-                placeholder="Se actualiza automáticamente"
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -2167,7 +2161,6 @@ const DetalleCalasForm = ({
                       <InputNumber
                         value={latitud}
                         onValueChange={(e) => setLatitud(e.value)}
-                        placeholder="-12.123456"
                         disabled={
                           (calaFinalizada && !esSuperUsuario) ||
                           camposDeshabilitados
@@ -2191,7 +2184,6 @@ const DetalleCalasForm = ({
                       <InputNumber
                         value={longitud}
                         onValueChange={(e) => setLongitud(e.value)}
-                        placeholder="-77.123456"
                         disabled={
                           (calaFinalizada && !esSuperUsuario) ||
                           camposDeshabilitados
@@ -2690,7 +2682,6 @@ const DetalleCalasForm = ({
                       <InputNumber
                         value={latitudFin}
                         onValueChange={(e) => setLatitudFin(e.value)}
-                        placeholder="-12.123456"
                         disabled={
                           (calaFinalizada && !esSuperUsuario) ||
                           camposDeshabilitados
@@ -2714,7 +2705,6 @@ const DetalleCalasForm = ({
                       <InputNumber
                         value={longitudFin}
                         onValueChange={(e) => setLongitudFin(e.value)}
-                        placeholder="-77.123456"
                         disabled={
                           (calaFinalizada && !esSuperUsuario) ||
                           camposDeshabilitados
@@ -3164,7 +3154,6 @@ const DetalleCalasForm = ({
                 value={observaciones}
                 onChange={(e) => setObservaciones(e.target.value)}
                 style={{ fontWeight: "bold", fontStyle: "italic" }}
-                placeholder="Observaciones"
                 rows={1}
                 cols={20}
               />

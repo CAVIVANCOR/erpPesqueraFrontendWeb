@@ -18,7 +18,10 @@ import { Toast } from "primereact/toast";
 import { Toolbar } from "primereact/toolbar";
 import { Card } from "primereact/card";
 import { InputText } from "primereact/inputtext";
-import { getResponsiveFontSize, createPorcentajeTemplate } from "../../utils/utils";
+import {
+  getResponsiveFontSize,
+  createPorcentajeTemplate,
+} from "../../utils/utils";
 import DescargaFaenaPescaForm from "../descargaFaenaPesca/DescargaFaenaPescaForm";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import {
@@ -45,8 +48,9 @@ const DescargaFaenaPescaCard = ({
   onDescargaChange, // Callback para notificar cambios
   onFaenasChange, // Callback para notificar cambios en faenas
 }) => {
+  
   // ⭐ OBTENER USUARIO AUTENTICADO PARA VERIFICAR SI ES SUPERUSUARIO
-  const usuario = useAuthStore(state => state.usuario);
+  const usuario = useAuthStore((state) => state.usuario);
   const esSuperUsuario = usuario?.esSuperUsuario || false;
 
   // ⭐ LÓGICA DE PERMISOS PARA EDICIÓN
@@ -104,7 +108,7 @@ const DescargaFaenaPescaCard = ({
   const eliminarDescarga = async (rowData) => {
     try {
       const confirmado = window.confirm(
-        "¿Está seguro de eliminar esta descarga? Esta acción no se puede deshacer."
+        "¿Está seguro de eliminar esta descarga? Esta acción no se puede deshacer.",
       );
       if (!confirmado) return;
 
@@ -225,40 +229,52 @@ const DescargaFaenaPescaCard = ({
 
   const toneladasTemplate = (rowData) => {
     return rowData.toneladas
-      ? `${Number(rowData.toneladas).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      ? `${Number(rowData.toneladas).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       : "-";
   };
 
   const porcentajeJuvenilesTemplate = (rowData) => {
     const templateData = createPorcentajeTemplate(rowData.porcentajeJuveniles);
-    
+
     if (!templateData) return "-";
-    
+
     return (
       <span style={templateData.estilos}>
-        {templateData.valor}{templateData.sufijo}
+        {templateData.valor}
+        {templateData.sufijo}
       </span>
     );
   };
 
   const fechaHoraTemplate = (field) => (rowData) => {
     if (!rowData[field]) return "-";
-    
+
     const fecha = new Date(rowData[field]);
     const fechaStr = fecha.toLocaleDateString("es-ES");
-    const horaStr = fecha.toLocaleTimeString("es-ES", { hour: '2-digit', minute: '2-digit' });
+    const horaStr = fecha.toLocaleTimeString("es-ES", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
     const fontSize = getResponsiveFontSize();
-    
+
     return (
       <div style={{ textAlign: "center" }}>
         <div style={{ fontWeight: "bold", fontSize: fontSize }}>{fechaStr}</div>
-        <div style={{ fontWeight: "bold", fontSize: `calc(${fontSize} * 0.9)`, color: "#666" }}>{horaStr}</div>
+        <div
+          style={{
+            fontWeight: "bold",
+            fontSize: `calc(${fontSize} * 0.9)`,
+            color: "#666",
+          }}
+        >
+          {horaStr}
+        </div>
       </div>
     );
   };
 
   const fechaHoraFondeoTemplate = (rowData) => {
-    return rowData.fechaHoraFondeo 
+    return rowData.fechaHoraFondeo
       ? new Date(rowData.fechaHoraFondeo).toLocaleString("es-PE", {
           day: "2-digit",
           month: "2-digit",
@@ -319,7 +335,11 @@ const DescargaFaenaPescaCard = ({
           onClick={openNew}
           size="small"
           disabled={!faenaPescaId || camposDeshabilitados}
-          tooltip={camposDeshabilitados ? `Temporada ${estadoTemporada}. Solo superusuarios pueden editar.` : "Agregar nueva descarga"}
+          tooltip={
+            camposDeshabilitados
+              ? `Temporada ${estadoTemporada}. Solo superusuarios pueden editar.`
+              : "Agregar nueva descarga"
+          }
           tooltipOptions={{ position: "top" }}
         />
       </div>
@@ -353,7 +373,12 @@ const DescargaFaenaPescaCard = ({
         onRowClick={(e) => editDescarga(e.data)}
         rowClassName={() => "align-top"}
       >
-        <Column field="id" header="ID" sortable style={{ minWidth: "80px", verticalAlign: "top" }} />
+        <Column
+          field="id"
+          header="ID"
+          sortable
+          style={{ minWidth: "80px", verticalAlign: "top" }}
+        />
         <Column
           field="puertoDescarga"
           header="Puerto"
@@ -366,14 +391,22 @@ const DescargaFaenaPescaCard = ({
           header="Inicio Descarga"
           body={fechaHoraTemplate("fechaHoraInicioDescarga")}
           sortable
-          style={{ minWidth: "60px", textAlign: "center", verticalAlign: "top" }}
+          style={{
+            minWidth: "60px",
+            textAlign: "center",
+            verticalAlign: "top",
+          }}
         />
         <Column
           field="fechaHoraFinDescarga"
           header="Fin Descarga"
           body={fechaHoraTemplate("fechaHoraFinDescarga")}
           sortable
-          style={{ minWidth: "60px", textAlign: "center", verticalAlign: "top" }}
+          style={{
+            minWidth: "60px",
+            textAlign: "center",
+            verticalAlign: "top",
+          }}
         />
         <Column
           field="puertoFondeo"
@@ -414,7 +447,11 @@ const DescargaFaenaPescaCard = ({
           field="numReporteRecepcion"
           header="Reporte Recepción"
           sortable
-          style={{ minWidth: "100px", verticalAlign: "top", fontWeight: "bold" }}
+          style={{
+            minWidth: "100px",
+            verticalAlign: "top",
+            fontWeight: "bold",
+          }}
         />
         <Column
           body={actionBodyTemplate}
@@ -444,11 +481,19 @@ const DescargaFaenaPescaCard = ({
             puertos={puertos}
             clientes={clientes}
             bahiaId={faenaData?.bahiaId ? Number(faenaData.bahiaId) : null}
-            motoristaId={faenaData?.motoristaId ? Number(faenaData.motoristaId) : null}
+            motoristaId={
+              faenaData?.motoristaId ? Number(faenaData.motoristaId) : null
+            }
             patronId={faenaData?.patronId ? Number(faenaData.patronId) : null}
             faenaPescaId={faenaPescaId ? Number(faenaPescaId) : null}
-            temporadaPescaId={temporadaData?.id ? Number(temporadaData.id) : null}
+            temporadaPescaId={
+              temporadaData?.id ? Number(temporadaData.id) : null
+            }
             temporadaData={temporadaData}
+            faenaData={{
+              ...faenaData,
+              embarcacionId: faenaData?.embarcacionId,
+            }}
             especies={especies}
             onGuardadoExitoso={() => {
               cargarDescargas();

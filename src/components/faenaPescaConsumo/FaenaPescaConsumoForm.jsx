@@ -65,7 +65,7 @@ export default function FaenaPescaConsumoForm({
   const [documentacionEmbarcacion, setDocumentacionEmbarcacion] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [especies, setEspecies] = useState([]);
-  const [puertosDescarga, setPuertosDescarga] = useState([]);
+  const [puertosDescarga, setPuertosDescarga] = useState(puertosOptions);
   const [documentosPesca, setDocumentosPesca] = useState([]);
   const [empresaData, setEmpresaData] = useState(null);
   const [katanasTripulacion, setKatanasTripulacion] = useState([]);
@@ -491,7 +491,7 @@ export default function FaenaPescaConsumoForm({
     bahias: bahiasComercialesOptions,
     motoristas: motoristasOptions,
     patrones: patronesOptions,
-    puertos: puertosOptions,
+    puertos: puertosDescarga,
     puertosDescarga,
     personal,
     documentosPesca,

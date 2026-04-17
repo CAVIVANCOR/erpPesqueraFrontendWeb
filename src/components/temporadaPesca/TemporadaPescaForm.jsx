@@ -39,7 +39,7 @@ import {
 import { getEstadosMultiFuncionParaTemporadaPesca } from "../../api/estadoMultiFuncion";
 import { getEmbarcaciones } from "../../api/embarcacion";
 import { getAllBolicheRed } from "../../api/bolicheRed";
-import { getPuertosPesca } from "../../api/puertoPesca";
+import { getPuertosActivos } from "../../api/puertoPesca";
 import { getTemporadaPescaPorId } from "../../api/temporadaPesca"; // Importar función para obtener temporada por ID
 // Importar componentes de cards
 import DatosGeneralesTemporadaForm from "./DatosGeneralesTemporadaForm";
@@ -182,7 +182,7 @@ const TemporadaPescaForm = ({
           getEstadosMultiFuncionParaTemporadaPesca(),
           getEmbarcaciones(),
           getAllBolicheRed(),
-          getPuertosPesca(),
+          getPuertosActivos(),
           getPersonal(),
           getCentrosCosto(),
           getAllTipoMovEntregaRendir(),

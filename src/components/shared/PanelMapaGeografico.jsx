@@ -21,10 +21,11 @@ import InformacionGeograficaPanel from "./InformacionGeograficaPanel";
  * - Soporte para children (markers, polylines, etc.)
  * - Opción para ocultar el mapa y mostrar solo información
  *
- * Props:
+  * Props:
  * - mapPosition: [lat, lng] - Posición central del mapa
  * - mapKey: number - Key para forzar re-render del mapa
  * - tipoMapa: string - Tipo de mapa (street, satellite, hybrid)
+ * - zoom: number - Nivel de zoom inicial (opcional, usa DEFAULT_MAP_ZOOM si no se especifica)
  * - getTileConfig: function - Función que retorna configuración de tiles
  * - toggleFullscreen: function - Función para alternar pantalla completa
  * - cambiarTipoMapa: function - Función para cambiar tipo de mapa
@@ -44,6 +45,7 @@ export default function PanelMapaGeografico({
   mapPosition,
   mapKey,
   tipoMapa,
+  zoom,
   getTileConfig,
   toggleFullscreen,
   cambiarTipoMapa,
@@ -59,7 +61,7 @@ export default function PanelMapaGeografico({
   // Props del panel colapsable
   titulo = "📍 Información Geográfica",
   colapsadoPorDefecto = true,
-  
+
   // NUEVO: Prop para ocultar el mapa
   mostrarMapa = true,
 
@@ -92,6 +94,7 @@ export default function PanelMapaGeografico({
             mapPosition={mapPosition}
             mapKey={mapKey}
             tipoMapa={tipoMapa}
+            zoom={zoom}
             getTileConfig={getTileConfig}
             toggleFullscreen={toggleFullscreen}
             cambiarTipoMapa={cambiarTipoMapa}

@@ -17,13 +17,17 @@ import { classNames } from "primereact/utils";
 import { Message } from "primereact/message";
 import { Toast } from "primereact/toast";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
-
+import { formatearNumero } from "../../utils/utils";
 import {
   crearDescargaFaenaPesca,
   actualizarDescargaFaenaPesca,
   finalizarDescargaConMovimientos,
 } from "../../api/descargaFaenaPesca";
 import { confirmDialog } from "primereact/confirmdialog";
+import { getPrecioCombustibleVigente } from "../../api/precioCombustible";
+import { consultarTipoCambioSunat } from "../../api/consultaExterna";
+import { getEmbarcacionPorId } from "../../api/embarcacion";
+import { Polyline } from "react-leaflet";
 import {
   capturarGPS,
   formatearCoordenadas,
@@ -68,6 +72,7 @@ export default function DescargaFaenaPescaForm({
   faenaPescaId = null,
   temporadaPescaId = null,
   temporadaData = null,
+  faenaData = null,
   onGuardadoExitoso,
   onCancelar,
 }) {
@@ -94,7 +99,19 @@ export default function DescargaFaenaPescaForm({
   const [infoGeograficaFondeo, setInfoGeograficaFondeo] = useState(null);
   const [loadingGeoFondeo, setLoadingGeoFondeo] = useState(false);
   const [errorGeoFondeo, setErrorGeoFondeo] = useState(null);
+
+  // Estados para cálculos de recorrido
+  const [puertoSalidaDatos, setPuertoSalidaDatos] = useState(null);
+  const [distanciaRetornoPuerto, setDistanciaRetornoPuerto] = useState(null);
+  const [consumoCombustible, setConsumoCombustible] = useState(null);
+  const [costoCombustible, setCostoCombustible] = useState(null);
+  const [precioCombustibleSoles, setPrecioCombustibleSoles] = useState(0);
+  const [loadingPrecioCombustible, setLoadingPrecioCombustible] =
+    useState(false);
+  const [embarcacionCompleta, setEmbarcacionCompleta] = useState(null);
+
   // Configuración del formulario
+
   const {
     control,
     reset,
@@ -471,7 +488,7 @@ export default function DescargaFaenaPescaForm({
     const markerRef = useRef(null);
     const nombrePuerto = watch("puertoDescargaId")
       ? puertos.find((p) => Number(p.id) === Number(watch("puertoDescargaId")))
-          ?.nombre || "Puerto"
+        ?.nombre || "Puerto"
       : "Puerto de Descarga";
 
     const eventHandlers = {
@@ -496,9 +513,9 @@ export default function DescargaFaenaPescaForm({
         <Popup>
           <strong>{nombrePuerto}</strong>
           <br />
-          Lat: {Number(latitud).toFixed(6)}
+          Lat: {formatearNumero(Number(latitud), 6)}
           <br />
-          Lon: {Number(longitud).toFixed(6)}
+          Lon: {formatearNumero(Number(longitud), 6)}
         </Popup>
       </Marker>
     );
@@ -511,7 +528,7 @@ export default function DescargaFaenaPescaForm({
     const markerRef = useRef(null);
     const nombrePuerto = watch("puertoFondeoId")
       ? puertos.find((p) => Number(p.id) === Number(watch("puertoFondeoId")))
-          ?.nombre || "Puerto"
+        ?.nombre || "Puerto"
       : "Puerto de Fondeo";
 
     const eventHandlers = {
@@ -536,11 +553,199 @@ export default function DescargaFaenaPescaForm({
         <Popup>
           <strong>{nombrePuerto}</strong>
           <br />
-          Lat: {Number(latitudFondeo).toFixed(6)}
+          Lat: {formatearNumero(Number(latitudFondeo), 6)}
           <br />
-          Lon: {Number(longitudFondeo).toFixed(6)}
+          Lon: {formatearNumero(Number(longitudFondeo), 6)}
         </Popup>
       </Marker>
+    );
+  };
+
+  /**
+   * Componente para mostrar línea desde inicio retorno hasta puerto descarga
+   * Color azul (#3B82F6) para diferenciar del recorrido de pesca
+   */
+  const LineaRetornoPuerto = () => {
+    const puertoDescargaId = watch("puertoDescargaId");
+    const latitudRetorno = watch("latitud");
+    const longitudRetorno = watch("longitud");
+
+    if (
+      !puertoDescargaId ||
+      !latitudRetorno ||
+      !longitudRetorno ||
+      !puertos.length
+    )
+      return null;
+
+    const puertoDescarga = puertos.find(
+      (p) => Number(p.id) === Number(puertoDescargaId),
+    );
+
+    if (!puertoDescarga?.latitud || !puertoDescarga?.longitud) return null;
+
+    const positions = [
+      [Number(latitudRetorno), Number(longitudRetorno)],
+      [Number(puertoDescarga.latitud), Number(puertoDescarga.longitud)],
+    ];
+
+    return (
+      <Polyline
+        positions={positions}
+        color="#3B82F6"
+        weight={5}
+        opacity={0.8}
+      />
+    );
+  };
+
+  /**
+   * Componente para mostrar marcador del puerto de descarga
+   * Color rojo según estándar del sistema
+   */
+  const MarkerPuertoDescarga = () => {
+    const puertoDescargaId = watch("puertoDescargaId");
+
+    if (!puertoDescargaId || !puertos.length) return null;
+
+    const puertoDescarga = puertos.find(
+      (p) => Number(p.id) === Number(puertoDescargaId),
+    );
+
+    if (!puertoDescarga?.latitud || !puertoDescarga?.longitud) return null;
+
+    const iconPuertoDescarga = L.icon({
+      iconUrl:
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
+      shadowUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+
+    return (
+      <Marker
+        position={[
+          Number(puertoDescarga.latitud),
+          Number(puertoDescarga.longitud),
+        ]}
+        icon={iconPuertoDescarga}
+      >
+        <Popup>
+          <strong>🔴 {puertoDescarga.nombre}</strong>
+          <br />
+          Puerto de Descarga
+        </Popup>
+      </Marker>
+    );
+  };
+
+  /**
+   * Panel de resumen con información de recorrido, consumo y costos
+   * Muestra distancia, galones y soles del trayecto retorno-puerto
+   */
+  const PanelResumenRecorrido = () => {
+    const hayDatos =
+      distanciaRetornoPuerto !== null ||
+      consumoCombustible !== null ||
+      costoCombustible !== null;
+
+    if (!hayDatos) return null;
+
+    return (
+      <div
+        style={{
+          marginTop: "1rem",
+          padding: "1rem",
+          backgroundColor: "#f0f9ff",
+          borderRadius: "8px",
+          border: "2px solid #3B82F6",
+        }}
+      >
+        <h3
+          style={{
+            margin: "0 0 1rem 0",
+            color: "#1e40af",
+            fontSize: "1.1rem",
+          }}
+        >
+          📊 Resumen de Recorrido - Retorno a Puerto
+        </h3>
+
+        {distanciaRetornoPuerto !== null && (
+          <div
+            style={{
+              padding: "1rem",
+              backgroundColor: "#ffffff",
+              borderRadius: "6px",
+              marginBottom: "0.5rem",
+            }}
+          >
+            <h4 style={{ margin: "0 0 0.5rem 0", color: "#1e40af" }}>
+              🔵 Inicio Retorno → 🔴 Puerto Descarga
+            </h4>
+            <p
+              style={{
+                margin: "0.25rem 0",
+                fontSize: "1.2rem",
+                fontWeight: "bold",
+                color: "#1e40af",
+              }}
+            >
+              {formatearNumero(distanciaRetornoPuerto, 2)} MN
+            </p>
+            {embarcacionCompleta?.millasNauticasPorGalon && (
+              <>
+                <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                  ⛽{" "}
+                  {formatearNumero(
+                    distanciaRetornoPuerto /
+                    Number(embarcacionCompleta.millasNauticasPorGalon),
+                    2
+                  )}{" "}
+                  Galones
+                </p>
+                <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                  💰 S/{" "}
+                  {formatearNumero(
+                    (distanciaRetornoPuerto /
+                      Number(embarcacionCompleta.millasNauticasPorGalon)) *
+                    precioCombustibleSoles,
+                    2
+                  )}
+                </p>
+              </>
+            )}
+            {!embarcacionCompleta?.millasNauticasPorGalon && (
+              <p
+                style={{
+                  margin: "0.5rem 0",
+                  fontSize: "0.85rem",
+                  color: "#dc2626",
+                  fontStyle: "italic",
+                }}
+              >
+                ⚠️ Configure millasNauticasPorGalon en la embarcación para
+                calcular consumo
+              </p>
+            )}
+          </div>
+        )}
+
+        {loadingPrecioCombustible && (
+          <p
+            style={{
+              margin: "0.5rem 0",
+              fontSize: "0.85rem",
+              color: "#6b7280",
+            }}
+          >
+            ⏳ Cargando precio de combustible...
+          </p>
+        )}
+      </div>
     );
   };
 
@@ -717,11 +922,9 @@ export default function DescargaFaenaPescaForm({
           toast.current?.show({
             severity: "success",
             summary: "Éxito",
-            detail: `Descarga finalizada correctamente. Se generaron los documentos ${
-              resultado.movimientoIngreso?.numeroDocumento || ""
-            } (Ingreso) y ${
-              resultado.movimientoSalida?.numeroDocumento || ""
-            } (Salida).`,
+            detail: `Descarga finalizada correctamente. Se generaron los documentos ${resultado.movimientoIngreso?.numeroDocumento || ""
+              } (Ingreso) y ${resultado.movimientoSalida?.numeroDocumento || ""
+              } (Salida).`,
             life: 6000,
           });
 
@@ -800,7 +1003,7 @@ export default function DescargaFaenaPescaForm({
           toast.current?.show({
             severity: "success",
             summary: "Ubicación obtenida",
-            detail: `Lat: ${latitude.toFixed(6)}, Lon: ${longitude.toFixed(6)}`,
+            detail: `Lat: ${formatearNumero(latitude, 6)}, Lon: ${formatearNumero(longitude, 6)}`,
             life: 3000,
           });
         },
@@ -867,7 +1070,7 @@ export default function DescargaFaenaPescaForm({
           toast.current?.show({
             severity: "success",
             summary: "Ubicación obtenida",
-            detail: `Lat: ${latitude.toFixed(6)}, Lon: ${longitude.toFixed(6)}`,
+            detail: `Lat: ${formatearNumero(latitude, 6)}, Lon: ${formatearNumero(longitude, 6)}`,
             life: 3000,
           });
         },
@@ -909,7 +1112,7 @@ export default function DescargaFaenaPescaForm({
           toast.current?.show({
             severity: "success",
             summary: "GPS capturado",
-            detail: `GPS capturado con precisión de ${accuracy.toFixed(1)}m`,
+            detail: `GPS capturado con precisión de ${formatearNumero(accuracy, 1)}m`,
             life: 3000,
           });
 
@@ -971,9 +1174,7 @@ export default function DescargaFaenaPescaForm({
           toast.current?.show({
             severity: "success",
             summary: "GPS Fondeo capturado",
-            detail: `GPS Fondeo capturado con precisión de ${accuracy.toFixed(
-              1,
-            )}m`,
+            detail: `GPS Fondeo capturado con precisión de ${formatearNumero(accuracy, 1)}m`,
             life: 3000,
           });
 
@@ -1024,25 +1225,19 @@ export default function DescargaFaenaPescaForm({
       console.error("Error capturando GPS Fondeo:", error);
     }
   };
-
   /**
-   * useEffect para analizar coordenadas cuando ya existen en el formulario
-   * (por ejemplo, al editar un registro existente)
-   */
+ * useEffect para analizar coordenadas cuando ya existen en el formulario
+ */
   useEffect(() => {
     const latitud = watch("latitud");
     const longitud = watch("longitud");
-    const puertoDescargaId = watch("puertoDescargaId");
 
-    // Solo analizar si hay coordenadas válidas y no estamos ya cargando
-    if (latitud && longitud && !loadingGeo) {
-      // Verificar que las coordenadas sean diferentes a las ya analizadas
+    if (latitud && longitud && Number(latitud) !== 0 && Number(longitud) !== 0 && !loadingGeo) {
       const coordenadasActuales = `${latitud},${longitud}`;
       const coordenadasAnalizadas = infoGeografica
         ? `${infoGeografica.coordenadas?.latitud},${infoGeografica.coordenadas?.longitud}`
         : null;
 
-      // Solo analizar si son coordenadas nuevas
       if (coordenadasActuales !== coordenadasAnalizadas) {
         const analizarCoordenadasExistentes = async () => {
           setLoadingGeo(true);
@@ -1051,38 +1246,40 @@ export default function DescargaFaenaPescaForm({
             const infoGeo = await analizarCoordenadasConReferencia(
               latitud,
               longitud,
-              puertoDescargaId,
+              null,
             );
             setInfoGeografica(infoGeo);
           } catch (error) {
-            console.error("Error al analizar coordenadas existentes:", error);
+            console.error("❌ Error al analizar coordenadas existentes:", error);
             setErrorGeo("No se pudo obtener la información geográfica");
           } finally {
             setLoadingGeo(false);
           }
         };
+
         analizarCoordenadasExistentes();
+      } else {
+        console.log("⏭️ SKIP: Coordenadas ya analizadas");
       }
+    } else {
+      console.log("⏭️ SKIP: Condiciones no cumplidas");
     }
-  }, [watch("latitud"), watch("longitud"), watch("puertoDescargaId")]);
+  }, [watch("latitud"), watch("longitud")]);
 
   /**
-   * useEffect para analizar coordenadas FONDEO cuando ya existen en el formulario
-   */
+  * useEffect para analizar coordenadas FONDEO cuando ya existen en el formulario
+  */
   useEffect(() => {
     const latitudFondeo = watch("latitudFondeo");
     const longitudFondeo = watch("longitudFondeo");
-    const puertoFondeoId = watch("puertoFondeoId");
 
-    // Solo analizar si hay coordenadas válidas y no estamos ya cargando
-    if (latitudFondeo && longitudFondeo && !loadingGeoFondeo) {
-      // Verificar que las coordenadas sean diferentes a las ya analizadas
+    if (latitudFondeo && longitudFondeo && Number(latitudFondeo) !== 0 && Number(longitudFondeo) !== 0 && !loadingGeoFondeo) {
       const coordenadasActuales = `${latitudFondeo},${longitudFondeo}`;
       const coordenadasAnalizadas = infoGeograficaFondeo
         ? `${infoGeograficaFondeo.coordenadas?.latitud},${infoGeograficaFondeo.coordenadas?.longitud}`
         : null;
 
-      // Solo analizar si son coordenadas nuevas
+
       if (coordenadasActuales !== coordenadasAnalizadas) {
         const analizarCoordenadasFondeoExistentes = async () => {
           setLoadingGeoFondeo(true);
@@ -1091,30 +1288,203 @@ export default function DescargaFaenaPescaForm({
             const infoGeo = await analizarCoordenadasConReferencia(
               latitudFondeo,
               longitudFondeo,
-              puertoFondeoId,
+              null,
             );
             setInfoGeograficaFondeo(infoGeo);
           } catch (error) {
-            console.error(
-              "Error al analizar coordenadas fondeo existentes:",
-              error,
-            );
-            setErrorGeoFondeo(
-              "No se pudo obtener la información geográfica de fondeo",
-            );
+            setErrorGeoFondeo("No se pudo obtener la información geográfica de fondeo");
           } finally {
             setLoadingGeoFondeo(false);
           }
         };
 
         analizarCoordenadasFondeoExistentes();
+      } else {
+        console.log("⏭️ SKIP FONDEO: Coordenadas ya analizadas");
+      }
+    } else {
+      console.log("⏭️ SKIP FONDEO: Condiciones no cumplidas");
+    }
+  }, [watch("latitudFondeo"), watch("longitudFondeo")]);
+  /**
+   * useEffect para cargar datos completos de la embarcación
+   * Necesario para obtener millasNauticasPorGalon
+   */
+  useEffect(() => {
+    const cargarEmbarcacion = async () => {
+
+      if (!faenaData?.embarcacionId) {
+        setEmbarcacionCompleta(null);
+        return;
+      }
+
+      try {
+        const embarcacion = await getEmbarcacionPorId(faenaData.embarcacionId);
+        setEmbarcacionCompleta(embarcacion);
+      } catch (error) {
+        console.error("Error al cargar embarcación:", error);
+        setEmbarcacionCompleta(null);
+      }
+    };
+
+    cargarEmbarcacion();
+  }, [faenaData?.embarcacionId]);
+
+  /**
+   * useEffect para cargar datos del puerto de salida
+   * Necesario para calcular distancia desde inicio retorno hasta puerto descarga
+   */
+  useEffect(() => {
+    if (faenaData?.puertoSalidaId && puertos.length > 0) {
+      const puerto = puertos.find(
+        (p) => Number(p.id) === Number(faenaData.puertoSalidaId),
+      );
+      if (puerto) {
+        setPuertoSalidaDatos(puerto);
       }
     }
+  }, [faenaData?.puertoSalidaId, puertos]);
+
+  /**
+   * useEffect para cargar precio de combustible vigente
+   * Convierte a soles si está en dólares usando tipo de cambio SUNAT
+   */
+  useEffect(() => {
+    const cargarPrecioCombustible = async () => {
+      if (!temporadaData?.empresa?.entidadComercialId) return;
+
+      setLoadingPrecioCombustible(true);
+      try {
+        const fechaReferencia = detalle?.fechaHoraArriboPuerto
+          ? new Date(detalle.fechaHoraArriboPuerto)
+          : new Date();
+
+        const precioCombustible = await getPrecioCombustibleVigente(
+          Number(temporadaData.empresa.entidadComercialId),
+          fechaReferencia,
+        );
+
+        if (!precioCombustible) {
+          console.warn(
+            "No se encontró precio de combustible vigente, usando precio por defecto",
+          );
+          return;
+        }
+
+        let precioEnSoles = Number(precioCombustible.precioUnitario);
+
+        // Si está en dólares (ID = 2), convertir a soles
+        if (Number(precioCombustible.monedaId) === 2) {
+          try {
+            const fecha = new Date(fechaReferencia);
+            const tipoCambio = await consultarTipoCambioSunat({
+              date: fecha.getDate(),
+              month: fecha.getMonth() + 1,
+              year: fecha.getFullYear(),
+            });
+            if (tipoCambio?.venta) {
+              precioEnSoles = precioEnSoles * Number(tipoCambio.venta);
+            }
+          } catch (error) {
+            console.error("Error obteniendo tipo de cambio:", error);
+          }
+        }
+
+        setPrecioCombustibleSoles(precioEnSoles);
+      } catch (error) {
+        console.error("Error obteniendo precio de combustible:", error);
+      } finally {
+        setLoadingPrecioCombustible(false);
+      }
+    };
+
+    cargarPrecioCombustible();
   }, [
-    watch("latitudFondeo"),
-    watch("longitudFondeo"),
-    watch("puertoFondeoId"),
+    temporadaData?.empresa?.entidadComercialId,
+    detalle?.fechaHoraArriboPuerto,
   ]);
+
+  /**
+   * useEffect para calcular distancia entre inicio retorno y puerto descarga
+   * Usa fórmula de Haversine para calcular distancia en millas náuticas
+   */
+  useEffect(() => {
+    const puertoDescargaId = watch("puertoDescargaId");
+    const latitudRetorno = watch("latitud");
+    const longitudRetorno = watch("longitud");
+
+    if (
+      puertoDescargaId &&
+      latitudRetorno &&
+      longitudRetorno &&
+      puertos.length > 0
+    ) {
+      const puertoDescarga = puertos.find(
+        (p) => Number(p.id) === Number(puertoDescargaId),
+      );
+
+      if (puertoDescarga && puertoDescarga.latitud && puertoDescarga.longitud) {
+        // Fórmula de Haversine
+        const R = 3440.065; // Radio de la Tierra en millas náuticas
+        const lat1 = (Number(latitudRetorno) * Math.PI) / 180;
+        const lat2 = (Number(puertoDescarga.latitud) * Math.PI) / 180;
+        const deltaLat =
+          ((Number(puertoDescarga.latitud) - Number(latitudRetorno)) *
+            Math.PI) /
+          180;
+        const deltaLon =
+          ((Number(puertoDescarga.longitud) - Number(longitudRetorno)) *
+            Math.PI) /
+          180;
+
+        const a =
+          Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+          Math.cos(lat1) *
+          Math.cos(lat2) *
+          Math.sin(deltaLon / 2) *
+          Math.sin(deltaLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distancia = R * c;
+
+        setDistanciaRetornoPuerto(distancia);
+      } else {
+        setDistanciaRetornoPuerto(null);
+      }
+    } else {
+      setDistanciaRetornoPuerto(null);
+    }
+  }, [watch("puertoDescargaId"), watch("latitud"), watch("longitud"), puertos]);
+
+  /**
+   * useEffect para calcular consumo de combustible
+   * consumo = distancia / millasNauticasPorGalon
+   */
+  useEffect(() => {
+    if (
+      distanciaRetornoPuerto !== null &&
+      embarcacionCompleta?.millasNauticasPorGalon
+    ) {
+      const consumo =
+        distanciaRetornoPuerto /
+        Number(embarcacionCompleta.millasNauticasPorGalon);
+      setConsumoCombustible(consumo);
+    } else {
+      setConsumoCombustible(null);
+    }
+  }, [distanciaRetornoPuerto, embarcacionCompleta?.millasNauticasPorGalon]);
+
+  /**
+   * useEffect para calcular costo de combustible
+   * costo = consumo * precioCombustibleSoles
+   */
+  useEffect(() => {
+    if (consumoCombustible !== null && precioCombustibleSoles > 0) {
+      const costo = consumoCombustible * precioCombustibleSoles;
+      setCostoCombustible(costo);
+    } else {
+      setCostoCombustible(null);
+    }
+  }, [consumoCombustible, precioCombustibleSoles]);
 
   // Crear configuración de inputs de coordenadas usando utilidad genérica
   const coordenadasConfig = crearInputCoordenadas({
@@ -1249,15 +1619,17 @@ export default function DescargaFaenaPescaForm({
           flexDirection: window.innerWidth < 768 ? "column" : "row",
         }}
       >
+        {/* Botón para capturar GPS del punto donde deciden retornar al puerto */}
         <div style={{ flex: 1 }}>
           <Button
             type="button"
-            label="Capturar GPS Arribo"
+            label="Capturar GPS Inicio Retorno"
             icon="pi pi-map-marker"
             className="p-button-info"
             onClick={handleCapturarGPS}
-            disabled={loading}
-            size="small"
+            disabled={loading || camposDeshabilitados}
+            tooltip="Captura la ubicación GPS donde la embarcación decide retornar al puerto"
+            tooltipOptions={{ position: "top" }}
           />
         </div>
 
@@ -1707,6 +2079,7 @@ export default function DescargaFaenaPescaForm({
         mapPosition={mapPosition}
         mapKey={mapKey}
         tipoMapa={tipoMapa}
+        zoom={11}
         getTileConfig={getTileConfig}
         toggleFullscreen={toggleFullscreen}
         cambiarTipoMapa={cambiarTipoMapa}
@@ -1719,8 +2092,11 @@ export default function DescargaFaenaPescaForm({
         titulo="📍 Información Geográfica - Descarga"
         colapsadoPorDefecto={true}
       >
+        <LineaRetornoPuerto />
+        <MarkerPuertoDescarga />
         <DraggableMarker />
       </PanelMapaGeografico>
+
 
       {/* Segunda fila: Fechas y horas */}
       <div
@@ -2568,6 +2944,7 @@ export default function DescargaFaenaPescaForm({
         mapPosition={mapPositionFondeo}
         mapKey={mapKeyFondeo}
         tipoMapa={tipoMapaFondeo}
+        zoom={11}
         getTileConfig={getTileConfigFondeo}
         toggleFullscreen={toggleFullscreenFondeo}
         cambiarTipoMapa={cambiarTipoMapaFondeo}
@@ -2582,6 +2959,7 @@ export default function DescargaFaenaPescaForm({
       >
         <DraggableMarkerFondeo />
       </PanelMapaGeografico>
+      <PanelResumenRecorrido />
 
       {/* Botones de acción */}
       <div

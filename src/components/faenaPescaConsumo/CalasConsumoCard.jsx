@@ -25,7 +25,7 @@ import { Tag } from "primereact/tag";
 import { Panel } from "primereact/panel";
 import { confirmDialog } from "primereact/confirmdialog";
 import { Controller, useForm } from "react-hook-form";
-import { getResponsiveFontSize } from "../../utils/utils";
+import { getResponsiveFontSize, formatearNumero, formatearFechaHora } from "../../utils/utils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import {
   capturarGPS,
@@ -200,9 +200,9 @@ export default function CalasConsumoCard({
     const a =
       Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
       Math.cos(lat1Rad) *
-        Math.cos(lat2Rad) *
-        Math.sin(deltaLon / 2) *
-        Math.sin(deltaLon / 2);
+      Math.cos(lat2Rad) *
+      Math.sin(deltaLon / 2) *
+      Math.sin(deltaLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distancia = R * c;
 
@@ -476,9 +476,9 @@ export default function CalasConsumoCard({
       const galones = calcularConsumoFaena(distanciaTotal, rendimiento);
       const costo = calcularCostoCombustible(galones, precioCombustibleSoles);
       setConsumoCombustible({
-        rendimiento: rendimiento.toFixed(2),
-        galones: galones.toFixed(2),
-        costo: costo.toFixed(2),
+        rendimiento: formatearNumero(rendimiento, 2),
+        galones: formatearNumero(galones, 2),
+        costo: formatearNumero(costo, 2),
       });
     } else {
       setConsumoCombustible(null);
@@ -857,9 +857,9 @@ export default function CalasConsumoCard({
         <Popup>
           <strong>🔵 {nombreBahia} - INICIO</strong>
           <br />
-          Lat: {Number(latitud).toFixed(6)}
+          Lat: {formatearNumero(Number(latitud), 6)}
           <br />
-          Lon: {Number(longitud).toFixed(6)}
+          Lon: {formatearNumero(Number(longitud), 6)}
         </Popup>
       </Marker>
     );
@@ -893,9 +893,9 @@ export default function CalasConsumoCard({
         <Popup>
           <strong>🔴 {nombreBahia} - FIN</strong>
           <br />
-          Lat: {Number(latitudFin).toFixed(6)}
+          Lat: {formatearNumero(Number(latitudFin), 6)}
           <br />
-          Lon: {Number(longitudFin).toFixed(6)}
+          Lon: {formatearNumero(Number(longitudFin), 6)}
         </Popup>
       </Marker>
     );
@@ -925,9 +925,9 @@ export default function CalasConsumoCard({
           <br />
           Puerto de Salida
           <br />
-          Lat: {coordenadasPuerto.latitud.toFixed(6)}
+          Lat: {formatearNumero(coordenadasPuerto.latitud, 6)}
           <br />
-          Lon: {coordenadasPuerto.longitud.toFixed(6)}
+          Lon: {formatearNumero(coordenadasPuerto.longitud, 6)}
         </Popup>
       </Marker>
     );
@@ -1053,17 +1053,6 @@ export default function CalasConsumoCard({
     return "info";
   };
 
-  const formatearFecha = (fecha) => {
-    if (!fecha) return "";
-    return new Date(fecha).toLocaleString("es-ES", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   const accionesTemplate = (rowData) => {
     return (
       <div style={{ display: "flex", gap: "5px", flexWrap: "nowrap" }}>
@@ -1123,10 +1112,10 @@ export default function CalasConsumoCard({
                 {coordenadasPuerto.nombre}
               </p>
               <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
-                Lat: {Number(coordenadasPuerto.latitud).toFixed(6)}
+                Lat: {formatearNumero(Number(coordenadasPuerto.latitud), 6)}
               </p>
               <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
-                Lon: {Number(coordenadasPuerto.longitud).toFixed(6)}
+                Lon: {formatearNumero(Number(coordenadasPuerto.longitud), 6)}
               </p>
               {precioCombustibleSoles > 0 && (
                 <>
@@ -1141,7 +1130,7 @@ export default function CalasConsumoCard({
                     }}
                   >
                     💰 Precio Combustible: S/{" "}
-                    {precioCombustibleSoles.toFixed(2)} /gal
+                    {formatearNumero(precioCombustibleSoles, 2)} /gal
                   </p>
                 </>
               )}
@@ -1169,25 +1158,27 @@ export default function CalasConsumoCard({
                   color: "#047857",
                 }}
               >
-                {distanciaPuertoInicio.toFixed(2)} MN
+                {formatearNumero(distanciaPuertoInicio, 2)} MN
               </p>
               {embarcacionCompleta?.millasNauticasPorGalon && (
                 <>
                   <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
                     ⛽{" "}
-                    {(
+                    {formatearNumero(
                       distanciaPuertoInicio /
-                      Number(embarcacionCompleta.millasNauticasPorGalon)
-                    ).toFixed(2)}{" "}
+                      Number(embarcacionCompleta.millasNauticasPorGalon),
+                      2
+                    )}{" "}
                     Galones
                   </p>
                   <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
                     💰 S/{" "}
-                    {(
+                    {formatearNumero(
                       (distanciaPuertoInicio /
                         Number(embarcacionCompleta.millasNauticasPorGalon)) *
-                      precioCombustibleSoles
-                    ).toFixed(2)}
+                      precioCombustibleSoles,
+                      2
+                    )}
                   </p>
                 </>
               )}
@@ -1215,25 +1206,27 @@ export default function CalasConsumoCard({
                   color: "#92400e",
                 }}
               >
-                {distanciaInicioFin.toFixed(2)} MN
+                {formatearNumero(distanciaInicioFin, 2)} MN
               </p>
               {embarcacionCompleta?.millasNauticasPorGalon && (
                 <>
                   <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
                     ⛽{" "}
-                    {(
+                    {formatearNumero(
                       distanciaInicioFin /
-                      Number(embarcacionCompleta.millasNauticasPorGalon)
-                    ).toFixed(2)}{" "}
+                      Number(embarcacionCompleta.millasNauticasPorGalon),
+                      2
+                    )}{" "}
                     Galones
                   </p>
                   <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
                     💰 S/{" "}
-                    {(
+                    {formatearNumero(
                       (distanciaInicioFin /
                         Number(embarcacionCompleta.millasNauticasPorGalon)) *
-                      precioCombustibleSoles
-                    ).toFixed(2)}
+                      precioCombustibleSoles,
+                      2
+                    )}
                   </p>
                 </>
               )}
@@ -1261,7 +1254,7 @@ export default function CalasConsumoCard({
                   color: "#713f12",
                 }}
               >
-                {distanciaTotal.toFixed(2)} MN
+                {formatearNumero(distanciaTotal, 2)} MN
               </p>
               {embarcacionCompleta?.millasNauticasPorGalon && (
                 <>
@@ -1272,10 +1265,11 @@ export default function CalasConsumoCard({
                     }}
                   >
                     ⛽{" "}
-                    {(
+                    {formatearNumero(
                       distanciaTotal /
-                      Number(embarcacionCompleta.millasNauticasPorGalon)
-                    ).toFixed(2)}{" "}
+                      Number(embarcacionCompleta.millasNauticasPorGalon),
+                      2
+                    )}{" "}
                     Galones (Total)
                   </p>
                   <p
@@ -1285,11 +1279,12 @@ export default function CalasConsumoCard({
                     }}
                   >
                     💰 S/{" "}
-                    {(
+                    {formatearNumero(
                       (distanciaTotal /
                         Number(embarcacionCompleta.millasNauticasPorGalon)) *
-                      precioCombustibleSoles
-                    ).toFixed(2)}
+                      precioCombustibleSoles,
+                      2
+                    )}
                   </p>
                   <p
                     style={{
@@ -1299,12 +1294,13 @@ export default function CalasConsumoCard({
                     }}
                   >
                     Rend:{" "}
-                    {Number(embarcacionCompleta.millasNauticasPorGalon).toFixed(
-                      2,
+                    {formatearNumero(
+                      Number(embarcacionCompleta.millasNauticasPorGalon),
+                      2
                     )}{" "}
                     MN/Gal
                   </p>
-                  <p style={{ margin: "0.25rem 0", fontSize: "1rem", fontWeight:"bold" }}>
+                  <p style={{ margin: "0.25rem 0", fontSize: "1rem", fontWeight: "bold" }}>
                     {embarcacionCompleta.activo?.nombre || "Embarcación"} -{" "}
                     {embarcacionCompleta.matricula}
                   </p>
@@ -1396,8 +1392,8 @@ export default function CalasConsumoCard({
           sortable
           body={(rowData) =>
             rowData.latitud
-              ? parseFloat(rowData.latitud).toFixed(8)
-              : "0.00000000"
+              ? formatearNumero(parseFloat(rowData.latitud), 8)
+              : formatearNumero(0, 8)
           }
           style={{ minWidth: "8rem" }}
         />
@@ -1407,8 +1403,8 @@ export default function CalasConsumoCard({
           sortable
           body={(rowData) =>
             rowData.longitud
-              ? parseFloat(rowData.longitud).toFixed(8)
-              : "0.00000000"
+              ? formatearNumero(parseFloat(rowData.longitud), 8)
+              : formatearNumero(0, 8)
           }
           style={{ minWidth: "8rem" }}
         />
@@ -1417,7 +1413,7 @@ export default function CalasConsumoCard({
           header="Lat Fin"
           sortable
           body={(rowData) =>
-            rowData.latitudFin ? parseFloat(rowData.latitudFin).toFixed(8) : "-"
+            rowData.latitudFin ? formatearNumero(parseFloat(rowData.latitudFin), 8) : "-"
           }
           style={{ minWidth: "8rem" }}
         />
@@ -1427,7 +1423,7 @@ export default function CalasConsumoCard({
           sortable
           body={(rowData) =>
             rowData.longitudFin
-              ? parseFloat(rowData.longitudFin).toFixed(8)
+              ? formatearNumero(parseFloat(rowData.longitudFin), 8)
               : "-"
           }
           style={{ minWidth: "8rem" }}
@@ -1479,7 +1475,6 @@ export default function CalasConsumoCard({
                 id="bahiaId"
                 value={selectedBahiaId}
                 options={bahias}
-                placeholder="Bahía (automático)"
                 disabled
                 style={{ fontWeight: "bold" }}
               />
@@ -1490,7 +1485,6 @@ export default function CalasConsumoCard({
                 id="motoristaId"
                 value={selectedMotoristaId}
                 options={motoristas}
-                placeholder="Motorista (automático)"
                 disabled
                 style={{ fontWeight: "bold" }}
               />
@@ -1501,7 +1495,6 @@ export default function CalasConsumoCard({
                 id="patronId"
                 value={selectedPatronId}
                 options={patrones}
-                placeholder="Patrón (automático)"
                 disabled
                 style={{ fontWeight: "bold" }}
               />
@@ -1512,7 +1505,6 @@ export default function CalasConsumoCard({
                 id="embarcacionId"
                 value={selectedEmbarcacionId}
                 options={embarcaciones}
-                placeholder="Embarcación (automático)"
                 disabled
                 style={{ fontWeight: "bold" }}
               />
@@ -1537,7 +1529,6 @@ export default function CalasConsumoCard({
                 dateFormat="dd/mm/yy"
                 showIcon
                 disabled
-                placeholder="Se asigna automáticamente"
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -1549,7 +1540,6 @@ export default function CalasConsumoCard({
                 dateFormat="dd/mm/yy"
                 showIcon
                 disabled
-                placeholder="Se actualiza automáticamente"
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -1627,9 +1617,7 @@ export default function CalasConsumoCard({
                         toast.current?.show({
                           severity: "success",
                           summary: "GPS INICIO capturado",
-                          detail: `GPS capturado con precisión de ${accuracy.toFixed(
-                            1,
-                          )}m. Presione Guardar para confirmar.`,
+                          detail: `GPS capturado con precisión de ${formatearNumero(accuracy, 1)}m. Presione Guardar para confirmar.`,
                           life: 3000,
                         });
 
@@ -1759,7 +1747,6 @@ export default function CalasConsumoCard({
                           setLatitud(e.value);
                           setValueCala("latitud", e.value);
                         }}
-                        placeholder="-12.123456"
                         disabled={loading}
                         mode="decimal"
                         minFractionDigits={0}
@@ -1783,7 +1770,6 @@ export default function CalasConsumoCard({
                           setLongitud(e.value);
                           setValueCala("longitud", e.value);
                         }}
-                        placeholder="-77.123456"
                         disabled={loading}
                         mode="decimal"
                         minFractionDigits={0}
@@ -2145,9 +2131,7 @@ export default function CalasConsumoCard({
                         toast.current?.show({
                           severity: "success",
                           summary: "GPS FIN capturado",
-                          detail: `GPS capturado con precisión de ${accuracy.toFixed(
-                            1,
-                          )}m. Presione Guardar para confirmar.`,
+                          detail: `GPS capturado con precisión de ${formatearNumero(accuracy, 1)}m. Presione Guardar para confirmar.`,
                           life: 3000,
                         });
                       },
@@ -2241,7 +2225,6 @@ export default function CalasConsumoCard({
                           setLatitudFin(e.value);
                           setValueCala("latitudFin", e.value);
                         }}
-                        placeholder="-12.123456"
                         disabled={loading}
                         mode="decimal"
                         minFractionDigits={0}
@@ -2265,7 +2248,6 @@ export default function CalasConsumoCard({
                           setLongitudFin(e.value);
                           setValueCala("longitudFin", e.value);
                         }}
-                        placeholder="-77.123456"
                         disabled={loading}
                         mode="decimal"
                         minFractionDigits={0}
@@ -2664,7 +2646,6 @@ export default function CalasConsumoCard({
                     value={field.value || ""}
                     onChange={(e) => field.onChange(e.target.value)}
                     style={{ fontWeight: "bold", fontStyle: "italic" }}
-                    placeholder="Observaciones"
                     rows={1}
                     cols={20}
                   />
