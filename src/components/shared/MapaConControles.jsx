@@ -1,11 +1,21 @@
 // src/components/shared/MapaConControles.jsx
 // Componente genérico reutilizable para mapas con controles y capas
 import React, { useState, useEffect, useRef } from "react";
-import { MapContainer, TileLayer, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Polygon, useMap } from "react-leaflet";
 import { Button } from "primereact/button";
 import { DEFAULT_MAP_ZOOM } from "../../config/mapConfig";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import ZONA_PROHIBIDA_GEOJSON from "../../data/5millasnauticasprotegidas.json";
+
+
+// Coordenadas oficiales de la zona prohibida de 5 millas náuticas
+// Fuente: Archivo GeoJSON oficial proporcionado por PRODUCE/IMARPE
+// IMPORTANTE: GeoJSON usa [longitud, latitud] pero Leaflet usa [latitud, longitud]
+// Por eso invertimos las coordenadas
+const ZONA_PROHIBIDA_5_MILLAS = ZONA_PROHIBIDA_GEOJSON.geometry.coordinates[0].map(
+  coord => [coord[1], coord[0]] // Invertir de [lon, lat] a [lat, lon]
+);
 
 /**
  * Componente de líneas guía (graticule) - Implementación manual
@@ -139,6 +149,7 @@ const GraticuleLayer = () => {
  * @param {Function} props.toggleFullscreen - Función para alternar pantalla completa
  * @param {Function} props.cambiarTipoMapa - Función para cambiar tipo de mapa
  * @param {Function} props.obtenerUbicacionUsuario - Función para obtener ubicación del usuario
+ * @param {boolean} props.mostrarZonaProhibida - Mostrar zona prohibida de 5 millas náuticas (opcional, default: true)
  * @param {React.ReactNode} props.children - Componentes hijos (markers, polylines, etc.)
  * @param {React.RefObject} props.mapContainerRef - Ref del contenedor del mapa
  * @param {boolean} props.mapaFullscreen - Estado de pantalla completa
@@ -152,6 +163,7 @@ export default function MapaConControles({
   toggleFullscreen,
   cambiarTipoMapa,
   obtenerUbicacionUsuario,
+  mostrarZonaProhibida = true,
   children,
   mapContainerRef,
   mapaFullscreen = false,
@@ -251,6 +263,18 @@ export default function MapaConControles({
           />
         )}
         <GraticuleLayer />
+        {/* Zona prohibida de 5 millas náuticas */}
+        {mostrarZonaProhibida && (
+          <Polygon
+            positions={ZONA_PROHIBIDA_5_MILLAS}
+            pathOptions={{
+              color: "#ff0000",
+              fillColor: "#ff0000",
+              fillOpacity: 0.15,
+              weight: 2,
+            }}
+          />
+        )}
         {children}
       </MapContainer>
     </div>

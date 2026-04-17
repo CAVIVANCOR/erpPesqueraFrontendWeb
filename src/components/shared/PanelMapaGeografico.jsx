@@ -21,7 +21,7 @@ import InformacionGeograficaPanel from "./InformacionGeograficaPanel";
  * - Soporte para children (markers, polylines, etc.)
  * - Opción para ocultar el mapa y mostrar solo información
  *
-  * Props:
+   * Props:
  * - mapPosition: [lat, lng] - Posición central del mapa
  * - mapKey: number - Key para forzar re-render del mapa
  * - tipoMapa: string - Tipo de mapa (street, satellite, hybrid)
@@ -30,6 +30,7 @@ import InformacionGeograficaPanel from "./InformacionGeograficaPanel";
  * - toggleFullscreen: function - Función para alternar pantalla completa
  * - cambiarTipoMapa: function - Función para cambiar tipo de mapa
  * - obtenerUbicacionUsuario: function - Función para obtener ubicación GPS
+ * - mostrarZonaProhibida: boolean - Mostrar zona prohibida de 5 millas náuticas (opcional, default: true)
  * - mapContainerRef: ref - Referencia al contenedor del mapa
  * - mapaFullscreen: boolean - Estado de pantalla completa
  * - infoGeografica: object - Datos de información geográfica
@@ -50,6 +51,7 @@ export default function PanelMapaGeografico({
   toggleFullscreen,
   cambiarTipoMapa,
   obtenerUbicacionUsuario,
+  mostrarZonaProhibida = true,
   mapContainerRef,
   mapaFullscreen,
 
@@ -99,6 +101,7 @@ export default function PanelMapaGeografico({
             toggleFullscreen={toggleFullscreen}
             cambiarTipoMapa={cambiarTipoMapa}
             obtenerUbicacionUsuario={obtenerUbicacionUsuario}
+            mostrarZonaProhibida={mostrarZonaProhibida}
             mapContainerRef={mapContainerRef}
             mapaFullscreen={mapaFullscreen}
           >

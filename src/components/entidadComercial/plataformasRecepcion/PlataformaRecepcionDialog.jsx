@@ -25,7 +25,6 @@ import "leaflet/dist/leaflet.css";
 import { esquemaValidacionPlataforma } from "./plataformaRecepcionValidation";
 import PanelMapaGeografico from "../../shared/PanelMapaGeografico";
 import { analizarCoordenadasConReferencia } from "../../../api/geolocalizacion";
-
 // Fix para iconos de Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -43,16 +42,6 @@ const plataformaIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
-
-// Coordenadas aproximadas de la zona de exclusión de 5 millas náuticas (costa peruana)
-// Simplificación de la costa peruana para zona prohibida
-const ZONA_PROHIBIDA_5_MILLAS = [
-  [-0.5, -81.3], [-3.5, -80.8], [-6.0, -81.0], [-8.0, -79.5],
-  [-10.0, -78.5], [-12.0, -77.2], [-14.0, -76.5], [-16.0, -75.5],
-  [-18.0, -71.0], [-18.5, -70.5], [-18.5, -69.0], [-18.0, -68.0],
-  [-16.0, -68.0], [-14.0, -69.0], [-12.0, -70.0], [-10.0, -71.5],
-  [-8.0, -73.0], [-6.0, -75.0], [-3.5, -76.5], [-0.5, -77.0], [-0.5, -81.3]
-];
 
 export default function PlataformaRecepcionDialog({
   visible,
@@ -104,7 +93,7 @@ export default function PlataformaRecepcionDialog({
     }
   }, [latitud, longitud]);
 
-    // Reset form cuando cambia la plataforma o se abre el dialog
+  // Reset form cuando cambia la plataforma o se abre el dialog
   useEffect(() => {
     if (visible) {
       reset({
@@ -130,9 +119,9 @@ export default function PlataformaRecepcionDialog({
   }, [plataforma, reset, visible]);
 
 
-    /**
-   * Analizar coordenadas cuando cambian
-   */
+  /**
+ * Analizar coordenadas cuando cambian
+ */
   useEffect(() => {
     if (latitud && longitud && !loadingGeo) {
       const analizarCoordenadasExistentes = async () => {
@@ -355,7 +344,7 @@ export default function PlataformaRecepcionDialog({
         <div
           style={{
             display: "flex",
-            alignItems:"end",
+            alignItems: "end",
             gap: 10,
             flexDirection: window.innerWidth < 768 ? "column" : "row",
           }}
@@ -502,23 +491,6 @@ export default function PlataformaRecepcionDialog({
               titulo="📍 Ubicación de la Plataforma de Recepción"
               colapsadoPorDefecto={false}
             >
-              {/* Zona prohibida de 5 millas náuticas */}
-              <Polygon
-                positions={ZONA_PROHIBIDA_5_MILLAS}
-                pathOptions={{
-                  color: "red",
-                  fillColor: "red",
-                  fillOpacity: 0.2,
-                  weight: 2,
-                }}
-              >
-                <Popup>
-                  <strong style={{ color: "red" }}>⚠️ ZONA PROHIBIDA</strong>
-                  <br />
-                  Prohibido pescar dentro de las 5 millas náuticas
-                </Popup>
-              </Polygon>
-
               <DraggableMarker />
               <UserLocationMarker />
             </PanelMapaGeografico>
