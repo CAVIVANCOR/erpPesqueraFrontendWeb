@@ -43,7 +43,6 @@ import { getVendedoresPorEmpresa } from "../../api/personal";
 import { getMonedas } from "../../api/moneda";
 import { getUbigeos } from "../../api/ubigeo";
 import { consultarSunatRucFull } from "../../api/consultaExterna";
-
 // Importar componentes de cards
 import DatosGeneralesEntidad from "./DatosGeneralesEntidad";
 import DatosOperativosEntidad from "./DatosOperativosEntidad";
@@ -51,6 +50,7 @@ import DetalleContactosEntidad from "./DetalleContactosEntidad";
 import DetalleDireccionesEntidad from "./DetalleDireccionesEntidad";
 import DetalleVehiculosEntidad from "./DetalleVehiculosEntidad";
 import DetallePreciosEntidad from "./DetallePreciosEntidad";
+import DetallePlataformasRecepcion from "./DetallePlataformasRecepcion";
 import DetalleLineasCreditoEntidad from "./DetalleLineasCreditoEntidad";
 import DetalleCtasCteEntidad from "./DetalleCtasCteEntidad";
 import { getDepartamentos } from "../../api/departamento";
@@ -903,6 +903,18 @@ const EntidadComercialForm = ({
               onClick={() => handleCardChange("comisiones-fidelizacion")}
               type="button"
             />
+            <Button
+              icon="pi pi-map-marker"
+              tooltip="Plataformas de Recepción - Plataformas de recepción de pesca"
+              tooltipOptions={{ position: "bottom" }}
+              className={
+                activeCard === "plataformas-recepcion"
+                  ? "p-button-warning"
+                  : "p-button-outlined"
+              }
+              onClick={() => handleCardChange("plataformas-recepcion")}
+              type="button"
+            />
           </ButtonGroup>
         }
       />
@@ -1003,6 +1015,14 @@ const EntidadComercialForm = ({
             entidadComercialFidelizacionId={entidadComercial?.id}
             entidadComercial={entidadComercial}
             ref={comisionesFidelizacionRef}
+            readOnly={readOnly}
+            permisos={permisos}
+          />
+        )}
+
+        {activeCard === "plataformas-recepcion" && (
+          <DetallePlataformasRecepcion
+            entidadComercialId={entidadComercial?.id}
             readOnly={readOnly}
             permisos={permisos}
           />
