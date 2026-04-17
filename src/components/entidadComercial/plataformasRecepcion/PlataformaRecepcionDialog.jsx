@@ -104,21 +104,30 @@ export default function PlataformaRecepcionDialog({
     }
   }, [latitud, longitud]);
 
-  // Reset form cuando cambia la plataforma
+    // Reset form cuando cambia la plataforma o se abre el dialog
   useEffect(() => {
-    reset({
-      nombre: plataforma?.nombre || "",
-      puertoPescaId: plataforma?.puertoPescaId ? Number(plataforma.puertoPescaId) : null,
-      latitud: plataforma?.latitud ? Number(plataforma.latitud) : null,
-      longitud: plataforma?.longitud ? Number(plataforma.longitud) : null,
-      activo: plataforma?.activo !== undefined ? plataforma.activo : true,
-    });
+    if (visible) {
+      reset({
+        nombre: plataforma?.nombre || "",
+        puertoPescaId: plataforma?.puertoPescaId ? Number(plataforma.puertoPescaId) : null,
+        latitud: plataforma?.latitud ? Number(plataforma.latitud) : null,
+        longitud: plataforma?.longitud ? Number(plataforma.longitud) : null,
+        activo: plataforma?.activo !== undefined ? plataforma.activo : true,
+      });
 
-    if (plataforma?.latitud && plataforma?.longitud) {
-      setMapPosition([Number(plataforma.latitud), Number(plataforma.longitud)]);
-      setMapKey((prev) => prev + 1);
+      if (plataforma?.latitud && plataforma?.longitud) {
+        setMapPosition([Number(plataforma.latitud), Number(plataforma.longitud)]);
+        setMapKey((prev) => prev + 1);
+      } else {
+        // Resetear posición del mapa a Lima por defecto
+        setMapPosition([-12.046374, -77.042793]);
+        setMapKey((prev) => prev + 1);
+      }
+
+      // Limpiar información geográfica al abrir
+      setInfoGeografica(null);
     }
-  }, [plataforma, reset]);
+  }, [plataforma, reset, visible]);
 
 
     /**
