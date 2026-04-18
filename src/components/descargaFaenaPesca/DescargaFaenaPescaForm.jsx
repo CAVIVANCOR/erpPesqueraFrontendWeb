@@ -23,6 +23,7 @@ import {
   actualizarDescargaFaenaPesca,
   finalizarDescargaConMovimientos,
 } from "../../api/descargaFaenaPesca";
+import { obtenerPlataformasPorEntidad } from "../../api/detPlataformaRecepcionPesca";
 import { confirmDialog } from "primereact/confirmdialog";
 import { getPrecioCombustibleVigente } from "../../api/precioCombustible";
 import { consultarTipoCambioSunat } from "../../api/consultaExterna";
@@ -98,6 +99,11 @@ export default function DescargaFaenaPescaForm({
   // Estados para información geográfica FONDEO
   const [infoGeograficaFondeo, setInfoGeograficaFondeo] = useState(null);
   const [loadingGeoFondeo, setLoadingGeoFondeo] = useState(false);
+
+  // Estados para plataformas de recepción
+  const [plataformasRecepcion, setPlataformasRecepcion] = useState([]);
+  const [loadingPlataformas, setLoadingPlataformas] = useState(false);
+
   const [errorGeoFondeo, setErrorGeoFondeo] = useState(null);
 
   // Estados para cálculos de recorrido
@@ -127,6 +133,7 @@ export default function DescargaFaenaPescaForm({
       fechaHoraArriboPuerto: null,
       fechaHoraLlegadaPuerto: null,
       clienteId: null,
+      plataformaRecepcionPescaId: null,
       numPlataformaDescarga: "",
       turnoPlataformaDescarga: "DIA",
       fechaHoraInicioDescarga: null,
@@ -220,6 +227,7 @@ export default function DescargaFaenaPescaForm({
           ? new Date(detalle.fechaHoraLlegadaPuerto)
           : null,
         clienteId: detalle.clienteId ? Number(detalle.clienteId) : null,
+        plataformaRecepcionPescaId: detalle.plataformaRecepcionPescaId ? Number(detalle.plataformaRecepcionPescaId) : null,
         numPlataformaDescarga: detalle.numPlataformaDescarga || "",
         turnoPlataformaDescarga: detalle.turnoPlataformaDescarga || "DIA",
         fechaHoraInicioDescarga: detalle.fechaHoraInicioDescarga
@@ -268,6 +276,7 @@ export default function DescargaFaenaPescaForm({
         fechaHoraArriboPuerto: null,
         fechaHoraLlegadaPuerto: null,
         clienteId: null,
+        plataformaRecepcionPescaId: null,
         numPlataformaDescarga: "",
         turnoPlataformaDescarga: "DIA",
         fechaHoraInicioDescarga: null,
@@ -407,8 +416,9 @@ export default function DescargaFaenaPescaForm({
    * Manejar cambio de cliente
    * Auto-asigna el precioPorTonComisionFidelizacion desde EntidadComercial
    */
-  const handleClienteChange = (clienteId) => {
+  const handleClienteChange = async (clienteId) => {
     setValue("clienteId", clienteId);
+    setValue("plataformaRecepcionPescaId", null); // Limpiar plataforma al cambiar cliente
 
     if (clienteId) {
       // Buscar el cliente seleccionado en el array de clientes
@@ -418,26 +428,115 @@ export default function DescargaFaenaPescaForm({
 
       if (
         clienteSeleccionado &&
-        clienteSeleccionado.precioPorTonComisionFidelizacion
+        clienteSeleccionado.precioPorTonComisionFidelizacion !== undefined
       ) {
-        // Auto-asignar el precio de comisión fidelización
         setValue(
           "precioPorTonComisionFidelizacion",
           Number(clienteSeleccionado.precioPorTonComisionFidelizacion),
         );
+      }
 
+      // Cargar plataformas de recepción del cliente
+      try {
+        setLoadingPlataformas(true);
+        const plataformas = await obtenerPlataformasPorEntidad(clienteId);
+        console.log("🔍 Plataformas recibidas del backend:", plataformas);
+        console.log("🔍 Total plataformas:", plataformas.length);
+        const plataformasActivas = plataformas.filter(p => p.activo);
+        console.log("🔍 Plataformas activas:", plataformasActivas.length);
+        const plataformasOptions = plataformasActivas.map(p => ({
+          label: p.nombre,
+          value: Number(p.id),
+          latitud: p.latitud,
+          longitud: p.longitud
+        }));
+        console.log("🔍 Opciones para dropdown:", plataformasOptions);
+        setPlataformasRecepcion(plataformasOptions);
+      } catch (error) {
+        console.error("Error al cargar plataformas:", error);
+        setPlataformasRecepcion([]);
         toast.current?.show({
-          severity: "info",
-          summary: "Precio asignado",
-          detail: `Precio/Ton Comisión Fidelización: $${clienteSeleccionado.precioPorTonComisionFidelizacion}`,
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "No se pudieron cargar las plataformas de recepción",
           life: 3000,
         });
-      } else {
-        // Si el cliente no tiene precio configurado, establecer en 0
-        setValue("precioPorTonComisionFidelizacion", 0);
+      } finally {
+        setLoadingPlataformas(false);
+      }
+    } else {
+      setPlataformasRecepcion([]);
+    }
+  };
+
+    /**
+   * Manejar cambio de plataforma de recepción
+   * Auto-asigna las coordenadas de la plataforma seleccionada y su nombre
+   */
+  const handlePlataformaChange = (plataformaId) => {
+    setValue("plataformaRecepcionPescaId", plataformaId);
+
+    if (plataformaId) {
+      const plataformaSeleccionada = plataformasRecepcion.find(
+        (p) => Number(p.value) === Number(plataformaId),
+      );
+
+      if (plataformaSeleccionada) {
+        // Asignar nombre de la plataforma al campo numPlataformaDescarga
+        setValue("numPlataformaDescarga", plataformaSeleccionada.label);
+        
+        if (plataformaSeleccionada.latitud && plataformaSeleccionada.longitud) {
+          // Asignar coordenadas de la plataforma
+          setValue("latitud", Number(plataformaSeleccionada.latitud));
+          setValue("longitud", Number(plataformaSeleccionada.longitud));
+
+          // Actualizar posición del mapa
+          setMapPosition([
+            Number(plataformaSeleccionada.latitud),
+            Number(plataformaSeleccionada.longitud),
+          ]);
+          setMapKey((prev) => prev + 1);
+
+          // Analizar coordenadas para obtener información geográfica
+          const analizarCoordenadasPlataforma = async () => {
+            setLoadingGeo(true);
+            setErrorGeo(null);
+            try {
+              const infoGeo = await analizarCoordenadasConReferencia(
+                Number(plataformaSeleccionada.latitud),
+                Number(plataformaSeleccionada.longitud),
+                null
+              );
+              setInfoGeografica(infoGeo);
+            } catch (error) {
+              console.error("Error al analizar coordenadas de plataforma:", error);
+              setErrorGeo("No se pudo obtener la información geográfica");
+            } finally {
+              setLoadingGeo(false);
+            }
+          };
+
+          analizarCoordenadasPlataforma();
+        }
       }
     }
   };
+
+
+  /**
+   * Cargar plataformas cuando se carga un detalle existente con cliente
+   */
+  useEffect(() => {
+    const clienteIdActual = watch("clienteId");
+
+    if (clienteIdActual && detalle) {
+      // Solo cargar si es la primera vez (plataformasRecepcion está vacío)
+      if (plataformasRecepcion.length === 0) {
+        handleClienteChange(clienteIdActual);
+      }
+    }
+  }, [detalle]); // Solo ejecutar cuando cambia detalle
+
 
   // Funciones para actualizar decimal cuando cambia DMS - DESCARGA
   const actualizarLatitudDesdeDMS = () => {
@@ -599,13 +698,52 @@ export default function DescargaFaenaPescaForm({
     );
   };
 
-  /**
-   * Componente para mostrar marcador del puerto de descarga
+   /**
+   * Componente para mostrar marcador del puerto de descarga o plataforma de recepción
    * Color rojo según estándar del sistema
+   * PRIORIDAD: Si hay plataforma seleccionada, muestra plataforma. Sino, muestra puerto.
    */
   const MarkerPuertoDescarga = () => {
+    const plataformaRecepcionPescaId = watch("plataformaRecepcionPescaId");
     const puertoDescargaId = watch("puertoDescargaId");
 
+    // PRIORIDAD 1: Si hay plataforma seleccionada, mostrar plataforma
+    if (plataformaRecepcionPescaId && plataformasRecepcion.length > 0) {
+      const plataforma = plataformasRecepcion.find(
+        (p) => Number(p.value) === Number(plataformaRecepcionPescaId),
+      );
+
+      if (plataforma?.latitud && plataforma?.longitud) {
+        const iconPlataforma = L.icon({
+          iconUrl:
+            "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
+          shadowUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41],
+        });
+
+        return (
+          <Marker
+            position={[
+              Number(plataforma.latitud),
+              Number(plataforma.longitud),
+            ]}
+            icon={iconPlataforma}
+          >
+            <Popup>
+              <strong>🔴 {plataforma.label}</strong>
+              <br />
+              Plataforma de Recepción
+            </Popup>
+          </Marker>
+        );
+      }
+    }
+
+    // PRIORIDAD 2: Si no hay plataforma, mostrar puerto de descarga
     if (!puertoDescargaId || !puertos.length) return null;
 
     const puertoDescarga = puertos.find(
@@ -773,6 +911,7 @@ export default function DescargaFaenaPescaForm({
           ? data.fechaHoraLlegadaPuerto.toISOString()
           : null,
         clienteId: data.clienteId ? Number(data.clienteId) : null,
+        plataformaRecepcionPescaId: data.plataformaRecepcionPescaId ? Number(data.plataformaRecepcionPescaId) : null,
         numPlataformaDescarga: data.numPlataformaDescarga?.trim() || null,
         turnoPlataformaDescarga: data.turnoPlataformaDescarga?.trim() || null,
         fechaHoraInicioDescarga: data.fechaHoraInicioDescarga
@@ -2156,6 +2295,32 @@ export default function DescargaFaenaPescaForm({
           />
           {errors.clienteId && (
             <Message severity="error" text={errors.clienteId.message} />
+          )}
+        </div>
+        <div style={{ flex: 2 }}>
+          <label htmlFor="plataformaRecepcionPescaId">Plataforma de Recepción</label>
+          <Controller
+            name="plataformaRecepcionPescaId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="plataformaRecepcionPescaId"
+                value={field.value}
+                onChange={(e) => handlePlataformaChange(e.value)}
+                options={plataformasRecepcion}
+                optionLabel="label"
+                optionValue="value"
+                filter
+                showClear
+                style={{ fontWeight: "bold" }}
+                placeholder={loadingPlataformas ? "Cargando..." : "Seleccione plataforma"}
+                disabled={loading || loadingPlataformas || !watch("clienteId")}
+                className={classNames({ "p-invalid": errors.plataformaRecepcionPescaId })}
+              />
+            )}
+          />
+          {errors.plataformaRecepcionPescaId && (
+            <Message severity="error" text={errors.plataformaRecepcionPescaId.message} />
           )}
         </div>
         <div style={{ flex: 1 }}>
