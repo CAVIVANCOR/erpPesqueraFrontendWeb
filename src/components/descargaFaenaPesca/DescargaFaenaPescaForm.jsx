@@ -440,20 +440,15 @@ export default function DescargaFaenaPescaForm({
       try {
         setLoadingPlataformas(true);
         const plataformas = await obtenerPlataformasPorEntidad(clienteId);
-        console.log("🔍 Plataformas recibidas del backend:", plataformas);
-        console.log("🔍 Total plataformas:", plataformas.length);
         const plataformasActivas = plataformas.filter(p => p.activo);
-        console.log("🔍 Plataformas activas:", plataformasActivas.length);
         const plataformasOptions = plataformasActivas.map(p => ({
           label: p.nombre,
           value: Number(p.id),
           latitud: p.latitud,
           longitud: p.longitud
         }));
-        console.log("🔍 Opciones para dropdown:", plataformasOptions);
         setPlataformasRecepcion(plataformasOptions);
       } catch (error) {
-        console.error("Error al cargar plataformas:", error);
         setPlataformasRecepcion([]);
         toast.current?.show({
           severity: "warn",
@@ -523,19 +518,37 @@ export default function DescargaFaenaPescaForm({
   };
 
 
-  /**
+    /**
    * Cargar plataformas cuando se carga un detalle existente con cliente
    */
   useEffect(() => {
     const clienteIdActual = watch("clienteId");
 
-    if (clienteIdActual && detalle) {
-      // Solo cargar si es la primera vez (plataformasRecepcion está vacío)
-      if (plataformasRecepcion.length === 0) {
-        handleClienteChange(clienteIdActual);
-      }
+    if (clienteIdActual && detalle && plataformasRecepcion.length === 0) {
+      // Cargar plataformas del cliente cuando se carga el detalle
+      const cargarPlataformas = async () => {
+        try {
+          setLoadingPlataformas(true);
+          const plataformas = await obtenerPlataformasPorEntidad(clienteIdActual);
+          const plataformasActivas = plataformas.filter(p => p.activo);
+          const plataformasOptions = plataformasActivas.map(p => ({
+            label: p.nombre,
+            value: Number(p.id),
+            latitud: p.latitud,
+            longitud: p.longitud
+          }));
+          setPlataformasRecepcion(plataformasOptions);
+        } catch (error) {
+          console.error("Error al cargar plataformas:", error);
+          setPlataformasRecepcion([]);
+        } finally {
+          setLoadingPlataformas(false);
+        }
+      };
+      
+      cargarPlataformas();
     }
-  }, [detalle]); // Solo ejecutar cuando cambia detalle
+  }, [detalle, watch("clienteId")]); // Ejecutar cuando cambia detalle o clienteId
 
 
   // Funciones para actualizar decimal cuando cambia DMS - DESCARGA

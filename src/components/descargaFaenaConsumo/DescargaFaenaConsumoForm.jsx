@@ -37,6 +37,7 @@ import {
 } from "../../utils/gpsUtils";
 import { useAuthStore } from "../../shared/stores/useAuthStore";
 import { analizarCoordenadasConReferencia } from "../../api/geolocalizacion";
+import { obtenerPlataformasPorEntidad } from "../../api/detPlataformaRecepcionPesca";
 import { DEFAULT_MAP_ZOOM, MARKER_ICONS } from "../../config/mapConfig";
 import L from "leaflet";
 import PanelMapaGeografico from "../shared/PanelMapaGeografico";
@@ -104,6 +105,7 @@ export default function DescargaFaenaConsumoForm({
       fechaHoraArriboPuerto: null,
       fechaHoraLlegadaPuerto: null,
       clienteId: null,
+      plataformaRecepcionPescaId: null,
       numPlataformaDescarga: "",
       turnoPlataformaDescarga: "DIA",
       fechaHoraInicioDescarga: null,
@@ -198,6 +200,10 @@ export default function DescargaFaenaConsumoForm({
   // Estados para el mapa de fondeo
   const [mapPositionFondeo, setMapPositionFondeo] = useState([-12.0, -77.0]);
   const [mapKeyFondeo, setMapKeyFondeo] = useState(0);
+
+  // Estados para plataformas de recepción
+  const [plataformasRecepcion, setPlataformasRecepcion] = useState([]);
+  const [loadingPlataformas, setLoadingPlataformas] = useState(false);
 
   /**
    * Componente de marcador de ubicación del usuario - DESCARGA
@@ -511,9 +517,8 @@ export default function DescargaFaenaConsumoForm({
   }));
 
   const katanasTripulacionNormalizadas = katanasTripulacion.map((k) => ({
-    label: `${k.rangoInicialTn || 0} - ${k.rangoFinaTn || 0} Tn (${
-      k.kgOtorgadoCalculo || 0
-    } Kg)`,
+    label: `${k.rangoInicialTn || 0} - ${k.rangoFinaTn || 0} Tn (${k.kgOtorgadoCalculo || 0
+      } Kg)`,
     value: Number(k.id || k.value),
   }));
 
@@ -534,6 +539,7 @@ export default function DescargaFaenaConsumoForm({
           ? new Date(detalle.fechaHoraLlegadaPuerto)
           : null,
         clienteId: detalle.clienteId ? Number(detalle.clienteId) : null,
+        plataformaRecepcionPescaId: detalle.plataformaRecepcionPescaId ? Number(detalle.plataformaRecepcionPescaId) : null,
         numPlataformaDescarga: detalle.numPlataformaDescarga || "",
         turnoPlataformaDescarga: detalle.turnoPlataformaDescarga || "DIA",
         fechaHoraInicioDescarga: detalle.fechaHoraInicioDescarga
@@ -584,6 +590,7 @@ export default function DescargaFaenaConsumoForm({
         fechaHoraArriboPuerto: null,
         fechaHoraLlegadaPuerto: null,
         clienteId: null,
+        plataformaRecepcionPescaId: null,
         numPlataformaDescarga: "",
         turnoPlataformaDescarga: "DIA",
         fechaHoraInicioDescarga: null,
@@ -613,7 +620,39 @@ export default function DescargaFaenaConsumoForm({
         katanaTripulacionId: null,
       });
     }
-  }, [detalle, reset, bahiaId, motoristaId, patronId, faenaPescaConsumoId]);
+    }, [detalle, reset, bahiaId, motoristaId, patronId, faenaPescaConsumoId]);
+
+  /**
+   * Cargar plataformas cuando se carga un detalle existente con cliente
+   */
+  useEffect(() => {
+    const clienteIdActual = watch("clienteId");
+
+    if (clienteIdActual && detalle && plataformasRecepcion.length === 0) {
+      // Cargar plataformas del cliente cuando se carga el detalle
+      const cargarPlataformas = async () => {
+        try {
+          setLoadingPlataformas(true);
+          const plataformas = await obtenerPlataformasPorEntidad(clienteIdActual);
+          const plataformasActivas = plataformas.filter(p => p.activo);
+          const plataformasOptions = plataformasActivas.map(p => ({
+            label: p.nombre,
+            value: Number(p.id),
+            latitud: p.latitud,
+            longitud: p.longitud
+          }));
+          setPlataformasRecepcion(plataformasOptions);
+        } catch (error) {
+          console.error("Error al cargar plataformas:", error);
+          setPlataformasRecepcion([]);
+        } finally {
+          setLoadingPlataformas(false);
+        }
+      };
+      
+      cargarPlataformas();
+    }
+  }, [detalle, watch("clienteId")]); // Ejecutar cuando cambia detalle o clienteId
 
   // Sincronizar cambios de decimal a DMS para DESCARGA
   useEffect(() => {
@@ -938,15 +977,36 @@ export default function DescargaFaenaConsumoForm({
     setValue("longitudFondeo", decimal);
   };
 
-  /**
+    /**
    * Componente de marker draggable para el mapa de DESCARGA
+   * PRIORIDAD: Si hay plataforma seleccionada, muestra plataforma. Sino, muestra puerto.
    */
   const DraggableMarker = () => {
     const markerRef = useRef(null);
-    const nombrePuerto = watch("puertoDescargaId")
-      ? puertos.find((p) => Number(p.id) === Number(watch("puertoDescargaId")))
-          ?.nombre || "Puerto"
-      : "Puerto de Descarga";
+    const plataformaRecepcionPescaId = watch("plataformaRecepcionPescaId");
+    const puertoDescargaId = watch("puertoDescargaId");
+
+    // PRIORIDAD 1: Si hay plataforma seleccionada, mostrar nombre de plataforma
+    let nombreMarcador = "Puerto de Descarga";
+    let esPlataforma = false;
+
+    if (plataformaRecepcionPescaId && plataformasRecepcion.length > 0) {
+      const plataforma = plataformasRecepcion.find(
+        (p) => Number(p.value) === Number(plataformaRecepcionPescaId),
+      );
+      if (plataforma) {
+        nombreMarcador = plataforma.label;
+        esPlataforma = true;
+      }
+    } else if (puertoDescargaId && puertos.length > 0) {
+      // PRIORIDAD 2: Si no hay plataforma, mostrar puerto de descarga
+      const puerto = puertos.find(
+        (p) => Number(p.id) === Number(puertoDescargaId),
+      );
+      if (puerto) {
+        nombreMarcador = puerto.nombre;
+      }
+    }
 
     const eventHandlers = {
       dragend() {
@@ -968,7 +1028,12 @@ export default function DescargaFaenaConsumoForm({
         ref={markerRef}
       >
         <Popup>
-          <strong>{nombrePuerto}</strong>
+          <strong>
+            {esPlataforma ? "🔴 " : "🔴 "}
+            {nombreMarcador}
+          </strong>
+          <br />
+          {esPlataforma ? "Plataforma de Recepción" : "Puerto de Descarga"}
           <br />
           Lat: {Number(latitud).toFixed(6)}
           <br />
@@ -985,7 +1050,7 @@ export default function DescargaFaenaConsumoForm({
     const markerRef = useRef(null);
     const nombrePuerto = watch("puertoFondeoId")
       ? puertos.find((p) => Number(p.id) === Number(watch("puertoFondeoId")))
-          ?.nombre || "Puerto"
+        ?.nombre || "Puerto"
       : "Puerto de Fondeo";
 
     const eventHandlers = {
@@ -1019,6 +1084,96 @@ export default function DescargaFaenaConsumoForm({
   };
 
   /**
+   * Manejar cambio de cliente
+   * Carga las plataformas de recepción asociadas al cliente seleccionado
+   */
+  const handleClienteChange = async (clienteId) => {
+    setValue("clienteId", clienteId);
+    setValue("plataformaRecepcionPescaId", null);
+
+    if (clienteId) {
+      try {
+        setLoadingPlataformas(true);
+        const plataformas = await obtenerPlataformasPorEntidad(clienteId);
+        const plataformasActivas = plataformas.filter(p => p.activo);
+        const plataformasOptions = plataformasActivas.map(p => ({
+          label: p.nombre,
+          value: Number(p.id),
+          latitud: p.latitud,
+          longitud: p.longitud
+        }));
+        setPlataformasRecepcion(plataformasOptions);
+      } catch (error) {
+        console.error("Error al cargar plataformas:", error);
+        setPlataformasRecepcion([]);
+        toast.current?.show({
+          severity: "warn",
+          summary: "Advertencia",
+          detail: "No se pudieron cargar las plataformas de recepción",
+          life: 3000,
+        });
+      } finally {
+        setLoadingPlataformas(false);
+      }
+    } else {
+      setPlataformasRecepcion([]);
+    }
+  };
+
+  /**
+   * Manejar cambio de plataforma de recepción
+   * Auto-asigna las coordenadas de la plataforma seleccionada y su nombre
+   */
+  const handlePlataformaChange = (plataformaId) => {
+    setValue("plataformaRecepcionPescaId", plataformaId);
+
+    if (plataformaId) {
+      const plataformaSeleccionada = plataformasRecepcion.find(
+        (p) => Number(p.value) === Number(plataformaId),
+      );
+
+      if (plataformaSeleccionada) {
+        // Asignar nombre de la plataforma al campo numPlataformaDescarga
+        setValue("numPlataformaDescarga", plataformaSeleccionada.label);
+
+        if (plataformaSeleccionada.latitud && plataformaSeleccionada.longitud) {
+          // Asignar coordenadas de la plataforma
+          setValue("latitud", Number(plataformaSeleccionada.latitud));
+          setValue("longitud", Number(plataformaSeleccionada.longitud));
+
+          // Actualizar posición del mapa
+          setMapPosition([
+            Number(plataformaSeleccionada.latitud),
+            Number(plataformaSeleccionada.longitud),
+          ]);
+          setMapKey((prev) => prev + 1);
+
+          // Analizar coordenadas para obtener información geográfica
+          const analizarCoordenadasPlataforma = async () => {
+            setLoadingGeo(true);
+            setErrorGeo(null);
+            try {
+              const infoGeo = await analizarCoordenadasConReferencia(
+                Number(plataformaSeleccionada.latitud),
+                Number(plataformaSeleccionada.longitud),
+                null
+              );
+              setInfoGeografica(infoGeo);
+            } catch (error) {
+              console.error("Error al analizar coordenadas de plataforma:", error);
+              setErrorGeo("No se pudo obtener la información geográfica");
+            } finally {
+              setLoadingGeo(false);
+            }
+          };
+
+          analizarCoordenadasPlataforma();
+        }
+      }
+    }
+  };
+
+  /**
    * Maneja el guardado del formulario
    */
   const handleGuardar = async () => {
@@ -1041,7 +1196,10 @@ export default function DescargaFaenaConsumoForm({
         fechaHoraLlegadaPuerto: data.fechaHoraLlegadaPuerto
           ? data.fechaHoraLlegadaPuerto.toISOString()
           : null,
-        clienteId: data.clienteId ? Number(data.clienteId) : null,
+                clienteId: data.clienteId ? Number(data.clienteId) : null,
+        plataformaRecepcionPescaId: data.plataformaRecepcionPescaId
+          ? Number(data.plataformaRecepcionPescaId)
+          : null,
         numPlataformaDescarga: data.numPlataformaDescarga?.trim() || null,
         turnoPlataformaDescarga: data.turnoPlataformaDescarga?.trim() || null,
         fechaHoraInicioDescarga: data.fechaHoraInicioDescarga
@@ -1960,7 +2118,7 @@ export default function DescargaFaenaConsumoForm({
         <UserLocationMarker />
         <DistanceLine />
       </PanelMapaGeografico>
-      
+
       {/* Segunda fila: Fechas y horas */}
       <div
         style={{
@@ -1987,8 +2145,9 @@ export default function DescargaFaenaConsumoForm({
                 optionValue="value"
                 style={{ fontWeight: "bold" }}
                 placeholder="Seleccione cliente"
-                disabled={loading}
+                                disabled={loading}
                 className={classNames({ "p-invalid": errors.clienteId })}
+                onChange={(e) => handleClienteChange(e.value)}
               />
             )}
           />
@@ -1996,8 +2155,49 @@ export default function DescargaFaenaConsumoForm({
             <Message severity="error" text={errors.clienteId.message} />
           )}
         </div>
+
+        <div style={{ flex: 2 }}>
+          <label htmlFor="plataformaRecepcionPescaId">
+            Plataforma de Recepción
+          </label>
+          <Controller
+            name="plataformaRecepcionPescaId"
+            control={control}
+            render={({ field }) => (
+              <Dropdown
+                id="plataformaRecepcionPescaId"
+                {...field}
+                value={field.value}
+                options={plataformasRecepcion}
+                filter
+                optionLabel="label"
+                optionValue="value"
+                placeholder={
+                  loadingPlataformas
+                    ? "Cargando plataformas..."
+                    : watch("clienteId")
+                      ? "Seleccione plataforma"
+                      : "Primero seleccione un cliente"
+                }
+                disabled={loading || loadingPlataformas || !watch("clienteId")}
+                style={{ fontWeight: "bold" }}
+                onChange={(e) => handlePlataformaChange(e.value)}
+                className={classNames({
+                  "p-invalid": errors.plataformaRecepcionPescaId,
+                })}
+              />
+            )}
+          />
+          {errors.plataformaRecepcionPescaId && (
+            <Message
+              severity="error"
+              text={errors.plataformaRecepcionPescaId.message}
+            />
+          )}
+        </div>
+
         <div style={{ flex: 1 }}>
-          <label htmlFor="numPlataformaDescarga">Plataforma</label>
+          <label htmlFor="numPlataformaDescarga">Número Plataforma Descarga</label>
           <Controller
             name="numPlataformaDescarga"
             control={control}

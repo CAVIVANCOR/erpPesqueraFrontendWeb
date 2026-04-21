@@ -1431,14 +1431,14 @@ export default function CalasConsumoCard({
         <Column
           field="fechaHoraInicio"
           header="Fecha Inicio"
-          body={(rowData) => formatearFecha(rowData.fechaHoraInicio)}
+          body={(rowData) => formatearFechaHora(rowData.fechaHoraInicio)}
           sortable
           style={{ minWidth: "10rem" }}
         />
         <Column
           field="fechaHoraFin"
           header="Fecha Fin"
-          body={(rowData) => formatearFecha(rowData.fechaHoraFin)}
+          body={(rowData) => formatearFechaHora(rowData.fechaHoraFin)}
           sortable
           style={{ minWidth: "10rem" }}
         />
