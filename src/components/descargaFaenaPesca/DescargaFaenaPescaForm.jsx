@@ -734,61 +734,25 @@ export default function DescargaFaenaPescaForm({
     );
   };
 
-   /**
-   * Componente para mostrar marcador del puerto de descarga o plataforma de recepción
+     /**
+   * Componente de marker fijo para mostrar la plataforma de recepción
+   * 🔴 ROJO - Representa la plataforma de recepción donde se descarga
    * Color rojo según estándar del sistema
-   * PRIORIDAD: Si hay plataforma seleccionada, muestra plataforma. Sino, muestra puerto.
+   * SOLO muestra la plataforma de recepción (NO el puerto de descarga)
    */
   const MarkerPuertoDescarga = () => {
     const plataformaRecepcionPescaId = watch("plataformaRecepcionPescaId");
-    const puertoDescargaId = watch("puertoDescargaId");
 
-    // PRIORIDAD 1: Si hay plataforma seleccionada, mostrar plataforma
-    if (plataformaRecepcionPescaId && plataformasRecepcion.length > 0) {
-      const plataforma = plataformasRecepcion.find(
-        (p) => Number(p.value) === Number(plataformaRecepcionPescaId),
-      );
+    // Solo mostrar si hay plataforma seleccionada
+    if (!plataformaRecepcionPescaId || !plataformasRecepcion.length) return null;
 
-      if (plataforma?.latitud && plataforma?.longitud) {
-        const iconPlataforma = L.icon({
-          iconUrl:
-            "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-          shadowUrl:
-            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41],
-        });
-
-        return (
-          <Marker
-            position={[
-              Number(plataforma.latitud),
-              Number(plataforma.longitud),
-            ]}
-            icon={iconPlataforma}
-          >
-            <Popup>
-              <strong>🔴 {plataforma.label}</strong>
-              <br />
-              Plataforma de Recepción
-            </Popup>
-          </Marker>
-        );
-      }
-    }
-
-    // PRIORIDAD 2: Si no hay plataforma, mostrar puerto de descarga
-    if (!puertoDescargaId || !puertos.length) return null;
-
-    const puertoDescarga = puertos.find(
-      (p) => Number(p.id) === Number(puertoDescargaId),
+    const plataforma = plataformasRecepcion.find(
+      (p) => Number(p.value) === Number(plataformaRecepcionPescaId),
     );
 
-    if (!puertoDescarga?.latitud || !puertoDescarga?.longitud) return null;
+    if (!plataforma?.latitud || !plataforma?.longitud) return null;
 
-    const iconPuertoDescarga = L.icon({
+    const iconPlataforma = L.icon({
       iconUrl:
         "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
       shadowUrl:
@@ -802,15 +766,19 @@ export default function DescargaFaenaPescaForm({
     return (
       <Marker
         position={[
-          Number(puertoDescarga.latitud),
-          Number(puertoDescarga.longitud),
+          Number(plataforma.latitud),
+          Number(plataforma.longitud),
         ]}
-        icon={iconPuertoDescarga}
+        icon={iconPlataforma}
       >
         <Popup>
-          <strong>🔴 {puertoDescarga.nombre}</strong>
+          <strong>🔴 {plataforma.label}</strong>
           <br />
-          Puerto de Descarga
+          Plataforma de Recepción
+          <br />
+          Lat: {Number(plataforma.latitud).toFixed(6)}
+          <br />
+          Lon: {Number(plataforma.longitud).toFixed(6)}
         </Popup>
       </Marker>
     );
