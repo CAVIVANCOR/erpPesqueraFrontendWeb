@@ -203,10 +203,18 @@ const DescargaFaenaPescaCard = ({
   };
 
   // Templates para las columnas
-  const puertoTemplate = (rowData) => {
+   const puertoTemplate = (rowData) => {
     return (
       <span style={{ fontWeight: "bold" }}>
         {rowData.puertoDescarga?.nombre || "N/A"}
+      </span>
+    );
+  };
+
+  const plataformaRecepcionTemplate = (rowData) => {
+    return (
+      <span style={{ fontWeight: "bold" }}>
+        {rowData.plataformaRecepcionPesca?.nombre || "-"}
       </span>
     );
   };
@@ -379,12 +387,19 @@ const DescargaFaenaPescaCard = ({
           sortable
           style={{ minWidth: "80px", verticalAlign: "top" }}
         />
-        <Column
+                <Column
           field="puertoDescarga"
           header="Puerto"
           body={puertoTemplate}
           sortable
           style={{ minWidth: "120px", verticalAlign: "top" }}
+        />
+        <Column
+          field="plataformaRecepcionPesca"
+          header="Plataforma Recepción"
+          body={plataformaRecepcionTemplate}
+          sortable
+          style={{ minWidth: "150px", verticalAlign: "top" }}
         />
         <Column
           field="fechaHoraInicioDescarga"
