@@ -238,8 +238,8 @@ export default function DescargaFaenaConsumoForm({
   };
 
   /**
-   * Componente de línea de distancia - DESCARGA
-   */
+  * Componente de línea de distancia - DESCARGA
+  */
   const DistanceLine = () => {
     const latitud = watch("latitud");
     const longitud = watch("longitud");
@@ -257,6 +257,64 @@ export default function DescargaFaenaConsumoForm({
         weight={2}
         opacity={0.6}
         dashArray="5, 10"
+      />
+    );
+  };
+
+  /**
+   * Componente para mostrar línea desde inicio retorno hasta plataforma de recepción
+   * Color azul (#3B82F6) para diferenciar del recorrido de pesca
+   * PRIORIDAD: Si hay plataforma seleccionada, dibuja hacia plataforma. Sino, hacia puerto.
+   */
+  const LineaRetornoPlataforma = () => {
+    const plataformaRecepcionPescaId = watch("plataformaRecepcionPescaId");
+    const puertoDescargaId = watch("puertoDescargaId");
+    const latitudRetorno = watch("latitud");
+    const longitudRetorno = watch("longitud");
+
+    if (!latitudRetorno || !longitudRetorno) return null;
+
+    let latitudDestino = null;
+    let longitudDestino = null;
+
+    // PRIORIDAD 1: Si hay plataforma seleccionada, usar coordenadas de plataforma
+    if (plataformaRecepcionPescaId && plataformasRecepcion.length > 0) {
+      const plataforma = plataformasRecepcion.find(
+        (p) => Number(p.value) === Number(plataformaRecepcionPescaId),
+      );
+
+      if (plataforma?.latitud && plataforma?.longitud) {
+        latitudDestino = Number(plataforma.latitud);
+        longitudDestino = Number(plataforma.longitud);
+      }
+    }
+
+    // PRIORIDAD 2: Si no hay plataforma, usar coordenadas de puerto de descarga
+    if (!latitudDestino && !longitudDestino && puertoDescargaId && puertos.length > 0) {
+      const puertoDescarga = puertos.find(
+        (p) => Number(p.id) === Number(puertoDescargaId),
+      );
+
+      if (puertoDescarga?.latitud && puertoDescarga?.longitud) {
+        latitudDestino = Number(puertoDescarga.latitud);
+        longitudDestino = Number(puertoDescarga.longitud);
+      }
+    }
+
+    // Si no hay destino válido, no dibujar línea
+    if (!latitudDestino || !longitudDestino) return null;
+
+    const positions = [
+      [Number(latitudRetorno), Number(longitudRetorno)],
+      [latitudDestino, longitudDestino],
+    ];
+
+    return (
+      <Polyline
+        positions={positions}
+        color="#3B82F6"
+        weight={5}
+        opacity={0.8}
       />
     );
   };
@@ -583,7 +641,7 @@ export default function DescargaFaenaConsumoForm({
           ? Number(detalle.katanaTripulacionId)
           : null,
       });
-        } else {
+    } else {
       // Resetear para nuevo registro con valores fijos de faena
       // Cargar coordenadas de última cala como inicio de retorno por defecto
       const cargarCoordenadasUltimaCala = async () => {
@@ -602,7 +660,7 @@ export default function DescargaFaenaConsumoForm({
               });
 
               const ultimaCala = calasOrdenadas[0];
-              
+
               // Usar latitudFin/longitudFin de la última cala si existen
               if (ultimaCala.latitudFin && ultimaCala.longitudFin) {
                 latitudInicio = Number(ultimaCala.latitudFin);
@@ -661,7 +719,7 @@ export default function DescargaFaenaConsumoForm({
 
       cargarCoordenadasUltimaCala();
     }
-    }, [detalle, reset, bahiaId, motoristaId, patronId, faenaPescaConsumoId]);
+  }, [detalle, reset, bahiaId, motoristaId, patronId, faenaPescaConsumoId]);
 
   /**
    * Cargar plataformas cuando se carga un detalle existente con cliente
@@ -690,7 +748,7 @@ export default function DescargaFaenaConsumoForm({
           setLoadingPlataformas(false);
         }
       };
-      
+
       cargarPlataformas();
     }
   }, [detalle, watch("clienteId")]); // Ejecutar cuando cambia detalle o clienteId
@@ -1018,10 +1076,10 @@ export default function DescargaFaenaConsumoForm({
     setValue("longitudFondeo", decimal);
   };
 
-     /**
-   * Componente de marker draggable para el mapa de DESCARGA
-   * 🔵 AZUL - Representa el INICIO DE RETORNO (coordenadas donde inicia el viaje hacia puerto)
-   */
+  /**
+* Componente de marker draggable para el mapa de DESCARGA
+* 🔵 AZUL - Representa el INICIO DE RETORNO (coordenadas donde inicia el viaje hacia puerto)
+*/
   const DraggableMarker = () => {
     const markerRef = useRef(null);
 
@@ -1068,13 +1126,13 @@ export default function DescargaFaenaConsumoForm({
         </Popup>
       </Marker>
     );
-    };
+  };
 
-    /**
-   * Componente de marker fijo para mostrar la plataforma de recepción
-   * 🔴 ROJO - Muestra la ubicación de la plataforma de recepción donde se descarga
-   * SOLO muestra la plataforma de recepción (NO el puerto de descarga)
-   */
+  /**
+ * Componente de marker fijo para mostrar la plataforma de recepción
+ * 🔴 ROJO - Muestra la ubicación de la plataforma de recepción donde se descarga
+ * SOLO muestra la plataforma de recepción (NO el puerto de descarga)
+ */
   const MarkerPuertoDescarga = () => {
     const plataformaRecepcionPescaId = watch("plataformaRecepcionPescaId");
 
@@ -1209,7 +1267,7 @@ export default function DescargaFaenaConsumoForm({
       );
 
       if (plataformaSeleccionada) {
-               // Asignar nombre de la plataforma al campo numPlataformaDescarga
+        // Asignar nombre de la plataforma al campo numPlataformaDescarga
         setValue("numPlataformaDescarga", plataformaSeleccionada.label);
 
         // ✅ NO asignar coordenadas a latitud/longitud
@@ -1242,7 +1300,7 @@ export default function DescargaFaenaConsumoForm({
         fechaHoraLlegadaPuerto: data.fechaHoraLlegadaPuerto
           ? data.fechaHoraLlegadaPuerto.toISOString()
           : null,
-                clienteId: data.clienteId ? Number(data.clienteId) : null,
+        clienteId: data.clienteId ? Number(data.clienteId) : null,
         plataformaRecepcionPescaId: data.plataformaRecepcionPescaId
           ? Number(data.plataformaRecepcionPescaId)
           : null,
@@ -2159,14 +2217,15 @@ export default function DescargaFaenaConsumoForm({
         getClasificacionAguasColor={getClasificacionAguasColor}
         titulo="📍 Información Geográfica - Descarga"
         colapsadoPorDefecto={true}
-            >
+      >
+        <LineaRetornoPlataforma />
         <MarkerPuertoDescarga />
         <DraggableMarker />
         <UserLocationMarker />
         <DistanceLine />
-      </PanelMapaGeografico>
+    </PanelMapaGeografico>
 
-      {/* Segunda fila: Fechas y horas */}
+      {/* Segunda fila: Fechas y horas */ }
       <div
         style={{
           display: "flex",
@@ -2417,232 +2476,232 @@ export default function DescargaFaenaConsumoForm({
         </div>
       </div>
 
-      {/* Tercera fila: Datos numéricos */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          marginBottom: "0.5rem",
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      ></div>
+  {/* Tercera fila: Datos numéricos */ }
+  <div
+    style={{
+      display: "flex",
+      gap: 10,
+      marginBottom: "0.5rem",
+      flexDirection: window.innerWidth < 768 ? "column" : "row",
+    }}
+  ></div>
 
-      {/* Quinta fila: Especie */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          marginBottom: "0.5rem",
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label htmlFor="especieId">Especie*</label>
-          <Controller
-            name="especieId"
-            control={control}
-            rules={{ required: "La especie es obligatoria" }}
-            render={({ field }) => (
-              <Dropdown
-                id="especieId"
-                {...field}
-                value={field.value}
-                options={especiesNormalizadas}
-                optionLabel="label"
-                optionValue="value"
-                filter
-                style={{ fontWeight: "bold" }}
-                placeholder="Seleccione especie"
-                disabled={loading}
-                className={classNames({ "p-invalid": errors.especieId })}
-              />
-            )}
+  {/* Quinta fila: Especie */ }
+  <div
+    style={{
+      display: "flex",
+      gap: 10,
+      marginBottom: "0.5rem",
+      flexDirection: window.innerWidth < 768 ? "column" : "row",
+    }}
+  >
+    <div style={{ flex: 1 }}>
+      <label htmlFor="especieId">Especie*</label>
+      <Controller
+        name="especieId"
+        control={control}
+        rules={{ required: "La especie es obligatoria" }}
+        render={({ field }) => (
+          <Dropdown
+            id="especieId"
+            {...field}
+            value={field.value}
+            options={especiesNormalizadas}
+            optionLabel="label"
+            optionValue="value"
+            filter
+            style={{ fontWeight: "bold" }}
+            placeholder="Seleccione especie"
+            disabled={loading}
+            className={classNames({ "p-invalid": errors.especieId })}
           />
-          {errors.especieId && (
-            <Message severity="error" text={errors.especieId.message} />
-          )}
-        </div>
-        <div style={{ flex: 0.5 }}>
-          <label htmlFor="toneladas">Kilogramos*</label>
-          <Controller
-            name="toneladas"
-            control={control}
-            rules={{ required: "Los kilogramos son obligatorios" }}
-            render={({ field }) => (
-              <InputNumber
-                id="toneladas"
-                value={field.value}
-                onValueChange={(e) => {
-                  field.onChange(e.value);
-                  ultimoCambioRef.current = "toneladas";
-                }}
-                mode="decimal"
-                minFractionDigits={0}
-                maxFractionDigits={3}
-                suffix=" Kg"
-                inputStyle={{ fontWeight: "bold" }}
-                disabled={loading}
-                className={classNames({ "p-invalid": errors.toneladas })}
-              />
-            )}
+        )}
+      />
+      {errors.especieId && (
+        <Message severity="error" text={errors.especieId.message} />
+      )}
+    </div>
+    <div style={{ flex: 0.5 }}>
+      <label htmlFor="toneladas">Kilogramos*</label>
+      <Controller
+        name="toneladas"
+        control={control}
+        rules={{ required: "Los kilogramos son obligatorios" }}
+        render={({ field }) => (
+          <InputNumber
+            id="toneladas"
+            value={field.value}
+            onValueChange={(e) => {
+              field.onChange(e.value);
+              ultimoCambioRef.current = "toneladas";
+            }}
+            mode="decimal"
+            minFractionDigits={0}
+            maxFractionDigits={3}
+            suffix=" Kg"
+            inputStyle={{ fontWeight: "bold" }}
+            disabled={loading}
+            className={classNames({ "p-invalid": errors.toneladas })}
           />
-          {errors.toneladas && (
-            <Message severity="error" text={errors.toneladas.message} />
-          )}
-        </div>
-        <div style={{ flex: 0.5 }}>
-          <label htmlFor="nroCubetas"># Cubetas</label>
-          <Controller
-            name="nroCubetas"
-            control={control}
-            render={({ field }) => (
-              <InputNumber
-                id="nroCubetas"
-                value={field.value}
-                onValueChange={(e) => {
-                  field.onChange(e.value);
-                  ultimoCambioRef.current = "cubetas";
-                }}
-                mode="decimal"
-                minFractionDigits={0}
-                maxFractionDigits={2}
-                min={0}
-                inputStyle={{ fontWeight: "bold" }}
-                disabled={loading}
-                className={classNames({ "p-invalid": errors.nroCubetas })}
-              />
-            )}
+        )}
+      />
+      {errors.toneladas && (
+        <Message severity="error" text={errors.toneladas.message} />
+      )}
+    </div>
+    <div style={{ flex: 0.5 }}>
+      <label htmlFor="nroCubetas"># Cubetas</label>
+      <Controller
+        name="nroCubetas"
+        control={control}
+        render={({ field }) => (
+          <InputNumber
+            id="nroCubetas"
+            value={field.value}
+            onValueChange={(e) => {
+              field.onChange(e.value);
+              ultimoCambioRef.current = "cubetas";
+            }}
+            mode="decimal"
+            minFractionDigits={0}
+            maxFractionDigits={2}
+            min={0}
+            inputStyle={{ fontWeight: "bold" }}
+            disabled={loading}
+            className={classNames({ "p-invalid": errors.nroCubetas })}
           />
-          {errors.nroCubetas && (
-            <Message severity="error" text={errors.nroCubetas.message} />
-          )}
-        </div>
-        <div style={{ flex: 0.5 }}>
-          <label htmlFor="precioPorKgEspecie">Precio Kg</label>
-          <Controller
-            name="precioPorKgEspecie"
-            control={control}
-            render={({ field }) => (
-              <InputNumber
-                id="precioPorKgEspecie"
-                value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                min={0}
-                prefix="S/ "
-                inputStyle={{ fontWeight: "bold" }}
-                disabled={loading}
-                className={classNames({
-                  "p-invalid": errors.precioPorKgEspecie,
-                })}
-              />
-            )}
+        )}
+      />
+      {errors.nroCubetas && (
+        <Message severity="error" text={errors.nroCubetas.message} />
+      )}
+    </div>
+    <div style={{ flex: 0.5 }}>
+      <label htmlFor="precioPorKgEspecie">Precio Kg</label>
+      <Controller
+        name="precioPorKgEspecie"
+        control={control}
+        render={({ field }) => (
+          <InputNumber
+            id="precioPorKgEspecie"
+            value={field.value}
+            onValueChange={(e) => field.onChange(e.value)}
+            mode="decimal"
+            minFractionDigits={2}
+            maxFractionDigits={2}
+            min={0}
+            prefix="S/ "
+            inputStyle={{ fontWeight: "bold" }}
+            disabled={loading}
+            className={classNames({
+              "p-invalid": errors.precioPorKgEspecie,
+            })}
           />
-          {errors.precioPorKgEspecie && (
-            <Message
-              severity="error"
-              text={errors.precioPorKgEspecie.message}
-            />
-          )}
-        </div>
-        <div style={{ flex: 1 }}>
-          <label htmlFor="precioTotal">Precio Total</label>
-          <Controller
-            name="precioTotal"
-            control={control}
-            render={({ field }) => (
-              <InputNumber
-                id="precioTotal"
-                value={field.value}
-                onValueChange={(e) => field.onChange(e.value)}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                min={0}
-                prefix="S/ "
-                inputStyle={{ fontWeight: "bold", backgroundColor: "#e3f2fd" }}
-                disabled={true}
-                className={classNames({ "p-invalid": errors.precioTotal })}
-              />
-            )}
+        )}
+      />
+      {errors.precioPorKgEspecie && (
+        <Message
+          severity="error"
+          text={errors.precioPorKgEspecie.message}
+        />
+      )}
+    </div>
+    <div style={{ flex: 1 }}>
+      <label htmlFor="precioTotal">Precio Total</label>
+      <Controller
+        name="precioTotal"
+        control={control}
+        render={({ field }) => (
+          <InputNumber
+            id="precioTotal"
+            value={field.value}
+            onValueChange={(e) => field.onChange(e.value)}
+            mode="decimal"
+            minFractionDigits={2}
+            maxFractionDigits={2}
+            min={0}
+            prefix="S/ "
+            inputStyle={{ fontWeight: "bold", backgroundColor: "#e3f2fd" }}
+            disabled={true}
+            className={classNames({ "p-invalid": errors.precioTotal })}
           />
-          {errors.precioTotal && (
-            <Message severity="error" text={errors.precioTotal.message} />
-          )}
-        </div>
-        <div style={{ flex: 1.5 }}>
-          <label htmlFor="katanaTripulacionId">Katana Tripulación</label>
-          <Controller
-            name="katanaTripulacionId"
-            control={control}
-            render={({ field }) => (
-              <Dropdown
-                id="katanaTripulacionId"
-                value={field.value}
-                options={katanasTripulacionNormalizadas}
-                onChange={(e) => field.onChange(e.value)}
-                placeholder="Seleccionado automáticamente"
-                filter
-                showClear
-                disabled={true}
-                style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
-                className={classNames({
-                  "p-invalid": errors.katanaTripulacionId,
-                })}
-              />
-            )}
+        )}
+      />
+      {errors.precioTotal && (
+        <Message severity="error" text={errors.precioTotal.message} />
+      )}
+    </div>
+    <div style={{ flex: 1.5 }}>
+      <label htmlFor="katanaTripulacionId">Katana Tripulación</label>
+      <Controller
+        name="katanaTripulacionId"
+        control={control}
+        render={({ field }) => (
+          <Dropdown
+            id="katanaTripulacionId"
+            value={field.value}
+            options={katanasTripulacionNormalizadas}
+            onChange={(e) => field.onChange(e.value)}
+            placeholder="Seleccionado automáticamente"
+            filter
+            showClear
+            disabled={true}
+            style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+            className={classNames({
+              "p-invalid": errors.katanaTripulacionId,
+            })}
           />
-          {errors.katanaTripulacionId && (
-            <Message
-              severity="error"
-              text={errors.katanaTripulacionId.message}
-            />
-          )}
-        </div>
-      </div>
-      {/* Fila: Katana Tripulación */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      ></div>
+        )}
+      />
+      {errors.katanaTripulacionId && (
+        <Message
+          severity="error"
+          text={errors.katanaTripulacionId.message}
+        />
+      )}
+    </div>
+  </div>
+  {/* Fila: Katana Tripulación */ }
+  <div
+    style={{
+      display: "flex",
+      gap: 10,
+      flexDirection: window.innerWidth < 768 ? "column" : "row",
+    }}
+  ></div>
 
-      {/* Fila: Observaciones */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexDirection: window.innerWidth < 768 ? "column" : "row",
-        }}
-      >
-        <div style={{ flex: 2 }}>
-          <label htmlFor="observaciones">Observaciones</label>
-          <Controller
-            name="observaciones"
-            control={control}
-            render={({ field }) => (
-              <InputTextarea
-                id="observaciones"
-                {...field}
-                rows={1}
-                placeholder="Observaciones adicionales"
-                style={{
-                  fontWeight: "bold",
-                  color: "red",
-                  fontStyle: "italic",
-                  textTransform: "uppercase",
-                }}
-                disabled={loading}
-              />
-            )}
+  {/* Fila: Observaciones */ }
+  <div
+    style={{
+      display: "flex",
+      gap: 10,
+      flexDirection: window.innerWidth < 768 ? "column" : "row",
+    }}
+  >
+    <div style={{ flex: 2 }}>
+      <label htmlFor="observaciones">Observaciones</label>
+      <Controller
+        name="observaciones"
+        control={control}
+        render={({ field }) => (
+          <InputTextarea
+            id="observaciones"
+            {...field}
+            rows={1}
+            placeholder="Observaciones adicionales"
+            style={{
+              fontWeight: "bold",
+              color: "red",
+              fontStyle: "italic",
+              textTransform: "uppercase",
+            }}
+            disabled={loading}
           />
-        </div>
-      </div>
-      {/* Quinta fila: Coordenadas GPS Fondeo */}
+        )}
+      />
+    </div>
+  </div>
+  {/* Quinta fila: Coordenadas GPS Fondeo */ }
       <div
         style={{
           border: "6px solid #ff9800",
@@ -3188,62 +3247,62 @@ export default function DescargaFaenaConsumoForm({
         <DistanceLineFondeo />
       </PanelMapaGeografico>
 
-      {/* Botones de acción */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-          marginTop: 18,
-        }}
-      >
-        {/* Botón Finalizar Descarga - Lado izquierdo */}
-        <Button
-          type="button"
-          label={finalizandoDescarga ? "Finalizando..." : "Finalizar Descarga"}
-          icon={
-            finalizandoDescarga ? "pi pi-spin pi-spinner" : "pi pi-check-circle"
-          }
-          severity="info"
-          onClick={handleFinalizarDescarga}
-          disabled={!detalle?.id || loading || finalizandoDescarga}
-          loading={finalizandoDescarga}
-          raised
-          size="small"
-          tooltip={
-            !detalle?.id
-              ? "Debe guardar la descarga antes de finalizarla"
-              : "Finalizar descarga y generar movimientos de almacén"
-          }
-          tooltipOptions={{ position: "top" }}
-        />
+  {/* Botones de acción */ }
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+      marginTop: 18,
+    }}
+  >
+    {/* Botón Finalizar Descarga - Lado izquierdo */}
+    <Button
+      type="button"
+      label={finalizandoDescarga ? "Finalizando..." : "Finalizar Descarga"}
+      icon={
+        finalizandoDescarga ? "pi pi-spin pi-spinner" : "pi pi-check-circle"
+      }
+      severity="info"
+      onClick={handleFinalizarDescarga}
+      disabled={!detalle?.id || loading || finalizandoDescarga}
+      loading={finalizandoDescarga}
+      raised
+      size="small"
+      tooltip={
+        !detalle?.id
+          ? "Debe guardar la descarga antes de finalizarla"
+          : "Finalizar descarga y generar movimientos de almacén"
+      }
+      tooltipOptions={{ position: "top" }}
+    />
 
-        {/* Botones Cancelar y Guardar - Lado derecho */}
-        <div style={{ display: "flex", gap: 8 }}>
-          <Button
-            type="button"
-            label="Cancelar"
-            icon="pi pi-times"
-            className="p-button-warning"
-            onClick={onCancelar}
-            disabled={loading}
-            severity="warning"
-            raised
-            size="small"
-          />
-          <Button
-            onClick={handleGuardar}
-            label={detalle?.id ? "Actualizar" : "Guardar"}
-            icon="pi pi-check"
-            loading={loading}
-            className="p-button-success"
-            severity="success"
-            raised
-            size="small"
-          />
-        </div>
-      </div>
+    {/* Botones Cancelar y Guardar - Lado derecho */}
+    <div style={{ display: "flex", gap: 8 }}>
+      <Button
+        type="button"
+        label="Cancelar"
+        icon="pi pi-times"
+        className="p-button-warning"
+        onClick={onCancelar}
+        disabled={loading}
+        severity="warning"
+        raised
+        size="small"
+      />
+      <Button
+        onClick={handleGuardar}
+        label={detalle?.id ? "Actualizar" : "Guardar"}
+        icon="pi pi-check"
+        loading={loading}
+        className="p-button-success"
+        severity="success"
+        raised
+        size="small"
+      />
     </div>
+  </div>
+    </div >
   );
 }

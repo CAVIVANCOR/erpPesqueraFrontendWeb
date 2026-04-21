@@ -696,32 +696,52 @@ export default function DescargaFaenaPescaForm({
     );
   };
 
-  /**
-   * Componente para mostrar línea desde inicio retorno hasta puerto descarga
+    /**
+   * Componente para mostrar línea desde inicio retorno hasta plataforma de recepción
    * Color azul (#3B82F6) para diferenciar del recorrido de pesca
+   * PRIORIDAD: Si hay plataforma seleccionada, dibuja hacia plataforma. Sino, hacia puerto.
    */
   const LineaRetornoPuerto = () => {
+    const plataformaRecepcionPescaId = watch("plataformaRecepcionPescaId");
     const puertoDescargaId = watch("puertoDescargaId");
     const latitudRetorno = watch("latitud");
     const longitudRetorno = watch("longitud");
 
-    if (
-      !puertoDescargaId ||
-      !latitudRetorno ||
-      !longitudRetorno ||
-      !puertos.length
-    )
-      return null;
+    if (!latitudRetorno || !longitudRetorno) return null;
 
-    const puertoDescarga = puertos.find(
-      (p) => Number(p.id) === Number(puertoDescargaId),
-    );
+    let latitudDestino = null;
+    let longitudDestino = null;
 
-    if (!puertoDescarga?.latitud || !puertoDescarga?.longitud) return null;
+    // PRIORIDAD 1: Si hay plataforma seleccionada, usar coordenadas de plataforma
+    if (plataformaRecepcionPescaId && plataformasRecepcion.length > 0) {
+      const plataforma = plataformasRecepcion.find(
+        (p) => Number(p.value) === Number(plataformaRecepcionPescaId),
+      );
+
+      if (plataforma?.latitud && plataforma?.longitud) {
+        latitudDestino = Number(plataforma.latitud);
+        longitudDestino = Number(plataforma.longitud);
+      }
+    }
+
+    // PRIORIDAD 2: Si no hay plataforma, usar coordenadas de puerto de descarga
+    if (!latitudDestino && !longitudDestino && puertoDescargaId && puertos.length > 0) {
+      const puertoDescarga = puertos.find(
+        (p) => Number(p.id) === Number(puertoDescargaId),
+      );
+
+      if (puertoDescarga?.latitud && puertoDescarga?.longitud) {
+        latitudDestino = Number(puertoDescarga.latitud);
+        longitudDestino = Number(puertoDescarga.longitud);
+      }
+    }
+
+    // Si no hay destino válido, no dibujar línea
+    if (!latitudDestino || !longitudDestino) return null;
 
     const positions = [
       [Number(latitudRetorno), Number(longitudRetorno)],
-      [Number(puertoDescarga.latitud), Number(puertoDescarga.longitud)],
+      [latitudDestino, longitudDestino],
     ];
 
     return (
